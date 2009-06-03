@@ -8,4 +8,10 @@ object Test {
     require(i == j)
     i + j
   } ensuring(res => res == 2 * i)
+
+  def booleans: Unit = {
+    var b : Boolean = true
+    b = false
+  
+  }
 }
