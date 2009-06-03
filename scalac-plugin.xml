@@ -1,0 +1,4 @@
+<plugin>
+    <name>funcheck</name>
+    <classname>funcheck.FunCheck</classname>
+</plugin>

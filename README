@@ -1,0 +1,47 @@
+Use:
+    ant
+
+...to compile the project.
+
+Use:
+    ant dist
+
+...to generate the plugin jar file and a script to run scalac with the plugin.
+
+Then, try for instance:
+    ./scalac-funcheck -Xshow-phases
+
+...and notice that funcheck runs right after refchecks. Note that
+./scalac-funcheck is generated and contains the full path to the jar file, so
+you can use it from any location and it will find what it needs. You may want
+to symbolically link to it from ~/bin, for instance.
+
+You can also try:
+    ./scalac-funcheck -Xplugin-list
+
+Try:
+    ./scalac-funcheck Test.scala
+
+...and notice that the plugin does something (in particular, the compilation
+stops right after the plugin).
+
+Try:
+    ./scalac-funcheck -P:funcheck:with-code Test.scala
+
+...to achieve the same result but with letting the compiler continue its work.
+
+To clean up:
+    ant clean
+
+Useful for showing Scala AST
+-----------------------------
+
+Try:
+   ./scalac-funcheck -Yshow-trees -Xprint:funcheck Test.scala
+
+...to print the program's AST on the standard output
+
+Try:
+   ./scalac-funcheck -Ybrowse:funcheck Test.scala
+
+...to print a Swing-based GUI for browsing the program's AST

@@ -1,0 +1,3 @@
+mkdir class
+fsc -d class/ BSTAsSet.scala
+scala -cp class/ contracts.bst.BSTAsSet
