@@ -5,7 +5,7 @@ import scala.tools.nsc.{Global,Phase}
 import scala.tools.nsc.plugins.{Plugin,PluginComponent}
 
 /** This class is the entry point for the plugin. */
-class FunCheck(val global: Global) extends Plugin {
+class FunCheckPlugin(val global: Global) extends Plugin {
   import global._
 
   val name = "funcheck"

@@ -1,6 +1,6 @@
 package contracts.heap
 
-import scala.collection.immutable.MultiSet
+import scala.collection.immutable.Multiset
 
 /**
  * Example adapted from book "Purely Functional Data Structures"
@@ -22,12 +22,12 @@ object Heap {
     inner(xs,Elem(Integer.MAX_VALUE))
   }
   
-   private def content(t : Heap): MultiSet[Elem] = {
-    def inner(t: Heap, mset: MultiSet[Elem]): MultiSet[Elem] = t match {
+   private def content(t : Heap): Multiset[Elem] = {
+    def inner(t: Heap, mset: Multiset[Elem]): Multiset[Elem] = t match {
       case E => mset
       case T(rank,el,left,right) => mset + el
     }
-    inner(t,MultiSet.empty[Elem])
+    inner(t,Multiset.empty[Elem])
   } 
 }
 

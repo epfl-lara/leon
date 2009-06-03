@@ -1,7 +1,7 @@
 package scala.collection
 
 
-trait MultiSet[A] extends (A => Int) with Collection[A]{
+trait Multiset[A] extends (A => Int) with Collection[A]{
   
   /** Returns the number of elements in this multiset.
    *
@@ -43,15 +43,15 @@ trait MultiSet[A] extends (A => Int) with Collection[A]{
    *              this multiset.
    *  todo: rename to isSubsetOf 
    */
-  def subsetOf(that: MultiSet[A]): Boolean = 
-    forall(e => apply(e) <= that.apply(e))
+  def subsetOf(that: Multiset[A]): Boolean = 
+    forall(e => this(e) <= that(e))
   
   /** 
    * This method is an alias for <code>intersect</code>. It computes an 
    * intersection with set that. It removes all the elements 
    * <code>that</code> are not present in that.
    */                                                    
-  def ** (that: MultiSet[A]): MultiSet[A]
+  def ** (that: Multiset[A]): Multiset[A]
   
   
   //structural equality
@@ -65,12 +65,12 @@ trait MultiSet[A] extends (A => Int) with Collection[A]{
    *              contain the same elements, with same cardinality.
    */
   override def equals(that: Any): Boolean = that match {
-    case other: MultiSet[A] => forall(e => apply(e) == other.apply(e)) 
+    case other: Multiset[_] => other.size == this.size && subsetOf(other.asInstanceOf[Multiset[A]])
     case _ => false
   }
   
   
   /** Defines the prefix of this object's <code>toString</code> representation.
    */
-  override protected def stringPrefix : String = "MultiSet"
+  override protected def stringPrefix : String = "Multiset"
 }

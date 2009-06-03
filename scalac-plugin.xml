@@ -1,4 +1,4 @@
 <plugin>
     <name>funcheck</name>
-    <classname>funcheck.FunCheck</classname>
+    <classname>funcheck.FunCheckPlugin</classname>
 </plugin>

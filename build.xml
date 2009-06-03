@@ -10,24 +10,25 @@
     <property name="scala.home" value="${env.SCALA_HOME}" />
     <property name="scala-library.jar" value="${scala.home}/lib/scala-library.jar" />
     <property name="scala-compiler.jar" value="${scala.home}/lib/scala-compiler.jar" />
-	
-    <!-- folders -->
-	<property name="base.dir" value="${basedir}" /> 
+
+    <!-- paths -->
+    <property name="base.dir" value="${basedir}" /> 
     <property name="sources.dir" value="${base.dir}/src" />
-	<property name="examples.dir" value="${base.dir}/examples" />
-	<property name="tests.dir" value="${base.dir}/tests" />
+    <property name="examples.dir" value="${base.dir}/examples" />
+    <property name="tests.dir" value="${base.dir}/tests" />
     <property name="build.dir" value="${base.dir}/bin" />
     <property name="dist.dir" value="${base.dir}/dist" />
-   
-	<property name="lib.dir" value="${basedir}/lib" /> 
+
+    <property name="lib.dir" value="${basedir}/lib" /> 
 
     <property name="build.examples.dir" value="${build.dir}/examples" />
     <property name="build.tests.dir" value="${build.dir}/tests" />
 
-	<!-- other properties -->
+    <!-- other properties -->
     <property name="dist.jar" value="${dist.dir}/funcheck-plugin.jar" />
-	<property name="main.class" value="funcheck.DefaultMain" />
+    <property name="main.class" value="funcheck.DefaultMain" />
     <property name="script.file" value="${base.dir}/scalac-funcheck" />
+    <property name="scalac.default.params" value="-deprecation -unchecked" />
 
     <!-- required to use the tasks scalac, fsc and scaladoc -->
     <taskdef resource="scala/tools/ant/antlib.xml">
@@ -41,98 +42,66 @@
     <path id="scalac.class.path">
         <pathelement location="${scala-library.jar}"  />
         <pathelement location="${scala-compiler.jar}"  />
-	</path>
+    </path>
 
     <path id="build.path">
-	    <path refid="scalac.class.path"/>
+        <path refid="scalac.class.path"/>
         <pathelement location="${build.dir}"  />
     </path>
 
     <!-- generic classpath settings (collecting all) -->
-	<path id="lib.path">
-      <fileset dir=".">
-	    <include name="${lib.dir}/*.jar"/>
-	  </fileset>
-	  <fileset dir=".">
-	    <include name="${lib.dir}/*.zip"/>
-      </fileset>
-	</path>
+    <path id="lib.path">
+        <fileset dir=".">
+            <include name="${lib.dir}/*.jar"/>
+        </fileset>
+        <fileset dir=".">
+            <include name="${lib.dir}/*.zip"/>
+        </fileset>
+    </path>
 
-
-
-    <!-- *
-	     * compile: it compiles all Funcheck's sources
-	     *-->
-    <target name="compile" description="compile FunCheck">
+    <target name="compile" description="compile the FunCheck plugin">
         <mkdir dir="${build.dir}"  />
-        <scalac srcdir="${sources.dir}" destdir="${build.dir}" force="changed" addparams="-deprecation">
+        <scalac srcdir="${sources.dir}" destdir="${build.dir}" force="changed" addparams="${scalac.default.params}">
             <classpath refid="build.path" />
             <include name="**/*.scala"  />
-			<exclude name="scala/collection/**/*.scala"/>
+            <exclude name="scala/collection/**/*.scala"/>
         </scalac>
     </target>
 
-    <!-- *
-	     * compile-lib-extension: it compiles the library extension used to 
-		 * define  multiset
-	     *-->
     <target name="compile-lib-extension" description="compile Scala library extension for MultiSet">
         <mkdir dir="${build.dir}"  />
-        <scalac srcdir="${sources.dir}" destdir="${build.dir}" force="changed" addparams="-deprecation">
+        <scalac srcdir="${sources.dir}" destdir="${build.dir}" force="changed" addparams="${scalac.default.params}">
             <classpath refid="build.path" />
             <include name="scala/collection/**/*.scala"  />
         </scalac>
     </target>
-    
-    <!-- *
-	     *
-	     *-->
+
     <target name="compile-examples" depends="compile-lib-extension" description="compile the examples">
         <mkdir dir="${build.examples.dir}"  />
-	    <scalac srcdir="${examples.dir}" destdir="${build.examples.dir}" force="changed"
-	            addparams="-deprecation">
-	        <classpath>
-			  <path refid="scalac.class.path" />
-			  <pathelement location="${build.dir}"/>
-			</classpath>
-	    </scalac>
+        <scalac srcdir="${examples.dir}" destdir="${build.examples.dir}" force="changed" addparams="${scalac.default.params}">
+            <classpath>
+                <path refid="scalac.class.path" />
+                <pathelement location="${build.dir}"/>
+            </classpath>
+        </scalac>
     </target>
 
+    <target name="compile-all" depends="compile,compile-examples" description="compile FunCheck and the examples" />
 
-    <!-- *
-	     *
-	     *-->
-    <target name="compile-all" depends="compile,compile-examples"
-	        description="compile FunCheck and the examples" />
-
-	
-
-    <!-- *
-	     *
-	     *-->
     <target name="compile-tests-examples" depends="compile-examples" description="compile the suite tests for the examples">
-		<mkdir dir="${build.tests.dir}"  />
-	    <scalac srcdir="${tests.dir}" destdir="${build.tests.dir}" force="changed"
-	            addparams="-deprecation">
-	        <classpath>
-			  <path refid="scalac.class.path" />
-			  <path refid="lib.path" />
-			  <pathelement location="${lib.dir}/ScalaCheck-1.5.jar" />
-			  <pathelement location="${build.examples.dir}"/>
-		    </classpath>
-	    </scalac>
+        <mkdir dir="${build.tests.dir}"  />
+        <scalac srcdir="${tests.dir}" destdir="${build.tests.dir}" force="changed" addparams="${scalac.default.params}">
+            <classpath>
+                <path refid="scalac.class.path" />
+                <path refid="lib.path" />
+                <pathelement location="${lib.dir}/ScalaCheck-1.5.jar" />
+                <pathelement location="${build.examples.dir}"/>
+            </classpath>
+        </scalac>
     </target>
 
-
-
-
-	<!-- *
-	     *
-	     *-->
     <target name="dist" depends="compile" description="build the FunCheck jar file and create the script file used to run scalac with FunCheck plugged-in">
         <mkdir dir="${dist.dir}" />
-
-        <copy file="./scalac-plugin.xml" todir="${build.dir}" overwrite="true" />
 
         <manifest file="${dist.dir}/MANIFEST.MF">
             <attribute name="Built-By" value="lara.epfl.ch" />
@@ -141,21 +110,19 @@
 
         <jar destfile="${dist.jar}" manifest="${dist.dir}/MANIFEST.MF">
             <fileset dir="${build.dir}" />
+            <fileset file="./scalac-plugin.xml" />
         </jar>
 
         <echo file="${script.file}" message="#!/bin/sh${line.separator}scalac -Xplugin:${dist.jar} $@${line.separator}" />
         <chmod file="${script.file}" perm="u+x" />
     </target>
 
-    <!-- *
-	     *
-	     *-->
-    <target name="clean" description="clean FunCheck">
+    <target name="clean" description="clean the project space">
         <delete file="${script.file}" quiet="yes" failonerror="no" />
         <delete dir="${build.dir}" includeemptydirs="yes" quiet="yes" failonerror="no" />
         <delete dir="${dist.dir}" includeemptydirs="yes" quiet="yes" failonerror="no" />
         <delete>
-            <fileset dir="${examples.dir}" includes="**/*.class" />
+            <fileset dir="${basedir}" includes="**/*.class" />
         </delete>
     </target>
 

@@ -1,16 +1,16 @@
 package scala.collection.immutable
 
 
-object MultiSet {
+object Multiset {
    /** The empty set of this type */
-  def empty[A]: MultiSet[A] = throw new UnsupportedOperationException("Concrete MultiSet classes need to be implemented")
+  def empty[A]: Multiset[A] = throw new UnsupportedOperationException("Concrete Multiset classes need to be implemented")
   
   /** The canonical factory for this type */
-  def apply[A](elems: A*): MultiSet[A] = empty[A] ++ elems
+  def apply[A](elems: A*): Multiset[A] = empty[A] ++ elems
   
 }
 
-trait MultiSet[A] extends AnyRef with collection.MultiSet[A]{
+trait Multiset[A] extends AnyRef with collection.Multiset[A]{
   
   /** This method is an alias for <code>intersect</code>.
    *  It computes an intersection with multiset <code>that</code>.
@@ -18,28 +18,28 @@ trait MultiSet[A] extends AnyRef with collection.MultiSet[A]{
    *
    *  @param that the multiset to intersect with
    */
-  override def ** (that: collection.MultiSet[A]): MultiSet[A] = intersect(that)
+  override def ** (that: collection.Multiset[A]): Multiset[A] = intersect(that)
 
   /** 
    * This method computes an intersection with multiset that. It removes all 
    * the elements that are not present in that.
    */
-  def intersect (that: collection.MultiSet[A]): MultiSet[A] 
+  def intersect (that: collection.Multiset[A]): Multiset[A] 
   
   // A U elems (max)
-  def ++ (elems: Iterable[A]): MultiSet[A]
+  def ++ (elems: Iterable[A]): Multiset[A]
   
   // A U elems (sum)
-  def +++ (elems: Iterable[A]): MultiSet[A]
+  def +++ (elems: Iterable[A]): Multiset[A]
   
   // A \ {elems} 
-  def --(elems: Iterable[A]): MultiSet[A]
+  def --(elems: Iterable[A]): Multiset[A]
   
   // A U {elems}
-  def + (elems: A*): MultiSet[A] 
+  def + (elems: A*): Multiset[A] 
   
   // A \ {elems}
-  def - (elems: A*): MultiSet[A] 
+  def - (elems: A*): Multiset[A] 
   
   def filter (p: A => Boolean): Iterable[A]
 }
