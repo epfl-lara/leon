@@ -64,18 +64,23 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
       def unsup(s: String): String = "FunCheck: Unsupported construct: " + s
 
       tree match {
-        case ClassDef(mods, name, tparams, impl) => {
-          if(mods.isTrait) unit.error(tree.pos, unsup("trait."))
-        }
+        case c @ ClassDef(mods, name, tparams, impl) => {
+          val s = c.symbol
+          println(s)
 
+          if(s.isTrait)
+            unit.error(tree.pos, unsup("trait."))
+
+          else if(s.isModule) 
+            println("Seems like " + name + " is an object.")
+
+          else if(s.isClass && !(mods.isCase || mods.isAbstract)) 
+            unit.error(tree.pos, unsup("non-abstract, non-case class."))
+          
+        }
         case ValDef(mods, name, tpt, rhs) if mods.isVariable =>
           unit.error(tree.pos, unsup("mutable variable/field."))
-
-        case LabelDef(name, params, rhs) => ;
-           // used for tailcalls and like
-           // while/do are desugared to label defs as follows:
-           // while (cond) body ==> LabelDef($L, List(), if (cond) { body; L$() } else ())
-           // do body while (cond) ==> LabelDef($L, List(), body; if (cond) L$() else ())
+        case LabelDef(name, params, rhs) => unit.error(tree.pos, unsup("loop."))
         case Assign(lhs, rhs) => unit.error(tree.pos, unsup("assignment to mutable variable/field."))
         case Return(expr) => unit.error(tree.pos, unsup("return statement."))
         case Try(block, catches, finalizer) => unit.error(tree.pos, unsup("try block."))

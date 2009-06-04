@@ -67,6 +67,7 @@ see examples in:
   case class MapType(from: TypeTree, to: TypeTree) extends TypeTree
   case class ClassType(id: Identifier) extends TypeTree
   case class CaseClassType(id: Identifier) extends TypeTree
+  case class OptionType(base: TypeTree) extends TypeTree
 
   // Definitions
 
