@@ -95,6 +95,7 @@
                 <path refid="scalac.class.path" />
                 <path refid="lib.path" />
                 <pathelement location="${lib.dir}/ScalaCheck-1.5.jar" />
+                <pathelement location="${lib.dir}/scalatest-0.9.5.jar" />
                 <pathelement location="${build.examples.dir}"/>
             </classpath>
         </scalac>
