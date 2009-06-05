@@ -10,7 +10,7 @@ import scala.collection.immutable.Multiset
 object Heap {
   // UTILITARY FUNCTS USED FOR THE SPECIFICATION
   
-  private def min(xs: List[Elem]): Elem = {
+  def min(xs: List[Elem]): Elem = {
     def inner(xs: List[Elem], local: Elem): Elem = xs match {
       case Nil => local
       case head :: tail =>
@@ -22,7 +22,7 @@ object Heap {
     inner(xs,Elem(Integer.MAX_VALUE))
   }
   
-   private def content(t : Heap): Multiset[Elem] = {
+   def content(t : Heap): Multiset[Elem] = {
     def inner(t: Heap, mset: Multiset[Elem]): Multiset[Elem] = t match {
       case E => mset
       case T(rank,el,left,right) => mset + el
