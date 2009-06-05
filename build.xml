@@ -94,12 +94,36 @@
             <classpath>
                 <path refid="scalac.class.path" />
                 <path refid="lib.path" />
+                <path refid="build.path" />
                 <pathelement location="${lib.dir}/ScalaCheck-1.5.jar" />
                 <pathelement location="${lib.dir}/scalatest-0.9.5.jar" />
                 <pathelement location="${build.examples.dir}"/>
             </classpath>
         </scalac>
     </target>
+
+    <target name="run-test" depends="compile-tests-examples"
+	          description="run a test (test name is provided by the user)">
+          <input message="Please enter the name of the test you want to run
+		  (e.g., package_name.ClassName)"
+			      addproperty="test.name"
+				    />
+		  
+          <echo message="--- running tests ${tests.name}."/>
+          <java classname="scala.tools.nsc.MainGenericRunner" fork="true">
+		     <classpath>
+			    <path refid="scalac.class.path" />
+				<path refid="lib.path" />
+			    <pathelement location="${lib.dir}/ScalaCheck-1.5.jar"/>
+                <pathelement location="${lib.dir}/scalatest-0.9.5.jar" />
+                <pathelement location="${build.examples.dir}"/>
+                <pathelement location="${build.tests.dir}"/>
+                <path refid="build.path" />
+			 </classpath>
+			 <arg line="${test.name}" />
+		  </java>
+    </target>
+
 
     <target name="dist" depends="compile" description="build the FunCheck jar file and create the script file used to run scalac with FunCheck plugged-in">
         <mkdir dir="${dist.dir}" />
