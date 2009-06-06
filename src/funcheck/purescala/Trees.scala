@@ -73,7 +73,9 @@ see examples in:
   sealed abstract class Pattern
   case class InstanceOfPattern(binder: Option[Identifier], classTypeDef: ClassTypeDef) extends Pattern // c: Class
   case class WildcardPattern(binder: Option[Identifier]) extends Pattern // c @ _
-  case class ExtractorPattern(binder: Option[Identifier], subPatterns: Seq[Pattern]) extends Pattern // c @ Extractor(...,...)
+  case class ExtractorPattern(binder: Option[Identifier], 
+			      extractor : ExtractorTypeDef, 
+			      subPatterns: Seq[Pattern]) extends Pattern // c @ Extractor(...,...)
   // I suggest we skip Seq stars for now.
 
   /* Propositional logic */
@@ -242,10 +244,12 @@ see examples in:
 
   /** Useful because case classes and classes are somewhat unified in some
    * patterns (of pattern-matching, that is) */
-  trait ClassTypeDef
+  sealed trait ClassTypeDef
+  sealed trait ExtractorTypeDef
 
-  case class CaseClassDef(name : Identifier, fields : VarDecls) extends Definition(name) with ClassTypeDef
+  case class CaseClassDef(name : Identifier, fields : VarDecls) extends Definition(name) with ClassTypeDef with ExtractorTypeDef
   case class ClassDef(name : Identifier, fields : VarDecls) extends Definition(name) with ClassTypeDef
+  // case class ExtractorDef extends FunDef ...
   
   case class ValDef(name : Identifier, value : Expr) extends Definition(name)
   case class FunDef(name : Identifier, args : VarDecls, body : Expr) extends Definition(name) {
