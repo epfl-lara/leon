@@ -66,6 +66,7 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
       tree match {
         case c @ ClassDef(mods, name, tparams, impl) => {
           val s = c.symbol
+          
           println(s)
 
           if(s.isTrait)

@@ -66,15 +66,14 @@ see examples in:
   }
 
   case class SimpleCase(pattern: Pattern, rhs: Expr) extends MatchCase
-  case class GuardedCase(pattern: Pattern, guard: Expr, rhs: Expr) extends MatchCase
+  case class GuardedCase(pattern: Pattern, guard: Expr, rhs: Expr) extends MatchCase {
+    assert(guard.getType == BooleanType)
+  }
 
   sealed abstract class Pattern
-  // c: Class
-  case class InstanceOfPattern(binder: Option[Identifier], klass: ClassDef) extends Pattern
-  // c @ Constructor(...)
-  case class ConstructorPattern(binder: Option[Identifier]) extends Pattern
-  // c @ _
-  case class WildcardPattern(binder: Option[Identifier]) extends Pattern
+  case class InstanceOfPattern(binder: Option[Identifier], classTypeDef: ClassTypeDef) extends Pattern // c: Class
+  case class WildcardPattern(binder: Option[Identifier]) extends Pattern // c @ _
+  case class ExtractorPattern(binder: Option[Identifier], subPatterns: Seq[Pattern]) extends Pattern // c @ Extractor(...,...)
   // I suggest we skip Seq stars for now.
 
   /* Propositional logic */
@@ -240,8 +239,14 @@ see examples in:
   type VarDecls = Seq[VarDecl]
 
   sealed abstract class Definition(name : Identifier)
-  case class CaseClassDef(name : Identifier, fields : VarDecls) extends Definition(name)
-  case class ClassDef(name : Identifier, fields : VarDecls) extends Definition(name)
+
+  /** Useful because case classes and classes are somewhat unified in some
+   * patterns (of pattern-matching, that is) */
+  trait ClassTypeDef
+
+  case class CaseClassDef(name : Identifier, fields : VarDecls) extends Definition(name) with ClassTypeDef
+  case class ClassDef(name : Identifier, fields : VarDecls) extends Definition(name) with ClassTypeDef
+  
   case class ValDef(name : Identifier, value : Expr) extends Definition(name)
   case class FunDef(name : Identifier, args : VarDecls, body : Expr) extends Definition(name) {
     lazy val argTypes : Seq[TypeTree] = args.map(_._2) 
