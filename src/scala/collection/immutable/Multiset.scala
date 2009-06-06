@@ -3,10 +3,10 @@ package scala.collection.immutable
 
 object Multiset {
    /** The empty set of this type */
-  def empty[A]: Multiset[A] = throw new UnsupportedOperationException("Concrete Multiset classes need to be implemented")
+  def empty[A]: Multiset[A] = new EmptyMultiset[A]
   
   /** The canonical factory for this type */
-  def apply[A](elems: A*): Multiset[A] = empty[A] ++ elems
+  def apply[A](elems: A*): Multiset[A] = empty[A] +++ elems
   
 }
 
@@ -18,7 +18,7 @@ trait Multiset[A] extends AnyRef with collection.Multiset[A]{
    *
    *  @param that the multiset to intersect with
    */
-  override def ** (that: collection.Multiset[A]): Multiset[A] = intersect(that)
+  final override def ** (that: collection.Multiset[A]): Multiset[A] = intersect(that)
 
   /** 
    * This method computes an intersection with multiset that. It removes all 
@@ -36,10 +36,10 @@ trait Multiset[A] extends AnyRef with collection.Multiset[A]{
   def --(elems: Iterable[A]): Multiset[A]
   
   // A U {elems}
-  def + (elems: A*): Multiset[A] 
+  final def + (elems: A*): Multiset[A] = this ++ elems
   
   // A \ {elems}
-  def - (elems: A*): Multiset[A] 
+  final def - (elems: A*): Multiset[A] = this -- elems
   
   def filter (p: A => Boolean): Iterable[A]
 }
