@@ -51,15 +51,21 @@
 
     <!-- generic classpath settings (collecting all) -->
     <path id="lib.path">
+	    <pathelement location="${lib.dir}/ScalaCheck-1.5.jar"/>
+        <pathelement location="${lib.dir}/scalatest-0.9.5.jar" />
+        <pathelement location="${lib.dir}/specs-1.5.0.jar" />
+       
+        <!-- why the jars are not taken automatically from the lib .. ??? 
         <fileset dir=".">
             <include name="${lib.dir}/*.jar"/>
         </fileset>
         <fileset dir=".">
             <include name="${lib.dir}/*.zip"/>
-        </fileset>
+        </fileset-->
     </path>
 
-    <target name="compile" description="compile the FunCheck plugin">
+
+	<target name="compile" description="compile the FunCheck plugin">
         <mkdir dir="${build.dir}"  />
         <scalac srcdir="${sources.dir}" destdir="${build.dir}" force="changed" addparams="${scalac.default.params}">
             <classpath refid="build.path" />
@@ -95,8 +101,6 @@
                 <path refid="scalac.class.path" />
                 <path refid="lib.path" />
                 <path refid="build.path" />
-                <pathelement location="${lib.dir}/ScalaCheck-1.5.jar" />
-                <pathelement location="${lib.dir}/scalatest-0.9.5.jar" />
                 <pathelement location="${build.examples.dir}"/>
             </classpath>
         </scalac>
@@ -109,16 +113,14 @@
 			      addproperty="test.name"
 				    />
 		  
-          <echo message="--- running tests ${tests.name}."/>
+          <echo message="--- running test ${test.name}."/>
           <java classname="scala.tools.nsc.MainGenericRunner" fork="true">
 		     <classpath>
 			    <path refid="scalac.class.path" />
 				<path refid="lib.path" />
-			    <pathelement location="${lib.dir}/ScalaCheck-1.5.jar"/>
-                <pathelement location="${lib.dir}/scalatest-0.9.5.jar" />
+                <path refid="build.path" />
                 <pathelement location="${build.examples.dir}"/>
                 <pathelement location="${build.tests.dir}"/>
-                <path refid="build.path" />
 			 </classpath>
 			 <arg line="${test.name}" />
 		  </java>
