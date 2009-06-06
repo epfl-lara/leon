@@ -41,5 +41,4 @@ trait Multiset[A] extends AnyRef with collection.Multiset[A]{
   // A \ {elems}
   final def - (elems: A*): Multiset[A] = this -- elems
   
-  def filter (p: A => Boolean): Iterable[A]
 }

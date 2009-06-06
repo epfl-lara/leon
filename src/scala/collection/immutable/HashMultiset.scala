@@ -3,7 +3,7 @@ package scala.collection.immutable
 object HashMultiset {
   
   /** The empty multiset of this type. */
-  def empty[A] = new EmptyMultiset[A]
+  def empty[A]: Multiset[A] = new EmptyMultiset[A]
   
   /** The canonical factory for this type */
   def apply[A](elems: A*) = empty[A] ++ elems
