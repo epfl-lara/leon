@@ -4,9 +4,16 @@ import Common._
 
 /** AST definitions for Pure Scala. */
 object Trees {
-  sealed abstract class Expr
 
-  /** Types of Pure Scala.
+  /* EXPRESSIONS */
+
+  /** There's no such thing as a typing phase for these trees, they need to be
+   * correctly typed at construction time. Each AST node checks that the
+   * children provided satisfy whatever typing constraints are required by the
+   * node, and each node is then responsible for communicating its type. */
+  sealed abstract class Expr extends Typed
+
+  /** 
    Go through each type, add the operations.
      map update
      concatenation of lists
@@ -28,31 +35,188 @@ object Trees {
 see examples in:
      http://code.google.com/p/scalacheck/wiki/UserGuide
    */
-  case class IfExpr(cond : Expr, then : Expr, elze : Expr) extends Expr
 
-  //case class MatchCase(constructor : CaseClassType,
-  //		       boundVars : Seq[MatchCase]) // not really
+  /* Control flow */
+  case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr {
+    assert(args.map(_.getType).equalsWith(funDef.argTypes)(_ == _))
+    lazy val getType = funDef.returnType
+  }
 
-  //case class MatchExpr(scrutinee : Expr, cases : Seq[MatchCase]) extends Expr
+  case class IfExpr(cond : Expr, then : Expr, elze : Expr) extends Expr {
+    assert(cond.getType == BooleanType)
+    assert(then.getType == elze.getType)
+    def getType = then.getType
+  }
+
+  case class MatchExpr(scrutinee: Expr, cases: Seq[MatchCase]) extends Expr {
+    // there can be no assumption about the type of the scrutinee..  Scala
+    // gives nice errors "constructor cannot be instantiated to expected type"
+    // but that seems relatively hard to check at construction for now...
+    // Actually it only gives that error when the pattern is unapply (ie. not
+    // an "instanceOf" one), so there's hope.
+    
+    // we should assert that the rhs types of all MatchCases match !
+
+    lazy val getType = cases(0).rhs.getType
+  }
+
+  sealed abstract class MatchCase {
+    val pattern: Pattern
+    val rhs: Expr
+  }
+
+  case class SimpleCase(pattern: Pattern, rhs: Expr) extends MatchCase
+  case class GuardedCase(pattern: Pattern, guard: Expr, rhs: Expr) extends MatchCase
+
+  sealed abstract class Pattern
+  // c: Class
+  case class InstanceOfPattern(binder: Option[Identifier], klass: ClassDef) extends Pattern
+  // c @ Constructor(...)
+  case class ConstructorPattern(binder: Option[Identifier]) extends Pattern
+  // c @ _
+  case class WildcardPattern(binder: Option[Identifier]) extends Pattern
+  // I suggest we skip Seq stars for now.
+
+  /* Propositional logic */
+  case class And(exprs: Seq[Expr]) extends Expr {
+    assert(exprs.forall(_.getType == BooleanType))
+    def getType = BooleanType
+  }
+
+  case class Or(exprs: Seq[Expr]) extends Expr {
+    assert(exprs.forall(_.getType == BooleanType))
+    def getType = BooleanType
+  }
+
+  case class Not(expr: Expr) extends Expr {
+    assert(expr.getType == BooleanType)
+    def getType = BooleanType
+  }
+
+  /* Not sure if we should really have these.. I suppose they could be of some
+   * help to some theorem provers? *
+  case class Implies(lhs: Expr, rhs: Expr) extends Expr {
+    assert(lhs.getType == BooleanType && rhs.getType == BooleanType)
+    def getType = BooleanType
+  }
+
+  case class Iff(lhs: Expr, rhs: Expr) extends Expr {
+    assert(lhs.getType == BooleanType && rhs.getType == BooleanType)
+    def getType = BooleanType
+  } */
+
+  /* Maybe we should split this one depending on types? */
+  case class Equals(left: Expr, right: Expr) extends Expr { 
+    assert(left.getType == right.getType)
+    val getType = BooleanType
+  }
   
-  case class IntLiteral(value: Int) extends Expr
-  case class BooleanLiteral(value: Boolean) extends Expr
-  case class Equals(left: Expr, right: Expr) extends Expr
+  /* Literals */
+  case class IntLiteral(value: Int) extends Expr {
+    val getType = Int32Type
+  }
 
-  /** Types of Pure Scala. */
+  case class BooleanLiteral(value: Boolean) extends Expr {
+    val getType = BooleanType
+  }
 
-  // support for:
-  //  - Any
-  //  - integers
-  //  - Lists
-  //  - n-uples
-  //  - ADTs
-  //  - classes 
-  //  - sets
-  //  - maps
-  //  - function type constructor for lambda expr.
+  /* Arithmetic */
+  case class Plus(lhs: Expr, rhs: Expr) extends Expr {
+    assert(lhs.getType == Int32Type && rhs.getType == Int32Type)
+    val getType = Int32Type
+  }
 
-  //  - maybe strings some day?
+  case class Minus(lhs: Expr, rhs: Expr) extends Expr {
+    assert(lhs.getType == Int32Type && rhs.getType == Int32Type)
+    val getType = Int32Type
+  }
+
+  case class Times(lhs: Expr, rhs: Expr) extends Expr {
+    assert(lhs.getType == Int32Type && rhs.getType == Int32Type)
+    val getType = Int32Type
+  }
+
+  case class Division(lhs: Expr, rhs: Expr) extends Expr {
+    assert(lhs.getType == Int32Type && rhs.getType == Int32Type)
+    val getType = Int32Type
+  }
+
+  case class LessThan(lhs: Expr, rhs: Expr) extends Expr {
+    assert(lhs.getType == Int32Type && rhs.getType == Int32Type)
+    val getType = BooleanType
+  }
+
+  case class GreaterThan(lhs: Expr, rhs: Expr) extends Expr {
+    assert(lhs.getType == Int32Type && rhs.getType == Int32Type)
+    val getType = BooleanType
+  }
+
+  case class LessEquals(lhs: Expr, rhs: Expr) extends Expr {
+    assert(lhs.getType == Int32Type && rhs.getType == Int32Type)
+    val getType = BooleanType
+  }
+
+  case class GreaterEquals(lhs: Expr, rhs: Expr) extends Expr {
+    assert(lhs.getType == Int32Type && rhs.getType == Int32Type)
+    val getType = BooleanType
+  }
+
+  /* Option expressions */
+  case class OptionSome(value: Expr) extends Expr {
+    lazy val getType = OptionType(value.getType)
+  }
+
+  case class OptionNone(baseType: TypeTree) extends Expr {
+    lazy val getType = OptionType(baseType)
+  }
+
+  /* Set expressions */
+  case class EmptySet(baseType: TypeTree) extends Expr {
+    lazy val getType = SetType(baseType)
+  }
+  case class FiniteSet(elements: Seq[Expr]) extends Expr {
+    assert(elements.size > 0)
+    assert(elements.drop(1).forall(_.getType == elements(0).getType))
+    lazy val getType = SetType(elements(0).getType)
+  }
+  case class ElementOfSet(element: Expr, set: Expr) extends Expr {
+    assert(set.getType == SetType(element.getType))
+    val getType = BooleanType
+  }
+  case class IsEmptySet(set: Expr) extends Expr {
+    assert(set.getType.isInstanceOf[SetType])
+    val getType = BooleanType
+  }
+  case class SetComparison(set1: Expr, set2: Expr) extends Expr {
+    assert(set1.getType == set2.getType && set1.getType.isInstanceOf[SetType])
+    val getType = BooleanType
+  }
+  case class SetCardinality(set: Expr) extends Expr {
+    assert(set.getType.isInstanceOf[SetType])
+    val getType = Int32Type
+  }
+  case class SubsetOf(set1: Expr, set2: Expr) extends Expr {
+    assert(set1.getType == set2.getType && set1.getType.isInstanceOf[SetType])
+    val getType = BooleanType
+  }
+  case class SetIntersection(set1: Expr, set2: Expr) extends Expr {
+    assert(set1.getType == set2.getType && set1.getType.isInstanceOf[SetType])
+    lazy val getType = set1.getType
+  }
+  case class SetUnion(set1: Expr, set2: Expr) extends Expr {
+    assert(set1.getType == set2.getType && set1.getType.isInstanceOf[SetType])
+    lazy val getType = set1.getType
+  }
+  case class SetDifference(set1: Expr, set2: Expr) extends Expr {
+    assert(set1.getType == set2.getType && set1.getType.isInstanceOf[SetType])
+    lazy val getType = set1.getType
+  }
+
+  /* TYPES */
+
+  trait Typed {
+    def getType: TypeTree
+  }
 
   sealed abstract class TypeTree
 
@@ -64,12 +228,13 @@ see examples in:
   case class TupleType(bases: Seq[TypeTree]) extends TypeTree { lazy val dimension: Int = bases.length }
   case class FunctionType(arg: TypeTree, res: TypeTree) extends TypeTree
   case class SetType(base: TypeTree) extends TypeTree
+  case class MultisetType(base: TypeTree) extends TypeTree
   case class MapType(from: TypeTree, to: TypeTree) extends TypeTree
   case class ClassType(id: Identifier) extends TypeTree
   case class CaseClassType(id: Identifier) extends TypeTree
   case class OptionType(base: TypeTree) extends TypeTree
 
-  // Definitions
+  /* DEFINTIONS */
 
   type VarDecl = (Identifier,TypeTree)
   type VarDecls = Seq[VarDecl]
@@ -78,8 +243,9 @@ see examples in:
   case class CaseClassDef(name : Identifier, fields : VarDecls) extends Definition(name)
   case class ClassDef(name : Identifier, fields : VarDecls) extends Definition(name)
   case class ValDef(name : Identifier, value : Expr) extends Definition(name)
-  case class FunDef(name : Identifier, params : VarDecls, body : Expr) extends Definition(name) {
-    var returnType : TypeTree = _
+  case class FunDef(name : Identifier, args : VarDecls, body : Expr) extends Definition(name) {
+    lazy val argTypes : Seq[TypeTree] = args.map(_._2) 
+    lazy val returnType : TypeTree = body.getType
   }
   case class ObjectDef(name : Identifier, defs : Seq[Definition]) extends Definition(name)
 }
