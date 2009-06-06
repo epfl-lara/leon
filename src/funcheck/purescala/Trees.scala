@@ -188,7 +188,7 @@ see examples in:
     assert(set.getType.isInstanceOf[SetType])
     val getType = BooleanType
   }
-  case class SetComparison(set1: Expr, set2: Expr) extends Expr {
+  case class SetEquals(set1: Expr, set2: Expr) extends Expr {
     assert(set1.getType == set2.getType && set1.getType.isInstanceOf[SetType])
     val getType = BooleanType
   }
@@ -211,6 +211,52 @@ see examples in:
   case class SetDifference(set1: Expr, set2: Expr) extends Expr {
     assert(set1.getType == set2.getType && set1.getType.isInstanceOf[SetType])
     lazy val getType = set1.getType
+  }
+
+  /* Multiset expressions */
+  case class EmptyMultiset(baseType: TypeTree) extends Expr {
+    lazy val getType = MultisetType(baseType)
+  }
+  case class FiniteMultiset(elements: Seq[Expr]) extends Expr {
+    assert(elements.size > 0)
+    assert(elements.drop(1).forall(_.getType == elements(0).getType))
+    lazy val getType = MultisetType(elements(0).getType)
+  }
+  case class Multiplicity(element: Expr, multiset: Expr) extends Expr {
+    assert(multiset.getType == MultisetType(element.getType))
+    val getType = Int32Type
+  }
+  case class IsEmptyMultiset(multiset: Expr) extends Expr {
+    assert(multiset.getType.isInstanceOf[MultisetType])
+    val getType = BooleanType
+  }
+  case class MultisetEquals(multiset1: Expr, multiset2: Expr) extends Expr {
+    assert(multiset1.getType == multiset2.getType && multiset1.getType.isInstanceOf[MultisetType])
+    val getType = BooleanType
+  }
+  case class MultisetCardinality(multiset: Expr) extends Expr {
+    assert(multiset.getType.isInstanceOf[MultisetType])
+    val getType = Int32Type
+  }
+  case class SubmultisetOf(multiset1: Expr, multiset2: Expr) extends Expr {
+    assert(multiset1.getType == multiset2.getType && multiset1.getType.isInstanceOf[MultisetType])
+    val getType = BooleanType
+  }
+  case class MultisetIntersection(multiset1: Expr, multiset2: Expr) extends Expr {
+    assert(multiset1.getType == multiset2.getType && multiset1.getType.isInstanceOf[MultisetType])
+    lazy val getType = multiset1.getType
+  }
+  case class MultisetUnion(multiset1: Expr, multiset2: Expr) extends Expr {
+    assert(multiset1.getType == multiset2.getType && multiset1.getType.isInstanceOf[MultisetType])
+    lazy val getType = multiset1.getType
+  }
+  case class MultisetPlus(multiset1: Expr, multiset2: Expr) extends Expr { // disjoint union
+    assert(multiset1.getType == multiset2.getType && multiset1.getType.isInstanceOf[MultisetType])
+    lazy val getType = multiset1.getType
+  }
+  case class MultisetDifference(multiset1: Expr, multiset2: Expr) extends Expr {
+    assert(multiset1.getType == multiset2.getType && multiset1.getType.isInstanceOf[MultisetType])
+    lazy val getType = multiset1.getType
   }
 
   /* TYPES */
