@@ -19,4 +19,6 @@ class EmptyMultiset[A] extends Multiset[A] with Helper[A]{
   override def --(elems: Iterable[A]): Multiset[A] = empty
   
   override def elements: Iterator[A] = Iterator.empty
+  
+  override def asSet: Set[A] = new EmptySet[A]
 }

@@ -18,27 +18,25 @@ class HashMultiset[A] private[immutable] (private val map: Map[A,Int]) extends M
   override def apply(elem: A): Int = map.getOrElse(elem,0)
     
   override def intersect (that: collection.Multiset[A]): Multiset[A] = {
-    def inner(entries: List[A], result: Multiset[A]): Multiset[A] = entries match {
+    def inner(entries: List[A], result: Map[A,Int]): Map[A,Int] = entries match {
       case Nil => result
-      case elem :: rest =>
-        assert(!result.contains(elem))
-        inner(rest, result ++ int2list(elem, min(this(elem),that(elem)))) 
+      case elem :: rest => inner(rest, result.update(elem, min(this(elem),that(elem))))
     }
     
-    inner(this.toList,empty)
+    new HashMultiset[A](inner(asSet.toList,new HashMap[A,Int].empty))
   }
   
   
   override def ++ (elems: Iterable[A]): Multiset[A] = {
-    val that: Multiset[A] = iterable2multiset(elems)
-    def inner(entries: List[A], result: Multiset[A]): Multiset[A] = entries match { 
+    val that = iterable2multiset(elems)
+    
+    def inner(entries: List[A], result: Map[A,Int]): Map[A,Int] = entries match {
       case Nil => result
       case elem :: rest =>
-        assert(!result.contains(elem))
-        result ++ (int2list(elem,max(this(elem),that(elem))))
+        inner(rest, result.update(elem,max(result.getOrElse(elem,0),that(elem))))
     }
     
-    inner(elems.toList, empty)
+    new HashMultiset[A](inner(that.asSet.toList, map))
   }
   
   
@@ -52,18 +50,18 @@ class HashMultiset[A] private[immutable] (private val map: Map[A,Int]) extends M
   }
     
   override def --(elems: Iterable[A]): Multiset[A] = {
+    val that = iterable2multiset(elems)
     def inner(entries: List[A], result: Map[A,Int]): Map[A,Int] = entries match {
       case Nil => result
       case elem :: rest => 
-        result.get(elem) match {
-          case None => inner(rest,result)
-          case Some(n) =>
-            assert (n > 0)
-            inner(rest, result.update(elem,n-1))
-        }
+        val diff = result.getOrElse(elem,0) - that(elem)
+        if(diff > 0)
+          inner(rest, result.update(elem,diff))
+        else
+          inner(rest, result - elem)
     }  
     
-    new HashMultiset[A](inner(elems.toList,map))
+    new HashMultiset[A](inner(that.asSet.toList,map))
   }
   
   override def elements: Iterator[A] = {
@@ -75,5 +73,7 @@ class HashMultiset[A] private[immutable] (private val map: Map[A,Int]) extends M
     
     inner(map.keys.toList, Nil).elements
   }
+  
+  override def asSet: Set[A] = HashSet.empty[A] ++ map.keys
   
 }

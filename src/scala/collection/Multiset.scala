@@ -53,6 +53,9 @@ trait Multiset[A] extends (A => Int) with Collection[A]{
    */                                                    
   def ** (that: Multiset[A]): Multiset[A]
   
+  /** @return this multiset as set. */
+  def asSet: Set[A]
+    
   
   //structural equality
   /** Compares this multiset with another object and returns true, iff the

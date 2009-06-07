@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="tests"/>
+	<classpathentry kind="src" path="examples"/>
+	<classpathentry kind="con" path="ch.epfl.lamp.sdt.launching.SCALA_CONTAINER"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="/usr/local/scala/lib/scala-compiler.jar" sourcepath="/usr/local/scala/src/scala-compiler-src.jar"/>
+	<classpathentry kind="lib" path="lib/scalatest-0.9.5.jar"/>
+	<classpathentry kind="lib" path="lib/specs-1.5.0.jar"/>
+	<classpathentry kind="lib" path="lib/ScalaCheck-1.5.jar" sourcepath="lib/ScalaCheck-1.5-src.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

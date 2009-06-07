@@ -32,7 +32,7 @@ object DPLL {
   /**
    * Finds the unit literals in a formula
    */
-  def find_one_literals( cs : ClauseSet) : Set[Literal] = 
+  def find_one_literals( cs : ClauseSet) : Clause = 
     new ListSet() ++ (cs.flatMap(c => if( c.size == 1) List(c.toArray(0)) else Nil)).elements
    
   

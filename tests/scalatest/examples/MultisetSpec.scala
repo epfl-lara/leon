@@ -43,11 +43,11 @@ class MultisetSpec extends Spec with ShouldMatchers  {
       filled1 should equal (filled2)
     }
     
-    it("should held be empty if intersected with an empty multiset") {
+    it("should held be empty if intersected with an empty multiset.") {
       val mset = HashMultiset(1,1,2)
       val empty = HashMultiset.empty[Int]
       
-      
+      //check that "**" and "intersect" are indeed alias one of the other 
       (empty ** empty) should equal (empty)
       (empty intersect empty) should equal (empty)
       
@@ -58,6 +58,35 @@ class MultisetSpec extends Spec with ShouldMatchers  {
       (mset intersect empty) should equal (empty)
     }
     
+    it("should not change when interseced/unified with itself.") {
+      val mset = HashMultiset(1,1,2,0,3)
+      
+      (mset ** mset) should equal (mset)
+      (mset ++ mset) should equal (mset)
+    }
     
+    it("should decrease the cardinality of an element when removed.") {
+      val mset = HashMultiset(1,2,1)
+      
+      (mset -- List(1)) should equal (HashMultiset(1,2))
+      (mset -- List(1)) should equal (HashMultiset(2,1))
+      (mset -- List(1,2)) should equal (HashMultiset(1))
+      (mset -- List(1,1,2)) should be ('empty)
+      
+      ((mset -- List(1)).apply(1)) should be (1)
+      ((mset -- List(1)).apply(2)) should be (1)
+      ((mset -- List(2)).apply(1)) should be (2)
+      (mset -- List(1,1,2)) should not contain (0)
+    }
+    
+    it("should never contains an element with cardinality lower than zero.") {
+      val mset = HashMultiset(1)
+      
+      (mset -- List(1)) should be ('empty)
+      (mset -- List(1,1)) should be ('empty)
+      (mset -- List(1,1)) should not contain (0)
+      
+      ((mset -- List(1,1)) ++ List(1)) should contain (1)
+    }
   }
 }
