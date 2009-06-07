@@ -96,6 +96,7 @@ class MultisetSpec extends Spec with ShouldMatchers  {
       val set = mset.asSet
       
       set should have size (4) 
+      List(1,2,3,4).forall(set.contains(_))
     }
   }
 }
