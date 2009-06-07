@@ -41,6 +41,8 @@ class MultisetSpec extends Spec with ShouldMatchers  {
       
       empty1 should equal (empty2)
       filled1 should equal (filled2)
+      
+      filled1 should not equal (empty1)
     }
     
     it("should held be empty if intersected with an empty multiset.") {
@@ -87,6 +89,13 @@ class MultisetSpec extends Spec with ShouldMatchers  {
       (mset -- List(1,1)) should not contain (0)
       
       ((mset -- List(1,1)) ++ List(1)) should contain (1)
+    }
+    
+    it("can be degenerated to a set.") {
+      val mset = HashMultiset(1,1,1,1,1,1,2,2,2,2,2,3,4)
+      val set = mset.asSet
+      
+      set should have size (4) 
     }
   }
 }
