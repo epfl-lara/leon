@@ -25,7 +25,7 @@ object Heap {
    def content(t : Heap): Multiset[Elem] = {
     def inner(t: Heap, mset: Multiset[Elem]): Multiset[Elem] = t match {
       case E => mset
-      case T(rank,el,left,right) => mset + el
+      case T(rank,el,left,right) => inner(right, inner(left, mset +++ List(el)))
     }
     inner(t,Multiset.empty[Elem])
   } 
@@ -45,21 +45,21 @@ sealed abstract case class Heap() {
       case T(_,y,a2,b2) if !x.leq(y) =>
         a2.makeT(y,merge(b2))
     }
-  }} ensuring(res => content(res).equals(content(this) ++ content(that)))
+  }} ensuring(res => content(res).equals(content(this) +++ content(that)))
   
   /** helper function that calculates the rank of a <code>T</code> node
    *  and swaps its children if necessary.
    */ 
   def makeT(x: Elem, that: Heap): Heap = { 
-    if(rankk() >= that.rankk()) {
-      T(that.rankk() + 1, x, this, that)
+    if(rankk >= that.rankk) {
+      T(that.rankk + 1, x, this, that)
     } else {
-      T(rankk() + 1, x, that, this)
+      T(rankk + 1, x, that, this)
     }
   } 
 
   /** find the rank of a heap */
-  def rankk(): Int = { this match {
+  def rankk: Int = { this match {
     case E => 0
     case T(rank,_,_,_) => rank
   }} 
@@ -96,7 +96,7 @@ case class Elem(val value: Int) {
   def leq(that: Elem): Boolean = 
     this.value <= that.value
   
-  override def toString = "E("+value+")"
+  override def toString = "Elem("+value+")"
 }
 
 
