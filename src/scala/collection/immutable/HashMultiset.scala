@@ -75,6 +75,5 @@ class HashMultiset[A] private[immutable] (private val map: Map[A,Int]) extends M
     inner(map.keys.toList, Nil).elements
   }
   
-  override def asSet: Set[A] = HashSet.empty[A] ++ map.keys
-  
+  override def asSet: Set[A] = Set.empty[A] ++ map.keys
 }
