@@ -36,9 +36,9 @@ object LeftistHeapSpec {
   /*********************** PROPERTIES ***********************/
   /**********************************************************/
   val heapInsert = forAll( (heap: Heap, value: Int) => content(heap.insert(value))(value) == content(heap)(value) + 1)
-  val heapFindMin = forAll( (heap : Heap) => heap.findMin == min(content(heap).elements.toList))
-  val heapDeleteMin = forAll( (heap: Heap) => content(heap.deleteMin).equals(content(heap) - heap.findMin))
-  val heapMerge = forAll( (thiz: Heap, that: Heap) => content(thiz.merge(that)).equals(content(thiz) ++ content(that)))
+  val heapFindMin = forAll{ heap : Heap => (heap.rankk > 0) ==> (heap.findMin == min(content(heap).elements.toList))}
+  val heapDeleteMin = forAll{ heap: Heap => (heap.rankk > 0) ==> (content(heap.deleteMin).equals(content(heap) - heap.findMin))}
+  val heapMerge = forAll( (thiz: Heap, that: Heap) => content(thiz.merge(that)).equals(content(thiz) +++ content(that)))
   
    /**********************************************************/
   // collect tests
