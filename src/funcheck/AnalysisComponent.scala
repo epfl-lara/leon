@@ -22,6 +22,8 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
       (new ForeachTreeTraverser(firstFilter(unit))).traverse(unit.body)
       stopIfErrors
       (new ForeachTreeTraverser(findContracts)).traverse(unit.body)
+      stopIfErrors
+      (new ForeachTreeTraverser(mircoTraverser(unit))).traverse(unit.body)
 
       if(pluginInstance.stopAfterAnalysis) {
         println("Analysis complete. Now terminating the compiler process.")
@@ -59,12 +61,38 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
       case _ => ;
     }
 
+    def mircoTraverser(unit: CompilationUnit)(tree: Tree): Unit = {
+      println("called on " + unit)
+      lazy val genAnnot: Symbol = definitions.getClass("funcheck.lib.Specs.generator")
+      println(genAnnot)
+
+      tree match {
+        case d @ DefDef(mods, name, _, _, _, _) => {
+          /** Looking for contracts on the current method definition */
+          mods.annotations.foreach((ann: Annotation) => {
+            ann.constr match {
+              /** Looks for the "signature" of the desired annotations */
+              case Apply(Select(New(i:Select), _), Nil) => {
+                i.symbol match {
+                  case s if s == genAnnot => println("Found a generator annotation in: " + name.toString)
+                  case _ => ;
+                }
+              }
+
+              case _ => ;
+            }
+          })
+        }
+      }
+    }
+
     /** Weeds out programs containing unsupported features. */
     def firstFilter(unit: CompilationUnit)(tree: Tree): Unit = {
       def unsup(s: String): String = "FunCheck: Unsupported construct: " + s
 
       tree match {
         case c @ ClassDef(mods, name, tparams, impl) => {
+/*
           val s = c.symbol
           
           println(s)
@@ -77,7 +105,7 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
 
           else if(s.isClass && !(mods.isCase || mods.isAbstract)) 
             unit.error(tree.pos, unsup("non-abstract, non-case class."))
-          
+  */        
         }
         case ValDef(mods, name, tpt, rhs) if mods.isVariable =>
           unit.error(tree.pos, unsup("mutable variable/field."))
@@ -85,8 +113,8 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
         case Assign(lhs, rhs) => unit.error(tree.pos, unsup("assignment to mutable variable/field."))
         case Return(expr) => unit.error(tree.pos, unsup("return statement."))
         case Try(block, catches, finalizer) => unit.error(tree.pos, unsup("try block."))
-        case Throw(expr) => unit.error(tree.pos, unsup("throw statement."))
-        case New(tpt) => unit.error(tree.pos, unsup("'new' operator."))
+        // case Throw(expr) => unit.error(tree.pos, unsup("throw statement."))
+        // case New(tpt) => unit.error(tree.pos, unsup("'new' operator."))
         case SingletonTypeTree(ref) => unit.error(tree.pos, unsup("singleton type."))
         case SelectFromTypeTree(qualifier, selector) => unit.error(tree.pos, unsup("path-dependent type."))
         case CompoundTypeTree(templ: Template) => unit.error(tree.pos, unsup("compound/refinement type."))
