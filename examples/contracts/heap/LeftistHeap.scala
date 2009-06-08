@@ -14,7 +14,7 @@ object Heap {
     def inner(xs: List[Elem], local: Elem): Elem = xs match {
       case Nil => local
       case head :: tail =>
-        if(local.leq(head))
+        if(local <= head)
           inner(tail,local)
         else
           inner(tail,head)
@@ -40,9 +40,9 @@ sealed abstract case class Heap() {
     case E => that
     case T(_,x,a1,b1) => that match {
       case E => this
-      case T(_,y,_,_) if x.leq(y) =>
+      case T(_,y,_,_) if x <= y =>
         a1.makeT(x,b1.merge(that))
-      case T(_,y,a2,b2) if !x.leq(y) =>
+      case T(_,y,a2,b2) if x > y =>
         a2.makeT(y,merge(b2))
     }
   }} ensuring(res => content(res).equals(content(this) +++ content(that)))
@@ -50,7 +50,7 @@ sealed abstract case class Heap() {
   /** helper function that calculates the rank of a <code>T</code> node
    *  and swaps its children if necessary.
    */ 
-  def makeT(x: Elem, that: Heap): Heap = { 
+  protected def makeT(x: Elem, that: Heap): Heap = { 
     if(rankk >= that.rankk) {
       T(that.rankk + 1, x, this, that)
     } else {
@@ -59,7 +59,7 @@ sealed abstract case class Heap() {
   } 
 
   /** find the rank of a heap */
-  def rankk: Int = { this match {
+  protected def rankk: Int = { this match {
     case E => 0
     case T(rank,_,_,_) => rank
   }} 
@@ -91,22 +91,9 @@ case class T(val rank: Int, val el: Elem, val left: Heap,val right: Heap) extend
 case object E extends Heap
 
 
-case class Elem(val value: Int) {
-  
-  def leq(that: Elem): Boolean = 
-    this.value <= that.value
+case class Elem(val value: Int) extends Ordered[Elem] {
+  override def compare(that: Elem): Int = value compare that.value
   
   override def toString = "Elem("+value+")"
 }
 
-
-//main
-object LeftistHeap extends Application {
-  val heap = E.insert(new Elem(8))
-       .insert(new Elem(5))
-       .insert(new Elem(4))
-       .insert(new Elem(4))
-       .insert(new Elem(6))
-  //println(heap)
-  assert(heap.findMin.value == 4)
-}
