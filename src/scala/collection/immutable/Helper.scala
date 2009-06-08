@@ -8,7 +8,7 @@ private[immutable] trait Helper[A] {
       Nil
     else
       elem :: int2list(elem,times-1)
-  }
+  } ensuring (res => res.size == times)
   
   protected def iterable2multiset(elems: Iterable[A]): Multiset[A] = {
     def inner(elems: List[A], result: Map[A,Int]): Map[A,Int] = elems match {
@@ -16,7 +16,7 @@ private[immutable] trait Helper[A] {
       case elem :: tail => inner(tail, result.update(elem, result.getOrElse(elem,0) + 1)) 
     }
     new HashMultiset[A](inner(elems.toList,new scala.collection.immutable.HashMap[A,Int].empty))
-  }
+  } 
   
   protected def min(a: Int, b: Int): Int = if(a <= b) a else b
   protected def max(a: Int, b: Int): Int = if(a < b) b else a
