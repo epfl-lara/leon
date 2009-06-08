@@ -98,5 +98,12 @@ class MultisetSpec extends Spec with ShouldMatchers  {
       set should have size (4) 
       List(1,2,3,4).forall(set.contains(_))
     }
+    
+    it("should union as sum when +++ is used") {
+      val mset1 = HashMultiset(7, 8)
+      val mset2 = HashMultiset(6, 7)
+      
+      (mset1 +++ mset2) should equal (HashMultiset(6,7,7,8))
+    }
   }
 }

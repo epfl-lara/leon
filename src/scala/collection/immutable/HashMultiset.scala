@@ -43,7 +43,8 @@ class HashMultiset[A] private[immutable] (private val map: Map[A,Int]) extends M
   override def +++ (elems: Iterable[A]): Multiset[A] = {
     def inner(entries: List[A], result: Map[A,Int]): Map[A,Int] = entries match {
       case Nil => result
-      case elem :: rest => result.update(elem,result.getOrElse(elem,0)+1)
+      case elem :: rest => 
+        inner(rest, result.update(elem,result.getOrElse(elem,0)+1))
     }
     
     new HashMultiset[A](inner(elems.toList,map))
