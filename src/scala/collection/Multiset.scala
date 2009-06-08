@@ -72,8 +72,10 @@ trait Multiset[A] extends (A => Int) with Collection[A]{
     case _ => false
   }
   
-  
   /** Defines the prefix of this object's <code>toString</code> representation.
    */
   override protected def stringPrefix : String = "Multiset"
+  
+  
+  override def toString = elements.mkString(stringPrefix + "(", ", ", ")")
 }
