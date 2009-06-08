@@ -10,7 +10,7 @@ import org.scalacheck.Arbitrary.arbitrary
 
 object LeftistHeapSpec {
   import contracts.heap._
-  import contracts.heap.Heap._
+  import contracts.heap.LeftistHeap._
   
   implicit def int2elem(x: Int): Elem = Elem(x)
   

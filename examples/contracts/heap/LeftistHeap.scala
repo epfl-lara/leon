@@ -7,7 +7,7 @@ import scala.collection.immutable.Multiset
  * by Chris Okasaki.
  */ 
   
-object Heap {
+object LeftistHeap {
   // UTILITARY FUNCTS USED FOR THE SPECIFICATION
   
   def min(xs: List[Elem]): Elem = {
@@ -31,8 +31,8 @@ object Heap {
   } 
 }
 
-sealed abstract case class Heap() {
-  import Heap._
+sealed abstract class Heap {
+  import LeftistHeap._
   /** mege the current heap <code>this</code> with the <code>that</code> 
    *  heap.
    */
@@ -50,7 +50,7 @@ sealed abstract case class Heap() {
   /** helper function that calculates the rank of a <code>T</code> node
    *  and swaps its children if necessary.
    */ 
-  protected def makeT(x: Elem, that: Heap): Heap = { 
+  private def makeT(x: Elem, that: Heap): Heap = { 
     if(rankk >= that.rankk) {
       T(that.rankk + 1, x, this, that)
     } else {
@@ -59,7 +59,7 @@ sealed abstract case class Heap() {
   } 
 
   /** find the rank of a heap */
-  protected def rankk: Int = { this match {
+  def rankk: Int = { this match {
     case E => 0
     case T(rank,_,_,_) => rank
   }} 
