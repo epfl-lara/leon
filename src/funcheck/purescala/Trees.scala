@@ -259,6 +259,66 @@ see examples in:
     lazy val getType = multiset1.getType
   }
 
+  /* Map operations. */
+  case class EmptyMap(fromType: TypeTree, toType: TypeTree) extends Expr {
+    lazy val getType = MapType(fromType, toType)
+  }
+
+  case class SingletonMap(from: Expr, to: Expr) extends Expr {
+    lazy val getType = MapType(from.getType, to.getType)
+  }
+
+  case class FiniteMap(singletons: Seq[SingletonMap]) extends Expr {
+    assert(singletons.size > 0
+      && singletons.drop(1).forall(_.getType == singletons(0).getType))
+    lazy val getType = singletons(0).getType
+  }
+
+  case class MapGet(map: Expr, key: Expr) extends Expr {
+    assert(map.getType.isInstanceOf[MapType] && key.getType == map.getType.asInstanceOf[MapType].from)
+    lazy val getType = OptionType(map.getType.asInstanceOf[MapType].to)
+  }
+
+  case class MapUnion(map1: Expr, map2: Expr) extends Expr {
+    assert(map1.getType.isInstanceOf[MapType] && map1.getType == map2.getType)
+    lazy val getType = map1.getType
+  }
+
+  case class MapDiffrence(map: Expr, keys: Expr) extends Expr {
+    assert(map.getType.isInstanceOf[MapType] && keys.isInstanceOf[SetType] && map.getType.asInstanceOf[MapType].from == keys.getType.asInstanceOf[SetType].base)
+    lazy val getType = map.getType
+  }
+
+  /* List operations */
+  case class NilList(baseType: TypeTree) extends Expr {
+    lazy val getType = ListType(baseType)
+  }
+
+  case class Cons(head: Expr, tail: Expr) extends Expr {
+    assert(tail.isInstanceOf[ListType] && tail.getType.asInstanceOf[ListType].base == head.getType)
+    lazy val getType = tail.getType
+  }
+
+  case class Car(list: Expr) extends Expr {
+    assert(list.getType.isInstanceOf[ListType])
+    lazy val getType = list.getType.asInstanceOf[ListType].base
+  }
+
+  case class Cdr(list: Expr) extends Expr {
+    assert(list.getType.isInstanceOf[ListType])
+    lazy val getType = list.getType
+  }
+
+  case class Concat(list1: Expr, list2: Expr) extends Expr {
+    assert(list1.getType.isInstanceOf[ListType] && list1.getType == list2.getType)
+    lazy val getType = list1.getType
+  }
+
+  case class ListAt(list: Expr, index: Expr) extends Expr {
+    assert(list.getType.isInstanceOf[ListType] && index.getType == Int32Type)
+    lazy val getType = OptionType(list.getType.asInstanceOf[ListType].base)
+  }
+
   /* TYPES */
 
   trait Typed {
