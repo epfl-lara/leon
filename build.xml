@@ -68,8 +68,11 @@
 	<target name="compile" description="compile the FunCheck plugin">
         <mkdir dir="${build.dir}"  />
         <scalac srcdir="${sources.dir}" destdir="${build.dir}" force="changed" addparams="${scalac.default.params}">
-            <classpath refid="build.path" />
-            <include name="**/*.scala"  />
+            <classpath>
+			  <path refid="build.path" />
+	          <pathelement location="${lib.dir}/ScalaCheck-1.5.jar"/>
+            </classpath>
+			<include name="**/*.scala"  />
             <exclude name="scala/collection/**/*.scala"/>
         </scalac>
     </target>
