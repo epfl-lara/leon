@@ -10,6 +10,9 @@ object Specs {
   import org.scalacheck.Test.check
   import org.scalacheck.Arbitrary.arbitrary
   
+  // def forAll[A](f: A => Boolean): Boolean = { throw new Exception("Currently unsupported by plugin.") }
+
+
   implicit def extendedBoolean(b: Boolean) = new {
     def ==>(p: => Prop) = Specs.==>(b,p)
   }

@@ -50,6 +50,7 @@ sealed abstract class Heap  {
   }} ensuring(res => content(res).equals(content(this) +++ content(that)))
   
   val heapMerge = forAll( (thiz: Heap, that: Heap) => content(thiz.merge(that)).equals(content(thiz) +++ content(that)))
+  // val heapMerge = forAll[(Heap,Heap)](p => content(p._1.merge(p._2)).equals(content(p._1) +++ content(p._2)))
   
   /** helper function that calculates the rank of a <code>T</code> node
    *  and swaps its children if necessary.
