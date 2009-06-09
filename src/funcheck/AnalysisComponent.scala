@@ -31,9 +31,11 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
       }
     }
 
-    private def stopIfErrors: Nothing = {
-      if(reporter.hasErrors) println("There were errors.")
-      exit(0)
+    private def stopIfErrors: Unit = {
+      if(reporter.hasErrors) {
+        println("There were errors.")
+        exit(0)
+      }
     }
 
     private def findContracts(tree: Tree): Unit = tree match {
@@ -62,9 +64,7 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
     }
 
     def mircoTraverser(unit: CompilationUnit)(tree: Tree): Unit = {
-      println("called on " + unit)
       lazy val genAnnot: Symbol = definitions.getClass("funcheck.lib.Specs.generator")
-      println(genAnnot)
 
       tree match {
         case d @ DefDef(mods, name, _, _, _, _) => {
@@ -83,6 +83,7 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
             }
           })
         }
+        case _ => ;
       }
     }
 
