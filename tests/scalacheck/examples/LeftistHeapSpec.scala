@@ -1,7 +1,7 @@
 package scalacheck.examples
 
 
-import org.scalacheck.{Arbitrary,Properties,Gen}
+import org.scalacheck.{Arbitrary,Gen}
 import org.scalacheck.Prop._
 import org.scalacheck.ConsoleReporter.testStatsEx
 import org.scalacheck.Test.check
