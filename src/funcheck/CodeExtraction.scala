@@ -4,9 +4,7 @@ import scala.tools.nsc._
 import scala.tools.nsc.plugins._
 
 trait CodeExtraction {
-  self: Extractors =>
-
-  val global: Global
+  self: AnalysisComponent =>
 
   import global._
   import StructuralExtractors._
@@ -33,6 +31,11 @@ trait CodeExtraction {
       println("  Body:            " + realBody)
     }
 
+    case _ => ;
+  }
+
+  def showObjects(tree: Tree): Unit = tree match {
+    case ObjectDefn(name) => println(name + " appears to be an object.")
     case _ => ;
   }
 }

@@ -48,6 +48,21 @@ trait Extractors {
         case _ => None
       }
     }
+
+    object ObjectDefn {
+      def unapply(tree: Tree): Option[String] = tree match {
+        case c @ ClassDef(_, name, tparams, impl) => {
+          println(name.toString + " is being traversed.")
+          println(c.symbol)
+          if(c.symbol.hasFlag(symtab.Flags.MODULE)) {
+            Some(name.toString)
+          } else {
+            None
+          }
+        }
+        case _ => None
+      }
+    }
   }
 
   object ExpressionExtractors {
