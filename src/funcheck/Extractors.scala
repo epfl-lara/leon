@@ -54,7 +54,7 @@ trait Extractors {
         case c @ ClassDef(_, name, tparams, impl) => {
           println(name.toString + " is being traversed.")
           println(c.symbol)
-          if(c.symbol.hasFlag(symtab.Flags.MODULE)) {
+          if(c.symbol.isModuleClass) {
             Some(name.toString)
           } else {
             None
@@ -67,10 +67,16 @@ trait Extractors {
 
   object ExpressionExtractors {
     object ExBooleanLiteral {
-      /** Extracts the 'true' of 'false' constants. */
       def unapply(tree: Tree): Option[Boolean] = tree match {
         case Literal(Constant(true)) => Some(true)
         case Literal(Constant(false)) => Some(false)
+        case _ => None
+      }
+    }
+
+    object ExInt32Literal {
+      def unapply(tree: Tree): Option[Int] = tree match {
+        case Literal(c @ Constant(i)) if c.tpe == IntClass.tpe => Some(c.intValue)
         case _ => None
       }
     }

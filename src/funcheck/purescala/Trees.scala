@@ -11,7 +11,9 @@ object Trees {
    * correctly typed at construction time. Each AST node checks that the
    * children provided satisfy whatever typing constraints are required by the
    * node, and each node is then responsible for communicating its type. */
-  sealed abstract class Expr extends Typed
+  sealed abstract class Expr extends Typed {
+    override def toString: String = PrettyPrinter(this)
+  }
 
   /** 
    Go through each type, add the operations.
@@ -129,6 +131,11 @@ see examples in:
 
   case class Minus(lhs: Expr, rhs: Expr) extends Expr {
     assert(lhs.getType == Int32Type && rhs.getType == Int32Type)
+    val getType = Int32Type
+  }
+
+  case class UMinus(expr: Expr) extends Expr {
+    assert(expr.getType == Int32Type)
     val getType = Int32Type
   }
 

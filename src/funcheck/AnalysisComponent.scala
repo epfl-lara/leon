@@ -27,8 +27,7 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
       // stopIfErrors
       // (new ForeachTreeTraverser(findContracts)).traverse(unit.body)
       // stopIfErrors
-      (new ForeachTreeTraverser(showObjects)).traverse(unit.body)
-      // (new ForeachTreeTraverser(mircoTraverser(unit))).traverse(unit.body)
+      (new ForeachTreeTraverser(extractCode(unit))).traverse(unit.body)
 
       if(pluginInstance.stopAfterAnalysis) {
         println("Analysis complete. Now terminating the compiler process.")
