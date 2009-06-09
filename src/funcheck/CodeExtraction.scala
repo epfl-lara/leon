@@ -37,7 +37,7 @@ trait CodeExtraction {
   }
 
   def extractCode(unit: CompilationUnit)(tree: Tree): Unit = tree match {
-    case d @ DefDef(mods, name, tparams, vparamss, tpt, body) => {
+    case d @ DefDef(mods, name, tparams, vparamss, tpt, body) if !d.symbol.isConstructor => {
       println("In: " + name)
       println(d.symbol)
       println(d.mods)

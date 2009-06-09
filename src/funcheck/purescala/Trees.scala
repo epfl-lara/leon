@@ -115,6 +115,12 @@ see examples in:
   }
   
   /* Literals */
+  // to be fixed! Should contain a reference to the definition of that
+  // variable, which would also give us its type.
+  case class Variable(id: Identifier) extends Expr {
+    val getType = AnyType
+  }
+
   case class IntLiteral(value: Int) extends Expr {
     val getType = Int32Type
   }
