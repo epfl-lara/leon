@@ -49,8 +49,8 @@ sealed abstract class Heap  {
     }
   }} ensuring(res => content(res).equals(content(this) +++ content(that)))
   
-  val heapMerge = forAll( (thiz: Heap, that: Heap) => content(thiz.merge(that)).equals(content(thiz) +++ content(that)))
-  // val heapMerge = forAll[(Heap,Heap)](p => content(p._1.merge(p._2)).equals(content(p._1) +++ content(p._2)))
+  //val heapMerge = forAll( (thiz: Heap, that: Heap) => content(thiz.merge(that)).equals(content(thiz) +++ content(that)))
+  val heapMerge = forAll[(Heap,Heap)] (heaps => content(heaps._1.merge(heaps._2)).equals(content(heaps._1) +++ content(heaps._2)))
   
   /** helper function that calculates the rank of a <code>T</code> node
    *  and swaps its children if necessary.
@@ -74,7 +74,8 @@ sealed abstract class Heap  {
     merge(T(1,x,E,E))
   } ensuring(res => content(res)(x) == content(this)(x) + 1)
   
-  val heapInsert = forAll( (heap: Heap, value: Elem) => content(heap.insert(value))(value) == content(heap)(value) + 1)
+  //val heapInsert = forAll( (heap: Heap, value: Elem) => content(heap.insert(value))(value) == content(heap)(value) + 1)
+  val heapInsert = forAll[(Heap,Elem)]( p => content(p._1.insert(p._2))(p._2) == content(p._1)(p._2) + 1)
   
   /** Find the smallest element of the current heap <code>this</code>. 
    *  Invariant on this data structure entails that the minimum is at the root.
@@ -84,6 +85,7 @@ sealed abstract class Heap  {
     case T(_,x,_,_) => x
   }} ensuring(res => res == min(content(this).elements.toList))
   
+  //val heapFindMin = forAll{ heap : Heap => (heap.rankk > 0) ==> (heap.findMin == min(content(heap).elements.toList))}
   val heapFindMin = forAll{ heap : Heap => (heap.rankk > 0) ==> (heap.findMin == min(content(heap).elements.toList))}
   
   /** Delete the smallest element of the current heap <code>this</code>.
@@ -94,6 +96,7 @@ sealed abstract class Heap  {
     case T(_,_,a: Heap,b: Heap) => a.merge(b)
   }} ensuring(res  => content(res).equals(content(this) - findMin))
   
+  //val heapDeleteMin = forAll{ heap: Heap => (heap.rankk > 0) ==> (content(heap.deleteMin).equals(content(heap) - heap.findMin))}
   val heapDeleteMin = forAll{ heap: Heap => (heap.rankk > 0) ==> (content(heap.deleteMin).equals(content(heap) - heap.findMin))}
   
 }

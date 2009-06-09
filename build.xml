@@ -70,7 +70,6 @@
         <scalac srcdir="${sources.dir}" destdir="${build.dir}" force="changed" addparams="${scalac.default.params}">
             <classpath>
 			  <path refid="build.path" />
-	          <pathelement location="${lib.dir}/ScalaCheck-1.5.jar"/>
             </classpath>
 			<include name="**/*.scala"  />
             <exclude name="scala/collection/**/*.scala"/>
@@ -85,12 +84,14 @@
         </scalac>
     </target>
 
-    <target name="compile-examples" depends="compile-lib-extension" description="compile the examples">
+    <target name="compile-examples" depends="compile, compile-lib-extension" description="compile the examples">
         <mkdir dir="${build.examples.dir}"  />
         <scalac srcdir="${examples.dir}" destdir="${build.examples.dir}" force="changed" addparams="${scalac.default.params}">
             <classpath>
                 <path refid="scalac.class.path" />
-                <pathelement location="${build.dir}"/>
+                <!-- To be precise, in the classpatht we should have the 
+					 funcheck/lib and the scala multiset library --> 
+				<path refid="build.path"/>
             </classpath>
         </scalac>
     </target>
