@@ -5,7 +5,6 @@ import scala.tools.nsc.plugins._
 
 class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) extends PluginComponent
   with Extractors
-  // all these traits define functions applied during tree traversals
   with CodeExtraction
   with ForallInjection
 {
@@ -17,27 +16,26 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
 
   val phaseName = pluginInstance.name
 
+  private def stopIfErrors: Unit = {
+    if(reporter.hasErrors) {
+      println("There were errors.")
+      exit(0)
+    }
+  }
+
   def newPhase(prev: Phase) = new AnalysisPhase(prev)
 
   class AnalysisPhase(prev: Phase) extends StdPhase(prev) {
-    import StructuralExtractors._
-
     def apply(unit: CompilationUnit): Unit = {
-      // (new ForeachTreeTraverser(firstFilter(unit))).traverse(unit.body)
-      // stopIfErrors
+      (new ForeachTreeTraverser(firstFilter(unit))).traverse(unit.body)
+      stopIfErrors
       // (new ForeachTreeTraverser(findContracts)).traverse(unit.body)
       // stopIfErrors
-      (new ForeachTreeTraverser(extractCode(unit))).traverse(unit.body)
+
+      extractCode(unit)
 
       if(pluginInstance.stopAfterAnalysis) {
         println("Analysis complete. Now terminating the compiler process.")
-        exit(0)
-      }
-    }
-
-    private def stopIfErrors: Unit = {
-      if(reporter.hasErrors) {
-        println("There were errors.")
         exit(0)
       }
     }
@@ -47,22 +45,6 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
       def unsup(s: String): String = "FunCheck: Unsupported construct: " + s
 
       tree match {
-        case c @ ClassDef(mods, name, tparams, impl) => {
-/*
-          val s = c.symbol
-          
-          println(s)
-
-          if(s.isTrait)
-            unit.error(tree.pos, unsup("trait."))
-
-          else if(s.isModule) 
-            println("Seems like " + name + " is an object.")
-
-          else if(s.isClass && !(mods.isCase || mods.isAbstract)) 
-            unit.error(tree.pos, unsup("non-abstract, non-case class."))
-  */        
-        }
         case ValDef(mods, name, tpt, rhs) if mods.isVariable =>
           unit.error(tree.pos, unsup("mutable variable/field."))
         case LabelDef(name, params, rhs) => unit.error(tree.pos, unsup("loop."))

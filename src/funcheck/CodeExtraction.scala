@@ -2,7 +2,11 @@ package funcheck
 
 import scala.tools.nsc._
 import scala.tools.nsc.plugins._
+
+import purescala.Definitions._
 import purescala.Trees._
+import purescala.TypeTrees._
+import purescala.Common._
 
 trait CodeExtraction {
   self: AnalysisComponent =>
@@ -36,20 +40,23 @@ trait CodeExtraction {
     case _ => ;
   }
 
-  def extractCode(unit: CompilationUnit)(tree: Tree): Unit = tree match {
-    case d @ DefDef(mods, name, tparams, vparamss, tpt, body) if !d.symbol.isConstructor => {
-      println("In: " + name)
-      println(d.symbol)
-      println(d.mods)
-      
-      
-      toPureScala(unit)(body) match {
-        case Some(t) => println("  the body was extracted as: " + t)
-        case None => println("  the body could not be extracted. Is it pure Scala?")
+  def extractCode(unit: CompilationUnit): Unit = { 
+    def trav(tree: Tree): Unit = tree match {
+      case d @ DefDef(mods, name, tparams, vparamss, tpt, body) if !d.symbol.isConstructor => {
+        println("In: " + name)
+        println(d.symbol)
+        println(d.mods)
+          
+        toPureScala(unit)(body) match {
+          case Some(t) => println("  the body was extracted as: " + t)
+          case None => println("  the body could not be extracted. Is it pure Scala?")
+        }
       }
+      case _ => ;
     }
 
-    case _ => ;
+    (new ForeachTreeTraverser(trav)).traverse(unit.body)
+
   }
 
   /** An exception thrown when non-purescala compatible code is encountered. */
