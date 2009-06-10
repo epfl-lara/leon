@@ -49,7 +49,7 @@ trait Extractors {
       }
     }
 
-    object ObjectDefn {
+    object ExObjectDef {
       /** Matches an object with no type parameters, and regardless of its
        * visibility. */
       def unapply(cd: ClassDef): Option[(String,Template)] = cd match {
@@ -58,7 +58,7 @@ trait Extractors {
       }
     }
 
-    object FunctionDefn {
+    object ExFunctionDef {
       /** Matches a function with a single list of arguments, no type
        * parameters and regardless of its visibility. */
       def unapply(dd: DefDef): Option[(String,Seq[ValDef],Tree,Tree)] = dd match {

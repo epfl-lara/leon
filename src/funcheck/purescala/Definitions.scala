@@ -29,6 +29,20 @@ object Definitions {
   final case class VarDecl(id: Identifier, tpe: TypeTree)
   type VarDecls = Seq[VarDecl]
 
+  /** A wrapper for a program. For now a program is simply a single object. The
+   * name is meaningless and we can just the package name. */
+  final case class Program(id: Identifier, mainObject: ObjectDef) extends Definition {
+    override val parentScope = None
+
+    override def lookupObject(id: Identifier) = {
+      if(id == mainObject.id) {
+        Some(mainObject)
+      } else {
+        None
+      }
+    }
+  }
+
   /** Objects work as containers for class definitions, functions (def's) and
    * val's. */
   case class ObjectDef(id: Identifier, defs : Seq[Definition], invariants: Seq[Expr]) extends Definition

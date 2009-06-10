@@ -4,7 +4,6 @@ import scala.tools.nsc._
 import scala.tools.nsc.plugins._
 
 class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) extends PluginComponent
-  with Extractors
   with CodeExtraction
   with ForallInjection
 {
@@ -16,7 +15,7 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
 
   val phaseName = pluginInstance.name
 
-  private def stopIfErrors: Unit = {
+  protected def stopIfErrors: Unit = {
     if(reporter.hasErrors) {
       println("There were errors.")
       exit(0)
@@ -27,12 +26,17 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
 
   class AnalysisPhase(prev: Phase) extends StdPhase(prev) {
     def apply(unit: CompilationUnit): Unit = {
+      // That filter just helps getting meaningful errors before the attempt to
+      // extract the code, but it's really optional.
       (new ForeachTreeTraverser(firstFilter(unit))).traverse(unit.body)
       stopIfErrors
-      // (new ForeachTreeTraverser(findContracts)).traverse(unit.body)
-      // stopIfErrors
 
-      extractCode(unit)
+      val prog: purescala.Definitions.Program = extractCode(unit)
+      println("Extracted program for " + unit + ": ")
+      println(prog)
+
+      // Mirco your component can do its job here, as I leave the trees
+      // unmodified.
 
       if(pluginInstance.stopAfterAnalysis) {
         println("Analysis complete. Now terminating the compiler process.")
@@ -40,7 +44,7 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
       }
     }
 
-    /** Weeds out programs containing unsupported features. */
+    /** Weeds out some programs containing unsupported features. */
     def firstFilter(unit: CompilationUnit)(tree: Tree): Unit = {
       def unsup(s: String): String = "FunCheck: Unsupported construct: " + s
 
@@ -51,8 +55,6 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
         case Assign(lhs, rhs) => unit.error(tree.pos, unsup("assignment to mutable variable/field."))
         case Return(expr) => unit.error(tree.pos, unsup("return statement."))
         case Try(block, catches, finalizer) => unit.error(tree.pos, unsup("try block."))
-        // case Throw(expr) => unit.error(tree.pos, unsup("throw statement."))
-        // case New(tpt) => unit.error(tree.pos, unsup("'new' operator."))
         case SingletonTypeTree(ref) => unit.error(tree.pos, unsup("singleton type."))
         case SelectFromTypeTree(qualifier, selector) => unit.error(tree.pos, unsup("path-dependent type."))
         case CompoundTypeTree(templ: Template) => unit.error(tree.pos, unsup("compound/refinement type."))

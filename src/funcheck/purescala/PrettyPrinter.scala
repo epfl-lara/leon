@@ -27,6 +27,7 @@ object PrettyPrinter {
   }
 
   // EXPRESSIONS
+  // all expressions are printed in-line
   private def ppUnary(sb: StringBuffer, expr: Expr, op: String): StringBuffer = {
     var nsb: StringBuffer = sb
     nsb.append(op)
@@ -84,12 +85,43 @@ object PrettyPrinter {
   }
 
   // TYPE TREES
+  // all type trees are printed in-line
   private def pp(tpe: TypeTree, sb: StringBuffer): StringBuffer = tpe match {
     case _ => sb.append("Type?")
   }
 
   // DEFINITIONS
-  private def pp(defn: Definition, sb: StringBuffer, lvl: Int): StringBuffer = defn match {
-    case _ => sb.append("Defn?")
+  // all definitions are printed with an end-of-line
+  private def pp(defn: Definition, sb: StringBuffer, lvl: Int): StringBuffer = {
+    def ind(sb: StringBuffer): Unit = { sb.append("  " * lvl) }
+
+    defn match {
+      case Program(id, mainObj) => {
+        assert(lvl == 0)
+        sb.append("package ")
+        sb.append(id)
+        sb.append(" {\n")
+        pp(mainObj, sb, lvl+1).append("}\n")
+      }
+
+      case ObjectDef(id, defs, invs) => {
+        var nsb = sb
+        ind(nsb)
+        nsb.append("object ")
+        nsb.append(id)
+        nsb.append(" {\n")
+
+        val sz = defs.size
+        var c = 0
+
+        defs.foreach(df => {
+          nsb = pp(df, nsb, lvl+1) 
+        })
+
+        ind(nsb); nsb.append("}\n")
+      }
+
+      case _ => sb.append("Defn?")
+    }
   }
 }
