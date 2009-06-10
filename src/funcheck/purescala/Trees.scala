@@ -1,9 +1,11 @@
 package funcheck.purescala
 
-import Common._
 
 /** AST definitions for Pure Scala. */
 object Trees {
+  import Common._
+  import TypeTrees._
+  import Definitions._
 
   /* EXPRESSIONS */
 
@@ -16,16 +18,6 @@ object Trees {
   }
 
   /** 
-   Go through each type, add the operations.
-     map update
-     concatenation of lists
-     random access on lists
-     set union, intersection, etc.
-
-   Lambda abstraction and application of function values
-
-   Separately, function calls
-
    equality on sets, ADTs etc. (equality on function types?!)
 
    forall, exists - optionally bounded quantifiers
@@ -331,49 +323,4 @@ see examples in:
     assert(list.getType.isInstanceOf[ListType] && index.getType == Int32Type)
     lazy val getType = OptionType(list.getType.asInstanceOf[ListType].base)
   }
-
-  /* TYPES */
-
-  trait Typed {
-    def getType: TypeTree
-  }
-
-  sealed abstract class TypeTree
-
-  case object AnyType extends TypeTree
-  case object BooleanType extends TypeTree
-  case object Int32Type extends TypeTree
-
-  case class ListType(base: TypeTree) extends TypeTree
-  case class TupleType(bases: Seq[TypeTree]) extends TypeTree { lazy val dimension: Int = bases.length }
-  case class FunctionType(arg: TypeTree, res: TypeTree) extends TypeTree
-  case class SetType(base: TypeTree) extends TypeTree
-  case class MultisetType(base: TypeTree) extends TypeTree
-  case class MapType(from: TypeTree, to: TypeTree) extends TypeTree
-  case class ClassType(id: Identifier) extends TypeTree
-  case class CaseClassType(id: Identifier) extends TypeTree
-  case class OptionType(base: TypeTree) extends TypeTree
-
-  /* DEFINTIONS */
-
-  type VarDecl = (Identifier,TypeTree)
-  type VarDecls = Seq[VarDecl]
-
-  sealed abstract class Definition(name : Identifier)
-
-  /** Useful because case classes and classes are somewhat unified in some
-   * patterns (of pattern-matching, that is) */
-  sealed trait ClassTypeDef
-  sealed trait ExtractorTypeDef
-
-  case class CaseClassDef(name : Identifier, fields : VarDecls) extends Definition(name) with ClassTypeDef with ExtractorTypeDef
-  case class ClassDef(name : Identifier, fields : VarDecls) extends Definition(name) with ClassTypeDef
-  // case class ExtractorDef extends FunDef ...
-  
-  case class ValDef(name : Identifier, value : Expr) extends Definition(name)
-  case class FunDef(name : Identifier, args : VarDecls, body : Expr) extends Definition(name) {
-    lazy val argTypes : Seq[TypeTree] = args.map(_._2) 
-    lazy val returnType : TypeTree = body.getType
-  }
-  case class ObjectDef(name : Identifier, defs : Seq[Definition]) extends Definition(name)
 }
