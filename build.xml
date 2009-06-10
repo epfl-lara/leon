@@ -157,4 +157,5 @@
         </delete>
     </target>
 
+    <target name="new" description="clean and rebuilds" depends="clean, dist" />
 </project>
