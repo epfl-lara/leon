@@ -68,6 +68,17 @@ object PrettyPrinter {
     case Equals(l,r) => ppBinary(sb, l, r, " = ")
     case IntLiteral(v) => sb.append(v)
     case BooleanLiteral(v) => sb.append(v)
+    case IfExpr(c, t, e) => {
+      var nsb = sb
+      nsb.append("if (")
+      nsb = pp(c, nsb)
+      nsb.append(") { ")
+      nsb.append(t)
+      nsb.append(" } else { ")
+      nsb.append(e)
+      nsb.append(" }")
+      nsb
+    }
 
     case _ => sb.append("Expr?")
   }

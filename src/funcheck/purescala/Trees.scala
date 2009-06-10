@@ -15,6 +15,14 @@ object Trees {
    * node, and each node is then responsible for communicating its type. */
   sealed abstract class Expr extends Typed {
     override def toString: String = PrettyPrinter(this)
+
+    var _scope: Scope = null
+
+    def scope: Scope =
+      if(_scope == null)
+        throw new Exception("Undefined scope.")
+      else
+        _scope
   }
 
   /** 
@@ -36,7 +44,7 @@ see examples in:
     lazy val getType = funDef.returnType
   }
 
-  case class IfExpr(cond : Expr, then : Expr, elze : Expr) extends Expr {
+  case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr {
     assert(cond.getType == BooleanType)
     assert(then.getType == elze.getType)
     def getType = then.getType

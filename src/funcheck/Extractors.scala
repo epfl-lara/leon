@@ -50,16 +50,19 @@ trait Extractors {
     }
 
     object ObjectDefn {
-      def unapply(tree: Tree): Option[String] = tree match {
-        case c @ ClassDef(_, name, tparams, impl) => {
-          println(name.toString + " is being traversed.")
-          println(c.symbol)
-          if(c.symbol.isModuleClass) {
-            Some(name.toString)
-          } else {
-            None
-          }
-        }
+      /** Matches an object with no type parameters, and regardless of its
+       * visibility. */
+      def unapply(cd: ClassDef): Option[(String,Template)] = cd match {
+        case ClassDef(_, name, tparams, impl) if (cd.symbol.isModuleClass && tparams.isEmpty) => Some((name.toString, impl))
+        case _ => None
+      }
+    }
+
+    object FunctionDefn {
+      /** Matches a function with a single list of arguments, no type
+       * parameters and regardless of its visibility. */
+      def unapply(dd: DefDef): Option[(String,Seq[ValDef],Tree,Tree)] = dd match {
+        case DefDef(_, name, tparams, vparamss, tpt, rhs) if(tparams.isEmpty && vparamss.size == 1) => Some((name.toString, vparamss(0), tpt, rhs))
         case _ => None
       }
     }
