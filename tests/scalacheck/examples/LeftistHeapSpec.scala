@@ -8,34 +8,33 @@ import org.scalacheck.Test.check
 import org.scalacheck.Arbitrary.arbitrary
 
 
+import contracts.heap._
+
 object LeftistHeapSpec {
-  import contracts.heap._
   import contracts.heap.LeftistHeap._
   
-  implicit def int2elem(x: Int): Elem = Elem(x)
+  
   
   /**********************************************************/
   /*********************** GENERATORS ***********************/
   /**********************************************************/
-  implicit def arbitraryHeap: Arbitrary[Heap] =
-    Arbitrary(smallListInt.map(xs => {
-      
-      def makeHeap(h: Heap, xs: List[Int]): Heap = xs match {
-        case Nil => h
-        case x :: xs => makeHeap(h.insert(x),xs)
-      }
-                                             
-      makeHeap(E, xs)
-    }))
+  def genElem: Gen[Elem] = for(v <- arbitrary[Int]) yield Elem(v)
+  def genE: Gen[Heap] = Gen.value(E)
+  def genT: Gen[Heap] = for {
+    e <- genElem
+    h <- genHeap
+  } yield h.insert(e)
   
-  // gen list (size undefined) of small integer (likely to have duplicates)
-  val smallInt = Gen.choose(0,10) 
-  val smallListInt = Gen.listOf[Int](smallInt)
+  def genHeap: Gen[Heap] = Gen.lzy(Gen.oneOf(genE,genT))
+   
+  implicit def arbHeap: Arbitrary[Heap] = Arbitrary(genHeap)
+  implicit def arbElem: Arbitrary[Elem] = Arbitrary(genElem)
+  
   
   /**********************************************************/
   /*********************** PROPERTIES ***********************/
   /**********************************************************/
-  val heapInsert = forAll( (heap: Heap, value: Int) => content(heap.insert(value))(value) == content(heap)(value) + 1)
+  val heapInsert = forAll( (heap: Heap, value: Elem) => content(heap.insert(value))(value) == content(heap)(value) + 1)
   val heapFindMin = forAll{ heap : Heap => (heap.rankk > 0) ==> (heap.findMin == min(content(heap).elements.toList))}
   val heapDeleteMin = forAll{ heap: Heap => (heap.rankk > 0) ==> (content(heap.deleteMin).equals(content(heap) - heap.findMin))}
   val heapMerge = forAll( (thiz: Heap, that: Heap) => content(thiz.merge(that)).equals(content(thiz) +++ content(that)))
@@ -50,6 +49,6 @@ object LeftistHeapSpec {
   )
   
   // main
-  def main(args: scala.Array[String]) = 
-    tests foreach { case (name, p) => testStatsEx(name, check(p)) }
+  def main(args: scala.Array[String]) = () 
+   tests foreach { case (name, p) => testStatsEx(name, check(p))}
 }
