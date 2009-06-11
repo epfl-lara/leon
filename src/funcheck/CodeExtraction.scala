@@ -16,8 +16,16 @@ trait CodeExtraction extends Extractors {
   import ExpressionExtractors._
 
   def extractCode(unit: CompilationUnit): Program = { 
+    def s2ps(tree: Tree): Expr = toPureScala(unit)(tree) match {
+      case Some(ex) => ex
+      case None => stopIfErrors; throw new Error("unreachable")
+    }
+
     def trav(tree: Tree): Unit = tree match {
-      case d @ DefDef(mods, name, tparams, vparamss, tpt, body) if !d.symbol.isConstructor => {
+      case t : Tree if t.symbol != null && t.symbol.hasFlag(symtab.Flags.SYNTHETIC) => {
+        println("Synth! " + t)
+      }
+      case d @ DefDef(mods, name, tparams, vparamss, tpt, body) if !(d.symbol.hasFlag(symtab.Flags.SYNTHETIC) || d.symbol.isConstructor) => {
         println("In: " + name)
         println(d.symbol)
         println(d.mods)
@@ -30,8 +38,15 @@ trait CodeExtraction extends Extractors {
       case _ => ;
     }
 
-    // (new ForeachTreeTraverser(trav)).traverse(unit.body)
+    // Finds all vals in a template
 
+    // Finds all defs in a template
+
+    // Finds all class definitions in a template
+
+    // Finds all assertions in a template
+
+    // Extraction of the program.
     val program = unit.body match {
       case p @ PackageDef(name, lst) if lst.size == 0 => {
         unit.error(p.pos, "No top-level definition found.")
@@ -53,6 +68,7 @@ trait CodeExtraction extends Extractors {
       }
     }
 
+    (new ForeachTreeTraverser(trav)).traverse(unit.body)
     stopIfErrors
 
     program.get
