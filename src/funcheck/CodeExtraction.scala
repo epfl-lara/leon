@@ -21,32 +21,45 @@ trait CodeExtraction extends Extractors {
       case None => stopIfErrors; throw new Error("unreachable")
     }
 
-    def trav(tree: Tree): Unit = tree match {
-      case t : Tree if t.symbol != null && t.symbol.hasFlag(symtab.Flags.SYNTHETIC) => {
-        println("Synth! " + t)
-      }
-      case d @ DefDef(mods, name, tparams, vparamss, tpt, body) if !(d.symbol.hasFlag(symtab.Flags.SYNTHETIC) || d.symbol.isConstructor) => {
-        println("In: " + name)
-        println(d.symbol)
-        println(d.mods)
-          
-        toPureScala(unit)(body) match {
-          case Some(t) => println("  the body was extracted as: " + t)
-          case None => println("  the body could not be extracted. Is it pure Scala?")
+//    def trav(tree: Tree): Unit = tree match {
+//      case t : Tree if t.symbol != null && t.symbol.hasFlag(symtab.Flags.SYNTHETIC) => {
+//        println("Synth! " + t)
+//      }
+//      case d @ DefDef(mods, name, tparams, vparamss, tpt, body) if !(d.symbol.hasFlag(symtab.Flags.SYNTHETIC) || d.symbol.isConstructor) => {
+//        println("In: " + name)
+//        println(d.symbol)
+//        println(d.mods)
+//          
+//        toPureScala(unit)(body) match {
+//          case Some(t) => println("  the body was extracted as: " + t)
+//          case None => println("  the body could not be extracted. Is it pure Scala?")
+//        }
+//      }
+//      case _ => ;
+//    }
+
+    def extractObject(name: Identifier, tmpl: Template): ObjectDef = {
+      var funDefs: List[FunDef] = Nil
+      var valDefs: List[ValDef] = Nil
+      var asserts: List[Expr] = Nil
+
+      val tTrees: List[Tree] = tmpl.body
+
+      println(tTrees)
+
+      tTrees.foreach(tree => tree match {
+        case cd @ ClassDef(_, name, tparams, impl) => {
+          println("--- " + name.toString)
+          println(cd.symbol.info)
+          println(cd.symbol.info.parents)
         }
-      }
-      case _ => ;
+        case _ => ;
+      })
+
+      ObjectDef(name, Nil, Nil)
     }
 
-    // Finds all vals in a template
-
-    // Finds all defs in a template
-
-    // Finds all class definitions in a template
-
-    // Finds all assertions in a template
-
-    // Extraction of the program.
+    // Extraction of the definitions.
     val program = unit.body match {
       case p @ PackageDef(name, lst) if lst.size == 0 => {
         unit.error(p.pos, "No top-level definition found.")
@@ -61,14 +74,16 @@ trait CodeExtraction extends Extractors {
       case PackageDef(name, lst) => {
         assert(lst.size == 1)
         lst(0) match {
-          case ExObjectDef(n, templ) => Some(Program(name.toString, ObjectDef(n.toString, Nil, Nil)))
+          case ExObjectDef(n, templ) => Some(Program(name.toString, extractObject(n.toString, templ)))
           case other @ _ => unit.error(other.pos, "Expected: top-level single object.")
           None
         }
       }
     }
 
-    (new ForeachTreeTraverser(trav)).traverse(unit.body)
+    // Extraction of the expressions.
+
+//    (new ForeachTreeTraverser(trav)).traverse(unit.body)
     stopIfErrors
 
     program.get

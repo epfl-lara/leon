@@ -16,13 +16,21 @@ object Trees {
   sealed abstract class Expr extends Typed {
     override def toString: String = PrettyPrinter(this)
 
-    var _scope: Scope = null
+    private var _scope: Option[Scope] = None
 
     def scope: Scope =
-      if(_scope == null)
+      if(_scope.isEmpty)
         throw new Exception("Undefined scope.")
       else
-        _scope
+        _scope.get
+
+    def scope_=(s: Scope): Unit = {
+      if(_scope.isEmpty) {
+        _scope = Some(s)
+      } else {
+        throw new Exception("Redefining scope.")
+      }
+    }
   }
 
   /** 

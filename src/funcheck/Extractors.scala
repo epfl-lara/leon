@@ -58,6 +58,22 @@ trait Extractors {
       }
     }
 
+    object ExAbstractClass {
+      /** Matches an abstract class with no type parameters, no constructor
+       * arguments, at most one parent class and an empty template. (Does _not_
+       * match such a trait). */
+      def unapply(cd: ClassDef): Option[(String)] = cd match {
+        case _ => None
+      }
+    }
+
+    object ExCaseClass {
+      /** Matches a case class definition with no type parameters, at most one
+       * parent class and an empty template. */
+
+
+    }
+
     object ExFunctionDef {
       /** Matches a function with a single list of arguments, no type
        * parameters and regardless of its visibility. */
