@@ -3,23 +3,23 @@ package funcheck.purescala
 import Common._
 import TypeTrees._
 
+/** There's a need for symbols, as we have purely functional trees with
+ * potential recursive calls, and we want references to be resolved once and
+ * for all. */
 object Symbols {
   trait Symbolic {
     self =>
 
     private var __s: Option[Symbol] = None
 
-    def symbol: Symbol = __s.getOrElse(throw new Exception("Undefined symbol!"))
+    def symbol: Symbol = __s.getOrElse(throw new Exception("Undefined symbol."))
 
     def setSymbol(s: Symbol): self.type = __s match {
-      case Some(_) => throw new Exception("Symbol already set!")
+      case Some(_) => throw new Exception("Symbol already set.")
       case None => { __s = Some(s); this }
     }
   }
 
-  /** There's a need for symbols, as we have purely functional trees with
-   * potential recursive calls, and we want references to be resolved once
-   * and for all. */
   sealed abstract class Symbol {
     val id: Identifier
   }

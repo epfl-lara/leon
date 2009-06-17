@@ -7,6 +7,7 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.Common._
+import purescala.Symbols._
 
 trait CodeExtraction extends Extractors {
   self: AnalysisComponent =>
@@ -16,6 +17,11 @@ trait CodeExtraction extends Extractors {
   import ExpressionExtractors._
 
   def extractCode(unit: CompilationUnit): Program = { 
+    import scala.collection.mutable.HashMap
+
+    // register where the symbols where extracted from
+    val symbolDefMap = new HashMap[Symbol,Tree]
+
     def s2ps(tree: Tree): Expr = toPureScala(unit)(tree) match {
       case Some(ex) => ex
       case None => stopIfErrors; throw new Error("unreachable")
@@ -37,6 +43,12 @@ trait CodeExtraction extends Extractors {
 //      }
 //      case _ => ;
 //    }
+
+    /** Populates the symbolDefMap and returns the symbol corresponding to
+     * the expected single top-level object. */
+    def extractSymbols: ObjectSymbol = {
+      null
+    }
 
     def extractObject(name: Identifier, tmpl: Template): ObjectDef = {
       var funDefs: List[FunDef] = Nil
@@ -84,6 +96,14 @@ trait CodeExtraction extends Extractors {
     // Extraction of the expressions.
 
 //    (new ForeachTreeTraverser(trav)).traverse(unit.body)
+
+    // Step-by-step algo:
+    // 1) extract class and object symbols (will already be nested)
+    // 2) extract function and val symbols (can now have a type, since we
+    //    have full class hierarchy)
+    // 3) extract val and function bodies (can do it, since we have all
+    //    definitions, hence we can resolve all symbols)
+
     stopIfErrors
 
     program.get
