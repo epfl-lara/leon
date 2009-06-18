@@ -14,12 +14,17 @@ object Specs {
     def ==>(p: Boolean) = Specs ==> (b,p)
   }
   
-  def forAll[A](f: A => Boolean): Boolean =  
-    error("\"forAll\" combinator is currently unsupported by plugin.")
+  def forAll[A](f: A => Boolean): Boolean = {
+    Console.err.println("Warning: ignored forAll. Are you using the funcheck plugin?")
+    true
+    // error("\"forAll\" combinator is currently unsupported by plugin.")
+  }
 
 
   /** Implication */
-  def ==>(ifz: => Boolean, then: Boolean): Boolean =  
-    error("\"==>\" (implication) combinator is currently unsupported by plugin.")
-  
+  def ==>(ifz: => Boolean, then: Boolean): Boolean = {
+    Console.err.println("Warning: ignored implication. Are you using the funcheck plugin?")
+    true
+    //error("\"==>\" (implication) combinator is currently unsupported by plugin.")
+  }
 }
