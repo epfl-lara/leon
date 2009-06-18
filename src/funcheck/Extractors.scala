@@ -51,26 +51,30 @@ trait Extractors {
 
     object ExObjectDef {
       /** Matches an object with no type parameters, and regardless of its
-       * visibility. */
+       * visibility. Does not match on the automatically generated companion
+       * objects of case classes (or any synthetic class). */
       def unapply(cd: ClassDef): Option[(String,Template)] = cd match {
-        case ClassDef(_, name, tparams, impl) if (cd.symbol.isModuleClass && tparams.isEmpty) => Some((name.toString, impl))
+        case ClassDef(_, name, tparams, impl) if (cd.symbol.isModuleClass && tparams.isEmpty && !cd.symbol.hasFlag(symtab.Flags.SYNTHETIC)) => {
+          Some((name.toString, impl))
+        }
         case _ => None
       }
     }
 
     object ExAbstractClass {
-      /** Matches an abstract class with no type parameters, no constructor
-       * arguments, at most one parent class and an empty template. (Does _not_
-       * match such a trait). */
+      /** Matches an abstract class or a trait with no type parameters, no
+       * constrctor args (in the case of a class), no implementation details,
+       * no abstract members. */
       def unapply(cd: ClassDef): Option[(String)] = cd match {
+        case ClassDef(_, name, tparams, impl) if (cd.symbol.isTrait && tparams.isEmpty && impl.body.length == 2) => {
+          println(name + " seems to be a cool trait") 
+          Some(name.toString)
+        }
         case _ => None
       }
     }
 
     object ExCaseClass {
-      /** Matches a case class definition with no type parameters, at most one
-       * parent class and an empty template. */
-
 
     }
 

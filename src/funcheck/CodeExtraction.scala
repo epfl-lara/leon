@@ -7,7 +7,6 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.Common._
-import purescala.Symbols._
 
 trait CodeExtraction extends Extractors {
   self: AnalysisComponent =>
@@ -20,93 +19,85 @@ trait CodeExtraction extends Extractors {
     import scala.collection.mutable.HashMap
 
     // register where the symbols where extracted from
-    val symbolDefMap = new HashMap[Symbol,Tree]
+    val symbolDefMap = new HashMap[purescala.Symbols.Symbol,Tree]
 
     def s2ps(tree: Tree): Expr = toPureScala(unit)(tree) match {
       case Some(ex) => ex
-      case None => stopIfErrors; throw new Error("unreachable")
+      case None => stopIfErrors; throw new Error("unreachable?")
     }
 
-//    def trav(tree: Tree): Unit = tree match {
-//      case t : Tree if t.symbol != null && t.symbol.hasFlag(symtab.Flags.SYNTHETIC) => {
-//        println("Synth! " + t)
-//      }
-//      case d @ DefDef(mods, name, tparams, vparamss, tpt, body) if !(d.symbol.hasFlag(symtab.Flags.SYNTHETIC) || d.symbol.isConstructor) => {
-//        println("In: " + name)
-//        println(d.symbol)
-//        println(d.mods)
-//          
-//        toPureScala(unit)(body) match {
-//          case Some(t) => println("  the body was extracted as: " + t)
-//          case None => println("  the body could not be extracted. Is it pure Scala?")
-//        }
-//      }
-//      case _ => ;
-//    }
-
-    /** Populates the symbolDefMap and returns the symbol corresponding to
-     * the expected single top-level object. */
-    def extractSymbols: ObjectSymbol = {
-      null
-    }
-
-    def extractObject(name: Identifier, tmpl: Template): ObjectDef = {
-      var funDefs: List[FunDef] = Nil
-      var valDefs: List[ValDef] = Nil
-      var asserts: List[Expr] = Nil
-
-      val tTrees: List[Tree] = tmpl.body
-
-      println(tTrees)
-
-      tTrees.foreach(tree => tree match {
-        case cd @ ClassDef(_, name, tparams, impl) => {
-          println("--- " + name.toString)
-          println(cd.symbol.info)
-          println(cd.symbol.info.parents)
+    /** Populates the symbolDefMap with object and class symbols, and returns
+     * the symbol corresponding to the expected single top-level object. */
+    def extractClassSymbols: purescala.Symbols.ObjectSymbol = {
+      val top = unit.body match {
+        case p @ PackageDef(name, lst) if lst.size == 0 => {
+          unit.error(p.pos, "No top-level definition found.")
+          None
         }
+
+        case PackageDef(name, lst) if lst.size > 1 => {
+          unit.error(lst(1).pos, "Too many top-level definitions.")
+          None
+        }
+
+        case PackageDef(name, lst) => {
+          assert(lst.size == 1)
+          lst(0) match {
+            case ExObjectDef(n, templ) => Some(extractObjectSym(n.toString, templ))
+            case other @ _ => unit.error(other.pos, "Expected: top-level single object.")
+            None
+          }
+        }
+      }
+
+      stopIfErrors
+      top.get
+    }
+
+    def extractObjectSym(name: Identifier, tmpl: Template): purescala.Symbols.ObjectSymbol = {
+      // we assume that the template actually corresponds to an object
+      // definition. Typically it should have been obtained from the proper
+      // extractor (ExObjectDef)
+
+      var classSyms: List[purescala.Symbols.ClassSymbol] = Nil
+      var objectSyms: List[purescala.Symbols.ObjectSymbol] = Nil
+
+      tmpl.body.foreach(tree => tree match {
+        case ExObjectDef(o2, t2) => { objectSyms = extractObjectSym(o2, t2) :: objectSyms }
+        case ExAbstractClass(o2) => ;
         case _ => ;
       })
 
-      ObjectDef(name, Nil, Nil)
+      val theSym = new purescala.Symbols.ObjectSymbol(name, classSyms.reverse, objectSyms.reverse)
+      // we register the tree associated to the symbol to be able to fill in
+      // the rest later
+      symbolDefMap(theSym) = tmpl
+      theSym
     }
 
-    // Extraction of the definitions.
-    val program = unit.body match {
-      case p @ PackageDef(name, lst) if lst.size == 0 => {
-        unit.error(p.pos, "No top-level definition found.")
-        None
-      }
-
-      case PackageDef(name, lst) if lst.size > 1 => {
-        unit.error(lst(1).pos, "Too many top-level definitions.")
-        None
-      }
-
-      case PackageDef(name, lst) => {
-        assert(lst.size == 1)
-        lst(0) match {
-          case ExObjectDef(n, templ) => Some(Program(name.toString, extractObject(n.toString, templ)))
-          case other @ _ => unit.error(other.pos, "Expected: top-level single object.")
-          None
-        }
-      }
-    }
-
-    // Extraction of the expressions.
-
-//    (new ForeachTreeTraverser(trav)).traverse(unit.body)
-
-    // Step-by-step algo:
-    // 1) extract class and object symbols (will already be nested)
-    // 2) extract function and val symbols (can now have a type, since we
+    // Step-by-step:
+    // 1) extract class and object symbols recursively (objects can have
+    //    objects as members)
+    // 2) set parents for classes
+    // 3) extract function and val symbols (can now have a type, since we
     //    have full class hierarchy)
-    // 3) extract val and function bodies (can do it, since we have all
+    // 4) extract val and function bodies (can do it, since we have all
     //    definitions, hence we can resolve all symbols)
+
+    // This extracts the class and object symbols recursively.
+    val topLevelObjSym: purescala.Symbols.ObjectSymbol = extractClassSymbols
 
     stopIfErrors
 
-    program.get
+    val programName: Identifier = unit.body match {
+      case PackageDef(name, _) => name.toString
+      case _ => "<program>"
+    }
+
+    println("Top level sym:")
+    println(topLevelObjSym)
+
+    Program(programName, ObjectDef("Object", Nil, Nil))
   }
 
   /** An exception thrown when non-purescala compatible code is encountered. */
