@@ -1,3 +1,10 @@
+#!/bin/sh
+
+# makes Scala code look nicer
+cd code
+./beautify.sh
+cd ..
+
 pdflatex main
 bibtex main
 pdflatex main
