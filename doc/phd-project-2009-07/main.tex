@@ -1,0 +1,37 @@
+% This document should be compilable with both latex and pdflatex.
+\documentclass{article}
+
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{stmaryrd}
+
+\setcounter{secnumdepth}{0}
+
+\title{Verification of Purely Functional Scala}
+\author{Philippe Suter}
+
+\input{commands}
+
+\begin{document}
+\maketitle
+
+\input{introduction}
+
+\input{purescala}
+
+\input{examples}
+
+\input{challenges}
+
+\input{status}
+
+\input{future}
+
+\nocite{*}
+
+\clearpage
+\bibliographystyle{abbrv}
+\bibliography{bib}
+
+\end{document}
