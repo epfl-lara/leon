@@ -5,7 +5,7 @@ import funcheck.util.FreshNameCreator
 
 trait ScalaCheckIntegrator[T <: SubComponent] extends ScalaCheck[T] 
   with FilterGeneratorAnnotations[T]
-  with GeneratorDefDefInjector[T]
+  with GeneratorDefDefInjector
   with FreshNameCreator 
 {
   self: T =>

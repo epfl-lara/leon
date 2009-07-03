@@ -1,12 +1,11 @@
 package funcheck.scalacheck
 
-import scala.tools.nsc.{Global, SubComponent}
 import scala.tools.nsc.transform.TypingTransformers
 
-trait GeneratorDefDefInjector[T <: SubComponent] extends TypingTransformers { self: T =>
+trait GeneratorDefDefInjector extends TypingTransformers { 
    import global._
   
-  def transform(injecting: List[DefDef], unit: CompilationUnit): Unit = 
+  def injectGenDefDefs(injecting: List[DefDef], unit: CompilationUnit): Unit = 
     unit.body = new GenDefDefTransformer(injecting, unit).transform(unit.body)
   
   class GenDefDefTransformer(injecting: List[DefDef], unit: CompilationUnit) 

@@ -46,7 +46,7 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
       // unmodified.
       val (genDef, arbDef) = createGeneratorDefDefs(unit)
     
-      transform(genDef ::: arbDef, unit)
+      injectGenDefDefs(genDef ::: arbDef, unit)
 
 //      if(pluginInstance.stopAfterAnalysis) {
 //        println("Analysis complete. Now terminating the compiler process.")
