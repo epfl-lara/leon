@@ -3,7 +3,10 @@
 rm -f *.cute
 
 for src in *.scala ; do
-    sed -e "s/=>/$\\\\Rightarrow$/g" ${src} | \
+    cat ${src} | \
+    sed -e "s/==>/$\\\\rightarrow$/g" | \
+    sed -e "s/=>/$\\\\Rightarrow$/g" | \
     sed -e "s/!=/$\\\\neq$/g" |
-    sed -e "s/==/=/g" > ${src}.cute
+    sed -e "s/==/=/g" |
+    cat > ${src}.cute
 done

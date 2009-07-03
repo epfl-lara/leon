@@ -1,10 +1,18 @@
 import scala.collection.immutable.Set
-import funcheck.Specs.forall
+import funcheck.Specs.{`==>`,forAll}
 
 object ListSet {
-  assert(forall(
-    (ls1: List[Int]) => forall(
-    (ls2: List[Int] => )
+  $\forall$ x: Int, xs: List[Int] .
+    content(insert(x, xs)) = content(xs) + x
+
+  $\forall$ x: Int, xs: List[Int] .
+    content(delete(x, xs)) = content(xs) - x
+
+  $\forall$ xs: List[Int], ys: List[Int], z: Int .
+    content(xs) == content(ys) ==> content(insert(z, xs)) == content(insert(z, ys))
+
+  $\forall$ xs: List[Int], ys: List[Int], z: Int .
+    content(xs) == content(ys) ==> content(delete(z, xs)) == content(delete(z, ys))
 
   def content(xs: List[Int]): Set[Int] = xs match {
     case Nil => Set.empty

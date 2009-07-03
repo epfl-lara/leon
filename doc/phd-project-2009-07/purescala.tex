@@ -1,5 +1,26 @@
 \section{A Purely Functional Subset of Scala}
+This section describes \purescala, the specification language of our
+verification system, as well as the programming language of its first version.
+
+\subsection{Features}
+- data types
+
+- ``all in an object''
+
+- ignoring main method
+
+\subsection{Specifications}
+- universally quantified specs
 
 Signature of the method used in $\forall-$assertions:
 
 \lstinputlisting{code/forall-method.scala.cute}
+
+For intance, we display the following universally quantified specification:
+
+\lstinputlisting{code/spec-long.scala.cute}
+
+\ldots as:
+
+\lstinputlisting{code/spec-short.scala.cute}
+
