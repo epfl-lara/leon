@@ -37,7 +37,9 @@ trait FilterGeneratorAnnotations {
   def filterTreesWithGeneratorAnnotation(Unit: CompilationUnit)(tree: Tree): Boolean = {
     lazy val sym = tree.symbol
     tree match {
-      case cd: ClassDef => sym.hasAttribute(generator) || abstractSuperClassHasGeneratorAnnotation(sym.superClass)
+      case cd: ClassDef => isAbstractClass(sym) || 
+        				   sym.hasAttribute(generator) || 
+                           abstractSuperClassHasGeneratorAnnotation(sym.superClass)
       case d: DefDef    => sym.hasAttribute(generator)
       case _ => false
     }
@@ -51,13 +53,17 @@ trait FilterGeneratorAnnotations {
     superclass match {
       case NoSymbol => false
       case cs: ClassSymbol =>
-        (cs.hasFlag(scala.tools.nsc.symtab.Flags.ABSTRACT) &&  
-           cs.hasAttribute(generator)) || 
+        (isAbstractClass(cs) && cs.hasAttribute(generator)) || 
           abstractSuperClassHasGeneratorAnnotation(cs.superClass)
       case _ => 
         assert(false, "expected ClassSymbol, found "+superclass)
         false
     }
-    
   }
+  
+  private def isAbstractClass(s: Symbol): Boolean = s match {
+    case cs: ClassSymbol => cs.hasFlag(scala.tools.nsc.symtab.Flags.ABSTRACT) 
+    case _ => false
+  } 
+
 }
