@@ -34,4 +34,12 @@ This may appear to be a curious choice: indeed, if our specifications consisted
 only in pre- and post- conditions, as in most verification
 systems\footnote{Verification systems for object-oriented languages usually
 also have a mechanism to express class invariants.}, the temptation would be
-high for a programmer to always copy a function body in its post-condition.
+high for a programmer to always copy a function body in its post-condition, and
+this would defeat the purpose of have specifications, which are supposed to
+provide an abstraction mechanism for the computations taking place in the
+functions. To give contracts additional expressive power, our system allows
+universally quantified global specifications.
+
+The rest of this report is as follows: the next section describes
+{\purescala}, the third one an example of a proof in the system, then we
+give an overview of the implementation status and describe future work.

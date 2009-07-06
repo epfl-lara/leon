@@ -6,6 +6,8 @@ for src in *.scala ; do
     cat ${src} | \
     sed -e "s/==>/$\\\\rightarrow$/g" | \
     sed -e "s/=>/$\\\\Rightarrow$/g" | \
+    sed -e "s/<=/$\\\\leq$/g" | \
+    sed -e "s/>=/$\\\\geq$/g" | \
     sed -e "s/!=/$\\\\neq$/g" |
     sed -e "s/==/=/g" |
     cat > ${src}.cute

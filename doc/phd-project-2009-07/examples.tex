@@ -1,6 +1,7 @@
-\section{Examples}
+\subsection{An Example}
 Figure~\ref{fig:listset} shows an example program; a set data-structure
-implemented using a linked list.
+implemented using a linked list, along with some specifications about the
+implemented functions.
 
 \begin{figure}
 \lstinputlisting{code/ListSet.scala.cute}
@@ -8,3 +9,10 @@ implemented using a linked list.
 \label{fig:listset}
 \end{figure}
 
+One can note that in our example, the function \K{content} really plays
+the role of an abstraction function over the implementation. This
+(executable) function is then used very naturally in other contracts
+specifying for instance that \K{insert} is an operation compatible with
+the congruence relation defined by \K{content($a$) = content($b$)}. Such
+specifications would be either very unnaturally expressed using only pre-
+and post- conditions, or not expressible at all.
