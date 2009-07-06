@@ -1,6 +1,6 @@
 package funcheck.scalacheck
 
-import scala.tools.nsc.{Global, SubComponent}
+import scala.tools.nsc.Global
 
 /** 
  * A tree traverser which filter the trees elements that contain the 
@@ -20,7 +20,8 @@ import scala.tools.nsc.{Global, SubComponent}
  * 
  * where <code>unit</code> is the current Compilation Unit.
  */
-trait FilterGeneratorAnnotations[T <: SubComponent] { self: T =>
+trait FilterGeneratorAnnotations { 
+  val global: Global
   // [[INFO]] "hasAttribute" is "hasAnnotation" in future compiler release 2.8
   import global._
   

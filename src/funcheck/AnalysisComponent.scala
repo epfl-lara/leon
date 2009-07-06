@@ -6,7 +6,7 @@ import scalacheck._
 
 class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) extends PluginComponent
   with CodeExtraction
-  with ScalaCheckIntegrator[AnalysisComponent]
+  with ScalaCheckIntegrator
 {
   import global._
 
@@ -47,6 +47,7 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
       val (genDef, arbDef) = createGeneratorDefDefs(unit)
     
       injectGenDefDefs(genDef ::: arbDef, unit)
+      forAllTransform(unit)
 
 //      if(pluginInstance.stopAfterAnalysis) {
 //        println("Analysis complete. Now terminating the compiler process.")
