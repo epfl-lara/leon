@@ -35,7 +35,7 @@ trait ForAllTransformer extends TypingTransformers
               case tpe @ TypeRef(_,_,ptpes) =>
                 vtpt.tpe match {
                   case TypeRef(_,value,vtpes) =>
-                    val fun: Function = {
+                    var fun: Function = {
                       if(vtpes.size <= 1) {
                         f
                       } else {

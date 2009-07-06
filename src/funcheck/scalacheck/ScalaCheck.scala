@@ -61,6 +61,8 @@ trait ScalaCheck extends FreshNameCreator {
     def oneOf(generators: List[Symbol]): Tree = 
       Apply(Select(Ident(moduleGenSym), symDecl(moduleGenSym, "oneOf")), generators.map(Ident(_)))
     
+    def lzy(generator: Tree): Tree = 
+      Apply(Select(Ident(moduleGenSym), symDecl(moduleGenSym, "lzy")), List(generator))
     
     /**
      * This creates a Tree node for the call <code>org.scalacheck.Gen.flatMap[T](body)</code>, 
@@ -81,6 +83,8 @@ trait ScalaCheck extends FreshNameCreator {
     def map(qualifier: Tree, body: Tree): Tree = 
       Apply(Select(qualifier, symDecl(classGenSym, "map")), List(body))
      
+    
+    
     /**
      * Utilitary method for creating a method symbol for a <code>org.scalacheck.Gen</codee>
      * generator method. 
@@ -191,7 +195,7 @@ trait ScalaCheck extends FreshNameCreator {
       
       if(cd.symbol.hasFlag(scala.tools.nsc.symtab.Flags.ABSTRACT)) {
         val generators = retTpe.symbol.children.toList.map(s => genSymbolsForType(s.tpe)).flatMap(v=>v)
-        DefDef(genDef, Modifiers(0), List(), Gen.oneOf(generators))
+        DefDef(genDef, Modifiers(0), List(), Gen.lzy(Gen.oneOf(generators)))
       } 
       else {
         
@@ -242,7 +246,7 @@ trait ScalaCheck extends FreshNameCreator {
           }
         }
       
-        body
+        Gen.lzy(body)
       }
     }
    
