@@ -45,3 +45,31 @@ Try:
    ./scalac-funcheck -Ybrowse:funcheck Test.scala
 
 ...to print a Swing-based GUI for browsing the program's AST
+
+
+
+ForAll Transformation: How does it work
+-----------------------------
+
+First, look at Test4.scala to get an idea of how we can declare properties using "our" Spec library (which has a forAll combinator)
+
+Second, compile the whole project if you didn't yet (simply type: ant)
+
+Third, compile the Test4.scala using scalac extended with the funcheck plugin. You can do this by typing:
+    ./scalac-funcheck -cp bin:lib/ScalaCheck-1.5.jar  Test4.scala 
+
+Now run the compiled program using standard the scala environment as follow:
+    scala -cp lib/ScalaCheck-1.5.jar:. HeapTest
+
+And you should see a similar output:
+
++ OK, passed 100 tests.     //Nice!! This means the property was ok!
+                                                  
+! Falsified after 1 passed tests.     //Good, The property was indeed wrong                                        
+> ARG_0: "1"
+java.lang.ExceptionInInitializerError
+	[...]
+
+
+Note: The ScalaCheck-1.5.jar library needs to be in the classpath for both compilation and execution because the FunCheck 
+plugin rely on it for transforming every Spec.forAll (internal to our library) call to a scalacheck Prop.forAll call. 
