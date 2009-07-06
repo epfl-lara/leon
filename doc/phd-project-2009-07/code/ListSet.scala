@@ -19,7 +19,7 @@ object ListSet {
     case x :: xs => content(xs) + x
   }
 
-  def insert(x: Int, xs: List[Int]): List[Int] = if(member(x, xs)) xs else insert(x, xs)
+  def insert(x: Int, xs: List[Int]): List[Int] = x :: xs
 
   def remove(x: Int, xs: List[Int]): List[Int] = xs match {
     case Nil => Nil

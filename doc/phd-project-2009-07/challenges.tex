@@ -1,2 +1,45 @@
 \section{Reasoning}
+This section presents an example of proof of a specification. It should be
+noted that it does \emph{not} describe a general decision procedure for
+deciding the validity of such contracts. The mechanisms used are induction on
+data types (in this example, the primitive type of linked lists), and
+fold/unfold operations, that is inlining function calls and replacing
+expressions by equivalent function calls.
 
+We want to prove the third contract of Figure~\ref{fig:listset}:
+\begin{lstlisting}
+$\forall$ xs: List[Int], ys: List[Int], z: Int .
+  content(xs) = content(ys) $\rightarrow$ content(insert(z, xs)) = content(insert(z, ys))
+\end{lstlisting}
+
+We do it by induction on \K{xs}. For \K{xs = Nil}:
+\begin{lstlisting}
+content(Nil) = content(ys) $\rightarrow$ content(insert(z, Nil)) = content(insert(z, ys))
+\end{lstlisting} 
+By unfolding \K{content(Nil)} and \K{insert(z, Nil)} we get:
+\begin{lstlisting}
+Set.empty = content(ys) $\rightarrow$ content(z :: Nil) = content(insert(z, ys))
+\end{lstlisting}
+By folding \K{content(ys)}, we get that for the left hand side to be true, we need \K{ys} to be \K{Nil}. We thus have:
+\begin{lstlisting}
+Set.empty = Set.empty $\rightarrow$ content(z :: Nil) = content(insert(z, Nil))
+\end{lstlisting}
+\ldots and by unfolding \K{insert} and \K{content} we get to the correct statement:
+\begin{lstlisting}
+Set.empty = Set.empty $\rightarrow$ Set(z) = Set(z)
+\end{lstlisting}
+
+Now for the case where \K{x = x' :: xs'}, \K{y = y' :: ys'}, assuming
+that the statement holds for \K{xs'} and \K{ys'}:
+\begin{lstlisting}
+content(x' :: xs') = content(y' :: ys') $\rightarrow$ content(insert(z, x' :: xs')) = content(insert(z, y' :: ys'))
+\end{lstlisting}
+We unfold \K{content} and \K{insert}:
+\begin{lstlisting}
+content(xs') + x = content(ys') + y $\rightarrow$ content(z :: x' :: xs')) = content(z :: y' :: ys'))
+\end{lstlisting}
+We unfold \K{content} again:
+\begin{lstlisting}
+content(xs') + x = content(ys') + y $\rightarrow$ content(xs') + x' + z = content(ys') + y' + z
+\end{lstlisting}
+\ldots and the statement is clearly true.
