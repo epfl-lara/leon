@@ -23,7 +23,8 @@ object ListSet {
     case x :: xs => content(xs) + x
   }
 
-  @generator def insert(x: Int, xs: List[Int]): List[Int] = if(member(x, xs)) xs else x :: xs
+  //@generator 
+  def insert(x: Int, xs: List[Int]): List[Int] = if(member(x, xs)) xs else x :: xs
 
   def remove(x: Int, xs: List[Int]): List[Int] = xs match {
     case Nil => Nil
@@ -41,5 +42,6 @@ object ListSet {
     println("Done.")
   }
 
-  @generator def makeNil: List[Int] = Nil
+  //@generator 
+  def makeNil: List[Int] = Nil
 }
