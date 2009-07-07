@@ -63,6 +63,7 @@ shopt -s expand_aliases;
 
 alias scalac=".././scalac-funcheck -cp ../bin:../lib/ScalaCheck-1.5.jar  -d ../bin/tests"
 
+mkdir bin/tests
 cd tests
 
 scalac plugin/BST.scala
