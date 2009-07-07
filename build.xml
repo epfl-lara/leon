@@ -108,23 +108,21 @@
                 <path refid="build.path" />
                 <pathelement location="${build.examples.dir}"/>
             </classpath>
-			<exclude name="funcheck/**/*.scala" />
+			<exclude name="plugin/**/*.scala" />
         </scalac>
     </target>
     
-    <target name="compile-funcheck-tests" depends="compile, compile-lib-extension, dist" description="compile tests that use the FunCheck library">
+    <!--target name="compile-funcheck-tests" depends="compile, compile-lib-extension, dist" description="compile tests that use the FunCheck library">
         <mkdir dir="${build.tests.dir}"  />
         <scalac srcdir="${tests.dir}" destdir="${build.tests.dir}" force="changed" addparams="${scalac.funcheck.plugin}">
             <classpath>
                 <path refid="scalac.class.path" />
                 <path refid="lib.path" />
-                <!-- To be precise, in the classpatht we should have the 
-					 funcheck/lib and the scala multiset library --> 
 				<path refid="build.path"/>
             </classpath>
-			<include name="funcheck/**/*.scala" />
+			<include name="plugin/*.scala" />
         </scalac>
-    </target>
+    </target-->
 
     <target name="run-test" depends="compile-tests-examples"
 	          description="run a test (test name is provided by the user)">
