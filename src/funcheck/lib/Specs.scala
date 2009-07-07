@@ -11,7 +11,7 @@ object Specs {
   class generator extends StaticAnnotation
 
   implicit def extendedBoolean(b: Boolean) = new {
-    def ==>(p: Boolean) = Specs ==> (b,p)
+    def ==>(p: Boolean) = (!b || p) // Specs ==> (b,p)
   }
   
   def forAll[A](f: A => Boolean): Boolean = {
@@ -22,9 +22,9 @@ object Specs {
 
 
   /** Implication */
-  def ==>(ifz: => Boolean, then: Boolean): Boolean = {
+/*  def ==>(ifz: => Boolean, then: Boolean): Boolean = {
     Console.err.println("Warning: ignored implication. Are you using the funcheck plugin?")
     true
     //error("\"==>\" (implication) combinator is currently unsupported by plugin.")
-  }
+  }*/
 }
