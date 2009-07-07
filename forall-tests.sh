@@ -8,7 +8,7 @@ echo
 
 echo
 echo "********************************************************************************"
-echo "Clean, Compile and Build the distribution using ANT"
+echo "Compile and Build the distribution using ANT"
 echo "********************************************************************************"
 echo 
 
@@ -56,14 +56,25 @@ echo "Compile tests that have declared forAll properties."
 echo "********************************************************************************"
 echo
 
+
 #This is needed for aliases to work correctly
 shopt -s expand_aliases;
 
+
+alias scalac=".././scalac-funcheck -cp ../bin:../lib/ScalaCheck-1.5.jar  -d ../bin/tests"
+
+cd tests
+
+scalac plugin/BST.scala
+scalac plugin/LeftistHeap.scala
+
+cd ..
+
 # Scala compiler with the Funcheck plugin integrated
-alias scalac="./scalac-funcheck"
+#alias scalac="./scalac-funcheck"
 
 # compile examples using the compiler with the Funcheck plugin
-ant compile-funcheck-tests
+#ant compile-funcheck-tests
 
 
 echo
@@ -72,12 +83,15 @@ echo "Running tests with forAll properties."
 echo "********************************************************************************"
 echo
 
-alias scala="scala -cp bin/tests/:${SCALACHECK_JAR}"
+alias scala="scala -cp bin/:${SCALACHECK_JAR}:bin/tests/"
 
 # examples
-export BST="funcheck.BST"
+export BST="plugin.BST"
+export LeftistHeap="plugin.LeftistHeap"
 
 echo " - Testing ${BST}"
 scala ${BST}
 
+echo " - Testing ${LeftistHeap}"
+scala ${LeftistHeap}
 
