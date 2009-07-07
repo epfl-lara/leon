@@ -29,7 +29,8 @@
     <property name="main.class" value="funcheck.DefaultMain" />
     <property name="script.file" value="${base.dir}/scalac-funcheck" />
     <property name="scalac.default.params" value="-deprecation -unchecked" />
-
+    <property name="scalac.funcheck.plugin" value="-Xplugin:${dist.jar}"/> 
+	
     <!-- required to use the tasks scalac, fsc and scaladoc -->
     <taskdef resource="scala/tools/ant/antlib.xml">
         <classpath>
@@ -107,6 +108,21 @@
                 <path refid="build.path" />
                 <pathelement location="${build.examples.dir}"/>
             </classpath>
+			<exclude name="funcheck/**/*.scala" />
+        </scalac>
+    </target>
+    
+    <target name="compile-funcheck-tests" depends="compile, compile-lib-extension, dist" description="compile tests that use the FunCheck library">
+        <mkdir dir="${build.tests.dir}"  />
+        <scalac srcdir="${tests.dir}" destdir="${build.tests.dir}" force="changed" addparams="${scalac.funcheck.plugin}">
+            <classpath>
+                <path refid="scalac.class.path" />
+                <path refid="lib.path" />
+                <!-- To be precise, in the classpatht we should have the 
+					 funcheck/lib and the scala multiset library --> 
+				<path refid="build.path"/>
+            </classpath>
+			<include name="funcheck/**/*.scala" />
         </scalac>
     </target>
 
@@ -131,7 +147,7 @@
     </target>
 
 
-    <target name="dist" depends="compile" description="build the FunCheck jar file and create the script file used to run scalac with FunCheck plugged-in">
+    <target name="dist" depends="compile, compile-lib-extension" description="build the FunCheck jar file and create the script file used to run scalac with FunCheck plugged-in">
         <mkdir dir="${dist.dir}" />
 
         <manifest file="${dist.dir}/MANIFEST.MF">
