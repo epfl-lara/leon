@@ -1,9 +1,8 @@
+package funcheck
+
 import funcheck.lib.Specs._
-import funcheck.lib.Specs
 
-
-object TreeFuncheckTest extends Application {
-
+object BST extends Application {
   /** class hierarchy*/
   sealed abstract class BST
   @generator case class Empty() extends BST
@@ -21,7 +20,8 @@ object TreeFuncheckTest extends Application {
     case Node(left,v,right) => size(left) + 1 + size(right)
   }
 
-  /** build correct binary trees (this should be used instead of the default case class constructor)*/
+  /** build correct binary trees (this should be used instead of the default 
+   * case class constructor) */
   @generator 
   def add(x : Int, t : BST) : Node = {
     t match {
@@ -29,12 +29,12 @@ object TreeFuncheckTest extends Application {
       case t @ Node(left,v,right) => {
 	    if (x < v) Node(add(x, left), v, right)
 	    else if (x==v) t
-        else Node(left, v, add(x, right))
+	    else Node(left, v, add(x, right))
       }
     }
-  }
+  } 
 
-  /** check if the tree contains the key*/
+  /** check if the tree contains the key */
   def contains(key: Int, t : BST): Boolean = { 
     t match {
       case Empty() => false
@@ -46,8 +46,9 @@ object TreeFuncheckTest extends Application {
     }
   } 
 
-              
-  /** properties */
-  Specs.forAll[(BST,Int)]( p => contains(p._2,p._1) == content(p._1).contains(p._2))
-  Specs.forAll[(BST,Int)]( p => content(add(p._2, p._1)) == content(p._1) + p._2)
+  /** global assertions */
+  forAll[(BST,Int)]( p => contains(p._2,p._1) == content(p._1).contains(p._2))
+  forAll[(BST,Int)]( p => content(add(p._2, p._1)) == content(p._1) + p._2)
+  
 }
+
