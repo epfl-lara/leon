@@ -68,6 +68,7 @@ cd tests
 
 scalac plugin/BST.scala
 scalac plugin/LeftistHeap.scala
+scalac plugin/ListSet.scala
 
 cd ..
 
@@ -89,10 +90,14 @@ alias scala="scala -cp bin/:${SCALACHECK_JAR}:bin/tests/"
 # examples
 export BST="plugin.BST"
 export LeftistHeap="plugin.LeftistHeap"
+export ListSet="plugin.ListSet"
 
 echo " - Testing ${BST}"
 scala ${BST}
 
 echo " - Testing ${LeftistHeap}"
 scala ${LeftistHeap}
+
+echo " - Testin ${ListSet}"
+scala ${ListSet}
 
