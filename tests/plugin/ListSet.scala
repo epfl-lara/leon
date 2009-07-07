@@ -11,10 +11,12 @@ object ListSet {
     content(remove(p._1, p._2)) == content(p._2) - p._1)
 
   forAll[(List[Int],List[Int],Int)] (p =>
-    (content(p._1) == content(p._2)) ==> (content(insert(p._3, p._1)) == content(insert(p._3, p._2))))
+    eqlists(p._1, p._2) ==> eqlists(insert(p._3, p._1), insert(p._3, p._2)))
 
   forAll[(List[Int],List[Int],Int)] (p =>
-    (content(p._1) == content(p._2)) ==> (content(remove(p._3, p._1)) == content(remove(p._3, p._2))))
+    eqlists(p._1, p._2) ==> eqlists(remove(p._3, p._1), remove(p._3, p._2)))
+
+  def eqlists(xs: List[Int], ys: List[Int]): Boolean = content(xs) == content(ys)
 
   def content(xs: List[Int]): Set[Int] = xs match {
     case Nil => Set.empty
