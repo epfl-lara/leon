@@ -1,8 +1,7 @@
-package funcheck
+package plugin
 
 import funcheck.lib.Specs._
-
-import scala.collection.immutable.Multiset
+import scala.collection.immutable._
 
 /**
  * Example adapted from book "Purely Functional Data Structures"
