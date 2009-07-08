@@ -309,6 +309,8 @@ trait ScalaCheck extends FreshNameCreator {
     private val arbImmutableMap =  select(moduleSym, "arbImmutableMap")
     /** Symbol for the <code>org.scalacheck.Arbitrary.arbList</code> method definition. */
     private val arbList         =  select(moduleSym, "arbList")
+    /** Symbol for the <code>org.scalacheck.Arbitrary.arbArray</code> method definition. */
+    private val arbArray        =  select(moduleSym, "arbArray")
     /** Symbol for the <code>org.scalacheck.Arbitrary.arbSet</code> method definition. */
     private val arbSet          =  select(moduleSym, "arbSet")
     /** Symbol for the <code>org.scalacheck.Arbitrary.arbTuple2</code> method definition. */
@@ -339,6 +341,7 @@ trait ScalaCheck extends FreshNameCreator {
     
     //tpe2arbApp += ImmutableMapClass.typeConstructor    -> arbImmutableMap
     tpe2arbApp += ListClass.typeConstructor            -> arbList
+    tpe2arbApp += ArrayClass.typeConstructor           -> arbArray
     //tpe2arbApp += ImmutableSetClass.typeConstructor    -> arbSet
     tpe2arbApp += TupleClass(2).typeConstructor        -> arbTuple2 
     
@@ -473,6 +476,8 @@ trait ScalaCheck extends FreshNameCreator {
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkList</code> method definition. */
     private val shrinkList         =  select(moduleShrinkSym, "shrinkList")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkSet</code> method definition. */
+    private val shrinkArray        =  select(moduleShrinkSym, "shrinkArray")
+    /** Symbol for the <code>org.scalacheck.Shrink.shrinkSet</code> method definition. */
     private val shrinkSet          =  select(moduleShrinkSym, "shrinkSet")
     
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkTuple2</code> method definition. */
@@ -500,6 +505,15 @@ trait ScalaCheck extends FreshNameCreator {
     private val shrinkDoubleList   =  select(moduleShrinkSym, "shrinkDoubleList")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkStringList</code> method definition. */
     private val shrinkStringList   =  select(moduleShrinkSym, "shrinkStringList")
+    
+    /** Symbol for the <code>org.scalacheck.Shrink.shrinkIntArray</code> method definition. */
+    private val shrinkIntArray     =  select(moduleShrinkSym, "shrinkIntArray")
+    /** Symbol for the <code>org.scalacheck.Shrink.shrinkBooleanArray</code> method definition. */
+    private val shrinkBooleanArray =  select(moduleShrinkSym, "shrinkBooleanArray")
+    /** Symbol for the <code>org.scalacheck.Shrink.shrinkDoubleArray</code> method definition. */
+    private val shrinkDoubleArray  =  select(moduleShrinkSym, "shrinkDoubleArray")
+    /** Symbol for the <code>org.scalacheck.Shrink.shrinkStringArray</code> method definition. */
+    private val shrinkStringArray  =  select(moduleShrinkSym, "shrinkStringArray")
     
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkIntSet</code> method definition. */
     private val shrinkIntSet       =  select(moduleShrinkSym, "shrinkIntSet")
@@ -560,7 +574,8 @@ trait ScalaCheck extends FreshNameCreator {
       def apply(container: Type)(parametric: Type): Type = 
         appliedType(container, List(parametric))
         
-      def listOf(tpe: Type): Type = apply(ListClass.typeConstructor)(tpe) 
+      def listOf(tpe: Type): Type = apply(ListClass.typeConstructor)(tpe)
+      def arrayOf(tpe: Type): Type = apply(ArrayClass.typeConstructor)(tpe)
       def setOf(tpe: Type): Type = apply(SetClass.typeConstructor)(tpe)
       def optionOf(tpe: Type): Type = apply(OptionClass.typeConstructor)(tpe)
       def tupleOf(arity: Int, tpe: Type): Type = apply(TupleClass(arity).typeConstructor)(tpe)
@@ -569,6 +584,11 @@ trait ScalaCheck extends FreshNameCreator {
       val BooleanListTpe = listOf(BooleanClass.typeConstructor)
       val DoubleListTpe  = listOf(DoubleClass.typeConstructor)
       val StringListTpe  = listOf(StringClass.typeConstructor)
+      
+      val IntArrayTpe     = arrayOf(IntClass.typeConstructor)
+      val BooleanArrayTpe = arrayOf(BooleanClass.typeConstructor)
+      val DoubleArrayTpe  = arrayOf(DoubleClass.typeConstructor)
+      val StringArrayTpe  = arrayOf(StringClass.typeConstructor)
       
       val IntSetTpe      = setOf(IntClass.typeConstructor)
       val BooleanSetTpe  = setOf(BooleanClass.typeConstructor)
@@ -595,10 +615,12 @@ trait ScalaCheck extends FreshNameCreator {
       val DoubleTuple4Tpe  = tupleOf(4, DoubleClass.typeConstructor)
       val StringTuple4Tpe  = tupleOf(4, StringClass.typeConstructor)
       
-      Map(IntClass.typeConstructor -> shrinkInt,
+      Map(
+          IntClass.typeConstructor        -> shrinkInt,
           StringClass.typeConstructor     -> shrinkString, 
           OptionClass.typeConstructor     -> shrinkOption,
           ListClass.typeConstructor       -> shrinkList,
+          ArrayClass.typeConstructor      -> shrinkArray,
           SetClass.typeConstructor        -> shrinkSet,
           TupleClass(2).typeConstructor   -> shrinkTuple2,
           TupleClass(3).typeConstructor   -> shrinkTuple3,
@@ -612,6 +634,10 @@ trait ScalaCheck extends FreshNameCreator {
           BooleanListTpe                  -> shrinkBooleanList,
           DoubleListTpe                   -> shrinkDoubleList,
           StringListTpe                   -> shrinkStringList,
+          IntArrayTpe                     -> shrinkIntArray,
+          BooleanArrayTpe                 -> shrinkBooleanArray,
+          DoubleArrayTpe                  -> shrinkDoubleArray,
+          StringArrayTpe                  -> shrinkStringArray,
           IntSetTpe                       -> shrinkIntSet,
           BooleanSetTpe                   -> shrinkBooleanSet,
           DoubleSetTpe                    -> shrinkDoubleSet,

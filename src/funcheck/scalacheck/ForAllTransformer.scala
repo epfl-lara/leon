@@ -25,6 +25,14 @@ trait ForAllTransformer extends TypingTransformers
       curTree = tree
        
       tree match {
+//        case Apply(lhs @ Select(_, implyMethod), rhs) =>
+//          println("info "+lhs.symbol.name.equals("==>"))
+//          if (lhs.symbol.tpe.decl("==>") != NoSymbol) 
+//            println(">"+tree)
+//          else
+//            println(lhs.symbol + " and "+lhs.symbol.tpe)
+//          tree
+        
         case Apply(TypeApply(s: Select, partpes), rhs @ List(f @ Function(vparams,body))) if isForall(s) =>
           atOwner(currentOwner) {
             assert(vparams.size == 1, "funcheck.Specs.forAll properties are expected to take a single (tuple) parameter")
