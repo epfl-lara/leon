@@ -39,7 +39,7 @@ object PropositionalLogic {
     case i: Imply          => false
   }
   
-  forAll{f : Formula => isDesugared(f) ==> desugar(f) == f }
+  forAll{f : Formula => isDesugared(f) ==> (desugar(f) == f) }
   // the above forAll invariant replaces the below somewhat cummbersome Matcheck spec
   /** Type refinement: A desugarized formula does not contain an Imply node.
                        This condition must hold recursively over the whole tree
