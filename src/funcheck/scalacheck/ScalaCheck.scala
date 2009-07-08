@@ -334,8 +334,8 @@ trait ScalaCheck extends FreshNameCreator {
     tpe2arbApp += StringClass.typeConstructor    -> arbString
     tpe2arbApp += OptionClass.typeConstructor    -> arbOption
     
-    lazy val ImmutableMapClass: Symbol = getClass("scala.collection.immutable.Map")
-    lazy val ImmutableSetClass: Symbol = getClass("scala.collection.immutable.Set")
+    lazy val ImmutableMapClass: Symbol = definitions.getClass(newTypeName("scala.collection.immutable.Map"))
+    lazy val ImmutableSetClass: Symbol = definitions.getClass(newTypeName("scala.collection.immutable.Set"))
     
     tpe2arbApp += ImmutableMapClass.typeConstructor    -> arbImmutableMap
     tpe2arbApp += ListClass.typeConstructor            -> arbList
