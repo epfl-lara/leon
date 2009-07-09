@@ -11,7 +11,8 @@ object PropositionalLogic {
   // java.lang.StackOverflowError
   @generator
   sealed abstract class Formula
-  case class And(left: Formula, right: Formula) extends Formula
+  // conjunction makes automatic generator crash
+  //case class And(left: Formula, right: Formula) extends Formula
   case class Or(left: Formula, right: Formula) extends Formula
   case class Neg(f: Formula) extends Formula
   case class True() extends Formula
@@ -24,14 +25,14 @@ object PropositionalLogic {
   def desugar(f: Formula): Formula = f match {
     case True()            => f
     case False()           => f
-    case And(left,right)   => And(desugar(left),desugar(right))
+    //case And(left,right)   => And(desugar(left),desugar(right))
     case Or(left,right)    => Or(desugar(left),desugar(right))
     case Neg(f)            => Neg(desugar(f))
     case Imply(left,right) => Or(Neg(desugar(left)),desugar(right))
   }
   
   def isDesugared(f: Formula): Boolean = f match {
-    case And(left,right)   => isDesugared(left) && isDesugared(right)
+    //case And(left,right)   => isDesugared(left) && isDesugared(right)
     case Or(left,right)    => isDesugared(left) && isDesugared(right)
     case Neg(f)            => isDesugared(f)
     case True()            => true

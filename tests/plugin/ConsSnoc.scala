@@ -16,17 +16,36 @@ object ConsSnoc {
   /* Extractors */
   object Nill {
     def apply(): Nill = new Nill()
-    def unapply(n: Nill): Boolean = true
+    
+    //def unapply(n: Nill): Boolean = true
+    def unapply(l: Lst): Boolean = l match {
+      case n: Nill => true
+      case c: Cons => false
+    }
   }
 
   object Cons {
-    def apply(head: Int, tail: Lst): Cons = 
-      new Cons(head,tail)
+    def apply(head: Int, tail: Lst): Cons = new Cons(head,tail)
     
-    def unapply(c: Cons): Option[(Int,Lst)] = 
-      Some((c.head,c.tail))
+    //def unapply(c: Cons): Option[(Int,Lst)] = Some((c.head,c.tail))
+    def unapply(l: Lst): Option[(Int,Lst)] = l match {
+      case n: Nill => None
+      case c: Cons => Some((c.head,c.tail)) 
+    } 
+      
   }
   
+  object Snoc {
+    def unapply(l: Lst): Option[(Lst,Int)] = l match {
+      case Nill() => None
+      case Cons(c, xs) => xs match {
+        case Nill() => Some((Nill(),c))
+        case Snoc(ys, y) => Some((Cons(c,ys),y))
+      }
+    }
+  }
+  
+  /*
   object Snoc {
     def unapply(c: Cons): Option[(Lst,Int)] = c match {
       case Cons(c, xs) => xs  match {
@@ -35,18 +54,10 @@ object ConsSnoc {
       }
     }
   }
-   
-  /*
-  object Snoc {
-    def unapply(c): Option[(Lst,Int)] = c match {
-      case Nill() => None
-      case Cons(c, xs) => xs match {
-        case Nill() => Some(Tuple2(Nill(),c))
-        case Snoc(ys, y) => Some(Tuple2(Cons(c,ys),y))
-      }
-    }
-  }
   */
+  
+  
+  
 
   def firstAndLast(lst: Lst): Lst = lst match {
     case Nill()             => lst
@@ -65,34 +76,40 @@ object ConsSnoc {
   */
   forAll{n: Nill => Nill.unapply(n)} // Dom_Nill = Nill
   forAll{c: Cons => Cons.unapply(c).isDefined} // Dom_Cons = Cons
-  forAll{c: Cons => Cons.unapply(c) == Some((c.head, c.tail))} // postcondition for Cons extractor method
   forAll{c: Cons => Snoc.unapply(c).isDefined} // Dom_Snoc = Cons
-  forAll{c: Cons => Snoc.unapply(c) == Some((reverse(c).head, reverse(c).tail))} // postcondition for Snoc extractor method
-  forAll{l: Lst => lstUnapply(l).isDefined} // Dom_Cons \Un Dom_Nill = Lst 
-  forAll{l: Lst => !(lstUnapply(l).get.isInstanceOf[Cons] && lstUnapply(l).get.isInstanceOf[Nill])} //Dom_Cons \Int Dom_Nill = empty 
+  
+  forAll{l: Lst => Cons.unapply(l).isDefined || Nill.unapply(l)} // Dom_Cons \Un Dom_Nill = Lst 
+  forAll{l: Lst => !(Cons.unapply(l).isDefined && Nill.unapply(l))} //Dom_Cons \Int Dom_Nill = empty
   
   
   
-  def lstUnapply(l: Lst): Option[Any] = l match {
-    case n: Nill => Some(Nill.unapply(n))
-    case c: Cons => Cons.unapply(c) 
-    case _ => None
-  }
-                                                                                                                                
-  def reverse(c: Cons): Cons = {
-    def loop(l: Lst, res: Cons): Cons = l match {
-      case Nill() => res
-      case Cons(head, tail) => loop(tail, Cons(head,res))
-    }
-    loop(c.tail,Cons(c.head, Nill()))
-  }
+//  forAll{c: Cons => equalLst(Cons(Cons.unapply(c).get._1, Cons.unapply(c).get._2), c)} // postcondition for Cons extractor method
+//  
+//  forAll{c: Cons => equalLst(Snoc.unapply(c).get._2, Snoc.unapply(c).get._1), reverse(c))} // postcondition for Snoc extractor method
   
-  def equalLst(l1: Lst, l2: Lst): Boolean = (l1,l2) match {
-    case (Nill(),Nill()) => true
-    case (Cons(x,xs),Cons(y,ys)) if x == y =>
-      equalLst(xs,ys)
-    case _ => false
-  }
+  
+  
+       
+  
+//  def last(c: Cons): Int = c match {
+//    case Cons(x, Nill()) => x
+//    case Cons(_,tail) => last(tail) 
+//  } 
+//  
+//  def reverse(c: Cons): Cons = {
+//    def loop(l: Lst, res: Cons): Cons = l match {
+//      case Nill() => res
+//      case Cons(head, tail) => loop(tail, Cons(head,res))
+//    }
+//    loop(c.tail,Cons(c.head, Nill()))
+//  }
+//  
+//  def equalLst(l1: Lst, l2: Lst): Boolean = (l1,l2) match {
+//    case (Nill(),Nill()) => true
+//    case (Cons(x,xs),Cons(y,ys)) if x == y =>
+//      equalLst(xs,ys)
+//    case _ => false
+//  }
   
 
 }
