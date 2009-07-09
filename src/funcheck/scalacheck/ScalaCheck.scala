@@ -230,6 +230,8 @@ trait ScalaCheck extends FreshNameCreator {
     private def rhsGenDef(base: Tree)(d: DefDef)(extOwner: Symbol): Tree = {
       val DefDef(_,name,_,vparamss,retTpe,_) = d
       assert(vparamss.size <= 1, "currying is not supported. Change signature of "+d.symbol)
+      // XXX: quick fix to force creation of arbitrary objects for each data type, this should be refactored!!
+      Arbitrary.arbitrary(retTpe.asInstanceOf[TypeTree])
       
       if(vparamss.head.isEmpty)
         Gen.value(Apply(base, Nil))
@@ -259,6 +261,7 @@ trait ScalaCheck extends FreshNameCreator {
           }
         }
       
+        
         Gen.lzy(body)
       }
     }
@@ -333,7 +336,7 @@ trait ScalaCheck extends FreshNameCreator {
     tpe2arbApp += ThrowableClass.typeConstructor -> arbThrowable
     tpe2arbApp += DoubleClass.typeConstructor    -> arbDouble
     tpe2arbApp += CharClass.typeConstructor      -> arbChar
-    tpe2arbApp += StringClass.typeConstructor    -> arbString
+    tpe2arbApp += StringClass.typeConstructor    -> arbString  // XXX: NOT WORKING
     tpe2arbApp += OptionClass.typeConstructor    -> arbOption
     
     //lazy val ImmutableMapClass: Symbol = definitions.getClass(newTypeName("scala.collection.immutable.Map"))
