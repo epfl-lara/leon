@@ -74,6 +74,9 @@ scalac plugin/PropositionalLogic.scala
 scalac plugin/SetRedBlackTree.scala
 scalac plugin/ConsSnoc.scala
 
+scalac plugin/kawaguchi/InsertSort.scala
+scalac plugin/kawaguchi/MergeSort.scala
+
 cd ..
 
 # Scala compiler with the Funcheck plugin integrated
@@ -100,6 +103,9 @@ export PropositionalLogic="plugin.PropositionalLogic"
 export SetRedBlackTree="plugin.SetRedBlackTree"
 export ConsSnoc="plugin.ConsSnoc"
 
+export InsertSort="plugin.kawaguchi.InsertSort"
+export MergeSort="plugin.kawaguchi.MergeSort"
+
 echo " - Testing ${BST}"
 scala ${BST}
 
@@ -121,3 +127,8 @@ scala ${PropositionalLogic}
 echo " - Testing ${ConsSnoc}"
 scala ${ConsSnoc}
 
+echo " - Testing ${InsertSort}"
+scala ${InsertSort}
+
+echo " - Testing ${MergeSort}"
+scala ${MergeSort}
