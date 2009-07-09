@@ -69,6 +69,10 @@ cd tests
 scalac plugin/BST.scala
 scalac plugin/LeftistHeap.scala
 scalac plugin/ListSet.scala
+scalac plugin/LambdaEvaluator.scala
+scalac plugin/PropositionalLogic.scala
+scalac plugin/SetRedBlackTree.scala
+scalac plugin/ConsSnoc.scala
 
 cd ..
 
@@ -91,6 +95,10 @@ alias scala="scala -cp bin/:${SCALACHECK_JAR}:bin/tests/"
 export BST="plugin.BST"
 export LeftistHeap="plugin.LeftistHeap"
 export ListSet="plugin.ListSet"
+export LambdaEvaluator="plugin.LambdaEvaluator"
+export PropositionalLogic="plugin.PropositionalLogic"
+export SetRedBlackTree="plugin.SetRedBlackTree"
+export ConsSnoc="plugin.ConsSnoc"
 
 echo " - Testing ${BST}"
 scala ${BST}
@@ -98,6 +106,18 @@ scala ${BST}
 echo " - Testing ${LeftistHeap}"
 scala ${LeftistHeap}
 
-echo " - Testin ${ListSet}"
+echo " - Testing ${ListSet}"
 scala ${ListSet}
+
+echo " - Testing ${SetRedBlackTree}"
+scala ${SetRedBlackTree}
+
+echo " - Testing ${LambdEvaluator}"
+scala ${LambdaEvaluator}
+
+echo " - Testing ${PropositionalLogic}"
+scala ${PropositionalLogic}
+
+echo " - Testing ${ConsSnoc}"
+scala ${ConsSnoc}
 
