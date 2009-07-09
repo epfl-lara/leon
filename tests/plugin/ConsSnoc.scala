@@ -78,38 +78,28 @@ object ConsSnoc {
   forAll{c: Cons => Cons.unapply(c).isDefined} // Dom_Cons = Cons
   forAll{c: Cons => Snoc.unapply(c).isDefined} // Dom_Snoc = Cons
   
+  // partition
   forAll{l: Lst => Cons.unapply(l).isDefined || Nill.unapply(l)} // Dom_Cons \Un Dom_Nill = Lst 
   forAll{l: Lst => !(Cons.unapply(l).isDefined && Nill.unapply(l))} //Dom_Cons \Int Dom_Nill = empty
+  // the two above properties could be simmply be written as
+  //forAll{l: Lst => Cons.unapply(l).isDefined ^^ Nill.unapply(l)} 
   
+  /* axioms */  
+  forAll[(Int,Lst)]{ p => equalCons(Cons.unapply(Cons(p._1,p._2)), Some(p._1,p._2))}
   
+  def equalCons(p1: Option[(Int,Lst)], p2: Option[(Int,Lst)]): Boolean = (p1,p2) match {
+    case (None,None) => true
+    case (Some((x,xs)), Some((y,ys))) => 
+      equalLst(Cons(x,xs),Cons(y,ys))
+    case _ => false
+  }
   
-//  forAll{c: Cons => equalLst(Cons(Cons.unapply(c).get._1, Cons.unapply(c).get._2), c)} // postcondition for Cons extractor method
-//  
-//  forAll{c: Cons => equalLst(Snoc.unapply(c).get._2, Snoc.unapply(c).get._1), reverse(c))} // postcondition for Snoc extractor method
-  
-  
-  
-       
-  
-//  def last(c: Cons): Int = c match {
-//    case Cons(x, Nill()) => x
-//    case Cons(_,tail) => last(tail) 
-//  } 
-//  
-//  def reverse(c: Cons): Cons = {
-//    def loop(l: Lst, res: Cons): Cons = l match {
-//      case Nill() => res
-//      case Cons(head, tail) => loop(tail, Cons(head,res))
-//    }
-//    loop(c.tail,Cons(c.head, Nill()))
-//  }
-//  
-//  def equalLst(l1: Lst, l2: Lst): Boolean = (l1,l2) match {
-//    case (Nill(),Nill()) => true
-//    case (Cons(x,xs),Cons(y,ys)) if x == y =>
-//      equalLst(xs,ys)
-//    case _ => false
-//  }
+  def equalLst(l1: Lst, l2: Lst): Boolean = (l1,l2) match {
+    case (Nill(),Nill()) => true
+    case (Cons(x,xs),Cons(y,ys)) if x == y =>
+      equalLst(xs,ys)
+    case _ => false
+  }
   
 
 }
