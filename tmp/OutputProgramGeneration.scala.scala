@@ -29,14 +29,15 @@ object BSTTest {
   
   /** Properties */
   // removed
-  //val treeContainsValue = forAll[(BST,Int)]( p => contains(p._2,p._1) == content(p._1).contains(p._2))
+  // forAll[(BST,Int)]( p => contains(p._2,p._1) == content(p._1).contains(p._2))
   
   // injected
   // replaced with ScalaCheck forAll
-  val treeContainsValue = Prop.forAll( (tree:BST,v:Int) => contains(v,tree) == content(tree).contains(v))(b: Boolean => Prop.propBoolean(b), arbBST, Shrink.shrinkAny[BST], Arbitrary.arbInt, Shrink.shrinkInt)
+  Console.Prop.forAll( (tree:BST,v:Int) => contains(v,tree) == content(tree).contains(v))(b: Boolean => Prop.propBoolean(b), arbBST, Shrink.shrinkAny[BST], Arbitrary.arbInt, Shrink.shrinkInt)
   
   /** Program */
-  abstract class BST
+  @generator
+  sealed abstract class BST
   case class Node(left: BST, right: BST, v: Int) extends BST
   case class Leaf() extends BST
   
@@ -47,13 +48,13 @@ object BSTTest {
   // Generators
   def genBST: Gen[BST] = Gen.lzy(Gen.oneOf(genLeaf,genNode))
   
-  val genNode: Gen[Node] = for {
+  def genNode: Gen[Node] = Gen.lzy(for {
     left <- genBST
     right <- genBST
     v <- Arbitrary.arbitrary[Int]
-  } yield Node(left,right,v)
+  } yield Node(left,right,v))
   
-  val genLeaf: Gen[Leaf] = Gen.value(Leaf())
+  def genLeaf: Gen[Leaf] = Gen.lzy(Gen.value(Leaf()))
   
   // Arbitrary
   def arbBST: Arbitrary[BST] = Arbitrary(genBST)

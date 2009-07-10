@@ -19,11 +19,11 @@ object BSTTest {
   }
   
   /** Properties */
-  val treeContainsValue = forAll[(BST,Int)]( p => contains(p._2,p._1) == content(p._1).contains(p._2))
+  forAll[(BST,Int)]( p => contains(p._2,p._1) == content(p._1).contains(p._2))
   
   /** Program */
   @generator
-  abstract class BST
+  sealed abstract class BST
   case class Node(left: BST, right: BST, v: Int) extends BST
   case class Leaf() extends BST 
 }
