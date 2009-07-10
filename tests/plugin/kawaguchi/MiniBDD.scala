@@ -67,8 +67,8 @@ object MiniBDD {
   def empty2 = Map.empty[(BDD,BDD),BDD]
   
   def mk_not(x: BDD): BDD = {
+    require(check(x))
     val cache = empty
-    assert(check(x))
     
     def mk_not_rec(cache: Map[BDD,BDD], x: BDD): (Map[BDD,BDD],BDD) = {
       cache.get(x) match {
@@ -92,9 +92,8 @@ object MiniBDD {
     }
     
     val (_,rv) = mk_not_rec(cache, x)
-    assert(check(rv))
     rv
-  }
+  } ensuring { res => check(res)}
   
   def apply_op(op: Op, b1: Boolean, b2: Boolean): Boolean = op match {
     case And() => b1 && b2
@@ -173,5 +172,10 @@ object MiniBDD {
        res
     
     }
+  }
+  
+  
+  def main(args: Array[String]) = {
+    
   }
 }
