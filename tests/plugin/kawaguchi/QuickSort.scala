@@ -28,7 +28,7 @@ object QuickSort {
       val (ls,rs) = partition(y => if (y < x) T(y) else F(x), xs)
       val ls1 = quicksort(ls)
       val rs1 = quicksort(rs)
-      (x :: ls1) ::: rs1
+      ls1 ::: (x :: rs1)
   }
   
   def check(xs: List[Int]): Boolean = xs match {
