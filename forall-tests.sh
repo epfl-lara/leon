@@ -78,6 +78,8 @@ scalac plugin/kawaguchi/InsertSort.scala
 scalac plugin/kawaguchi/MergeSort.scala
 scalac plugin/kawaguchi/MergeSortBug.scala
 scalac plugin/kawaguchi/QuickSort.scala
+scalac plugin/kawaguchi/MapReduce.scala
+scalac plugin/kawaguchi/SplayHeap.scala
 
 cd ..
 
@@ -109,6 +111,8 @@ export InsertSort="plugin.kawaguchi.InsertSort"
 export MergeSort="plugin.kawaguchi.MergeSort"
 export MergeSortBug="plugin.kawaguchi.MergeSortBug"
 export QuickSort="plugin.kawaguchi.QuickSort"
+export MapReduce="plugin.kawaguchi.MapReduce"
+export SplayHeap="plugin.kawaguchi.SplayHeap"
 
 echo " - Testing ${BST}"
 scala ${BST}
@@ -143,5 +147,8 @@ scala ${MergeSortBug} 2> /dev/null | head -n 4
 echo " - Testing ${QuickSort}"
 scala ${QuickSort}
 
+echo " - Testing ${MapReduce}"
+scala ${MapReduce}
 
-
+echo " - Testing ${SplayHeap}"
+scala ${SplayHeap}
