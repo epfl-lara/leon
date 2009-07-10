@@ -76,6 +76,8 @@ scalac plugin/ConsSnoc.scala
 
 scalac plugin/kawaguchi/InsertSort.scala
 scalac plugin/kawaguchi/MergeSort.scala
+scalac plugin/kawaguchi/MergeSortBug.scala
+scalac plugin/kawaguchi/QuickSort.scala
 
 cd ..
 
@@ -105,6 +107,8 @@ export ConsSnoc="plugin.ConsSnoc"
 
 export InsertSort="plugin.kawaguchi.InsertSort"
 export MergeSort="plugin.kawaguchi.MergeSort"
+export MergeSortBug="plugin.kawaguchi.MergeSortBug"
+export QuickSort="plugin.kawaguchi.QuickSort"
 
 echo " - Testing ${BST}"
 scala ${BST}
@@ -132,3 +136,12 @@ scala ${InsertSort}
 
 echo " - Testing ${MergeSort}"
 scala ${MergeSort}
+
+echo " - Testing ${MergeSortBug}. !!! EXPECTED TO CRASH !!!!"
+scala ${MergeSortBug} 2> /dev/null | head -n 4
+
+echo " - Testing ${QuickSort}"
+scala ${QuickSort}
+
+
+
