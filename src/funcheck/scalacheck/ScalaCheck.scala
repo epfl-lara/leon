@@ -11,30 +11,132 @@ trait ScalaCheck extends FreshNameCreator {
   val global: Global
   import global._
   
-    /** Transform the string <code>name</code> in method symbols from the <code>sym</code> 
-     * class symbol. */
-    private def symDecl(sym: Symbol, name: String) = sym.tpe.decl(name)
-  
-    /** Retrieve the constructor Symbol for the passed <code>cs</code> class symbol. */
-    private def constructorDecl(cs: ClassSymbol) = cs.tpe.decl(nme.CONSTRUCTOR)
-  
   trait GenericScalaCheckModule {
+    /** Symbol for a module definition. */
     protected val moduleSym: Symbol
+    /** Symbol for the module's companion class definition. */
     protected lazy val classSym = moduleSym.linkedClassOfModule
   
+    /** 
+     * <p>
+     * Take a <code>symbol</code> and method <code>name</code> and return the associated 
+     * method's symbol.
+     * </p>
+     * <p>
+     * Note: if <code>symbol</code> does not contain a method named </code>name</code>, the 
+     * returned symbol will be a <code>NoSymbol</code>.
+     * </p>
+     * 
+     * @param symbol A module/class symbol,
+     * @param name   A name of the method that should be part of the declared members of the <code>symbol</code>.
+     * @return The symbol for the method 'symbol.name' or <code>NoSymbol</code> if the <code>symbol</code> does 
+     *         not have a member named <code>name</code>.
+     */
+    private def symDecl(symbol: Symbol, name: String) = symbol.tpe.decl(name)
     
+    /** Identical to symDecl(symbol: Symbol, name: String), but uses a Name object 
+     * instead of a String for the <code>name</code>.*/
+    private def symDecl(symbol: Symbol, name: Name) = symbol.tpe.decl(name)
+  
+    /** Retrieve the constructor Symbol for the passes <code>cs</code> ClassSymbol. */
+    private def constructorDecl(cs: ClassSymbol) = symDecl(cs, nme.CONSTRUCTOR)
+    
+    /** 
+     * <p>
+     * Take a method <code>name</code> and return the associated module method's symbol.
+     * </p>
+     * <p>
+     * Note: if module does not contain a method named </code>name</code>, the 
+     * returned symbol will be a <code>NoSymbol</code>.
+     * </p>
+     * 
+     * @param name   A name of the method that should be part of the declared members of the module.
+     * @return The symbol for the method 'module.name' or <code>NoSymbol</code> if the module does 
+     *         not have a member named <code>name</code>.
+     */
     protected def modDecl(method: String) = symDecl(moduleSym, method)
+    
+    /** 
+     * <p>
+     * Take a method <code>name</code> and return the associated (module's) companion class method's symbol.
+     * </p>
+     * <p>
+     * Note: if class does not contain a method named </code>name</code>, the 
+     * returned symbol will be a <code>NoSymbol</code>.
+     * </p>
+     * 
+     * @param name   A name of the method that should be part of the declared members of the class.
+     * @return The symbol for the method 'class.name' or <code>NoSymbol</code> if the class does 
+     *         not have a member named <code>name</code>.
+     */
     protected def classDecl(method: String) = symDecl(classSym, method)
     
-  
-    protected def select(instance: Symbol, method: String): Select = 
+    /**
+     * <p>
+     * Take an <code>instance</code> symbol and a <code>method</code> name and return  
+     * valid Scala Tree node of the form 'instance.method'.
+     * </p>
+     * <p>
+     * The precondition for this method to execute is that the <code>instance</code> Symbol
+     * contains in its members the selected <code>method</code>, otherwise calling this routine
+     * will throw an exception.
+     * </p>
+     * 
+     * @param instance The Symbol for the instance whose <code>method</code> is selected.
+     * @param method   The name of the selected method.
+     * @return         A Scala valid Select Tree node of the form 'instance.method'.
+     * 
+     */
+    protected def select(instance: Symbol, method: String): Select = {
+      require(instance.tpe.decl(method) != NoSymbol)
       Select(Ident(instance), symDecl(instance,method))
+    }
     
-    protected def apply(lhs: Tree, rhs: Tree): Apply = 
-      apply(lhs, List(rhs))
+    /**
+     * <p>
+     * Apply <code>arg</code> to the passed <code>method</code> contained in the 
+     * <code>moduleSym</code> module and return a valid Scala Tree node of the 
+     * form 'module.method(arg)'.
+     * </p>
+     * <p>
+     * The precondition for this method to execute is that the module Symbol
+     * contains in its members the passed <code>method</code>, otherwise calling 
+     * this routine will throw an exception.
+     * </p>
+     * 
+     * @param method   The name of the selected method.
+     * @args           The arguments to which the <code>method</code> is applied to. 
+     * @return         A Scala valid Apply Tree node of the form 'moduleSym.method(arg)'.
+     * 
+     */
+    protected def moduleApply(method: String, args: List[Tree]): Apply = 
+      apply(select(moduleSym,method), args)
     
-    protected def apply(lhs: Tree, rhs: List[Tree]): Apply = 
-      Apply(lhs, rhs)
+    /** Calls <code>moduleApply</code> and wraps the passed <code>arg</code> into a 
+     * List, i.e., moduleApply(method, List(arg).*/
+    protected def moduleApply(method: String, arg: Tree): Apply = moduleApply(method,List(arg))
+    
+    /** 
+     * <p>
+     * Generic apply. Applies <code>select</code> to the passed list of <code>arguments</code>.
+     * and return a valid Scala Tree Apply Node of the form 'select(arg1,arg2,...,argN)'.
+     * </p>
+     * <p>
+     * Note: No check is performed to ensure that <code>select</code> can accept 
+     * the passed list of <code>arguments</code>
+     * </p>
+     * 
+     * @param select    The left hand side of the application.
+     * @param arguments The arguments of the application.
+     * @return          A Scala valid Apply Tree node of the form 'select(arg1, arg32, ..., argN)'
+     */
+    protected def apply(select: Tree, arguments: List[Tree]): Apply = 
+      Apply(select, arguments)
+    
+    /** Calls <code>apply</code> and wraps the passed <code>arg</code> into a List,
+     * i.e., apply(select, List(arg)). */
+    protected def apply(select: Tree, argument: Tree): Apply = 
+      apply(select, List(argument))
   }
   
   
@@ -62,7 +164,7 @@ trait ScalaCheck extends FreshNameCreator {
      * typer phase (this usually means that the typer has to be called explictly, 
      * so it is the developer duty to ensure that this happen at some point).
      */
-    def value(rhs: Tree): Tree = apply(select(moduleSym, "value"), rhs)
+    def value(rhs: Tree): Tree = moduleApply("value", rhs)
     
     
     /**
@@ -72,10 +174,10 @@ trait ScalaCheck extends FreshNameCreator {
      * so it is the developer duty to ensure that this happen at some point).
      */
     def oneOf(generators: List[Symbol]): Tree = 
-      apply(select(moduleSym, "oneOf"), generators.map(Ident(_)))
+      moduleApply("oneOf", generators.map(Ident(_)))
     
     
-    def lzy(generator: Tree): Tree = apply(select(moduleSym, "lzy"), generator)
+    def lzy(generator: Tree): Tree = moduleApply("lzy", generator)
     
     /**
      * This creates a Tree node for the call <code>org.scalacheck.Gen.flatMap[T](body)</code>, 
@@ -364,7 +466,7 @@ trait ScalaCheck extends FreshNameCreator {
      * typer phase (this usually means that the typer has to be called explictly, 
      * so it is the developer duty to ensure that this happen at some point).
      */
-    def apply(generator: Tree): Tree = apply(select(moduleSym, "apply"), generator)
+    def apply(generator: Tree): Tree = moduleApply("apply", generator)
     
     def arbitrary(tpe: Type): Tree = tpe2arbApp.get(tpe) match {
       case Some(arbTree) => arbTree
@@ -441,18 +543,11 @@ trait ScalaCheck extends FreshNameCreator {
     }
   }
   
-  object Prop {
-    
-    private lazy val modulePropSym: Symbol = definitions.getModule("org.scalacheck.Prop")
-    
-    /** Transform string name in method symbols from the <code>symDecl</code> 
-     * class symbol. 
-     */
-    private def decl(name: String) = modulePropSym.tpe.decl(name)
-    
-    private def moduleApply(method: String, args: List[Tree]): Apply = 
-      Apply(Select(Ident(modulePropSym), decl(method)), args)
-    
+  object Prop extends GenericScalaCheckModule {
+                                               
+    /** Symbol for the <code>org.scalacheck.Prop</code> module definition. */
+    override protected lazy val moduleSym = definitions.getModule("org.scalacheck.Prop")
+   
     def forAll(props: List[Tree]): Apply = 
       moduleApply("forAll", props)
     
@@ -464,111 +559,109 @@ trait ScalaCheck extends FreshNameCreator {
   }
   
   
-  object Shrink {
-    private def select(instance: Symbol, method: String): Select = 
-      Select(Ident(instance), symDecl(instance,method))
+  object Shrink extends GenericScalaCheckModule {
     
     /** Symbol for the <code>org.scalacheck.Shrink</code> module definition. */
-    private val moduleShrinkSym = definitions.getModule("org.scalacheck.Shrink")
+    override protected lazy val moduleSym = definitions.getModule("org.scalacheck.Shrink")
     
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkInt</code> method definition. */
-    private val shrinkInt          =  select(moduleShrinkSym, "shrinkInt")    
+    private val shrinkInt          =  select(moduleSym, "shrinkInt")    
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkString</code> method definition. */
-    private val shrinkString       =  select(moduleShrinkSym, "shrinkString")
+    private val shrinkString       =  select(moduleSym, "shrinkString")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkOption</code> method definition. */
-    private val shrinkOption       =  select(moduleShrinkSym, "shrinkOption")
+    private val shrinkOption       =  select(moduleSym, "shrinkOption")
     
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkList</code> method definition. */
-    private val shrinkList         =  select(moduleShrinkSym, "shrinkList")
+    private val shrinkList         =  select(moduleSym, "shrinkList")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkSet</code> method definition. */
-    private val shrinkArray        =  select(moduleShrinkSym, "shrinkArray")
+    private val shrinkArray        =  select(moduleSym, "shrinkArray")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkSet</code> method definition. */
-    private val shrinkSet          =  select(moduleShrinkSym, "shrinkSet")
+    private val shrinkSet          =  select(moduleSym, "shrinkSet")
     
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkTuple2</code> method definition. */
-    private val shrinkTuple2       =  select(moduleShrinkSym, "shrinkTuple2")
+    private val shrinkTuple2       =  select(moduleSym, "shrinkTuple2")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkTuple3</code> method definition. */
-    private val shrinkTuple3       =  select(moduleShrinkSym, "shrinkTuple3")
+    private val shrinkTuple3       =  select(moduleSym, "shrinkTuple3")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkTuple4</code> method definition. */
-    private val shrinkTuple4       =  select(moduleShrinkSym, "shrinkTuple4")
+    private val shrinkTuple4       =  select(moduleSym, "shrinkTuple4")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkTuple5</code> method definition. */
-    private val shrinkTuple5       =  select(moduleShrinkSym, "shrinkTuple5")
+    private val shrinkTuple5       =  select(moduleSym, "shrinkTuple5")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkTuple6</code> method definition. */
-    private val shrinkTuple6       =  select(moduleShrinkSym, "shrinkTuple6")
+    private val shrinkTuple6       =  select(moduleSym, "shrinkTuple6")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkTuple7</code> method definition. */
-    private val shrinkTuple7       =  select(moduleShrinkSym, "shrinkTuple7")
+    private val shrinkTuple7       =  select(moduleSym, "shrinkTuple7")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkTuple8</code> method definition. */
-    private val shrinkTuple8       =  select(moduleShrinkSym, "shrinkTuple8")
+    private val shrinkTuple8       =  select(moduleSym, "shrinkTuple8")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkTuple9</code> method definition. */
-    private val shrinkTuple9       =  select(moduleShrinkSym, "shrinkTuple9")
+    private val shrinkTuple9       =  select(moduleSym, "shrinkTuple9")
     
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkIntList</code> method definition. */
-    private val shrinkIntList      =  select(moduleShrinkSym, "shrinkIntList")
+    private val shrinkIntList      =  select(moduleSym, "shrinkIntList")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkBooleanList</code> method definition. */
-    private val shrinkBooleanList  =  select(moduleShrinkSym, "shrinkBooleanList")
+    private val shrinkBooleanList  =  select(moduleSym, "shrinkBooleanList")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkDoubleList</code> method definition. */
-    private val shrinkDoubleList   =  select(moduleShrinkSym, "shrinkDoubleList")
+    private val shrinkDoubleList   =  select(moduleSym, "shrinkDoubleList")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkStringList</code> method definition. */
-    private val shrinkStringList   =  select(moduleShrinkSym, "shrinkStringList")
+    private val shrinkStringList   =  select(moduleSym, "shrinkStringList")
     
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkIntArray</code> method definition. */
-    private val shrinkIntArray     =  select(moduleShrinkSym, "shrinkIntArray")
+    private val shrinkIntArray     =  select(moduleSym, "shrinkIntArray")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkBooleanArray</code> method definition. */
-    private val shrinkBooleanArray =  select(moduleShrinkSym, "shrinkBooleanArray")
+    private val shrinkBooleanArray =  select(moduleSym, "shrinkBooleanArray")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkDoubleArray</code> method definition. */
-    private val shrinkDoubleArray  =  select(moduleShrinkSym, "shrinkDoubleArray")
+    private val shrinkDoubleArray  =  select(moduleSym, "shrinkDoubleArray")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkStringArray</code> method definition. */
-    private val shrinkStringArray  =  select(moduleShrinkSym, "shrinkStringArray")
+    private val shrinkStringArray  =  select(moduleSym, "shrinkStringArray")
     
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkIntSet</code> method definition. */
-    private val shrinkIntSet       =  select(moduleShrinkSym, "shrinkIntSet")
+    private val shrinkIntSet       =  select(moduleSym, "shrinkIntSet")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkBooleanSet</code> method definition. */
-    private val shrinkBooleanSet   =  select(moduleShrinkSym, "shrinkBooleanSet")
+    private val shrinkBooleanSet   =  select(moduleSym, "shrinkBooleanSet")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkDoubleSet</code> method definition. */
-    private val shrinkDoubleSet    =  select(moduleShrinkSym, "shrinkDoubleSet")
+    private val shrinkDoubleSet    =  select(moduleSym, "shrinkDoubleSet")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkStringSet</code> method definition. */
-    private val shrinkStringSet    =  select(moduleShrinkSym, "shrinkStringSet")
+    private val shrinkStringSet    =  select(moduleSym, "shrinkStringSet")
     
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkIntOption</code> method definition. */
-    private val shrinkIntOption    =  select(moduleShrinkSym, "shrinkIntOption")
+    private val shrinkIntOption    =  select(moduleSym, "shrinkIntOption")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkBooleanOption</code> method definition. */
-    private val shrinkBooleanOption=  select(moduleShrinkSym, "shrinkBooleanOption")
+    private val shrinkBooleanOption=  select(moduleSym, "shrinkBooleanOption")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkDoubleOption</code> method definition. */
-    private val shrinkDoubleOption =  select(moduleShrinkSym, "shrinkDoubleOption")
+    private val shrinkDoubleOption =  select(moduleSym, "shrinkDoubleOption")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkStringOption</code> method definition. */
-    private val shrinkStringOption =  select(moduleShrinkSym, "shrinkStringOption")
+    private val shrinkStringOption =  select(moduleSym, "shrinkStringOption")
     
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkIntTuple2</code> method definition. */
-    private val shrinkIntTuple2    =  select(moduleShrinkSym, "shrinkIntTuple2")
+    private val shrinkIntTuple2    =  select(moduleSym, "shrinkIntTuple2")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkBooleanTuple2</code> method definition. */
-    private val shrinkBooleanTuple2=  select(moduleShrinkSym, "shrinkBooleanTuple2")
+    private val shrinkBooleanTuple2=  select(moduleSym, "shrinkBooleanTuple2")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkDoubleTuple2</code> method definition. */
-    private val shrinkDoubleTuple2 =  select(moduleShrinkSym, "shrinkDoubleTuple2")
+    private val shrinkDoubleTuple2 =  select(moduleSym, "shrinkDoubleTuple2")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkStringTuple2</code> method definition. */
-    private val shrinkStringTuple2 =  select(moduleShrinkSym, "shrinkStringTuple2")
+    private val shrinkStringTuple2 =  select(moduleSym, "shrinkStringTuple2")
     
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkIntTuple3</code> method definition. */
-    private val shrinkIntTuple3    =  select(moduleShrinkSym, "shrinkIntTuple3")
+    private val shrinkIntTuple3    =  select(moduleSym, "shrinkIntTuple3")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkBooleanTuple3</code> method definition. */
-    private val shrinkBooleanTuple3=  select(moduleShrinkSym, "shrinkBooleanTuple3")
+    private val shrinkBooleanTuple3=  select(moduleSym, "shrinkBooleanTuple3")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkDoubleTuple3</code> method definition. */
-    private val shrinkDoubleTuple3 =  select(moduleShrinkSym, "shrinkDoubleTuple3")
+    private val shrinkDoubleTuple3 =  select(moduleSym, "shrinkDoubleTuple3")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkStringTuple3</code> method definition. */
-    private val shrinkStringTuple3 =  select(moduleShrinkSym, "shrinkStringTuple3")
+    private val shrinkStringTuple3 =  select(moduleSym, "shrinkStringTuple3")
     
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkIntTuple4</code> method definition. */
-    private val shrinkIntTuple4    =  select(moduleShrinkSym, "shrinkIntTuple4")
+    private val shrinkIntTuple4    =  select(moduleSym, "shrinkIntTuple4")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkBooleanTuple4</code> method definition. */
-    private val shrinkBooleanTuple4=  select(moduleShrinkSym, "shrinkBooleanTuple4")
+    private val shrinkBooleanTuple4=  select(moduleSym, "shrinkBooleanTuple4")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkDoubleTuple4</code> method definition. */
-    private val shrinkDoubleTuple4 =  select(moduleShrinkSym, "shrinkDoubleTuple4")
+    private val shrinkDoubleTuple4 =  select(moduleSym, "shrinkDoubleTuple4")
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkStringTuple4</code> method definition. */
-    private val shrinkStringTuple4 =  select(moduleShrinkSym, "shrinkStringTuple4")
+    private val shrinkStringTuple4 =  select(moduleSym, "shrinkStringTuple4")
     
     /** Symbol for the <code>org.scalacheck.Shrink.shrinkAny</code> method definition.
      *  This is a generic shrinker which does not shrink whatever object is passed to it.
      */
-    private val shrinkAny          =  select(moduleShrinkSym, "shrinkAny")
+    private val shrinkAny          =  select(moduleSym, "shrinkAny")
     
     def shrinker(tpe: Type): Select = tpe2shrinker.getOrElse(tpe, shrinkAny)
     
@@ -668,21 +761,20 @@ trait ScalaCheck extends FreshNameCreator {
   }
   
   
-  object ConsoleReporter {
+  object ConsoleReporter extends GenericScalaCheckModule {
     /** Symbol for the <code>org.scalacheck.ConsoleReporter</code> module definition. */
-    private val moduleConsoleReporterSym = definitions.getModule("org.scalacheck.ConsoleReporter")
+    override protected lazy val moduleSym = definitions.getModule("org.scalacheck.ConsoleReporter")
     
     def testStatsEx(testRes: Tree): Tree = testStatsEx("", testRes)
                                                        
     def testStatsEx(msg: String, testRes: Tree): Tree = 
-      Apply(Select(Ident(moduleConsoleReporterSym), symDecl(moduleConsoleReporterSym, "testStatsEx")), List(Literal(msg), testRes))
+      Apply(select(moduleSym, "testStatsEx"), List(Literal(msg), testRes))
   }
   
-  object Test {
+  object Test extends GenericScalaCheckModule {
     /** Symbol for the <code>org.scalacheck.Test</code> module definition. */
-    private val moduleTestSym = definitions.getModule("org.scalacheck.Test")
+    override protected lazy val moduleSym = definitions.getModule("org.scalacheck.Test")
     
-    def check(prop: Tree): Tree = 
-      Apply(Select(Ident(moduleTestSym), symDecl(moduleTestSym, "check")), List(prop))
+    def check(prop: Tree): Tree = moduleApply("check", prop)
   }
 }
