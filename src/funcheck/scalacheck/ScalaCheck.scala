@@ -366,11 +366,13 @@ trait ScalaCheck extends FreshNameCreator {
      */
     def apply(generator: Tree): Tree = apply(select(moduleSym, "apply"), generator)
     
-    def arbitrary(tpe: Type): Tree = tpe match {
-      //case TypeRef(_,sym,List(p)) if p.prefix == NoPrefix => tpe2arbApp.get(tpe).get
-      case TypeRef(_,sym,List(p)) => apply(arbitrary(sym.typeConstructor), arbitrary(p))
-      case tpe => tpe2arbApp.get(tpe).get
+    def arbitrary(tpe: Type): Tree = tpe2arbApp.get(tpe) match {
+      case Some(arbTree) => arbTree
+      case None =>
+        val TypeRef(_,sym,params) = tpe 
+        apply(arbitrary(sym.typeConstructor), params.map(arbitrary(_)))
     }
+    
     
     /**
      * 
