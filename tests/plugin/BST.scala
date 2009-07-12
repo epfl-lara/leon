@@ -47,8 +47,8 @@ object BST extends Application {
   } 
 
   /** global assertions */
-  forAll[(BST,Int)]( p => contains(p._2,p._1) == content(p._1).contains(p._2))
-  forAll[(BST,Int)]( p => content(add(p._2, p._1)) == content(p._1) + p._2)
+  forAll{ p: (BST,Int) => contains(p._2,p._1) == content(p._1).contains(p._2)}
+  forAll{ p: (BST,Int) => content(add(p._2, p._1)) == content(p._1) + p._2}
   
 }
 

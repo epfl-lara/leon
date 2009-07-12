@@ -5,19 +5,27 @@ package plugin.kawaguchi
 
 import funcheck.lib.Specs._
 
+import scala.collection.immutable.Multiset
+
 object MapReduce {
   
   /* specification */
-  def insert(map: Map[Int, List[Int]], entry: (Int, Int)): Map[Int, List[Int]] = {
+  def insert(map: Map[Int, Multiset[Int]], entry: (Int, Int)): Map[Int, Multiset[Int]] = {
     val (key,value) = entry
     map.get(key) match {
-      case None => map + ((key, List(value)))
-      case Some(vs) => map + ((key, value :: vs)) 
+      case None => map + ((key, Multiset(value)))
+      case Some(vs) => map + ((key, vs +++ List(value))) 
     }
   }
   
-  def content(kvs: List[(Int, List[Int])]) = 
-    Map.empty[Int, List[Int]] ++ (kvs)
+  def content(kvs: List[(Int, List[Int])]): Map[Int, Multiset[Int]] = 
+    (Map.empty[Int, Multiset[Int]] /: kvs) {
+      case (map,(key,values)) => 
+        (map /: values) {
+          case (map,v) => insert(map,(key,v))
+        }
+    } 
+    
     
   
   /*****************************************/
@@ -55,7 +63,7 @@ object MapReduce {
   def collapse(f: (Int,Int) => Int, gs: List[(Int, List[Int])]): List[(Int, Int)] = {
     val collapser = {
       x: (Int, List[Int]) => x match {
-        case (k, Nil) => assert(false); null
+        case (k, Nil) => error("cannot collapse")
         case (k, v :: vs)  => (k, vs.foldLeft(v)((z: Int,a: Int) => f(z,a)))  
        
       }
