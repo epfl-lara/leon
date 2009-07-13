@@ -21,19 +21,13 @@ trait ForAllTransformer extends TypingTransformers
   class ForAllTransformer(unit: CompilationUnit) 
     extends TypingTransformer(unit) 
   { 
+    
+    
     override def transform(tree: Tree): Tree = {
       curTree = tree
        
-      tree match {
-//        case Apply(lhs @ Select(_, implyMethod), rhs) =>
-//          println("info "+lhs.symbol.name.equals("==>"))
-//          if (lhs.symbol.tpe.decl("==>") != NoSymbol) 
-//            println(">"+tree)
-//          else
-//            println(lhs.symbol + " and "+lhs.symbol.tpe)
-//          tree
-        
-        case Apply(TypeApply(s: Select, _), rhs @ List(f @ Function(vparams,body))) if isForall(s) =>
+      tree match {                  
+        case Apply(TypeApply(s: Select, _), rhs @ List(f @ Function(vparams,body))) if isSelectOfSpecsMethod(s.symbol, "forAll") =>
           atOwner(currentOwner) {
             assert(vparams.size == 1, "funcheck.Specs.forAll properties are expected to take a single (tuple) parameter")
             
@@ -46,7 +40,7 @@ trait ForAllTransformer extends TypingTransformers
                     f
                   } else {
                     // create a fresh name for each parameter declared parametric type
-                    val freshNames = vtpes.map(i => fresh.newName("v"))
+                    val freshNames = vtpes.map(i =>  fresh.newName("v"))
                       
                     val funSym = tree.symbol
                       
@@ -111,14 +105,14 @@ trait ForAllTransformer extends TypingTransformers
                   Apply(prop, buf.toList)
                 }
               }
-                      
                    
-                    
               localTyper.typed {
                 atPos(tree.pos) {
-                  ConsoleReporter.testStatsEx(Test.check(property))
+                  //ConsoleReporter.testStatsEx(Test.check(property))
+                  Test.isPassed(Test.check(property))
                 }
               }
+              
             
             case t => 
               assert(false, "expected ValDef of type TypeRef, found "+t)
@@ -150,14 +144,10 @@ trait ForAllTransformer extends TypingTransformers
       param(argtype)
     }
     
+    private def isSelectOfSpecsMethod(s: Symbol, method: String): Boolean = 
+      s == specsModule.tpe.decl(method)
     
-    private def isForall(s: Select): Boolean = {
-      val Select(selector,_) = s
-     
-       selector.symbol == specsModule &&
-       s.symbol == specsModule.tpe.decl("forAll")
-    }
-    
+        
     
     /** Quick (and dirty) hack for enabling tree substitution for pair elements.
      * Specifically, this allow to map pair accesses such as p._1 to a new variable 'x'

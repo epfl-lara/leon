@@ -776,5 +776,8 @@ trait ScalaCheck extends FreshNameCreator {
     override protected lazy val moduleSym = definitions.getModule("org.scalacheck.Test")
     
     def check(prop: Tree): Tree = moduleApply("check", prop)
+    
+    def isPassed(res: Tree): Tree = Select(res, "passed")
   }
+  
 }
