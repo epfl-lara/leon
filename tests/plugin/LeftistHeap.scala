@@ -8,7 +8,7 @@ import scala.collection.immutable._
  * by Chris Okasaki.
  */ 
   
-object LeftistHeap extends Application {
+object LeftistHeap {
   
   /** method used for specification */
   def min(xs: List[Elem]): Elem = {
@@ -98,7 +98,7 @@ object LeftistHeap extends Application {
   //val heapInsert = forAll( (heap: Heap, value: Elem) => content(heap.insert(value))(value) == content(heap)(value) + 1)
   forAll[(Heap,Elem)]( p => content(insert(p._1,p._2))(p._2) == content(p._1)(p._2) + 1)
   
-  // This property should fail
+  // This property should (and does) fail
   //forAll[(Heap,Elem)]( p => ((rankk(p._1) > 0 && findMin(p._1).value == p._2.value) ==> (findMin(p._1).value < p._2.value)))
     
   //val heapFindMin = forAll{ heap : Heap => (heap.rankk > 0) ==> (heap.findMin == min(content(heap).elements.toList))}
@@ -107,5 +107,7 @@ object LeftistHeap extends Application {
   
   //val heapDeleteMin = forAll{ heap: Heap => (heap.rankk > 0) ==> (content(heap.deleteMin).equals(content(heap) - heap.findMin))}
   forAll{ heap: Heap => (rankk(heap) > 0) ==> (content(deleteMin(heap)).equals(content(heap) - findMin(heap)))}
+  
+  def main(args: Array[String]) = {}
 }
 

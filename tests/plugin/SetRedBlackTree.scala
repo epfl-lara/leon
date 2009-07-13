@@ -57,9 +57,6 @@ object SetRedBlackTree {
     case _ => n
   }
   
-  
-  def main(args: Array[String]) = println("Done")
-  
   /* global invariants: 
    * Red-black trees are binary search trees obeying two key invariants:
    *
@@ -103,5 +100,7 @@ object SetRedBlackTree {
       areRedNodeChildrenBlack(l) && areRedNodeChildrenBlack(r)
     case _ => true
   }
+  
+  def main(args: Array[String]) = {}
 }
 

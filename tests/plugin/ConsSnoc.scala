@@ -51,7 +51,7 @@ object ConsSnoc {
     case Cons(x, Snoc(_,y)) => Cons(x,Cons(y,Nill()))
   }
   
-  def main(args: Array[String]) = {}
+ 
 
   
   // Nill extractor always succeed for Nill instances
@@ -100,5 +100,5 @@ object ConsSnoc {
     case _ => false
   }
   
-
+  def main(args: Array[String]) = {}
 }

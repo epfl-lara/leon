@@ -2,7 +2,7 @@ package plugin
 
 import funcheck.lib.Specs._
 
-object BST extends Application {
+object BST {
   /** class hierarchy*/
   sealed abstract class BST
   @generator case class Empty() extends BST
@@ -50,5 +50,6 @@ object BST extends Application {
   forAll{ p: (BST,Int) => contains(p._2,p._1) == content(p._1).contains(p._2)}
   forAll{ p: (BST,Int) => content(add(p._2, p._1)) == content(p._1) + p._2}
   
+  def main(args: Array[String]) = {}
 }
 

@@ -38,10 +38,9 @@ object ListSet {
     case _ :: ys => member(x, ys)
   }
 
-  def main(args: Array[String]): Unit = {
-    println("Done.")
-  }
-
   //@generator 
   def makeNil: List[Int] = Nil
+  
+  
+  def main(args: Array[String]): Unit = {}
 }
