@@ -548,6 +548,7 @@ trait ScalaCheck extends FreshNameCreator {
     /** Symbol for the <code>org.scalacheck.Prop</code> module definition. */
     override protected lazy val moduleSym = definitions.getModule("org.scalacheck.Prop")
    
+    
     def forAll(props: List[Tree]): Apply = 
       moduleApply("forAll", props)
     
@@ -556,6 +557,7 @@ trait ScalaCheck extends FreshNameCreator {
     def ==>(ifz: Tree, then: Tree): Apply = moduleApply("==>", List(ifz,propBoolean(then)))
     
     def propBoolean(prop: Tree): Apply = moduleApply("propBoolean", List(prop))
+    
   }
   
   

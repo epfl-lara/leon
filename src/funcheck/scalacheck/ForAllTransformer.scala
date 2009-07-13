@@ -16,17 +16,18 @@ trait ForAllTransformer extends TypingTransformers
   
   def forAllTransform(unit: CompilationUnit): Unit = 
     unit.body = new ForAllTransformer(unit).transform(unit.body)
+  
     
+        
     
   class ForAllTransformer(unit: CompilationUnit) 
     extends TypingTransformer(unit) 
   { 
     
-    
     override def transform(tree: Tree): Tree = {
       curTree = tree
        
-      tree match {                  
+      tree match {
         case Apply(TypeApply(s: Select, _), rhs @ List(f @ Function(vparams,body))) if isSelectOfSpecsMethod(s.symbol, "forAll") =>
           atOwner(currentOwner) {
             assert(vparams.size == 1, "funcheck.Specs.forAll properties are expected to take a single (tuple) parameter")
@@ -38,80 +39,82 @@ trait ForAllTransformer extends TypingTransformers
                 var fun: Function = {
                   if(vtpes.size <= 1) {
                     f
-                  } else {
+                  } 
+                  else {
                     // create a fresh name for each parameter declared parametric type
                     val freshNames = vtpes.map(i =>  fresh.newName("v"))
-                      
+                    
                     val funSym = tree.symbol
-                      
+                    
                     val subst = for { i <- 0 to vtpes.size-1} yield {
-                    val toSym = funSym.newValueParameter(funSym.pos, freshNames(i)).setInfo(vtpes(i))
-                        
-                    val from = Select(v, v.symbol.tpe.decl("_"+(i+1)))
-                    val to =  ValDef(toSym, EmptyTree) setPos (tree.pos)                        
-                        
-                    (from, to)
-                  } 
+                      val toSym = funSym.newValueParameter(funSym.pos, freshNames(i)).setInfo(vtpes(i))
+                      
+                      val from = Select(v, v.symbol.tpe.decl("_"+(i+1)))
+                      val to =  ValDef(toSym, EmptyTree) setPos (tree.pos)                        
+                      
+                      (from, to)
+                    } 
                       
                       
-                  val valdefs = subst.map(_._2).toList
-                  val fun = localTyper.typed {
-                    val newBody = new MyTreeSubstituter(subst.map(p => p._1.symbol).toList, valdefs.map(v => Ident(v.symbol)).toList).transform(resetAttrs(body))
-                    Function(valdefs, newBody)
-                  }.asInstanceOf[Function]
+                    val valdefs = subst.map(_._2).toList
+                    val fun = localTyper.typed {
+                      val newBody = new MyTreeSubstituter(subst.map(p => p._1.symbol).toList, valdefs.map(v => Ident(v.symbol)).toList).transform(resetAttrs(body))
+                      Function(valdefs, newBody)
+                    }.asInstanceOf[Function]
                       
                       
-                  new ChangeOwnerTraverser(funSym, fun.symbol).traverse(fun);
-                  new ForeachTreeTraverser({t: Tree => t setPos tree.pos}).traverse(fun)
-                  fun
+                    new ChangeOwnerTraverser(funSym, fun.symbol).traverse(fun);
+                    new ForeachTreeTraverser({t: Tree => t setPos tree.pos}).traverse(fun)
+                    fun
+                  }
                 }
-              }
               
                    
-              val prop = Prop.forAll(List(fun))
+                val prop = Prop.forAll(List(transform(fun)))
                       
-              var buf = new collection.mutable.ListBuffer[Tree]()
+                var buf = new collection.mutable.ListBuffer[Tree]()
                       
-              val blockValSym = newSyntheticValueParam(fun.symbol, definitions.BooleanClass.typeConstructor)
+                val blockValSym = newSyntheticValueParam(fun.symbol, definitions.BooleanClass.typeConstructor)
                       
-              val fun2 = localTyper.typed {
-                val body = Prop.propBoolean(resetAttrs(Ident(blockValSym)))
-                Function(List(ValDef(blockValSym, EmptyTree)), body)
-              }.asInstanceOf[Function]
+                val fun2 = localTyper.typed {
+                  val body = Prop.propBoolean(resetAttrs(Ident(blockValSym)))
+                  Function(List(ValDef(blockValSym, EmptyTree)), body)
+                }.asInstanceOf[Function]
                        
                    
-              new ChangeOwnerTraverser(fun.symbol, fun2.symbol).traverse(fun2);
-              new ForeachTreeTraverser({t: Tree => t setPos tree.pos}).traverse(fun2)
+                new ChangeOwnerTraverser(fun.symbol, fun2.symbol).traverse(fun2);
+                new ForeachTreeTraverser({t: Tree => t setPos tree.pos}).traverse(fun2)
                       
-              buf += Block(Nil,fun2)
+                buf += Block(Nil,fun2)
               
               
-              if(vtpes.size <= 1) {
-                buf += resetAttrs(Arbitrary.arbitrary(tpe))
-                buf += resetAttrs(Shrink.shrinker(tpe))
-              } else {
-                for { tpe <- vtpes } {
+                if(vtpes.size <= 1) {
                   buf += resetAttrs(Arbitrary.arbitrary(tpe))
                   buf += resetAttrs(Shrink.shrinker(tpe))
+                } else {
+                  for { tpe <- vtpes } {
+                    buf += resetAttrs(Arbitrary.arbitrary(tpe))
+                    buf += resetAttrs(Shrink.shrinker(tpe))
+                  }
                 }
-              }
                    
 
-              import posAssigner.atPos         // for filling in tree positions
+                import posAssigner.atPos         // for filling in tree positions
 
                    
-              val property = localTyper.typed {
-                atPos(tree.pos) {
-                  Apply(prop, buf.toList)
+                val property = localTyper.typed {
+                  atPos(tree.pos) {
+                    Apply(prop, buf.toList)
+                  }
                 }
-              }
-                   
-              localTyper.typed {
-                atPos(tree.pos) {
-                  //ConsoleReporter.testStatsEx(Test.check(property))
-                  Test.isPassed(Test.check(property))
+                
+                
+                
+                localTyper.typed {
+                  atPos(tree.pos) {
+                    Test.isPassed(Test.check(property))
+                  }
                 }
-              }
               
             
             case t => 
