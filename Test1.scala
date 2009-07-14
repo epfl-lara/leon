@@ -1,7 +1,8 @@
-import funcheck.lib.Specs._
-import org.scalacheck.{Gen, Arbitrary}
+import funcheck.lib.Specs
+import funcheck.lib.Specs.generator
+import org.scalacheck.{Gen, Arbitrary,Prop}
 
-object HeapTest {
+object HeapTest extends Application {
   sealed abstract class Middle extends Top
   case class E()  extends Middle
   @generator sealed abstract class Top
@@ -23,5 +24,12 @@ object HeapTest {
 
   implicit def arbE: Arbitrary[E] = Arbitrary(Gen.oneOf(genE,genE2))
 
-  forAll[(Elem,Elem,Int)]( p => 1+1 == 2)
+  Specs.forAll[(Int,Int)]( p => p._1 + p._2 == p._2 + p._1 )
+
+  //Specs.forAll[Int]( p => p == p)
+  Prop.forAll((a: Int,b: Int) => a+b == b+a)
+  Prop.forAll((a: Int,b: Int, c: Int) => a+b+c == b+a+c)
+
+
+  Prop.forAll((a: E) => a == a)
 }

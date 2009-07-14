@@ -1,4 +1,4 @@
-package plugin.kawaguchi
+package funcheck.kawaguchi_pldi2010
 
 /* Example from paper "Type-based Data Structure Verification"
  * http://pho.ucsd.edu/liquid/demo/index2.php */

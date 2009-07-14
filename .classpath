@@ -9,5 +9,6 @@
 	<classpathentry kind="lib" path="lib/scalatest-0.9.5.jar"/>
 	<classpathentry kind="lib" path="lib/specs-1.5.0.jar"/>
 	<classpathentry kind="lib" path="lib/ScalaCheck-1.5.jar" sourcepath="lib/ScalaCheck-1.5-src.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/scalacheck-read-only"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

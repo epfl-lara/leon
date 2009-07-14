@@ -1,4 +1,4 @@
-package plugin
+package funcheck
 
 /** ================================================= 
  *  Evaluator for the untyped lambda calculus using

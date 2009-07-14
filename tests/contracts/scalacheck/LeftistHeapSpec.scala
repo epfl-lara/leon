@@ -1,4 +1,4 @@
-package scalacheck.examples
+package contracts
 
 
 import org.scalacheck.{Arbitrary,Gen}
@@ -14,15 +14,14 @@ object LeftistHeapSpec {
   import contracts.heap.LeftistHeap._
   
   
-  
   /**********************************************************/
   /*********************** GENERATORS ***********************/
   /**********************************************************/
-  def genElem: Gen[Elem] = for(v <- arbitrary[Int]) yield Elem(v)
-  def genE: Gen[Heap] = Gen.value(E)
-  def genT: Gen[Heap] = for {
-    e <- genElem
-    h <- genHeap
+  val genElem = for(v <- arbitrary[Int]) yield Elem(v)
+  val genE = Gen.value(E)
+  val genT = for {
+    e <- arbitrary[Elem]
+    h <- arbitrary[Heap]
   } yield h.insert(e)
   
   def genHeap: Gen[Heap] = Gen.lzy(Gen.oneOf(genE,genT))
@@ -30,6 +29,8 @@ object LeftistHeapSpec {
   implicit def arbHeap: Arbitrary[Heap] = Arbitrary(genHeap)
   implicit def arbElem: Arbitrary[Elem] = Arbitrary(genElem)
   
+  println(genHeap.sample)
+  println(genHeap.sample)
   
   /**********************************************************/
   /*********************** PROPERTIES ***********************/

@@ -1,4 +1,4 @@
-package scalacheck.examples
+package contracts
 
 import org.scalacheck.{Arbitrary,Properties,Gen}
 import org.scalacheck.Prop._

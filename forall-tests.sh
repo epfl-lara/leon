@@ -61,27 +61,9 @@ echo
 shopt -s expand_aliases;
 
 
-alias scalac=".././scalac-funcheck -cp ../bin:../lib/ScalaCheck-1.5.jar  -d ../bin/tests"
+alias scalac="./scalac-funcheck"
 
-mkdir bin/tests
-cd tests
-
-scalac plugin/BST.scala
-scalac plugin/LeftistHeap.scala
-scalac plugin/ListSet.scala
-scalac plugin/LambdaEvaluator.scala
-scalac plugin/PropositionalLogic.scala
-scalac plugin/SetRedBlackTree.scala
-scalac plugin/ConsSnoc.scala
-
-scalac plugin/kawaguchi/InsertSort.scala
-scalac plugin/kawaguchi/MergeSort.scala
-scalac plugin/kawaguchi/MergeSortBug.scala
-scalac plugin/kawaguchi/QuickSort.scala
-scalac plugin/kawaguchi/MapReduce.scala
-scalac plugin/kawaguchi/SplayHeap.scala
-
-cd ..
+ant compile-examples
 
 # Scala compiler with the Funcheck plugin integrated
 #alias scalac="./scalac-funcheck"
@@ -96,23 +78,25 @@ echo "Running tests with forAll properties."
 echo "********************************************************************************"
 echo
 
-alias scala="scala -cp bin/:${SCALACHECK_JAR}:bin/tests/"
+export CP="bin/:${SCALACHECK_JAR}:dist/funcheck-plugin.jar:bin/scala:bin/examples/:bin/lib"
+alias scala="scala -cp ${CP}"
+
 
 # examples
-export BST="plugin.BST"
-export LeftistHeap="plugin.LeftistHeap"
-export ListSet="plugin.ListSet"
-export LambdaEvaluator="plugin.LambdaEvaluator"
-export PropositionalLogic="plugin.PropositionalLogic"
-export SetRedBlackTree="plugin.SetRedBlackTree"
-export ConsSnoc="plugin.ConsSnoc"
+export BST="funcheck.BST"
+export LeftistHeap="funcheck.LeftistHeap"
+export ListSet="funcheck.ListSet"
+export LambdaEvaluator="funcheck.LambdaEvaluator"
+export PropositionalLogic="funcheck.PropositionalLogic"
+export SetRedBlackTree="funcheck.SetRedBlackTree"
+export ConsSnoc="funcheck.ConsSnoc"
 
-export InsertSort="plugin.kawaguchi.InsertSort"
-export MergeSort="plugin.kawaguchi.MergeSort"
-export MergeSortBug="plugin.kawaguchi.MergeSortBug"
-export QuickSort="plugin.kawaguchi.QuickSort"
-export MapReduce="plugin.kawaguchi.MapReduce"
-export SplayHeap="plugin.kawaguchi.SplayHeap"
+export InsertSort="funcheck.kawaguchi_pldi2010.InsertSort"
+export MergeSort="funcheck.kawaguchi_pldi2010.MergeSort"
+export MergeSortBug="funcheck.kawaguchi_pldi2010.MergeSortBug"
+export QuickSort="funcheck.kawaguchi_pldi2010.QuickSort"
+export MapReduce="funcheck.kawaguchi_pldi2010.MapReduce"
+export SplayHeap="funcheck.kawaguchi_pldi2010.SplayHeap"
 
 echo " - Testing ${BST}"
 scala ${BST}
@@ -126,7 +110,7 @@ scala ${ListSet}
 echo " - Testing ${SetRedBlackTree}"
 scala ${SetRedBlackTree}
 
-echo " - Testing ${LambdEvaluator}"
+echo " - Testing ${LambdaEvaluator}"
 scala ${LambdaEvaluator}
 
 echo " - Testing ${PropositionalLogic}"
