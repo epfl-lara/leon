@@ -115,7 +115,7 @@
         </manifest>
 
         <jar destfile="${dist.jar}" manifest="${dist.dir}/MANIFEST.MF">
-            <fileset dir="${build.dir}" />
+            <fileset dir="${build.plugin.funcheck.dir}" />
             <fileset file="./scalac-plugin.xml" />
         </jar>
 
@@ -124,8 +124,8 @@
     </target>
 
     <target name="compile-examples" depends="dist" description="compile the examples">
-        <mkdir dir="${build.examples.dir}"  />
-        <scalac srcdir="${examples.dir}" destdir="${build.examples.dir}" force="changed" addparams="${scalac.default.params}">
+        <mkdir dir="${build.examples.dir}" /> 
+        <scalac srcdir="${examples.dir}" destdir="${build.examples.dir}" force="changed" addparams="${scalac.funcheck.plugin}">
             <classpath>
             	<path refid="scala.lib.extension.path" />
             	<path refid="build.path" />

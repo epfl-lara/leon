@@ -61,9 +61,23 @@ echo
 shopt -s expand_aliases;
 
 
-alias scalac="./scalac-funcheck"
+alias scalac="./scalac-funcheck -cp lib/ScalaCheck-1.5.jar:bin/lib/:bin/scala  -d bin/examples"
 
-ant compile-examples
+scalac examples/plugin/BST.scala
+scalac examples/plugin/LeftistHeap.scala
+scalac examples/plugin/ListSet.scala
+scalac examples/plugin/LambdaEvaluator.scala
+scalac examples/plugin/PropositionalLogic.scala
+scalac examples/plugin/SetRedBlackTree.scala
+scalac examples/plugin/ConsSnoc.scala
+
+scalac examples/plugin/kawaguchi_pldi2010/InsertSort.scala
+scalac examples/plugin/kawaguchi_pldi2010/MergeSort.scala
+scalac examples/plugin/kawaguchi_pldi2010/MergeSortBug.scala
+scalac examples/plugin/kawaguchi_pldi2010/QuickSort.scala
+scalac examples/plugin/kawaguchi_pldi2010/MapReduce.scala
+scalac examples/plugin/kawaguchi_pldi2010/SplayHeap.scala
+
 
 # Scala compiler with the Funcheck plugin integrated
 #alias scalac="./scalac-funcheck"
@@ -78,25 +92,25 @@ echo "Running tests with forAll properties."
 echo "********************************************************************************"
 echo
 
-export CP="bin/:${SCALACHECK_JAR}:dist/funcheck-plugin.jar:bin/scala:bin/examples/:bin/lib"
+export CP="bin/:${SCALACHECK_JAR}:bin/scala:bin/examples/:bin/lib"
 alias scala="scala -cp ${CP}"
 
 
 # examples
-export BST="funcheck.BST"
-export LeftistHeap="funcheck.LeftistHeap"
-export ListSet="funcheck.ListSet"
-export LambdaEvaluator="funcheck.LambdaEvaluator"
-export PropositionalLogic="funcheck.PropositionalLogic"
-export SetRedBlackTree="funcheck.SetRedBlackTree"
-export ConsSnoc="funcheck.ConsSnoc"
+export BST="plugin.BST"
+export LeftistHeap="plugin.LeftistHeap"
+export ListSet="plugin.ListSet"
+export LambdaEvaluator="plugin.LambdaEvaluator"
+export PropositionalLogic="plugin.PropositionalLogic"
+export SetRedBlackTree="plugin.SetRedBlackTree"
+export ConsSnoc="plugin.ConsSnoc"
 
-export InsertSort="funcheck.kawaguchi_pldi2010.InsertSort"
-export MergeSort="funcheck.kawaguchi_pldi2010.MergeSort"
-export MergeSortBug="funcheck.kawaguchi_pldi2010.MergeSortBug"
-export QuickSort="funcheck.kawaguchi_pldi2010.QuickSort"
-export MapReduce="funcheck.kawaguchi_pldi2010.MapReduce"
-export SplayHeap="funcheck.kawaguchi_pldi2010.SplayHeap"
+export InsertSort="plugin.kawaguchi_pldi2010.InsertSort"
+export MergeSort="plugin.kawaguchi_pldi2010.MergeSort"
+export MergeSortBug="plugin.kawaguchi_pldi2010.MergeSortBug"
+export QuickSort="plugin.kawaguchi_pldi2010.QuickSort"
+export MapReduce="plugin.kawaguchi_pldi2010.MapReduce"
+export SplayHeap="plugin.kawaguchi_pldi2010.SplayHeap"
 
 echo " - Testing ${BST}"
 scala ${BST}
