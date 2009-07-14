@@ -1,4 +1,4 @@
-package funcheck
+package plugin
 
 import funcheck.lib.Specs._
 import scala.collection.immutable._

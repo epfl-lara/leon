@@ -1,4 +1,4 @@
-package funcheck.kawaguchi_pldi2010
+package plugin.kawaguchi_pldi2010
 
 import funcheck.lib.Specs._
 
