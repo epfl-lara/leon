@@ -1,4 +1,4 @@
-package intsets
+package parsable
 
 object IntSets {
   import scala.collection.immutable.Set
