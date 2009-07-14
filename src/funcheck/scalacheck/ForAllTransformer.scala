@@ -42,7 +42,7 @@ trait ForAllTransformer extends TypingTransformers
                   } 
                   else {
                     // create a fresh name for each parameter declared parametric type
-                    val freshNames = vtpes.map(i =>  fresh.newName("v"))
+                    val freshNames = vtpes.map(i =>  fresh.newName(v.pos,"v"))
                     
                     val funSym = tree.symbol
                     
