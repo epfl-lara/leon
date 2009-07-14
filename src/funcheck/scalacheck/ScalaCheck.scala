@@ -1,6 +1,7 @@
 package funcheck.scalacheck
 
 import scala.tools.nsc.Global
+import scala.tools.nsc.util.NoPosition
 import funcheck.util.FreshNameCreator
 
 /**
@@ -278,7 +279,7 @@ trait ScalaCheck extends FreshNameCreator {
     private def createGenDefSyms(klasses: List[ClassDef], defs: List[DefDef]): List[(Symbol, Tree)] = {
     
       val genKlasses: List[(Symbol, ClassDef)] = for(klass <- klasses) yield {
-        val genName = fresh.newName(klass.pos, "gen"+klass.name)
+        val genName = fresh.newName(NoPosition, "gen"+klass.name)
         val tpe = klass.symbol.tpe
         val genSym = createGenDefSymbol(klass.symbol.enclClass.owner, genName, tpe)
         
@@ -288,7 +289,7 @@ trait ScalaCheck extends FreshNameCreator {
       }
     
       val genDefs: List[(Symbol, DefDef)] = for(d <- defs) yield {
-        val genName = fresh.newName(d.pos, "gen"+d.name)
+        val genName = fresh.newName(NoPosition, "gen"+d.name)
         val tpe = d.tpt.symbol.tpe
         val genSym = createGenDefSymbol(d.symbol.owner, genName, tpe)
         
@@ -342,7 +343,7 @@ trait ScalaCheck extends FreshNameCreator {
         var owner = extOwner
       
         val paramssTpe: List[ValDef] = vparamss.flatMap(v=>v).map(p => 
-          ValDef(Modifiers(0), fresh.newName(p.pos, "v"), resetAttrs(p.tpt.duplicate), EmptyTree))
+          ValDef(Modifiers(0), fresh.newName(NoPosition, "v"), resetAttrs(p.tpt.duplicate), EmptyTree))
       
       
         var last = true
@@ -497,7 +498,7 @@ trait ScalaCheck extends FreshNameCreator {
       require(tpe2arbApp.get(tpeSym.tpe).isEmpty, "Arbitrary.arbitrary["+tpeSym.tpe+"] is already in the map")
       
       val owner = tpeSym.toplevelClass
-      val arbName = fresh.newName(tpeSym.pos,"arb"+tpeSym.name)
+      val arbName = fresh.newName(NoPosition,"arb"+tpeSym.name)
       val tpe = tpeSym.tpe
       
       val arbDef = createArbitraryDefSymbol(owner, arbName, tpe)

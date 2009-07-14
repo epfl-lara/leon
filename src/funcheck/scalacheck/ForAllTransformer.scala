@@ -1,7 +1,7 @@
 package funcheck.scalacheck
 
 import scala.tools.nsc.transform.TypingTransformers
-
+import scala.tools.nsc.util.NoPosition
 import funcheck.util.FreshNameCreator 
 
 trait ForAllTransformer extends TypingTransformers
@@ -42,7 +42,7 @@ trait ForAllTransformer extends TypingTransformers
                   } 
                   else {
                     // create a fresh name for each parameter declared parametric type
-                    val freshNames = vtpes.map(i =>  fresh.newName(v.pos,"v"))
+                    val freshNames = vtpes.map(i =>  fresh.newName(NoPosition,"v"))
                     
                     val funSym = tree.symbol
                     
