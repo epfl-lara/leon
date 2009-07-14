@@ -56,6 +56,7 @@ echo "Compile tests that have declared forAll properties."
 echo "********************************************************************************"
 echo
 
+mkdir bin/examples
 
 #This is needed for aliases to work correctly
 shopt -s expand_aliases;

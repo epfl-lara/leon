@@ -125,10 +125,12 @@
 
     <target name="compile-examples" depends="dist" description="compile the examples">
         <mkdir dir="${build.examples.dir}" /> 
-        <scalac srcdir="${examples.dir}" destdir="${build.examples.dir}" force="changed" addparams="${scalac.funcheck.plugin}">
+        <scalac srcdir="${examples.dir}" destdir="${build.examples.dir}" force="changed" 
+        	addparams="${scalac.funcheck.plugin}">
             <classpath>
+            	<path refid="scalac.class.path" />
             	<path refid="scala.lib.extension.path" />
-            	<path refid="build.path" />
+            	<path refid="funcheck.lib.path" />
             	<path refid="scalacheck.lib.path" />
             </classpath>
         </scalac>
