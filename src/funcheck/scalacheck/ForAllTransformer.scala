@@ -4,6 +4,9 @@ import scala.tools.nsc.transform.TypingTransformers
 import scala.tools.nsc.util.NoPosition
 import funcheck.util.FreshNameCreator 
 
+/** Takes care of mapping Specs.forAll methods calls to
+ * ScalaCheck org.scalacheck.Prop.forAll.
+ */
 trait ForAllTransformer extends TypingTransformers
   with ScalaCheck
   with FreshNameCreator 
@@ -28,6 +31,7 @@ trait ForAllTransformer extends TypingTransformers
       curTree = tree
        
       tree match {
+        /* XXX: This only works for top-level forAll. Nested forAll are not handled by the current version*/
         case Apply(TypeApply(s: Select, _), rhs @ List(f @ Function(vparams,body))) if isSelectOfSpecsMethod(s.symbol, "forAll") =>
           atOwner(currentOwner) {
             assert(vparams.size == 1, "funcheck.Specs.forAll properties are expected to take a single (tuple) parameter")
@@ -35,12 +39,28 @@ trait ForAllTransformer extends TypingTransformers
             val v @ ValDef(mods,name,vtpt,vinit) = vparams.head
             
             vtpt.tpe match {
+              // the type of the (single, by the above assumption) function parameter 
+              // will tell us what are the generators needed. In fact, we need to manually 
+              // provide the generators since despite the generators that we create are 
+              // implicit definitions, funcheck is hooking after the typechecking phase 
+              // and implicit definition are solved at typechecking. Therefore the need 
+              // of manually provide every single parameter to the org.scalacheck.Prop.forAll
+              // method. 
+              // This is actually one of the major limitations of this plugin since it is not 
+              // really quite flexible. For a future work it might be a good idea to rethink 
+              // how this problem can be fixed (an idea could be to inject the code and actuate 
+              // the forall conversion and then typecheck the whole program from zero).
               case tpe @ TypeRef(_,value,vtpes) =>
                 var fun: Function = {
                   if(vtpes.size <= 1) {
+                    // if there is less than one parameter then the function tree can be injected 
+                    // without (almost) no modificcation because it matches what Scalacheck Prop.forAll
+                    // expects
                     f
                   } 
                   else {
+                    // Transforming a pair into a list of arguments (this is what ScalaCheck Prop.forAll expects)
+                    
                     // create a fresh name for each parameter declared parametric type
                     val freshNames = vtpes.map(i =>  fresh.newName(NoPosition,"v"))
                     
@@ -69,9 +89,13 @@ trait ForAllTransformer extends TypingTransformers
                   }
                 }
               
-                   
+                // Prop.forall(function , where function is of the form (v1,v2,...,vn) => expr(v1,v2,..,vn))   
                 val prop = Prop.forAll(List(transform(fun)))
                       
+                
+                // the following are the list of (implicit) parameters that need to be provided 
+                // when calling Prop.forall
+                
                 var buf = new collection.mutable.ListBuffer[Tree]()
                       
                 val blockValSym = newSyntheticValueParam(fun.symbol, definitions.BooleanClass.typeConstructor)
