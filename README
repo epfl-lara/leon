@@ -1,3 +1,66 @@
+================================================================================
+===                             FUNCHECK PLUGIN                              ===       
+================================================================================
+
+
+COMPILE
+======================
+
+
+1 - Funcheck Plugin
+----------------------
+
+To compile the FunCheck project just type 'ant'. This will compile the 
+scala.collection.immutable.Multiset library extension created as part of this 
+project (Note: This should become a module in the future and then just have a 
+jar file with the extended multiset collection). Furthermore, it will compile 
+the internal funcheck.lib.Specs library used for declaring forAll properties 
+in the examples. Finally, it will compile the plugin, create a distribution jar 
+and also create a script 'scalac-funcheck' that should be used instead of 
+the usual 'scalac' script for compiling examples of this project.  
+
+2 - Funcheck Examples
+----------------------
+
+Examples that shows the functionality of the plugin are in the folder 'examples/plugin'
+and also (for the static verification part) in 'examples/contracts'. To compile 
+the former you should use the 'forall-tests' script, which will compile the examples
+in the 'examples/plugin' directory and will also execute them. On the other hand, if you want 
+to compile all the other examples you can simply type 'ant compile-examples'. 
+
+XXX: We should really integrate the compilation of the examples in 'examples/plugin' 
+into the 'forall-tests' script. However, this is not working right now (getting to 
+crash the plugin extension when compile inside ant, while compilation outside ant works 
+just fine. 
+
+3 - Running Funcheck
+----------------------
+
+When the 'forall-tests' is launched, it will first compiles the examples in 'examples/plugin' 
+and then it will execute them one after the other. You should see a similar output when the test
+succeed:
+
++ OK, passed 100 tests.     //Nice!! This means the property was ok!
+
+and this when it fails:
+
+! Falsified after 1 passed tests.     //Ops, the property has been falsified                                        
+> ARG_0: "1"
+java.lang.ExceptionInInitializerError
+	[...]
+	
+
+4 - Tests
+----------------------
+
+the 'tests' directory contains some unit tests for the examples and, most interestingly, 
+an extensive test of the multiset collection library created as part of this project.  
+
+
+================================================================================
+
+OLD README:
+
 Use:
     ant
 
