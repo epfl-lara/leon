@@ -25,8 +25,8 @@ package funpm.vcg
  *  =================================================
  */
 
-sealed abstract case class Tree()
-abstract case class IGuard() extends Tree
+sealed abstract class Tree
+abstract class IGuard extends Tree
 
 /** (x = T) */
 case class IAssign(val x: String, val t: Term) extends IGuard
@@ -49,7 +49,7 @@ case class IWhile(val cond: Form, val inv: Form,  val block: IGuard) extends IGu
 /** if (cond) { then } else { elses }*/
 case class IIf(val cond: Form, val then: IGuard, val elses: IGuard) extends IGuard 
 
-abstract case class Term() extends Tree
+abstract class Term extends Tree
 /** T + T */
 case class IPlus(val t1: Term, val t2: Term) extends Term 
 
@@ -65,7 +65,7 @@ case class IVar(val name: String) extends Term
 /** 0 | 1 | 2 | ... */
 case class IConst(val number: Int) extends Term 
 
-abstract case class Form() extends Tree
+abstract class Form extends Tree
 
 /** (F & F) */
 case class IAnd(val f1: Form, val f2: Form) extends Form 
@@ -82,7 +82,7 @@ case class IExists(val v: String, val f: Form) extends Form
 /** ALL v.F */
 case class IForall(val v: String, val f: Form) extends Form 
 
-abstract case class Atom() extends Form
+abstract class Atom extends Form
 
 /** t1 = t2 */
 case class IEqual(val t1: Term, val t2: Term) extends Atom 
@@ -91,10 +91,10 @@ case class IEqual(val t1: Term, val t2: Term) extends Atom
 case class ILess(val t1: Term, val t2: Term) extends Atom 
 
 /** true */
-case object ITrue extends Atom 
+case class ITrue() extends Atom 
 
 /** false */
-case object IFalse extends Atom 
+case class IFalse() extends Atom 
 
 /** =================================================
  *             Substitution
@@ -130,8 +130,8 @@ object Substitution {
         }
       }
 
-    case ITrue  => f
-    case IFalse => f
+    case ITrue()  => f
+    case IFalse() => f
   } 
   
   
@@ -159,8 +159,8 @@ object Substitution {
     case IAnd(f1,f2)   => IAnd(renameFormula(oldx,newx,f1), renameFormula(oldx,newx,f2))
     case IOr(f1,f2)    => IOr(renameFormula(oldx,newx,f1), renameFormula(oldx,newx,f2))
     case INot(f)       => INot(renameFormula(oldx,newx,f))
-    case ITrue         => f
-    case IFalse        => f
+    case ITrue()       => f
+    case IFalse()      => f
   }
   
   
@@ -207,9 +207,9 @@ object Wp {
                        ISequence(IHavoc(lookupIVars(block)),
                                  ISequence(IAssume(inv), IIf(cond, 
                                                              ISequence(block,ISequence(IAssert(inv),
-                                                                             IAssume(IFalse)))
+                                                                             IAssume(IFalse())))
                                                              ,
-                                                             IAssume(ITrue)))))
+                                                             IAssume(ITrue())))))
              ,
              q)
      
@@ -265,10 +265,10 @@ object VerificationConditionGenerator extends Application {
            ISequence(IHavoc(List(IVar("x"))),
                     IAssert(IEqual(IVar("y"),IConst(3)))))
            ),
-           ITrue
+           ITrue()
        )
        ==
-       IForall("x1",IAnd(IEqual(IPlus(IConst(0),IConst(3)),IConst(3)),ITrue))
+       IForall("x1",IAnd(IEqual(IPlus(IConst(0),IConst(3)),IConst(3)),ITrue()))
   )
 
 }
