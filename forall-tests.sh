@@ -71,6 +71,7 @@ scalac examples/plugin/LambdaEvaluator.scala
 scalac examples/plugin/PropositionalLogic.scala
 scalac examples/plugin/SetRedBlackTree.scala
 scalac examples/plugin/ConsSnoc.scala
+scalac examples/plugin/SkewBinaryRandomAccessList.scala
 
 scalac examples/plugin/kawaguchi_pldi2010/InsertSort.scala
 scalac examples/plugin/kawaguchi_pldi2010/MergeSort.scala
@@ -105,6 +106,7 @@ export LambdaEvaluator="plugin.LambdaEvaluator"
 export PropositionalLogic="plugin.PropositionalLogic"
 export SetRedBlackTree="plugin.SetRedBlackTree"
 export ConsSnoc="plugin.ConsSnoc"
+export SkewList="plugin.SkewBinaryRandomAccessList"
 
 export InsertSort="plugin.kawaguchi_pldi2010.InsertSort"
 export MergeSort="plugin.kawaguchi_pldi2010.MergeSort"
@@ -112,6 +114,7 @@ export MergeSortBug="plugin.kawaguchi_pldi2010.MergeSortBug"
 export QuickSort="plugin.kawaguchi_pldi2010.QuickSort"
 export MapReduce="plugin.kawaguchi_pldi2010.MapReduce"
 export SplayHeap="plugin.kawaguchi_pldi2010.SplayHeap"
+
 
 echo " - Testing ${BST}"
 scala ${BST}
@@ -133,6 +136,9 @@ scala ${PropositionalLogic}
 
 echo " - Testing ${ConsSnoc}"
 scala ${ConsSnoc}
+
+echo " - Testing ${SkewList}"
+scala ${SkewList}
 
 echo " - Testing ${InsertSort}"
 scala ${InsertSort}

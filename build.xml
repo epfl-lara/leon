@@ -124,9 +124,10 @@
     </target>
 
     <target name="compile-examples" depends="dist" description="compile the examples">
-        <mkdir dir="${build.examples.dir}" /> 
+        <mkdir dir="${build.examples.dir}" />    	
         <scalac srcdir="${examples.dir}" destdir="${build.examples.dir}" force="changed" 
-        	addparams="${scalac.funcheck.plugin}">
+        	addparams="${scalac.default.params}">
+        	<!-- addparams="${scalac.funcheck.plugin}" crashes for some unknown reason -->
             <classpath>
             	<path refid="scalac.class.path" />
             	<path refid="scala.lib.extension.path" />
