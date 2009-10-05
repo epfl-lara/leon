@@ -6,7 +6,7 @@ import scalacheck._
 
 class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) extends PluginComponent
   with CodeExtraction
-  with ScalaCheckIntegrator
+  // with ScalaCheckIntegrator
 {
   import global._
 
@@ -17,7 +17,7 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
   val phaseName = pluginInstance.name
 
   /** this is initialized when the Funcheck phase starts*/
-  override var fresh: scala.tools.nsc.util.FreshNameCreator = null 
+  var fresh: scala.tools.nsc.util.FreshNameCreator = null 
   
   protected def stopIfErrors: Unit = {
     if(reporter.hasErrors) {
@@ -38,21 +38,21 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) 
       (new ForeachTreeTraverser(firstFilter(unit))).traverse(unit.body)
       stopIfErrors
 
-//      val prog: purescala.Definitions.Program = extractCode(unit)
-//      println("Extracted program for " + unit + ": ")
-//      println(prog)
+      val prog: purescala.Definitions.Program = extractCode(unit)
+      println("Extracted program for " + unit + ": ")
+      println(prog)
 
       // Mirco your component can do its job here, as I leave the trees
       // unmodified.
-      val (genDef, arbDef) = createGeneratorDefDefs(unit)
+      // val (genDef, arbDef) = createGeneratorDefDefs(unit)
     
-      injectGenDefDefs(genDef ::: arbDef, unit)
-      forAllTransform(unit)
+      // injectGenDefDefs(genDef ::: arbDef, unit)
+      // forAllTransform(unit)
 
-//      if(pluginInstance.stopAfterAnalysis) {
-//        println("Analysis complete. Now terminating the compiler process.")
-//        exit(0)
-//      }
+      if(pluginInstance.stopAfterAnalysis) {
+        println("Analysis complete. Now terminating the compiler process.")
+        exit(0)
+      }
     }
 
     /** Weeds out some programs containing unsupported features. */
