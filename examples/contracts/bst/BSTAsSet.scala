@@ -12,8 +12,10 @@ object BSTAsSet extends Application {
         case Node(_,left,v,right) if (x > v) => Node(content + x, 
 						   left, v, right.add(x))
         case Node(_,_,v,_) if (v == x) => this
+// this is due to limitation of pattern matching check
+	case _ => this
       }
-    } ensuring(result => (result.content == content + x))
+    } ensuring (_.content == content + x)
 
     // patterns are exhaustive, disjoint and all reachable 
     def contains(key: Int): Boolean = {
@@ -22,8 +24,10 @@ object BSTAsSet extends Application {
         case Node(_,_,v,right) if (key > v) => right.contains(key)
         case Node(_,_,v, _) if (key == v) => true
         case Empty(_) => false
+// this is due to limitation of pattern matching check
+	case _ => false
       }
-    } ensuring(res => (res == content.contains(key)))
+    } ensuring (_ == content.contains(key))
   }
   
   case class Empty(override val content : Set[Int]) extends BST(Set.empty)
