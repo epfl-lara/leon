@@ -128,7 +128,7 @@ object SkewBinaryRandomAccessListTest extends Application {
   //generateSkewBinaryList(4);
   
   def forAll(property : ((RList,Int) => Boolean)){
-    assert(property(generateSkewBinaryList(4), 4));//Verify.getInt(0,4)));
+    assert(property(generateSkewBinaryList(4), Verify.getInt(0,4)));
   }
 
   forAll((skew, value) => (content(cons(value,skew)) == content(skew) +++ List(value)));

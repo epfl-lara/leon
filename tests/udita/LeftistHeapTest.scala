@@ -93,7 +93,7 @@ object LeftistHeapTest extends Application {
   }
   
   def forAll(property : ((Heap,Int) => Boolean)){
-    assert(property(generateLeftistHeap(4), 0));//Verify.getInt(0,4)));
+    assert(property(generateLeftistHeap(4), Verify.getInt(0,4)));
   }
 
   forAll((heap: Heap, value: Int) => content(heap.insert(value)) == content(heap) +++ List(value));
