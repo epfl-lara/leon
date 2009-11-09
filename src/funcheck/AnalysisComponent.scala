@@ -4,9 +4,11 @@ import scala.tools.nsc._
 import scala.tools.nsc.plugins._
 import scalacheck._	
 
-class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin) extends PluginComponent
+class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin)
+  extends PluginComponent
+  with NameAnalyzer
   with CodeExtraction
-  // with ScalaCheckIntegrator
+  // with ScalaCheckIntegrator // Mirco's stuff.
 {
   import global._
 
