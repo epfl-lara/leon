@@ -48,7 +48,7 @@ see examples in:
 
   /* Control flow */
   case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr {
-    assert(args.map(_.getType).equalsWith(funDef.argTypes)(_ == _))
+    assert(args.map(_.getType).corresponds(funDef.argTypes)(_ == _))
     lazy val getType = funDef.returnType
   }
 

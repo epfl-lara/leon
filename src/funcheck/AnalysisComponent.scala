@@ -12,9 +12,9 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin)
 {
   import global._
 
-  // when we use 2.8.x, swap the following two lines
-  val runsAfter = "refchecks"
-  // override val runsRightAfter = "refchecks"
+  // This is how it works from 2.8 on..
+  override val runsRightAfter: Option[String] = None
+  override val runsAfter: List[String] = List("refchecks")
 
   val phaseName = pluginInstance.name
 
