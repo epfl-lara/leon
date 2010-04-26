@@ -19,7 +19,7 @@ trait CodeExtraction extends Extractors {
     import scala.collection.mutable.HashMap
 
     // register where the symbols where extracted from
-    val symbolDefMap = new HashMap[purescala.Symbols.Symbol,Tree]
+    // val symbolDefMap = new HashMap[purescala.Symbols.Symbol,Tree]
 
     def s2ps(tree: Tree): Expr = toPureScala(unit)(tree) match {
       case Some(ex) => ex
@@ -28,7 +28,7 @@ trait CodeExtraction extends Extractors {
 
     /** Populates the symbolDefMap with object and class symbols, and returns
      * the symbol corresponding to the expected single top-level object. */
-    def extractClassSymbols: purescala.Symbols.ObjectSymbol = {
+    def extractClassSymbols: ObjectDef = {
       val top = unit.body match {
         case p @ PackageDef(name, lst) if lst.size == 0 => {
           unit.error(p.pos, "No top-level definition found.")
@@ -54,13 +54,13 @@ trait CodeExtraction extends Extractors {
       top.get
     }
 
-    def extractObjectSym(name: Identifier, tmpl: Template): purescala.Symbols.ObjectSymbol = {
+    def extractObjectSym(name: Identifier, tmpl: Template): ObjectDef = {
       // we assume that the template actually corresponds to an object
       // definition. Typically it should have been obtained from the proper
       // extractor (ExObjectDef)
 
-      var classSyms: List[purescala.Symbols.ClassSymbol] = Nil
-      var objectSyms: List[purescala.Symbols.ObjectSymbol] = Nil
+      var classDefs: List[ClassTypeDef] = Nil
+      var objectDefs: List[purescala.Symbols.ObjectSymbol] = Nil
 
       tmpl.body.foreach(tree => tree match {
         case ExObjectDef(o2, t2) => { objectSyms = extractObjectSym(o2, t2) :: objectSyms }
@@ -68,10 +68,10 @@ trait CodeExtraction extends Extractors {
         case _ => ;
       })
 
-      val theSym = new purescala.Symbols.ObjectSymbol(name, classSyms.reverse, objectSyms.reverse)
+      // val theSym = new purescala.Symbols.ObjectSymbol(name, classSyms.reverse, objectSyms.reverse)
       // we register the tree associated to the symbol to be able to fill in
       // the rest later
-      symbolDefMap(theSym) = tmpl
+      // symbolDefMap(theSym) = tmpl
       theSym
     }
 

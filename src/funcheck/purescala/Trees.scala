@@ -9,66 +9,30 @@ object Trees {
 
   /* EXPRESSIONS */
 
-  /** There's no such thing as a typing phase for these trees, they need to be
-   * correctly typed at construction time. Each AST node checks that the
-   * children provided satisfy whatever typing constraints are required by the
-   * node, and each node is then responsible for communicating its type. */
   sealed abstract class Expr extends Typed {
     override def toString: String = PrettyPrinter(this)
 
-    private var _scope: Option[Scope] = None
+    // private var _scope: Option[Scope] = None
+    //
+    // def scope: Scope =
+    //   if(_scope.isEmpty)
+    //     throw new Exception("Undefined scope.")
+    //   else
+    //     _scope.get
 
-    def scope: Scope =
-      if(_scope.isEmpty)
-        throw new Exception("Undefined scope.")
-      else
-        _scope.get
-
-    def scope_=(s: Scope): Unit = {
-      if(_scope.isEmpty) {
-        _scope = Some(s)
-      } else {
-        throw new Exception("Redefining scope.")
-      }
-    }
+    // def scope_=(s: Scope): Unit = {
+    //   if(_scope.isEmpty) {
+    //     _scope = Some(s)
+    //   } else {
+    //     throw new Exception("Redefining scope.")
+    //   }
+    // }
   }
-
-  /** 
-   equality on sets, ADTs etc. (equality on function types?!)
-
-   forall, exists - optionally bounded quantifiers
-     * comes with type A of bound variable 
-     * also comes with an optional Set[A] that gives more precise description of the range of this variable
-
-    Without Set[A] bound, the variable ranges over all constructible (not only allocated) objects.
-
-see examples in:
-     http://code.google.com/p/scalacheck/wiki/UserGuide
-   */
 
   /* Control flow */
-  case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr {
-    assert(args.map(_.getType).corresponds(funDef.argTypes)(_ == _))
-    lazy val getType = funDef.returnType
-  }
-
-  case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr {
-    assert(cond.getType == BooleanType)
-    assert(then.getType == elze.getType)
-    def getType = then.getType
-  }
-
-  case class MatchExpr(scrutinee: Expr, cases: Seq[MatchCase]) extends Expr {
-    // there can be no assumption about the type of the scrutinee..  Scala
-    // gives nice errors "constructor cannot be instantiated to expected type"
-    // but that seems relatively hard to check at construction for now...
-    // Actually it only gives that error when the pattern is unapply (ie. not
-    // an "instanceOf" one), so there's hope.
-    
-    // we should assert that the rhs types of all MatchCases match !
-
-    lazy val getType = cases(0).rhs.getType
-  }
+  case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr
+  case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr 
+  case class MatchExpr(scrutinee: Expr, cases: Seq[MatchCase]) extends Expr
 
   sealed abstract class MatchCase {
     val pattern: Pattern
@@ -76,9 +40,7 @@ see examples in:
   }
 
   case class SimpleCase(pattern: Pattern, rhs: Expr) extends MatchCase
-  case class GuardedCase(pattern: Pattern, guard: Expr, rhs: Expr) extends MatchCase {
-    assert(guard.getType == BooleanType)
-  }
+  case class GuardedCase(pattern: Pattern, guard: Expr, rhs: Expr) extends MatchCase
 
   sealed abstract class Pattern
   case class InstanceOfPattern(binder: Option[Identifier], classTypeDef: ClassTypeDef) extends Pattern // c: Class
@@ -86,257 +48,82 @@ see examples in:
   case class ExtractorPattern(binder: Option[Identifier], 
 			      extractor : ExtractorTypeDef, 
 			      subPatterns: Seq[Pattern]) extends Pattern // c @ Extractor(...,...)
-  // I suggest we skip Seq stars for now.
+  // We don't handle Seq stars for now.
 
   /* Propositional logic */
-  case class And(exprs: Seq[Expr]) extends Expr {
-    assert(exprs.forall(_.getType == BooleanType))
-    def getType = BooleanType
-  }
-
-  case class Or(exprs: Seq[Expr]) extends Expr {
-    assert(exprs.forall(_.getType == BooleanType))
-    def getType = BooleanType
-  }
-
-  case class Not(expr: Expr) extends Expr {
-    assert(expr.getType == BooleanType)
-    def getType = BooleanType
-  }
-
-  /* Not sure if we should really have these.. I suppose they could be of some
-   * help to some theorem provers? *
-  case class Implies(lhs: Expr, rhs: Expr) extends Expr {
-    assert(lhs.getType == BooleanType && rhs.getType == BooleanType)
-    def getType = BooleanType
-  }
-
-  case class Iff(lhs: Expr, rhs: Expr) extends Expr {
-    assert(lhs.getType == BooleanType && rhs.getType == BooleanType)
-    def getType = BooleanType
-  } */
+  case class And(exprs: Seq[Expr]) extends Expr
+  case class Or(exprs: Seq[Expr]) extends Expr
+  case class Not(expr: Expr) extends Expr 
 
   /* Maybe we should split this one depending on types? */
-  case class Equals(left: Expr, right: Expr) extends Expr { 
-    assert(left.getType == right.getType)
-    val getType = BooleanType
-  }
+  case class Equals(left: Expr, right: Expr) extends Expr  
   
   /* Literals */
   // to be fixed! Should contain a reference to the definition of that
   // variable, which would also give us its type.
-  case class Variable(id: Identifier) extends Expr {
-    val getType = AnyType
+  case class Variable(id: Identifier) extends Expr
+
+  sealed abstract class Literal[T] extends Expr {
+    val value: T
   }
 
-  case class IntLiteral(value: Int) extends Expr {
-    val getType = Int32Type
-  }
-
-  case class BooleanLiteral(value: Boolean) extends Expr {
-    val getType = BooleanType
-  }
+  case class IntLiteral(value: Int) extends Literal[Int] 
+  case class BooleanLiteral(value: Boolean) extends Literal[Boolean] 
 
   /* Arithmetic */
-  case class Plus(lhs: Expr, rhs: Expr) extends Expr {
-    assert(lhs.getType == Int32Type && rhs.getType == Int32Type)
-    val getType = Int32Type
-  }
-
-  case class Minus(lhs: Expr, rhs: Expr) extends Expr {
-    assert(lhs.getType == Int32Type && rhs.getType == Int32Type)
-    val getType = Int32Type
-  }
-
-  case class UMinus(expr: Expr) extends Expr {
-    assert(expr.getType == Int32Type)
-    val getType = Int32Type
-  }
-
-  case class Times(lhs: Expr, rhs: Expr) extends Expr {
-    assert(lhs.getType == Int32Type && rhs.getType == Int32Type)
-    val getType = Int32Type
-  }
-
-  case class Division(lhs: Expr, rhs: Expr) extends Expr {
-    assert(lhs.getType == Int32Type && rhs.getType == Int32Type)
-    val getType = Int32Type
-  }
-
-  case class LessThan(lhs: Expr, rhs: Expr) extends Expr {
-    assert(lhs.getType == Int32Type && rhs.getType == Int32Type)
-    val getType = BooleanType
-  }
-
-  case class GreaterThan(lhs: Expr, rhs: Expr) extends Expr {
-    assert(lhs.getType == Int32Type && rhs.getType == Int32Type)
-    val getType = BooleanType
-  }
-
-  case class LessEquals(lhs: Expr, rhs: Expr) extends Expr {
-    assert(lhs.getType == Int32Type && rhs.getType == Int32Type)
-    val getType = BooleanType
-  }
-
-  case class GreaterEquals(lhs: Expr, rhs: Expr) extends Expr {
-    assert(lhs.getType == Int32Type && rhs.getType == Int32Type)
-    val getType = BooleanType
-  }
+  case class Plus(lhs: Expr, rhs: Expr) extends Expr
+  case class Minus(lhs: Expr, rhs: Expr) extends Expr 
+  case class UMinus(expr: Expr) extends Expr 
+  case class Times(lhs: Expr, rhs: Expr) extends Expr 
+  case class Division(lhs: Expr, rhs: Expr) extends Expr 
+  case class LessThan(lhs: Expr, rhs: Expr) extends Expr 
+  case class GreaterThan(lhs: Expr, rhs: Expr) extends Expr 
+  case class LessEquals(lhs: Expr, rhs: Expr) extends Expr 
+  case class GreaterEquals(lhs: Expr, rhs: Expr) extends Expr 
 
   /* Option expressions */
-  case class OptionSome(value: Expr) extends Expr {
-    lazy val getType = OptionType(value.getType)
-  }
-
-  case class OptionNone(baseType: TypeTree) extends Expr {
-    lazy val getType = OptionType(baseType)
-  }
+  case class OptionSome(value: Expr) extends Expr 
+  case class OptionNone(baseType: TypeTree) extends Expr 
 
   /* Set expressions */
-  case class EmptySet(baseType: TypeTree) extends Expr {
-    lazy val getType = SetType(baseType)
-  }
-  case class FiniteSet(elements: Seq[Expr]) extends Expr {
-    assert(elements.size > 0)
-    assert(elements.drop(1).forall(_.getType == elements(0).getType))
-    lazy val getType = SetType(elements(0).getType)
-  }
-  case class ElementOfSet(element: Expr, set: Expr) extends Expr {
-    assert(set.getType == SetType(element.getType))
-    val getType = BooleanType
-  }
-  case class IsEmptySet(set: Expr) extends Expr {
-    assert(set.getType.isInstanceOf[SetType])
-    val getType = BooleanType
-  }
-  case class SetEquals(set1: Expr, set2: Expr) extends Expr {
-    assert(set1.getType == set2.getType && set1.getType.isInstanceOf[SetType])
-    val getType = BooleanType
-  }
-  case class SetCardinality(set: Expr) extends Expr {
-    assert(set.getType.isInstanceOf[SetType])
-    val getType = Int32Type
-  }
-  case class SubsetOf(set1: Expr, set2: Expr) extends Expr {
-    assert(set1.getType == set2.getType && set1.getType.isInstanceOf[SetType])
-    val getType = BooleanType
-  }
-  case class SetIntersection(set1: Expr, set2: Expr) extends Expr {
-    assert(set1.getType == set2.getType && set1.getType.isInstanceOf[SetType])
-    lazy val getType = set1.getType
-  }
-  case class SetUnion(set1: Expr, set2: Expr) extends Expr {
-    assert(set1.getType == set2.getType && set1.getType.isInstanceOf[SetType])
-    lazy val getType = set1.getType
-  }
-  case class SetDifference(set1: Expr, set2: Expr) extends Expr {
-    assert(set1.getType == set2.getType && set1.getType.isInstanceOf[SetType])
-    lazy val getType = set1.getType
-  }
+  case class EmptySet(baseType: TypeTree) extends Expr 
+  case class FiniteSet(elements: Seq[Expr]) extends Expr 
+  case class ElementOfSet(element: Expr, set: Expr) extends Expr 
+  case class IsEmptySet(set: Expr) extends Expr 
+  case class SetEquals(set1: Expr, set2: Expr) extends Expr 
+  case class SetCardinality(set: Expr) extends Expr 
+  case class SubsetOf(set1: Expr, set2: Expr) extends Expr 
+  case class SetIntersection(set1: Expr, set2: Expr) extends Expr 
+  case class SetUnion(set1: Expr, set2: Expr) extends Expr 
+  case class SetDifference(set1: Expr, set2: Expr) extends Expr 
 
   /* Multiset expressions */
-  case class EmptyMultiset(baseType: TypeTree) extends Expr {
-    lazy val getType = MultisetType(baseType)
-  }
-  case class FiniteMultiset(elements: Seq[Expr]) extends Expr {
-    assert(elements.size > 0)
-    assert(elements.drop(1).forall(_.getType == elements(0).getType))
-    lazy val getType = MultisetType(elements(0).getType)
-  }
-  case class Multiplicity(element: Expr, multiset: Expr) extends Expr {
-    assert(multiset.getType == MultisetType(element.getType))
-    val getType = Int32Type
-  }
-  case class IsEmptyMultiset(multiset: Expr) extends Expr {
-    assert(multiset.getType.isInstanceOf[MultisetType])
-    val getType = BooleanType
-  }
-  case class MultisetEquals(multiset1: Expr, multiset2: Expr) extends Expr {
-    assert(multiset1.getType == multiset2.getType && multiset1.getType.isInstanceOf[MultisetType])
-    val getType = BooleanType
-  }
-  case class MultisetCardinality(multiset: Expr) extends Expr {
-    assert(multiset.getType.isInstanceOf[MultisetType])
-    val getType = Int32Type
-  }
-  case class SubmultisetOf(multiset1: Expr, multiset2: Expr) extends Expr {
-    assert(multiset1.getType == multiset2.getType && multiset1.getType.isInstanceOf[MultisetType])
-    val getType = BooleanType
-  }
-  case class MultisetIntersection(multiset1: Expr, multiset2: Expr) extends Expr {
-    assert(multiset1.getType == multiset2.getType && multiset1.getType.isInstanceOf[MultisetType])
-    lazy val getType = multiset1.getType
-  }
-  case class MultisetUnion(multiset1: Expr, multiset2: Expr) extends Expr {
-    assert(multiset1.getType == multiset2.getType && multiset1.getType.isInstanceOf[MultisetType])
-    lazy val getType = multiset1.getType
-  }
-  case class MultisetPlus(multiset1: Expr, multiset2: Expr) extends Expr { // disjoint union
-    assert(multiset1.getType == multiset2.getType && multiset1.getType.isInstanceOf[MultisetType])
-    lazy val getType = multiset1.getType
-  }
-  case class MultisetDifference(multiset1: Expr, multiset2: Expr) extends Expr {
-    assert(multiset1.getType == multiset2.getType && multiset1.getType.isInstanceOf[MultisetType])
-    lazy val getType = multiset1.getType
-  }
+  // case class EmptyMultiset(baseType: TypeTree) extends Expr 
+  // case class FiniteMultiset(elements: Seq[Expr]) extends Expr 
+  // case class Multiplicity(element: Expr, multiset: Expr) extends Expr 
+  // case class IsEmptyMultiset(multiset: Expr) extends Expr 
+  // case class MultisetEquals(multiset1: Expr, multiset2: Expr) extends Expr 
+  // case class MultisetCardinality(multiset: Expr) extends Expr 
+  // case class SubmultisetOf(multiset1: Expr, multiset2: Expr) extends Expr 
+  // case class MultisetIntersection(multiset1: Expr, multiset2: Expr) extends Expr 
+  // case class MultisetUnion(multiset1: Expr, multiset2: Expr) extends Expr 
+  // case class MultisetPlus(multiset1: Expr, multiset2: Expr) extends Expr // disjoint union
+  // case class MultisetDifference(multiset1: Expr, multiset2: Expr) extends Expr 
 
   /* Map operations. */
-  case class EmptyMap(fromType: TypeTree, toType: TypeTree) extends Expr {
-    lazy val getType = MapType(fromType, toType)
-  }
+  case class EmptyMap(fromType: TypeTree, toType: TypeTree) extends Expr 
+  case class SingletonMap(from: Expr, to: Expr) extends Expr 
+  case class FiniteMap(singletons: Seq[SingletonMap]) extends Expr 
 
-  case class SingletonMap(from: Expr, to: Expr) extends Expr {
-    lazy val getType = MapType(from.getType, to.getType)
-  }
-
-  case class FiniteMap(singletons: Seq[SingletonMap]) extends Expr {
-    assert(singletons.size > 0
-      && singletons.drop(1).forall(_.getType == singletons(0).getType))
-    lazy val getType = singletons(0).getType
-  }
-
-  case class MapGet(map: Expr, key: Expr) extends Expr {
-    assert(map.getType.isInstanceOf[MapType] && key.getType == map.getType.asInstanceOf[MapType].from)
-    lazy val getType = OptionType(map.getType.asInstanceOf[MapType].to)
-  }
-
-  case class MapUnion(map1: Expr, map2: Expr) extends Expr {
-    assert(map1.getType.isInstanceOf[MapType] && map1.getType == map2.getType)
-    lazy val getType = map1.getType
-  }
-
-  case class MapDiffrence(map: Expr, keys: Expr) extends Expr {
-    assert(map.getType.isInstanceOf[MapType] && keys.isInstanceOf[SetType] && map.getType.asInstanceOf[MapType].from == keys.getType.asInstanceOf[SetType].base)
-    lazy val getType = map.getType
-  }
+  case class MapGet(map: Expr, key: Expr) extends Expr 
+  case class MapUnion(map1: Expr, map2: Expr) extends Expr 
+  case class MapDiffrence(map: Expr, keys: Expr) extends Expr 
 
   /* List operations */
-  case class NilList(baseType: TypeTree) extends Expr {
-    lazy val getType = ListType(baseType)
-  }
-
-  case class Cons(head: Expr, tail: Expr) extends Expr {
-    assert(tail.isInstanceOf[ListType] && tail.getType.asInstanceOf[ListType].base == head.getType)
-    lazy val getType = tail.getType
-  }
-
-  case class Car(list: Expr) extends Expr {
-    assert(list.getType.isInstanceOf[ListType])
-    lazy val getType = list.getType.asInstanceOf[ListType].base
-  }
-
-  case class Cdr(list: Expr) extends Expr {
-    assert(list.getType.isInstanceOf[ListType])
-    lazy val getType = list.getType
-  }
-
-  case class Concat(list1: Expr, list2: Expr) extends Expr {
-    assert(list1.getType.isInstanceOf[ListType] && list1.getType == list2.getType)
-    lazy val getType = list1.getType
-  }
-
-  case class ListAt(list: Expr, index: Expr) extends Expr {
-    assert(list.getType.isInstanceOf[ListType] && index.getType == Int32Type)
-    lazy val getType = OptionType(list.getType.asInstanceOf[ListType].base)
-  }
+  case class NilList(baseType: TypeTree) extends Expr 
+  case class Cons(head: Expr, tail: Expr) extends Expr 
+  case class Car(list: Expr) extends Expr 
+  case class Cdr(list: Expr) extends Expr 
+  case class Concat(list1: Expr, list2: Expr) extends Expr 
+  case class ListAt(list: Expr, index: Expr) extends Expr 
 }

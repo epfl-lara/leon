@@ -39,20 +39,25 @@ object Definitions {
   }
 
   /** A VarDecl declares a new identifier to be of a certain type. */
-  final case class VarDecl(id: Identifier, tpe: TypeTree) {
+  case class VarDecl(id: Identifier, tpe: TypeTree) extends Typed {
     val uniqueID: Int = UniqueID(id.toString)
+
     override val toString: String = id + uniqueID
+
     override def equals(other: Any) = other match {
       case v: VarDecl => this.equals(v) && uniqueID == v.uniqueID
       case _ => false
     }
+
+    override def getType = tpe
+    override def setType(tt: TypeTree) = scala.Predef.error("Can't set type of VarDecl.")
   }
 
   type VarDecls = Seq[VarDecl]
 
   /** A wrapper for a program. For now a program is simply a single object. The
-   * name is meaningless and we just use the package name. */
-  final case class Program(id: Identifier, mainObject: ObjectDef) extends Definition {
+   * name is meaningless and we just use the package name as id. */
+  case class Program(id: Identifier, mainObject: ObjectDef) extends Definition {
     override val parentScope = None
 
     override def lookupObject(id: Identifier) = {
