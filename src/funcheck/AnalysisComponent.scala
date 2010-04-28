@@ -37,8 +37,8 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin)
       
       // That filter just helps getting meaningful errors before the attempt to
       // extract the code, but it's really optional.
-      (new ForeachTreeTraverser(firstFilter(unit))).traverse(unit.body)
-      stopIfErrors
+      // (new ForeachTreeTraverser(firstFilter(unit))).traverse(unit.body)
+      // stopIfErrors
 
       val prog: purescala.Definitions.Program = extractCode(unit)
       println("Extracted program for " + unit + ": ")
@@ -58,24 +58,24 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin)
     }
 
     /** Weeds out some programs containing unsupported features. */
-    def firstFilter(unit: CompilationUnit)(tree: Tree): Unit = {
-      def unsup(s: String): String = "FunCheck: Unsupported construct: " + s
+    // def firstFilter(unit: CompilationUnit)(tree: Tree): Unit = {
+    //   def unsup(s: String): String = "FunCheck: Unsupported construct: " + s
 
-      tree match {
-        case ValDef(mods, name, tpt, rhs) if mods.isVariable =>
-          unit.error(tree.pos, unsup("mutable variable/field."))
-        case LabelDef(name, params, rhs) => unit.error(tree.pos, unsup("loop."))
-        case Assign(lhs, rhs) => unit.error(tree.pos, unsup("assignment to mutable variable/field."))
-        case Return(expr) => unit.error(tree.pos, unsup("return statement."))
-        case Try(block, catches, finalizer) => unit.error(tree.pos, unsup("try block."))
-        case SingletonTypeTree(ref) => unit.error(tree.pos, unsup("singleton type."))
-        case SelectFromTypeTree(qualifier, selector) => unit.error(tree.pos, unsup("path-dependent type."))
-        case CompoundTypeTree(templ: Template) => unit.error(tree.pos, unsup("compound/refinement type."))
-        case TypeBoundsTree(lo, hi) => unit.error(tree.pos, unsup("type bounds."))
-        case ExistentialTypeTree(tpt, whereClauses) => unit.error(tree.pos, unsup("existential type."))
-        case _ => ;
-      }
-    }
+    //   tree match {
+    //     case ValDef(mods, name, tpt, rhs) if mods.isVariable =>
+    //       unit.error(tree.pos, unsup("mutable variable/field."))
+    //     case LabelDef(name, params, rhs) => unit.error(tree.pos, unsup("loop."))
+    //     case Assign(lhs, rhs) => unit.error(tree.pos, unsup("assignment to mutable variable/field."))
+    //     case Return(expr) => unit.error(tree.pos, unsup("return statement."))
+    //     case Try(block, catches, finalizer) => unit.error(tree.pos, unsup("try block."))
+    //     case SingletonTypeTree(ref) => unit.error(tree.pos, unsup("singleton type."))
+    //     case SelectFromTypeTree(qualifier, selector) => unit.error(tree.pos, unsup("path-dependent type."))
+    //     case CompoundTypeTree(templ: Template) => unit.error(tree.pos, unsup("compound/refinement type."))
+    //     case TypeBoundsTree(lo, hi) => unit.error(tree.pos, unsup("type bounds."))
+    //     case ExistentialTypeTree(tpt, whereClauses) => unit.error(tree.pos, unsup("existential type."))
+    //     case _ => ;
+    //   }
+    // }
   }
   
   

@@ -78,6 +78,23 @@ trait Extractors {
 
     }
 
+    object ExConstructorDef {
+      def unapply(dd: DefDef): Boolean = dd match {
+        case DefDef(_, name, tparams, vparamss, tpt, rhs) if(name.toString == "<init>" && tparams.isEmpty && vparamss.size == 1 && vparamss(0).size == 0) => true
+        case _ => false
+      }
+    }
+
+    object ExMainFunctionDef {
+      def unapply(dd: DefDef): Boolean = dd match {
+        case DefDef(_, name, tparams, vparamss, tpt, rhs) if(name.toString == "main" && tparams.isEmpty && vparamss.size == 1 && vparamss(0).size == 1) => {
+          println("Looks like main " + vparamss(0)(0).symbol.tpe);
+          true
+        }
+        case _ => false
+      }
+    }
+
     object ExFunctionDef {
       /** Matches a function with a single list of arguments, no type
        * parameters and regardless of its visibility. */

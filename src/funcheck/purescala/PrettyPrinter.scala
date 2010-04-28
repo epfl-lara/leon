@@ -87,6 +87,7 @@ object PrettyPrinter {
   // TYPE TREES
   // all type trees are printed in-line
   private def pp(tpe: TypeTree, sb: StringBuffer): StringBuffer = tpe match {
+    case Int32Type => sb.append("Int")
     case _ => sb.append("Type?")
   }
 
@@ -119,6 +120,29 @@ object PrettyPrinter {
         })
 
         ind(nsb); nsb.append("}\n")
+      }
+
+      case FunDef(id, rt, args, body, pre, post) => {
+        var nsb = sb
+        ind(nsb)
+        nsb.append("def ")
+        nsb.append(id)
+        nsb.append("(")
+
+        args.foreach(a => {
+            nsb.append("ARG ")
+        })
+
+        nsb.append(") : ")
+        nsb = pp(rt, nsb)
+        nsb.append(" = {\n")
+
+        ind(nsb)
+        nsb = pp(body, nsb)
+        nsb.append("\n")
+
+        ind(nsb)
+        nsb.append("}\n")
       }
 
       case _ => sb.append("Defn?")

@@ -12,6 +12,7 @@ trait CodeExtraction extends Extractors {
   self: AnalysisComponent =>
 
   import global._
+  import global.definitions._
   import StructuralExtractors._
   import ExpressionExtractors._
 
@@ -23,12 +24,10 @@ trait CodeExtraction extends Extractors {
 
     def s2ps(tree: Tree): Expr = toPureScala(unit)(tree) match {
       case Some(ex) => ex
-      case None => stopIfErrors; throw new Error("unreachable?")
+      case None => stopIfErrors; scala.Predef.error("unreachable error.")
     }
 
-    /** Populates the symbolDefMap with object and class symbols, and returns
-     * the symbol corresponding to the expected single top-level object. */
-    def extractClassSymbols: ObjectDef = {
+    def extractTopLevelDef: ObjectDef = {
       val top = unit.body match {
         case p @ PackageDef(name, lst) if lst.size == 0 => {
           unit.error(p.pos, "No top-level definition found.")
@@ -43,7 +42,7 @@ trait CodeExtraction extends Extractors {
         case PackageDef(name, lst) => {
           assert(lst.size == 1)
           lst(0) match {
-            case ExObjectDef(n, templ) => Some(extractObjectSym(n.toString, templ))
+            case ExObjectDef(n, templ) => Some(extractObjectDef(n.toString, templ))
             case other @ _ => unit.error(other.pos, "Expected: top-level single object.")
             None
           }
@@ -54,38 +53,40 @@ trait CodeExtraction extends Extractors {
       top.get
     }
 
-    def extractObjectSym(name: Identifier, tmpl: Template): ObjectDef = {
+    def extractObjectDef(name: Identifier, tmpl: Template): ObjectDef = {
       // we assume that the template actually corresponds to an object
       // definition. Typically it should have been obtained from the proper
       // extractor (ExObjectDef)
 
       var classDefs: List[ClassTypeDef] = Nil
-      var objectDefs: List[purescala.Symbols.ObjectSymbol] = Nil
+      var objectDefs: List[ObjectDef] = Nil
+      var funDefs: List[FunDef] = Nil
 
-      tmpl.body.foreach(tree => tree match {
-        case ExObjectDef(o2, t2) => { objectSyms = extractObjectSym(o2, t2) :: objectSyms }
+      tmpl.body.foreach(tree => {
+        println("[[[ " + tree + "]]]\n");
+        tree match {
+        case ExObjectDef(o2, t2) => { objectDefs = extractObjectDef(o2, t2) :: objectDefs }
         case ExAbstractClass(o2) => ;
+        case ExConstructorDef() => ;
+        case ExMainFunctionDef() => ;
+        case ExFunctionDef(n,p,t,b) => { funDefs = extractFunDef(n,p,t,b) :: funDefs }
         case _ => ;
-      })
+      }})
 
       // val theSym = new purescala.Symbols.ObjectSymbol(name, classSyms.reverse, objectSyms.reverse)
       // we register the tree associated to the symbol to be able to fill in
       // the rest later
       // symbolDefMap(theSym) = tmpl
-      theSym
+      val theDef = new ObjectDef(name, objectDefs.reverse ::: classDefs.reverse ::: funDefs.reverse, Nil)
+      theDef
     }
 
-    // Step-by-step:
-    // 1) extract class and object symbols recursively (objects can have
-    //    objects as members)
-    // 2) set parents for classes
-    // 3) extract function and val symbols (can now have a type, since we
-    //    have full class hierarchy)
-    // 4) extract val and function bodies (can do it, since we have all
-    //    definitions, hence we can resolve all symbols)
+    def extractFunDef(name: Identifier, params: Seq[ValDef], tpt: Tree, body: Tree) = {
+      FunDef(name, scalaType2PureScala(unit, false)(tpt), Nil, null, None, None)
+    }
 
-    // This extracts the class and object symbols recursively.
-    val topLevelObjSym: purescala.Symbols.ObjectSymbol = extractClassSymbols
+    // THE EXTRACTION CODE STARTS HERE
+    val topLevelObjDef: ObjectDef = extractTopLevelDef
 
     stopIfErrors
 
@@ -95,9 +96,11 @@ trait CodeExtraction extends Extractors {
     }
 
     println("Top level sym:")
-    println(topLevelObjSym)
+    println(topLevelObjDef)
 
-    Program(programName, ObjectDef("Object", Nil, Nil))
+
+    //Program(programName, ObjectDef("Object", Nil, Nil))
+    Program(programName, topLevelObjDef)
   }
 
   /** An exception thrown when non-purescala compatible code is encountered. */
@@ -124,6 +127,19 @@ trait CodeExtraction extends Extractors {
       case _ => {
         if(!silent) {
           unit.error(tree.pos, "Could not extract as PureScala.")
+        }
+        throw ImpureCodeEncounteredException(tree)
+      }
+    }
+  }
+
+  private def scalaType2PureScala(unit: CompilationUnit, silent: Boolean)(tree: Tree): funcheck.purescala.TypeTrees.TypeTree = {
+    tree match {
+      case tt: TypeTree if tt.tpe == IntClass.tpe => Int32Type
+
+      case _ => {
+        if(!silent) {
+          unit.error(tree.pos, "Could not extract type as PureScala.")
         }
         throw ImpureCodeEncounteredException(tree)
       }

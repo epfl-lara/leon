@@ -100,8 +100,8 @@ object Definitions {
   }
 
   /** Functions (= 'methods' of objects) */
-  case class FunDef(id: Identifier, args: VarDecls, body: Expr, precondition: Option[Expr], postcondition: Option[Expr]) extends Definition {
-    lazy val argTypes : Seq[TypeTree] = args.map(_.tpe) 
-    lazy val returnType : TypeTree = body.getType
+  case class FunDef(id: Identifier, returnType: TypeTree, args: VarDecls, body: Expr, precondition: Option[Expr], postcondition: Option[Expr]) extends Definition {
+    //lazy val argTypes : Seq[TypeTree] = args.map(_.tpe) 
+    //lazy val returnType : TypeTree = body.getType
   }
 }
