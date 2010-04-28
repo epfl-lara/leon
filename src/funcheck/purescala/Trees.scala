@@ -11,22 +11,6 @@ object Trees {
 
   sealed abstract class Expr extends Typed {
     override def toString: String = PrettyPrinter(this)
-
-    // private var _scope: Option[Scope] = None
-    //
-    // def scope: Scope =
-    //   if(_scope.isEmpty)
-    //     throw new Exception("Undefined scope.")
-    //   else
-    //     _scope.get
-
-    // def scope_=(s: Scope): Unit = {
-    //   if(_scope.isEmpty) {
-    //     _scope = Some(s)
-    //   } else {
-    //     throw new Exception("Redefining scope.")
-    //   }
-    // }
   }
 
   /* Control flow */
@@ -51,6 +35,15 @@ object Trees {
   // We don't handle Seq stars for now.
 
   /* Propositional logic */
+  case object And {
+    def apply(l: Expr, r: Expr): Expr = (l,r) match {
+      case (And(exs1), And(exs2)) => And(exs1 ++ exs2)
+      case (And(exs1), ex2) => And(exs1 :+ ex2)
+      case (ex1, And(exs2)) => And(exs2 :+ ex1)
+      case (ex1, ex2) => And(List(ex1, ex2))
+    }
+  }
+
   case class And(exprs: Seq[Expr]) extends Expr
   case class Or(exprs: Seq[Expr]) extends Expr
   case class Not(expr: Expr) extends Expr 
@@ -62,6 +55,9 @@ object Trees {
   // to be fixed! Should contain a reference to the definition of that
   // variable, which would also give us its type.
   case class Variable(id: Identifier) extends Expr
+
+  // represents the result in post-conditions
+  case class ResultVariable() extends Expr
 
   sealed abstract class Literal[T] extends Expr {
     val value: T

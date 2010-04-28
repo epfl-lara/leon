@@ -16,14 +16,18 @@ trait CodeExtraction extends Extractors {
   import StructuralExtractors._
   import ExpressionExtractors._
 
+  private val varSubsts: scala.collection.mutable.Map[Identifier,Function0[Expr]] = scala.collection.mutable.Map.empty[Identifier,Function0[Expr]]
+
   def extractCode(unit: CompilationUnit): Program = { 
     import scala.collection.mutable.HashMap
 
-    // register where the symbols where extracted from
-    // val symbolDefMap = new HashMap[purescala.Symbols.Symbol,Tree]
-
     def s2ps(tree: Tree): Expr = toPureScala(unit)(tree) match {
       case Some(ex) => ex
+      case None => stopIfErrors; scala.Predef.error("unreachable error.")
+    }
+
+    def st2ps(tree: Tree): funcheck.purescala.TypeTrees.TypeTree = toPureScalaType(unit)(tree) match {
+      case Some(tt) => tt
       case None => stopIfErrors; scala.Predef.error("unreachable error.")
     }
 
@@ -63,7 +67,7 @@ trait CodeExtraction extends Extractors {
       var funDefs: List[FunDef] = Nil
 
       tmpl.body.foreach(tree => {
-        println("[[[ " + tree + "]]]\n");
+        //println("[[[ " + tree + "]]]\n");
         tree match {
         case ExObjectDef(o2, t2) => { objectDefs = extractObjectDef(o2, t2) :: objectDefs }
         case ExAbstractClass(o2) => ;
@@ -82,7 +86,30 @@ trait CodeExtraction extends Extractors {
     }
 
     def extractFunDef(name: Identifier, params: Seq[ValDef], tpt: Tree, body: Tree) = {
-      FunDef(name, scalaType2PureScala(unit, false)(tpt), Nil, null, None, None)
+      var realBody = body
+      var reqCont: Option[Expr] = None
+      var ensCont: Option[Expr] = None
+
+      realBody match {
+        case ExEnsuredExpression(body2, resId, contract) => {
+          varSubsts(resId) = (() => ResultVariable())
+          val c1 = s2ps(contract)
+          varSubsts.remove(resId)
+          realBody = body2
+          ensCont = Some(c1)
+        }
+        case _ => ;
+      }
+
+      realBody match {
+        case ExRequiredExpression(body3, contract) => {
+          realBody = body3
+          reqCont = Some(s2ps(contract))
+        }
+        case _ => ;
+      }
+      
+      FunDef(name, st2ps(tpt), Nil, s2ps(realBody), reqCont, ensCont)
     }
 
     // THE EXTRACTION CODE STARTS HERE
@@ -94,10 +121,6 @@ trait CodeExtraction extends Extractors {
       case PackageDef(name, _) => name.toString
       case _ => "<program>"
     }
-
-    println("Top level sym:")
-    println(topLevelObjDef)
-
 
     //Program(programName, ObjectDef("Object", Nil, Nil))
     Program(programName, topLevelObjDef)
@@ -115,22 +138,44 @@ trait CodeExtraction extends Extractors {
     }
   }
 
+  def toPureScalaType(unit: CompilationUnit)(typeTree: Tree): Option[funcheck.purescala.TypeTrees.TypeTree] = {
+    try {
+      Some(scalaType2PureScala(unit, false)(typeTree))
+    } catch {
+      case ImpureCodeEncounteredException(_) => None
+    }
+  }
+
   /** Forces conversion from scalac AST to purescala AST, throws an Exception
    * if impossible. If not in 'silent mode', non-pure AST nodes are reported as
    * errors. */
   private def scala2PureScala(unit: CompilationUnit, silent: Boolean)(tree: Tree): Expr = {
-    tree match {
+    def rec(tr: Tree): Expr = tr match {
       case ExInt32Literal(v) => IntLiteral(v)
       case ExBooleanLiteral(v) => BooleanLiteral(v)
-
+      case ExIntIdentifier(id) => varSubsts.get(id) match {
+        case Some(fun) => fun()
+        case None => Variable(id)
+      }
+      case ExAnd(l, r) => And(rec(l), rec(r))
+      case ExPlus(l, r) => Plus(rec(l), rec(r))
+      case ExEquals(l, r) => Equals(rec(l), rec(r))
+      case ExGreaterThan(l, r) => GreaterThan(rec(l), rec(r))
+      case ExGreaterEqThan(l, r) => GreaterEquals(rec(l), rec(r))
+      case ExLessThan(l, r) => LessThan(rec(l), rec(r))
+      case ExLessEqThan(l, r) => LessEquals(rec(l), rec(r))
+  
       // default behaviour is to complain :)
       case _ => {
         if(!silent) {
+          println(tr)
           unit.error(tree.pos, "Could not extract as PureScala.")
         }
         throw ImpureCodeEncounteredException(tree)
       }
     }
+
+    rec(tree)
   }
 
   private def scalaType2PureScala(unit: CompilationUnit, silent: Boolean)(tree: Tree): funcheck.purescala.TypeTrees.TypeTree = {

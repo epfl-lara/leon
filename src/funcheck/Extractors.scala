@@ -21,9 +21,9 @@ trait Extractors {
       }
     }
 
-    object EnsuredExpression {
+    object ExEnsuredExpression {
       /** Extracts the 'ensuring' contract from an expression. */
-      def unapply(tree: Tree): Option[(Tree,Function)] = tree match {
+      def unapply(tree: Tree): Option[(Tree,String,Tree)] = tree match {
         case Apply(
           Select(
             Apply(
@@ -34,12 +34,12 @@ trait Extractors {
             ensuringName),
           (anonymousFun @ Function(ValDef(_, resultName, resultType, EmptyTree) :: Nil,
             contractBody)) :: Nil)
-          if("ensuring".equals(ensuringName.toString)) => Some((body,anonymousFun))
+          if("ensuring".equals(ensuringName.toString)) => Some((body, resultName.toString, contractBody))
         case _ => None
       }
     }
 
-    object RequiredExpression {
+    object ExRequiredExpression {
       /** Extracts the 'require' contract from an expression (only if it's the
        * first call in the block). */
       def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
@@ -88,7 +88,6 @@ trait Extractors {
     object ExMainFunctionDef {
       def unapply(dd: DefDef): Boolean = dd match {
         case DefDef(_, name, tparams, vparamss, tpt, rhs) if(name.toString == "main" && tparams.isEmpty && vparamss.size == 1 && vparamss(0).size == 1) => {
-          println("Looks like main " + vparamss(0)(0).symbol.tpe);
           true
         }
         case _ => false
@@ -117,6 +116,85 @@ trait Extractors {
     object ExInt32Literal {
       def unapply(tree: Tree): Option[Int] = tree match {
         case Literal(c @ Constant(i)) if c.tpe == IntClass.tpe => Some(c.intValue)
+        case _ => None
+      }
+    }
+
+    object ExIntIdentifier {
+      def unapply(tree: Tree): Option[String] = tree match {
+        case i: Ident if i.symbol.tpe == IntClass.tpe => Some(i.symbol.name.toString)
+        case _ => None
+      }
+    }
+
+    object ExAnd {
+      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+        case Apply(s @ Select(lhs, _), List(rhs)) if (s.symbol == Boolean_and) =>
+          Some((lhs,rhs))
+        case _ => None
+      }
+    }
+  
+    object ExOr {
+      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+        case Apply(s @ Select(lhs, _), List(rhs)) if (s.symbol == Boolean_or) =>
+          Some((lhs,rhs))
+        case _ => None
+      }
+    }
+  
+    object ExNot {
+      def unapply(tree: Tree): Option[Tree] = tree match {
+        case Select(t, n) if (n == nme.UNARY_!) => Some(t)
+        case _ => None
+      }
+    }
+  
+    object ExEquals {
+      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n == nme.EQ) => Some((lhs,rhs))
+        case _ => None
+      }
+    }
+  
+    object ExNotEquals {
+      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n == nme.NE) => Some((lhs,rhs))
+        case _ => None
+      }
+    }
+  
+    object ExLessThan {
+      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n == nme.LT) => Some((lhs,rhs))
+        case _ => None
+      }
+    }
+  
+    object ExLessEqThan {
+      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n == nme.LE) => Some((lhs,rhs))
+        case _ => None
+      }
+    }
+  
+    object ExGreaterThan {
+      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n == nme.GT) => Some((lhs,rhs))
+        case _ => None
+      }
+    }
+  
+    object ExGreaterEqThan {
+      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n == nme.GE) => Some((lhs,rhs))
+        case _ => None
+      }
+    }
+
+    object ExPlus {
+      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n == nme.ADD) => Some((lhs,rhs))
         case _ => None
       }
     }

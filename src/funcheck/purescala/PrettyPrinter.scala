@@ -62,6 +62,7 @@ object PrettyPrinter {
   }
 
   private def pp(tree: Expr, sb: StringBuffer): StringBuffer = tree match {
+    case Variable(id) => sb.append(id)
     case And(exprs) => ppNary(sb, exprs, " \u2227 ")            // \land
     case Or(exprs) => ppNary(sb, exprs, " \u2228 ")             // \lor
     case Not(Equals(l, r)) => ppBinary(sb, l, r, " \u2260 ")    // \neq
@@ -69,6 +70,15 @@ object PrettyPrinter {
     case Equals(l,r) => ppBinary(sb, l, r, " = ")
     case IntLiteral(v) => sb.append(v)
     case BooleanLiteral(v) => sb.append(v)
+    case Plus(l,r) => ppBinary(sb, l, r, " + ")
+    case Minus(l,r) => ppBinary(sb, l, r, " - ")
+    case Times(l,r) => ppBinary(sb, l, r, " * ")
+    case Division(l,r) => ppBinary(sb, l, r, " / ")
+    case LessThan(l,r) => ppBinary(sb, l, r, " < ")
+    case GreaterThan(l,r) => ppBinary(sb, l, r, " > ")
+    case LessEquals(l,r) => ppBinary(sb, l, r, " \u2264 ")      // \leq
+    case GreaterEquals(l,r) => ppBinary(sb, l, r, " \u2265 ")   // \geq
+    
     case IfExpr(c, t, e) => {
       var nsb = sb
       nsb.append("if (")
@@ -80,6 +90,8 @@ object PrettyPrinter {
       nsb.append(" }")
       nsb
     }
+
+    case ResultVariable() => sb.append("<res>")
 
     case _ => sb.append("Expr?")
   }
@@ -94,7 +106,9 @@ object PrettyPrinter {
   // DEFINITIONS
   // all definitions are printed with an end-of-line
   private def pp(defn: Definition, sb: StringBuffer, lvl: Int): StringBuffer = {
-    def ind(sb: StringBuffer): Unit = { sb.append("  " * lvl) }
+    def ind(sb: StringBuffer, customLevel: Int = lvl) : Unit = {
+        sb.append("  " * customLevel)
+    }
 
     defn match {
       case Program(id, mainObj) => {
@@ -124,6 +138,21 @@ object PrettyPrinter {
 
       case FunDef(id, rt, args, body, pre, post) => {
         var nsb = sb
+
+        pre.foreach(prec => {
+          ind(nsb)
+          nsb.append("@pre : ")
+          nsb = pp(prec, nsb)
+          nsb.append("\n")
+        })
+
+        post.foreach(postc => {
+          ind(nsb)
+          nsb.append("@post: ")
+          nsb = pp(postc, nsb)
+          nsb.append("\n")
+        })
+
         ind(nsb)
         nsb.append("def ")
         nsb.append(id)
@@ -137,7 +166,7 @@ object PrettyPrinter {
         nsb = pp(rt, nsb)
         nsb.append(" = {\n")
 
-        ind(nsb)
+        ind(nsb, lvl+1)
         nsb = pp(body, nsb)
         nsb.append("\n")
 
