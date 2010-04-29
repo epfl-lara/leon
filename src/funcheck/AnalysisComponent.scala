@@ -76,7 +76,4 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin)
     //   }
     // }
   }
-  
-  
-  
 }
