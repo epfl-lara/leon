@@ -67,7 +67,7 @@ object PrettyPrinter {
     case Or(exprs) => ppNary(sb, exprs, " \u2228 ")             // \lor
     case Not(Equals(l, r)) => ppBinary(sb, l, r, " \u2260 ")    // \neq
     case Not(expr) => ppUnary(sb, expr, "\u00AC")               // \neg
-    case Equals(l,r) => ppBinary(sb, l, r, " = ")
+    case Equals(l,r) => ppBinary(sb, l, r, " == ")
     case IntLiteral(v) => sb.append(v)
     case BooleanLiteral(v) => sb.append(v)
     case Plus(l,r) => ppBinary(sb, l, r, " + ")
@@ -91,7 +91,7 @@ object PrettyPrinter {
       nsb
     }
 
-    case ResultVariable() => sb.append("<res>")
+    case ResultVariable() => sb.append("#res")
 
     case _ => sb.append("Expr?")
   }
@@ -100,6 +100,7 @@ object PrettyPrinter {
   // all type trees are printed in-line
   private def pp(tpe: TypeTree, sb: StringBuffer): StringBuffer = tpe match {
     case Int32Type => sb.append("Int")
+    case BooleanType => sb.append("Boolean")
     case _ => sb.append("Type?")
   }
 
@@ -126,11 +127,15 @@ object PrettyPrinter {
         nsb.append(id)
         nsb.append(" {\n")
 
-        val sz = defs.size
         var c = 0
+        val sz = defs.size
 
         defs.foreach(df => {
-          nsb = pp(df, nsb, lvl+1) 
+          nsb = pp(df, nsb, lvl+1)
+          if(c < sz - 1) {
+            nsb.append("\n")
+          }
+          c = c + 1
         })
 
         ind(nsb); nsb.append("}\n")
@@ -158,8 +163,18 @@ object PrettyPrinter {
         nsb.append(id)
         nsb.append("(")
 
-        args.foreach(a => {
-            nsb.append("ARG ")
+        val sz = args.size
+        var c = 0
+        
+        args.foreach(arg => {
+          nsb.append(arg.id)
+          nsb.append(" : ")
+          nsb = pp(arg.tpe, nsb)
+
+          if(c < sz - 1) {
+            nsb.append(", ")
+          }
+          c = c + 1
         })
 
         nsb.append(") : ")

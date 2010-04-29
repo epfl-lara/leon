@@ -120,6 +120,13 @@ trait Extractors {
       }
     }
 
+    object ExIdentifier {
+      def unapply(tree: Tree): Option[(String,Tree)] = tree match {
+        case i: Ident => Some((i.symbol.name.toString, i))
+        case _ => None
+      }
+    }
+
     object ExIntIdentifier {
       def unapply(tree: Tree): Option[String] = tree match {
         case i: Ident if i.symbol.tpe == IntClass.tpe => Some(i.symbol.name.toString)

@@ -90,6 +90,8 @@ trait CodeExtraction extends Extractors {
       var reqCont: Option[Expr] = None
       var ensCont: Option[Expr] = None
 
+      val ps = params.map(p => VarDecl(p.name.toString, st2ps(p.tpt)))
+
       realBody match {
         case ExEnsuredExpression(body2, resId, contract) => {
           varSubsts(resId) = (() => ResultVariable())
@@ -109,7 +111,7 @@ trait CodeExtraction extends Extractors {
         case _ => ;
       }
       
-      FunDef(name, st2ps(tpt), Nil, s2ps(realBody), reqCont, ensCont)
+      FunDef(name, st2ps(tpt), ps, s2ps(realBody), reqCont, ensCont)
     }
 
     // THE EXTRACTION CODE STARTS HERE
@@ -153,7 +155,7 @@ trait CodeExtraction extends Extractors {
     def rec(tr: Tree): Expr = tr match {
       case ExInt32Literal(v) => IntLiteral(v)
       case ExBooleanLiteral(v) => BooleanLiteral(v)
-      case ExIntIdentifier(id) => varSubsts.get(id) match {
+      case ExIdentifier(id,tpt) => varSubsts.get(id) match {
         case Some(fun) => fun()
         case None => Variable(id)
       }
@@ -181,6 +183,7 @@ trait CodeExtraction extends Extractors {
   private def scalaType2PureScala(unit: CompilationUnit, silent: Boolean)(tree: Tree): funcheck.purescala.TypeTrees.TypeTree = {
     tree match {
       case tt: TypeTree if tt.tpe == IntClass.tpe => Int32Type
+      case tt: TypeTree if tt.tpe == BooleanClass.tpe => BooleanType
 
       case _ => {
         if(!silent) {
@@ -190,30 +193,4 @@ trait CodeExtraction extends Extractors {
       }
     }
   }
-
-//  def findContracts(tree: Tree): Unit = tree match {
-//    case DefDef(/*mods*/ _, name, /*tparams*/ _, /*vparamss*/ _, /*tpt*/ _, body) => {
-//      var realBody = body
-//      var reqCont: Option[Tree] = None
-//      var ensCont: Option[Function] = None
-//
-//      body match {
-//        case EnsuredExpression(body2, contract) => realBody = body2; ensCont = Some(contract)
-//        case _ => ;
-//      }
-//
-//      realBody match {
-//        case RequiredExpression(body3, contract) => realBody = body3; reqCont = Some(contract)
-//        case _ => ;
-//      }
-//
-//      println("In: " + name) 
-//      println("  Requires clause: " + reqCont)
-//      println("  Ensures  clause: " + ensCont)
-//      println("  Body:            " + realBody)
-//    }
-//
-//    case _ => ;
-//  }
-
 }
