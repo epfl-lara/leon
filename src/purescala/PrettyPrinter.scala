@@ -1,4 +1,4 @@
-package funcheck.purescala
+package purescala
 
 
 /** This pretty-printer uses Unicode for some operators, to make sure we

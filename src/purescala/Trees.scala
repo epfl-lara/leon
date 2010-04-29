@@ -1,5 +1,4 @@
-package funcheck.purescala
-
+package purescala
 
 /** AST definitions for Pure Scala. */
 object Trees {

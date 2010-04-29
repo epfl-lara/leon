@@ -26,7 +26,7 @@ trait CodeExtraction extends Extractors {
       case None => stopIfErrors; scala.Predef.error("unreachable error.")
     }
 
-    def st2ps(tree: Tree): funcheck.purescala.TypeTrees.TypeTree = toPureScalaType(unit)(tree) match {
+    def st2ps(tree: Tree): purescala.TypeTrees.TypeTree = toPureScalaType(unit)(tree) match {
       case Some(tt) => tt
       case None => stopIfErrors; scala.Predef.error("unreachable error.")
     }
@@ -140,7 +140,7 @@ trait CodeExtraction extends Extractors {
     }
   }
 
-  def toPureScalaType(unit: CompilationUnit)(typeTree: Tree): Option[funcheck.purescala.TypeTrees.TypeTree] = {
+  def toPureScalaType(unit: CompilationUnit)(typeTree: Tree): Option[purescala.TypeTrees.TypeTree] = {
     try {
       Some(scalaType2PureScala(unit, false)(typeTree))
     } catch {
@@ -180,7 +180,7 @@ trait CodeExtraction extends Extractors {
     rec(tree)
   }
 
-  private def scalaType2PureScala(unit: CompilationUnit, silent: Boolean)(tree: Tree): funcheck.purescala.TypeTrees.TypeTree = {
+  private def scalaType2PureScala(unit: CompilationUnit, silent: Boolean)(tree: Tree): purescala.TypeTrees.TypeTree = {
     tree match {
       case tt: TypeTree if tt.tpe == IntClass.tpe => Int32Type
       case tt: TypeTree if tt.tpe == BooleanClass.tpe => BooleanType

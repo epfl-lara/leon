@@ -1,4 +1,4 @@
-package funcheck.purescala
+package purescala
 
 object Common {
   type Identifier = String
