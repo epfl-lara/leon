@@ -160,12 +160,19 @@ trait CodeExtraction extends Extractors {
         case None => Variable(id)
       }
       case ExAnd(l, r) => And(rec(l), rec(r))
+      case ExOr(l, r) => Or(rec(l), rec(r))
+      case ExNot(e) => Not(rec(e))
+      case ExUMinus(e) => UMinus(rec(e))
       case ExPlus(l, r) => Plus(rec(l), rec(r))
+      case ExMinus(l, r) => Minus(rec(l), rec(r))
+      case ExTimes(l, r) => Times(rec(l), rec(r))
+      case ExDiv(l, r) => Division(rec(l), rec(r))
       case ExEquals(l, r) => Equals(rec(l), rec(r))
       case ExGreaterThan(l, r) => GreaterThan(rec(l), rec(r))
       case ExGreaterEqThan(l, r) => GreaterEquals(rec(l), rec(r))
       case ExLessThan(l, r) => LessThan(rec(l), rec(r))
       case ExLessEqThan(l, r) => LessEquals(rec(l), rec(r))
+      case ExIfThenElse(t1,t2,t3) => IfExpr(rec(t1), rec(t2), rec(t3))
   
       // default behaviour is to complain :)
       case _ => {
@@ -184,10 +191,13 @@ trait CodeExtraction extends Extractors {
     tree match {
       case tt: TypeTree if tt.tpe == IntClass.tpe => Int32Type
       case tt: TypeTree if tt.tpe == BooleanClass.tpe => BooleanType
+      case tt: TypeTree =>  tt.tpe match {
+        case TypeRef(_,sym,_) if sym == setTraitSym => XXXXXX
+      }
 
-      case _ => {
+      case tt => {
         if(!silent) {
-          unit.error(tree.pos, "Could not extract type as PureScala.")
+          unit.error(tree.pos, "Could not extract type as PureScala. [" + tt + "]")
         }
         throw ImpureCodeEncounteredException(tree)
       }

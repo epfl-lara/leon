@@ -105,6 +105,13 @@ trait Extractors {
   }
 
   object ExpressionExtractors {
+    object ExIfThenElse {
+      def unapply(tree: Tree): Option[(Tree,Tree,Tree)] = tree match {
+        case If(t1,t2,t3) => Some((t1,t2,t3))
+        case _ => None
+      }
+    }
+
     object ExBooleanLiteral {
       def unapply(tree: Tree): Option[Boolean] = tree match {
         case Literal(Constant(true)) => Some(true)
@@ -199,9 +206,37 @@ trait Extractors {
       }
     }
 
+    object ExUMinus {
+      def unapply(tree: Tree): Option[Tree] = tree match {
+        case Select(t, n) if (n == nme.UNARY_-) => Some(t)
+        case _ => None
+      }
+    }
+
     object ExPlus {
       def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
         case Apply(Select(lhs, n), List(rhs)) if (n == nme.ADD) => Some((lhs,rhs))
+        case _ => None
+      }
+    }
+
+    object ExMinus {
+      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n == nme.SUB) => Some((lhs,rhs))
+        case _ => None
+      }
+    }
+
+    object ExTimes {
+      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n == nme.MUL) => Some((lhs,rhs))
+        case _ => None
+      }
+    }
+
+    object ExDiv {
+      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n == nme.DIV) => Some((lhs,rhs))
         case _ => None
       }
     }

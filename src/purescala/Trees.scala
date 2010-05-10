@@ -43,6 +43,15 @@ object Trees {
     }
   }
 
+  case object Or {
+    def apply(l: Expr, r: Expr): Expr = (l,r) match {
+      case (Or(exs1), Or(exs2)) => Or(exs1 ++ exs2)
+      case (Or(exs1), ex2) => Or(exs1 :+ ex2)
+      case (ex1, Or(exs2)) => Or(exs2 :+ ex1)
+      case (ex1, ex2) => Or(List(ex1, ex2))
+    }
+  }
+
   case class And(exprs: Seq[Expr]) extends Expr
   case class Or(exprs: Seq[Expr]) extends Expr
   case class Not(expr: Expr) extends Expr 

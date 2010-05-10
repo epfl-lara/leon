@@ -67,6 +67,7 @@ object PrettyPrinter {
     case Or(exprs) => ppNary(sb, exprs, " \u2228 ")             // \lor
     case Not(Equals(l, r)) => ppBinary(sb, l, r, " \u2260 ")    // \neq
     case Not(expr) => ppUnary(sb, expr, "\u00AC")               // \neg
+    case UMinus(expr) => ppUnary(sb, expr, "-")
     case Equals(l,r) => ppBinary(sb, l, r, " == ")
     case IntLiteral(v) => sb.append(v)
     case BooleanLiteral(v) => sb.append(v)
