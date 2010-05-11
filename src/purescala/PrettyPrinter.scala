@@ -102,6 +102,7 @@ object PrettyPrinter {
   private def pp(tpe: TypeTree, sb: StringBuffer): StringBuffer = tpe match {
     case Int32Type => sb.append("Int")
     case BooleanType => sb.append("Boolean")
+    case SetType(bt) => pp(bt, sb.append("Set[")).append("]")
     case _ => sb.append("Type?")
   }
 
