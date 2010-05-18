@@ -68,22 +68,24 @@ trait CodeExtraction extends Extractors {
       var objectDefs: List[ObjectDef] = Nil
       var funDefs: List[FunDef] = Nil
 
-      tmpl.body.foreach(tree => {
-        //println("[[[ " + tree + "]]]\n");
-        tree match {
+      tmpl.body.foreach(
+        _ match {
+        case ExCaseClassSyntheticJunk() => ;
         case ExObjectDef(o2, t2) => { objectDefs = extractObjectDef(o2, t2) :: objectDefs }
-        case ExAbstractClass(o2) => ;
+        case ExAbstractClass(o2) => println("That seems to be an abstract class: [[" + o2  + "]]")
+        case ExCaseClass(o2) => println(o2)
         case ExConstructorDef() => ;
         case ExMainFunctionDef() => ;
         case ExFunctionDef(n,p,t,b) => { funDefs = extractFunDef(n,p,t,b) :: funDefs }
-        case _ => ;
-      }})
+        case tree => { println("Something else: "); println("[[[ " + tree + "]]]\n") }
+      })
 
       // val theSym = new purescala.Symbols.ObjectSymbol(name, classSyms.reverse, objectSyms.reverse)
       // we register the tree associated to the symbol to be able to fill in
       // the rest later
       // symbolDefMap(theSym) = tmpl
       val theDef = new ObjectDef(name, objectDefs.reverse ::: classDefs.reverse ::: funDefs.reverse, Nil)
+      
       theDef
     }
 

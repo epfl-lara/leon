@@ -54,7 +54,7 @@ trait Extractors {
        * visibility. Does not match on the automatically generated companion
        * objects of case classes (or any synthetic class). */
       def unapply(cd: ClassDef): Option[(String,Template)] = cd match {
-        case ClassDef(_, name, tparams, impl) if (cd.symbol.isModuleClass && tparams.isEmpty && !cd.symbol.hasFlag(symtab.Flags.SYNTHETIC)) => {
+        case ClassDef(_, name, tparams, impl) if (cd.symbol.isModuleClass && tparams.isEmpty && !cd.symbol.isSynthetic) => {
           Some((name.toString, impl))
         }
         case _ => None
@@ -66,16 +66,40 @@ trait Extractors {
        * constrctor args (in the case of a class), no implementation details,
        * no abstract members. */
       def unapply(cd: ClassDef): Option[(String)] = cd match {
-        case ClassDef(_, name, tparams, impl) if (cd.symbol.isTrait && tparams.isEmpty && impl.body.length == 2) => {
-          println(name + " seems to be a cool trait") 
+        // trait
+        // case ClassDef(_, name, tparams, impl) if (cd.symbol.isTrait && tparams.isEmpty && impl.body.isEmpty) => Some(name.toString)
+
+        // abstract class
+        case ClassDef(_, name, tparams, impl) if (cd.symbol.isAbstractClass && tparams.isEmpty && impl.body.size == 1) => Some(name.toString)
+
+        case _ => None
+      }
+    }
+
+    object ExCaseClass {
+      def unapply(cd: ClassDef): Option[(String)] = cd match {
+        case ClassDef(_, name, tparams, impl) if (cd.symbol.isCase && !cd.symbol.isAbstractClass && tparams.isEmpty && impl.body.size >= 8) => {
+          println("I think I have something here")
+          println(impl.body.size)
+          cd.symbol.tpe match {
+            case ClassInfoType(prts, decls, cls) => {
+              println("## " + prts)
+              println("## " + decls)
+              println("## " + cls)
+            }
+            case _ => ;
+          }
           Some(name.toString)
         }
         case _ => None
       }
     }
 
-    object ExCaseClass {
-
+    object ExCaseClassSyntheticJunk {
+      def unapply(cd: ClassDef): Boolean = cd match {
+        case ClassDef(_, _, _, _) if (cd.symbol.isSynthetic && cd.symbol.isFinal) => true
+        case _ => false
+      }
     }
 
     object ExConstructorDef {
