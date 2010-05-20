@@ -78,7 +78,7 @@ object Definitions {
   sealed trait ClassTypeDef extends Definition {
     val id: Identifier
     val parent: Option[AbstractClassDef]
-    val fields: VarDecls
+    // val fields: VarDecls
   }
 
   /** Will be used at some point as a common ground for case classes (which
@@ -86,10 +86,14 @@ object Definitions {
   sealed trait ExtractorTypeDef
 
   /** Abstract classes. */
-  case class AbstractClassDef(id: Identifier, parent: Option[AbstractClassDef], fields: VarDecls) extends ClassTypeDef
+  class AbstractClassDef(val id: Identifier, val parent: Option[AbstractClassDef]) extends ClassTypeDef {
+    var fields: VarDecls = Nil
+  }
 
   /** Case classes. */
-  case class CaseClassDef(id: Identifier, parent: Option[AbstractClassDef], fields: VarDecls) extends ClassTypeDef with ExtractorTypeDef
+  class CaseClassDef(val id: Identifier, val parent: Option[AbstractClassDef]) extends ClassTypeDef with ExtractorTypeDef {
+    var fields: VarDecls = Nil
+  }
 
   /** "Regular" classes */
   case class ClassDef(id: Identifier, parent: Option[AbstractClassDef], fields: VarDecls) extends ClassTypeDef

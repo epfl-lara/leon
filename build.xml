@@ -79,7 +79,7 @@
     -->
 
     <!-- phases definitions -->
-    <target name="compile-funcheck-lib" description="compile the FunCheck library (used for specification)">
+    <!-- <target name="compile-funcheck-lib" description="compile the FunCheck library (used for specification)">
         <mkdir dir="${build.funcheck.lib.dir}"  />
         <scalac srcdir="${sources.dir}" destdir="${build.funcheck.lib.dir}" force="changed" addparams="${scalac.default.params}">
             <classpath>
@@ -88,6 +88,7 @@
             <include name="funcheck/lib/**/*.scala"  />
         </scalac>
     </target>
+    -->
 
     <!--
     <target name="compile-scalac-lib-extension" description="compile Scala library extension for immutable Multiset">
@@ -99,7 +100,8 @@
     </target>
     -->
 
-    <target name="compile" depends="compile-funcheck-lib" description="compile the FunCheck plugin">
+    <!-- <target name="compile" depends="compile-funcheck-lib" description="compile the FunCheck plugin"> -->
+    <target name="compile" description="compile the FunCheck plugin">
         <mkdir dir="${build.plugin.funcheck.dir}"  />
         <scalac srcdir="${sources.dir}" destdir="${build.plugin.funcheck.dir}" force="changed" addparams="${scalac.default.params}">
             <classpath>

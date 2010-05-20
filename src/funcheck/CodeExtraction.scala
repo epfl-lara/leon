@@ -68,17 +68,36 @@ trait CodeExtraction extends Extractors {
       var objectDefs: List[ObjectDef] = Nil
       var funDefs: List[FunDef] = Nil
 
+      val scalaClassSyms: scala.collection.mutable.Map[Symbol,Identifier] =
+        scala.collection.mutable.Map.empty[Symbol,Identifier]
+
+      // we need the new type definitions before we can do anything...
       tmpl.body.foreach(
         _ match {
-        case ExCaseClassSyntheticJunk() => ;
-        case ExObjectDef(o2, t2) => { objectDefs = extractObjectDef(o2, t2) :: objectDefs }
-        case ExAbstractClass(o2) => println("That seems to be an abstract class: [[" + o2  + "]]")
-        case ExCaseClass(o2) => println(o2)
-        case ExConstructorDef() => ;
-        case ExMainFunctionDef() => ;
-        case ExFunctionDef(n,p,t,b) => { funDefs = extractFunDef(n,p,t,b) :: funDefs }
-        case tree => { println("Something else: "); println("[[[ " + tree + "]]]\n") }
-      })
+          case ExAbstractClass(o2, sym) => {
+            scalaClassSyms += (sym -> o2)
+          }
+          case ExCaseClass(o2, sym) => {
+            scalaClassSyms += (sym -> o2)
+          }
+          case _ => ;
+        }
+      )
+
+      println(scalaClassSyms)
+
+      tmpl.body.foreach(
+        _ match {
+          case ExCaseClassSyntheticJunk() => ;
+          case ExObjectDef(o2, t2) => { objectDefs = extractObjectDef(o2, t2) :: objectDefs }
+          case ExAbstractClass(o2,sym) => ; //println("That seems to be an abstract class: [[" + o2  + "]]")
+          case ExCaseClass(o2,sym) => ; //println(o2)
+          case ExConstructorDef() => ;
+          case ExMainFunctionDef() => ;
+          case ExFunctionDef(n,p,t,b) => { funDefs = extractFunDef(n,p,t,b) :: funDefs }
+          case tree => { println("Something else: "); println("[[[ " + tree + "]]]\n") }
+        }
+      )
 
       // val theSym = new purescala.Symbols.ObjectSymbol(name, classSyms.reverse, objectSyms.reverse)
       // we register the tree associated to the symbol to be able to fill in
