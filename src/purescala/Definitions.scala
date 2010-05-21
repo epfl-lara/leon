@@ -77,7 +77,8 @@ object Definitions {
    * patterns (of pattern-matching, that is) */
   sealed trait ClassTypeDef extends Definition {
     val id: Identifier
-    val parent: Option[AbstractClassDef]
+    var parent: Option[AbstractClassDef]
+    val isAbstract: Boolean
     // val fields: VarDecls
   }
 
@@ -85,18 +86,29 @@ object Definitions {
    * implicitely define extractors) and explicitely defined unapply methods. */
   sealed trait ExtractorTypeDef
 
+  object AbstractClassDef {
+    def unapply(acd: AbstractClassDef): Option[(Identifier,Option[AbstractClassDef])] = {
+      Some((acd.id, acd.parent))
+    }
+  }
+
   /** Abstract classes. */
-  class AbstractClassDef(val id: Identifier, val parent: Option[AbstractClassDef]) extends ClassTypeDef {
+  class AbstractClassDef(val id: Identifier, var parent: Option[AbstractClassDef]) extends ClassTypeDef {
     var fields: VarDecls = Nil
+    val isAbstract = true
   }
 
   /** Case classes. */
-  class CaseClassDef(val id: Identifier, val parent: Option[AbstractClassDef]) extends ClassTypeDef with ExtractorTypeDef {
+  class CaseClassDef(val id: Identifier, var parent: Option[AbstractClassDef]) extends ClassTypeDef with ExtractorTypeDef {
     var fields: VarDecls = Nil
+    val isAbstract = false
   }
 
   /** "Regular" classes */
-  case class ClassDef(id: Identifier, parent: Option[AbstractClassDef], fields: VarDecls) extends ClassTypeDef
+  class ClassDef(val id: Identifier, var parent: Option[AbstractClassDef]) extends ClassTypeDef {
+    var fields: VarDecls = Nil
+    val isAbstract = false
+  }
   
   /** Values */
   case class ValDef(varDecl: VarDecl, value: Expr) extends Definition {

@@ -143,6 +143,15 @@ object PrettyPrinter {
         ind(nsb); nsb.append("}\n")
       }
 
+      case AbstractClassDef(id, parent) => {
+        var nsb = sb
+        ind(nsb)
+        nsb.append("sealed abstract class ")
+        nsb.append(id)
+        parent.foreach(p => nsb.append("extends " + p.id + " "))
+        nsb
+      }
+
       case FunDef(id, rt, args, body, pre, post) => {
         var nsb = sb
 

@@ -70,21 +70,48 @@ trait CodeExtraction extends Extractors {
 
       val scalaClassSyms: scala.collection.mutable.Map[Symbol,Identifier] =
         scala.collection.mutable.Map.empty[Symbol,Identifier]
+      val scalaClassNames: scala.collection.mutable.Set[Identifier] = 
+        scala.collection.mutable.Set.empty[Identifier]
 
       // we need the new type definitions before we can do anything...
-      tmpl.body.foreach(
-        _ match {
+      tmpl.body.foreach(t =>
+        t match {
           case ExAbstractClass(o2, sym) => {
+            if(scalaClassNames.contains(o2)) {
+              unit.error(t.pos, "A class with the same name already exists.")
+            }
             scalaClassSyms += (sym -> o2)
+            scalaClassNames += o2
           }
           case ExCaseClass(o2, sym) => {
+            if(scalaClassNames.contains(o2)) {
+              unit.error(t.pos, "A class with the same name already exists.")
+            }
             scalaClassSyms += (sym -> o2)
+            scalaClassNames += o2
           }
           case _ => ;
         }
       )
 
-      println(scalaClassSyms)
+      stopIfErrors
+
+      val classesToClasses: scala.collection.mutable.Map[Symbol,ClassTypeDef] =
+        scala.collection.mutable.Map.empty[Symbol,ClassTypeDef]
+
+      scalaClassSyms.foreach(p => {
+          if(p._1.isAbstractClass) {
+            classesToClasses += (p._1 -> new AbstractClassDef(p._2, None))
+          } else if(p._1.isCase) {
+            classesToClasses += (p._1 -> new CaseClassDef(p._2, None))
+          }
+      })
+
+      // TODO
+      // resolve all inheritance links (look at 
+      // add all fields to case classes
+
+      println(classesToClasses)
 
       tmpl.body.foreach(
         _ match {
