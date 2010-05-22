@@ -148,7 +148,7 @@ object PrettyPrinter {
         ind(nsb)
         nsb.append("sealed abstract class ")
         nsb.append(id)
-        parent.foreach(p => nsb.append("extends " + p.id + " "))
+        parent.foreach(p => nsb.append(" extends " + p.id))
         nsb
       }
 

@@ -74,25 +74,10 @@ trait Extractors {
     }
 
     object ExCaseClass {
-      def unapply(cd: ClassDef): Option[(String,Symbol)] = cd match {
+      def unapply(cd: ClassDef): Option[(String,Symbol,Tree)] = cd match {
         case ClassDef(_, name, tparams, impl) if (cd.symbol.isCase && !cd.symbol.isAbstractClass && tparams.isEmpty && impl.body.size >= 8) => {
-          // println("I think I have something here")
-          // cd.symbol.tpe match {
-          //   case TypeRef(_, sym, Nil) => {
-          //     println("It's a typeref, of course")
-          //     println(sym.tpe)
-          //     println(debugString(sym.tpe))
-          //     println(sym.tpe.baseTypeSeq)
-          //     println(sym.tpe.baseClasses)
-          //   }
-          //   case ClassInfoType(prts, decls, cls) => {
-          //     println("## " + prts)
-          //     println("## " + decls)
-          //     println("## " + cls)
-          //   }
-          //   case _ => ;
-          // }
-          Some((name.toString, cd.symbol))
+          
+          Some((name.toString, cd.symbol, impl))
         }
         case _ => None
       }

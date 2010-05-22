@@ -83,12 +83,15 @@ trait CodeExtraction extends Extractors {
             scalaClassSyms += (sym -> o2)
             scalaClassNames += o2
           }
-          case ExCaseClass(o2, sym) => {
+          case ExCaseClass(o2, sym, tpl) => {
             if(scalaClassNames.contains(o2)) {
               unit.error(t.pos, "A class with the same name already exists.")
             }
             scalaClassSyms += (sym -> o2)
             scalaClassNames += o2
+            // println("***")
+            // println(tpl)
+            // println("***")
           }
           case _ => ;
         }
@@ -107,6 +110,28 @@ trait CodeExtraction extends Extractors {
           }
       })
 
+      classesToClasses.foreach(p => {
+        println(p._1)
+        val superC: List[ClassTypeDef] = p._1.tpe.baseClasses.filter(bcs => scalaClassSyms.exists(pp => pp._1 == bcs) && bcs != p._1).map(s => classesToClasses(s)).toList
+
+        val superAC: List[AbstractClassDef] = superC.map(c => {
+            if(!c.isInstanceOf[AbstractClassDef]) {
+                unit.error(p._1.pos, "Class is inheriting from non-abstract class.")
+                null
+            } else {
+                c.asInstanceOf[AbstractClassDef]
+            }
+        }).filter(_ != null)
+
+        if(superAC.length > 1) {
+            unit.error(p._1.pos, "Multiple inheritance.")
+        }
+
+        if(superAC.length == 1) {
+            p._2.parent = Some(superAC.head)
+        }
+      })
+
       // TODO
       // resolve all inheritance links (look at 
       // add all fields to case classes
@@ -118,7 +143,7 @@ trait CodeExtraction extends Extractors {
           case ExCaseClassSyntheticJunk() => ;
           case ExObjectDef(o2, t2) => { objectDefs = extractObjectDef(o2, t2) :: objectDefs }
           case ExAbstractClass(o2,sym) => ; //println("That seems to be an abstract class: [[" + o2  + "]]")
-          case ExCaseClass(o2,sym) => ; //println(o2)
+          case ExCaseClass(_,_,_) => ; //println(o2)
           case ExConstructorDef() => ;
           case ExMainFunctionDef() => ;
           case ExFunctionDef(n,p,t,b) => { funDefs = extractFunDef(n,p,t,b) :: funDefs }
