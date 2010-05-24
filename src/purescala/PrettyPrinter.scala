@@ -152,6 +152,29 @@ object PrettyPrinter {
         nsb
       }
 
+      case CaseClassDef(id, parent, varDecls) => {
+        var nsb = sb
+        ind(nsb)
+        nsb.append("case class ")
+        nsb.append(id)
+        nsb.append("(")
+        var c = 0
+        val sz = varDecls.size
+
+        varDecls.foreach(vd => {
+          nsb = pp(vd.tpe, nsb)
+          nsb.append(" ")
+          nsb.append(vd.id.toString)
+          if(c < sz - 1) {
+            nsb.append(", ")
+          }
+          c = c + 1
+        })
+        nsb.append(")")
+        parent.foreach(p => nsb.append(" extends " + p.id))
+        nsb
+      }
+
       case FunDef(id, rt, args, body, pre, post) => {
         var nsb = sb
 

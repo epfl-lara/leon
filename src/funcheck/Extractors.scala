@@ -76,7 +76,10 @@ trait Extractors {
     object ExCaseClass {
       def unapply(cd: ClassDef): Option[(String,Symbol,Tree)] = cd match {
         case ClassDef(_, name, tparams, impl) if (cd.symbol.isCase && !cd.symbol.isAbstractClass && tparams.isEmpty && impl.body.size >= 8) => {
-          
+          impl.children.filter(child => child match {
+            case DefDef(_, nn, _, _, _, _) => true
+            case _ => false
+          }).foreach(child => println(child))
           Some((name.toString, cd.symbol, impl))
         }
         case _ => None

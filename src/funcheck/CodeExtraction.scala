@@ -79,16 +79,18 @@ trait CodeExtraction extends Extractors {
           case ExAbstractClass(o2, sym) => {
             if(scalaClassNames.contains(o2)) {
               unit.error(t.pos, "A class with the same name already exists.")
+            } else {
+              scalaClassSyms += (sym -> o2)
+              scalaClassNames += o2
             }
-            scalaClassSyms += (sym -> o2)
-            scalaClassNames += o2
           }
           case ExCaseClass(o2, sym, tpl) => {
             if(scalaClassNames.contains(o2)) {
               unit.error(t.pos, "A class with the same name already exists.")
+            } else {
+              scalaClassSyms += (sym -> o2)
+              scalaClassNames += o2
             }
-            scalaClassSyms += (sym -> o2)
-            scalaClassNames += o2
             // println("***")
             // println(tpl)
             // println("***")
@@ -133,17 +135,17 @@ trait CodeExtraction extends Extractors {
       })
 
       // TODO
-      // resolve all inheritance links (look at 
       // add all fields to case classes
 
-      println(classesToClasses)
+      // println(classesToClasses)
+      classDefs = classesToClasses.valuesIterator.toList
 
       tmpl.body.foreach(
         _ match {
           case ExCaseClassSyntheticJunk() => ;
-          case ExObjectDef(o2, t2) => { objectDefs = extractObjectDef(o2, t2) :: objectDefs }
-          case ExAbstractClass(o2,sym) => ; //println("That seems to be an abstract class: [[" + o2  + "]]")
-          case ExCaseClass(_,_,_) => ; //println(o2)
+          // case ExObjectDef(o2, t2) => { objectDefs = extractObjectDef(o2, t2) :: objectDefs }
+          case ExAbstractClass(o2,sym) => ; 
+          case ExCaseClass(_,_,_) => ; 
           case ExConstructorDef() => ;
           case ExMainFunctionDef() => ;
           case ExFunctionDef(n,p,t,b) => { funDefs = extractFunDef(n,p,t,b) :: funDefs }

@@ -86,19 +86,23 @@ object Definitions {
    * implicitely define extractors) and explicitely defined unapply methods. */
   sealed trait ExtractorTypeDef
 
+  /** Abstract classes. */
   object AbstractClassDef {
     def unapply(acd: AbstractClassDef): Option[(Identifier,Option[AbstractClassDef])] = {
-      Some((acd.id, acd.parent))
+      if(acd == null) None else Some((acd.id, acd.parent))
     }
   }
-
-  /** Abstract classes. */
   class AbstractClassDef(val id: Identifier, var parent: Option[AbstractClassDef]) extends ClassTypeDef {
     var fields: VarDecls = Nil
     val isAbstract = true
   }
 
   /** Case classes. */
+  object CaseClassDef {
+    def unapply(ccd: CaseClassDef): Option[(Identifier,Option[AbstractClassDef],VarDecls)] =  {
+      if(ccd == null) None else Some((ccd.id, ccd.parent, ccd.fields))
+    }
+  }
   class CaseClassDef(val id: Identifier, var parent: Option[AbstractClassDef]) extends ClassTypeDef with ExtractorTypeDef {
     var fields: VarDecls = Nil
     val isAbstract = false

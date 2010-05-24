@@ -1,7 +1,6 @@
 import scala.collection.immutable.Set
 
 object ParseMe {
-
   sealed abstract class Tree
   case class Node(left: Tree, value: Int, right: Tree) extends Tree
   case class Leaf() extends Tree
