@@ -103,6 +103,7 @@ object PrettyPrinter {
     case Int32Type => sb.append("Int")
     case BooleanType => sb.append("Boolean")
     case SetType(bt) => pp(bt, sb.append("Set[")).append("]")
+    case c: ClassType => sb.append(c.classDef.id)
     case _ => sb.append("Type?")
   }
 
@@ -162,9 +163,9 @@ object PrettyPrinter {
         val sz = varDecls.size
 
         varDecls.foreach(vd => {
-          nsb = pp(vd.tpe, nsb)
-          nsb.append(" ")
           nsb.append(vd.id.toString)
+          nsb.append(": ")
+          nsb = pp(vd.tpe, nsb)
           if(c < sz - 1) {
             nsb.append(", ")
           }

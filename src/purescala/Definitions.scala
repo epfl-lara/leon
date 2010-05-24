@@ -18,22 +18,22 @@ object Definitions {
   }
 
   /** Scopes add new definitions to the surrounding scope. */
-  trait Scope {
-    import scala.collection.immutable.Map
+  // trait Scope {
+  //   import scala.collection.immutable.Map
 
-    def parentScope: Option[Scope] = None
-    def lookupVar(id: Identifier): Option[VarDecl] = None
-    def lookupObject(id: Identifier): Option[ObjectDef] = None
-    def lookupClassType(id: Identifier): Option[ClassTypeDef] = None
-    def lookupAbstractClass(id: Identifier): Option[AbstractClassDef] = None
-    def lookupCaseClass(id: Identifier): Option[CaseClassDef] = None
-    def lookupClass(id: Identifier): Option[ClassDef] = None
-    def lookupFun(id: Identifier): Option[FunDef] = None
-  }
+  //   def parentScope: Option[Scope] = None
+  //   def lookupVar(id: Identifier): Option[VarDecl] = None
+  //   def lookupObject(id: Identifier): Option[ObjectDef] = None
+  //   def lookupClassType(id: Identifier): Option[ClassTypeDef] = None
+  //   def lookupAbstractClass(id: Identifier): Option[AbstractClassDef] = None
+  //   def lookupCaseClass(id: Identifier): Option[CaseClassDef] = None
+  //   def lookupClass(id: Identifier): Option[ClassDef] = None
+  //   def lookupFun(id: Identifier): Option[FunDef] = None
+  // }
 
   /** A declaration is anything "structural", ie. anything that's part of the
    * syntax of a program but not in an expression. */
-  sealed abstract class Definition extends Scope {
+  sealed abstract class Definition /*extends Scope*/ {
     val id: Identifier
     override def toString: String = PrettyPrinter(this)
   }
@@ -58,15 +58,15 @@ object Definitions {
   /** A wrapper for a program. For now a program is simply a single object. The
    * name is meaningless and we just use the package name as id. */
   case class Program(id: Identifier, mainObject: ObjectDef) extends Definition {
-    override val parentScope = None
+    //override val parentScope = None
 
-    override def lookupObject(id: Identifier) = {
-      if(id == mainObject.id) {
-        Some(mainObject)
-      } else {
-        None
-      }
-    }
+    // override def lookupObject(id: Identifier) = {
+    //   if(id == mainObject.id) {
+    //     Some(mainObject)
+    //   } else {
+    //     None
+    //   }
+    // }
   }
 
   /** Objects work as containers for class definitions, functions (def's) and
@@ -109,10 +109,10 @@ object Definitions {
   }
 
   /** "Regular" classes */
-  class ClassDef(val id: Identifier, var parent: Option[AbstractClassDef]) extends ClassTypeDef {
-    var fields: VarDecls = Nil
-    val isAbstract = false
-  }
+  //class ClassDef(val id: Identifier, var parent: Option[AbstractClassDef]) extends ClassTypeDef {
+  //  var fields: VarDecls = Nil
+  //  val isAbstract = false
+  //}
   
   /** Values */
   case class ValDef(varDecl: VarDecl, value: Expr) extends Definition {

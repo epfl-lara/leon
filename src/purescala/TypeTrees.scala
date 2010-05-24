@@ -37,7 +37,12 @@ object TypeTrees {
   case class SetType(base: TypeTree) extends TypeTree
   // case class MultisetType(base: TypeTree) extends TypeTree
   case class MapType(from: TypeTree, to: TypeTree) extends TypeTree
-  case class ClassType(id: Identifier) extends TypeTree
-  case class CaseClassType(id: Identifier) extends TypeTree
+
+  sealed abstract class ClassType extends TypeTree {
+    val classDef: ClassTypeDef
+  }
+
+  case class AbstractClassType(classDef: AbstractClassDef) extends ClassType
+  case class CaseClassType(classDef: CaseClassDef) extends ClassType
   case class OptionType(base: TypeTree) extends TypeTree
 }

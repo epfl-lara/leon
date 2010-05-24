@@ -74,13 +74,16 @@ trait Extractors {
     }
 
     object ExCaseClass {
-      def unapply(cd: ClassDef): Option[(String,Symbol,Tree)] = cd match {
+      def unapply(cd: ClassDef): Option[(String,Symbol,Seq[(String,Tree)])] = cd match {
         case ClassDef(_, name, tparams, impl) if (cd.symbol.isCase && !cd.symbol.isAbstractClass && tparams.isEmpty && impl.body.size >= 8) => {
-          impl.children.filter(child => child match {
-            case DefDef(_, nn, _, _, _, _) => true
+          val constructor: DefDef = impl.children.find(child => child match {
+            case ExConstructorDef() => true
             case _ => false
-          }).foreach(child => println(child))
-          Some((name.toString, cd.symbol, impl))
+          }).get.asInstanceOf[DefDef]
+
+          val args = constructor.vparamss(0).map(vd => (vd.name.toString, vd.tpt))
+
+          Some((name.toString, cd.symbol, args))
         }
         case _ => None
       }
@@ -95,7 +98,7 @@ trait Extractors {
 
     object ExConstructorDef {
       def unapply(dd: DefDef): Boolean = dd match {
-        case DefDef(_, name, tparams, vparamss, tpt, rhs) if(name.toString == "<init>" && tparams.isEmpty && vparamss.size == 1 && vparamss(0).size == 0) => true
+        case DefDef(_, name, tparams, vparamss, tpt, rhs) if(name.toString == "<init>" && tparams.isEmpty && vparamss.size == 1) => true
         case _ => false
       }
     }

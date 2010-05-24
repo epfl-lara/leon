@@ -19,6 +19,8 @@ trait CodeExtraction extends Extractors {
   private lazy val setTraitSym = definitions.getClass("scala.collection.immutable.Set")
 
   private val varSubsts: scala.collection.mutable.Map[Identifier,Function0[Expr]] = scala.collection.mutable.Map.empty[Identifier,Function0[Expr]]
+  private val classesToClasses: scala.collection.mutable.Map[Symbol,ClassTypeDef] =
+        scala.collection.mutable.Map.empty[Symbol,ClassTypeDef]
 
   def extractCode(unit: CompilationUnit): Program = { 
     import scala.collection.mutable.HashMap
@@ -70,6 +72,8 @@ trait CodeExtraction extends Extractors {
 
       val scalaClassSyms: scala.collection.mutable.Map[Symbol,Identifier] =
         scala.collection.mutable.Map.empty[Symbol,Identifier]
+      val scalaClassArgs: scala.collection.mutable.Map[Symbol,Seq[(Identifier,Tree)]] =
+        scala.collection.mutable.Map.empty[Symbol,Seq[(Identifier,Tree)]]
       val scalaClassNames: scala.collection.mutable.Set[Identifier] = 
         scala.collection.mutable.Set.empty[Identifier]
 
@@ -84,16 +88,14 @@ trait CodeExtraction extends Extractors {
               scalaClassNames += o2
             }
           }
-          case ExCaseClass(o2, sym, tpl) => {
+          case ExCaseClass(o2, sym, args) => {
             if(scalaClassNames.contains(o2)) {
               unit.error(t.pos, "A class with the same name already exists.")
             } else {
-              scalaClassSyms += (sym -> o2)
+              scalaClassSyms  += (sym -> o2)
               scalaClassNames += o2
+              scalaClassArgs  += (sym -> args)
             }
-            // println("***")
-            // println(tpl)
-            // println("***")
           }
           case _ => ;
         }
@@ -101,8 +103,6 @@ trait CodeExtraction extends Extractors {
 
       stopIfErrors
 
-      val classesToClasses: scala.collection.mutable.Map[Symbol,ClassTypeDef] =
-        scala.collection.mutable.Map.empty[Symbol,ClassTypeDef]
 
       scalaClassSyms.foreach(p => {
           if(p._1.isAbstractClass) {
@@ -113,7 +113,6 @@ trait CodeExtraction extends Extractors {
       })
 
       classesToClasses.foreach(p => {
-        println(p._1)
         val superC: List[ClassTypeDef] = p._1.tpe.baseClasses.filter(bcs => scalaClassSyms.exists(pp => pp._1 == bcs) && bcs != p._1).map(s => classesToClasses(s)).toList
 
         val superAC: List[AbstractClassDef] = superC.map(c => {
@@ -132,12 +131,14 @@ trait CodeExtraction extends Extractors {
         if(superAC.length == 1) {
             p._2.parent = Some(superAC.head)
         }
+
+        if(p._2.isInstanceOf[CaseClassDef]) {
+          // this should never fail
+          val ccargs = scalaClassArgs(p._1)
+          p._2.asInstanceOf[CaseClassDef].fields = ccargs.map(cca => VarDecl(cca._1, st2ps(cca._2.tpe)))
+        }
       })
 
-      // TODO
-      // add all fields to case classes
-
-      // println(classesToClasses)
       classDefs = classesToClasses.valuesIterator.toList
 
       tmpl.body.foreach(
@@ -153,10 +154,6 @@ trait CodeExtraction extends Extractors {
         }
       )
 
-      // val theSym = new purescala.Symbols.ObjectSymbol(name, classSyms.reverse, objectSyms.reverse)
-      // we register the tree associated to the symbol to be able to fill in
-      // the rest later
-      // symbolDefMap(theSym) = tmpl
       val theDef = new ObjectDef(name, objectDefs.reverse ::: classDefs.reverse ::: funDefs.reverse, Nil)
       
       theDef
@@ -270,6 +267,10 @@ trait CodeExtraction extends Extractors {
       case tpe if tpe == IntClass.tpe => Int32Type
       case tpe if tpe == BooleanClass.tpe => BooleanType
       case TypeRef(_, sym, btt :: Nil) if sym == setTraitSym => SetType(rec(btt))
+      case TypeRef(_, sym, Nil) if classesToClasses.keySet.contains(sym) => classesToClasses(sym) match {
+        case a: AbstractClassDef => AbstractClassType(a)
+        case c: CaseClassDef => CaseClassType(c)
+      }
 
       case _ => {
         if(!silent) {
