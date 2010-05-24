@@ -9,4 +9,8 @@ object ParseMe {
   def fromSet(i: Set[Set[Boolean]]) : Int = {
     5
   }
+
+  def emptySet(n: Tree) : Tree = {
+    Leaf()
+  }
 }
