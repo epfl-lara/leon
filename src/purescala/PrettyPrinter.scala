@@ -71,6 +71,13 @@ object PrettyPrinter {
     case Equals(l,r) => ppBinary(sb, l, r, " == ")
     case IntLiteral(v) => sb.append(v)
     case BooleanLiteral(v) => sb.append(v)
+    case StringLiteral(s) => sb.append("\"" + s + "\"")
+    case CaseClass(ct, args) => {
+      var nsb = sb
+      nsb.append(ct.id)
+      nsb = ppNary(nsb, args, ", ")
+      nsb
+    }
     case Plus(l,r) => ppBinary(sb, l, r, " + ")
     case Minus(l,r) => ppBinary(sb, l, r, " - ")
     case Times(l,r) => ppBinary(sb, l, r, " * ")

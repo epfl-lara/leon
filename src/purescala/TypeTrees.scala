@@ -40,9 +40,10 @@ object TypeTrees {
 
   sealed abstract class ClassType extends TypeTree {
     val classDef: ClassTypeDef
+    val id: Identifier = classDef.id
   }
 
   case class AbstractClassType(classDef: AbstractClassDef) extends ClassType
-  case class CaseClassType(classDef: CaseClassDef) extends ClassType
+  case class CaseClassType(classDef: CaseClassDef) extends ClassType 
   case class OptionType(base: TypeTree) extends TypeTree
 }

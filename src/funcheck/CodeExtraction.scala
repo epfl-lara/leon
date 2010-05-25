@@ -233,6 +233,18 @@ trait CodeExtraction extends Extractors {
         case Some(fun) => fun()
         case None => Variable(id)
       }
+      case ExCaseClassConstruction(tpt, args) => {
+        val cctype = scalaType2PureScala(unit, silent)(tpt.tpe)
+        if(!cctype.isInstanceOf[CaseClassType]) {
+          if(!silent) {
+            println(tr)
+            unit.error(tree.pos, "Construction of a non-case class.")
+          }
+          throw ImpureCodeEncounteredException(tree)
+        }
+        val nargs = args.map(rec(_))
+        CaseClass(cctype.asInstanceOf[CaseClassType], nargs)
+      }
       case ExAnd(l, r) => And(rec(l), rec(r))
       case ExOr(l, r) => Or(rec(l), rec(r))
       case ExNot(e) => Not(rec(e))

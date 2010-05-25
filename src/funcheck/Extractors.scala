@@ -98,7 +98,7 @@ trait Extractors {
 
     object ExConstructorDef {
       def unapply(dd: DefDef): Boolean = dd match {
-        case DefDef(_, name, tparams, vparamss, tpt, rhs) if(name.toString == "<init>" && tparams.isEmpty && vparamss.size == 1) => true
+        case DefDef(_, name, tparams, vparamss, tpt, rhs) if(name == nme.CONSTRUCTOR && tparams.isEmpty && vparamss.size == 1) => true
         case _ => false
       }
     }
@@ -131,7 +131,7 @@ trait Extractors {
     }
 
     object ExBooleanLiteral {
-      def unapply(tree: Tree): Option[Boolean] = tree match {
+      def unapply(tree: Literal): Option[Boolean] = tree match {
         case Literal(Constant(true)) => Some(true)
         case Literal(Constant(false)) => Some(false)
         case _ => None
@@ -139,28 +139,37 @@ trait Extractors {
     }
 
     object ExInt32Literal {
-      def unapply(tree: Tree): Option[Int] = tree match {
+      def unapply(tree: Literal): Option[Int] = tree match {
         case Literal(c @ Constant(i)) if c.tpe == IntClass.tpe => Some(c.intValue)
         case _ => None
       }
     }
 
+    object ExCaseClassConstruction {
+      def unapply(tree: Apply): Option[(Tree,Seq[Tree])] = tree match {
+        case Apply(s @ Select(New(tpt), n), args) if (n == nme.CONSTRUCTOR) => {
+          Some((tpt, args))
+        }
+        case _ => None
+      }
+    }
+
     object ExIdentifier {
-      def unapply(tree: Tree): Option[(String,Tree)] = tree match {
+      def unapply(tree: Ident): Option[(String,Tree)] = tree match {
         case i: Ident => Some((i.symbol.name.toString, i))
         case _ => None
       }
     }
 
     object ExIntIdentifier {
-      def unapply(tree: Tree): Option[String] = tree match {
+      def unapply(tree: Ident): Option[String] = tree match {
         case i: Ident if i.symbol.tpe == IntClass.tpe => Some(i.symbol.name.toString)
         case _ => None
       }
     }
 
     object ExAnd {
-      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
         case Apply(s @ Select(lhs, _), List(rhs)) if (s.symbol == Boolean_and) =>
           Some((lhs,rhs))
         case _ => None
@@ -258,9 +267,5 @@ trait Extractors {
         case _ => None
       }
     }
-  }
-
-  object TypeExtractors {
-
   }
 }

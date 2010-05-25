@@ -11,6 +11,6 @@ object ParseMe {
   }
 
   def emptySet(n: Tree) : Tree = {
-    Leaf()
+    Node(Leaf(), 5, Leaf())
   }
 }

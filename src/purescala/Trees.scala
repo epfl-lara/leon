@@ -75,7 +75,7 @@ object Trees {
   case class BooleanLiteral(value: Boolean) extends Literal[Boolean] 
   case class StringLiteral(value: String) extends Literal[String]
 
-  case class CaseClass(classDef: CaseClassDef, args: Seq[Expr]) extends Expr
+  case class CaseClass(classType: CaseClassType, args: Seq[Expr]) extends Expr
 
   /* Arithmetic */
   case class Plus(lhs: Expr, rhs: Expr) extends Expr
