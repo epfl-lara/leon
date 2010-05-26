@@ -293,7 +293,7 @@ trait CodeExtraction extends Extractors {
       case ExGreaterEqThan(l, r) => GreaterEquals(rec(l), rec(r))
       case ExLessThan(l, r) => LessThan(rec(l), rec(r))
       case ExLessEqThan(l, r) => LessEquals(rec(l), rec(r))
-      case ExIfThenElse(t1,t2,t3) => println("if indeed"); IfExpr(rec(t1), rec(t2), rec(t3))
+      case ExIfThenElse(t1,t2,t3) => IfExpr(rec(t1), rec(t2), rec(t3))
       case ExLocalCall(sy,nm,ar) => {
         if(defsToDefs.keysIterator.find(_ == sy).isEmpty) {
           unit.error(tr.pos, "Invoking an invalid function.")
