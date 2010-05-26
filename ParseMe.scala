@@ -6,11 +6,15 @@ object ParseMe {
   case class Node(left: Tree, value: Int, right: Tree) extends Tree
   case class Leaf() extends Tree
 
-  def fromSet(i: Set[Set[Boolean]]) : Int = {
-    5
+  def getSet(s: Int): Tree = {
+    if (4 + s < 2 + s && s > 4) {
+      emptySet()
+    } else {
+      Node(Leaf(), 1, Leaf())
+    }
   }
 
-  def emptySet(n: Tree) : Tree = {
-    Node(Leaf(), 5, Leaf())
+  def emptySet() : Tree = {
+    Leaf()
   }
 }

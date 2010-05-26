@@ -120,8 +120,18 @@ object Definitions {
   }
 
   /** Functions (= 'methods' of objects) */
-  case class FunDef(id: Identifier, returnType: TypeTree, args: VarDecls, body: Expr, precondition: Option[Expr], postcondition: Option[Expr]) extends Definition {
-    //lazy val argTypes : Seq[TypeTree] = args.map(_.tpe) 
-    //lazy val returnType : TypeTree = body.getType
+  object FunDef {
+    def unapply(fd: FunDef): Option[(Identifier,TypeTree,VarDecls,Expr,Option[Expr],Option[Expr])] = {
+      if(fd != null) {
+        Some((fd.id, fd.returnType, fd.args, fd.body, fd.precondition, fd.postcondition))
+      } else {
+        None
+      }
+    }
+  }
+  class FunDef(val id: Identifier, val returnType: TypeTree, val args: VarDecls) extends Definition {
+    var body: Expr = _
+    var precondition: Option[Expr] = None
+    var postcondition: Option[Expr] = None
   }
 }

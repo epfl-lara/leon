@@ -13,7 +13,7 @@ trait Extractors {
   object StructuralExtractors {
     object ScalaPredef {
       /** Extracts method calls from scala.Predef. */
-      def unapply(tree: Tree): Option[String] = tree match {
+      def unapply(tree: Select): Option[String] = tree match {
         case Select(Select(This(scalaName),predefName),symName)
           if("scala".equals(scalaName.toString) && "Predef".equals(predefName.toString)) =>
             Some(symName.toString)
@@ -23,7 +23,7 @@ trait Extractors {
 
     object ExEnsuredExpression {
       /** Extracts the 'ensuring' contract from an expression. */
-      def unapply(tree: Tree): Option[(Tree,String,Tree)] = tree match {
+      def unapply(tree: Apply): Option[(Tree,String,Tree)] = tree match {
         case Apply(
           Select(
             Apply(
@@ -42,7 +42,7 @@ trait Extractors {
     object ExRequiredExpression {
       /** Extracts the 'require' contract from an expression (only if it's the
        * first call in the block). */
-      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+      def unapply(tree: Block): Option[(Tree,Tree)] = tree match {
         case Block(Apply(ScalaPredef("require"), contractBody :: Nil) :: Nil, body) =>
           Some((body,contractBody))
         case _ => None
@@ -116,7 +116,7 @@ trait Extractors {
       /** Matches a function with a single list of arguments, no type
        * parameters and regardless of its visibility. */
       def unapply(dd: DefDef): Option[(String,Seq[ValDef],Tree,Tree)] = dd match {
-        case DefDef(_, name, tparams, vparamss, tpt, rhs) if(tparams.isEmpty && vparamss.size == 1) => Some((name.toString, vparamss(0), tpt, rhs))
+        case DefDef(_, name, tparams, vparamss, tpt, rhs) if(tparams.isEmpty && vparamss.size == 1 && name != nme.CONSTRUCTOR) => Some((name.toString, vparamss(0), tpt, rhs))
         case _ => None
       }
     }
@@ -124,7 +124,7 @@ trait Extractors {
 
   object ExpressionExtractors {
     object ExIfThenElse {
-      def unapply(tree: Tree): Option[(Tree,Tree,Tree)] = tree match {
+      def unapply(tree: If): Option[(Tree,Tree,Tree)] = tree match {
         case If(t1,t2,t3) => Some((t1,t2,t3))
         case _ => None
       }
@@ -177,7 +177,7 @@ trait Extractors {
     }
   
     object ExOr {
-      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
         case Apply(s @ Select(lhs, _), List(rhs)) if (s.symbol == Boolean_or) =>
           Some((lhs,rhs))
         case _ => None
@@ -185,85 +185,92 @@ trait Extractors {
     }
   
     object ExNot {
-      def unapply(tree: Tree): Option[Tree] = tree match {
+      def unapply(tree: Select): Option[Tree] = tree match {
         case Select(t, n) if (n == nme.UNARY_!) => Some(t)
         case _ => None
       }
     }
   
     object ExEquals {
-      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
         case Apply(Select(lhs, n), List(rhs)) if (n == nme.EQ) => Some((lhs,rhs))
         case _ => None
       }
     }
   
     object ExNotEquals {
-      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
         case Apply(Select(lhs, n), List(rhs)) if (n == nme.NE) => Some((lhs,rhs))
         case _ => None
       }
     }
   
     object ExLessThan {
-      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
         case Apply(Select(lhs, n), List(rhs)) if (n == nme.LT) => Some((lhs,rhs))
         case _ => None
       }
     }
   
     object ExLessEqThan {
-      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
         case Apply(Select(lhs, n), List(rhs)) if (n == nme.LE) => Some((lhs,rhs))
         case _ => None
       }
     }
   
     object ExGreaterThan {
-      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
         case Apply(Select(lhs, n), List(rhs)) if (n == nme.GT) => Some((lhs,rhs))
         case _ => None
       }
     }
   
     object ExGreaterEqThan {
-      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
         case Apply(Select(lhs, n), List(rhs)) if (n == nme.GE) => Some((lhs,rhs))
         case _ => None
       }
     }
 
     object ExUMinus {
-      def unapply(tree: Tree): Option[Tree] = tree match {
+      def unapply(tree: Select): Option[Tree] = tree match {
         case Select(t, n) if (n == nme.UNARY_-) => Some(t)
         case _ => None
       }
     }
 
     object ExPlus {
-      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
         case Apply(Select(lhs, n), List(rhs)) if (n == nme.ADD) => Some((lhs,rhs))
         case _ => None
       }
     }
 
     object ExMinus {
-      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
         case Apply(Select(lhs, n), List(rhs)) if (n == nme.SUB) => Some((lhs,rhs))
         case _ => None
       }
     }
 
     object ExTimes {
-      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
         case Apply(Select(lhs, n), List(rhs)) if (n == nme.MUL) => Some((lhs,rhs))
         case _ => None
       }
     }
 
     object ExDiv {
-      def unapply(tree: Tree): Option[(Tree,Tree)] = tree match {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
         case Apply(Select(lhs, n), List(rhs)) if (n == nme.DIV) => Some((lhs,rhs))
+        case _ => None
+      }
+    }
+
+    object ExLocalCall {
+      def unapply(tree: Apply): Option[(Symbol,String,List[Tree])] = tree match {
+        case a @ Apply(Select(This(_), nme), args) => Some((a.symbol, nme.toString, args))
         case _ => None
       }
     }

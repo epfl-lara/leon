@@ -78,6 +78,12 @@ object PrettyPrinter {
       nsb = ppNary(nsb, args, ", ")
       nsb
     }
+    case FunctionInvocation(fd, args) => {
+      var nsb = sb
+      nsb.append(fd.id)
+      nsb = ppNary(nsb, args, ", ")
+      nsb
+    }
     case Plus(l,r) => ppBinary(sb, l, r, " + ")
     case Minus(l,r) => ppBinary(sb, l, r, " - ")
     case Times(l,r) => ppBinary(sb, l, r, " * ")

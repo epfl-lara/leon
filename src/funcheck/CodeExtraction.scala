@@ -18,9 +18,12 @@ trait CodeExtraction extends Extractors {
 
   private lazy val setTraitSym = definitions.getClass("scala.collection.immutable.Set")
 
-  private val varSubsts: scala.collection.mutable.Map[Identifier,Function0[Expr]] = scala.collection.mutable.Map.empty[Identifier,Function0[Expr]]
+  private val varSubsts: scala.collection.mutable.Map[Identifier,Function0[Expr]] =
+    scala.collection.mutable.Map.empty[Identifier,Function0[Expr]]
   private val classesToClasses: scala.collection.mutable.Map[Symbol,ClassTypeDef] =
-        scala.collection.mutable.Map.empty[Symbol,ClassTypeDef]
+    scala.collection.mutable.Map.empty[Symbol,ClassTypeDef]
+  private val defsToDefs: scala.collection.mutable.Map[Symbol,FunDef] =
+    scala.collection.mutable.Map.empty[Symbol,FunDef]
 
   def extractCode(unit: CompilationUnit): Program = { 
     import scala.collection.mutable.HashMap
@@ -140,31 +143,61 @@ trait CodeExtraction extends Extractors {
       })
 
       classDefs = classesToClasses.valuesIterator.toList
+      
+      // end of class (type) extraction
 
+      // we now extract the function signatures.
+      tmpl.body.foreach(
+        _ match {
+          case ExMainFunctionDef() => ;
+          case dd @ ExFunctionDef(n,p,t,b) => {
+            defsToDefs += (dd.symbol -> extractFunSig(n, p, t))
+          }
+          case _ => ;
+        }
+      )
+
+      // then their bodies.
+      tmpl.body.foreach(
+        _ match {
+          case ExMainFunctionDef() => ;
+          case dd @ ExFunctionDef(n,p,t,b) => {
+            val fd = defsToDefs(dd.symbol)
+            defsToDefs(dd.symbol) = extractFunDef(fd, b)
+          }
+          case _ => ;
+        }
+      )
+
+      funDefs = defsToDefs.valuesIterator.toList
+
+      // we check nothing else is polluting the object.
       tmpl.body.foreach(
         _ match {
           case ExCaseClassSyntheticJunk() => ;
           // case ExObjectDef(o2, t2) => { objectDefs = extractObjectDef(o2, t2) :: objectDefs }
-          case ExAbstractClass(o2,sym) => ; 
+          case ExAbstractClass(_,_) => ; 
           case ExCaseClass(_,_,_) => ; 
           case ExConstructorDef() => ;
           case ExMainFunctionDef() => ;
-          case ExFunctionDef(n,p,t,b) => { funDefs = extractFunDef(n,p,t,b) :: funDefs }
-          case tree => { println("Something else: "); println("[[[ " + tree + "]]]\n") }
+          case ExFunctionDef(_,_,_,_) => ;
+          case tree => { unit.error(tree.pos, "Don't know what to do with this. Not purescala?"); println(tree) }
         }
       )
 
-      val theDef = new ObjectDef(name, objectDefs.reverse ::: classDefs.reverse ::: funDefs.reverse, Nil)
+      val theDef = new ObjectDef(name, objectDefs.reverse ::: classDefs ::: funDefs, Nil)
       
       theDef
     }
 
-    def extractFunDef(name: Identifier, params: Seq[ValDef], tpt: Tree, body: Tree) = {
+    def extractFunSig(name: Identifier, params: Seq[ValDef], tpt: Tree): FunDef = {
+      new FunDef(name, st2ps(tpt.tpe), params.map(p => VarDecl(p.name.toString, st2ps(p.tpt.tpe))))
+    }
+
+    def extractFunDef(funDef: FunDef, body: Tree): FunDef = {
       var realBody = body
       var reqCont: Option[Expr] = None
       var ensCont: Option[Expr] = None
-
-      val ps = params.map(p => VarDecl(p.name.toString, st2ps(p.tpt.tpe)))
 
       realBody match {
         case ExEnsuredExpression(body2, resId, contract) => {
@@ -185,7 +218,10 @@ trait CodeExtraction extends Extractors {
         case _ => ;
       }
       
-      FunDef(name, st2ps(tpt.tpe), ps, s2ps(realBody), reqCont, ensCont)
+      funDef.body = s2ps(realBody)
+      funDef.precondition = reqCont
+      funDef.postcondition = ensCont
+      funDef
     }
 
     // THE EXTRACTION CODE STARTS HERE
@@ -237,8 +273,7 @@ trait CodeExtraction extends Extractors {
         val cctype = scalaType2PureScala(unit, silent)(tpt.tpe)
         if(!cctype.isInstanceOf[CaseClassType]) {
           if(!silent) {
-            println(tr)
-            unit.error(tree.pos, "Construction of a non-case class.")
+            unit.error(tr.pos, "Construction of a non-case class.")
           }
           throw ImpureCodeEncounteredException(tree)
         }
@@ -258,18 +293,23 @@ trait CodeExtraction extends Extractors {
       case ExGreaterEqThan(l, r) => GreaterEquals(rec(l), rec(r))
       case ExLessThan(l, r) => LessThan(rec(l), rec(r))
       case ExLessEqThan(l, r) => LessEquals(rec(l), rec(r))
-      case ExIfThenElse(t1,t2,t3) => IfExpr(rec(t1), rec(t2), rec(t3))
+      case ExIfThenElse(t1,t2,t3) => println("if indeed"); IfExpr(rec(t1), rec(t2), rec(t3))
+      case ExLocalCall(sy,nm,ar) => {
+        if(defsToDefs.keysIterator.find(_ == sy).isEmpty) {
+          unit.error(tr.pos, "Invoking an invalid function.")
+        }
+        FunctionInvocation(defsToDefs(sy), ar.map(rec(_)))
+      }
   
       // default behaviour is to complain :)
       case _ => {
         if(!silent) {
           println(tr)
-          unit.error(tree.pos, "Could not extract as PureScala.")
+          unit.error(tr.pos, "Could not extract as PureScala.")
         }
         throw ImpureCodeEncounteredException(tree)
       }
     }
-
     rec(tree)
   }
 
