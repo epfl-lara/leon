@@ -15,13 +15,17 @@ class FunCheckPlugin(val global: Global) extends Plugin {
 
   /** The help message displaying the options for that plugin. */
   override val optionsHelp: Option[String] = Some(
-    "  -P:funcheck:with-code        Allows the compiler to keep running after the static analysis")
+    "  -P:funcheck:uniqid           When pretty-printing funcheck trees, show identifiers IDs" +
+    "\n" +
+    "  -P:funcheck:with-code        Allows the compiler to keep running after the static analysis"
+  )
 
   /** Processes the command-line options. */
   override def processOptions(options: List[String], error: String => Unit) {
     for(option <- options) {
       option match {
         case "with-code" => stopAfterAnalysis = false
+        case "uniqid"    => purescala.Settings.showIDs = true
         case _ => error("Invalid option: " + option)
       }
     }

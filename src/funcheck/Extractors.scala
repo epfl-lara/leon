@@ -23,7 +23,7 @@ trait Extractors {
 
     object ExEnsuredExpression {
       /** Extracts the 'ensuring' contract from an expression. */
-      def unapply(tree: Apply): Option[(Tree,String,Tree)] = tree match {
+      def unapply(tree: Apply): Option[(Tree,Symbol,Tree)] = tree match {
         case Apply(
           Select(
             Apply(
@@ -32,9 +32,8 @@ trait Extractors {
                 TypeTree() :: Nil),
               body :: Nil),
             ensuringName),
-          (anonymousFun @ Function(ValDef(_, resultName, resultType, EmptyTree) :: Nil,
-            contractBody)) :: Nil)
-          if("ensuring".equals(ensuringName.toString)) => Some((body, resultName.toString, contractBody))
+          (Function((vd @ ValDef(_, _, _, EmptyTree)) :: Nil, contractBody)) :: Nil)
+          if("ensuring".equals(ensuringName.toString)) => Some((body, vd.symbol, contractBody))
         case _ => None
       }
     }
@@ -155,8 +154,8 @@ trait Extractors {
     }
 
     object ExIdentifier {
-      def unapply(tree: Ident): Option[(String,Tree)] = tree match {
-        case i: Ident => Some((i.symbol.name.toString, i))
+      def unapply(tree: Ident): Option[(Symbol,Tree)] = tree match {
+        case i: Ident => Some((i.symbol, i))
         case _ => None
       }
     }
@@ -273,6 +272,19 @@ trait Extractors {
         case a @ Apply(Select(This(_), nme), args) => Some((a.symbol, nme.toString, args))
         case _ => None
       }
+    }
+
+    // used for case classes selectors.
+    object ExParameterlessMethodCall {
+      def unapply(tree: Select): Option[(Tree,Name)] = tree match {
+        case Select(lhs, n) => Some((lhs, n))
+        case _ => None
+      }
+    }
+
+    object ExPatternMatching {
+      def unapply(tree: Match): Option[(Tree,List[CaseDef])] =
+        if(tree != null) Some((tree.selector, tree.cases)) else None
     }
   }
 }

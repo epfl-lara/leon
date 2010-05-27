@@ -20,17 +20,23 @@ object Trees {
   sealed abstract class MatchCase {
     val pattern: Pattern
     val rhs: Expr
+    val theGuard: Option[Expr]
   }
 
-  case class SimpleCase(pattern: Pattern, rhs: Expr) extends MatchCase
-  case class GuardedCase(pattern: Pattern, guard: Expr, rhs: Expr) extends MatchCase
+  case class SimpleCase(pattern: Pattern, rhs: Expr) extends MatchCase {
+    val theGuard = None
+  }
+  case class GuardedCase(pattern: Pattern, guard: Expr, rhs: Expr) extends MatchCase {
+    val theGuard = Some(guard)
+  }
 
   sealed abstract class Pattern
   case class InstanceOfPattern(binder: Option[Identifier], classTypeDef: ClassTypeDef) extends Pattern // c: Class
   case class WildcardPattern(binder: Option[Identifier]) extends Pattern // c @ _
-  case class ExtractorPattern(binder: Option[Identifier], 
-			      extractor : ExtractorTypeDef, 
-			      subPatterns: Seq[Pattern]) extends Pattern // c @ Extractor(...,...)
+  case class CaseClassPattern(binder: Option[Identifier], caseClassDef: CaseClassDef, subPatterns: Seq[Pattern]) extends Pattern
+  // case class ExtractorPattern(binder: Option[Identifier], 
+  //   		      extractor : ExtractorTypeDef, 
+  //   		      subPatterns: Seq[Pattern]) extends Pattern // c @ Extractor(...,...)
   // We don't handle Seq stars for now.
 
   /* Propositional logic */
@@ -60,9 +66,10 @@ object Trees {
   case class Equals(left: Expr, right: Expr) extends Expr  
   
   /* Literals */
-  // to be fixed! Should contain a reference to the definition of that
-  // variable, which would also give us its type.
-  case class Variable(id: Identifier) extends Expr
+  case class Variable(id: Identifier) extends Expr {
+    override def getType = id.getType
+    override def setType(tt: TypeTree) = { id.setType(tt); this }
+  }
 
   // represents the result in post-conditions
   case class ResultVariable() extends Expr
@@ -75,7 +82,8 @@ object Trees {
   case class BooleanLiteral(value: Boolean) extends Literal[Boolean] 
   case class StringLiteral(value: String) extends Literal[String]
 
-  case class CaseClass(classType: CaseClassType, args: Seq[Expr]) extends Expr
+  case class CaseClass(classDef: CaseClassDef, args: Seq[Expr]) extends Expr
+  case class CaseClassSelector(caseClass: Expr, selector: Identifier) extends Expr
 
   /* Arithmetic */
   case class Plus(lhs: Expr, rhs: Expr) extends Expr
