@@ -273,8 +273,30 @@ trait CodeExtraction extends Extractors {
    * errors. */
   private def scala2PureScala(unit: CompilationUnit, silent: Boolean)(tree: Tree): Expr = {
     def rewriteCaseDef(cd: CaseDef): MatchCase = {
-      def pat2pat(p: Tree): Pattern = {
-        WildcardPattern(None)
+      def pat2pat(p: Tree): Pattern = p match {
+        case Ident(nme.WILDCARD) => WildcardPattern(None)
+        case b @ Bind(name, Ident(nme.WILDCARD)) => {
+          val newID = FreshIdentifier(name.toString).setType(scalaType2PureScala(unit,silent)(b.symbol.tpe))
+          varSubsts(b.symbol) = (() => Variable(newID))
+          WildcardPattern(Some(newID))
+        }
+        case a @ Apply(fn, args) if fn.isType && a.tpe.typeSymbol.isCase && classesToClasses.keySet.contains(a.tpe.typeSymbol) => {
+          val cd = classesToClasses(a.tpe.typeSymbol).asInstanceOf[CaseClassDef]
+          assert(args.size == cd.fields.size)
+          CaseClassPattern(None, cd, args.map(pat2pat(_)))
+        }
+        case b @ Bind(name, a @ Apply(fn, args)) if fn.isType && a.tpe.typeSymbol.isCase && classesToClasses.keySet.contains(a.tpe.typeSymbol) => {
+          val newID = FreshIdentifier(name.toString).setType(scalaType2PureScala(unit,silent)(b.symbol.tpe))
+          varSubsts(b.symbol) = (() => Variable(newID))
+          val cd = classesToClasses(a.tpe.typeSymbol).asInstanceOf[CaseClassDef]
+          assert(args.size == cd.fields.size)
+          CaseClassPattern(Some(newID), cd, args.map(pat2pat(_)))
+        }
+        case _ => {
+          if(!silent)
+            unit.error(p.pos, "Unsupported pattern.")
+          throw ImpureCodeEncounteredException(p)
+        }
       }
 
       if(cd.guard == EmptyTree) {
@@ -289,7 +311,10 @@ trait CodeExtraction extends Extractors {
       case ExBooleanLiteral(v) => BooleanLiteral(v)
       case ExIdentifier(sym,tpt) => varSubsts.get(sym) match {
         case Some(fun) => fun()
-        case None => Variable(FreshIdentifier(sym.name.toString)) // TODO this is SO wrong
+        case None => {
+          unit.error(tr.pos, "Unidentified variable.")
+          throw ImpureCodeEncounteredException(tr)
+        }
       }
       case ExCaseClassConstruction(tpt, args) => {
         val cctype = scalaType2PureScala(unit, silent)(tpt.tpe)

@@ -121,8 +121,20 @@ object PrettyPrinter {
       def ppc(sb: StringBuffer, p: Pattern): StringBuffer = p match {
         //case InstanceOfPattern(None,     ctd) =>
         //case InstanceOfPattern(Some(id), ctd) =>
-        //case CaseClassPattern(None,     ccd, subps) =>
-        //case CaseClassPattern(Some(id), ccd, subps) => 
+        case CaseClassPattern(bndr,     ccd, subps) => {
+          var nsb = sb
+          bndr.foreach(b => nsb.append(b + " @ "))
+          nsb.append(ccd.id).append("(")
+          var c = 0
+          val sz = subps.size
+          subps.foreach(sp => {
+            nsb = ppc(nsb, sp)
+            if(c < sz - 1)
+              nsb.append(", ")
+            c = c + 1
+          })
+          nsb.append(")")
+        }
         case WildcardPattern(None)     => sb.append("_")
         case WildcardPattern(Some(id)) => sb.append(id)
         case _ => sb.append("Pattern?")
