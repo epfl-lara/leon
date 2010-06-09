@@ -10,6 +10,8 @@ trait Extractors {
   import global._
   import global.definitions._
 
+  private lazy val setTraitSym = definitions.getClass("scala.collection.immutable.Set")
+
   object StructuralExtractors {
     object ScalaPredef {
       /** Extracts method calls from scala.Predef. */
@@ -286,5 +288,43 @@ trait Extractors {
       def unapply(tree: Match): Option[(Tree,List[CaseDef])] =
         if(tree != null) Some((tree.selector, tree.cases)) else None
     }
+
+    object ExEmptySet {
+      def unapply(tree: TypeApply): Option[Tree] = tree match {
+        case TypeApply(
+          Select(
+            Select(
+              Select(
+                Select(Ident(s), collectionName),
+                immutableName),
+              setName),
+            emptyName),  theTypeTree :: Nil) if (
+            collectionName.toString == "collection" && immutableName.toString == "immutable" && setName.toString == "Set" && emptyName.toString == "empty"
+          ) => Some(theTypeTree)
+        case _ => None
+      }
+    }
+
+    object ExUnion {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n == nme.PLUSPLUS) => Some((lhs,rhs))
+        case _ => None
+      }
+    }
+  
+    object ExIntersection {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n == encode("**")) => Some((lhs,rhs))
+        case _ => None
+      }
+    }
+  
+    object ExSetMinus {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n == encode("--")) => Some((lhs,rhs))
+        case _ => None
+      }
+    }
+    
   }
 }

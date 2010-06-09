@@ -307,8 +307,8 @@ trait CodeExtraction extends Extractors {
     }
 
     def rec(tr: Tree): Expr = tr match {
-      case ExInt32Literal(v) => IntLiteral(v)
-      case ExBooleanLiteral(v) => BooleanLiteral(v)
+      case ExInt32Literal(v) => IntLiteral(v).setType(Int32Type)
+      case ExBooleanLiteral(v) => BooleanLiteral(v).setType(BooleanType)
       case ExIdentifier(sym,tpt) => varSubsts.get(sym) match {
         case Some(fun) => fun()
         case None => {
@@ -337,10 +337,31 @@ trait CodeExtraction extends Extractors {
       case ExTimes(l, r) => Times(rec(l), rec(r)).setType(Int32Type)
       case ExDiv(l, r) => Division(rec(l), rec(r)).setType(Int32Type)
       case ExEquals(l, r) => Equals(rec(l), rec(r)).setType(BooleanType)
+      case ExNotEquals(l, r) => Not(Equals(rec(l), rec(r)).setType(BooleanType)).setType(BooleanType)
       case ExGreaterThan(l, r) => GreaterThan(rec(l), rec(r)).setType(BooleanType)
       case ExGreaterEqThan(l, r) => GreaterEquals(rec(l), rec(r)).setType(BooleanType)
       case ExLessThan(l, r) => LessThan(rec(l), rec(r)).setType(BooleanType)
       case ExLessEqThan(l, r) => LessEquals(rec(l), rec(r)).setType(BooleanType)
+
+      case ExEmptySet(tt) => {
+        val underlying = scalaType2PureScala(unit, silent)(tt.tpe)
+        EmptySet(underlying).setType(SetType(underlying))          
+      }
+      case ExUnion(t1,t2) => {
+        val rl = rec(t1)
+        val rr = rec(t2)
+        SetUnion(rl, rr).setType(rl.getType) // this is not entirely correct: should be a setype of LUB of underlying types of left and right.
+      }
+      case ExIntersection(t1,t2) => {
+        val rl = rec(t1)
+        val rr = rec(t2)
+        SetIntersection(rl, rr).setType(rl.getType) // same as union
+      } 
+      case ExSetMinus(t1,t2) => {
+        val rl = rec(t1)
+        val rr = rec(t2)
+        SetDifference(rl, rr).setType(rl.getType) // same as union
+      } 
       case ExIfThenElse(t1,t2,t3) => {
         val r1 = rec(t1)
         val r2 = rec(t2)
