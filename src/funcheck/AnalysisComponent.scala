@@ -43,6 +43,9 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin)
       println("Extracted program for " + unit + ": ")
       println(prog)
 
+      println("Starting analysis.")
+      purescala.Analysis.analyze(prog)
+
       // Mirco your component can do its job here, as I leave the trees
       // unmodified.
       // val (genDef, arbDef) = createGeneratorDefDefs(unit)

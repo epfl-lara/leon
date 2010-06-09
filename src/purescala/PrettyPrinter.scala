@@ -98,10 +98,10 @@ object PrettyPrinter {
     case GreaterThan(l,r) => ppBinary(sb, l, r, " > ", lvl)
     case LessEquals(l,r) => ppBinary(sb, l, r, " \u2264 ", lvl)      // \leq
     case GreaterEquals(l,r) => ppBinary(sb, l, r, " \u2265 ", lvl)   // \geq
-    case EmptySet(_) => sb.append("Ø")
-    case SetUnion(l,r) => ppBinary(sb, l, r, " U ", lvl)
-    case SetDifference(l,r) => ppBinary(sb, l, r, " \\ ", lvl)
-    case SetIntersection(l,r) => ppBinary(sb, l, r, " INT ", lvl)
+    case EmptySet(_) => sb.append("\u2205")                          // Ø
+    case SetUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)        // \cup
+    case SetDifference(l,r) => ppBinary(sb, l, r, " \\ ", lvl)       
+    case SetIntersection(l,r) => ppBinary(sb, l, r, " \u2229 ", lvl) // \cap
     
     case IfExpr(c, t, e) => {
       var nsb = sb
