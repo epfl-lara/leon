@@ -33,4 +33,14 @@ object Analysis {
             BooleanLiteral(false)
         }
     }
+
+    def flatten(expr: Expr) : (Expr,List[(Variable,Expr)]) = {
+        // Recursively flattens the expression. The head in the end
+        // should be the top-level original expression.
+        def fl(expr: Expr, lets: List[(Variable,Expr)]) : List[(Variable,Expr)] = expr match {
+            case _ => throw new Exception("ah ha !")
+        }
+        
+    }
+
 }
