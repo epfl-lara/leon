@@ -40,26 +40,36 @@ object Trees {
   // We don't handle Seq stars for now.
 
   /* Propositional logic */
-  case object And {
+  object And {
+    def apply(exprs: Seq[Expr]) : And = new And(exprs)
+
     def apply(l: Expr, r: Expr): Expr = (l,r) match {
       case (And(exs1), And(exs2)) => And(exs1 ++ exs2)
       case (And(exs1), ex2) => And(exs1 :+ ex2)
       case (ex1, And(exs2)) => And(exs2 :+ ex1)
       case (ex1, ex2) => And(List(ex1, ex2))
     }
+
+    def unapply(and: And) : Option[Seq[Expr]] = 
+        if(and == null) None else Some(and.exprs)
   }
 
-  case object Or {
+  object Or {
+    def apply(exprs: Seq[Expr]) : Or = new Or(exprs)
+
     def apply(l: Expr, r: Expr): Expr = (l,r) match {
       case (Or(exs1), Or(exs2)) => Or(exs1 ++ exs2)
       case (Or(exs1), ex2) => Or(exs1 :+ ex2)
       case (ex1, Or(exs2)) => Or(exs2 :+ ex1)
       case (ex1, ex2) => Or(List(ex1, ex2))
     }
+
+    def unapply(or: Or) : Option[Seq[Expr]] = 
+        if(or == null) None else Some(or.exprs)
   }
 
-  case class And(exprs: Seq[Expr]) extends Expr
-  case class Or(exprs: Seq[Expr]) extends Expr
+  class And(val exprs: Seq[Expr]) extends Expr
+  class Or(val exprs: Seq[Expr]) extends Expr
   case class Not(expr: Expr) extends Expr 
 
   /* Maybe we should split this one depending on types? */
@@ -141,4 +151,25 @@ object Trees {
   case class Cdr(list: Expr) extends Expr 
   case class Concat(list1: Expr, list2: Expr) extends Expr 
   case class ListAt(list: Expr, index: Expr) extends Expr 
+
+  object BinaryOperator {
+    def unapply(expr: Expr) : Option[(Expr,Expr,(Expr,Expr)=>Expr)] = expr match {
+        case Equals(t1,t2) => Some((t1,t2,Equals))
+        case Plus(t1,t2) => Some((t1,t2,Plus))
+        case Minus(t1,t2) => Some((t1,t2,Minus))
+        case Times(t1,t2) => Some((t1,t2,Times))
+        case Division(t1,t2) => Some((t1,t2,Division))
+        case LessThan(t1,t2) => Some((t1,t2,LessThan))
+        case GreaterThan(t1,t2) => Some((t1,t2,GreaterThan))
+        case LessEquals(t1,t2) => Some((t1,t2,LessEquals))
+        case GreaterEquals(t1,t2) => Some((t1,t2,GreaterEquals))
+        case ElementOfSet(t1,t2) => Some((t1,t2,ElementOfSet))
+        case SetEquals(t1,t2) => Some((t1,t2,SetEquals))
+        case SubsetOf(t1,t2) => Some((t1,t2,SubsetOf))
+        case SetIntersection(t1,t2) => Some((t1,t2,SetIntersection))
+        case SetUnion(t1,t2) => Some((t1,t2,SetUnion))
+        case SetDifference(t1,t2) => Some((t1,t2,SetDifference))
+        case _ => None
+    }
+  }
 }

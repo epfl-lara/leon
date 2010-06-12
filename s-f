@@ -1,0 +1,6 @@
+#!/bin/sh
+SCALALIBDIR=/home/psuter/scala/current/lib
+DISTDIR=/home/psuter/guru-svn/funcheck/dist
+LIBDIR=/home/psuter/guru-svn/funcheck/lib
+SCALAHOME=/home/psuter/scala/current
+java -Dscala.home=${SCALAHOME} -classpath ${SCALALIBDIR}/scala-compiler.jar:${SCALALIBDIR}/scala-library.jar:${DISTDIR}/funcheck-plugin.jar:${LIBDIR}/z3.jar scala.tools.nsc.Main -Xplugin:${DISTDIR}/funcheck-plugin.jar $@

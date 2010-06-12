@@ -60,8 +60,9 @@
 
     <path id="build.path">
         <path refid="scalac.class.path"/>
-        <path refid="funcheck.lib.path"/>
-        <pathelement location="${build.plugin.funcheck.dir}"  />
+        <!-- <path refid="funcheck.lib.path"/> -->
+        <pathelement location="${lib.dir}/z3.jar"/>
+        <!-- <pathelement location="${build.plugin.funcheck.dir}"  /> -->
     </path>
 
     <!--
@@ -105,7 +106,7 @@
         <mkdir dir="${build.plugin.funcheck.dir}"  />
         <scalac srcdir="${sources.dir}" destdir="${build.plugin.funcheck.dir}" force="changed" addparams="${scalac.default.params}">
             <classpath>
-                <path refid="scalac.class.path" />
+                <path refid="build.path" />
             </classpath>
             <exclude name="scala/collection/**/*"/>
             <exclude name="funcheck/lib/**/*"/>
@@ -127,7 +128,7 @@
             <fileset file="./scalac-plugin.xml" />
         </jar>
 
-        <echo file="${script.file}" message="#!/bin/sh${line.separator}scalac -Xplugin:${dist.jar} $@${line.separator}" />
+        <echo file="${script.file}" message="#!/bin/sh${line.separator}scalac -cp ./lib/z3.jar -Xplugin:${dist.jar} $@${line.separator}" />
         <chmod file="${script.file}" perm="u+x" />
     </target>
 
