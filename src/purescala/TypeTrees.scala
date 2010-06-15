@@ -8,7 +8,7 @@ object TypeTrees {
   trait Typed {
     self =>
 
-    var _type: Option[TypeTree] = None
+    private var _type: Option[TypeTree] = None
 
     def getType: TypeTree = _type match {
       case None => NoType
@@ -20,6 +20,15 @@ object TypeTrees {
       case Some(_) => scala.Predef.error("Resetting type information.")
     }
   }
+
+  trait FixedType extends Typed {
+    self =>
+
+    val fixedType: TypeTree
+    override def getType: TypeTree = fixedType
+    override def setType(tt2: TypeTree) : self.type = this
+  }
+    
 
   sealed abstract class TypeTree {
     override def toString: String = PrettyPrinter(this)

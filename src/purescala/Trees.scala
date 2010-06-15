@@ -54,6 +54,10 @@ object Trees {
         if(and == null) None else Some(and.exprs)
   }
 
+  class And(val exprs: Seq[Expr]) extends Expr with FixedType {
+    val fixedType = BooleanType
+  }
+
   object Or {
     def apply(exprs: Seq[Expr]) : Or = new Or(exprs)
 
@@ -68,12 +72,22 @@ object Trees {
         if(or == null) None else Some(or.exprs)
   }
 
-  class And(val exprs: Seq[Expr]) extends Expr
-  class Or(val exprs: Seq[Expr]) extends Expr
-  case class Not(expr: Expr) extends Expr 
+  class Or(val exprs: Seq[Expr]) extends Expr with FixedType {
+    val fixedType = BooleanType
+  }
+
+  case class Implies(left: Expr, right: Expr) extends Expr with FixedType {
+    val fixedType = BooleanType
+  }
+
+  case class Not(expr: Expr) extends Expr with FixedType {
+    val fixedType = BooleanType
+  }
 
   /* Maybe we should split this one depending on types? */
-  case class Equals(left: Expr, right: Expr) extends Expr  
+  case class Equals(left: Expr, right: Expr) extends Expr with FixedType {
+    val fixedType = BooleanType
+  }
   
   /* Literals */
   case class Variable(id: Identifier) extends Expr {
@@ -88,8 +102,12 @@ object Trees {
     val value: T
   }
 
-  case class IntLiteral(value: Int) extends Literal[Int] 
-  case class BooleanLiteral(value: Boolean) extends Literal[Boolean] 
+  case class IntLiteral(value: Int) extends Literal[Int] with FixedType {
+    val fixedType = Int32Type
+  }
+  case class BooleanLiteral(value: Boolean) extends Literal[Boolean] with FixedType {
+    val fixedType = BooleanType
+  }
   case class StringLiteral(value: String) extends Literal[String]
 
   case class CaseClass(classDef: CaseClassDef, args: Seq[Expr]) extends Expr
@@ -142,7 +160,7 @@ object Trees {
 
   case class MapGet(map: Expr, key: Expr) extends Expr 
   case class MapUnion(map1: Expr, map2: Expr) extends Expr 
-  case class MapDiffrence(map: Expr, keys: Expr) extends Expr 
+  case class MapDifference(map: Expr, keys: Expr) extends Expr 
 
   /* List operations */
   case class NilList(baseType: TypeTree) extends Expr 
@@ -152,24 +170,41 @@ object Trees {
   case class Concat(list1: Expr, list2: Expr) extends Expr 
   case class ListAt(list: Expr, index: Expr) extends Expr 
 
+  object UnaryOperator {
+    def unapply(expr: Expr) : Option[(Expr,(Expr)=>Expr)] = expr match {
+      case IsEmptySet(t) => Some((t,IsEmptySet))
+      case SetCardinality(t) => Some((t,SetCardinality))
+      case Car(t) => Some((t,Car))
+      case Cdr(t) => Some((t,Cdr))
+      case _ => None
+    }
+  }
+
   object BinaryOperator {
     def unapply(expr: Expr) : Option[(Expr,Expr,(Expr,Expr)=>Expr)] = expr match {
-        case Equals(t1,t2) => Some((t1,t2,Equals))
-        case Plus(t1,t2) => Some((t1,t2,Plus))
-        case Minus(t1,t2) => Some((t1,t2,Minus))
-        case Times(t1,t2) => Some((t1,t2,Times))
-        case Division(t1,t2) => Some((t1,t2,Division))
-        case LessThan(t1,t2) => Some((t1,t2,LessThan))
-        case GreaterThan(t1,t2) => Some((t1,t2,GreaterThan))
-        case LessEquals(t1,t2) => Some((t1,t2,LessEquals))
-        case GreaterEquals(t1,t2) => Some((t1,t2,GreaterEquals))
-        case ElementOfSet(t1,t2) => Some((t1,t2,ElementOfSet))
-        case SetEquals(t1,t2) => Some((t1,t2,SetEquals))
-        case SubsetOf(t1,t2) => Some((t1,t2,SubsetOf))
-        case SetIntersection(t1,t2) => Some((t1,t2,SetIntersection))
-        case SetUnion(t1,t2) => Some((t1,t2,SetUnion))
-        case SetDifference(t1,t2) => Some((t1,t2,SetDifference))
-        case _ => None
+      case Equals(t1,t2) => Some((t1,t2,Equals))
+      case Implies(t1,t2) => Some((t1,t2,Implies))
+      case Plus(t1,t2) => Some((t1,t2,Plus))
+      case Minus(t1,t2) => Some((t1,t2,Minus))
+      case Times(t1,t2) => Some((t1,t2,Times))
+      case Division(t1,t2) => Some((t1,t2,Division))
+      case LessThan(t1,t2) => Some((t1,t2,LessThan))
+      case GreaterThan(t1,t2) => Some((t1,t2,GreaterThan))
+      case LessEquals(t1,t2) => Some((t1,t2,LessEquals))
+      case GreaterEquals(t1,t2) => Some((t1,t2,GreaterEquals))
+      case ElementOfSet(t1,t2) => Some((t1,t2,ElementOfSet))
+      case SetEquals(t1,t2) => Some((t1,t2,SetEquals))
+      case SubsetOf(t1,t2) => Some((t1,t2,SubsetOf))
+      case SetIntersection(t1,t2) => Some((t1,t2,SetIntersection))
+      case SetUnion(t1,t2) => Some((t1,t2,SetUnion))
+      case SetDifference(t1,t2) => Some((t1,t2,SetDifference))
+      case SingletonMap(t1,t2) => Some((t1,t2,SingletonMap))
+      case MapGet(t1,t2) => Some((t1,t2,MapGet))
+      case MapUnion(t1,t2) => Some((t1,t2,MapUnion))
+      case MapDifference(t1,t2) => Some((t1,t2,MapDifference))
+      case Concat(t1,t2) => Some((t1,t2,Concat))
+      case ListAt(t1,t2) => Some((t1,t2,ListAt))
+      case _ => None
     }
   }
 }

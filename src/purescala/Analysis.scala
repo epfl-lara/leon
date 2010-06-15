@@ -17,18 +17,26 @@ object Analysis {
     //  - all global invariants are satisfied 
     def analyze(program: Program) : Unit = {
         val z3cfg = new Z3Config()
-        //z3cfg.setParamValue("MODEL", "TRUE")
+        z3cfg.setParamValue("MODEL", "true")
         val z3 = new Z3Context(z3cfg)
 
         program.mainObject.defs.filter(_.isInstanceOf[FunDef]).foreach(df => {
             val funDef = df.asInstanceOf[FunDef]
             val vc = postconditionVC(funDef)
             if(vc != BooleanLiteral(true)) {
-                println("Verification condition for " + funDef.id + ":")
+                println("Verification condition (post) for " + funDef.id + ":")
                 println(vc)
                 val (z3f,stupidMap) = toZ3Formula(z3, vc)
                 z3.assertCnstr(z3.mkNot(z3f))
-                println("Valid? " + z3.check())
+                //z3.print
+                z3.checkAndGetModel() match {
+                    case (Some(true),m) => {
+                        println("There's a bug! Here's a model for a counter-example:")
+                        m.print
+                    }
+                    case (Some(false),_) => println("Contract satisfied!")
+                    case (None,_) => println("Z3 couldn't run properly or does not know the answer :(")
+                }
             }
         }) 
     }
@@ -40,7 +48,10 @@ object Analysis {
         if(post.isEmpty) {
             BooleanLiteral(true)
         } else {
-            replaceInExpr(Map(ResultVariable() -> functionDefinition.body), post.get)
+            if(prec.isEmpty)
+                replaceInExpr(Map(ResultVariable() -> functionDefinition.body), post.get)
+            else
+                Implies(prec.get, replaceInExpr(Map(ResultVariable() -> functionDefinition.body), post.get))
         }
     }
 
@@ -63,7 +74,21 @@ object Analysis {
             case And(exs) => And(exs.map(rec(_)))
             case Or(exs) => Or(exs.map(rec(_)))
             case Not(e) => Not(rec(e))
-            case BinaryOperator(t1,t2,recons) => recons(rec(t1),rec(t2))
+            case u @ UnaryOperator(t,recons) => {
+              val r = rec(t)
+              if(r != t)
+                recons(r).setType(u.getType)
+              else
+                u
+            }
+            case b @ BinaryOperator(t1,t2,recons) => {
+              val r1 = rec(t1)
+              val r2 = rec(t2)
+              if(r1 != t1 || r2 != t2)
+                recons(r1,r2).setType(b.getType)
+              else
+                b
+            }
             case _ => ex
         }
 
@@ -89,6 +114,7 @@ object Analysis {
             case Or(exs) => z3.mkOr(exs.map(rec(_)) : _*)
             case Not(Equals(l,r)) => z3.mkDistinct(rec(l),rec(r))
             case Not(e) => z3.mkNot(rec(e))
+            case Implies(l,r) => z3.mkImplies(rec(l), rec(r))
             case IntLiteral(v) => z3.mkInt(v, intSort)
             case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()
             case Equals(l,r) => z3.mkEq(rec(l),rec(r))

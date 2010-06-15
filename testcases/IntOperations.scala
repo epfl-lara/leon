@@ -1,6 +1,6 @@
 object IntOperations {
     def sum(a: Int, b: Int) : Int = {
-        a + (if(b < 0) -b else b)
+        require(b >= 0)
+        a + b
     } ensuring(_ >= a)
-
 }
