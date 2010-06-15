@@ -18,6 +18,7 @@
     <!-- <property name="tests.dir" value="${base.dir}/tests" /> -->
     <property name="dist.dir" value="${base.dir}/dist" />
     <property name="lib.dir" value="${basedir}/lib" /> 
+    <property name="lib-bin.dir" value="${basedir}/lib-bin" />
     <property name="build.dir" value="${base.dir}/bin" />
 
     <property name="build.plugin.funcheck.dir" value="${build.dir}/plugin" />
@@ -128,7 +129,7 @@
             <fileset file="./scalac-plugin.xml" />
         </jar>
 
-        <echo file="${script.file}" message="#!/bin/sh${line.separator}scalac -cp ./lib/z3.jar -Xplugin:${dist.jar} $@${line.separator}" />
+        <echo file="${script.file}" message="#!/bin/sh${line.separator}LD_LIBRARY_PATH=${lib-bin.dir} java -Dscala.home=${scala.home} -classpath ${scala-library.jar}:${scala-compiler.jar}:${distjar}:${lib.dir}/z3.jar scala.tools.nsc.Main -Xplugin:${dist.jar} $@${line.separator}" />
         <chmod file="${script.file}" perm="u+x" />
     </target>
 
