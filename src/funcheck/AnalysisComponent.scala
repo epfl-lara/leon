@@ -2,12 +2,10 @@ package funcheck
 
 import scala.tools.nsc._
 import scala.tools.nsc.plugins._
-import scalacheck._	
 
 class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin)
   extends PluginComponent
   with CodeExtraction
-  // with ScalaCheckIntegrator // Mirco's stuff.
 {
   import global._
 
