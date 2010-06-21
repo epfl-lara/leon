@@ -1,0 +1,5 @@
+package purescala
+
+object Extensions {
+
+}
