@@ -1,15 +1,33 @@
 import sbt._
 
-class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) {
+class FunCheckProject(info: ProjectInfo) extends ParentProject(info) {
   override def outputDirectoryName = "bin"
-  override def mainScalaSourcePath = "src"
-  override def mainResourcesPath   = "resources"
   override def dependencyPath      = "lib"
+  override def shouldCheckOutputDirectories = false
+  lazy val purescala = project(".", "PureScala Definitions", new PureScalaProject(_))
+  lazy val plugin    = project(".", "FunCheck Plugin", new PluginProject(_), purescala)
+  lazy val multisets = project(".", "Multiset Solver", new MultisetsProject(_), plugin, purescala)
 
-  override def compileOptions = super.compileOptions ++ Seq(Unchecked)
+  sealed abstract class PersonalizedProject(info: ProjectInfo) extends DefaultProject(info) {
+    override def dependencyPath = "lib"
+    override def outputDirectoryName = "bin" 
+    override def compileOptions = super.compileOptions ++ Seq(Unchecked)
+  }  
 
-  lazy val scalac = task {
-    println("Running scalac...")
-    None
-  } dependsOn(`package`) describedAs("Runs scalac with the FunCheck plugin.")
+  class PureScalaProject(info: ProjectInfo) extends PersonalizedProject(info) {
+    override def outputPath = "bin" / "purescala"
+    override def mainScalaSourcePath = "src" / "purescala"
+
+  }
+  class PluginProject(info: ProjectInfo) extends PersonalizedProject(info) {
+    override def outputPath = "bin" / "funcheck"
+    override def mainScalaSourcePath = "src" / "funcheck"
+    override def unmanagedClasspath = super.unmanagedClasspath +++ purescala.jarPath
+    override def mainResourcesPath   = "resources" / "funcheck"
+  }
+  class MultisetsProject(info: ProjectInfo) extends PersonalizedProject(info) {
+    override def outputPath = "bin" / "multisets"
+    override def mainScalaSourcePath = "src" / "multisets"
+    override def unmanagedClasspath = super.unmanagedClasspath +++ purescala.jarPath
+  }
 }
