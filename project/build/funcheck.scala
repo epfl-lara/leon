@@ -11,18 +11,13 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
 
   val scriptPath: Path = "." / "scalac-funcheck"
 
-  lazy val all = fileTask(scriptPath :: Nil)(generateScript) dependsOn(purescala.`package`, plugin.`package`) describedAs("Compile everything and produce a script file.")
+  lazy val all = task { None } dependsOn(generateScript) describedAs("Compile everything and produce a script file.")
 
-  override def cleanAction = super.cleanAction dependsOn(deleteScript)
+  override def cleanAction = super.cleanAction dependsOn(cleanScript)
 
-  lazy val deletescr = deleteScript
-
-  def deleteScript = task {
-    scriptPath.asFile.delete
-    None
-  }
-
-  def generateScript: Option[String] = {
+  lazy val generateScript = genScript
+  def genScript = fileTask(scriptPath ::Nil)({
+    log.info("Generating runner script")
     try {
       val nl = System.getProperty("line.separator")
       val f = scriptPath.asFile
@@ -48,6 +43,13 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
     } catch {
       case e => Some("There was an error while generating the script file: " + e.getLocalizedMessage)
     }
+  }) dependsOn(plugin.`package`) describedAs("Produce the runner script.")
+
+  lazy val cleanScript = clnScript
+  def clnScript = task {
+    log.info("Deleting runner script")
+    scriptPath.asFile.delete
+    None
   }
 
   sealed abstract class PersonalizedProject(info: ProjectInfo) extends DefaultProject(info) {
@@ -71,4 +73,5 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
     override def mainScalaSourcePath = "src" / "multisets"
     override def unmanagedClasspath = super.unmanagedClasspath +++ purescala.jarPath
   }
+  
 }

@@ -5,8 +5,15 @@ import Definitions._
 import Trees._
 import TypeTrees._
 import z3.scala._
+import Extensions._
 
-object Analysis {
+class Analysis(val program: Program) {
+  val extensions: Seq[Extension] = loadAll(Settings.reporter)
+
+  if(!extensions.isEmpty) {
+    Settings.reporter.info("The following extensions are loaded:\n" + extensions.toList.map(_.description).mkString("  ", ", ", ""))
+  }
+
     // Analysis should check that:
     //  - all the postconditions are implied by preconds. + body
     //  - all callsites satisfy the preconditions
@@ -15,7 +22,7 @@ object Analysis {
     //  - catamorphisms are catamorphisms (poss. with surjectivity conds.)
     //  - injective functions are injective
     //  - all global invariants are satisfied 
-    def analyze(program: Program) : Unit = {
+    def analyse : Unit = {
         val z3cfg = new Z3Config()
         z3cfg.setParamValue("MODEL", "true")
         val z3 = new Z3Context(z3cfg)
