@@ -20,15 +20,14 @@ object Extensions {
     def analyse(program: Program) : Unit
   }
 
-  // the following is for dynamically loading extensions
-  type AnyClass = Class[_]
+  // The rest of the code is for dynamically loading extensions
 
   def loadAll(reporter: Reporter) : Seq[Extension] = {
     val allNames: Seq[String] = Settings.extensionNames.split(':').map(_.trim).filter(!_.isEmpty)
     if(!allNames.isEmpty) {
       val classLoader = Extensions.getClass.getClassLoader
 
-      val classes: Seq[AnyClass] = (for(name <- allNames) yield {
+      val classes: Seq[Class[_]] = (for(name <- allNames) yield {
         try {
           classLoader.loadClass(name)
         } catch {
