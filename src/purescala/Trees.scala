@@ -139,6 +139,8 @@ object Trees {
   case class SetIntersection(set1: Expr, set2: Expr) extends Expr 
   case class SetUnion(set1: Expr, set2: Expr) extends Expr 
   case class SetDifference(set1: Expr, set2: Expr) extends Expr 
+  case class SetMin(set: Expr) extends Expr
+  case class SetMax(set: Expr) extends Expr
 
   /* Multiset expressions */
   // case class EmptyMultiset(baseType: TypeTree) extends Expr 

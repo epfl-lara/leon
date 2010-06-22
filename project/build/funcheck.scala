@@ -5,9 +5,12 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
   override def dependencyPath      = "lib"
   override def shouldCheckOutputDirectories = false
 
-  lazy val purescala = project(".", "PureScala Definitions", new PureScalaProject(_))
-  lazy val plugin    = project(".", "FunCheck Plugin", new PluginProject(_), purescala)
-  lazy val multisets = project(".", "Multiset Solver", new MultisetsProject(_), plugin, purescala)
+  lazy val purescala  = project(".", "PureScala Definitions", new PureScalaProject(_))
+  lazy val plugin     = project(".", "FunCheck Plugin", new PluginProject(_), purescala)
+  lazy val multisets  = project(".", "Multiset Solver", new MultisetsProject(_), plugin, purescala)
+  lazy val orderedsets = project(".", "Ordered Sets Solver", new OrderedSetsProject(_), plugin, purescala)
+
+  lazy val extensionJars : List[Path] = multisets.jarPath :: orderedsets.jarPath :: Nil
 
   val scriptPath: Path = "." / "scalac-funcheck"
 
@@ -22,7 +25,20 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
       val nl = System.getProperty("line.separator")
       val f = scriptPath.asFile
       val fw = new java.io.FileWriter(f)
-      fw.write("#!/bin/sh" + nl)
+      fw.write("#!/bin/bash" + nl)
+      fw.write("FUNCHECKCLASSPATH=")
+      fw.write(buildLibraryJar.absolutePath + ":")
+      fw.write(buildCompilerJar.absolutePath + ":")
+      fw.write(purescala.jarPath.absolutePath + ":")
+      fw.write(plugin.jarPath.absolutePath + ":")
+      fw.write(("lib" / "z3.jar").absolutePath)
+      fw.write(nl + nl)
+      fw.write("for f in " + extensionJars.map(_.absolutePath).map(n => "\"" + n + "\"").mkString(" ") + "; do" + nl)
+      fw.write("  if [ -e ${f} ]" + nl)
+      fw.write("  then" + nl)
+      fw.write("    FUNCHECKCLASSPATH=${FUNCHECKCLASSPATH}:${f}" + nl)
+      fw.write("  fi" + nl)
+      fw.write("done" + nl + nl)
       fw.write("LD_LIBRARY_PATH=" + ("." / "lib-bin").absolutePath + " \\" + nl)
       fw.write("java \\" + nl)
 
@@ -30,12 +46,7 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
       val libStr = (buildLibraryJar.absolutePath).toString
       fw.write("    -Dscala.home=" + libStr.substring(0, libStr.length-21) + " \\" + nl)
 
-      fw.write("    -classpath \\" + nl)
-      fw.write("    " + buildLibraryJar.absolutePath + ":")
-      fw.write(buildCompilerJar.absolutePath + ":")
-      fw.write(purescala.jarPath.absolutePath + ":")
-      fw.write(plugin.jarPath.absolutePath + ":")
-      fw.write(("lib" / "z3.jar").absolutePath + " \\" + nl)
+      fw.write("    -classpath ${FUNCHECKCLASSPATH} \\" + nl)
       fw.write("  scala.tools.nsc.Main -Xplugin:" + plugin.jarPath.absolutePath + " $@" + nl)
       fw.close
       f.setExecutable(true)
@@ -73,5 +84,9 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
     override def mainScalaSourcePath = "src" / "multisets"
     override def unmanagedClasspath = super.unmanagedClasspath +++ purescala.jarPath
   }
-  
+  class OrderedSetsProject(info: ProjectInfo) extends PersonalizedProject(info) {
+    override def outputPath = "bin" / "orderedsets"
+    override def mainScalaSourcePath = "src" / "orderedsets"
+    override def unmanagedClasspath = super.unmanagedClasspath +++ purescala.jarPath
+  }
 }
