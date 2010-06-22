@@ -17,7 +17,7 @@ class FunCheckPlugin(val global: Global) extends Plugin {
   override val optionsHelp: Option[String] = Some(
     "  -P:funcheck:uniqid             When pretty-printing funcheck trees, show identifiers IDs" + "\n" +
     "  -P:funcheck:with-code          Allows the compiler to keep running after the static analysis" + "\n" +
-    "  -P:funcheck:extensions=ex1,... Specifies a list of qualified class names of extensions to be loaded"
+    "  -P:funcheck:extensions=ex1:... Specifies a list of qualified class names of extensions to be loaded"
   )
 
   /** Processes the command-line options. */

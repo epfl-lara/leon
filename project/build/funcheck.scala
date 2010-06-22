@@ -5,12 +5,13 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
   override def dependencyPath      = "lib"
   override def shouldCheckOutputDirectories = false
 
-  lazy val purescala  = project(".", "PureScala Definitions", new PureScalaProject(_))
-  lazy val plugin     = project(".", "FunCheck Plugin", new PluginProject(_), purescala)
-  lazy val multisets  = project(".", "Multiset Solver", new MultisetsProject(_), plugin, purescala)
-  lazy val orderedsets = project(".", "Ordered Sets Solver", new OrderedSetsProject(_), plugin, purescala)
+  lazy val purescala      = project(".", "PureScala Definitions", new PureScalaProject(_))
+  lazy val plugin         = project(".", "FunCheck Plugin", new PluginProject(_), purescala)
+  lazy val multisets      = project(".", "Multiset Solver", new MultisetsProject(_), plugin, purescala)
+  lazy val orderedsets    = project(".", "Ordered Sets Solver", new OrderedSetsProject(_), plugin, purescala)
+  lazy val setconstraints = project(".", "Type inference with set constraints", new SetConstraintsProject(_), plugin, purescala)
 
-  lazy val extensionJars : List[Path] = multisets.jarPath :: orderedsets.jarPath :: Nil
+  lazy val extensionJars : List[Path] = multisets.jarPath :: orderedsets.jarPath :: setconstraints.jarPath :: Nil
 
   val scriptPath: Path = "." / "scalac-funcheck"
 
@@ -87,6 +88,11 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
   class OrderedSetsProject(info: ProjectInfo) extends PersonalizedProject(info) {
     override def outputPath = "bin" / "orderedsets"
     override def mainScalaSourcePath = "src" / "orderedsets"
+    override def unmanagedClasspath = super.unmanagedClasspath +++ purescala.jarPath
+  }
+  class SetConstraintsProject(info: ProjectInfo) extends PersonalizedProject(info) {
+    override def outputPath = "bin" / "setconstraints"
+    override def mainScalaSourcePath = "src" / "setconstraints"
     override def unmanagedClasspath = super.unmanagedClasspath +++ purescala.jarPath
   }
 }

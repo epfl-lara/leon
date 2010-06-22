@@ -17,14 +17,14 @@ object Extensions {
   abstract class Analyser(reporter: Reporter) extends Extension(reporter) {
     // Does whatever the analysis should. Uses the reporter to
     // signal results and/or errors.
-    def analyze(program: Program) : Unit
+    def analyse(program: Program) : Unit
   }
 
   // the following is for dynamically loading extensions
   type AnyClass = Class[_]
 
   def loadAll(reporter: Reporter) : Seq[Extension] = {
-    val allNames = Settings.extensionNames.split(':')
+    val allNames: Seq[String] = Settings.extensionNames.split(':').map(_.trim).filter(!_.isEmpty)
     if(!allNames.isEmpty) {
       val classLoader = Extensions.getClass.getClassLoader
 
