@@ -52,9 +52,9 @@ object PrettyPrinter {
     nsb
   }
 
-  private def ppNary(sb: StringBuffer, exprs: Seq[Expr], op: String, lvl: Int): StringBuffer = {
+  private def ppNary(sb: StringBuffer, exprs: Seq[Expr], pre: String, op: String, post: String, lvl: Int): StringBuffer = {
     var nsb = sb
-    nsb.append("(")
+    nsb.append(pre)
     val sz = exprs.size
     var c = 0
 
@@ -62,14 +62,14 @@ object PrettyPrinter {
       nsb = pp(ex, nsb, lvl) ; c += 1 ; if(c < sz) nsb.append(op)
     })
 
-    nsb.append(")")
+    nsb.append(post)
     nsb
   }
 
   private def pp(tree: Expr, sb: StringBuffer, lvl: Int): StringBuffer = tree match {
     case Variable(id) => sb.append(id)
-    case And(exprs) => ppNary(sb, exprs, " \u2227 ", lvl)            // \land
-    case Or(exprs) => ppNary(sb, exprs, " \u2228 ", lvl)             // \lor
+    case And(exprs) => ppNary(sb, exprs, "(", " \u2227 ", ")", lvl)            // \land
+    case Or(exprs) => ppNary(sb, exprs, "(", " \u2228 ", ")", lvl)             // \lor
     case Not(Equals(l, r)) => ppBinary(sb, l, r, " \u2260 ", lvl)    // \neq
     case Not(expr) => ppUnary(sb, expr, "\u00AC", lvl)               // \neg
     case Implies(l,r) => ppBinary(sb, l, r, "==>", lvl)              
@@ -81,14 +81,14 @@ object PrettyPrinter {
     case CaseClass(ct, args) => {
       var nsb = sb
       nsb.append(ct.id)
-      nsb = ppNary(nsb, args, ", ", lvl)
+      nsb = ppNary(nsb, args, "(", ", ", ")", lvl)
       nsb
     }
     case CaseClassSelector(cc, id) => pp(cc, sb, lvl).append("." + id)
     case FunctionInvocation(fd, args) => {
       var nsb = sb
       nsb.append(fd.id)
-      nsb = ppNary(nsb, args, ", ", lvl)
+      nsb = ppNary(nsb, args, "(", ", ", ")", lvl)
       nsb
     }
     case Plus(l,r) => ppBinary(sb, l, r, " + ", lvl)
@@ -99,7 +99,7 @@ object PrettyPrinter {
     case GreaterThan(l,r) => ppBinary(sb, l, r, " > ", lvl)
     case LessEquals(l,r) => ppBinary(sb, l, r, " \u2264 ", lvl)      // \leq
     case GreaterEquals(l,r) => ppBinary(sb, l, r, " \u2265 ", lvl)   // \geq
-    case FiniteSet(rs) => ppNary(sb.append("{ "), rs, ", ", lvl).append(" }")
+    case FiniteSet(rs) => ppNary(sb, rs, "{", ", ", "}", lvl)
     case EmptySet(_) => sb.append("\u2205")                          // Ø
     case SetUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)        // \cup
     case SetDifference(l,r) => ppBinary(sb, l, r, " \\ ", lvl)       
