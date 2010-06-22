@@ -305,6 +305,23 @@ trait Extractors {
       }
     }
 
+    object ExFiniteSet {
+      def unapply(tree: Apply): Option[(Tree,List[Tree])] = tree match {
+        case Apply(
+          TypeApply(
+            Select(
+              Select(
+                Select(
+                  Select(Ident(s), collectionName),
+                  immutableName),
+                setName),
+              emptyName),  theTypeTree :: Nil), args) if (
+              collectionName.toString == "collection" && immutableName.toString == "immutable" && setName.toString == "Set" && emptyName.toString == "apply"
+            )=> Some(theTypeTree, args)
+        case _ => None
+      }
+    }
+
     object ExUnion {
       def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
         case Apply(Select(lhs, n), List(rhs)) if (n == nme.PLUSPLUS) => Some((lhs,rhs))

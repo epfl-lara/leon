@@ -342,7 +342,10 @@ trait CodeExtraction extends Extractors {
       case ExGreaterEqThan(l, r) => GreaterEquals(rec(l), rec(r)).setType(BooleanType)
       case ExLessThan(l, r) => LessThan(rec(l), rec(r)).setType(BooleanType)
       case ExLessEqThan(l, r) => LessEquals(rec(l), rec(r)).setType(BooleanType)
-
+      case ExFiniteSet(tt, args) => {
+        val underlying = scalaType2PureScala(unit, silent)(tt.tpe)
+          FiniteSet(args.map(rec(_))).setType(SetType(underlying))
+      }
       case ExEmptySet(tt) => {
         val underlying = scalaType2PureScala(unit, silent)(tt.tpe)
         EmptySet(underlying).setType(SetType(underlying))          
