@@ -228,7 +228,13 @@ trait CodeExtraction extends Extractors {
         case _ => ;
       }
       
-      funDef.body = s2ps(realBody)
+      val bodyAttempt = try {
+        Some(scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies)(realBody))
+      } catch {
+        case e: ImpureCodeEncounteredException => None
+      }
+
+      funDef.body = bodyAttempt
       funDef.precondition = reqCont
       funDef.postcondition = ensCont
       funDef
@@ -417,7 +423,7 @@ trait CodeExtraction extends Extractors {
       case _ => {
         if(!silent) {
           println(tr)
-          unit.error(tr.pos, "Could not extract as PureScala.")
+          reporter.info(tr.pos, "Could not extract as PureScala.", true)
         }
         throw ImpureCodeEncounteredException(tree)
       }

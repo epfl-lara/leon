@@ -74,7 +74,7 @@ object Definitions {
 
   /** Functions (= 'methods' of objects) */
   object FunDef {
-    def unapply(fd: FunDef): Option[(Identifier,TypeTree,VarDecls,Expr,Option[Expr],Option[Expr])] = {
+    def unapply(fd: FunDef): Option[(Identifier,TypeTree,VarDecls,Option[Expr],Option[Expr],Option[Expr])] = {
       if(fd != null) {
         Some((fd.id, fd.returnType, fd.args, fd.body, fd.precondition, fd.postcondition))
       } else {
@@ -83,7 +83,7 @@ object Definitions {
     }
   }
   class FunDef(val id: Identifier, val returnType: TypeTree, val args: VarDecls) extends Definition {
-    var body: Expr = _
+    var body: Option[Expr] = None
     var precondition: Option[Expr] = None
     var postcondition: Option[Expr] = None
   }

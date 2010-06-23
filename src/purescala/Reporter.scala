@@ -21,26 +21,35 @@ abstract class Reporter {
 }
 
 object DefaultReporter extends Reporter {
-  private val errorPfx = "Error: "
-  private val warningPfx = "Warning: "
-  private val infoPfx = "Info: "
-  private val fatalPfx = "Fatal error: "
+  private val errorPfx   = "[ Error ] "
+  private val warningPfx = "[Warning] "
+  private val infoPfx    = "[ Info  ] "
+  private val fatalPfx   = "[ Fatal ] "
 
   def output(msg: String) : Unit = {
     Console.err.println(msg)
-    Console.err.println("")
   }
 
-  def error(msg: Any) = output(errorPfx + msg.toString)
-  def warning(msg: Any) = output(warningPfx + msg.toString)
-  def info(msg: Any) = output(infoPfx + msg.toString)
-  def fatalError(msg: Any) = { output(fatalPfx + msg.toString); exit(0) }
-  def error(definition: Definition, msg: Any) = output(errorPfx + "\n" + PrettyPrinter(definition) + msg.toString)
-  def warning(definition: Definition, msg: Any) = output(warningPfx + "\n" + PrettyPrinter(definition) + msg.toString)
-  def info(definition: Definition, msg: Any) = output(infoPfx + "\n" + PrettyPrinter(definition) + msg.toString)
-  def fatalError(definition: Definition, msg: Any) = { output(fatalPfx + "\n" + PrettyPrinter(definition) + msg.toString); exit(0) }
-  def error(expr: Expr, msg: Any) = output(errorPfx + "\n" + PrettyPrinter(expr) + msg.toString) 
-  def warning(expr: Expr, msg: Any) = output(warningPfx + "\n" + PrettyPrinter(expr) + msg.toString) 
-  def info(expr: Expr, msg: Any) = output(infoPfx + "\n" + PrettyPrinter(expr) + msg.toString) 
-  def fatalError(expr: Expr, msg: Any) = { output(fatalPfx + "\n" + PrettyPrinter(expr) + msg.toString); exit(0) }
+  private def reline(pfx: String, msg: String) : String = {
+    val color = if(pfx == errorPfx || pfx == warningPfx || pfx == fatalPfx) {
+      Console.RED
+    } else {
+      Console.BLUE
+    }
+    "[" + color + pfx.substring(1, pfx.length-2) + Console.RESET + "] " +
+    msg.trim.replaceAll("\n", "\n" + pfx)
+  }
+
+  def error(msg: Any) = output(reline(errorPfx, msg.toString))
+  def warning(msg: Any) = output(reline(warningPfx, msg.toString))
+  def info(msg: Any) = output(reline(infoPfx, msg.toString))
+  def fatalError(msg: Any) = { output(reline(fatalPfx, msg.toString)); exit(0) }
+  def error(definition: Definition, msg: Any) = output(reline(errorPfx, PrettyPrinter(definition) + "\n" + msg.toString))
+  def warning(definition: Definition, msg: Any) = output(reline(warningPfx, PrettyPrinter(definition) + "\n" + msg.toString))
+  def info(definition: Definition, msg: Any) = output(reline(infoPfx, PrettyPrinter(definition) + "\n" + msg.toString))
+  def fatalError(definition: Definition, msg: Any) = { output(reline(fatalPfx, PrettyPrinter(definition) + "\n" + msg.toString)); exit(0) }
+  def error(expr: Expr, msg: Any) = output(reline(errorPfx, PrettyPrinter(expr) + "\n" + msg.toString)) 
+  def warning(expr: Expr, msg: Any) = output(reline(warningPfx, PrettyPrinter(expr) + "\n" + msg.toString))
+  def info(expr: Expr, msg: Any) = output(reline(infoPfx, PrettyPrinter(expr) + "\n" + msg.toString))
+  def fatalError(expr: Expr, msg: Any) = { output(reline(fatalPfx, PrettyPrinter(expr) + "\n" + msg.toString)); exit(0) }
 }

@@ -44,8 +44,11 @@ trait Extractors {
       /** Extracts the 'require' contract from an expression (only if it's the
        * first call in the block). */
       def unapply(tree: Block): Option[(Tree,Tree)] = tree match {
-        case Block(Apply(ScalaPredef("require"), contractBody :: Nil) :: Nil, body) =>
-          Some((body,contractBody))
+        case Block(Apply(ScalaPredef("require"), contractBody :: Nil) :: rest, body) =>
+          if(rest.isEmpty)
+            Some((body,contractBody))
+          else
+            Some((Block(rest,body),contractBody))
         case _ => None
       }
     }

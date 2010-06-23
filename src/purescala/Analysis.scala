@@ -8,10 +8,12 @@ import z3.scala._
 import Extensions._
 
 class Analysis(val program: Program) {
-  val extensions: Seq[Extension] = loadAll(Settings.reporter)
+  val reporter = Settings.reporter
+  val extensions: Seq[Extension] = loadAll(reporter)
+
 
   if(!extensions.isEmpty) {
-    Settings.reporter.info("The following extensions are loaded:\n" + extensions.toList.map(_.description).mkString("  ", ", ", ""))
+    reporter.info("The following extensions are loaded:\n" + extensions.toList.map(_.description).mkString("  ", "\n  ", ""))
   }
 
     // Analysis should check that:
@@ -29,37 +31,46 @@ class Analysis(val program: Program) {
 
         program.mainObject.defs.filter(_.isInstanceOf[FunDef]).foreach(df => {
             val funDef = df.asInstanceOf[FunDef]
+
+            if(funDef.body.isDefined) {
             val vc = postconditionVC(funDef)
-            if(vc != BooleanLiteral(true)) {
-                println("Verification condition (post) for " + funDef.id + ":")
-                println(vc)
-                val (z3f,stupidMap) = toZ3Formula(z3, vc)
-                z3.assertCnstr(z3.mkNot(z3f))
-                //z3.print
-                z3.checkAndGetModel() match {
-                    case (Some(true),m) => {
-                        println("There's a bug! Here's a model for a counter-example:")
-                        m.print
-                    }
-                    case (Some(false),_) => println("Contract satisfied!")
-                    case (None,_) => println("Z3 couldn't run properly or does not know the answer :(")
-                }
+              if(vc != BooleanLiteral(true)) {
+                  reporter.info("Verification condition (post) for " + funDef.id + ":")
+                  reporter.info(vc)
+                  val (z3f,stupidMap) = toZ3Formula(z3, vc)
+                  z3.assertCnstr(z3.mkNot(z3f))
+                  //z3.print
+                  z3.checkAndGetModel() match {
+                      case (Some(true),m) => {
+                          reporter.error("There's a bug! Here's a model for a counter-example:")
+                          m.print
+                      }
+                      case (Some(false),_) => reporter.info("Contract satisfied!")
+                      case (None,_) => reporter.error("Z3 couldn't run properly or does not know the answer :(")
+                  }
+              }
+            } else {
+              if(funDef.postcondition.isDefined) {
+                reporter.warning(funDef, "Could not verify postcondition: function implementation is unknown.")
+              }
             }
         }) 
     }
 
     def postconditionVC(functionDefinition: FunDef) : Expr = {
-        val prec = functionDefinition.precondition
-        val post = functionDefinition.postcondition
+      assert(functionDefinition.body.isDefined)
+      val prec = functionDefinition.precondition
+      val post = functionDefinition.postcondition
+      val body = functionDefinition.body.get
 
-        if(post.isEmpty) {
-            BooleanLiteral(true)
-        } else {
-            if(prec.isEmpty)
-                replaceInExpr(Map(ResultVariable() -> functionDefinition.body), post.get)
-            else
-                Implies(prec.get, replaceInExpr(Map(ResultVariable() -> functionDefinition.body), post.get))
-        }
+      if(post.isEmpty) {
+        BooleanLiteral(true)
+      } else {
+        if(prec.isEmpty)
+          replaceInExpr(Map(ResultVariable() -> body), post.get)
+        else
+          Implies(prec.get, replaceInExpr(Map(ResultVariable() -> body), post.get))
+      }
     }
 
     def flatten(expr: Expr) : (Expr,List[(Variable,Expr)]) = {

@@ -289,7 +289,10 @@ object PrettyPrinter {
         nsb.append(") : ")
         nsb = pp(rt, nsb, lvl)
         nsb.append(" = ")
-        pp(body, nsb, lvl)
+        if(body.isDefined)
+          pp(body.get, nsb, lvl)
+        else
+          nsb.append("[unknown function implementation]")
       }
 
       case _ => sb.append("Defn?")
