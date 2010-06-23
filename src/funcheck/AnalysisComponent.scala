@@ -33,8 +33,15 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin)
       fresh = unit.fresh
 
       val prog: purescala.Definitions.Program = extractCode(unit)
-      println("Extracted program for " + unit + ": ")
-      println(prog)
+      if(pluginInstance.stopAfterExtraction) {
+        println("Extracted program for " + unit + ": ")
+        println(prog)
+        println("Extraction complete. Now terminating the compiler process.")
+        exit(0)
+      } else {
+        println("Extracted program for " + unit + ": ")
+        println(prog)
+      }
 
       println("Starting analysis.")
       val analysis = new purescala.Analysis(prog)

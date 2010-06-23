@@ -12,11 +12,13 @@ class FunCheckPlugin(val global: Global) extends Plugin {
   val description = "Static analysis for Scala by LARA."
 
   var stopAfterAnalysis: Boolean = true
+  var stopAfterExtraction: Boolean = false
 
   /** The help message displaying the options for that plugin. */
   override val optionsHelp: Option[String] = Some(
     "  -P:funcheck:uniqid             When pretty-printing funcheck trees, show identifiers IDs" + "\n" +
     "  -P:funcheck:with-code          Allows the compiler to keep running after the static analysis" + "\n" +
+    "  -P:funcheck:parse              Checks only whether the program is valid PureScala" + "\n" +
     "  -P:funcheck:extensions=ex1:... Specifies a list of qualified class names of extensions to be loaded"
   )
 
@@ -26,6 +28,7 @@ class FunCheckPlugin(val global: Global) extends Plugin {
       option match {
         case "with-code" =>                      stopAfterAnalysis = false
         case "uniqid"    =>                      purescala.Settings.showIDs = true
+        case "parse"     =>                      stopAfterExtraction = true
         case s if s.startsWith("extensions=") => purescala.Settings.extensionNames = s.substring("extensions=".length, s.length)
         case _ => error("Invalid option: " + option)
       }
