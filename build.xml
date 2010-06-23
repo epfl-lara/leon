@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
-<project name="FunCheck" default="dist" basedir=".">
+<project name="FunCheck" default="deprecationwarning" basedir=".">
     <description>
         Build file for the compiler plugin of the FunCheck project.
     </description>
@@ -103,7 +103,7 @@
     -->
 
     <!-- <target name="compile" depends="compile-funcheck-lib" description="compile the FunCheck plugin"> -->
-    <target name="compile" description="compile the FunCheck plugin">
+    <target name="compile" description="compile the FunCheck plugin" depends="deprecationwarning">
         <mkdir dir="${build.plugin.funcheck.dir}"  />
         <scalac srcdir="${sources.dir}" destdir="${build.plugin.funcheck.dir}" force="changed" addparams="${scalac.default.params}">
             <classpath>
@@ -115,8 +115,11 @@
         </scalac>
     </target>
 
+    <target name="deprecationwarning" description="a warning everyone should get">
+        <echo message="WARNING: YOU SHOULD NOT USE ant TO COMPILE THIS PROJECT ANYMORE. USE sbt INSTEAD AND RUN FOR INSTANCE sbt package all." />
+    </target>
 
-    <target name="dist" depends="compile" description="build the FunCheck jar file and create the script file used to run scalac with FunCheck plugged-in">
+    <target name="dist" depends="compile,deprecationwarning" description="build the FunCheck jar file and create the script file used to run scalac with FunCheck plugged-in">
         <mkdir dir="${dist.dir}" />
 
         <manifest file="${dist.dir}/MANIFEST.MF">
@@ -183,7 +186,7 @@
     </target>
     -->
 
-    <target name="clean" description="clean the project space">
+    <target name="clean" description="clean the project space" depends="deprecationwarning">
         <delete file="${script.file}" quiet="yes" failonerror="no" />
         <delete dir="${build.dir}" includeemptydirs="yes" quiet="yes" failonerror="no" />
         <delete dir="${dist.dir}" includeemptydirs="yes" quiet="yes" failonerror="no" />
@@ -192,5 +195,5 @@
         </delete>
     </target>
 
-    <target name="new" description="clean and rebuilds" depends="clean, dist" />
+    <target name="new" description="clean and rebuilds" depends="clean, dist, deprecationwarning" />
 </project>
