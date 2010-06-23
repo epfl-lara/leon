@@ -2,6 +2,7 @@ package orderedsets
 
 import AST._
 import Primitives._
+import Symbol._
 import scala.collection.mutable.ListBuffer
 
 case class IllegalTerm(a: Any) extends Exception(a + " should not be present in the formula to be converted.")

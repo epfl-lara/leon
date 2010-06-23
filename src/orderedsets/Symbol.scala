@@ -3,11 +3,7 @@ package orderedsets
 import AST.{TermVar}
 import scala.collection.mutable.{HashMap => MutableMap}
 import z3.scala._
-
-sealed abstract class Type
-case object IntType extends Type
-case object SetType extends Type
-case object BoolType extends Type
+import Symbol._
 
 class Symbol private(val name: String, val tpe: Type) {
   override def toString: String = name
@@ -37,6 +33,11 @@ class Symbol private(val name: String, val tpe: Type) {
 }
 
 object Symbol {
+  sealed abstract class Type
+  case object IntType extends Type
+  case object SetType extends Type
+  case object BoolType extends Type
+
   private val counters = new MutableMap[String, Int]()
   private val interned = new MutableMap[String, Symbol]()
 
@@ -55,6 +56,8 @@ object Symbol {
       interned.put(name, sym)
       sym
   }
+
+  def apply(name: String, tpe: Type) = Symbol.lookup(name, tpe)
 
   def apply(name: String): Symbol = name.charAt(0) match {
     case c if c.isUpper => lookup(name, SetType)

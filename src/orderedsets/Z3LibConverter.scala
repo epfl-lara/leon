@@ -4,6 +4,7 @@ import AST._
 import Primitives._
 import z3.scala._
 import scala.collection.mutable.ArrayBuffer
+import Symbol._
 
 abstract sealed class Z3Output;
 case class Z3Failure(e: Exception) extends Z3Output
