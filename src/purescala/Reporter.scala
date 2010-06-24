@@ -37,7 +37,7 @@ object DefaultReporter extends Reporter {
       Console.BLUE
     }
     "[" + color + pfx.substring(1, pfx.length-2) + Console.RESET + "] " +
-    msg.trim.replaceAll("\n", "\n" + pfx)
+    msg.trim.replaceAll("\n", "\n" + (" " * (pfx.size)))
   }
 
   def error(msg: Any) = output(reline(errorPfx, msg.toString))
