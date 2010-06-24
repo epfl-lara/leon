@@ -70,8 +70,9 @@ class MyZ3Context {
   }
 
   def impose(form: Formula) {
-    debug_stack.head += form
-    z3.assertCnstr(mkAST(form))
+    val nnfForm = NormalForms.nnf( form )
+    debug_stack.head += nnfForm
+    z3.assertCnstr(mkAST(nnfForm))
   }
 
   def push {

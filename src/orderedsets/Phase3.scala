@@ -110,8 +110,8 @@ object Phase3 {
       equiCls.allSets = Some(setvars(nnfForm).toList)
       continuationZ3call(z3, paFormula && paForm, List(equiCls))
     } else {
-      println
-      println("Order " + orderCount + "      " + Phase2.order2string(order))
+      // println
+      // println("Order " + orderCount + "      " + Phase2.order2string(order))
 
       val classes = new ArrayBuffer[EquiClass]
       val sets = new MutableSet[Symbol]
