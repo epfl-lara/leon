@@ -134,7 +134,9 @@ object Trees {
   case class ElementOfSet(element: Expr, set: Expr) extends Expr 
   case class IsEmptySet(set: Expr) extends Expr 
   case class SetEquals(set1: Expr, set2: Expr) extends Expr 
-  case class SetCardinality(set: Expr) extends Expr 
+  case class SetCardinality(set: Expr) extends Expr with FixedType {
+    val fixedType = Int32Type
+  }
   case class SubsetOf(set1: Expr, set2: Expr) extends Expr 
   case class SetIntersection(set1: Expr, set2: Expr) extends Expr 
   case class SetUnion(set1: Expr, set2: Expr) extends Expr 

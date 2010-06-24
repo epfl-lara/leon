@@ -33,12 +33,11 @@ object PrettyPrinter {
 
   // EXPRESSIONS
   // all expressions are printed in-line
-  private def ppUnary(sb: StringBuffer, expr: Expr, op: String, lvl: Int): StringBuffer = {
+  private def ppUnary(sb: StringBuffer, expr: Expr, op1: String, op2: String, lvl: Int): StringBuffer = {
     var nsb: StringBuffer = sb
-    nsb.append(op)
-    nsb.append("(")
+    nsb.append(op1)
     nsb = pp(expr, nsb, lvl)
-    nsb.append(")")
+    nsb.append(op2)
     nsb
   }
 
@@ -71,9 +70,9 @@ object PrettyPrinter {
     case And(exprs) => ppNary(sb, exprs, "(", " \u2227 ", ")", lvl)            // \land
     case Or(exprs) => ppNary(sb, exprs, "(", " \u2228 ", ")", lvl)             // \lor
     case Not(Equals(l, r)) => ppBinary(sb, l, r, " \u2260 ", lvl)    // \neq
-    case Not(expr) => ppUnary(sb, expr, "\u00AC", lvl)               // \neg
+    case Not(expr) => ppUnary(sb, expr, "\u00AC(", ")", lvl)               // \neg
     case Implies(l,r) => ppBinary(sb, l, r, "==>", lvl)              
-    case UMinus(expr) => ppUnary(sb, expr, "-", lvl)
+    case UMinus(expr) => ppUnary(sb, expr, "-(", ")", lvl)
     case Equals(l,r) => ppBinary(sb, l, r, " == ", lvl)
     case IntLiteral(v) => sb.append(v)
     case BooleanLiteral(v) => sb.append(v)
@@ -104,6 +103,7 @@ object PrettyPrinter {
     case SetUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)        // \cup
     case SetDifference(l,r) => ppBinary(sb, l, r, " \\ ", lvl)       
     case SetIntersection(l,r) => ppBinary(sb, l, r, " \u2229 ", lvl) // \cap
+    case SetCardinality(t) => ppUnary(sb, t, "|", "|", lvl)
     
     case IfExpr(c, t, e) => {
       var nsb = sb

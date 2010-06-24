@@ -345,6 +345,12 @@ trait Extractors {
         case _ => None
       }
     }
-    
+
+    object ExSetCard {
+      def unapply(tree: Select): Option[Tree] = tree match {
+        case Select(t, n) if (n.toString == "size") => Some(t)
+        case _ => None
+      }
+    }
   }
 }

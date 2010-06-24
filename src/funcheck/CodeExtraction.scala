@@ -371,6 +371,10 @@ trait CodeExtraction extends Extractors {
         val rr = rec(t2)
         SetDifference(rl, rr).setType(rl.getType) // same as union
       } 
+      case ExSetCard(t) => {
+        val rt = rec(t)
+        SetCardinality(rt)  
+      }
       case ExIfThenElse(t1,t2,t3) => {
         val r1 = rec(t1)
         val r2 = rec(t2)
