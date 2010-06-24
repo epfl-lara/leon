@@ -24,6 +24,7 @@ object AST {
 
   sealed abstract class Formula extends Positional {
     def print {Printer print (Printer toDocument this)}
+    override def toString = {Printer printStr (Printer toDocument this)}
 
     def size = ASTUtil sizeOf this
 
@@ -47,6 +48,7 @@ object AST {
 
   sealed abstract class Term extends Positional {
     def print {Printer print (Printer toDocument this)}
+    override def toString = {Printer printStr (Printer toDocument this)}
 
     def size = ASTUtil sizeOf this
 
@@ -158,6 +160,13 @@ object AST {
       doc.format(50, writer)
       writer.println()
       writer.flush()
+    }
+    
+    def printStr(doc: Document) = {
+      val writer = new java.io.StringWriter()
+      doc.format(50, writer)
+      writer.flush()
+      writer.toString
     }
   }
 
