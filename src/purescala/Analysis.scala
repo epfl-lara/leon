@@ -10,7 +10,8 @@ import Extensions._
 class Analysis(val program: Program) {
   val reporter = Settings.reporter
   val extensions: Seq[Extension] = loadAll(reporter)
-
+  val analysisExtensions: Seq[Analyser] = extensions.filter(_.isInstanceOf[Analyser]).map(_.asInstanceOf[Analyser])
+  val solverExtensions: Seq[Solver] = extensions.filter(_.isInstanceOf[Solver]).map(_.asInstanceOf[Solver])
 
   if(!extensions.isEmpty) {
     reporter.info("The following extensions are loaded:\n" + extensions.toList.map(_.description).mkString("  ", "\n  ", ""))
@@ -25,6 +26,7 @@ class Analysis(val program: Program) {
     //  - injective functions are injective
     //  - all global invariants are satisfied 
     def analyse : Unit = {
+      if(Settings.runDefaultExtensions || solverExtensions.size > 0) {
         val z3cfg = new Z3Config()
         z3cfg.setParamValue("MODEL", "true")
         val z3 = new Z3Context(z3cfg)
@@ -37,17 +39,29 @@ class Analysis(val program: Program) {
               if(vc != BooleanLiteral(true)) {
                   reporter.info("Verification condition (post) for " + funDef.id + ":")
                   reporter.info(vc)
-                  val (z3f,stupidMap) = toZ3Formula(z3, vc)
-                  z3.assertCnstr(z3.mkNot(z3f))
-                  //z3.print
-                  z3.checkAndGetModel() match {
-                      case (Some(true),m) => {
-                          reporter.error("There's a bug! Here's a model for a counter-example:")
-                          m.print
-                      }
-                      case (Some(false),_) => reporter.info("Contract satisfied!")
-                      case (None,_) => reporter.error("Z3 couldn't run properly or does not know the answer :(")
+
+                  if(Settings.runDefaultExtensions) {
+                    val (z3f,stupidMap) = toZ3Formula(z3, vc)
+                    z3.assertCnstr(z3.mkNot(z3f))
+                    //z3.print
+                    z3.checkAndGetModel() match {
+                        case (Some(true),m) => {
+                            reporter.error("There's a bug! Here's a model for a counter-example:")
+                            m.print
+                        }
+                        case (Some(false),_) => reporter.info("Contract satisfied!")
+                        case (None,_) => reporter.error("Z3 couldn't run properly or does not know the answer :(")
+                    }
                   }
+
+                  solverExtensions.foreach(se => {
+                    reporter.info("Trying with solver: " + se.description)
+                    reporter.info(se.solve(vc) match {
+                      case None => "result unknown"
+                      case Some(true) => "valid!"
+                      case Some(false) => "invalid :("
+                    })
+                  })
               }
             } else {
               if(funDef.postcondition.isDefined) {
@@ -55,6 +69,12 @@ class Analysis(val program: Program) {
               }
             }
         }) 
+      }
+
+      analysisExtensions.foreach(ae => {
+        reporter.info("Now running analysis from extension: " + ae.description)
+        ae.analyse(program)
+      })
     }
 
     def postconditionVC(functionDefinition: FunDef) : Expr = {
