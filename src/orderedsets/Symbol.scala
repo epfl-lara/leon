@@ -57,6 +57,11 @@ object Symbol {
       sym
   }
 
+  def clearCache {
+    counters.clear
+    interned.clear
+  }
+
   def apply(name: String, tpe: Type) = Symbol.lookup(name, tpe)
 
   def apply(name: String): Symbol = name.charAt(0) match {

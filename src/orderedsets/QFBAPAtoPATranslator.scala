@@ -142,9 +142,9 @@ else        */
   // increasing sequence of regions (lexical ordering)
   private val BREAK_SYMMETRY = true
 
-  def breakSymmetry(n: Int, svars: List[Symbol]) : List[Formula] =
+  def breakSymmetry(n: Int, svars: List[Symbol]): List[Formula] =
     if (BREAK_SYMMETRY)
-      List.tabulate(n-1)(i => mkIndexLess(i+1)(svars))
+      List.tabulate(n - 1)(i => mkIndexLess(i + 1)(svars))
     else Nil
 
   private def mkIndexLess(i: Int) = {

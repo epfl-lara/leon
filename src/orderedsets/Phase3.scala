@@ -11,6 +11,7 @@ object Phase3 {
 
   /**Split formula in PA and cardinality parts **/
 
+
   private type CardSplit = (Term, Int => Term)
 
   private def split(formula: Formula, numC: Int): (Formula, List[CardSplit]) = {
@@ -29,7 +30,7 @@ object Phase3 {
     def splitTerm(term: Term): Term = term match {
       case Lit(_) | TermVar(_) => term
       case Op(CARD, List(set)) =>
-        val auxVars = List.tabulate(numC)((_:Int) => TermVar(Symbol.freshInt))
+        val auxVars = List.tabulate(numC)((_: Int) => TermVar(Symbol.freshInt))
         val auxFun = auxVars.toArray
         cards += ((set, auxFun.apply))
         Op(ADD, auxVars)
@@ -60,7 +61,7 @@ object Phase3 {
     var allSets: Option[List[Symbol]] = None
 
     val infSets = lower match {
-      case Incl(infs) => getInfSets(infs) //Set((infs flatMap getInf): _*)
+      case Incl(infs) => getInfSets(infs)
       case Excl(_) => Set.empty[Symbol]
     }
     val supSets = upper match {
@@ -82,7 +83,7 @@ object Phase3 {
   }
 
   var orderCount = 0;
-  def segment(continuationZ3call: (MyZ3Context, Formula, List[EquiClass]) => Hint)(z3: MyZ3Context, formula: Formula, order: Order) = {
+  def apply(continuationZ3call: (MyZ3Context, Formula, List[EquiClass]) => Unit)(z3: MyZ3Context, formula: Formula, order: Order) {
     orderCount += 1
     if (order.isEmpty) {
       val zero = Symbol.freshInt
@@ -124,7 +125,6 @@ object Phase3 {
         case InfElem(infs) =>
           val infSets = getInfSets(infs)
           sets ++= infSets
-          // bapaSets --= infSets
           low = Incl(infs)
           least = Excl(infs)
 
@@ -135,7 +135,6 @@ object Phase3 {
           low = Excl(sups)
           sets ++= infSets
           sets --= supSets
-          // bapaSets --= infSets
           bapaSets --= supSets
           least = Excl(infs)
       }
@@ -153,7 +152,6 @@ object Phase3 {
           val infSets = getInfSets(infs)
           classes += new EquiClass(low, Excl(infs), sets.toList, Bounded)
           sets ++= infSets
-          // bapaSets --= infSets
           low = Incl(infs)
 
         case ComboElem(infs, sups, isLE) =>
@@ -164,7 +162,6 @@ object Phase3 {
           classes += new EquiClass(Incl(infs), Incl(sups), sets.toList, Singleton(isLE))
           sets --= supSets
           low = Excl(sups)
-          // bapaSets --= infSets
           bapaSets --= supSets
       }
       classes += new EquiClass(low, least, Nil, Unbounded)
@@ -174,15 +171,8 @@ object Phase3 {
       val formula0 = QFBAPAtoPATranslator.rewriteSetRel(formula)
       val (paFormula, cardSplits) = split(formula0, numC)
 
-      /*
-    if (x == 4) {
-      println
-      println("  Shared")
-      paFormula.print
-    } // */
-
       // Translate each class to BAPA
-      val paformBuffer = new ListBuffer[Formula] 
+      val paformBuffer = new ListBuffer[Formula]
       paformBuffer += paFormula
       val immutBapaSets = Set.empty ++ bapaSets
       for ((ec@EquiClass(num, infs, sets, sups, classType, classSize), index) <- classes.toList.zipWithIndex) {
@@ -233,27 +223,18 @@ object Phase3 {
 
             /*if (infs == sups) {
               if(!infs.isEmpty) bapaBuffer += ((infSet ++ supSet).card > 1)
-            } else*/ {
-              if (!infs.isEmpty) bapaBuffer += (infSet.card > 0)
-              if (!sups.isEmpty) bapaBuffer += (supSet.card > 0)
-              if (!infs.isEmpty && !sups.isEmpty) bapaBuffer += ((infSet ++ supSet).card > 1)
-            }
+            } else {*/
+            if (!infs.isEmpty) bapaBuffer += (infSet.card > 0)
+            if (!sups.isEmpty) bapaBuffer += (supSet.card > 0)
+            if (!infs.isEmpty && !sups.isEmpty) bapaBuffer += ((infSet ++ supSet).card > 1)
+          // }
           case Unbounded =>
         }
 
         val bapaForm = NormalForms.nnf(And(bapaBuffer.toList))
-        //println
-        //bapaForm.print
         val (paForm, n) = QFBAPAtoPATranslator(bapaForm, num)
         paformBuffer += paForm
         ec.sparsenessBound = Some(n)
-        /*
-      if (x == 4) {
-        println
-        println("  Class " + num + "  " + classType + "  " + ec.lower + "  <  " + ec.upper)
-        bapaForm.print
-      } // */
-        //println("  Class " + num + "  " + classType + "  " + ec.lower + "  <  " + ec.upper)
       }
 
       // Add equality & order constraints
@@ -284,59 +265,3 @@ object Phase3 {
   }
 
 }
-
-/*
-def segmentation(_b: List[IntVar]) {
-  val n = _b.length
-  val b = (null :: _b).toArray
-
-  // TODO remove assert
-  for (i <- 1 to n)
-    if (i != equivMap(b(i))) error(i + " != " + equivMap(b(i)))
-
-  def newAvar(svar: Ident)(i: Int) = Ident(SetType, Symbol.partClass(svar, i))
-  def newBvar(svar: Ident)(i: Int) = Ident(SetType, Symbol.partRange(svar, i))
-  def newCvar(i: Int) = Ident(SetType, Symbol.equiClass(i))
-  def newDvar(i: Int) = Ident(SetType, Symbol.equiRange(i))
-
-  //      val max = Ident(IntType, Symbol.fresh("max"))
-  //      val min = Ident(IntType, Symbol.fresh("min"))
-  //      val map = new MutableMap[SetVar,List[SetVar]]
-  //      if (n > 0) {
-  //        search += max === MAX
-  //        search += min === MIN
-  //      }
-  // Cardinality constraints on C-vars
-  val Cvars = ((0 to n) map newCvar).toArray
-  val Dvars = ((0 to n) map newDvar).toArray
-  //      for (i <- 1 to n) search += Cvars(i).card === 1
-  //      search += Dvars(0).card === 0
-  //      search += Dvars(0).card === ((b(1) - min) - 1)
-  //      for (i <- 1 to (n - 1)) search += Dvars(i).card === ((b(i + 1) - b(i)) - 1)
-  //      search += Dvars(n).card === ((max - b(n)) - 1)
-  //      search += Dvars(n).card === 0
-
-  // Partitioning constraints on Ai-vars
-  for (A <- search.infmap.keySet) {
-    val Avars = ((0 to n) map newAvar(A)).toArray
-    val Bvars = ((0 to n) map newBvar(A)).toArray
-    //        for (i <- 1 to n) search += Avars(i) seq (A ** Cvars(i))
-    //        for (i <- 1 to (n - 1)) search += Bvars(i) seq (A ** Dvars(i))
-    val Avars_ = Avars.toList.tail ::: Bvars.toList.tail.init
-    search += A seq Op(UNION, Avars_)
-    //        map += a -> aivars
-
-    // println("Set " + A + " lower=" + equivMap(search infmap A) + "(" +
-    //        (search infmap A) + ") upper=" + equivMap(search supmap A) + "(" + (search supmap A) + ") ")
-    val infp = equivMap(search infmap A) - 1
-    val supp = equivMap(search supmap A) + 1
-    val set = MutableSet[Ident]()
-    for (i <- 1 to infp) set += Avars(i)
-    for (i <- supp to n) set += Avars(i)
-    for (i <- 1 to infp) set += Bvars(i)
-    for (i <- supp to n) set += Bvars(i - 1)
-    //search.subst(id => if (set(id)) emptyset else id)
-    search.remove(set)
-  }
-}*/
-

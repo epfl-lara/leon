@@ -16,12 +16,8 @@ object Flags {
 }
 
 object Phase2 {
-
-  //var z3 : Z3Context = null
-
-  def apply(callback: (MyZ3Context, Formula, Order) => Hint)(conj: And) = {
+  def apply(callback: (MyZ3Context, Formula, Order) => Unit)(z3: MyZ3Context, conj: And) = {
     val (paforms, bapaforms, infs, sups) = ASTUtil.split(conj.formulas)
-    val z3 = new MyZ3Context
 
     //println("PA part"); And(paforms).print
     //println("BAPA part"); And(bapaforms).print
@@ -35,7 +31,7 @@ object Phase2 {
       def _callback(order: Order) = callback(z3, And(bapaforms), order)
       guessOrder(z3, _callback)(search.initialNodes, Set() ++ search.symbolToNodeMap.values)
     }
-    z3.delete
+
   }
 
   private var debug: Search = null
@@ -687,7 +683,7 @@ object Phase2 {
   private type RecOrder = List[Elem]
   //type Order = List[List[IntVar]]
   type Order = List[Elem]
-  type Hint = Boolean
+  //type Hint = Boolean
 
   def merge(z3: MyZ3Context, order: Order): Order = order match {
     case InfElem(a) :: SupElem(x) :: rest =>
@@ -699,12 +695,12 @@ object Phase2 {
     case Nil => Nil
   }
 
-  private def guessOrder(z3: MyZ3Context, callback: Order => Hint): (Queue, Set[Node]) => Unit = {
+  private def guessOrder(z3: MyZ3Context, callback: Order => Unit): (Queue, Set[Node]) => Unit = {
 
     def rek(current: Queue, later: Queue, acc: RecOrder, toBeGuessed: Set[Node]) {
       if (Flags.intermediateZ3) {
         if (!z3.isStillSAT) {
-          println("HURRAY at " + toBeGuessed.size)
+          //println("HURRAY at " + toBeGuessed.size)
           return
         }
       }
@@ -715,7 +711,7 @@ object Phase2 {
 
         if (Flags.intermediateZ3) {
           if (!z3.isStillSAT) {
-            println("HURRAY at " + toBeGuessed.size)
+            //println("HURRAY at " + toBeGuessed.size)
             return
           }
         }
@@ -778,14 +774,15 @@ object Phase2 {
 
   def order2string(order: Order) = order mkString "  <  "
 
-  object OrderingCounter extends ((Formula, Order, Boolean) => Hint) {
-    def apply(form: Formula, order: Order, x: Boolean): Hint = {
-      Phase3.orderCount += 1
-      println("Order " + Phase3.orderCount + "      " + Phase2.order2string(order))
-      true
+  /*
+    object OrderingCounter extends ((Formula, Order, Boolean) => Hint) {
+      def apply(form: Formula, order: Order, x: Boolean): Hint = {
+        Phase3.orderCount += 1
+        println("Order " + Phase3.orderCount + "      " + Phase2.order2string(order))
+        true
+      }
     }
-  }
-
+  */
   /*
   def debugCheckGraph = {
     val nodes = debug.symbolToNodeMap.values.toList
