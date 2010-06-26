@@ -10,7 +10,7 @@ object IntOperations {
     // To disable the warnings, run with -P:funcheck:tolerant
     // (if it has a postcondition, you'll still get warnings
     // about the impossibility of verifying them)
-    def factorial(v: Int) : Int = ({
+    def factorial(v: Int) : Int = {
       require(v >= 0)
       var c = 2
       var t = 1
@@ -18,5 +18,5 @@ object IntOperations {
         t = t * c
       }
       t
-    }) ensuring(_ >= v)
+    } ensuring(_ >= v)
 }
