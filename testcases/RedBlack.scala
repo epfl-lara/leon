@@ -53,8 +53,11 @@ object RedBlack {
 
   def makeBlack(t: Tree) = {
     require(t != EmptyTree())
-    val Node(_, left, x, right) = t 
-    Node(Black(), left, x, right)
+    //val Node(_, left, x, right) = t 
+    //Node(Black(), left, x, right)
+    t match {
+      case Node(_, left, x, right) => Node(Black(), left, x, right)
+    }
   } ensuring ((x:Tree) => x match {case Node(Black(), _, _, _) => true; case _ => false})
 
   def ins_(t: Tree, e: Int): Tree = t match {

@@ -12,6 +12,13 @@ object Trees {
     override def toString: String = PrettyPrinter(this)
   }
 
+  /* Like vals */
+  case class Let(binder: Identifier, expression: Expr) extends Expr {
+    val et = expression.getType
+    if(et != NoType)
+      setType(et)
+  }
+
   /* Control flow */
   case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr
   case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr 
