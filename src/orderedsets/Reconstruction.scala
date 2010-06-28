@@ -1,17 +1,25 @@
 package orderedsets
 
 import AST._
-import Phase3._
+import EquiClassPartition._
 
 object Reconstruction {
   // Reconstruction aimed at getting the smallest model
   import scala.collection.mutable.Map
 
-  class ReconstructionImpossible(s: String) extends Exception(s);
-  private def fail(msg: String) = throw new ReconstructionImpossible(msg)
+  case class ReconstructionImpossible(msg: String) extends Exception(msg)
+  private def fail(msg: String) = throw ReconstructionImpossible(msg)
 
   // The output type
-  case class ReconstructedValues(int: Map[Symbol, Int], sets: Map[Symbol, Set[Int]]);
+  class Model(val intMap: Map[Symbol, Int], val setMap: Map[Symbol, Set[Int]])
+  object Model {
+    def unapply(model: Model): Option[(List[(Symbol, Int)],List[(Symbol, String)])] = {
+      val sortedInts = model.intMap.toList.sortWith {_._1.name < _._1.name}
+      val sortedSets = for ((sym, set) <- model.setMap.toList.sortWith {_._1.name < _._1.name})
+         yield (sym, set.toList.sortWith{_ < _}.mkString("Set { ", ", ", " }")) 
+      Some((sortedInts, sortedSets)) 
+    }
+  }
 
   // The Beta variables
   class Beta(val pij: Set[Symbol], val size: Int) {
@@ -36,27 +44,6 @@ object Reconstruction {
   // This function puts the inf and the sup in the correct
   // Venn Regions
   def populate(betas: Array[Beta], sets: List[Symbol], elem: Int): Unit = {
-    /*
-    for (ii <- 0 until betas.length) {
-      val Beta(pij, size, _) = betas(ii)
-
-      // Determine whether this beta is included in all the regions
-      //var invalid = false
-      //sets.foreach(s => (invalid = invalid || !pij(s)))
-      val valid = (sets forall pij)
-
-
-      // If this beta's venn region is contained in all the sets
-      // and the predicted size is > 0, then use this region
-      if (valid && betas(ii).isNonEmpty) {
-        betas(ii).insert(elem)
-        return
-      }
-    }
-    throw (new ReconstructionImpossible("INF or SUP cannot be in this equivClass!!"))
-    */
-
-    // Here's the functional version :P
     betas find {beta => !beta.isFull && (sets forall beta.pij)} match {
       case Some(beta) => beta insert elem
       case None =>
@@ -68,19 +55,13 @@ object Reconstruction {
 
   // Return the union of all the VennRegions contained in the setVar
   def getUnionOfVennRegions(betas: Array[Beta], setVar: Symbol) = {
-    /*
-    var constructedSet: Set[Int] = Set.empty
-    for (ii <- 0 until betas.length) {
-      val Beta(pij, _, set) = betas(ii)
-      constructedSet ++= (if (pij(setVar)) set else Set.empty)
-    }*/
     val containedSets = for (Beta(pij, _, set) <- betas; if pij(setVar)) yield set
     (Set.empty[Int] /: containedSets)(_ ++ _)
   }
 
   // Main function to call
-  def getReconstruction(z3Out: Sat, outSetVars: List[Symbol], outIntVar: List[Symbol], eqCls: List[EquiClass]) = {
-    val Sat(deleteModel, boolZ3Values, intZ3Values) = z3Out
+  def apply(z3Out: Z3Sat, outSetVars: List[Symbol], outIntVar: List[Symbol], eqCls: List[EquiClass]) = {
+    val Z3Sat(_, boolZ3Values, intZ3Values) = z3Out
     var outIntMap: Map[Symbol, Int] = Map()
     var outSetMap: Map[Symbol, Set[Int]] = Map()
 
@@ -173,6 +154,6 @@ object Reconstruction {
       outSetMap(s) = (Set.empty[Int] /: setContents) {_ ++ _}
     }
 
-    ReconstructedValues(outIntMap, outSetMap)
+    new Model(outIntMap, outSetMap)
   }
 }

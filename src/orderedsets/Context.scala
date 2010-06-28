@@ -5,13 +5,17 @@ import Primitives._
 import z3.scala._
 import scala.collection.mutable.ArrayBuffer
 import Symbol._
+import EquiClassPartition.EquiClass
+import purescala.Reporter
 
 abstract sealed class Z3Output
-case object Unsat extends Z3Output
+case object Z3Unsat extends Z3Output
 case class Z3Failure(e: Exception) extends Z3Output
-case class Sat(deleteModel: (() => Unit), boolAssignments: (Symbol => Boolean), intAssignments: (Symbol => Int)) extends Z3Output;
+case class Z3Sat(deleteModel: (() => Unit), boolAssignments: (Symbol => Boolean), intAssignments: (Symbol => Int)) extends Z3Output;
 
-class MyZ3Context {
+class Context(formula: Formula, reporter: Reporter) {
+  private val outIntVars = ASTUtil.intvars(formula).toList
+  private val outSetVars = ASTUtil.setvars(formula).toList
   private var z3 = new Z3Context((new Z3Config).setParamValue("MODEL", "true"))
   private val intType = z3.mkIntSort
   private val boolType = z3.mkBoolSort
@@ -107,26 +111,37 @@ class MyZ3Context {
   }
 
   def isStillSAT: Boolean = z3.check() match {
-    case None => throw new Exception("There was an error with Z3.")
+    case None =>
+      reporter.fatalError("There was an error with Z3.")
     case Some(x) => x
   }
 
-  def getModel: Z3Output = {
+  private def getZ3Model: Z3Output = {
     z3.checkAndGetModel() match {
       case (None, _) => Z3Failure(new Exception("There was an error with Z3."))
       case (Some(true), model) => {
-        def boolAssigns(sym: Symbol) = model.evalAsBool(sym) match {
-          case None => false
-          case Some(v) => v
-        }
-        def intAssigns(sym: Symbol) = model.evalAsInt(sym) match {
-          case None => 0
-          case Some(v) => v
-        }
+        def boolAssigns(sym: Symbol) = model.evalAsBool(sym).getOrElse(false)
+        def intAssigns(sym: Symbol) = model.evalAsInt(sym).getOrElse(0)
         def delete() {model.delete}
-        Sat(delete, boolAssigns, intAssigns)
+        Z3Sat(delete, boolAssigns, intAssigns)
       }
-      case (Some(false), _) => Unsat
+      case (Some(false), _) => Z3Unsat
     }
+  }
+
+  def getModel(paForm: Formula, eqClasses: List[EquiClass]) {
+    push
+    impose(paForm)
+
+    val result = getZ3Model match {
+      case sat: Z3Sat => {
+        val model = Reconstruction(sat, outSetVars, outIntVars, eqClasses)
+        throw new SatException(model)
+      }
+      case Z3Unsat =>
+      case Z3Failure(e) =>
+        reporter.fatalError("There was an error with Z3 : " + e)
+    }
+    pop
   }
 }

@@ -1,16 +1,14 @@
 package orderedsets
 
 import scala.collection.mutable.{ArrayBuffer, HashMap => MutableMap, HashSet => MutableSet, ListBuffer}
-import z3._
 import AST._
 import ASTUtil._
 import Primitives._
-import Phase2._
+import GuessOrdering._
 
-object Phase3 {
+object EquiClassPartition {
 
   /**Split formula in PA and cardinality parts **/
-
 
   private type CardSplit = (Term, Int => Term)
 
@@ -83,7 +81,8 @@ object Phase3 {
   }
 
   var orderCount = 0;
-  def apply(continuationZ3call: (MyZ3Context, Formula, List[EquiClass]) => Unit)(z3: MyZ3Context, formula: Formula, order: Order) {
+  // (continuationZ3call: (Context, Formula, List[EquiClass]) => Unit)
+  def apply(z3: Context, formula: Formula, order: Order) {
     orderCount += 1
     if (order.isEmpty) {
       val zero = Symbol.freshInt
@@ -109,7 +108,7 @@ object Phase3 {
 
       equiCls.sparsenessBound = Some(n)
       equiCls.allSets = Some(setvars(nnfForm).toList)
-      continuationZ3call(z3, paFormula && paForm, List(equiCls))
+      z3.getModel(paFormula && paForm, List(equiCls))
     } else {
       // println
       // println("Order " + orderCount + "      " + Phase2.order2string(order))
@@ -260,7 +259,7 @@ object Phase3 {
         */
 
       val form = NormalForms.nnf(And(paformBuffer.toList))
-      continuationZ3call(z3, form, classes.toList)
+      z3.getModel(form, classes.toList)
     }
   }
 

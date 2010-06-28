@@ -2,29 +2,28 @@ package orderedsets
 
 import purescala.Reporter
 import purescala.Extensions.Solver
-//import Phase3._
-//import Reconstruction._
-//import Primitives._
-import Reconstruction.ReconstructedValues
+import Reconstruction.Model
 
 class Main(reporter: Reporter) extends Solver(reporter) {
   import ExprToASTConverter.ConversionException
   import purescala.Trees.Expr
   import AST.Formula
-  import Phase3.EquiClass
-
   val description = "BAPA with ordering"
-
 
   // checks for V-A-L-I-D-I-T-Y !
   // Some(true) means formula is valid (negation is unsat)
+  // Some(false) means formula is not valid (negation is sat)
   // None means you don't know.
+  //
+  // If the formula was found to be not valid,
+  // a counter-example is displayed (i.e. the model for negated formula)
   def solve(expr: Expr): Option[Boolean] = {
     try {
+      // Negate formula
       Some(!solve(!ExprToASTConverter(expr)))
     } catch {
       case ConversionException(badExpr, msg) =>
-        reporter.info(badExpr, "BAPA")
+        reporter.info(badExpr, msg)
         None
       case e =>
         reporter.error("BAPA with ordering just crashed.\n  exception = " + e.toString)
@@ -38,70 +37,51 @@ class Main(reporter: Reporter) extends Solver(reporter) {
   // true means formula is SAT
   // false means formula is UNSAT
   private def solve(formula: Formula): Boolean = {
-    val form = NormalForms.nnf(formula)
-    val outIntVars = ASTUtil.intvars(form).toList
-    val outSetVars = ASTUtil.setvars(form).toList
-    var model: Option[ReconstructedValues] = None
+    reporter.info("BAPA< formula to be verified:\n" + NormalForms.nnf(!formula).toString)
 
-    def callZ3(z3: MyZ3Context, paForm: Formula, eqClasses: List[EquiClass]) {
-      z3.push
-      z3.impose(paForm)
-
-      val result = z3.getModel match {
-        case s@Sat(deleteModel, bools, ints) => {
-          val model = Reconstruction.getReconstruction(s, outSetVars, outIntVars, eqClasses)
-          deleteModel()
-          throw new SatException(model)
-        }
-        case Unsat =>
-        case Z3Failure(e) =>
-          reporter.fatalError("Z3 not executed:  " + e)
-      }
-      z3.pop
-    }
-
-    reporter.info("BAPA< formula to be verified:\n" + form.toString)
-
-    val z3 = new MyZ3Context
-    val start = System.nanoTime
+    val z3 = new Context(formula, reporter)
+    val startTime = System.nanoTime
     try {
-      for (conj <- NormalForms(form)) {
+      // Term rewriting and NNF/DNF transformation
+      for (conjunction <- NormalForms(formula)) {
         z3.push
-        //println("Conjunction:")
-        //conj.print
         try {
-          Phase2(Phase3(callZ3))(z3, conj)
+          // Guess orderings, create equivalence classes
+          // for each ordering and solve the resulting formulas.
+          GuessOrdering(EquiClassPartition.apply)(z3, conjunction)
         } catch {
-          case Phase2.UnsatException(msg) =>
+          case UnsatException(_) =>
         }
         z3.pop
       }
+      // No conjunction and no guessed ordering is satisfiable.
+      // Return UNSAT
+      false
     } catch {
-      case SatException(_model) =>
-        model = Some(_model)
+      // Found a model (counter-example)
+      case SatException(Model(ints, sets)) =>
+        reporter.info("Counter-example found :")
+        for ((name, value) <- ints)
+          reporter.info("\t\t " + name + " -> " + value)
+        for ((name, value) <- sets) 
+          reporter.info("\t\t " + name + " -> " + value)
+        // Return SAT
+        true
     } finally {
       z3.delete
-    }
-    val end = System.nanoTime
-    var toReturn: Boolean = false
-    val total = ((end - start) / 1000000) / 1000.0
-
-    model match {
-      case Some(ReconstructedValues(intMap, setMap)) =>
-        reporter.info("Counter-example found :")
-        intMap.toList.sortWith {_._1.name < _._1.name}.foreach(x => reporter.info("\t\t " + x._1.toString + " -> " + x._2))
-        setMap.toList.sortWith {_._1.name < _._1.name}.foreach(x => reporter.info("\t\t " + x._1.toString + " -> " + x._2.toList.sortWith {_ < _}.mkString("Set { ", ", ", " }")))
-        reporter.info("Total time : " + total)
-        true
-      case None =>
-        reporter.info("Total time : " + total)
-        false
+      val totalTime = ((System.nanoTime - startTime) / 1000000) / 1000.0
+      reporter.info("Total time : " + totalTime)
     }
   }
 }
 
-case class SatException(model: ReconstructedValues) extends RuntimeException("A model was found")
+// Thrown when a model was found after guessing
+case class SatException(model: Model) extends Exception("A model was found")
 
+// Thrown when a contradiction was derived during guessing
+case class UnsatException(msg: String) extends Exception(msg)
+
+// Convert PureScala expressions to OrdBAPA AST's
 object ExprToASTConverter {
   import purescala.TypeTrees._
   import purescala.Trees._

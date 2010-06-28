@@ -8,7 +8,7 @@ import Symbol._
 class Symbol private(val name: String, val tpe: Type) {
   override def toString: String = name
 
-  private var ctx: MyZ3Context = null
+  private var ctx: Context = null
   private var storedZ3Symb: Z3AST = null
 
   def isInt = (tpe == IntType)
@@ -17,7 +17,7 @@ class Symbol private(val name: String, val tpe: Type) {
 
   def isBool = (tpe == BoolType)
 
-  def toZ3sym(ctxPassed: MyZ3Context): Z3AST = {
+  def toZ3sym(ctxPassed: Context): Z3AST = {
     if (ctx ne ctxPassed) {
       ctx = ctxPassed
       storedZ3Symb = ctx mkSym this

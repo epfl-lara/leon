@@ -4,8 +4,8 @@ import scala.collection.mutable.{ArrayBuffer, HashMap => MutableMap, HashSet => 
 import AST._
 import ASTUtil._
 import Primitives._
-//import z3._
 
+/*
 object Flags {
   var useZ3Lib = true
   var intermediateZ3 = true
@@ -13,10 +13,10 @@ object Flags {
   var countOnly = false
   var countNaive = false
   var naiveCounts = List[Int]()
-}
+}*/
 
-object Phase2 {
-  def apply(callback: (MyZ3Context, Formula, Order) => Unit)(z3: MyZ3Context, conj: And) = {
+object GuessOrdering {
+  def apply(callback: (Context, Formula, Order) => Unit)(z3: Context, conj: And) = {
     val (paforms, bapaforms, infs, sups) = ASTUtil.split(conj.formulas)
 
     //println("PA part"); And(paforms).print
@@ -26,7 +26,6 @@ object Phase2 {
       // a non-ordered formula has no orderings
       callback(z3, And(paforms ::: bapaforms), Nil)
     } else {
-      //val forms = paforms ::: bapaforms
       val search = new Search(z3, paforms, bapaforms, infs, sups)
       def _callback(order: Order) = callback(z3, And(bapaforms), order)
       guessOrder(z3, _callback)(search.initialNodes, Set() ++ search.symbolToNodeMap.values)
@@ -37,11 +36,8 @@ object Phase2 {
   private var debug: Search = null
 
   /**Topological graph **/
-
-  case class UnsatException(msg: String) extends Exception(msg)
-
+  
   class Node(val _vars: List[IntVar]) {
-    // TODO: Are these actually correct !?!! :-S
     var isLEnodes = Set.empty[Node] // Nodes with smaller or equal value
     var isLTnodes = Set.empty[Node] // Nodes with strictly smaller value
     var isGEnodes = Set.empty[Node] // Nodes with greater or equal value
@@ -322,7 +318,7 @@ object Phase2 {
 
   /**Search **/
 
-  private class Search(z3: MyZ3Context, _paforms: List[Formula], bapaform: List[Formula], infs: List[(SetVar, IntVar)], sups: List[(SetVar, IntVar)]) {
+  private class Search(z3: Context, _paforms: List[Formula], bapaform: List[Formula], infs: List[(SetVar, IntVar)], sups: List[(SetVar, IntVar)]) {
     val symbolToNodeMap = new MutableMap[IntVar, Node]()
     val infmap = new MutableMap[SetVar, IntVar]()
     val supmap = new MutableMap[SetVar, IntVar]()
@@ -414,7 +410,7 @@ object Phase2 {
 
     // TODO: Does not handle the card(A) > 0 like constrants
     // TODO: How to handle seq to {} ?
-    if (Flags.withMinMax)
+    //if (Flags.withMinMax)
       for (f <- bapaform) f match {
         case Predicate(SEQ, List(s1, s2)) => {
           val lhsInf = infReduce(s1)
@@ -555,10 +551,12 @@ object Phase2 {
       termvar.supOfList = Set.empty[Symbol] ++ (for ((set, x) <- supmap; if termvar == x) yield set)
     }
 
+    /*
     if (Flags.countNaive) {
       Flags.naiveCounts = initialNodes.size :: Flags.naiveCounts
       throw new UnsatException("(Just counting)")
     }
+    */
 
     z3.impose(And(paforms))
     if (!z3.isStillSAT) {
@@ -685,7 +683,7 @@ object Phase2 {
   type Order = List[Elem]
   //type Hint = Boolean
 
-  def merge(z3: MyZ3Context, order: Order): Order = order match {
+  def merge(z3: Context, order: Order): Order = order match {
     case InfElem(a) :: SupElem(x) :: rest =>
       ComboElem(a, x, true) :: merge(z3, rest)
     case first :: second :: rest =>
@@ -695,29 +693,28 @@ object Phase2 {
     case Nil => Nil
   }
 
-  private def guessOrder(z3: MyZ3Context, callback: Order => Unit): (Queue, Set[Node]) => Unit = {
+  private def guessOrder(z3: Context, callback: Order => Unit): (Queue, Set[Node]) => Unit = {
 
     def rek(current: Queue, later: Queue, acc: RecOrder, toBeGuessed: Set[Node]) {
-      if (Flags.intermediateZ3) {
+      //if (Flags.intermediateZ3) {
         if (!z3.isStillSAT) {
           //println("HURRAY at " + toBeGuessed.size)
           return
         }
-      }
+      //}
 
       if (current.isEmpty && later.isEmpty) {
         //checkAllUsed
         val order = merge(z3, acc.reverse map {_.normalize})
 
-        if (Flags.intermediateZ3) {
+        //if (Flags.intermediateZ3) {
           if (!z3.isStillSAT) {
             //println("HURRAY at " + toBeGuessed.size)
             return
           }
-        }
+        //}
 
-        val hint = callback(order)
-        ()
+        callback(order)
       } else {
         // guess same equivalence class
         val pickList = if (acc.head.isSup) pickOneWithSupPriority(current) else pickOneWithInfPriority(current)

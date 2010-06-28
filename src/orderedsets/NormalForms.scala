@@ -31,7 +31,7 @@ object NormalForms {
 
   // Partial dnf transformation
   // The relevant atoms for the ordered decision procedure are in dnf form
-  def pdnf(f: Formula): DNF = if (!isAtom(f)) Stream(f :: Nil) else f match {
+  def pdnf(f: Formula): DNF = if (isAtom(f)) Stream(f :: Nil) else f match {
     case And(Nil) => Stream(Nil)
     case And(c :: Nil) => pdnf(c)
     case And(c :: cs) =>
@@ -47,17 +47,17 @@ object NormalForms {
   }
 
   private def isAtom(f: Formula): Boolean = f match {
-    case True | False | PropVar(_) => false
+    case True | False | PropVar(_) => true
     case Not(f) => isAtom(f)
-    case And(fs) => fs exists isAtom
-    case Or(fs) => fs exists isAtom
-    case Predicate(SELEM | SLT, _) => true
-    case Predicate(_, fs) => fs exists isAtom
+    case And(fs) => fs forall isAtom
+    case Or(fs) => fs forall isAtom
+    case Predicate(SELEM | SLT, _) => false
+    case Predicate(_, fs) => fs forall isAtom
   }
 
   private def isAtom(t: Term): Boolean = t match {
-    case Op(LRANGE | TAKE | INF | SUP, _) => true
-    case _ => false
+    case Op(LRANGE | TAKE | INF | SUP, _) => false
+    case _ => true
   }
 
 
@@ -71,7 +71,7 @@ object NormalForms {
     case _ => List(f)
   }
 
-  // Negated normal form with and/or flattening
+  // Negated normal form with and/or/union/inter/plus/times flattening
   def nnf(form: Formula): Formula = form match {
     case True | False | PropVar(_) | Not(PropVar(_)) => form
     case And(fs) =>
@@ -132,10 +132,9 @@ object NormalForms {
     case Op(COMPL, List(Op(COMPL, List(t)))) => nnf(t)
     case Op(COMPL, List(Op(INTER, ts))) => nnf(Op(UNION, ts map {~_}))
     case Op(COMPL, List(Op(UNION, ts))) => nnf(Op(INTER, ts map {~_}))
-    //case Op(COMPL, _) => throw IllegalTerm(term)
     case Op(CARD, List(t)) => nnf(t) match {
       case Lit(EmptySetLit) => zero
-      //case Lit(FullSetLit) => zero
+      //case Lit(FullSetLit) => maxC
       case t => Op(CARD, List(t))
     }
     case Op(prim, ts) => Op(prim, ts map nnf)
@@ -147,20 +146,10 @@ object NormalForms {
 
   def rewrite(formulas: Conjunction): Conjunction = formulas flatMap rewrite
 
-  // TODO Should this not return the definitions of newly introduced termVariables
-  // Or would it be a state variable in the class?
-  // RS: I'd rather keep the definitions in the formula so we don't need to
-  //     merge them back. If it turns out to be difficult to get the definition
-  //     of a variable we could use a new primitive to tag definitions.
-  //     (i.e. create 'case class DEF extends Primitive(":=")' and replace EQ by DEF)
   def rewrite(f: Formula): Conjunction = f match {
     case Predicate(SELEM, List(t, _s)) =>
       rewritePure(t, tf => rewriteNonPure(_s, s => {
         val af = Symbol.freshSet
-        // TODO would it help to add s.card > 0 ?
-        // UU: No, Bapa adds these constraints
-        // RS: Our decision procedure should not guess s to be empty ...
-        //     (This applies only if s is a variable)
         (af.card === 1) :: (tf === af.inf) :: (tf === af.sup) ::
                 (af subseteq s) :: Nil
       }))
@@ -248,12 +237,6 @@ object NormalForms {
         val formIn = (s1.inf === s3.inf) :: (s3 slt s4) :: (s4.sup === s1.sup) :: Nil
         (s1.card === t2) :: (s3.card === (t1 - 1)) :: (s1 ++ s2 seq sf) :: (s3 ++ s4 seq s1) :: rewrite(form ::: formIn) ::: ctx(s4)
       })
-
-    /*case Op(LRANGE, List(t1, t2, s)) =>
-      rewritePure(s, sf => {
-        val term = (sf take t2) -- (sf take (t1 - 1))
-        rewriteNonPure(term, ctx)
-      })*/
 
     case Op(op, terms) =>
       rewriteNonPure_*(terms, ts => ctx(Op(op, ts)))
