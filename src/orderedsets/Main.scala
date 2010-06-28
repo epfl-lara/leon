@@ -18,9 +18,16 @@ class Main(reporter: Reporter) extends Solver(reporter) {
   // If the formula was found to be not valid,
   // a counter-example is displayed (i.e. the model for negated formula)
   def solve(expr: Expr): Option[Boolean] = {
+    reporter.info("Sets: " + ExprToASTConverter.getSetTypes(expr))
     try {
       // Negate formula
-      Some(!solve(!ExprToASTConverter(expr)))
+      (Some(!solve(!ExprToASTConverter(expr))), {
+      
+        val sets = ExprToASTConverter.getSetTypes(expr)
+        if (sets.size > 1)
+          reporter.warning("Heterogeneous set types: " + sets.mkString(", "))
+      
+      })._1
     } catch {
       case ConversionException(badExpr, msg) =>
         reporter.info(badExpr, msg)
@@ -89,10 +96,15 @@ object ExprToASTConverter {
 
   case class ConversionException(expr: Expr, msg: String) extends RuntimeException(msg)
 
+  private def isSetType(_type: TypeTree) = _type match {
+    case SetType(_) => true
+    case _ => false
+  }
+
   private def toSetTerm(expr: Expr): AST.Term = expr match {
-    case Variable(id) if id.getType == SetType(Int32Type) => Symbol(id.name, Symbol.SetType)
+    case Variable(id) if isSetType(id.getType) => Symbol(id.name, Symbol.SetType)
     case EmptySet(_) => AST.emptyset
-    case FiniteSet(elems) => AST.Op(UNION, (elems map toIntTerm map {_.singleton}).toList)
+    case FiniteSet(elems) if elems forall {_.getType == Int32Type} => AST.Op(UNION, (elems map toIntTerm map {_.singleton}).toList)
     case SetCardinality(set) => toSetTerm(set).card
     case SetIntersection(set1, set2) => toSetTerm(set1) ** toSetTerm(set2)
     case SetUnion(set1, set2) => toSetTerm(set1) ++ toSetTerm(set2)
@@ -108,8 +120,8 @@ object ExprToASTConverter {
     case Times(lhs, rhs) => toIntTerm(lhs) * toIntTerm(rhs) // TODO: check linearity ?
     case UMinus(e) => AST.zero - toIntTerm(e)
     case SetCardinality(e) => toSetTerm(e).card
-    case SetMin(set) => toSetTerm(set).inf
-    case SetMax(set) => toSetTerm(set).sup
+    case SetMin(set) if set.getType == SetType(Int32Type) => toSetTerm(set).inf
+    case SetMax(set) if set.getType == SetType(Int32Type) => toSetTerm(set).sup
     case _ => throw ConversionException(expr, "Cannot convert to bapa< int term")
   }
 
@@ -136,6 +148,33 @@ object ExprToASTConverter {
     case Equals(lhs, rhs) => toIntTerm(lhs) === toIntTerm(rhs)
 
     case _ => throw ConversionException(expr, "Cannot convert to bapa< formula")
+  }
+
+  def getSetTypes(expr: Expr): Set[TypeTree] = expr match {
+    case Or(es) => (es map getSetTypes) reduceLeft (_ ++ _)
+    case And(es) => (es map getSetTypes) reduceLeft (_ ++ _)
+    case Not(e) => getSetTypes(e)
+    case Implies(e1, e2) => getSetTypes(e1) ++ getSetTypes(e2)
+    // Set formulas
+    case ElementOfSet(_, set) => Set(set.getType, SetType(Int32Type))
+    case SetEquals(set1, set2) => Set(set1.getType, set2.getType)
+    case IsEmptySet(set) => Set(set.getType)
+    case SubsetOf(set1, set2) => Set(set1.getType, set2.getType)
+    // Integer formulas
+    case LessThan(lhs, rhs) => getSetTypes(lhs) ++ getSetTypes(rhs)
+    case LessEquals(lhs, rhs) => getSetTypes(lhs) ++ getSetTypes(rhs)
+    case GreaterThan(lhs, rhs) => getSetTypes(lhs) ++ getSetTypes(rhs)
+    case GreaterEquals(lhs, rhs) => getSetTypes(lhs) ++ getSetTypes(rhs)
+    case Equals(lhs, rhs) => getSetTypes(lhs) ++ getSetTypes(rhs)
+    // Integer terms
+    case Plus(lhs, rhs) => getSetTypes(lhs) ++ getSetTypes(rhs)
+    case Minus(lhs, rhs) => getSetTypes(lhs) ++ getSetTypes(rhs)
+    case Times(lhs, rhs) => getSetTypes(lhs) ++ getSetTypes(rhs)
+    case UMinus(e) => getSetTypes(e)
+    case SetCardinality(set) => Set(set.getType)
+    case SetMin(set) => Set(set.getType, SetType(Int32Type))
+    case SetMax(set) => Set(set.getType, SetType(Int32Type))
+    case _ => Set.empty[TypeTree]
   }
 
   def apply(expr: Expr) = toFormula(expr)
