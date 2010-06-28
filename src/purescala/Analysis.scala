@@ -56,11 +56,11 @@ class Analysis(val program: Program) {
 
                   solverExtensions.foreach(se => {
                     reporter.info("Trying with solver: " + se.description)
-                    reporter.info(se.solve(vc) match {
-                      case None => "result unknown"
-                      case Some(true) => "valid!"
-                      case Some(false) => "invalid :("
-                    })
+                    se.solve(vc) match {
+                      case None => reporter.warning("result unknown")
+                      case Some(true) => reporter.info("valid!")
+                      case Some(false) => reporter.error("invalid :(")
+                    }
                   })
               }
             } else {
