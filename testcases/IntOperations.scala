@@ -1,7 +1,9 @@
 object IntOperations {
     def sum(a: Int, b: Int) : Int = {
         require(b >= 0)
-        a + b
+        val b2 = b - 1
+        val b3 = b2 + 1
+        a + b3
     } ensuring(_ >= a)
 
 

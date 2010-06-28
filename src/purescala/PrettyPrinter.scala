@@ -67,6 +67,9 @@ object PrettyPrinter {
 
   private def pp(tree: Expr, sb: StringBuffer, lvl: Int): StringBuffer = tree match {
     case Variable(id) => sb.append(id)
+    case Let(b,d,e) => {
+        pp(e, pp(d, sb.append("(let (" + b + " = "), lvl).append(") in "), lvl).append(")")
+    }
     case And(exprs) => ppNary(sb, exprs, "(", " \u2227 ", ")", lvl)            // \land
     case Or(exprs) => ppNary(sb, exprs, "(", " \u2228 ", ")", lvl)             // \lor
     case Not(Equals(l, r)) => ppBinary(sb, l, r, " \u2260 ", lvl)    // \neq

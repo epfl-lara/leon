@@ -41,7 +41,7 @@ class Analysis(val program: Program) {
                   reporter.info(vc)
 
                   if(Settings.runDefaultExtensions) {
-                    val (z3f,stupidMap) = toZ3Formula(z3, vc)
+                    val z3f = toZ3Formula(z3, vc)
                     z3.assertCnstr(z3.mkNot(z3f))
                     //z3.print
                     z3.checkAndGetModel() match {
@@ -133,17 +133,30 @@ class Analysis(val program: Program) {
         rec(expr)
     }
 
-    def toZ3Formula(z3: Z3Context, expr: Expr) : (Z3AST,Map[Identifier,Z3AST]) = {
-        val intSort = z3.mkIntSort()
-        var varMap: Map[Identifier,Z3AST] = Map.empty
+    def toZ3Formula(z3: Z3Context, expr: Expr) : (Z3AST) = {
+        lazy val intSort  = z3.mkIntSort()
+        lazy val boolSort = z3.mkBoolSort()
+
+        // because we create identifiers the first time we see them, this is
+        // convenient.
+        var z3Vars: Map[Identifier,Z3AST] = Map.empty
 
         def rec(ex: Expr) : Z3AST = ex match {
-            case v @ Variable(id) => varMap.get(id) match {
+            case Let(i,e,b) => {
+              z3Vars = z3Vars + (i -> rec(e))
+              rec(b)
+            }
+            case v @ Variable(id) => z3Vars.get(id) match {
                 case Some(ast) => ast
                 case None => {
-                    assert(v.getType == Int32Type)
-                    val newAST = z3.mkConst(z3.mkStringSymbol(id.name), intSort)
-                    varMap = varMap + (id -> newAST)
+                    val newAST = if(v.getType == Int32Type) {
+                      z3.mkConst(z3.mkStringSymbol(id.name), intSort)
+                    } else if(v.getType == BooleanType) {
+                      z3.mkConst(z3.mkStringSymbol(id.name), boolSort)
+                    } else {
+                      reporter.fatalError("Unsupported type in Z3 transformation: " + v.getType)
+                    }
+                    z3Vars = z3Vars + (id -> newAST)
                     newAST
                 }
             } 
@@ -168,7 +181,6 @@ class Analysis(val program: Program) {
             case _ => scala.Predef.error("Can't handle this in translation to Z3: " + ex)
         }
 
-        val res = rec(expr)
-        (res,varMap)
+        rec(expr)
     }
 }

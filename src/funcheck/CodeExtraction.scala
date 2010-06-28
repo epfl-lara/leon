@@ -313,6 +313,16 @@ trait CodeExtraction extends Extractors {
     }
 
     def rec(tr: Tree): Expr = tr match {
+      case ExValDef(vs, tpt, bdy, rst) => {
+        val binderTpe = scalaType2PureScala(unit, silent)(tpt.tpe)
+        val newID = FreshIdentifier(vs.name.toString).setType(binderTpe)
+        val oldSubsts = varSubsts
+        val valTree = rec(bdy)
+        varSubsts(vs) = (() => Variable(newID))
+        val restTree = rec(rst)
+        varSubsts.remove(vs)
+        Let(newID, valTree, restTree)
+      }
       case ExInt32Literal(v) => IntLiteral(v).setType(Int32Type)
       case ExBooleanLiteral(v) => BooleanLiteral(v).setType(BooleanType)
       case ExIdentifier(sym,tpt) => varSubsts.get(sym) match {

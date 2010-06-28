@@ -13,8 +13,8 @@ object Trees {
   }
 
   /* Like vals */
-  case class Let(binder: Identifier, expression: Expr) extends Expr {
-    val et = expression.getType
+  case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
+    val et = body.getType
     if(et != NoType)
       setType(et)
   }

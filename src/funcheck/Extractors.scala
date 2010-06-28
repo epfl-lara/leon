@@ -53,6 +53,18 @@ trait Extractors {
       }
     }
 
+    object ExValDef {
+      /** Extracts val's in the head of blocks. */
+      def unapply(tree: Block): Option[(Symbol,Tree,Tree,Tree)] = tree match {
+        case Block((vd @ ValDef(_, _, tpt, rhs)) :: rest, expr) => 
+          if(rest.isEmpty)
+            Some((vd.symbol, tpt, rhs, expr))
+          else
+            Some((vd.symbol, tpt, rhs, Block(rest, expr)))
+        case _ => None
+      }
+    }
+
     object ExObjectDef {
       /** Matches an object with no type parameters, and regardless of its
        * visibility. Does not match on the automatically generated companion
