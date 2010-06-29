@@ -93,6 +93,12 @@ class Analysis(val program: Program) {
       }
     }
 
+    def rewritePatternMatching(expr: Expr) : Expr = {
+
+
+      expr
+    }
+
     def replaceInExpr(substs: Map[Expr,Expr], expr: Expr) : Expr = {
         def rec(ex: Expr) : Expr = ex match {
             case _ if (substs.get(ex).isDefined) => substs(ex)

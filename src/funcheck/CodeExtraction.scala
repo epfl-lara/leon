@@ -211,7 +211,7 @@ trait CodeExtraction extends Extractors {
 
       realBody match {
         case ExEnsuredExpression(body2, resSym, contract) => {
-          varSubsts(resSym) = (() => ResultVariable())
+          varSubsts(resSym) = (() => ResultVariable().setType(funDef.returnType))
           val c1 = s2ps(contract)
           // varSubsts.remove(resSym)
           realBody = body2
