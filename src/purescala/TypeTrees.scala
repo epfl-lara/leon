@@ -69,6 +69,40 @@ object TypeTrees {
     case _ => scala.Predef.error("Asking for lub of unrelated types: " + t1 + " and " + t2)
   }
 
+  // returns the number of distinct values that inhabit a type
+  sealed abstract class TypeSize
+  case class FiniteSize(size: Int) extends TypeSize
+  case object InfiniteSize extends TypeSize
+
+  def domainSize(typeTree: TypeTree) : TypeSize = typeTree match {
+    case NoType => FiniteSize(0)
+    case AnyType => InfiniteSize
+    case BooleanType => FiniteSize(2)
+    case Int32Type => InfiniteSize
+    case ListType(_) => InfiniteSize
+    case TupleType(bases) => {
+      val baseSizes = bases.map(domainSize(_))
+      baseSizes.find(_ == InfiniteSize) match {
+        case Some(_) => InfiniteSize
+        case None => FiniteSize(baseSizes.map(_.asInstanceOf[FiniteSize].size).reduceLeft(_ * _))
+      }
+    }
+    case SetType(base) => domainSize(base) match {
+      case InfiniteSize => InfiniteSize
+      case FiniteSize(n) => FiniteSize(scala.math.pow(2, n).toInt)
+    }
+    case MapType(from,to) => (domainSize(from),domainSize(to)) match {
+      case (InfiniteSize,_) => InfiniteSize
+      case (_,InfiniteSize) => InfiniteSize
+      case (FiniteSize(n),FiniteSize(m)) => FiniteSize(scala.math.pow(m+1, n).toInt)
+    }
+    case OptionType(base) => domainSize(base) match {
+      case InfiniteSize => InfiniteSize
+      case FiniteSize(n) => FiniteSize(n+1)
+    }
+    case c: ClassType => InfiniteSize
+  }
+
   case object NoType extends TypeTree
 
   case object AnyType extends TypeTree
@@ -77,7 +111,6 @@ object TypeTrees {
 
   case class ListType(base: TypeTree) extends TypeTree
   case class TupleType(bases: Seq[TypeTree]) extends TypeTree { lazy val dimension: Int = bases.length }
-  case class FunctionType(arg: TypeTree, res: TypeTree) extends TypeTree
   case class SetType(base: TypeTree) extends TypeTree
   // case class MultisetType(base: TypeTree) extends TypeTree
   case class MapType(from: TypeTree, to: TypeTree) extends TypeTree

@@ -93,19 +93,10 @@ class Analysis(val program: Program) {
       }
     }
 
-    def flatten(expr: Expr) : (Expr,List[(Variable,Expr)]) = {
-        // Recursively flattens the expression. The head in the end
-        // should be the top-level original expression.
-        def fl(expr: Expr, lets: List[(Variable,Expr)]) : List[(Variable,Expr)] = expr match {
-            case _ => throw new Exception("ah ha !")
-        }
-        
-        (expr, Nil)
-    }
-
     def replaceInExpr(substs: Map[Expr,Expr], expr: Expr) : Expr = {
         def rec(ex: Expr) : Expr = ex match {
             case _ if (substs.get(ex).isDefined) => substs(ex)
+            case Let(i,e,b) => Let(i, rec(e), rec(b))
             case FunctionInvocation(fd, args) => FunctionInvocation(fd, args.map(rec(_)))
             case IfExpr(t1,t2,t3) => IfExpr(rec(t1),rec(t2),rec(t3))
             case MatchExpr(_,_) => ex
