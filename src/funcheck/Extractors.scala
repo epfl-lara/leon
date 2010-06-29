@@ -304,6 +304,24 @@ trait Extractors {
         if(tree != null) Some((tree.selector, tree.cases)) else None
     }
 
+    object ExSetMin {
+      def unapply(tree: Apply) : Option[Tree] = tree match {
+        case Apply(
+          TypeApply(Select(setTree, minName), typeTree :: Nil),
+          ordering :: Nil) if minName.toString == "min" && typeTree.tpe == IntClass.tpe => Some(setTree)
+        case _ => None
+      }
+    }
+
+    object ExSetMax {
+      def unapply(tree: Apply) : Option[Tree] = tree match {
+        case Apply(
+          TypeApply(Select(setTree, maxName), typeTree :: Nil),
+          ordering :: Nil) if maxName.toString == "max" && typeTree.tpe == IntClass.tpe => Some(setTree)
+        case _ => None
+      }
+    }
+
     object ExEmptySet {
       def unapply(tree: TypeApply): Option[Tree] = tree match {
         case TypeApply(

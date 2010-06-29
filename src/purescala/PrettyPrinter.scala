@@ -103,6 +103,8 @@ object PrettyPrinter {
     case GreaterEquals(l,r) => ppBinary(sb, l, r, " \u2265 ", lvl)   // \geq
     case FiniteSet(rs) => ppNary(sb, rs, "{", ", ", "}", lvl)
     case EmptySet(_) => sb.append("\u2205")                          // Ø
+    case SetMin(s) => pp(s, sb, lvl).append(".min")
+    case SetMax(s) => pp(s, sb, lvl).append(".max")
     case SetUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)        // \cup
     case SetDifference(l,r) => ppBinary(sb, l, r, " \\ ", lvl)       
     case SetIntersection(l,r) => ppBinary(sb, l, r, " \u2229 ", lvl) // \cap

@@ -20,7 +20,20 @@ object Definitions {
 
   /** A wrapper for a program. For now a program is simply a single object. The
    * name is meaningless and we just use the package name as id. */
-  case class Program(id: Identifier, mainObject: ObjectDef) extends Definition 
+  case class Program(id: Identifier, mainObject: ObjectDef) extends Definition {
+    lazy val callGraph: Map[FunDef,Seq[FunDef]] = computeCallGraph
+
+    def computeCallGraph: Map[FunDef,Seq[FunDef]] = Map.empty
+
+    // checks whether f2 can be called from f1
+    def calls(f1: FunDef, f2: FunDef) : Boolean = {
+      false
+    }
+
+    def transitivelyCalls(f1: FunDef, f2: FunDef) : Boolean = {
+      false
+    }
+  }
 
   /** Objects work as containers for class definitions, functions (def's) and
    * val's. */
@@ -86,5 +99,9 @@ object Definitions {
     var body: Option[Expr] = None
     var precondition: Option[Expr] = None
     var postcondition: Option[Expr] = None
+
+    def hasImplementation : Boolean = body.isDefined
+    def hasPrecondition : Boolean = precondition.isDefined
+    def hasPostcondition : Boolean = postcondition.isDefined
   }
 }

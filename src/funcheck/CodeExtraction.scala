@@ -366,6 +366,26 @@ trait CodeExtraction extends Extractors {
         val underlying = scalaType2PureScala(unit, silent)(tt.tpe)
         EmptySet(underlying).setType(SetType(underlying))          
       }
+      case ExSetMin(t) => {
+        val set = rec(t)
+        if(!set.getType.isInstanceOf[SetType]) {
+          if(!silent) {
+            unit.error(t.pos, "Min should be computed on a set.")
+          }
+          throw ImpureCodeEncounteredException(tree)
+        }
+        SetMin(set).setType(set.getType.asInstanceOf[SetType].base)
+      }
+      case ExSetMax(t) => {
+        val set = rec(t)
+        if(!set.getType.isInstanceOf[SetType]) {
+          if(!silent) {
+            unit.error(t.pos, "Max should be computed on a set.")
+          }
+          throw ImpureCodeEncounteredException(tree)
+        }
+        SetMax(set).setType(set.getType.asInstanceOf[SetType].base)
+      }
       case ExUnion(t1,t2) => {
         val rl = rec(t1)
         val rr = rec(t2)
