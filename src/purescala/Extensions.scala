@@ -6,6 +6,7 @@ import purescala.Definitions._
 object Extensions {
   sealed abstract class Extension(reporter: Reporter) {
     val description: String
+    val shortDescription: String = description
   }
 
   abstract class Solver(reporter: Reporter) extends Extension(reporter) {

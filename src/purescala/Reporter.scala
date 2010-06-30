@@ -20,17 +20,17 @@ abstract class Reporter {
   def fatalError(expr: Expr, msg: Any) : Nothing
 }
 
-object DefaultReporter extends Reporter {
-  private val errorPfx   = "[ Error ] "
-  private val warningPfx = "[Warning] "
-  private val infoPfx    = "[ Info  ] "
-  private val fatalPfx   = "[ Fatal ] "
+class DefaultReporter extends Reporter {
+  protected val errorPfx   = "[ Error ] "
+  protected val warningPfx = "[Warning] "
+  protected val infoPfx    = "[ Info  ] "
+  protected val fatalPfx   = "[ Fatal ] "
 
   def output(msg: String) : Unit = {
     Console.err.println(msg)
   }
 
-  private def reline(pfx: String, msg: String) : String = {
+  protected def reline(pfx: String, msg: String) : String = {
     val color = if(pfx == errorPfx || pfx == warningPfx || pfx == fatalPfx) {
       Console.RED
     } else {
@@ -52,4 +52,13 @@ object DefaultReporter extends Reporter {
   def warning(expr: Expr, msg: Any) = output(reline(warningPfx, PrettyPrinter(expr) + "\n" + msg.toString))
   def info(expr: Expr, msg: Any) = output(reline(infoPfx, PrettyPrinter(expr) + "\n" + msg.toString))
   def fatalError(expr: Expr, msg: Any) = { output(reline(fatalPfx, PrettyPrinter(expr) + "\n" + msg.toString)); exit(0) }
+}
+
+class QuietReporter extends DefaultReporter {
+  override def warning(msg: Any) = {}
+  override def info(msg: Any) = {}
+  override def warning(definition: Definition, msg: Any) = {}
+  override def info(definition: Definition, msg: Any) = {}
+  override def warning(expr: Expr, msg: Any) = {}
+  override def info(expr: Expr, msg: Any) = {}
 }

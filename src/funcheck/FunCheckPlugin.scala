@@ -22,7 +22,8 @@ class FunCheckPlugin(val global: Global) extends Plugin {
     "  -P:funcheck:parse              Checks only whether the program is valid PureScala" + "\n" +
     "  -P:funcheck:extensions=ex1:... Specifies a list of qualified class names of extensions to be loaded" + "\n" +
     "  -P:funcheck:nodefaults         Runs only the analyses provided by the extensions" + "\n" +
-    "  -P:funcheck:tolerant           Silently extracts non-pure function bodies as ''unknown''"
+    "  -P:funcheck:tolerant           Silently extracts non-pure function bodies as ''unknown''" + "\n" +
+    "  -P:funcheck:quiet              No info and warning messages from the extensions"
   )
 
   /** Processes the command-line options. */
@@ -33,6 +34,7 @@ class FunCheckPlugin(val global: Global) extends Plugin {
         case "uniqid"     =>                     purescala.Settings.showIDs = true
         case "parse"      =>                     stopAfterExtraction = true
         case "tolerant"   =>                     silentlyTolerateNonPureBodies = true
+        case "quiet"      =>                     purescala.Settings.quietExtensions = true
         case "nodefaults" =>                     purescala.Settings.runDefaultExtensions = false
         case s if s.startsWith("extensions=") => purescala.Settings.extensionNames = s.substring("extensions=".length, s.length)
         case _ => error("Invalid option: " + option)

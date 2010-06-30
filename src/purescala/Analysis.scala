@@ -8,15 +8,51 @@ import z3.scala._
 import Extensions._
 
 class Analysis(val program: Program) {
+  // we always use the global reporter for this class
   val reporter = Settings.reporter
-  val extensions: Seq[Extension] = loadAll(reporter)
+  // ...but not always for the extensions
+  val extensionsReporter =
+    if(Settings.quietExtensions) {
+      Settings.quietReporter
+    } else {
+      Settings.reporter
+    }
+
+  // these extensions are always loaded, unless specified otherwise
+  val defaultExtensions: Seq[Extension] =
+    if(Settings.runDefaultExtensions) {
+      (new Z3Solver(extensionsReporter)) :: Nil
+    } else {
+      Nil
+    }
+
+  // we load additional extensions
+  val moreExtensions: Seq[Extension] = loadAll(extensionsReporter)
+  if(!moreExtensions.isEmpty) {
+    reporter.info("The following extensions are loaded:\n" + moreExtensions.toList.map(_.description).mkString("  ", "\n  ", ""))
+  }
+  // ...and split the final list between solvers and analysers
+  val extensions: Seq[Extension] = defaultExtensions ++ moreExtensions
   val analysisExtensions: Seq[Analyser] = extensions.filter(_.isInstanceOf[Analyser]).map(_.asInstanceOf[Analyser])
   val solverExtensions: Seq[Solver] = extensions.filter(_.isInstanceOf[Solver]).map(_.asInstanceOf[Solver])
 
-  if(!extensions.isEmpty) {
-    reporter.info("The following extensions are loaded:\n" + extensions.toList.map(_.description).mkString("  ", "\n  ", ""))
+  // Calling this method will run all analyses on the program passed at
+  // construction time. If at least one solver is loaded, verification
+  // conditions are generated and passed to all solvers. Otherwise, only the
+  // Analysis extensions are run on the program.
+  def analyse : Unit = {
+    if(solverExtensions.size > 0) {
+      reporter.info("Running verification condition generation...")
+      checkVerificationConditions
+    } 
+
+    analysisExtensions.foreach(ae => {
+      reporter.info("Running analysis from extension: " + ae.description)
+      ae.analyse(program)
+    })
   }
 
+  def checkVerificationConditions : Unit = {
     // Analysis should check that:
     //  - all the postconditions are implied by preconds. + body
     //  - all callsites satisfy the preconditions
@@ -25,57 +61,35 @@ class Analysis(val program: Program) {
     //  - catamorphisms are catamorphisms (poss. with surjectivity conds.)
     //  - injective functions are injective
     //  - all global invariants are satisfied 
-    def analyse : Unit = {
-      if(Settings.runDefaultExtensions || solverExtensions.size > 0) {
-        val z3cfg = new Z3Config()
-        z3cfg.setParamValue("MODEL", "true")
-        val z3 = new Z3Context(z3cfg)
+    program.mainObject.defs.filter(_.isInstanceOf[FunDef]).foreach(df => {
+      val funDef = df.asInstanceOf[FunDef]
 
-        program.mainObject.defs.filter(_.isInstanceOf[FunDef]).foreach(df => {
-            val funDef = df.asInstanceOf[FunDef]
+      if(funDef.body.isDefined) {
+      val vc = postconditionVC(funDef)
+        if(vc != BooleanLiteral(true)) {
+          reporter.info("Verification condition (post) for " + funDef.id + ":")
+          reporter.info(vc)
 
-            if(funDef.body.isDefined) {
-            val vc = postconditionVC(funDef)
-              if(vc != BooleanLiteral(true)) {
-                  reporter.info("Verification condition (post) for " + funDef.id + ":")
-                  reporter.info(vc)
+          if(Settings.runDefaultExtensions) {
+          }
 
-                  if(Settings.runDefaultExtensions) {
-                    val z3f = toZ3Formula(z3, vc)
-                    z3.assertCnstr(z3.mkNot(z3f))
-                    //z3.print
-                    z3.checkAndGetModel() match {
-                        case (Some(true),m) => {
-                            reporter.error("There's a bug! Here's a model for a counter-example:")
-                            m.print
-                        }
-                        case (Some(false),_) => reporter.info("Contract satisfied!")
-                        case (None,_) => reporter.error("Z3 couldn't run properly or does not know the answer :(")
-                    }
-                  }
-
-                  solverExtensions.foreach(se => {
-                    reporter.info("Trying with solver: " + se.description)
-                    se.solve(vc) match {
-                      case None => reporter.warning("result unknown")
-                      case Some(true) => reporter.info("valid!")
-                      case Some(false) => reporter.error("invalid :(")
-                    }
-                  })
-              }
-            } else {
-              if(funDef.postcondition.isDefined) {
-                reporter.warning(funDef, "Could not verify postcondition: function implementation is unknown.")
-              }
+          // try all solvers until one returns a meaningful answer
+          solverExtensions.find(se => {
+            reporter.info("Trying with solver: " + se.description)
+            se.solve(vc) match {
+              case None => reporter.warning("UNKNOWN"); false
+              case Some(true) => reporter.info("VALID"); true
+              case Some(false) => reporter.error("INVALID"); true
             }
-        }) 
+          })
+        }
+      } else {
+        if(funDef.postcondition.isDefined) {
+          reporter.warning(funDef, "Could not verify postcondition: function implementation is unknown.")
+        }
       }
-
-      analysisExtensions.foreach(ae => {
-        reporter.info("Now running analysis from extension: " + ae.description)
-        ae.analyse(program)
-      })
-    }
+    }) 
+  }
 
     def postconditionVC(functionDefinition: FunDef) : Expr = {
       assert(functionDefinition.body.isDefined)
@@ -125,57 +139,6 @@ class Analysis(val program: Program) {
                 b
             }
             case _ => ex
-        }
-
-        rec(expr)
-    }
-
-    def toZ3Formula(z3: Z3Context, expr: Expr) : (Z3AST) = {
-        lazy val intSort  = z3.mkIntSort()
-        lazy val boolSort = z3.mkBoolSort()
-
-        // because we create identifiers the first time we see them, this is
-        // convenient.
-        var z3Vars: Map[Identifier,Z3AST] = Map.empty
-
-        def rec(ex: Expr) : Z3AST = ex match {
-            case Let(i,e,b) => {
-              z3Vars = z3Vars + (i -> rec(e))
-              rec(b)
-            }
-            case v @ Variable(id) => z3Vars.get(id) match {
-                case Some(ast) => ast
-                case None => {
-                    val newAST = if(v.getType == Int32Type) {
-                      z3.mkConst(z3.mkStringSymbol(id.name), intSort)
-                    } else if(v.getType == BooleanType) {
-                      z3.mkConst(z3.mkStringSymbol(id.name), boolSort)
-                    } else {
-                      reporter.fatalError("Unsupported type in Z3 transformation: " + v.getType)
-                    }
-                    z3Vars = z3Vars + (id -> newAST)
-                    newAST
-                }
-            } 
-            case IfExpr(c,t,e) => z3.mkITE(rec(c), rec(t), rec(e))
-            case And(exs) => z3.mkAnd(exs.map(rec(_)) : _*)
-            case Or(exs) => z3.mkOr(exs.map(rec(_)) : _*)
-            case Not(Equals(l,r)) => z3.mkDistinct(rec(l),rec(r))
-            case Not(e) => z3.mkNot(rec(e))
-            case Implies(l,r) => z3.mkImplies(rec(l), rec(r))
-            case IntLiteral(v) => z3.mkInt(v, intSort)
-            case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()
-            case Equals(l,r) => z3.mkEq(rec(l),rec(r))
-            case Plus(l,r) => z3.mkAdd(rec(l), rec(r))
-            case Minus(l,r) => z3.mkSub(rec(l), rec(r))
-            case Times(l,r) => z3.mkMul(rec(l), rec(r))
-            case Division(l,r) => z3.mkDiv(rec(l), rec(r))
-            case UMinus(e) => z3.mkUnaryMinus(rec(e))
-            case LessThan(l,r) => z3.mkLT(rec(l), rec(r)) 
-            case LessEquals(l,r) => z3.mkLE(rec(l), rec(r)) 
-            case GreaterThan(l,r) => z3.mkGT(rec(l), rec(r)) 
-            case GreaterEquals(l,r) => z3.mkGE(rec(l), rec(r)) 
-            case _ => scala.Predef.error("Can't handle this in translation to Z3: " + ex)
         }
 
         rec(expr)
