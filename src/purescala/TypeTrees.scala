@@ -17,7 +17,8 @@ object TypeTrees {
 
     def setType(tt: TypeTree): self.type = _type match {
       case None => _type = Some(tt); this
-      case Some(_) => scala.Predef.error("Resetting type information.")
+      case Some(o) if o != tt => scala.Predef.error("Resetting type information.")
+      case _ => this
     }
   }
 

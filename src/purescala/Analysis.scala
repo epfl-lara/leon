@@ -4,7 +4,6 @@ import Common._
 import Definitions._
 import Trees._
 import TypeTrees._
-import z3.scala._
 import Extensions._
 
 class Analysis(val program: Program) {
@@ -91,56 +90,23 @@ class Analysis(val program: Program) {
     }) 
   }
 
-    def postconditionVC(functionDefinition: FunDef) : Expr = {
-      assert(functionDefinition.body.isDefined)
-      val prec = functionDefinition.precondition
-      val post = functionDefinition.postcondition
-      val body = functionDefinition.body.get
+  def postconditionVC(functionDefinition: FunDef) : Expr = {
+    assert(functionDefinition.body.isDefined)
+    val prec = functionDefinition.precondition
+    val post = functionDefinition.postcondition
+    val body = functionDefinition.body.get
 
-      if(post.isEmpty) {
-        BooleanLiteral(true)
-      } else {
-        if(prec.isEmpty)
-          replaceInExpr(Map(ResultVariable() -> body), post.get)
-        else
-          Implies(prec.get, replaceInExpr(Map(ResultVariable() -> body), post.get))
-      }
+    if(post.isEmpty) {
+      BooleanLiteral(true)
+    } else {
+      if(prec.isEmpty)
+        replace(Map(ResultVariable() -> body), post.get)
+      else
+        Implies(prec.get, replace(Map(ResultVariable() -> body), post.get))
     }
+  }
 
-    def rewritePatternMatching(expr: Expr) : Expr = {
-
-
-      expr
-    }
-
-    def replaceInExpr(substs: Map[Expr,Expr], expr: Expr) : Expr = {
-        def rec(ex: Expr) : Expr = ex match {
-            case _ if (substs.get(ex).isDefined) => substs(ex)
-            case Let(i,e,b) => Let(i, rec(e), rec(b))
-            case FunctionInvocation(fd, args) => FunctionInvocation(fd, args.map(rec(_)))
-            case IfExpr(t1,t2,t3) => IfExpr(rec(t1),rec(t2),rec(t3))
-            case MatchExpr(_,_) => ex
-            case And(exs) => And(exs.map(rec(_)))
-            case Or(exs) => Or(exs.map(rec(_)))
-            case Not(e) => Not(rec(e))
-            case u @ UnaryOperator(t,recons) => {
-              val r = rec(t)
-              if(r != t)
-                recons(r).setType(u.getType)
-              else
-                u
-            }
-            case b @ BinaryOperator(t1,t2,recons) => {
-              val r1 = rec(t1)
-              val r2 = rec(t2)
-              if(r1 != t1 || r2 != t2)
-                recons(r1,r2).setType(b.getType)
-              else
-                b
-            }
-            case _ => ex
-        }
-
-        rec(expr)
-    }
+  def rewritePatternMatching(expr: Expr) : Expr = {
+    expr
+  }
 }

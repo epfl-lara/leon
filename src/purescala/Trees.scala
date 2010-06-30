@@ -218,4 +218,48 @@ object Trees {
       case _ => None
     }
   }
+ 
+  // Warning ! This may loop forever if the substitutions are not
+  // well-formed!
+  def replace(substs: Map[Expr,Expr], expr: Expr) : Expr = {
+    def rec(ex: Expr) : Expr = ex match {
+      case _ if (substs.get(ex).isDefined) => {
+        val newExpr = substs(ex)
+        if(newExpr.getType == NoType) {
+          Settings.reporter.warning("REPLACING IN EXPRESSION WITH AN UNTYPED TREE ! " + ex + " --to--> " + newExpr)
+        }
+        rec(newExpr)
+      }
+      case l @ Let(i,e,b) => Let(i, rec(e), rec(b)).setType(l.getType)
+      case f @ FunctionInvocation(fd, args) => FunctionInvocation(fd, args.map(rec(_))).setType(f.getType)
+      case i @ IfExpr(t1,t2,t3) => IfExpr(rec(t1),rec(t2),rec(t3)).setType(i.getType)
+      case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut), cses.map(inCase(_))).setType(m.getType)
+      case And(exs) => And(exs.map(rec(_)))
+      case Or(exs) => Or(exs.map(rec(_)))
+      case Not(e) => Not(rec(e))
+      case u @ UnaryOperator(t,recons) => {
+        val r = rec(t)
+        if(r != t)
+          recons(r).setType(u.getType)
+        else
+          u
+      }
+      case b @ BinaryOperator(t1,t2,recons) => {
+        val r1 = rec(t1)
+        val r2 = rec(t2)
+        if(r1 != t1 || r2 != t2)
+          recons(r1,r2).setType(b.getType)
+        else
+          b
+      }
+      case _ => ex
+    }
+
+    def inCase(cse: MatchCase) : MatchCase = cse match {
+      case SimpleCase(pat, rhs) => SimpleCase(pat, rec(rhs))
+      case GuardedCase(pat, guard, rhs) => GuardedCase(pat, rec(guard), rec(rhs))
+    }
+
+    rec(expr)
+  }
 }
