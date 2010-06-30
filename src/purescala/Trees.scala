@@ -125,15 +125,33 @@ object Trees {
   case class CaseClassSelector(caseClass: Expr, selector: Identifier) extends Expr
 
   /* Arithmetic */
-  case class Plus(lhs: Expr, rhs: Expr) extends Expr
-  case class Minus(lhs: Expr, rhs: Expr) extends Expr 
-  case class UMinus(expr: Expr) extends Expr 
-  case class Times(lhs: Expr, rhs: Expr) extends Expr 
-  case class Division(lhs: Expr, rhs: Expr) extends Expr 
-  case class LessThan(lhs: Expr, rhs: Expr) extends Expr 
-  case class GreaterThan(lhs: Expr, rhs: Expr) extends Expr 
-  case class LessEquals(lhs: Expr, rhs: Expr) extends Expr 
-  case class GreaterEquals(lhs: Expr, rhs: Expr) extends Expr 
+  case class Plus(lhs: Expr, rhs: Expr) extends Expr with FixedType {
+    val fixedType = Int32Type
+  }
+  case class Minus(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+    val fixedType = Int32Type
+  }
+  case class UMinus(expr: Expr) extends Expr with FixedType { 
+    val fixedType = Int32Type
+  }
+  case class Times(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+    val fixedType = Int32Type
+  }
+  case class Division(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+    val fixedType = Int32Type
+  }
+  case class LessThan(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+    val fixedType = BooleanType
+  }
+  case class GreaterThan(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+    val fixedType = BooleanType
+  }
+  case class LessEquals(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+    val fixedType = BooleanType
+  }
+  case class GreaterEquals(lhs: Expr, rhs: Expr) extends Expr with FixedType {
+    val fixedType = BooleanType
+  }
 
   /* Option expressions */
   case class OptionSome(value: Expr) extends Expr 
@@ -225,13 +243,35 @@ object Trees {
       case _ => None
     }
   }
+
+  def negate(expr: Expr) : Expr = expr match {
+    case Let(i,b,e) => Let(i,b,negate(e))
+    case Not(e) => e
+    case Iff(e1,e2) => Iff(negate(e1),e2)
+    case Implies(e1,e2) => And(e1, negate(e2))
+    case Or(exs) => And(exs.map(negate(_)))
+    case And(exs) => Or(exs.map(negate(_)))
+    case LessThan(e1,e2) => GreaterEquals(e1,e2)
+    case LessEquals(e1,e2) => GreaterThan(e1,e2)
+    case GreaterThan(e1,e2) => LessEquals(e1,e2)
+    case GreaterEquals(e1,e2) => LessThan(e1,e2)
+    case i @ IfExpr(c,e1,e2) => IfExpr(c, negate(e1), negate(e2)).setType(i.getType)
+    case _ => Not(expr)
+  }
  
   // Warning ! This may loop forever if the substitutions are not
   // well-formed!
   def replace(substs: Map[Expr,Expr], expr: Expr) : Expr = {
+    replace(substs.isDefinedAt(_), substs(_), expr)
+  }
+
+  // the replacement map should be understood as follows:
+  //   - on each subexpression, checkFun checks whether it should be replaced
+  //   - repFun is applied is checkFun succeeded
+  def replace(checkFun: Expr=>Boolean, repFun: Expr=>Expr, expr: Expr) : Expr = {
     def rec(ex: Expr) : Expr = ex match {
-      case _ if (substs.get(ex).isDefined) => {
-        val newExpr = substs(ex)
+      case _ if (checkFun(ex)) => {
+        val newExpr = repFun(ex)
         if(newExpr.getType == NoType) {
           Settings.reporter.warning("REPLACING IN EXPRESSION WITH AN UNTYPED TREE ! " + ex + " --to--> " + newExpr)
         }

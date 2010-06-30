@@ -15,10 +15,10 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     z3cfg.setParamValue("MODEL", "true")
     val z3 = new Z3Context(z3cfg)
 
-    val result = toZ3Formula(z3, vc) match {
+    val result = toZ3Formula(z3, negate(vc)) match {
       case None => None // means it could not be translated
       case Some(z3f) => {
-        z3.assertCnstr(z3.mkNot(z3f))
+        z3.assertCnstr(z3f)
         //z3.print
         z3.checkAndGetModel() match {
           case (Some(true),m) => {

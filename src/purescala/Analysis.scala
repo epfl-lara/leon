@@ -68,19 +68,23 @@ class Analysis(val program: Program) {
         if(vc != BooleanLiteral(true)) {
           reporter.info("Verification condition (post) for " + funDef.id + ":")
           reporter.info(vc)
-
-          if(Settings.runDefaultExtensions) {
-          }
+          // reporter.info("Negated:")
+          // reporter.info(negate(vc))
+          // reporter.info("Negated, expanded:")
+          // reporter.info(expandLets(negate(vc)))
 
           // try all solvers until one returns a meaningful answer
           solverExtensions.find(se => {
-            reporter.info("Trying with solver: " + se.description)
+            reporter.info("Trying with solver: " + se.shortDescription)
             se.solve(vc) match {
-              case None => reporter.warning("UNKNOWN"); false
+              case None => false
               case Some(true) => reporter.info("VALID"); true
               case Some(false) => reporter.error("INVALID"); true
             }
-          })
+          }) match {
+            case None => reporter.warning("No solver could prove or disprove the verification condition.")
+            case _ => 
+          } 
         }
       } else {
         if(funDef.postcondition.isDefined) {
@@ -107,6 +111,16 @@ class Analysis(val program: Program) {
   }
 
   def rewritePatternMatching(expr: Expr) : Expr = {
-    expr
+    def isPMExpr(e: Expr) : Boolean = e match {
+      case MatchExpr(_, _) => true
+      case _ => false
+    }
+
+    def rewritePM(e: Expr) : Expr = e match {
+      case m @ MatchExpr(_, _) => m
+      case _ => e
+    }
+
+    replace(isPMExpr, rewritePM, expr)
   }
 }
