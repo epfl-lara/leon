@@ -83,6 +83,10 @@ object Trees {
     val fixedType = BooleanType
   }
 
+  case class Iff(left: Expr, right: Expr) extends Expr with FixedType {
+    val fixedType = BooleanType
+  }
+
   case class Implies(left: Expr, right: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }
@@ -91,7 +95,7 @@ object Trees {
     val fixedType = BooleanType
   }
 
-  /* Maybe we should split this one depending on types? */
+  /* For all types that don't have their own XXXEquals */
   case class Equals(left: Expr, right: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }
@@ -140,7 +144,9 @@ object Trees {
   case class FiniteSet(elements: Seq[Expr]) extends Expr 
   case class ElementOfSet(element: Expr, set: Expr) extends Expr 
   case class IsEmptySet(set: Expr) extends Expr 
-  case class SetEquals(set1: Expr, set2: Expr) extends Expr 
+  case class SetEquals(set1: Expr, set2: Expr) extends Expr with FixedType {
+    val fixedType = BooleanType
+  }
   case class SetCardinality(set: Expr) extends Expr with FixedType {
     val fixedType = Int32Type
   }
@@ -194,6 +200,7 @@ object Trees {
   object BinaryOperator {
     def unapply(expr: Expr) : Option[(Expr,Expr,(Expr,Expr)=>Expr)] = expr match {
       case Equals(t1,t2) => Some((t1,t2,Equals))
+      case Iff(t1,t2) => Some((t1,t2,Iff))
       case Implies(t1,t2) => Some((t1,t2,Implies))
       case Plus(t1,t2) => Some((t1,t2,Plus))
       case Minus(t1,t2) => Some((t1,t2,Minus))
@@ -261,5 +268,41 @@ object Trees {
     }
 
     rec(expr)
+  }
+
+  def expandLets(expr: Expr) : Expr = {
+    def rec(ex: Expr, s: Map[Identifier,Expr]) : Expr = ex match {
+      case v @ Variable(id) if s.isDefinedAt(id) => rec(s(id), s)
+      case l @ Let(i,e,b) => rec(b, s + (i -> rec(e, s)))
+      case f @ FunctionInvocation(fd, args) => FunctionInvocation(fd, args.map(rec(_, s))).setType(f.getType)
+      case i @ IfExpr(t1,t2,t3) => IfExpr(rec(t1, s),rec(t2, s),rec(t3, s)).setType(i.getType)
+      case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut, s), cses.map(inCase(_, s))).setType(m.getType)
+      case And(exs) => And(exs.map(rec(_, s)))
+      case Or(exs) => Or(exs.map(rec(_, s)))
+      case Not(e) => Not(rec(e, s))
+      case u @ UnaryOperator(t,recons) => {
+        val r = rec(t, s)
+        if(r != t)
+          recons(r).setType(u.getType)
+        else
+          u
+      }
+      case b @ BinaryOperator(t1,t2,recons) => {
+        val r1 = rec(t1, s)
+        val r2 = rec(t2, s)
+        if(r1 != t1 || r2 != t2)
+          recons(r1,r2).setType(b.getType)
+        else
+          b
+      }
+      case _ => ex
+    }
+
+    def inCase(cse: MatchCase, s: Map[Identifier,Expr]) : MatchCase = cse match {
+      case SimpleCase(pat, rhs) => SimpleCase(pat, rec(rhs, s))
+      case GuardedCase(pat, guard, rhs) => GuardedCase(pat, rec(guard, s), rec(rhs, s))
+    }
+
+    rec(expr, Map.empty)
   }
 }

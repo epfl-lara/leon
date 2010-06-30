@@ -15,7 +15,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     z3cfg.setParamValue("MODEL", "true")
     val z3 = new Z3Context(z3cfg)
 
-    toZ3Formula(z3, vc) match {
+    val result = toZ3Formula(z3, vc) match {
       case None => None // means it could not be translated
       case Some(z3f) => {
         z3.assertCnstr(z3.mkNot(z3f))
@@ -34,9 +34,12 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
         }
       }
     }
+
+    z3.delete
+    result
   }
 
-  def toZ3Formula(z3: Z3Context, expr: Expr) : Option[Z3AST] = {
+  private def toZ3Formula(z3: Z3Context, expr: Expr) : Option[Z3AST] = {
     class CantTranslateException extends Exception
 
     lazy val intSort  = z3.mkIntSort()
@@ -69,9 +72,11 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
       case IfExpr(c,t,e) => z3.mkITE(rec(c), rec(t), rec(e))
       case And(exs) => z3.mkAnd(exs.map(rec(_)) : _*)
       case Or(exs) => z3.mkOr(exs.map(rec(_)) : _*)
+      case Implies(l,r) => z3.mkImplies(rec(l), rec(r))
+      case Iff(l,r) => z3.mkIff(rec(l), rec(r))
+      case Not(Iff(l,r)) => z3.mkXor(rec(l), rec(r))   
       case Not(Equals(l,r)) => z3.mkDistinct(rec(l),rec(r))
       case Not(e) => z3.mkNot(rec(e))
-      case Implies(l,r) => z3.mkImplies(rec(l), rec(r))
       case IntLiteral(v) => z3.mkInt(v, intSort)
       case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()
       case Equals(l,r) => z3.mkEq(rec(l),rec(r))

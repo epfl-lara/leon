@@ -68,14 +68,16 @@ object PrettyPrinter {
   private def pp(tree: Expr, sb: StringBuffer, lvl: Int): StringBuffer = tree match {
     case Variable(id) => sb.append(id)
     case Let(b,d,e) => {
-        pp(e, pp(d, sb.append("(let (" + b + " = "), lvl).append(") in "), lvl).append(")")
+        pp(e, pp(d, sb.append("(let (" + b + " := "), lvl).append(") in "), lvl).append(")")
     }
     case And(exprs) => ppNary(sb, exprs, "(", " \u2227 ", ")", lvl)            // \land
     case Or(exprs) => ppNary(sb, exprs, "(", " \u2228 ", ")", lvl)             // \lor
     case Not(Equals(l, r)) => ppBinary(sb, l, r, " \u2260 ", lvl)    // \neq
     case Not(expr) => ppUnary(sb, expr, "\u00AC(", ")", lvl)               // \neg
-    case Implies(l,r) => ppBinary(sb, l, r, "==>", lvl)              
+    case Iff(l,r) => ppBinary(sb, l, r, " <=> ", lvl)              
+    case Implies(l,r) => ppBinary(sb, l, r, " ==> ", lvl)              
     case UMinus(expr) => ppUnary(sb, expr, "-(", ")", lvl)
+    case SetEquals(l,r) => ppBinary(sb, l, r, " =S= ", lvl)
     case Equals(l,r) => ppBinary(sb, l, r, " == ", lvl)
     case IntLiteral(v) => sb.append(v)
     case BooleanLiteral(v) => sb.append(v)

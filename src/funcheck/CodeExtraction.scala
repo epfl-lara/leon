@@ -352,7 +352,15 @@ trait CodeExtraction extends Extractors {
       case ExMinus(l, r) => Minus(rec(l), rec(r)).setType(Int32Type)
       case ExTimes(l, r) => Times(rec(l), rec(r)).setType(Int32Type)
       case ExDiv(l, r) => Division(rec(l), rec(r)).setType(Int32Type)
-      case ExEquals(l, r) => Equals(rec(l), rec(r)).setType(BooleanType)
+      case ExEquals(l, r) => {
+        val rl = rec(l)
+        val rr = rec(r)
+        ((rl.getType,rr.getType) match {
+          case (SetType(_), SetType(_)) => SetEquals(rl, rr)
+          case (BooleanType, BooleanType) => Iff(rl, rr)
+          case (_, _) => Equals(rl, rr)
+        }).setType(BooleanType) 
+      }
       case ExNotEquals(l, r) => Not(Equals(rec(l), rec(r)).setType(BooleanType)).setType(BooleanType)
       case ExGreaterThan(l, r) => GreaterThan(rec(l), rec(r)).setType(BooleanType)
       case ExGreaterEqThan(l, r) => GreaterEquals(rec(l), rec(r)).setType(BooleanType)
