@@ -10,6 +10,11 @@ object Extensions {
   }
 
   abstract class Solver(reporter: Reporter) extends Extension(reporter) {
+    // This can be used by solvers to "see" the programs from which the
+    // formulas come. (e.g. to set up some datastructures for the defined
+    // ADTs, etc.) 
+    def setProgram(program: Program) : Unit = {}
+
     // Returns Some(true) if valid, Some(false) if invalid,
     // None if unknown.
     def solve(expression: Expr) : Option[Boolean]

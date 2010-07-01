@@ -2,6 +2,7 @@ package purescala
 
 import z3.scala._
 import Common._
+import Definitions._
 import Extensions._
 import Trees._
 import TypeTrees._
@@ -10,17 +11,60 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   val description = "Z3 Solver"
   override val shortDescription = "Z3"
 
-  def solve(vc: Expr) : Option[Boolean] = {
-    val z3cfg = new Z3Config()
-    z3cfg.setParamValue("MODEL", "true")
-    val z3 = new Z3Context(z3cfg)
+  // this is fixed
+  val z3cfg = new Z3Config()
+  z3cfg.setParamValue("MODEL", "true")
 
+  // we restart Z3 for each new program
+  var z3: Z3Context = null
+  var program: Program = null
+  private var neverInitialized = true
+
+  override def setProgram(prog: Program) : Unit = {
+    program = prog
+    if(neverInitialized) {
+      neverInitialized = false
+      z3 = new Z3Context(z3cfg)
+    } else {
+      z3.delete
+      z3 = new Z3Context(z3cfg)
+    }
+    prepareSorts
+  }
+
+  var intSort : Z3Sort  = null
+  var boolSort : Z3Sort = null
+
+  def prepareSorts : Unit = {
+    intSort  = z3.mkIntSort
+    boolSort = z3.mkBoolSort
+
+    val classDefs = program.mainObject.getDefinedClasses
+
+    // Abstract classes with no subclasses.. do we care? :)
+    //  - we can build an uninterpreted type for them.
+    // Abstract classes with subclasses:
+    //  - we can't have Abstract Classes in their children
+    //  - we create recursive data types (they may not actually be recursive,
+    //    but that's OK)
+    // Case classes by themselves:
+    //  - we create a recursive data type just for them (sort = constructor)
+    // Aditionnally, we should create ADTs for all Option types, List types
+    // etc.
+  }
+
+  def solve(vc: Expr) : Option[Boolean] = {
+    if(neverInitialized) {
+        reporter.error("Z3 Solver was not initialized with a PureScala Program.")
+        None
+    }
     val result = toZ3Formula(z3, negate(vc)) match {
       case None => None // means it could not be translated
       case Some(z3f) => {
+        z3.push
         z3.assertCnstr(z3f)
         //z3.print
-        z3.checkAndGetModel() match {
+        val actualResult = (z3.checkAndGetModel() match {
           case (Some(true),m) => {
             reporter.error("There's a bug! Here's a model for a counter-example:")
             m.print
@@ -31,19 +75,16 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
             reporter.error("Z3 couldn't run properly or does not know the answer :(")
             None
           }
-        }
+        })
+        z3.pop(1) 
+        actualResult
       }
     }
-
-    z3.delete
     result
   }
 
   private def toZ3Formula(z3: Z3Context, expr: Expr) : Option[Z3AST] = {
     class CantTranslateException extends Exception
-
-    lazy val intSort  = z3.mkIntSort()
-    lazy val boolSort = z3.mkBoolSort()
 
     // because we create identifiers the first time we see them, this is
     // convenient.

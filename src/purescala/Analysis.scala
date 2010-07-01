@@ -52,6 +52,8 @@ class Analysis(val program: Program) {
   }
 
   def checkVerificationConditions : Unit = {
+    solverExtensions.foreach(_.setProgram(program))
+
     // Analysis should check that:
     //  - all the postconditions are implied by preconds. + body
     //  - all callsites satisfy the preconditions
