@@ -1,3 +1,11 @@
+To clean and compile everything:
+
+> sbt clean package all
+
+
+
+
+
 This README file is outdated.
 
 Don't read it unless you're looking for an excuse to procrastinate.
