@@ -38,14 +38,24 @@ object Definitions {
   /** Objects work as containers for class definitions, functions (def's) and
    * val's. */
   case class ObjectDef(id: Identifier, defs : Seq[Definition], invariants: Seq[Expr]) extends Definition {
-    def getDefinedClasses : Seq[ClassTypeDef] = defs.filter(_.isInstanceOf[ClassTypeDef]).map(_.asInstanceOf[ClassTypeDef])
+    // Watch out ! Use only when object is completely built !
+    lazy val getDefinedClasses = computeDefinedClasses
+    // ...this one can be used safely at anytime.
+    def computeDefinedClasses : Seq[ClassTypeDef] = defs.filter(_.isInstanceOf[ClassTypeDef]).map(_.asInstanceOf[ClassTypeDef])
+
+    lazy val getClassHierarchyRoots = computeClassHierarchyRoots
+    def computeClassHierarchyRoots : Seq[ClassTypeDef] = defs.filter(_.isInstanceOf[ClassTypeDef]).map(_.asInstanceOf[ClassTypeDef]).filter(!_.hasParent)
   }
 
   /** Useful because case classes and classes are somewhat unified in some
    * patterns (of pattern-matching, that is) */
   sealed trait ClassTypeDef extends Definition {
+    self =>
+
     val id: Identifier
-    var parent: Option[AbstractClassDef]
+    def parent: Option[AbstractClassDef]
+    def setParent(parent: AbstractClassDef) : self.type
+    def hasParent: Boolean = parent.isDefined
     val isAbstract: Boolean
     // val fields: VarDecls
   }
@@ -60,9 +70,37 @@ object Definitions {
       if(acd == null) None else Some((acd.id, acd.parent))
     }
   }
-  class AbstractClassDef(val id: Identifier, var parent: Option[AbstractClassDef]) extends ClassTypeDef {
+  class AbstractClassDef(val id: Identifier, prnt: Option[AbstractClassDef] = None) extends ClassTypeDef {
+    private var parent_ = prnt
     var fields: VarDecls = Nil
     val isAbstract = true
+
+    private var children : List[ClassTypeDef] = Nil
+
+    private[purescala] def registerChild(child: ClassTypeDef) : Unit = {
+      children = child :: children
+    }
+
+    def knownChildren : Seq[ClassTypeDef] = {
+      children
+    }
+
+    def knownDescendents : Seq[ClassTypeDef] = {
+      knownChildren ++ (knownChildren.map(c => c match {
+        case acd: AbstractClassDef => acd.knownDescendents
+        case _ => Nil
+      }).reduceLeft(_ ++ _))
+    }
+
+    def setParent(newParent: AbstractClassDef) = {
+      if(parent_.isDefined) {
+        scala.Predef.error("Resetting parent is forbidden.")
+      }
+      newParent.registerChild(this)
+      parent_ = Some(newParent)
+      this
+    }
+    def parent = parent_
   }
 
   /** Case classes. */
@@ -71,9 +109,21 @@ object Definitions {
       if(ccd == null) None else Some((ccd.id, ccd.parent, ccd.fields))
     }
   }
-  class CaseClassDef(val id: Identifier, var parent: Option[AbstractClassDef]) extends ClassTypeDef with ExtractorTypeDef {
+
+  class CaseClassDef(val id: Identifier, prnt: Option[AbstractClassDef] = None) extends ClassTypeDef with ExtractorTypeDef {
+    private var parent_ = prnt
     var fields: VarDecls = Nil
     val isAbstract = false
+
+    def setParent(newParent: AbstractClassDef) = {
+      if(parent_.isDefined) {
+        scala.Predef.error("Resetting parent is forbidden.")
+      }
+      newParent.registerChild(this)
+      parent_ = Some(newParent)
+      this
+    }
+    def parent = parent_
   }
 
   /** "Regular" classes */

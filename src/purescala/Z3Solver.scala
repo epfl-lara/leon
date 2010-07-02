@@ -12,12 +12,12 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   override val shortDescription = "Z3"
 
   // this is fixed
-  val z3cfg = new Z3Config()
+  private val z3cfg = new Z3Config()
   z3cfg.setParamValue("MODEL", "true")
 
   // we restart Z3 for each new program
-  var z3: Z3Context = null
-  var program: Program = null
+  private var z3: Z3Context = null
+  private var program: Program = null
   private var neverInitialized = true
 
   override def setProgram(prog: Program) : Unit = {
@@ -32,14 +32,27 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     prepareSorts
   }
 
-  var intSort : Z3Sort  = null
-  var boolSort : Z3Sort = null
+  private var intSort : Z3Sort  = null
+  private var boolSort : Z3Sort = null
 
-  def prepareSorts : Unit = {
+  private def prepareSorts : Unit = {
+    // NOTE THAT abstract classes that extend abstract classes are not
+    // currently supported in the translation
     intSort  = z3.mkIntSort
     boolSort = z3.mkBoolSort
 
-    val classDefs = program.mainObject.getDefinedClasses
+    val roots = program.mainObject.getClassHierarchyRoots
+    val indexMap: Map[ClassTypeDef,Int] = Map(roots.zipWithIndex: _*)
+    println("indexMap: " + indexMap)
+    val childrenLists: Seq[List[CaseClassDef]] = roots.map(_ match {
+      case c: CaseClassDef => Nil
+      case a: AbstractClassDef => a.knownChildren.filter(_.isInstanceOf[CaseClassDef]).map(_.asInstanceOf[CaseClassDef]).toList
+    })
+    println("children lists: " + childrenLists.toList.mkString("\n"))
+
+    //val caseClassRoots = roots.filter(_.isInstanceOf[CaseClassDef]).map(_.asInstanceOf[CaseClassDef])
+    //val absClassRoots  = roots.filter(_.isInstanceOf[AbstractClassDef]).map(_.asInstanceOf[AbstractClassDef])
+
 
     // Abstract classes with no subclasses.. do we care? :)
     //  - we can build an uninterpreted type for them.

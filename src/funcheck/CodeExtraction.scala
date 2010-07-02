@@ -109,9 +109,9 @@ trait CodeExtraction extends Extractors {
 
       scalaClassSyms.foreach(p => {
           if(p._1.isAbstractClass) {
-            classesToClasses += (p._1 -> new AbstractClassDef(p._2, None))
+            classesToClasses += (p._1 -> new AbstractClassDef(p._2))
           } else if(p._1.isCase) {
-            classesToClasses += (p._1 -> new CaseClassDef(p._2, None))
+            classesToClasses += (p._1 -> new CaseClassDef(p._2))
           }
       })
 
@@ -132,7 +132,7 @@ trait CodeExtraction extends Extractors {
         }
 
         if(superAC.length == 1) {
-            p._2.parent = Some(superAC.head)
+            p._2.setParent(superAC.head)
         }
 
         if(p._2.isInstanceOf[CaseClassDef]) {
