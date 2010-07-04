@@ -34,8 +34,14 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
 
   private var intSort : Z3Sort  = null
   private var boolSort : Z3Sort = null
+  private var adtSorts : Map[ClassTypeDef, Z3Sort] = Map.empty
+  private var adtTesters : Map[CaseClassDef, Z3FuncDecl] = Map.empty
+  private var adtConstructors : Map[CaseClassDef, Z3FuncDecl] = Map.empty
+  private var adtFieldSelectors : Map[Identifier,Z3FuncDecl] = Map.empty
 
+  case class UntranslatableTypeException(msg: String) extends Exception(msg)
   private def prepareSorts : Unit = {
+    import Z3Context.{ADTSortReference,RecursiveType,RegularSort}
     // NOTE THAT abstract classes that extend abstract classes are not
     // currently supported in the translation
     intSort  = z3.mkIntSort
@@ -43,27 +49,65 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
 
     val roots = program.mainObject.getClassHierarchyRoots
     val indexMap: Map[ClassTypeDef,Int] = Map(roots.zipWithIndex: _*)
-    println("indexMap: " + indexMap)
+    //println("indexMap: " + indexMap)
+
+    def typeToSortRef(tt: TypeTree) : ADTSortReference = tt match {
+      case BooleanType => RegularSort(boolSort)
+      case Int32Type => RegularSort(intSort)
+      case AbstractClassType(d) => RecursiveType(indexMap(d))
+      case CaseClassType(d) => indexMap.get(d) match {
+        case Some(i) => RecursiveType(i)
+        case None => RecursiveType(indexMap(d.parent.get))
+      }
+      case _ => throw UntranslatableTypeException("Can't handle type " + tt)
+    }
+
     val childrenLists: Seq[List[CaseClassDef]] = roots.map(_ match {
       case c: CaseClassDef => Nil
       case a: AbstractClassDef => a.knownChildren.filter(_.isInstanceOf[CaseClassDef]).map(_.asInstanceOf[CaseClassDef]).toList
     })
-    println("children lists: " + childrenLists.toList.mkString("\n"))
+    //println("children lists: " + childrenLists.toList.mkString("\n"))
 
-    //val caseClassRoots = roots.filter(_.isInstanceOf[CaseClassDef]).map(_.asInstanceOf[CaseClassDef])
-    //val absClassRoots  = roots.filter(_.isInstanceOf[AbstractClassDef]).map(_.asInstanceOf[AbstractClassDef])
+    val rootsAndChildren = (roots zip childrenLists)
 
+    val defs = rootsAndChildren.map(p => {
+      val (root, childrenList) = p
 
-    // Abstract classes with no subclasses.. do we care? :)
-    //  - we can build an uninterpreted type for them.
-    // Abstract classes with subclasses:
-    //  - we can't have Abstract Classes in their children
-    //  - we create recursive data types (they may not actually be recursive,
-    //    but that's OK)
-    // Case classes by themselves:
-    //  - we create a recursive data type just for them (sort = constructor)
-    // Aditionnally, we should create ADTs for all Option types, List types
-    // etc.
+      root match {
+        case c: CaseClassDef => {
+          // we create a recursive type with exactly one constructor
+          (c.id.name, List(c.id.name), List(c.fields.map(f => (f.id.name, typeToSortRef(f.tpe)))))
+        }
+        case a: AbstractClassDef => {
+          (a.id.name, childrenList.map(ccd => ccd.id.name), childrenList.map(ccd => ccd.fields.map(f => (f.id.name, typeToSortRef(f.tpe)))))
+        } 
+      }
+    })
+
+    //println(defs)
+    // everything should be alright now...
+    val resultingZ3Info = z3.mkADTSorts(defs)
+
+    adtSorts = Map.empty
+    adtTesters = Map.empty
+    adtConstructors = Map.empty
+    adtFieldSelectors = Map.empty
+
+    for((z3Inf, (root, childrenList)) <-(resultingZ3Info zip rootsAndChildren)) {
+      adtSorts += (root -> z3Inf._1)
+      assert(childrenList.size == z3Inf._2.size)
+      for((child,(consFun,testFun)) <- childrenList zip (z3Inf._2 zip z3Inf._3)) {
+        adtTesters += (child -> testFun)
+        adtConstructors += (child -> consFun)
+      }
+      for((child,fieldFuns) <- childrenList zip z3Inf._4) {
+        assert(child.fields.size == fieldFuns.size)
+        for((fid,selFun) <- (child.fields.map(_.id) zip fieldFuns)) {
+          adtFieldSelectors += (fid -> selFun)
+        }
+      }
+    }
+    // ...and now everything should be in there...
   }
 
   def solve(vc: Expr) : Option[Boolean] = {
@@ -111,13 +155,21 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
       case v @ Variable(id) => z3Vars.get(id) match {
         case Some(ast) => ast
         case None => {
-          val newAST = if(v.getType == Int32Type) {
-            z3.mkConst(z3.mkStringSymbol(id.name), intSort)
-          } else if(v.getType == BooleanType) {
-            z3.mkConst(z3.mkStringSymbol(id.name), boolSort)
-          } else {
-            reporter.warning("Unsupported type in Z3 transformation: " + v.getType)
-            throw new CantTranslateException
+          val newAST = v.getType match {
+            case Int32Type => z3.mkConst(z3.mkStringSymbol(id.name), intSort)
+            case BooleanType => z3.mkConst(z3.mkStringSymbol(id.name), boolSort)
+            case CaseClassType(cd) => {
+              val ccSort = if(cd.hasParent) {
+                adtSorts(cd.parent.get)
+              } else {
+                adtSorts(cd)
+              }
+              z3.mkConst(z3.mkStringSymbol(id.name), ccSort)
+            }
+            case _ => {
+              reporter.warning("Unsupported type in Z3 transformation: " + v.getType)
+              throw new CantTranslateException
+            }
           }
           z3Vars = z3Vars + (id -> newAST)
           newAST
@@ -143,6 +195,14 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
       case LessEquals(l,r) => z3.mkLE(rec(l), rec(r)) 
       case GreaterThan(l,r) => z3.mkGT(rec(l), rec(r)) 
       case GreaterEquals(l,r) => z3.mkGE(rec(l), rec(r)) 
+      case c @ CaseClass(cd, args) => {
+        val constructor = adtConstructors(cd)
+        constructor(args.map(rec(_)): _*)
+      }
+      case c @ CaseClassSelector(cc, sel) => {
+        val selector = adtFieldSelectors(sel)
+        selector(rec(cc))
+      }
       case _ => {
         reporter.warning("Can't handle this in translation to Z3: " + ex)
         throw new CantTranslateException

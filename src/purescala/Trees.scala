@@ -299,6 +299,16 @@ object Trees {
         else
           b
       }
+      case c @ CaseClass(cd, args) => {
+        CaseClass(cd, args.map(rec(_))).setType(c.getType)
+      }
+      case c @ CaseClassSelector(cc, sel) => {
+        val rc = rec(cc)
+        if(rc != cc)
+          CaseClassSelector(rc, sel).setType(c.getType)
+        else
+          c
+      }
       case _ => ex
     }
 
@@ -334,6 +344,16 @@ object Trees {
           recons(r1,r2).setType(b.getType)
         else
           b
+      }
+      case c @ CaseClass(cd, args) => {
+        CaseClass(cd, args.map(rec(_, s))).setType(c.getType)
+      }
+      case c @ CaseClassSelector(cc, sel) => {
+        val rc = rec(cc, s)
+        if(rc != cc)
+          CaseClassSelector(rc, sel).setType(c.getType)
+        else
+          c
       }
       case _ => ex
     }

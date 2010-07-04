@@ -1,8 +1,10 @@
 object Account {
-  case class Acc(checking : Int, savings : Int)
+  sealed abstract class AccLike 
+  case class Acc(checking : Int, savings : Int) extends AccLike
 
   def toSavings(x : Int, a : Acc) : Acc = {
-    require (x > 0)
-    a match { case Acc(c0,s0) => Acc(c0 - x, s0 + x) }
-  } ensuring (_ => true)
+    require (a.checking > x)
+    Acc(a.checking - x, a.savings + x)
+    // a match { case Acc(c0,s0) => Acc(c0 - x, s0 + x) }
+  } ensuring (_.checking >= 0)
 }
