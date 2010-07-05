@@ -30,6 +30,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
       z3 = new Z3Context(z3cfg)
     }
     prepareSorts
+    prepareFunctions
 
     //println(prog.callGraph.map(p => (p._1.id.name, p._2.id.name).toString))
     //println(prog.transitiveCallGraph.map(p => (p._1.id.name, p._2.id.name).toString))
@@ -113,6 +114,30 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     // ...and now everything should be in there...
   }
 
+  private var functionDefToDef : Map[FunDef,Z3FuncDecl] = Map.empty
+
+  def prepareFunctions : Unit = {
+    for(funDef <- program.definedFunctions) if (program.isRecursive(funDef)) {
+      val sortSeq = funDef.args.map(vd => typeToSort(vd.tpe).get)
+      val newSym = z3.mkStringSymbol(funDef.id.name)
+      functionDefToDef = functionDefToDef + (funDef -> z3.mkFuncDecl(newSym, sortSeq, typeToSort(funDef.returnType).get))
+    }
+  }
+
+  // assumes prepareSorts has been called....
+  def typeToSort(tt: TypeTree) : Option[Z3Sort] = tt match {
+    case Int32Type => Some(intSort)
+    case BooleanType => Some(boolSort)
+    case CaseClassType(cd) => {
+      Some(if(cd.hasParent) {
+        adtSorts(cd.parent.get)
+      } else {
+        adtSorts(cd)
+      })
+    }
+    case _ => None
+  }
+
   def solve(vc: Expr) : Option[Boolean] = {
     if(neverInitialized) {
         reporter.error("Z3 Solver was not initialized with a PureScala Program.")
@@ -158,18 +183,9 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
       case v @ Variable(id) => z3Vars.get(id) match {
         case Some(ast) => ast
         case None => {
-          val newAST = v.getType match {
-            case Int32Type => z3.mkConst(z3.mkStringSymbol(id.name), intSort)
-            case BooleanType => z3.mkConst(z3.mkStringSymbol(id.name), boolSort)
-            case CaseClassType(cd) => {
-              val ccSort = if(cd.hasParent) {
-                adtSorts(cd.parent.get)
-              } else {
-                adtSorts(cd)
-              }
-              z3.mkConst(z3.mkStringSymbol(id.name), ccSort)
-            }
-            case _ => {
+          val newAST = typeToSort(v.getType) match {
+            case Some(s) => z3.mkConst(z3.mkStringSymbol(id.name), s)
+            case None => {
               reporter.warning("Unsupported type in Z3 transformation: " + v.getType)
               throw new CantTranslateException
             }
@@ -205,6 +221,9 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
       case c @ CaseClassSelector(cc, sel) => {
         val selector = adtFieldSelectors(sel)
         selector(rec(cc))
+      }
+      case f @ FunctionInvocation(fd, args) if functionDefToDef.isDefinedAt(fd) => {
+        z3.mkApp(functionDefToDef(fd), args.map(rec(_)): _*)
       }
       case _ => {
         reporter.warning("Can't handle this in translation to Z3: " + ex)
