@@ -30,6 +30,9 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
       z3 = new Z3Context(z3cfg)
     }
     prepareSorts
+
+    println(prog.callGraph.map(p => (p._1.id.name, p._2.id.name).toString))
+    println(prog.transitiveCallGraph.map(p => (p._1.id.name, p._2.id.name).toString))
   }
 
   private var intSort : Z3Sort  = null
@@ -47,7 +50,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     intSort  = z3.mkIntSort
     boolSort = z3.mkBoolSort
 
-    val roots = program.mainObject.getClassHierarchyRoots
+    val roots = program.classHierarchyRoots
     val indexMap: Map[ClassTypeDef,Int] = Map(roots.zipWithIndex: _*)
     //println("indexMap: " + indexMap)
 

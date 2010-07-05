@@ -14,6 +14,8 @@ object Definitions {
   case class VarDecl(id: Identifier, tpe: TypeTree) extends Typed {
     override def getType = tpe
     override def setType(tt: TypeTree) = scala.Predef.error("Can't set type of VarDecl.")
+
+    def toVariable : Variable = Variable(id).setType(tpe)
   }
 
   type VarDecls = Seq[VarDecl]
@@ -21,30 +23,95 @@ object Definitions {
   /** A wrapper for a program. For now a program is simply a single object. The
    * name is meaningless and we just use the package name as id. */
   case class Program(id: Identifier, mainObject: ObjectDef) extends Definition {
-    lazy val callGraph: Map[FunDef,Seq[FunDef]] = computeCallGraph
-
-    def computeCallGraph: Map[FunDef,Seq[FunDef]] = Map.empty
-
-    // checks whether f2 can be called from f1
-    def calls(f1: FunDef, f2: FunDef) : Boolean = {
-      false
-    }
-
-    def transitivelyCalls(f1: FunDef, f2: FunDef) : Boolean = {
-      false
-    }
+    def definedFunctions = mainObject.definedFunctions
+    def definedClasses = mainObject.definedClasses
+    def classHierarchyRoots = mainObject.classHierarchyRoots
+    def callGraph = mainObject.callGraph
+    def calls(f1: FunDef, f2: FunDef) = mainObject.calls(f1, f2)
+    def callers(f1: FunDef) = mainObject.callers(f1)
+    def callees(f1: FunDef) = mainObject.callees(f1)
+    def transitiveCallGraph = mainObject.transitiveCallGraph
+    def transitivelyCalls(f1: FunDef, f2: FunDef) = mainObject.transitivelyCalls(f1, f2)
+    def transitiveCallers(f1: FunDef) = mainObject.transitiveCallers(f1)
+    def transitiveCallees(f1: FunDef) = mainObject.transitiveCallees(f1)
+    def isRecursive(f1: FunDef) = mainObject.isRecursive(f1)
   }
 
   /** Objects work as containers for class definitions, functions (def's) and
    * val's. */
   case class ObjectDef(id: Identifier, defs : Seq[Definition], invariants: Seq[Expr]) extends Definition {
-    // Watch out ! Use only when object is completely built !
-    lazy val getDefinedClasses = computeDefinedClasses
-    // ...this one can be used safely at anytime.
-    def computeDefinedClasses : Seq[ClassTypeDef] = defs.filter(_.isInstanceOf[ClassTypeDef]).map(_.asInstanceOf[ClassTypeDef])
+    lazy val definedFunctions : Seq[FunDef] = defs.filter(_.isInstanceOf[FunDef]).map(_.asInstanceOf[FunDef])
 
-    lazy val getClassHierarchyRoots = computeClassHierarchyRoots
-    def computeClassHierarchyRoots : Seq[ClassTypeDef] = defs.filter(_.isInstanceOf[ClassTypeDef]).map(_.asInstanceOf[ClassTypeDef]).filter(!_.hasParent)
+    lazy val definedClasses : Seq[ClassTypeDef] = defs.filter(_.isInstanceOf[ClassTypeDef]).map(_.asInstanceOf[ClassTypeDef])
+
+    lazy val classHierarchyRoots : Seq[ClassTypeDef] = defs.filter(_.isInstanceOf[ClassTypeDef]).map(_.asInstanceOf[ClassTypeDef]).filter(!_.hasParent)
+
+    lazy val (callGraph, callers, callees) = {
+      var resSet: Set[(FunDef,FunDef)] =
+        new scala.collection.immutable.HashSet[(FunDef,FunDef)]()
+
+      def isFunCall(e: Expr) : Boolean = e.isInstanceOf[FunctionInvocation]
+      def applyToFunCall(f1: FunDef)(e: Expr) : Expr = e match {
+        case f @ FunctionInvocation(f2, _) => { resSet = resSet + ((f1,f2)); f }
+        case o => o
+      }
+
+      for(funDef <- definedFunctions) {
+        funDef.precondition.map(searchAndApply(isFunCall, applyToFunCall(funDef), _))
+        funDef.body.map(searchAndApply(isFunCall, applyToFunCall(funDef), _))
+        funDef.postcondition.map(searchAndApply(isFunCall, applyToFunCall(funDef), _))
+      }
+
+      var callers: Map[FunDef,Set[FunDef]] =
+        new scala.collection.immutable.HashMap[FunDef,Set[FunDef]]
+      var callees: Map[FunDef,Set[FunDef]] =
+        new scala.collection.immutable.HashMap[FunDef,Set[FunDef]]
+
+      for(funDef <- definedFunctions) {
+        val clrs = resSet.filter(_._2 == funDef).map(_._1)
+        val cles = resSet.filter(_._1 == funDef).map(_._2)
+        callers = callers + (funDef -> clrs)
+        callees = callees + (funDef -> cles)
+      }
+
+      (resSet, callers, callees)
+    }
+
+    // checks whether f1's body, pre or post contain calls to f2
+    def calls(f1: FunDef, f2: FunDef) : Boolean = callGraph((f1,f2))
+
+    lazy val (transitiveCallGraph, transitiveCallers, transitiveCallees) = {
+      var resSet : Set[(FunDef,FunDef)] = callGraph
+      var change = true
+
+      while(change) {
+        change = false
+        for(f1 <- definedFunctions; f2 <- callers(f1); f3 <- callees(f1)) {
+          if(!resSet(f2,f3)) {
+            change = true
+            resSet = resSet + ((f2,f3))
+          }
+        }
+      }
+
+      var tCallers: Map[FunDef,Set[FunDef]] =
+        new scala.collection.immutable.HashMap[FunDef,Set[FunDef]]
+      var tCallees: Map[FunDef,Set[FunDef]] =
+        new scala.collection.immutable.HashMap[FunDef,Set[FunDef]]
+
+      for(funDef <- definedFunctions) {
+        val clrs = resSet.filter(_._2 == funDef).map(_._1)
+        val cles = resSet.filter(_._1 == funDef).map(_._2)
+        tCallers = tCallers + (funDef -> clrs)
+        tCallees = tCallees + (funDef -> cles)
+      }
+
+      (resSet, tCallers, tCallees)
+    }
+
+    def transitivelyCalls(f1: FunDef, f2: FunDef) : Boolean = transitiveCallGraph((f1,f2))
+
+    def isRecursive(f: FunDef) = transitivelyCalls(f, f)
   }
 
   /** Useful because case classes and classes are somewhat unified in some
@@ -57,7 +124,6 @@ object Definitions {
     def setParent(parent: AbstractClassDef) : self.type
     def hasParent: Boolean = parent.isDefined
     val isAbstract: Boolean
-    // val fields: VarDecls
   }
 
   /** Will be used at some point as a common ground for case classes (which

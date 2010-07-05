@@ -4,7 +4,7 @@ object Common {
   import TypeTrees.Typed
 
   // the type is left blank (NoType) for Identifiers that are not variables
-  class Identifier private[Common](val name: String, val id: Int) extends Typed {
+  class Identifier private[Common](val name: String, val id: Int, alwaysShowUniqueID: Boolean = false) extends Typed {
     override def equals(other: Any): Boolean = {
       if(other == null || !other.isInstanceOf[Identifier])
         false
@@ -18,6 +18,8 @@ object Common {
       if(purescala.Settings.showIDs) {
         // angle brackets: name + "\u3008" + id + "\u3009"
         name + "[" + id + "]"
+      } else if(alwaysShowUniqueID) {
+        name + id
       } else {
         name
       }
@@ -34,6 +36,6 @@ object Common {
   }
 
   object FreshIdentifier {
-    def apply(name: String) : Identifier = new Identifier(name, UniqueCounter.next)
+    def apply(name: String, alwaysShowUniqueID: Boolean = false) : Identifier = new Identifier(name, UniqueCounter.next, alwaysShowUniqueID)
   }
 }

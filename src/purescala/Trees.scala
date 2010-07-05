@@ -262,20 +262,23 @@ object Trees {
   // Warning ! This may loop forever if the substitutions are not
   // well-formed!
   def replace(substs: Map[Expr,Expr], expr: Expr) : Expr = {
-    replace(substs.isDefinedAt(_), substs(_), expr)
+    searchAndApply(substs.isDefinedAt(_), substs(_), expr)
   }
 
   // the replacement map should be understood as follows:
   //   - on each subexpression, checkFun checks whether it should be replaced
   //   - repFun is applied is checkFun succeeded
-  def replace(checkFun: Expr=>Boolean, repFun: Expr=>Expr, expr: Expr) : Expr = {
-    def rec(ex: Expr) : Expr = ex match {
-      case _ if (checkFun(ex)) => {
+  def searchAndApply(checkFun: Expr=>Boolean, repFun: Expr=>Expr, expr: Expr) : Expr = {
+    def rec(ex: Expr, skip: Expr = null) : Expr = ex match {
+      case _ if (ex != skip && checkFun(ex)) => {
         val newExpr = repFun(ex)
         if(newExpr.getType == NoType) {
           Settings.reporter.warning("REPLACING IN EXPRESSION WITH AN UNTYPED TREE ! " + ex + " --to--> " + newExpr)
         }
-        rec(newExpr)
+        if(ex == newExpr)
+          rec(ex, ex)
+        else
+          rec(newExpr)
       }
       case l @ Let(i,e,b) => Let(i, rec(e), rec(b)).setType(l.getType)
       case f @ FunctionInvocation(fd, args) => FunctionInvocation(fd, args.map(rec(_))).setType(f.getType)

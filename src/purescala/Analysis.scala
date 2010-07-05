@@ -72,8 +72,8 @@ class Analysis(val program: Program) {
           reporter.info(vc)
           // reporter.info("Negated:")
           // reporter.info(negate(vc))
-          // reporter.info("Negated, expanded:")
-          // reporter.info(expandLets(negate(vc)))
+          reporter.info("Negated, expanded:")
+          reporter.info(expandLets(negate(vc)))
 
           // try all solvers until one returns a meaningful answer
           solverExtensions.find(se => {
@@ -105,24 +105,62 @@ class Analysis(val program: Program) {
     if(post.isEmpty) {
       BooleanLiteral(true)
     } else {
-      if(prec.isEmpty)
-        replace(Map(ResultVariable() -> body), post.get)
-      else
-        Implies(prec.get, replace(Map(ResultVariable() -> body), post.get))
+      val resFresh = FreshIdentifier("result", true).setType(body.getType)
+      val bodyAndPost = Let(resFresh, body, replace(Map(ResultVariable() -> Variable(resFresh)), post.get))
+      val beforeInlining = if(prec.isEmpty) {
+        bodyAndPost
+      } else {
+        Implies(prec.get, bodyAndPost)
+      }
+
+      val (newExpr, sideExprs) = inlineFunctionsAndContracts(beforeInlining)
+
+      if(sideExprs.isEmpty) {
+        newExpr
+      } else {
+        Implies(And(sideExprs), newExpr)
+      }
     }
   }
 
-  def rewritePatternMatching(expr: Expr) : Expr = {
-    def isPMExpr(e: Expr) : Boolean = e match {
-      case MatchExpr(_, _) => true
-      case _ => false
+  def inlineFunctionsAndContracts(expr: Expr) : (Expr, Seq[Expr]) = {
+    var extras : List[Expr] = Nil
+
+    val isFunCall: Function[Expr,Boolean] = _.isInstanceOf[FunctionInvocation]
+    def applyToCall(e: Expr) : Expr = e match {
+      case f @ FunctionInvocation(fd, args) => {
+        val fArgsAsVars: List[Variable] = fd.args.map(_.toVariable).toList
+        val fParamsAsLetVars: List[Identifier] = fd.args.map(a => FreshIdentifier("arg", true).setType(a.tpe)).toList
+  
+        def mkBigLet(ex: Expr) : Expr = (fParamsAsLetVars zip args).foldRight(ex)((iap, e) => {
+          Let(iap._1, iap._2, e)
+        })
+
+        val substMap = Map[Expr,Expr]((fArgsAsVars zip fParamsAsLetVars.map(Variable(_))) : _*)
+        if(fd.hasPostcondition) {
+          val newVar = Variable(FreshIdentifier("call", true)).setType(fd.returnType)
+          extras = mkBigLet(replace(substMap + (ResultVariable() -> newVar), fd.postcondition.get)) :: extras
+          newVar
+        } else if(fd.hasImplementation && !program.isRecursive(fd)) { // means we can inline at least one level...
+          mkBigLet(replace(substMap, fd.body.get))
+        } else { // we can't do much for calls to recursive functions or to functions with no bodies
+          f 
+        }
+      }
+      case o => o
     }
+
+    (searchAndApply(isFunCall, applyToCall, expr), extras.reverse)
+  }
+
+  def rewritePatternMatching(expr: Expr) : Expr = {
+    def isPMExpr(e: Expr) : Boolean = e.isInstanceOf[MatchExpr]
 
     def rewritePM(e: Expr) : Expr = e match {
       case m @ MatchExpr(_, _) => m
       case _ => e
     }
 
-    replace(isPMExpr, rewritePM, expr)
+    searchAndApply(isPMExpr, rewritePM, expr)
   }
 }
