@@ -31,8 +31,8 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     }
     prepareSorts
 
-    println(prog.callGraph.map(p => (p._1.id.name, p._2.id.name).toString))
-    println(prog.transitiveCallGraph.map(p => (p._1.id.name, p._2.id.name).toString))
+    //println(prog.callGraph.map(p => (p._1.id.name, p._2.id.name).toString))
+    //println(prog.transitiveCallGraph.map(p => (p._1.id.name, p._2.id.name).toString))
   }
 
   private var intSort : Z3Sort  = null
