@@ -8,7 +8,6 @@ import purescala.Common._
 import purescala.Definitions._
 
 object Unifier {
-  type MGU = Either[Map[Variable, Expr], String]
   case class UnifierException(str: String) extends Exception(str)
      
   private def makeConstr(arg1: Seq[Expr], arg2: Seq[Expr]): Seq[Equals] = {
@@ -50,8 +49,14 @@ object Unifier {
 
   def main(args: Array[String]) = {
     val CC1 = new CaseClassDef(FreshIdentifier("Node"))
-    val eq1 = Equals(CaseClass(CC1, List(Variable(FreshIdentifier("a")))), CaseClass(CC1, List(CaseClass(CC1, List(Variable(FreshIdentifier("b")))))))
-    val form = unify( And( List(eq1) ) )
+    val a = Variable(FreshIdentifier("a"))
+    val b = Variable(FreshIdentifier("b"))
+    val c = Variable(FreshIdentifier("c"))
+    val CC1_inst = CaseClass(CC1, List(a))
+
+    val eq1 = Equals(CC1_inst, b)
+    val eq2 = Equals(CaseClass(CC1, List(c)), b)
+    val form = unify( And( List(eq1, eq2) ) )
     println(form)
   }
 }
