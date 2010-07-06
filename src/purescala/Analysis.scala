@@ -160,6 +160,15 @@ class Analysis(val program: Program) {
   }
 
   def rewritePatternMatching(expr: Expr) : (Expr, Seq[Expr]) = {
+    var nodeCount: Int = 0
+    def newNode : Node = {
+      val ret = Node(nodeCount)
+      nodeCount = nodeCount + 1
+      ret
+    }
+    sealed abstract class PatternGraph
+    case class Node(id: Int) extends PatternGraph
+
     var extras : List[Expr] = Nil
 
     def isPMExpr(e: Expr) : Boolean = e.isInstanceOf[MatchExpr]

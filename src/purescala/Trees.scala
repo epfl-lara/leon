@@ -280,8 +280,30 @@ object Trees {
         else
           rec(newExpr)
       }
-      case l @ Let(i,e,b) => Let(i, rec(e), rec(b)).setType(l.getType)
-      case f @ FunctionInvocation(fd, args) => FunctionInvocation(fd, args.map(rec(_))).setType(f.getType)
+      case l @ Let(i,e,b) => {
+        val re = rec(e)
+        val rb = rec(b)
+        if(re != e || rb != b)
+          Let(i, re, rb).setType(l.getType)
+        else
+          l
+      }
+      case f @ FunctionInvocation(fd, args) => {
+        var change = false
+        val rargs = args.map(a => {
+          val ra = rec(a)
+          if(ra != a) {
+            change = true  
+            ra
+          } else {
+            a
+          }            
+        })
+        if(change)
+          FunctionInvocation(fd, rargs).setType(f.getType)
+        else
+          f
+      }
       case i @ IfExpr(t1,t2,t3) => IfExpr(rec(t1),rec(t2),rec(t3)).setType(i.getType)
       case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut), cses.map(inCase(_))).setType(m.getType)
       case And(exs) => And(exs.map(rec(_)))
