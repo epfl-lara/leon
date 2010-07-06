@@ -66,7 +66,9 @@ class Analysis(val program: Program) {
       val funDef = df.asInstanceOf[FunDef]
 
       if(funDef.body.isDefined) {
-      val vc = postconditionVC(funDef)
+        // val vc = postconditionVC(funDef)
+        // slightly more costly:
+        val vc = simplifyLets(postconditionVC(funDef))
         if(vc != BooleanLiteral(true)) {
           reporter.info("Verification condition (post) for " + funDef.id + ":")
           reporter.info(vc)
@@ -157,14 +159,19 @@ class Analysis(val program: Program) {
     (searchAndApply(isFunCall, applyToCall, expr), extras.reverse)
   }
 
-  def rewritePatternMatching(expr: Expr) : Expr = {
+  def rewritePatternMatching(expr: Expr) : (Expr, Seq[Expr]) = {
+    var extras : List[Expr] = Nil
+
     def isPMExpr(e: Expr) : Boolean = e.isInstanceOf[MatchExpr]
 
     def rewritePM(e: Expr) : Expr = e match {
-      case m @ MatchExpr(_, _) => m
-      case _ => e
+      case m @ MatchExpr(_, _) => {
+
+        m
+      }
+      case o => o
     }
 
-    searchAndApply(isPMExpr, rewritePM, expr)
+    (searchAndApply(isPMExpr, rewritePM, expr), extras.reverse)
   }
 }

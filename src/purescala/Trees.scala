@@ -323,6 +323,33 @@ object Trees {
     rec(expr)
   }
 
+  /* Simplifies let expressions:
+   *  - removes lets when expression never occurs
+   *  - simplifies when expressions occurs exactly once
+   * Note that the code is simple but far from optimal (many traversals...)
+   */
+  def simplifyLets(expr: Expr) : Expr = {
+    val isLet = ((t: Expr) => t.isInstanceOf[Let])
+    def simplerLet(t: Expr) : Expr = t match {
+      case letExpr @ Let(i,e,b) => {
+        var occurences = 0
+        def isOcc(tr: Expr) = (occurences < 2 && tr.isInstanceOf[Variable] && tr.asInstanceOf[Variable].id == i)
+        def incCount(tr: Expr) = { occurences = occurences + 1; tr } 
+        searchAndApply(isOcc,incCount,b)
+        if(occurences == 0) {
+          b
+        } else if(occurences == 1) {
+          expandLets(letExpr)
+        } else {
+          t
+        }
+      }
+      case o => o
+    }
+    searchAndApply(isLet,simplerLet,expr)
+  }
+
+  /* Fully expands all let expressions. */
   def expandLets(expr: Expr) : Expr = {
     def rec(ex: Expr, s: Map[Identifier,Expr]) : Expr = ex match {
       case v @ Variable(id) if s.isDefinedAt(id) => rec(s(id), s)
