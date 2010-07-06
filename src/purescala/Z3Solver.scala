@@ -122,7 +122,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   private var functionDefToDef : Map[FunDef,Z3FuncDecl] = Map.empty
 
   def prepareFunctions : Unit = {
-    for(funDef <- program.definedFunctions) if (program.isRecursive(funDef)) {
+    for(funDef <- program.definedFunctions) /* if (program.isRecursive(funDef)) */ {
       val sortSeq = funDef.args.map(vd => typeToSort(vd.tpe).get)
       val newSym = z3.mkStringSymbol(funDef.id.uniqueName)
       functionDefToDef = functionDefToDef + (funDef -> z3.mkFuncDecl(newSym, sortSeq, typeToSort(funDef.returnType).get))
@@ -155,7 +155,10 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     }
   }
 
+  private var abstractedFormula = false
   def solve(vc: Expr) : Option[Boolean] = {
+    abstractedFormula = false
+
     if(neverInitialized) {
         reporter.error("Z3 Solver was not initialized with a PureScala Program.")
         None
@@ -168,9 +171,15 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
         //z3.print
         val actualResult = (z3.checkAndGetModel() match {
           case (Some(true),m) => {
-            reporter.error("There's a bug! Here's a model for a counter-example:")
-            m.print
-            Some(false)
+            if(!abstractedFormula) {
+              reporter.error("There's a bug! Here's a model for a counter-example:")
+              m.print
+              Some(false)
+            } else {
+              reporter.info("Could or could not be a bug (formula was relaxed):")
+              m.print
+              None
+            }
           }
           case (Some(false),_) => Some(true)
           case (None,_) => {
@@ -242,6 +251,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
         selector(rec(cc))
       }
       case f @ FunctionInvocation(fd, args) if functionDefToDef.isDefinedAt(fd) => {
+        abstractedFormula = true
         z3.mkApp(functionDefToDef(fd), args.map(rec(_)): _*)
       }
       case e @ EmptySet(_) => z3.mkEmptySet(typeToSort(e.getType.asInstanceOf[SetType].base).get)

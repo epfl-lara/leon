@@ -131,15 +131,19 @@ class Analysis(val program: Program) {
       case f @ FunctionInvocation(fd, args) => {
         val fArgsAsVars: List[Variable] = fd.args.map(_.toVariable).toList
         val fParamsAsLetVars: List[Identifier] = fd.args.map(a => FreshIdentifier("arg", true).setType(a.tpe)).toList
+        val fParamsAsLetVarVars = fParamsAsLetVars.map(Variable(_))
   
         def mkBigLet(ex: Expr) : Expr = (fParamsAsLetVars zip args).foldRight(ex)((iap, e) => {
           Let(iap._1, iap._2, e)
         })
 
-        val substMap = Map[Expr,Expr]((fArgsAsVars zip fParamsAsLetVars.map(Variable(_))) : _*)
+        val substMap = Map[Expr,Expr]((fArgsAsVars zip fParamsAsLetVarVars) : _*)
         if(fd.hasPostcondition) {
           val newVar = Variable(FreshIdentifier("call", true)).setType(fd.returnType)
-          extras = mkBigLet(replace(substMap + (ResultVariable() -> newVar), fd.postcondition.get)) :: extras
+          extras = mkBigLet(And(
+            replace(substMap + (ResultVariable() -> newVar), fd.postcondition.get),
+            Equals(newVar, FunctionInvocation(fd, fParamsAsLetVarVars).setType(fd.returnType))
+          )) :: extras
           newVar
         } else if(fd.hasImplementation && !program.isRecursive(fd)) { // means we can inline at least one level...
           mkBigLet(replace(substMap, fd.body.get))
