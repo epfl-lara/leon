@@ -7,6 +7,10 @@ object SetOperations {
   
   /* Sets of type Set[Int] */
 
+  def wrongAdd(a : Set[Int], b: Int) : Set[Int] = {
+    a ++ Set(b)
+  } ensuring (_ == a)
+
   // Pure BAPA verification condition
   def vennRegions(a: Set[Int], b: Set[Int], c: Set[Int]) = {
     a ++ b ++ c

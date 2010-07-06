@@ -5,8 +5,6 @@ object BinarySearchTree {
     case class Node(left: Tree, value: Int, right: Tree) extends Tree
     case class Leaf() extends Tree
 
-    case class IntWrapper(value: Int)
-
     def emptySet() : Tree = Leaf()
 
     def insert(tree: Tree, value: Int) : Node = (tree match {
@@ -23,9 +21,9 @@ object BinarySearchTree {
         case Node(l, v, r) if v > value => contains(l, value)
     }
 
-    def contents(tree: Tree) : Set[Int] = (tree match {
+    def contents(tree: Tree) : Set[Int] = tree match {
         case Leaf() => Set.empty[Int]
         case Node(l, v, r) => contents(l) ++ Set(v) ++ contents(r)
-    }) ensuring(res => res == Set.empty[Int] || true) //res.min <= res.max)
+    }
 }
 

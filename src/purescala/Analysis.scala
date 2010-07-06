@@ -80,8 +80,8 @@ class Analysis(val program: Program) {
             reporter.info("Trying with solver: " + se.shortDescription)
             se.solve(vc) match {
               case None => false
-              case Some(true) => reporter.info("VALID"); true
-              case Some(false) => reporter.error("INVALID"); true
+              case Some(true) => reporter.info("_,.-~*' VALID '*~-.,_"); true
+              case Some(false) => reporter.error("_,.-~*' INVALID '*~-.,_"); true
             }
           }) match {
             case None => reporter.warning("No solver could prove or disprove the verification condition.")

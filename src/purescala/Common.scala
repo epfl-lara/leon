@@ -24,6 +24,8 @@ object Common {
         name
       }
     }
+
+    def uniqueName : String = name + id
   }
 
   private object UniqueCounter {

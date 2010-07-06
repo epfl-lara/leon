@@ -14,6 +14,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   // this is fixed
   private val z3cfg = new Z3Config()
   z3cfg.setParamValue("MODEL", "true")
+  Z3Global.toggleWarningMessages(true)
 
   // we restart Z3 for each new program
   private var z3: Z3Context = null
@@ -25,9 +26,11 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     if(neverInitialized) {
       neverInitialized = false
       z3 = new Z3Context(z3cfg)
+      //z3.traceToStdout()
     } else {
       z3.delete
       z3 = new Z3Context(z3cfg)
+      //z3.traceToStdout()
     }
     prepareSorts
     prepareFunctions
@@ -38,6 +41,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
 
   private var intSort : Z3Sort  = null
   private var boolSort : Z3Sort = null
+  private var setSorts : Map[TypeTree,Z3Sort] = Map.empty
   private var adtSorts : Map[ClassTypeDef, Z3Sort] = Map.empty
   private var adtTesters : Map[CaseClassDef, Z3FuncDecl] = Map.empty
   private var adtConstructors : Map[CaseClassDef, Z3FuncDecl] = Map.empty
@@ -50,6 +54,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     // currently supported in the translation
     intSort  = z3.mkIntSort
     boolSort = z3.mkBoolSort
+    setSorts = Map.empty
 
     val roots = program.classHierarchyRoots
     val indexMap: Map[ClassTypeDef,Int] = Map(roots.zipWithIndex: _*)
@@ -67,7 +72,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     }
 
     val childrenLists: Seq[List[CaseClassDef]] = roots.map(_ match {
-      case c: CaseClassDef => Nil
+      case c: CaseClassDef => List(c)
       case a: AbstractClassDef => a.knownChildren.filter(_.isInstanceOf[CaseClassDef]).map(_.asInstanceOf[CaseClassDef]).toList
     })
     //println("children lists: " + childrenLists.toList.mkString("\n"))
@@ -119,7 +124,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   def prepareFunctions : Unit = {
     for(funDef <- program.definedFunctions) if (program.isRecursive(funDef)) {
       val sortSeq = funDef.args.map(vd => typeToSort(vd.tpe).get)
-      val newSym = z3.mkStringSymbol(funDef.id.name)
+      val newSym = z3.mkStringSymbol(funDef.id.uniqueName)
       functionDefToDef = functionDefToDef + (funDef -> z3.mkFuncDecl(newSym, sortSeq, typeToSort(funDef.returnType).get))
     }
   }
@@ -128,6 +133,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   def typeToSort(tt: TypeTree) : Option[Z3Sort] = tt match {
     case Int32Type => Some(intSort)
     case BooleanType => Some(boolSort)
+    case AbstractClassType(cd) => Some(adtSorts(cd))
     case CaseClassType(cd) => {
       Some(if(cd.hasParent) {
         adtSorts(cd.parent.get)
@@ -135,7 +141,18 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
         adtSorts(cd)
       })
     }
-    case _ => None
+    case SetType(base) => setSorts.get(base) match {
+      case s @ Some(_) => s
+      case None => typeToSort(base).map(s => {
+        val newSetSort = z3.mkSetSort(s)
+        setSorts = setSorts + (base -> newSetSort)
+        newSetSort
+      })
+    }
+    case _ => {
+      reporter.warning("No sort for type " + tt) 
+      None
+    }
   }
 
   def solve(vc: Expr) : Option[Boolean] = {
@@ -184,7 +201,9 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
         case Some(ast) => ast
         case None => {
           val newAST = typeToSort(v.getType) match {
-            case Some(s) => z3.mkConst(z3.mkStringSymbol(id.name), s)
+            case Some(s) => {
+              z3.mkConst(z3.mkStringSymbol(id.uniqueName), s)
+            }
             case None => {
               reporter.warning("Unsupported type in Z3 transformation: " + v.getType)
               throw new CantTranslateException
@@ -225,6 +244,13 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
       case f @ FunctionInvocation(fd, args) if functionDefToDef.isDefinedAt(fd) => {
         z3.mkApp(functionDefToDef(fd), args.map(rec(_)): _*)
       }
+      case e @ EmptySet(_) => z3.mkEmptySet(typeToSort(e.getType.asInstanceOf[SetType].base).get)
+      case SetEquals(s1,s2) => z3.mkEq(rec(s1), rec(s2))
+      case SubsetOf(s1,s2) => z3.mkSetSubset(rec(s1), rec(s2))
+      case SetIntersection(s1,s2) => z3.mkSetIntersect(rec(s1), rec(s2))
+      case SetUnion(s1,s2) => z3.mkSetUnion(rec(s1), rec(s2))
+      case SetDifference(s1,s2) => z3.mkSetDifference(rec(s1), rec(s2))
+      case f @ FiniteSet(elems) => elems.foldLeft(z3.mkEmptySet(typeToSort(f.getType.asInstanceOf[SetType].base).get))((ast,el) => z3.mkSetAdd(ast,rec(el)))
       case _ => {
         reporter.warning("Can't handle this in translation to Z3: " + ex)
         throw new CantTranslateException

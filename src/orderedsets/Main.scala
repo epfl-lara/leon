@@ -9,6 +9,7 @@ class Main(reporter: Reporter) extends Solver(reporter) {
   import purescala.Trees.Expr
   import AST.Formula
   val description = "BAPA with ordering"
+  override val shortDescription = "BAPA<"
 
   // checks for V-A-L-I-D-I-T-Y !
   // Some(true) means formula is valid (negation is unsat)
@@ -17,7 +18,8 @@ class Main(reporter: Reporter) extends Solver(reporter) {
   //
   // If the formula was found to be not valid,
   // a counter-example is displayed (i.e. the model for negated formula)
-  def solve(expr: Expr): Option[Boolean] = {
+  def solve(exprWithLets: Expr): Option[Boolean] = {
+    val expr = purescala.Trees.expandLets(exprWithLets)
     reporter.info("Sets: " + ExprToASTConverter.getSetTypes(expr))
     try {
       // Negate formula
