@@ -20,9 +20,13 @@ object BinarySearchTree {
 
     def contains(tree: Tree, value: Int) : Boolean = tree match {
         case Leaf() => false
-        case Node(_, v, _) if v == value => true 
-        case Node(l, v, r) if v < value => contains(r, value)
-        case Node(l, v, r) if v > value => contains(l, value)
+        case n @ Node(l, v, r) => if(v < value) {
+          contains(r, value)
+        } else if(v > value) {
+          contains(l, value)
+        } else {
+          true
+        }
     }
 
     def contents(tree: Tree) : Set[Int] = tree match {
