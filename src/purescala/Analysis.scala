@@ -62,15 +62,13 @@ class Analysis(val program: Program) {
     //  - catamorphisms are catamorphisms (poss. with surjectivity conds.)
     //  - injective functions are injective
     //  - all global invariants are satisfied 
-    program.mainObject.defs.filter(_.isInstanceOf[FunDef]).foreach(df => {
-      val funDef = df.asInstanceOf[FunDef]
-
+    for(funDef <- program.definedFunctions) if (Settings.functionsToAnalyse.isEmpty || Settings.functionsToAnalyse.contains(funDef.id.name)) {
       if(funDef.body.isDefined) {
         // val vc = postconditionVC(funDef)
         // slightly more costly:
         val vc = simplifyLets(postconditionVC(funDef))
         if(vc != BooleanLiteral(true)) {
-          reporter.info("Verification condition (post) for " + funDef.id + ":")
+          reporter.info("Verification condition (post) for ==== " + funDef.id + " ====")
           reporter.info(vc)
           // reporter.info("Negated:")
           // reporter.info(negate(vc))
@@ -82,8 +80,8 @@ class Analysis(val program: Program) {
             reporter.info("Trying with solver: " + se.shortDescription)
             se.solve(vc) match {
               case None => false
-              case Some(true) => reporter.info("_,.-~*' VALID '*~-.,_"); true
-              case Some(false) => reporter.error("_,.-~*' INVALID '*~-.,_"); true
+              case Some(true) => reporter.info("==== VALID ===="); true
+              case Some(false) => reporter.error("==== INVALID ===="); true
             }
           }) match {
             case None => reporter.warning("No solver could prove or disprove the verification condition.")
@@ -95,7 +93,7 @@ class Analysis(val program: Program) {
           reporter.warning(funDef, "Could not verify postcondition: function implementation is unknown.")
         }
       }
-    }) 
+    } 
   }
 
   def postconditionVC(functionDefinition: FunDef) : Expr = {
@@ -159,26 +157,46 @@ class Analysis(val program: Program) {
     (searchAndApply(isFunCall, applyToCall, expr), extras.reverse)
   }
 
-  def rewritePatternMatching(expr: Expr) : (Expr, Seq[Expr]) = {
-    var nodeCount: Int = 0
-    def newNode : Node = {
-      val ret = Node(nodeCount)
-      nodeCount = nodeCount + 1
-      ret
-    }
-    sealed abstract class PatternGraph
-    case class Node(id: Int) extends PatternGraph
-
+  // Rewrites pattern matching expressions where the cases simply correspond to
+  // the list of constructors
+  def rewriteSimplePatternMatching(expr: Expr) : (Expr, Seq[Expr]) = {
     var extras : List[Expr] = Nil
 
     def isPMExpr(e: Expr) : Boolean = e.isInstanceOf[MatchExpr]
 
-    def rewritePM(e: Expr) : Expr = e match {
-      case m @ MatchExpr(_, _) => {
+    def rewritePM(e: Expr) : Expr = {
+      val MatchExpr(scrutinee, cases) = e.asInstanceOf[MatchExpr]
+      val sType = scrutinee.getType
 
-        m
+      if(sType.isInstanceOf[AbstractClassType]) {
+        val cCD = sType.asInstanceOf[AbstractClassType].classDef
+        if(cases.size == cCD.knownChildren.size && cases.forall(!_.hasGuard)) {
+          var seen = Set.empty[ClassTypeDef]
+          
+          cases.foreach(cse => cse match {
+            case SimpleCase(CaseClassPattern(_, ccd, subPats), _) if subPats.forall(_.isInstanceOf[WildcardPattern]) => seen = seen + ccd
+            case _ => ;
+          })
+
+          if(seen.size == cases.size) {
+            val newVar = Variable(FreshIdentifier("pm", true)).setType(e.getType)
+
+
+            newVar
+          } else {
+            e
+          }
+        } else {
+          e
+        }
+      } else {
+        val cCD = sType.asInstanceOf[CaseClassType].classDef
+        if(cases.size == 1 && !cases(0).hasGuard) {
+          e
+        } else {
+          e
+        }
       }
-      case o => o
     }
 
     (searchAndApply(isPMExpr, rewritePM, expr), extras.reverse)

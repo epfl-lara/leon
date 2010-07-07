@@ -4,7 +4,8 @@ package purescala
 object Settings {
   var showIDs: Boolean = false
   var quietExtensions: Boolean = false
-  var extensionNames: String = ""
+  var functionsToAnalyse: Set[String] = Set.empty
+  var extensionNames: Seq[String] = Nil
   var reporter: Reporter = new DefaultReporter
   var quietReporter: Reporter = new QuietReporter
   var runDefaultExtensions: Boolean = true

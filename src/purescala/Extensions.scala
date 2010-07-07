@@ -29,7 +29,7 @@ object Extensions {
   // The rest of the code is for dynamically loading extensions
 
   def loadAll(reporter: Reporter) : Seq[Extension] = {
-    val allNames: Seq[String] = Settings.extensionNames.split(':').map(_.trim).filter(!_.isEmpty)
+    val allNames: Seq[String] = Settings.extensionNames
     if(!allNames.isEmpty) {
       val classLoader = Extensions.getClass.getClassLoader
 

@@ -28,6 +28,7 @@ object Trees {
     val pattern: Pattern
     val rhs: Expr
     val theGuard: Option[Expr]
+    def hasGuard = theGuard.isDefined
   }
 
   case class SimpleCase(pattern: Pattern, rhs: Expr) extends MatchCase {
