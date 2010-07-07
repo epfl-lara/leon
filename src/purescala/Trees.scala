@@ -122,8 +122,12 @@ object Trees {
   }
   case class StringLiteral(value: String) extends Literal[String]
 
-  case class CaseClass(classDef: CaseClassDef, args: Seq[Expr]) extends Expr
-  case class CaseClassSelector(caseClass: Expr, selector: Identifier) extends Expr
+  case class CaseClass(classDef: CaseClassDef, args: Seq[Expr]) extends Expr with FixedType {
+    val fixedType = CaseClassType(classDef)
+  }
+  case class CaseClassSelector(caseClass: Expr, selector: Identifier) extends Expr with FixedType {
+    val fixedType = caseClass.getType.asInstanceOf[CaseClassType].classDef.fields.find(_.id == selector).get.getType
+  }
 
   /* Arithmetic */
   case class Plus(lhs: Expr, rhs: Expr) extends Expr with FixedType {
@@ -349,11 +353,13 @@ object Trees {
   /* Simplifies let expressions:
    *  - removes lets when expression never occurs
    *  - simplifies when expressions occurs exactly once
+   *  - expands when expression is just a variable.
    * Note that the code is simple but far from optimal (many traversals...)
    */
   def simplifyLets(expr: Expr) : Expr = {
     val isLet = ((t: Expr) => t.isInstanceOf[Let])
     def simplerLet(t: Expr) : Expr = t match {
+      case letExpr @ Let(_, Variable(_), _) => expandLets(letExpr)
       case letExpr @ Let(i,e,b) => {
         var occurences = 0
         def isOcc(tr: Expr) = (occurences < 2 && tr.isInstanceOf[Variable] && tr.asInstanceOf[Variable].id == i)

@@ -107,18 +107,20 @@ class Analysis(val program: Program) {
     } else {
       val resFresh = FreshIdentifier("result", true).setType(body.getType)
       val bodyAndPost = Let(resFresh, body, replace(Map(ResultVariable() -> Variable(resFresh)), post.get))
-      val beforeInlining = if(prec.isEmpty) {
+      val newExpr = if(prec.isEmpty) {
         bodyAndPost
       } else {
         Implies(prec.get, bodyAndPost)
       }
 
-      val (newExpr, sideExprs) = inlineFunctionsAndContracts(beforeInlining)
+      val (newExpr1, sideExprs1) = rewriteSimplePatternMatching(newExpr)
 
-      if(sideExprs.isEmpty) {
-        newExpr
+      val (newExpr2, sideExprs2) = inlineFunctionsAndContracts(newExpr1)
+
+      if(sideExprs1.isEmpty && sideExprs2.isEmpty) {
+        newExpr2
       } else {
-        Implies(And(sideExprs), newExpr)
+        Implies(And(sideExprs1 ++ sideExprs2), newExpr2)
       }
     }
   }
@@ -173,15 +175,30 @@ class Analysis(val program: Program) {
         if(cases.size == cCD.knownChildren.size && cases.forall(!_.hasGuard)) {
           var seen = Set.empty[ClassTypeDef]
           
-          cases.foreach(cse => cse match {
-            case SimpleCase(CaseClassPattern(_, ccd, subPats), _) if subPats.forall(_.isInstanceOf[WildcardPattern]) => seen = seen + ccd
-            case _ => ;
-          })
+          val newVar = Variable(FreshIdentifier("pm", true)).setType(e.getType)
+          val scrutAsLetID = FreshIdentifier("scrut", true).setType(scrutinee.getType)
+          
+          val lle : List[(Variable,List[Expr])] = cases.map(cse => cse match {
+            case SimpleCase(CaseClassPattern(binder, ccd, subPats), rhs) if subPats.forall(_.isInstanceOf[WildcardPattern]) => {
+              seen = seen + ccd
+              val newPVar = if(binder.isDefined) {
+                Variable(binder.get)
+              } else {
+                Variable(FreshIdentifier("cse", true)).setType(CaseClassType(ccd))
+              }
+              val argVars = (ccd.fields zip subPats.map(_.asInstanceOf[WildcardPattern])).map(p => if(p._2.binder.isDefined) {
+                Variable(p._2.binder.get)
+              } else {
+                Variable(FreshIdentifier("pat", true)).setType(p._1.tpe)
+              })
+              (newPVar, List(Equals(newPVar, CaseClass(ccd, argVars)), Implies(Equals(Variable(scrutAsLetID), newPVar), Equals(newVar, rhs))))
+            }
+            case _ => (null,Nil)
+          }).toList
 
           if(seen.size == cases.size) {
-            val newVar = Variable(FreshIdentifier("pm", true)).setType(e.getType)
-
-
+            val (newPVars, newExtras) = lle.unzip
+            extras = Let(scrutAsLetID, scrutinee, And(Or(newPVars.map(Equals(Variable(scrutAsLetID), _))), And(newExtras.flatten))) :: extras
             newVar
           } else {
             e

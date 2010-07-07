@@ -9,10 +9,14 @@ object BinarySearchTree {
 
     def insert(tree: Tree, value: Int) : Node = (tree match {
         case Leaf() => Node(Leaf(), value, Leaf())
-        case n @ Node(_, v, _) if v == value => n
-        case Node(l, v, r) if v < value => Node(l, v, insert(r, value))
-        case Node(l, v, r) if v > value => Node(insert(l, value), v, r)
-    }) ensuring(result => contents(result) != Set.empty[Int])
+        case n @ Node(l, v, r) => if(v < value) {
+          Node(l, v, insert(r, value))
+        } else if(v > value) {
+          Node(insert(l, value), v, r)
+        } else {
+          n
+        }
+    }) ensuring(_ != Leaf()) //ensuring(result => contents(result) != Set.empty[Int])
 
     def contains(tree: Tree, value: Int) : Boolean = tree match {
         case Leaf() => false
