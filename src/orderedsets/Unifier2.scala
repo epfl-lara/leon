@@ -1,6 +1,10 @@
 package orderedsets
 
+import scala.{Symbol => ScalaSymbol}
+
 object Example extends Unifier2[String, String] {
+  
+  // Tests and Examples
   val examplePage262 = List(
     'g('x2) === 'x1,
     'f('x1, 'h('x1), 'x2) === 'f('g('x3), 'x4, 'x3)
@@ -31,7 +35,7 @@ object Example extends Unifier2[String, String] {
     run(simple3, "Infinite unification (occurs check)")
     run(simple4, "Unifies A with the atom xyz and B with the term g(xyz)")
   }
-
+  
   def run(terms: List[(Term, Term)], name: String) {
     try {
       println
@@ -54,12 +58,13 @@ object Example extends Unifier2[String, String] {
   }
   case class RawFun(name: String, args: List[RawTerm]) extends RawTerm
 
-  implicit def str2term(sym: Symbol): RawVar = RawVar(sym.name)
+  implicit def str2term(sym: ScalaSymbol): RawVar = RawVar(sym.name)
 
   implicit def raw2term(raw: RawTerm): Term = raw match {
     case RawVar(name) => Var(name)
     case RawFun(name, args) => Fun(name, args map raw2term)
   }
+  
 }
 
 
