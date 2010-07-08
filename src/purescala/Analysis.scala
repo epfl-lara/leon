@@ -64,9 +64,7 @@ class Analysis(val program: Program) {
     //  - all global invariants are satisfied 
     for(funDef <- program.definedFunctions) if (Settings.functionsToAnalyse.isEmpty || Settings.functionsToAnalyse.contains(funDef.id.name)) {
       if(funDef.body.isDefined) {
-        // val vc = postconditionVC(funDef)
-        // slightly more costly:
-        val vc = simplifyLets(postconditionVC(funDef))
+        val vc = postconditionVC(funDef)
         if(vc != BooleanLiteral(true)) {
           reporter.info("Verification condition (post) for ==== " + funDef.id + " ====")
           reporter.info(vc)
@@ -116,11 +114,11 @@ class Analysis(val program: Program) {
 
       import Analysis._
       val (newExpr0, sideExprs0) = unrollRecursiveFunctions(program, withPrec, Settings.unrollingLevel)
-      val expr0 = Implies(And(sideExprs0), newExpr0)
-      val (newExpr1, sideExprs1) = rewriteSimplePatternMatching(expr0)
-      val expr1 = Implies(And(sideExprs1), newExpr1)
-      val (newExpr2, sideExprs2) = inlineFunctionsAndContracts(program, expr1)
-      Implies(And(sideExprs2), newExpr2)
+      val expr0 = simplifyLets(Implies(And(sideExprs0), newExpr0))
+      val (newExpr1, sideExprs1) = inlineFunctionsAndContracts(program, expr0)
+      val expr1 = simplifyLets(Implies(And(sideExprs1), newExpr1))
+      val (newExpr2, sideExprs2) = rewriteSimplePatternMatching(expr1)
+      simplifyLets(Implies(And(sideExprs2), newExpr2))
     }
   }
 
@@ -181,7 +179,14 @@ object Analysis {
             val newExtra1 = Equals(newVar, bodyWithLetVars)
             val newExtra2 = replace(substs + (ResultVariable() -> newVar), post)
             val bigLet = (newLetIDs zip args).foldLeft(And(newExtra1, newExtra2))((e,p) => Let(p._1, p._2, e))
-            extras = bigLet :: extras
+            extras = urf(bigLet, t-1) :: extras
+            println("*********************************")
+            println(bigLet)
+            println(" --- from -----------------------")
+            println(f)
+            println(" --- newVar is ------------------")
+            println(newVar)
+            println("*********************************")
             newVar
           } else {
             val bigLet = (newLetIDs zip args).foldLeft(bodyWithLetVars)((e,p) => Let(p._1, p._2, e))
