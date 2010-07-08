@@ -183,17 +183,18 @@ object Trees {
   case class SetMax(set: Expr) extends Expr
 
   /* Multiset expressions */
-  // case class EmptyMultiset(baseType: TypeTree) extends Expr 
-  // case class FiniteMultiset(elements: Seq[Expr]) extends Expr 
-  // case class Multiplicity(element: Expr, multiset: Expr) extends Expr 
-  // case class IsEmptyMultiset(multiset: Expr) extends Expr 
-  // case class MultisetEquals(multiset1: Expr, multiset2: Expr) extends Expr 
-  // case class MultisetCardinality(multiset: Expr) extends Expr 
-  // case class SubmultisetOf(multiset1: Expr, multiset2: Expr) extends Expr 
-  // case class MultisetIntersection(multiset1: Expr, multiset2: Expr) extends Expr 
-  // case class MultisetUnion(multiset1: Expr, multiset2: Expr) extends Expr 
-  // case class MultisetPlus(multiset1: Expr, multiset2: Expr) extends Expr // disjoint union
-  // case class MultisetDifference(multiset1: Expr, multiset2: Expr) extends Expr 
+  case class EmptyMultiset(baseType: TypeTree) extends Expr 
+  case class FiniteMultiset(elements: Seq[Expr]) extends Expr 
+  case class Multiplicity(element: Expr, multiset: Expr) extends Expr 
+  case class IsEmptyMultiset(multiset: Expr) extends Expr 
+  case class MultisetEquals(multiset1: Expr, multiset2: Expr) extends Expr 
+  case class MultisetCardinality(multiset: Expr) extends Expr 
+  case class SubmultisetOf(multiset1: Expr, multiset2: Expr) extends Expr 
+  case class MultisetIntersection(multiset1: Expr, multiset2: Expr) extends Expr 
+  case class MultisetUnion(multiset1: Expr, multiset2: Expr) extends Expr 
+  case class MultisetPlus(multiset1: Expr, multiset2: Expr) extends Expr // disjoint union
+  case class MultisetDifference(multiset1: Expr, multiset2: Expr) extends Expr 
+  case class MultisetToSet(multiset: Expr) extends Expr
 
   /* Map operations. */
   case class EmptyMap(fromType: TypeTree, toType: TypeTree) extends Expr 
