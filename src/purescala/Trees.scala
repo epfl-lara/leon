@@ -51,7 +51,11 @@ object Trees {
 
   /* Propositional logic */
   object And {
-    def apply(exprs: Seq[Expr]) : And = new And(exprs)
+    def apply(exprs: Seq[Expr]) : Expr = exprs.size match {
+      case 0 => BooleanLiteral(true)
+      case 1 => exprs.head
+      case _ => new And(exprs)
+    }
 
     def apply(l: Expr, r: Expr): Expr = (l,r) match {
       case (And(exs1), And(exs2)) => And(exs1 ++ exs2)
@@ -61,7 +65,7 @@ object Trees {
     }
 
     def unapply(and: And) : Option[Seq[Expr]] = 
-        if(and == null) None else Some(and.exprs)
+      if(and == null) None else Some(and.exprs)
   }
 
   class And(val exprs: Seq[Expr]) extends Expr with FixedType {
@@ -69,7 +73,11 @@ object Trees {
   }
 
   object Or {
-    def apply(exprs: Seq[Expr]) : Or = new Or(exprs)
+    def apply(exprs: Seq[Expr]) : Expr = exprs.size match {
+      case 0 => BooleanLiteral(false)
+      case 1 => exprs.head
+      case _ => new Or(exprs)
+    }
 
     def apply(l: Expr, r: Expr): Expr = (l,r) match {
       case (Or(exs1), Or(exs2)) => Or(exs1 ++ exs2)
@@ -79,7 +87,7 @@ object Trees {
     }
 
     def unapply(or: Or) : Option[Seq[Expr]] = 
-        if(or == null) None else Some(or.exprs)
+      if(or == null) None else Some(or.exprs)
   }
 
   class Or(val exprs: Seq[Expr]) extends Expr with FixedType {
@@ -90,7 +98,20 @@ object Trees {
     val fixedType = BooleanType
   }
 
-  case class Implies(left: Expr, right: Expr) extends Expr with FixedType {
+  object Implies {
+    def apply(left: Expr, right: Expr) : Expr = (left,right) match {
+      case (BooleanLiteral(false), _) => BooleanLiteral(true)
+      case (_, BooleanLiteral(true)) => BooleanLiteral(true)
+      case (BooleanLiteral(true), r) => r
+      case (l, BooleanLiteral(false)) => Not(l)
+      case (l1, Implies(l2, r2)) => Implies(And(l1, l2), r2)
+      case _ => new Implies(left, right)
+    }
+    def unapply(imp: Implies) : Option[(Expr,Expr)] =
+      if(imp == null) None else Some(imp.left, imp.right)
+  }
+
+  class Implies(val left: Expr, val right: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }
 
@@ -227,7 +248,7 @@ object Trees {
     def unapply(expr: Expr) : Option[(Expr,Expr,(Expr,Expr)=>Expr)] = expr match {
       case Equals(t1,t2) => Some((t1,t2,Equals))
       case Iff(t1,t2) => Some((t1,t2,Iff))
-      case Implies(t1,t2) => Some((t1,t2,Implies))
+      case Implies(t1,t2) => Some((t1,t2, ((e1,e2) => Implies(e1,e2))))
       case Plus(t1,t2) => Some((t1,t2,Plus))
       case Minus(t1,t2) => Some((t1,t2,Minus))
       case Times(t1,t2) => Some((t1,t2,Times))

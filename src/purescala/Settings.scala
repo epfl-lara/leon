@@ -9,5 +9,6 @@ object Settings {
   var reporter: Reporter = new DefaultReporter
   var quietReporter: Reporter = new QuietReporter
   var runDefaultExtensions: Boolean = true
+  var noForallAxioms: Boolean = false
   var unrollingLevel: Int = 0
 }

@@ -115,15 +115,12 @@ class Analysis(val program: Program) {
       }
 
       import Analysis._
-      val newExpr0 = unrollRecursiveFunctions(program, withPrec, Settings.unrollingLevel)
-      val (newExpr1, sideExprs1) = rewriteSimplePatternMatching(newExpr0)
-      val (newExpr2, sideExprs2) = inlineFunctionsAndContracts(program, newExpr1)
-
-      if(sideExprs1.isEmpty && sideExprs2.isEmpty) {
-        newExpr2
-      } else {
-        Implies(And(sideExprs1 ++ sideExprs2), newExpr2)
-      }
+      val (newExpr0, sideExprs0) = unrollRecursiveFunctions(program, withPrec, Settings.unrollingLevel)
+      val expr0 = Implies(And(sideExprs0), newExpr0)
+      val (newExpr1, sideExprs1) = rewriteSimplePatternMatching(expr0)
+      val expr1 = Implies(And(sideExprs1), newExpr1)
+      val (newExpr2, sideExprs2) = inlineFunctionsAndContracts(program, expr1)
+      Implies(And(sideExprs2), newExpr2)
     }
   }
 
@@ -164,27 +161,44 @@ object Analysis {
     (searchAndApply(isFunCall, applyToCall, expr), extras.reverse)
   }
 
-  def unrollRecursiveFunctions(program: Program, expr: Expr, times: Int) : Expr = {
-    def isRecursiveCall(e: Expr) = e match {
-      case f @ FunctionInvocation(fd, _) if fd.hasImplementation && program.isRecursive(fd) => true
-      case _ => false
-    }
-    def unrollCall(t: Int)(e: Expr) = e match {
-      case f @ FunctionInvocation(fd, args) if fd.hasImplementation && program.isRecursive(fd) => {
-        val newLetIDs = fd.args.map(a => FreshIdentifier(a.id.name, true).setType(a.tpe))
-        val newLetVars = newLetIDs.map(Variable(_))
-        val substs: Map[Expr,Expr] = Map((fd.args.map(_.toVariable) zip newLetVars) :_*)
-        val bodyWithLetVars: Expr = replace(substs, fd.body.get)
-        val bigLet = (newLetIDs zip args).foldLeft(bodyWithLetVars)((e,p) => Let(p._1, p._2, e))
-        unrollRecursiveFunctions(program, bigLet, t - 1)
+  def unrollRecursiveFunctions(program: Program, expression: Expr, times: Int) : (Expr,Seq[Expr]) = {
+    var extras : List[Expr] = Nil
+
+    def urf(expr: Expr, left: Int) : Expr = {
+      def isRecursiveCall(e: Expr) = e match {
+        case f @ FunctionInvocation(fd, _) if fd.hasImplementation && program.isRecursive(fd) => true
+        case _ => false
       }
-      case o => o
+      def unrollCall(t: Int)(e: Expr) = e match {
+        case f @ FunctionInvocation(fd, args) if fd.hasImplementation && program.isRecursive(fd) => {
+          val newLetIDs = fd.args.map(a => FreshIdentifier(a.id.name, true).setType(a.tpe))
+          val newLetVars = newLetIDs.map(Variable(_))
+          val substs: Map[Expr,Expr] = Map((fd.args.map(_.toVariable) zip newLetVars) :_*)
+          val bodyWithLetVars: Expr = replace(substs, fd.body.get)
+          if(fd.hasPostcondition) {
+            val post = fd.postcondition.get
+            val newVar = Variable(FreshIdentifier("call", true)).setType(fd.returnType)
+            val newExtra1 = Equals(newVar, bodyWithLetVars)
+            val newExtra2 = replace(substs + (ResultVariable() -> newVar), post)
+            val bigLet = (newLetIDs zip args).foldLeft(And(newExtra1, newExtra2))((e,p) => Let(p._1, p._2, e))
+            extras = bigLet :: extras
+            newVar
+          } else {
+            val bigLet = (newLetIDs zip args).foldLeft(bodyWithLetVars)((e,p) => Let(p._1, p._2, e))
+            urf(bigLet, t-1)
+          }
+        }
+        case o => o
+      }
+
+      if(left > 0)
+        searchAndApply(isRecursiveCall, unrollCall(left), expr, false)
+      else
+        expr
     }
 
-    if(times > 0)
-      searchAndApply(isRecursiveCall, unrollCall(times), expr, false)
-    else
-      expr
+    val finalE = urf(expression, times)
+    (finalE, extras.reverse)
   }
 
   // Rewrites pattern matching expressions where the cases simply correspond to

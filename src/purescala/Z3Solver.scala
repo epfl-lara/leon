@@ -138,37 +138,45 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     }
 
     // universally quantifies all functions !
-    for(funDef <- program.definedFunctions) if(funDef.hasImplementation && funDef.args.size > 0) {
-      val argSorts: Seq[Z3Sort] = funDef.args.map(vd => typeToSort(vd.getType).get)
-      val boundVars = argSorts.zipWithIndex.map(p => z3.mkBound(p._2, p._1))
-      val pattern: Z3Pattern = z3.mkPattern(functionDefToDef(funDef)(boundVars: _*))
-      val nameTypePairs = argSorts.map(s => (z3.mkIntSymbol(nextIntForSymbol()), s))
-      val fOfX: Expr = FunctionInvocation(funDef, funDef.args.map(_.toVariable))
-      val toConvert: Expr = if(funDef.hasPrecondition) {
-        Implies(funDef.precondition.get, Equals(fOfX, funDef.body.get))
-      } else {
-        Equals(fOfX, funDef.body.get)
-      }
-      val (newExpr1, sideExprs1) = Analysis.rewriteSimplePatternMatching(toConvert)
-      val (newExpr2, sideExprs2) = (newExpr1, Nil) // Analysis.inlineFunctionsAndContracts(program, newExpr1)
-      val finalToConvert = if(sideExprs1.isEmpty && sideExprs2.isEmpty) {
-        newExpr2
-      } else {
-        Implies(And(sideExprs1 ++ sideExprs2), newExpr2)
-      }
-      val initialMap: Map[Identifier,Z3AST] = Map((funDef.args.map(_.id) zip boundVars):_*)
-      toZ3Formula(z3, finalToConvert, initialMap) match {
-        case Some(axiomTree) => {
-          val quantifiedAxiom = z3.mkForAll(0, List(pattern), nameTypePairs, axiomTree)
-          //z3.printAST(quantifiedAxiom)
-          z3.assertCnstr(quantifiedAxiom)
+    if(!Settings.noForallAxioms) {
+      import Analysis.SimplePatternMatching
+      for(funDef <- program.definedFunctions) if(funDef.hasImplementation && program.isRecursive(funDef) && funDef.args.size > 0) {
+        funDef.body.get match {
+          case SimplePatternMatching(_,_,_) => reporter.info("There's a good opportunity for a good axiomatization of " + funDef.id.name)
+          case _ => ;
         }
-        case None => {
-          reporter.warning("Could not generate forall axiom for " + funDef.id.name)
-          reporter.warning(toConvert)
-          reporter.warning(newExpr1)
-          reporter.warning(newExpr2)
-          reporter.warning(finalToConvert)
+
+        val argSorts: Seq[Z3Sort] = funDef.args.map(vd => typeToSort(vd.getType).get)
+        val boundVars = argSorts.zipWithIndex.map(p => z3.mkBound(p._2, p._1))
+        val pattern: Z3Pattern = z3.mkPattern(functionDefToDef(funDef)(boundVars: _*))
+        val nameTypePairs = argSorts.map(s => (z3.mkIntSymbol(nextIntForSymbol()), s))
+        val fOfX: Expr = FunctionInvocation(funDef, funDef.args.map(_.toVariable))
+        val toConvert: Expr = if(funDef.hasPrecondition) {
+          Implies(funDef.precondition.get, Equals(fOfX, funDef.body.get))
+        } else {
+          Equals(fOfX, funDef.body.get)
+        }
+        val (newExpr1, sideExprs1) = Analysis.rewriteSimplePatternMatching(toConvert)
+        val (newExpr2, sideExprs2) = (newExpr1, Nil) // Analysis.inlineFunctionsAndContracts(program, newExpr1)
+        val finalToConvert = if(sideExprs1.isEmpty && sideExprs2.isEmpty) {
+          newExpr2
+        } else {
+          Implies(And(sideExprs1 ++ sideExprs2), newExpr2)
+        }
+        val initialMap: Map[Identifier,Z3AST] = Map((funDef.args.map(_.id) zip boundVars):_*)
+        toZ3Formula(z3, finalToConvert, initialMap) match {
+          case Some(axiomTree) => {
+            val quantifiedAxiom = z3.mkForAll(0, List(pattern), nameTypePairs, axiomTree)
+            //z3.printAST(quantifiedAxiom)
+            z3.assertCnstr(quantifiedAxiom)
+          }
+          case None => {
+            reporter.warning("Could not generate forall axiom for " + funDef.id.name)
+            reporter.warning(toConvert)
+            reporter.warning(newExpr1)
+            reporter.warning(newExpr2)
+            reporter.warning(finalToConvert)
+          }
         }
       }
     }
