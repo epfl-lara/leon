@@ -103,7 +103,6 @@ object Trees {
     val fixedType = BooleanType
   }
   
-  /* Literals */
   case class Variable(id: Identifier) extends Expr {
     override def getType = id.getType
     override def setType(tt: TypeTree) = { id.setType(tt); this }
@@ -112,6 +111,7 @@ object Trees {
   // represents the result in post-conditions
   case class ResultVariable() extends Expr
 
+  /* Literals */
   sealed abstract class Literal[T] extends Expr {
     val value: T
   }
@@ -275,7 +275,9 @@ object Trees {
   // the replacement map should be understood as follows:
   //   - on each subexpression, checkFun checks whether it should be replaced
   //   - repFun is applied is checkFun succeeded
-  def searchAndApply(checkFun: Expr=>Boolean, repFun: Expr=>Expr, expr: Expr) : Expr = {
+  //   - if the result of repFun is different from its argument and recursive
+  //     is set to true, search/replace is reapplied on the result.
+  def searchAndApply(checkFun: Expr=>Boolean, repFun: Expr=>Expr, expr: Expr, recursive: Boolean=true) : Expr = {
     def rec(ex: Expr, skip: Expr = null) : Expr = ex match {
       case _ if (ex != skip && checkFun(ex)) => {
         val newExpr = repFun(ex)
@@ -283,9 +285,9 @@ object Trees {
           Settings.reporter.warning("REPLACING IN EXPRESSION WITH AN UNTYPED TREE ! " + ex + " --to--> " + newExpr)
         }
         if(ex == newExpr)
-          rec(ex, ex)
+          if(recursive) rec(ex, ex) else ex
         else
-          rec(newExpr)
+          if(recursive) rec(newExpr) else newExpr
       }
       case l @ Let(i,e,b) => {
         val re = rec(e)
@@ -361,16 +363,17 @@ object Trees {
   def simplifyLets(expr: Expr) : Expr = {
     val isLet = ((t: Expr) => t.isInstanceOf[Let])
     def simplerLet(t: Expr) : Expr = t match {
-      case letExpr @ Let(_, Variable(_), _) => expandLets(letExpr)
+      case letExpr @ Let(i, Variable(v), b) => replace(Map((Variable(i) -> Variable(v))), b)
+      case letExpr @ Let(i, l: Literal[_], b) => replace(Map((Variable(i) -> l)), b)
       case letExpr @ Let(i,e,b) => {
         var occurences = 0
-        def isOcc(tr: Expr) = (occurences < 2 && tr.isInstanceOf[Variable] && tr.asInstanceOf[Variable].id == i)
+        def isOcc(tr: Expr) = (occurences < 2 && tr == Variable(i))
         def incCount(tr: Expr) = { occurences = occurences + 1; tr } 
-        searchAndApply(isOcc,incCount,b)
+        searchAndApply(isOcc, incCount, b, false)
         if(occurences == 0) {
           b
         } else if(occurences == 1) {
-          expandLets(letExpr)
+          replace(Map((Variable(i) -> e)), b)
         } else {
           t
         }

@@ -5,8 +5,8 @@ object ExprComp {
 
   // Operations
   sealed abstract class BinOp
-  case class Plus extends BinOp
-  case class Times extends BinOp
+  case class Plus() extends BinOp
+  case class Times() extends BinOp
 
   // Expressions
   sealed abstract class Expr
@@ -34,20 +34,20 @@ object ExprComp {
   // Programs
 
   sealed abstract class Program
-  case class EProgram extends Program
+  case class EProgram() extends Program
   case class NProgram(first : Instruction, rest : Program) extends Program
 
   // Value stack
 
   sealed abstract class ValueStack
-  case class EStack extends ValueStack
+  case class EStack() extends ValueStack
   case class NStack(v : Value, rest : ValueStack) extends ValueStack
 
   // Outcomes of running the program
 
   sealed abstract class Outcome
   case class Ok(v : ValueStack) extends Outcome
-  case class Fail extends Outcome
+  case class Fail() extends Outcome
 
   // Running programs on a given initial stack
   def run(p : Program, vs : ValueStack) : Outcome = p match {

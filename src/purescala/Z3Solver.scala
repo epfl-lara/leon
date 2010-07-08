@@ -150,7 +150,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
         Equals(fOfX, funDef.body.get)
       }
       val (newExpr1, sideExprs1) = Analysis.rewriteSimplePatternMatching(toConvert)
-      val (newExpr2, sideExprs2) = Analysis.inlineFunctionsAndContracts(program, newExpr1)
+      val (newExpr2, sideExprs2) = (newExpr1, Nil) // Analysis.inlineFunctionsAndContracts(program, newExpr1)
       val finalToConvert = if(sideExprs1.isEmpty && sideExprs2.isEmpty) {
         newExpr2
       } else {
@@ -165,6 +165,9 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
         }
         case None => {
           reporter.warning("Could not generate forall axiom for " + funDef.id.name)
+          reporter.warning(toConvert)
+          reporter.warning(newExpr1)
+          reporter.warning(newExpr2)
           reporter.warning(finalToConvert)
         }
       }

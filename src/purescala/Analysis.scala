@@ -72,8 +72,9 @@ class Analysis(val program: Program) {
           reporter.info(vc)
           // reporter.info("Negated:")
           // reporter.info(negate(vc))
-          reporter.info("Negated, expanded:")
-          reporter.info(expandLets(negate(vc)))
+          // reporter.info("Negated, expanded:")
+          // val exp = expandLets(negate(vc))
+          // reporter.info(exp)
 
           // try all solvers until one returns a meaningful answer
           solverExtensions.find(se => {
@@ -107,14 +108,15 @@ class Analysis(val program: Program) {
     } else {
       val resFresh = FreshIdentifier("result", true).setType(body.getType)
       val bodyAndPost = Let(resFresh, body, replace(Map(ResultVariable() -> Variable(resFresh)), post.get))
-      val newExpr = if(prec.isEmpty) {
+      val withPrec = if(prec.isEmpty) {
         bodyAndPost
       } else {
         Implies(prec.get, bodyAndPost)
       }
 
       import Analysis._
-      val (newExpr1, sideExprs1) = rewriteSimplePatternMatching(newExpr)
+      val newExpr0 = unrollRecursiveFunctions(program, withPrec, Settings.unrollingLevel)
+      val (newExpr1, sideExprs1) = rewriteSimplePatternMatching(newExpr0)
       val (newExpr2, sideExprs2) = inlineFunctionsAndContracts(program, newExpr1)
 
       if(sideExprs1.isEmpty && sideExprs2.isEmpty) {
@@ -162,12 +164,37 @@ object Analysis {
     (searchAndApply(isFunCall, applyToCall, expr), extras.reverse)
   }
 
+  def unrollRecursiveFunctions(program: Program, expr: Expr, times: Int) : Expr = {
+    def isRecursiveCall(e: Expr) = e match {
+      case f @ FunctionInvocation(fd, _) if fd.hasImplementation && program.isRecursive(fd) => true
+      case _ => false
+    }
+    def unrollCall(t: Int)(e: Expr) = e match {
+      case f @ FunctionInvocation(fd, args) if fd.hasImplementation && program.isRecursive(fd) => {
+        val newLetIDs = fd.args.map(a => FreshIdentifier(a.id.name, true).setType(a.tpe))
+        val newLetVars = newLetIDs.map(Variable(_))
+        val substs: Map[Expr,Expr] = Map((fd.args.map(_.toVariable) zip newLetVars) :_*)
+        val bodyWithLetVars: Expr = replace(substs, fd.body.get)
+        val bigLet = (newLetIDs zip args).foldLeft(bodyWithLetVars)((e,p) => Let(p._1, p._2, e))
+        unrollRecursiveFunctions(program, bigLet, t - 1)
+      }
+      case o => o
+    }
+
+    if(times > 0)
+      searchAndApply(isRecursiveCall, unrollCall(times), expr, false)
+    else
+      expr
+  }
+
   // Rewrites pattern matching expressions where the cases simply correspond to
   // the list of constructors
   def rewriteSimplePatternMatching(expr: Expr) : (Expr, Seq[Expr]) = {
     var extras : List[Expr] = Nil
 
-    def isPMExpr(e: Expr) : Boolean = e.isInstanceOf[MatchExpr]
+    def isPMExpr(e: Expr) : Boolean = {
+      e.isInstanceOf[MatchExpr]
+    }
 
     def rewritePM(e: Expr) : Expr = {
       val MatchExpr(scrutinee, cases) = e.asInstanceOf[MatchExpr]
@@ -194,7 +221,8 @@ object Analysis {
               } else {
                 Variable(FreshIdentifier("pat", true)).setType(p._1.tpe)
               })
-              (newPVar, List(Equals(newPVar, CaseClass(ccd, argVars)), Implies(Equals(Variable(scrutAsLetID), newPVar), Equals(newVar, rhs))))
+              val (rewrittenRHS, moreExtras) = rewriteSimplePatternMatching(rhs)
+              (newPVar, List(Equals(newPVar, CaseClass(ccd, argVars)), Implies(Equals(Variable(scrutAsLetID), newPVar), Equals(newVar, rewrittenRHS))) ::: moreExtras.toList)
             }
             case _ => (null,Nil)
           }).toList
@@ -219,13 +247,19 @@ object Analysis {
       }
     }
     
-    // this gets us "extras", but we will still need to clean these up.
-    val cleanerTree = searchAndApply(isPMExpr, rewritePM, expr)
-    val theExtras = extras.reverse
-    val onExtras: Seq[(Expr,Seq[Expr])] = theExtras.map(rewriteSimplePatternMatching(_))
-    // the "moreExtras" should be cleaned up due to the recursive call..
-    val (rewrittenExtras, moreExtras) = onExtras.unzip
-
-    (cleanerTree, rewrittenExtras ++ moreExtras.flatten)
+    val cleanerTree = searchAndApply(isPMExpr, rewritePM, expr) 
+    // println("******************")
+    // println("rewrote: " + expr)
+    // println("   *** to ***")
+    // println(cleanerTree)
+    // println("   ** with side conds ** ")
+    // println(extras.reverse)
+    // println("******************")
+    (cleanerTree, extras.reverse)
+    // val theExtras = extras.reverse
+    // val onExtras: Seq[(Expr,Seq[Expr])] = theExtras.map(rewriteSimplePatternMatching(_))
+    // // the "moreExtras" should be cleaned up due to the recursive call..
+    // val (rewrittenExtras, moreExtras) = onExtras.unzip
+    // (cleanerTree, rewrittenExtras ++ moreExtras.flatten)
   }
 }
