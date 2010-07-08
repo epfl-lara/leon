@@ -20,7 +20,9 @@ object Trees {
   }
 
   /* Control flow */
-  case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr
+  case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr with FixedType {
+    val fixedType = funDef.returnType
+  }
   case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr 
   case class MatchExpr(scrutinee: Expr, cases: Seq[MatchCase]) extends Expr
 

@@ -113,9 +113,9 @@ class Analysis(val program: Program) {
         Implies(prec.get, bodyAndPost)
       }
 
+      import Analysis._
       val (newExpr1, sideExprs1) = rewriteSimplePatternMatching(newExpr)
-
-      val (newExpr2, sideExprs2) = inlineFunctionsAndContracts(newExpr1)
+      val (newExpr2, sideExprs2) = inlineFunctionsAndContracts(program, newExpr1)
 
       if(sideExprs1.isEmpty && sideExprs2.isEmpty) {
         newExpr2
@@ -125,7 +125,10 @@ class Analysis(val program: Program) {
     }
   }
 
-  def inlineFunctionsAndContracts(expr: Expr) : (Expr, Seq[Expr]) = {
+}
+
+object Analysis {
+  def inlineFunctionsAndContracts(program: Program, expr: Expr) : (Expr, Seq[Expr]) = {
     var extras : List[Expr] = Nil
 
     val isFunCall: Function[Expr,Boolean] = _.isInstanceOf[FunctionInvocation]
@@ -215,7 +218,14 @@ class Analysis(val program: Program) {
         }
       }
     }
+    
+    // this gets us "extras", but we will still need to clean these up.
+    val cleanerTree = searchAndApply(isPMExpr, rewritePM, expr)
+    val theExtras = extras.reverse
+    val onExtras: Seq[(Expr,Seq[Expr])] = theExtras.map(rewriteSimplePatternMatching(_))
+    // the "moreExtras" should be cleaned up due to the recursive call..
+    val (rewrittenExtras, moreExtras) = onExtras.unzip
 
-    (searchAndApply(isPMExpr, rewritePM, expr), extras.reverse)
+    (cleanerTree, rewrittenExtras ++ moreExtras.flatten)
   }
 }
