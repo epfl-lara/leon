@@ -64,33 +64,144 @@ object Example extends Unifier2[String, String] {
     case RawVar(name) => Var(name)
     case RawFun(name, args) => Fun(name, args map raw2term)
   }
+
+  
+  def pv(str: String) = str
+  def pf(str: String) = str
+}
+
+import scala.collection.mutable.ArrayBuffer
+import purescala.Common._
+import purescala.Trees._
+import purescala.TypeTrees._
+import purescala.Definitions.CaseClassDef
+
+object PureScalaUnifier extends Unifier2[Variable,CaseClassDef] {
+  
+  def freshVar(typed: Typed) = Var(Variable(FreshIdentifier("UnifVar", true)) /*setType typed.getType*/)
+  
+  def pv(v: Variable) = v.id.toString
+  def pf(cc: CaseClassDef) = cc.id.toString
+  
+  def unify(and: And) {
+    val equalities = new ArrayBuffer[(Term,Term)]()
+    val inequalities = new ArrayBuffer[(Var,Var)]()
+  
+    def extractConstraint(expr: Expr) { expr match {
+      case Equals(t1, t2) =>
+        equalities += ((convert(t1), convert(t2)))
+      case Not(Equals(t1, t2)) =>
+        val x1 = freshVar(t1)
+        val x2 = freshVar(t2)
+        equalities += ((x1, convert(t1)))
+        equalities += ((x2, convert(t2)))
+        inequalities += ((x1, x2))
+      case _ =>
+    }}
+    def convert(expr: Expr): Term = expr match {
+      case v@Variable(id) => Var(v)
+      case CaseClass(ccdef, args) => Fun(ccdef, args map convert)
+      case CaseClassSelector(ex, sel) =>
+        val CaseClassType(ccdef) = ex.getType
+        val args = ccdef.fields map freshVar
+        equalities += convert(ex) -> Fun(ccdef, args)     
+        args(ccdef.fields findIndexOf {_.id == sel})
+      case _ => throw ConversionException(expr, "Cannot convert : ")
+    }
+    // extract constraints
+    and.exprs foreach extractConstraint
+  
+    println
+    println("--- Input to the unifier ---")
+    for ((l,r) <- equalities) println("  " + pp(l) + "  =  " + pp(r))
+    if (!inequalities.isEmpty) {
+      println("and")
+      for ((l,r) <- inequalities) println("  " + pp(l) + "  !=  " + pp(r))
+    }    
+    println
+  
+    val mgu = unify(equalities.toList)
+    val subst = blowUp(mgu)
+    
+    def byName(entry1: (Variable,Term), entry2: (Variable,Term)) =
+      pv(entry1._1) < pv(entry2._1)
+    
+    //println
+    println("--- Output of the unifier (MGU) ---")
+    for ((x, t) <- mgu.toList sortWith byName)
+      println("  " + x + "  =  " + pp(t))
+    println
+  
+    // check inequalities
+    for ((Var(x1), Var(x2)) <- inequalities) {
+      val t1 = subst(x1)
+      val t2 = subst(x2)
+      if (t1 == t2)
+        throw UnificationFailure("Inequality '" +  x1.id + " != " + x2.id + "' does not hold")
+    }
+    if (!inequalities.isEmpty)
+      println("Inequalities were checked to hold\n")
+    
+    println("--- Output of the unifier (Substitution table) ---")
+    val subst1 = subst.filterKeys{_.getType != NoType}
+    for ((x, t) <- subst1.toList sortWith byName)
+      println("  " + x + "  =  " + pp(t))
+    if (subst1.isEmpty) println("  (empty table)")
+    println
+  }
+  
   
 }
+
 
 
 import scala.collection.mutable.{ArrayBuffer => Seq, Map, Set, Stack}
 
 trait Unifier2[VarName >: Null, FunName >: Null] {
+  
+  type MGU = Seq[(VarName, Term)]
+  type Subst = Map[VarName, Term]
+
+  // transitive closure for the mapping - the smart way
+  def blowUp(mgu: MGU): Subst = {
+    val map = Map.empty[VarName, Term]
+    def subst(term: Term): Term = term match {
+      case Var(v) => map get v match {
+        case Some(t) => t
+        case None => term
+      }
+      case Fun(f, args) => Fun(f, args map subst)
+    }
+    for ((v, t) <- mgu.reverse) {
+      map(v) = subst(t)
+    }
+    map
+  }
 
   /* Interface */
 
   // The AST to be unified
   sealed abstract class Term
   case class Var(name: VarName) extends Term
-  case class Fun(name: FunName, args: List[Term]) extends Term
+  case class Fun(name: FunName, args: scala.collection.Seq[Term]) extends Term
 
   case class UnificationFailure(msg: String) extends Exception(msg)
 
+  
+  def pv(s: VarName): String
+  def pf(f: FunName): String
+  def _pv(s: VarName): String = if (s == null) "<null>" else pv(s)
+  def _pf(f: FunName): String = if (f == null) "<null>" else pf(f)
   def pp(t: Term): String = t match {
-    case Var(s) => "" + s
-    case Fun(f, ts) => "" + f + (ts map pp).mkString("(", ", ", ")")
+    case Var(s) => _pv(s)
+    case Fun(f, ts) => _pf(f) + (ts map pp).mkString("(", ", ", ")")
   }
 
 
-  def unify(term1: Term, term2: Term): Map[VarName, Term] =
+  def unify(term1: Term, term2: Term): MGU =
     unify(List((term1, term2)))
 
-  def unify(terms: List[(Term, Term)]): Map[VarName, Term] = {
+  def unify(terms: List[(Term, Term)]): MGU = {
     val variableMap = Map[VarName, Variable]()
     def convertTerm(term: Term): Equation = term match {
       case Var(name) => variableMap get name match {
@@ -109,23 +220,23 @@ trait Unifier2[VarName >: Null, FunName >: Null] {
     dummyVariable.eqclass.eqn.fun = Some(new Function(null, Seq(frontier: _*)))
 
     val allVariables = Seq(dummyVariable) ++ variableMap.values
-    unify(allVariables map {_.eqclass}) - null
+    unify(allVariables map {_.eqclass}) filter {_._1 != null}
   }
 
-  /* Implementation */
+  /* Data structures */
 
   private case class Variable(name: VarName) {
     // The equivalence class for that variable
     var eqclass: Equivalence = new Equivalence(this)
 
-    override def toString = "" + name
+    override def toString = _pv(name)
   }
   private case class Function(val name: FunName, val eqns: Seq[Equation]) {
-    override def toString = name + eqns.mkString("(", ",", ")")
+    override def toString = _pf(name) + eqns.mkString("(", ",", ")")
   }
-  private class Equation(val vars: Set[Variable] = Set(),
+  private class Equation(val vars: Seq[Variable] = Seq(),
                          var fun: Option[Function] = None) {
-    def this(v: Variable) = this (vars = Set(v))
+    def this(v: Variable) = this (vars = Seq(v))
 
     def this(f: Function) = this (fun = Some(f))
 
@@ -145,11 +256,18 @@ trait Unifier2[VarName >: Null, FunName >: Null] {
     override def toString = "[" + refCounter + "] " + eqn
   }
 
-  private def unify(equivalences: Seq[Equivalence]): Map[VarName, Term] = {
+  /* Implementation */
+
+  private def unify(equivalences: Seq[Equivalence]): MGU = {
     var numberOfClasses = equivalences.size
-    val substitutions = Map[VarName, Term]()
+    val substitutions = Seq[(VarName, Term)]()
     val freeClasses = Stack[Equivalence]() // Equations with a zero ref counter
 
+    /*
+    val vars = equivalences map {_.eqn.vars.head}
+    val fvars = Seq[Variable]()
+    */
+    
     // Initialize reference counters
     def countRefs(fun: Function) {
       for (eqn <- fun.eqns) {
@@ -170,30 +288,55 @@ trait Unifier2[VarName >: Null, FunName >: Null] {
 
     // Main loop
     while (numberOfClasses > 0) {
+      /*
+      println()
+      println("U:")
+      println("  vars : " + vars.mkString(", "))
+        val classes = (vars map {_.eqclass}).toSet
+        println(classes.size + " / " + numberOfClasses)
+        for (cl <- classes) println(cl)
+      println("T: ")
+      println("  vars : " + fvars.mkString(", "))
+        for ((v,t) <- substitutions) println("  " + v + " -> " + pp(t))
+      */
+      
       // Select multi equation
       if (freeClasses.isEmpty) throw UnificationFailure("cycle")
 
       val currentClass = freeClasses.pop
       val currentVars = currentClass.eqn.vars
+      val representative = Var(currentVars.head.name)
+      for (v <- currentVars.tail)
+        substitutions += (v.name -> representative)
+      
       currentClass.eqn.fun match {
         case Some(function) =>
           val (commonPart, frontier) = reduce(function)
-
-          for (v <- currentVars)
-            substitutions(v.name) = commonPart
+          substitutions += (representative.name -> commonPart)
 
           // Compact equations (i.e. merge equivalence classes)
           for (eqn <- frontier) {
+            /*
+            println(eqn)
+            */
             val eqclass = (eqn.vars map {_.eqclass}) reduceLeft compact
             eqclass.refCounter -= eqn.vars.size
+            eqn.vars.clear
             merge(eqclass.eqn, eqn)
             if (eqclass.refCounter == 0) freeClasses push eqclass
+            
+            /*
+            println("  " + eqclass)
+            */
           }
         case None =>
-          val representative = Var(currentVars.head.name)
-          for (v <- currentVars.tail) substitutions(v.name) = representative
       }
       numberOfClasses -= 1
+      
+      /*
+      vars --= currentVars
+      fvars ++= currentVars
+      */
     }
     substitutions
   }

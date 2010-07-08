@@ -5,7 +5,6 @@ import purescala.Extensions.Solver
 import Reconstruction.Model
 
 class Main(reporter: Reporter) extends Solver(reporter) {
-  import ExprToASTConverter.ConversionException
   import purescala.Trees.Expr
   import AST.Formula
   val description = "BAPA with ordering"
@@ -90,14 +89,16 @@ case class SatException(model: Model) extends Exception("A model was found")
 // Thrown when a contradiction was derived during guessing
 case class UnsatException(msg: String) extends Exception(msg)
 
+case class ConversionException(expr: purescala.Trees.Expr, msg: String) extends RuntimeException(msg)
+
+
 // Convert PureScala expressions to OrdBAPA AST's
 object ExprToASTConverter {
   import purescala.TypeTrees._
   import purescala.Trees._
   import Primitives._
 
-  case class ConversionException(expr: Expr, msg: String) extends RuntimeException(msg)
-
+  
   private def isSetType(_type: TypeTree) = _type match {
     case SetType(_) => true
     case _ => false
