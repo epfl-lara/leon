@@ -113,19 +113,29 @@ class Analysis(val program: Program) {
       }
 
       import Analysis._
-      val (newExpr0, sideExprs0) = unrollRecursiveFunctions(program, withPrec, Settings.unrollingLevel)
-      val expr0 = simplifyLets(Implies(And(sideExprs0), newExpr0))
-      val (newExpr1, sideExprs1) = inlineFunctionsAndContracts(program, expr0)
-      val expr1 = simplifyLets(Implies(And(sideExprs1), newExpr1))
+      reporter.info("Before unrolling:")
+      reporter.info(withPrec)
+      val expr0 = unrollRecursiveFunctions(program, withPrec, Settings.unrollingLevel)
+      reporter.info("Before inlining:")
+      reporter.info(expr0)
+      val expr1 = inlineFunctionsAndContracts(program, expr0)
+      reporter.info("Before PM-rewriting:")
+      reporter.info(expr1)
       val (newExpr2, sideExprs2) = rewriteSimplePatternMatching(expr1)
-      simplifyLets(Implies(And(sideExprs2), newExpr2))
+      val expr2 = (pulloutLets(Implies(And(sideExprs2), newExpr2)))
+      reporter.info("After PM-rewriting:")
+      reporter.info(expr2)
+      expr2
     }
   }
 
 }
 
 object Analysis {
-  def inlineFunctionsAndContracts(program: Program, expr: Expr) : (Expr, Seq[Expr]) = {
+  // Warning: this should only be called on a top-level formula ! It will add
+  // new variables and implications in a way that preserves the validity of the
+  // formula.
+  def inlineFunctionsAndContracts(program: Program, expr: Expr) : Expr = {
     var extras : List[Expr] = Nil
 
     val isFunCall: Function[Expr,Boolean] = _.isInstanceOf[FunctionInvocation]
@@ -156,10 +166,14 @@ object Analysis {
       case o => o
     }
 
-    (searchAndApply(isFunCall, applyToCall, expr), extras.reverse)
+    val finalE = searchAndApply(isFunCall, applyToCall, expr)
+    pulloutLets(Implies(And(extras.reverse), finalE))
   }
 
-  def unrollRecursiveFunctions(program: Program, expression: Expr, times: Int) : (Expr,Seq[Expr]) = {
+  // Warning: this should only be called on a top-level formula ! It will add
+  // new variables and implications in a way that preserves the validity of the
+  // formula.
+  def unrollRecursiveFunctions(program: Program, expression: Expr, times: Int) : Expr = {
     var extras : List[Expr] = Nil
 
     def urf(expr: Expr, left: Int) : Expr = {
@@ -180,13 +194,13 @@ object Analysis {
             val newExtra2 = replace(substs + (ResultVariable() -> newVar), post)
             val bigLet = (newLetIDs zip args).foldLeft(And(newExtra1, newExtra2))((e,p) => Let(p._1, p._2, e))
             extras = urf(bigLet, t-1) :: extras
-            println("*********************************")
-            println(bigLet)
-            println(" --- from -----------------------")
-            println(f)
-            println(" --- newVar is ------------------")
-            println(newVar)
-            println("*********************************")
+            // println("*********************************")
+            // println(bigLet)
+            // println(" --- from -----------------------")
+            // println(f)
+            // println(" --- newVar is ------------------")
+            // println(newVar)
+            // println("*********************************")
             newVar
           } else {
             val bigLet = (newLetIDs zip args).foldLeft(bodyWithLetVars)((e,p) => Let(p._1, p._2, e))
@@ -203,7 +217,7 @@ object Analysis {
     }
 
     val finalE = urf(expression, times)
-    (finalE, extras.reverse)
+    pulloutLets(Implies(And(extras.reverse), finalE))
   }
 
   // Rewrites pattern matching expressions where the cases simply correspond to

@@ -405,6 +405,34 @@ object Trees {
     searchAndApply(isLet,simplerLet,expr)
   }
 
+  /* Rewrites the expression so that all lets are at the top levels. */
+  def pulloutLets(expr: Expr) : Expr = {
+    val (storedLets, noLets) = pulloutAndKeepLets(expr)
+    rebuildLets(storedLets, noLets)
+  }
+
+  def pulloutAndKeepLets(expr: Expr) : (Seq[(Identifier,Expr)], Expr) = {
+    var storedLets: List[(Identifier,Expr)] = Nil
+
+    val isLet = ((t: Expr) => t.isInstanceOf[Let])
+    def storeLet(t: Expr) : Expr = t match {
+      case l @ Let(i, e, b) => (storedLets = ((i,e)) :: storedLets); l
+      case _ => t
+    }
+    def killLet(t: Expr) : Expr = t match {
+      case l @ Let(i, e, b) => b
+      case _ => t
+    }
+
+    searchAndApply(isLet, storeLet, expr)
+    val noLets = searchAndApply(isLet, killLet, expr)
+    (storedLets, noLets)
+  }
+
+  def rebuildLets(lets: Seq[(Identifier,Expr)], expr: Expr) : Expr = {
+    lets.foldLeft(expr)((e,p) => Let(p._1, p._2, e))
+  }
+
   /* Fully expands all let expressions. */
   def expandLets(expr: Expr) : Expr = {
     def rec(ex: Expr, s: Map[Identifier,Expr]) : Expr = ex match {
