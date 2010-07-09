@@ -67,7 +67,11 @@ class Analysis(val program: Program) {
         val vc = postconditionVC(funDef)
         if(vc != BooleanLiteral(true)) {
           reporter.info("Verification condition (post) for ==== " + funDef.id + " ====")
-          reporter.info(vc)
+          if(Settings.unrollingLevel == 0) {
+            reporter.info(vc)
+          } else {
+            reporter.info("(not showing unrolled VCs)")
+          }
           // reporter.info("Negated:")
           // reporter.info(negate(vc))
           // reporter.info("Negated, expanded:")
