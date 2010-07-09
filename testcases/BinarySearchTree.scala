@@ -14,7 +14,8 @@ object BinarySearchTree {
     sealed abstract class Triple
     case class SortedTriple(min:Int,max:Int,sorted:Boolean) extends Triple
 
-/*    def isSorted(tree: Tree): SortedTriple = tree match {
+/*
+    def isSorted(tree: Tree): SortedTriple = tree match {
       case Leaf() => SortedTriple(None(), None(), true)
       case Node(l,v,r) => sorted(l) match {
         case SortedTriple(minl,maxl,false) => SortedTriple(None(), None(), false)
@@ -52,9 +53,27 @@ object BinarySearchTree {
 	    case _ => SortedTriple(None(),None(),false)
 	  }
 	}
-      }*/
+      }
+    }
+  */
 
-    def insert(tree: Tree, value: Int) : Node = (tree match {
+    def treeMin(tree : Node) : Int = tree match {
+      case Node(left,v,_) => left match {
+	case Leaf() => v
+	case n @ Node(_,_,_) => treeMin(n)
+      }
+    }
+
+    def treeMax(tree : Node) : Int = tree match {
+      case Node(_,v,right) => right match {
+        case Leaf() => v
+	case n @ Node(_,_,_) => treeMax(n)
+      }
+    }
+
+    def insert(tree: Tree, value: Int) : Node = {
+      //require(isSorted(tree))
+      tree match {
         case Leaf() => Node(Leaf(), value, Leaf())
         case n @ Node(l, v, r) => if(v < value) {
           Node(l, v, insert(r, value))
@@ -63,7 +82,20 @@ object BinarySearchTree {
         } else {
           n
         }
-    }) ensuring (contents(_) == contents(tree) ++ Set(value))
+    }} ensuring (contents(_) == contents(tree) ++ Set(value))
+
+/*
+    def remove(tree: Tree, value: Int) : Node = (tree match {
+        case Leaf() => Node(Leaf(), value, Leaf())
+        case n @ Node(l, v, r) => if(v < value) {
+          Node(l, v, insert(r, value))
+        } else if(v > value) {
+          Node(insert(l, value), v, r)
+        } else {
+          n
+        }
+    }) ensuring (contents(_) == contents(tree) -- Set(value))
+*/
 
     def contains(tree: Tree, value: Int) : Boolean = tree match {
         case Leaf() => false
