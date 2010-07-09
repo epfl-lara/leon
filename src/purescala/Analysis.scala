@@ -113,17 +113,17 @@ class Analysis(val program: Program) {
       }
 
       import Analysis._
-      reporter.info("Before unrolling:")
-      reporter.info(withPrec)
+      //reporter.info("Before unrolling:")
+      //reporter.info(expandLets(withPrec))
       val expr0 = unrollRecursiveFunctions(program, withPrec, Settings.unrollingLevel)
-      reporter.info("Before inlining:")
-      reporter.info(expr0)
+      //reporter.info("Before inlining:")
+      //reporter.info(expandLets(expr0))
       val expr1 = inlineFunctionsAndContracts(program, expr0)
-      reporter.info("Before PM-rewriting:")
-      reporter.info(expr1)
+      //reporter.info("Before PM-rewriting:")
+      //reporter.info(expandLets(expr1))
       val expr2 = rewriteSimplePatternMatching(expr1)
-      reporter.info("After PM-rewriting:")
-      reporter.info(expr2)
+      //reporter.info("After PM-rewriting:")
+      //reporter.info(expandLets(expr2))
       expr2
     }
   }
@@ -173,50 +173,59 @@ object Analysis {
   // new variables and implications in a way that preserves the validity of the
   // formula.
   def unrollRecursiveFunctions(program: Program, expression: Expr, times: Int) : Expr = {
-    var extras : List[Expr] = Nil
+    def unroll(exx: Expr) : (Expr,Seq[Expr]) = {
+      var extras : List[Expr] = Nil
 
-    def urf(expr: Expr, left: Int) : Expr = {
-      def isRecursiveCall(e: Expr) = e match {
-        case f @ FunctionInvocation(fd, _) if fd.hasImplementation && program.isRecursive(fd) => true
-        case _ => false
-      }
-      def unrollCall(t: Int)(e: Expr) = e match {
-        case f @ FunctionInvocation(fd, args) if fd.hasImplementation && program.isRecursive(fd) => {
-          val newLetIDs = fd.args.map(a => FreshIdentifier(a.id.name, true).setType(a.tpe))
-          val newLetVars = newLetIDs.map(Variable(_))
-          val substs: Map[Expr,Expr] = Map((fd.args.map(_.toVariable) zip newLetVars) :_*)
-          val bodyWithLetVars: Expr = replace(substs, fd.body.get)
-          if(fd.hasPostcondition) {
-            val post = fd.postcondition.get
-            val newVar = Variable(FreshIdentifier("call", true)).setType(fd.returnType)
-            val newExtra1 = Equals(newVar, bodyWithLetVars)
-            val newExtra2 = replace(substs + (ResultVariable() -> newVar), post)
-            val bigLet = (newLetIDs zip args).foldLeft(And(newExtra1, newExtra2))((e,p) => Let(p._1, p._2, e))
-            extras = urf(bigLet, t-1) :: extras
-            // println("*********************************")
-            // println(bigLet)
-            // println(" --- from -----------------------")
-            // println(f)
-            // println(" --- newVar is ------------------")
-            // println(newVar)
-            // println("*********************************")
-            newVar
-          } else {
-            val bigLet = (newLetIDs zip args).foldLeft(bodyWithLetVars)((e,p) => Let(p._1, p._2, e))
-            urf(bigLet, t-1)
-          }
+      def urf(expr: Expr, left: Int) : Expr = {
+        def isRecursiveCall(e: Expr) = e match {
+          case f @ FunctionInvocation(fd, _) if fd.hasImplementation && program.isRecursive(fd) => true
+          case _ => false
         }
-        case o => o
-      }
+        def unrollCall(t: Int)(e: Expr) = e match {
+          case f @ FunctionInvocation(fd, args) if fd.hasImplementation && program.isRecursive(fd) => {
+            val newLetIDs = fd.args.map(a => FreshIdentifier(a.id.name, true).setType(a.tpe))
+            val newLetVars = newLetIDs.map(Variable(_))
+            val substs: Map[Expr,Expr] = Map((fd.args.map(_.toVariable) zip newLetVars) :_*)
+            val bodyWithLetVars: Expr = replace(substs, fd.body.get)
+            if(fd.hasPostcondition) {
+              val post = fd.postcondition.get
+              val newVar = Variable(FreshIdentifier("call", true)).setType(fd.returnType)
+              val newExtra1 = Equals(newVar, bodyWithLetVars)
+              val newExtra2 = replace(substs + (ResultVariable() -> newVar), post)
+              val bigLet = (newLetIDs zip args).foldLeft(And(newExtra1, newExtra2))((e,p) => Let(p._1, p._2, e))
+              extras = urf(bigLet, t-1) :: extras
+              // println("*********************************")
+              // println(bigLet)
+              // println(" --- from -----------------------")
+              // println(f)
+              // println(" --- newVar is ------------------")
+              // println(newVar)
+              // println("*********************************")
+              newVar
+            } else {
+              val bigLet = (newLetIDs zip args).foldLeft(bodyWithLetVars)((e,p) => Let(p._1, p._2, e))
+              urf(bigLet, t-1)
+            }
+          }
+          case o => o
+        }
 
-      if(left > 0)
-        searchAndApply(isRecursiveCall, unrollCall(left), expr, false)
-      else
-        expr
+        if(left > 0)
+          searchAndApply(isRecursiveCall, unrollCall(left), expr, false)
+        else
+          expr
+      }
+      val finalE = urf(exx, times)
+      (finalE, extras)
     }
 
-    val finalE = urf(expression, times)
-    pulloutLets(Implies(And(extras.reverse), finalE))
+    val (savedLets, naked) = pulloutAndKeepLets(expression)
+    val infoFromLets: Seq[(Expr,Seq[Expr])] = savedLets.map(_._2).map(unroll(_))
+    val extrasFromLets: Seq[Expr] = infoFromLets.map(_._2).flatten
+    val newLetBodies: Seq[Expr] = infoFromLets.map(_._1)
+    val newSavedLets: Seq[(Identifier,Expr)] = savedLets.map(_._1) zip newLetBodies
+    val (cleaned, extras) = unroll(naked)
+    rebuildLets(newSavedLets, Implies(And(extrasFromLets ++ extras), cleaned))
   }
 
   // Rewrites pattern matching expressions where the cases simply correspond to
@@ -251,9 +260,12 @@ object Analysis {
       (cleanerTree, extras.reverse)
     }
     val (savedLets, naked) = pulloutAndKeepLets(expression)
-    val savedLets2 = savedLets.map(p => (p._1, rewriteSimplePatternMatching(p._2)))
+    val infoFromLets: Seq[(Expr,Seq[Expr])] = savedLets.map(_._2).map(rspm(_))
+    val extrasFromLets: Seq[Expr] = infoFromLets.map(_._2).flatten
+    val newLetBodies: Seq[Expr] = infoFromLets.map(_._1)
+    val newSavedLets: Seq[(Identifier,Expr)] = savedLets.map(_._1) zip newLetBodies
     val (cleaned, extras) = rspm(naked)
-    rebuildLets(savedLets, Implies(And(extras), cleaned))
+    rebuildLets(newSavedLets, Implies(And(extrasFromLets ++ extras), cleaned))
   }
 
 }

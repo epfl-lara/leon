@@ -163,7 +163,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     //    } else {
     //      Implies(And(sideExprs1 ++ sideExprs2), newExpr2)
     //    }
-    //    val initialMap: Map[Identifier,Z3AST] = Map((funDef.args.map(_.id) zip boundVars):_*)
+    //    val initialMap: Map[String,Z3AST] = Map((funDef.args.map(_.id.uniqueName) zip boundVars):_*)
     //    toZ3Formula(z3, finalToConvert, initialMap) match {
     //      case Some(axiomTree) => {
     //        val quantifiedAxiom = z3.mkForAll(0, List(pattern), nameTypePairs, axiomTree)
@@ -247,17 +247,20 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     result
   }
 
-  private def toZ3Formula(z3: Z3Context, expr: Expr, initialMap: Map[Identifier,Z3AST] = Map.empty) : Option[Z3AST] = {
+  private def toZ3Formula(z3: Z3Context, expr: Expr, initialMap: Map[String,Z3AST] = Map.empty) : Option[Z3AST] = {
     class CantTranslateException extends Exception
 
-    var z3Vars: Map[Identifier,Z3AST] = initialMap
+    var z3Vars: Map[String,Z3AST] = initialMap
 
     def rec(ex: Expr) : Z3AST = ex match {
       case Let(i,e,b) => {
-        z3Vars = z3Vars + (i -> rec(e))
-        rec(b)
+        val re = rec(e)
+        z3Vars = z3Vars + (i.uniqueName -> re)
+        val rb = rec(b)
+        z3Vars = z3Vars - i.uniqueName
+        rb
       }
-      case v @ Variable(id) => z3Vars.get(id) match {
+      case v @ Variable(id) => z3Vars.get(id.uniqueName) match {
         case Some(ast) => ast
         case None => {
           val newAST = typeToSort(v.getType) match {
@@ -269,7 +272,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
               throw new CantTranslateException
             }
           }
-          z3Vars = z3Vars + (id -> newAST)
+          z3Vars = z3Vars + (id.uniqueName -> newAST)
           newAST
         }
       } 
