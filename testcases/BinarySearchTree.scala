@@ -7,6 +7,53 @@ object BinarySearchTree {
 
     def emptySet() : Tree = Leaf()
 
+    sealed abstract class Option
+    case class None() extends Option
+    case class Some(value:Int) extends Option
+
+    sealed abstract class Triple
+    case class SortedTriple(min:Int,max:Int,sorted:Boolean) extends Triple
+
+/*    def isSorted(tree: Tree): SortedTriple = tree match {
+      case Leaf() => SortedTriple(None(), None(), true)
+      case Node(l,v,r) => sorted(l) match {
+        case SortedTriple(minl,maxl,false) => SortedTriple(None(), None(), false)
+	case SortedTriple(minl, maxl, _) => minl match {
+	  case None() => maxl match {
+	    case None() =>  sorted(r) match {
+	      case SortedTriple(_,_,false) => SortedTriple(None(), None(), false)
+	      case SortedTriple(minr,maxr,_) => minr match {
+	        case None() => maxr match {
+		  case None() => SortedTriple(Some(v),Some(v),true)
+		  case _ => SortedTriple(None(),None(),false)
+		}
+		case Some(minrv) => maxr match {
+		  case Some(maxrv) => if (minrv > v) SortedTriple(Some(v),Some(maxrv),true) else SortedTriple(None(),None(),false)
+		  case _ => SortedTriple(None(),None(),false)
+		}
+	      }
+	    }
+	    case _ => SortedTriple(None(),None(),false)
+	  }
+	  case Some(minlv) => maxl match {
+	    case Some(maxlv) => sorted(r) match {
+	      case SortedTriple(_,_,false) => SortedTriple(None(), None(), false)
+	      case SortedTriple(minr,maxr,_) => minr match {
+	        case None() => maxr match {
+		  case None() => if (maxlv <= v) SortedTriple(Some(minlv),Some(v),true) else SortedTriple(None(),None(),false)
+		  case _ => SortedTriple(None(),None(),false)
+		}
+		case Some(minrv) => maxr match {
+		  case Some(maxrv) => if (maxlv <= v && minrv > v) SortedTriple(Some(minlv),Some(maxrv),true) else SortedTriple(None(),None(),false)
+		  case _ => SortedTriple(None(),None(),false)
+		}
+	      }
+	    }
+	    case _ => SortedTriple(None(),None(),false)
+	  }
+	}
+      }*/
+
     def insert(tree: Tree, value: Int) : Node = (tree match {
         case Leaf() => Node(Leaf(), value, Leaf())
         case n @ Node(l, v, r) => if(v < value) {
