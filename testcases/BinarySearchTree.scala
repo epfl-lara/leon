@@ -63,7 +63,7 @@ object BinarySearchTree {
         } else {
           n
         }
-    }) ensuring(contents(_) != Set.empty[Int])
+    }) ensuring (contents(_) == contents(tree) ++ Set(value))
 
     def contains(tree: Tree, value: Int) : Boolean = tree match {
         case Leaf() => false
