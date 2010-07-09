@@ -35,6 +35,7 @@ object Definitions {
     def transitiveCallers(f1: FunDef) = mainObject.transitiveCallers(f1)
     def transitiveCallees(f1: FunDef) = mainObject.transitiveCallees(f1)
     def isRecursive(f1: FunDef) = mainObject.isRecursive(f1)
+    def isCatamorphism(f1: FunDef) = mainObject.isCatamorphism(f1)
   }
 
   /** Objects work as containers for class definitions, functions (def's) and
@@ -112,6 +113,16 @@ object Definitions {
     def transitivelyCalls(f1: FunDef, f2: FunDef) : Boolean = transitiveCallGraph((f1,f2))
 
     def isRecursive(f: FunDef) = transitivelyCalls(f, f)
+
+    def isCatamorphism(f : FunDef) : Boolean = {
+      val c = callees(f)
+      if(f.hasImplementation && f.args.size == 1 && c.size == 1 && c.head == f) f.body.get match {
+        case SimplePatternMatching(scrut, _, _) if (scrut == f.args.head.toVariable) => true
+        case _ => false
+      } else {
+        false
+      }
+    }
   }
 
   /** Useful because case classes and classes are somewhat unified in some
@@ -222,4 +233,5 @@ object Definitions {
     def hasPrecondition : Boolean = precondition.isDefined
     def hasPostcondition : Boolean = postcondition.isDefined
   }
+
 }

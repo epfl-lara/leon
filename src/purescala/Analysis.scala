@@ -121,8 +121,7 @@ class Analysis(val program: Program) {
       val expr1 = inlineFunctionsAndContracts(program, expr0)
       reporter.info("Before PM-rewriting:")
       reporter.info(expr1)
-      val (newExpr2, sideExprs2) = rewriteSimplePatternMatching(expr1)
-      val expr2 = (pulloutLets(Implies(And(sideExprs2), newExpr2)))
+      val expr2 = rewriteSimplePatternMatching(expr1)
       reporter.info("After PM-rewriting:")
       reporter.info(expr2)
       expr2
@@ -222,105 +221,39 @@ object Analysis {
 
   // Rewrites pattern matching expressions where the cases simply correspond to
   // the list of constructors
-  def rewriteSimplePatternMatching(expr: Expr) : (Expr, Seq[Expr]) = {
-    var extras : List[Expr] = Nil
+  def rewriteSimplePatternMatching(expression: Expr) : Expr = {
+    def rspm(expr: Expr) : (Expr,Seq[Expr]) = {
+      var extras : List[Expr] = Nil
 
-    def isPMExpr(e: Expr) : Boolean = {
-      e.isInstanceOf[MatchExpr]
-    }
-
-    def rewritePM(e: Expr) : Expr = e.asInstanceOf[MatchExpr] match {
-      case SimplePatternMatching(scrutinee, classType, casesInfo) => {
-        val newVar = Variable(FreshIdentifier("pm", true)).setType(e.getType)
-        val scrutAsLetID = FreshIdentifier("scrut", true).setType(scrutinee.getType)
-        val lle : List[(Variable,List[Expr])] = casesInfo.map(cseInfo => {
-          val (ccd, newPID, argIDs, rhs) = cseInfo
-          val newPVar = Variable(newPID)
-          val argVars = argIDs.map(Variable(_))
-          val (rewrittenRHS, moreExtras) = rewriteSimplePatternMatching(rhs)
-          (newPVar, List(Equals(newPVar, CaseClass(ccd, argVars)), Implies(Equals(Variable(scrutAsLetID), newPVar), Equals(newVar, rewrittenRHS))) ::: moreExtras.toList)
-        }).toList
-        val (newPVars, newExtras) = lle.unzip
-        extras = Let(scrutAsLetID, scrutinee, And(Or(newPVars.map(Equals(Variable(scrutAsLetID), _))), And(newExtras.flatten))) :: extras
-        newVar
+      def isPMExpr(e: Expr) : Boolean = {
+        e.isInstanceOf[MatchExpr]
       }
-      case _ => e
+
+      def rewritePM(e: Expr) : Expr = e.asInstanceOf[MatchExpr] match {
+        case SimplePatternMatching(scrutinee, classType, casesInfo) => {
+          val newVar = Variable(FreshIdentifier("pm", true)).setType(e.getType)
+          val scrutAsLetID = FreshIdentifier("scrut", true).setType(scrutinee.getType)
+          val lle : List[(Variable,List[Expr])] = casesInfo.map(cseInfo => {
+            val (ccd, newPID, argIDs, rhs) = cseInfo
+            val newPVar = Variable(newPID)
+            val argVars = argIDs.map(Variable(_))
+            val (rewrittenRHS, moreExtras) = rspm(rhs)
+            (newPVar, List(Equals(newPVar, CaseClass(ccd, argVars)), Implies(Equals(Variable(scrutAsLetID), newPVar), Equals(newVar, rewrittenRHS))) ::: moreExtras.toList)
+          }).toList
+          val (newPVars, newExtras) = lle.unzip
+          extras = Let(scrutAsLetID, scrutinee, And(Or(newPVars.map(Equals(Variable(scrutAsLetID), _))), And(newExtras.flatten))) :: extras
+          newVar
+        }
+        case _ => e
+      }
+      
+      val cleanerTree = searchAndApply(isPMExpr, rewritePM, expr) 
+      (cleanerTree, extras.reverse)
     }
-    
-    val cleanerTree = searchAndApply(isPMExpr, rewritePM, expr) 
-    (cleanerTree, extras.reverse)
+    val (savedLets, naked) = pulloutAndKeepLets(expression)
+    val savedLets2 = savedLets.map(p => (p._1, rewriteSimplePatternMatching(p._2)))
+    val (cleaned, extras) = rspm(naked)
+    rebuildLets(savedLets, Implies(And(extras), cleaned))
   }
 
-  object SimplePatternMatching {
-    // (scrutinee, classtypedef, list((caseclassdef, variable, list(variable), rhs)))
-    def unapply(e: MatchExpr) : Option[(Expr,ClassType,Seq[(CaseClassDef,Identifier,Seq[Identifier],Expr)])] = {
-      val MatchExpr(scrutinee, cases) = e
-      val sType = scrutinee.getType
-
-      if(sType.isInstanceOf[AbstractClassType]) {
-        val cCD = sType.asInstanceOf[AbstractClassType].classDef
-        if(cases.size == cCD.knownChildren.size && cases.forall(!_.hasGuard)) {
-          var seen = Set.empty[ClassTypeDef]
-          
-          var lle : List[(CaseClassDef,Identifier,List[Identifier],Expr)] = Nil
-          for(cse <- cases) {
-            cse match {
-              case SimpleCase(CaseClassPattern(binder, ccd, subPats), rhs) if subPats.forall(_.isInstanceOf[WildcardPattern]) => {
-                seen = seen + ccd
-
-                val patID : Identifier = if(binder.isDefined) {
-                  binder.get
-                } else {
-                  FreshIdentifier("cse", true).setType(CaseClassType(ccd))
-                }
-
-                val argIDs : List[Identifier] = (ccd.fields zip subPats.map(_.asInstanceOf[WildcardPattern])).map(p => if(p._2.binder.isDefined) {
-                  p._2.binder.get
-                } else {
-                  FreshIdentifier("pat", true).setType(p._1.tpe)
-                }).toList
-
-                lle = (ccd, patID, argIDs, rhs) :: lle
-              }
-              case _ => ;
-            }
-          }
-          lle = lle.reverse
-
-          if(seen.size == cases.size) {
-            Some((scrutinee, sType.asInstanceOf[AbstractClassType], lle))
-          } else {
-            None
-          }
-        } else {
-          None
-        }
-      } else {
-        val cCD = sType.asInstanceOf[CaseClassType].classDef
-        if(cases.size == 1 && !cases(0).hasGuard) {
-          val SimpleCase(pat,rhs) = cases(0).asInstanceOf[SimpleCase]
-          pat match {
-            case CaseClassPattern(binder, ccd, subPats) if (ccd == cCD && subPats.forall(_.isInstanceOf[WildcardPattern])) => {
-              val patID : Identifier = if(binder.isDefined) {
-                binder.get
-              } else {
-                FreshIdentifier("cse", true).setType(CaseClassType(ccd))
-              }
-
-              val argIDs : List[Identifier] = (ccd.fields zip subPats.map(_.asInstanceOf[WildcardPattern])).map(p => if(p._2.binder.isDefined) {
-                p._2.binder.get
-              } else {
-                FreshIdentifier("pat", true).setType(p._1.tpe)
-              }).toList
-
-              Some((scrutinee, CaseClassType(cCD), List((cCD, patID, argIDs, rhs))))
-            }
-            case _ => None
-          }
-        } else {
-          None
-        }
-      }
-    }
-  }
 }

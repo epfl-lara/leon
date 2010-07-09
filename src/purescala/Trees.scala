@@ -479,4 +479,77 @@ object Trees {
 
     rec(expr, Map.empty)
   }
+
+  object SimplePatternMatching {
+    // (scrutinee, classtype, list((caseclassdef, variable, list(variable), rhs)))
+    def unapply(e: MatchExpr) : Option[(Expr,ClassType,Seq[(CaseClassDef,Identifier,Seq[Identifier],Expr)])] = {
+      val MatchExpr(scrutinee, cases) = e
+      val sType = scrutinee.getType
+
+      if(sType.isInstanceOf[AbstractClassType]) {
+        val cCD = sType.asInstanceOf[AbstractClassType].classDef
+        if(cases.size == cCD.knownChildren.size && cases.forall(!_.hasGuard)) {
+          var seen = Set.empty[ClassTypeDef]
+          
+          var lle : List[(CaseClassDef,Identifier,List[Identifier],Expr)] = Nil
+          for(cse <- cases) {
+            cse match {
+              case SimpleCase(CaseClassPattern(binder, ccd, subPats), rhs) if subPats.forall(_.isInstanceOf[WildcardPattern]) => {
+                seen = seen + ccd
+
+                val patID : Identifier = if(binder.isDefined) {
+                  binder.get
+                } else {
+                  FreshIdentifier("cse", true).setType(CaseClassType(ccd))
+                }
+
+                val argIDs : List[Identifier] = (ccd.fields zip subPats.map(_.asInstanceOf[WildcardPattern])).map(p => if(p._2.binder.isDefined) {
+                  p._2.binder.get
+                } else {
+                  FreshIdentifier("pat", true).setType(p._1.tpe)
+                }).toList
+
+                lle = (ccd, patID, argIDs, rhs) :: lle
+              }
+              case _ => ;
+            }
+          }
+          lle = lle.reverse
+
+          if(seen.size == cases.size) {
+            Some((scrutinee, sType.asInstanceOf[AbstractClassType], lle))
+          } else {
+            None
+          }
+        } else {
+          None
+        }
+      } else {
+        val cCD = sType.asInstanceOf[CaseClassType].classDef
+        if(cases.size == 1 && !cases(0).hasGuard) {
+          val SimpleCase(pat,rhs) = cases(0).asInstanceOf[SimpleCase]
+          pat match {
+            case CaseClassPattern(binder, ccd, subPats) if (ccd == cCD && subPats.forall(_.isInstanceOf[WildcardPattern])) => {
+              val patID : Identifier = if(binder.isDefined) {
+                binder.get
+              } else {
+                FreshIdentifier("cse", true).setType(CaseClassType(ccd))
+              }
+
+              val argIDs : List[Identifier] = (ccd.fields zip subPats.map(_.asInstanceOf[WildcardPattern])).map(p => if(p._2.binder.isDefined) {
+                p._2.binder.get
+              } else {
+                FreshIdentifier("pat", true).setType(p._1.tpe)
+              }).toList
+
+              Some((scrutinee, CaseClassType(cCD), List((cCD, patID, argIDs, rhs))))
+            }
+            case _ => None
+          }
+        } else {
+          None
+        }
+      }
+    }
+  }
 }
