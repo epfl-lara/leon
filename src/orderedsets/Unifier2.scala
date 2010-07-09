@@ -83,7 +83,7 @@ object PureScalaUnifier extends Unifier2[Variable,CaseClassDef] {
   def pv(v: Variable) = v.id.toString
   def pf(cc: CaseClassDef) = cc.id.toString
   
-  def unify(and: And) {
+  def unify(and: Expr) {
     val equalities = new ArrayBuffer[(Term,Term)]()
     val inequalities = new ArrayBuffer[(Var,Var)]()
   
@@ -109,7 +109,10 @@ object PureScalaUnifier extends Unifier2[Variable,CaseClassDef] {
       case _ => throw ConversionException(expr, "Cannot convert : ")
     }
     // extract constraints
-    and.exprs foreach extractConstraint
+    and match {
+      case And(exprs) => exprs foreach extractConstraint
+      case _ => extractConstraint(and)
+    }
   
     println
     println("--- Input to the unifier ---")

@@ -4,7 +4,7 @@ object DNF {
 
   import purescala.Trees._
 
-  def dnf(expr: Expr): Stream[And] = _dnf(expr) map And.apply
+  def dnf(expr: Expr): Stream[Expr] = _dnf(expr) map And.apply
      
   private def _dnf(expr: Expr): Stream[Seq[Expr]] = expr match {
     case And(Nil) => Stream(Nil)

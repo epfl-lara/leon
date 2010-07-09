@@ -25,7 +25,7 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
           PureScalaUnifier.unify(and)
           Some(true)
         case Equals(_, _) | Not(Equals(_, _)) =>
-          PureScalaUnifier.unify(And(List(expr)))
+          PureScalaUnifier.unify(expr)
           Some(true)
           //None
         case _ => throw ConversionException(expr, "Neither a conjunction nor a (in)equality")
