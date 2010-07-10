@@ -23,6 +23,8 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
   var program:Program = null
   override def setProgram(p: Program) = program = p
 
+  var freshVarMap = Map.empty[Variable, Variable]
+
   // checks for V-A-L-I-D-I-T-Y !
   // Some(true) means formula is valid (negation is unsat)
   // Some(false) means formula is not valid (negation is sat)
@@ -33,6 +35,8 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
     try {
       var counter = 0
       for (conjunction <- dnf(negate(expr))) {
+        // Refresh the Coll_i for each conjunct
+        freshVarMap = Map.empty
         counter += 1
         reporter.info("Solving conjunction " + counter)
         //conjunction foreach println
@@ -46,16 +50,8 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
           // TODO: Might contain multiple c_i ~= {} for a fixed i
           val noAlphas = restFormula flatMap expandAlphas(varMap)
           reporter.info("The resulting formula is " + noAlphas)
-
-          // Extracting only the needed equalities Fe (to avoid unnecessary relaxations)
-          // Assuming that all the inequalities which did not involve TermAlgebra are already
-          // in restFormula
-          val usefulEqns = substTable.filter(x => ExprToASTConverter.isAcceptableType(x._1.getType)).map(x => ExprToASTConverter.makeEq(x._1, x._2))
-
-          reporter.info("The useful equations are: " + substTable)
-          reporter.info("The tree equations are: " + treeEquations)
           // OrdBAPA finds the formula satisfiable
-          if((new Main(reporter)).solve(ExprToASTConverter(And(noAlphas.toList ++ usefulEqns.toList ++ treeEquations.toList)))) {
+          if((new Main(reporter)).solve(ExprToASTConverter(And(noAlphas.toList)))) {
             throw(new SatException(null))
           }  
         } catch {        
@@ -86,6 +82,12 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
     }
   }
 
+  def getVars(t: Expr) = {
+    var varNames = Set.empty[String]
+    searchAndReplace({ case Variable(id) => varNames += id.uniqueName; None; case _ => None })(t)
+    varNames
+  }
+
   def isAlpha(varMap: Variable => Expr)(t: Expr): Option[Expr] = t match {
     case FunctionInvocation(fd, arg) => asCatamorphism(program, fd) match {
       case None => None
@@ -99,9 +101,13 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
             Some(repRHS)
           }
           case u @ Variable(_) => {
-            val c = Variable(FreshIdentifier("Coll", true)).setType(t.getType)
-            // TODO: Keep track of these variables for M1(t, c)
-            Some(c)
+            if(freshVarMap.contains(u)) Some(freshVarMap(u)) 
+            else {
+              val c = Variable(FreshIdentifier("Coll", true)).setType(t.getType)
+              // TODO: Keep track of these variables for M1(t, c)
+              freshVarMap += (u -> c)
+              Some(c)
+            }
           }
           case _ => error("Bad substitution")
         }
@@ -113,12 +119,6 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
       }
     }
     case _ => None
-  }
-
-  def getVars(t: Expr) = {
-    var varNames = Set.empty[String]
-    searchAndReplace({ case Variable(id) => varNames += id.uniqueName; None; case _ => None })(t)
-    varNames
   }
 
   def expandAlphas(varMap: Variable => Expr)(e: Expr) : Seq[Expr] = {
