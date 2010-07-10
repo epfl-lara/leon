@@ -1,5 +1,6 @@
 package orderedsets
 
+import scala.collection.Map
 import purescala.Reporter
 import purescala.Extensions.Solver
 import Reconstruction.Model
@@ -77,7 +78,11 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
     rest foreach println
     */
     
-    val subst = ADTUnifier.unify(treeEquations)
+    // The substitution table
+    val substTable = ADTUnifier.unify(treeEquations)
+    
+    // The substitution function (returns identity if unmapped)
+    def subst(v: Variable): Expr = substTable getOrElse (v, v)
     
     throw IncompleteException(null)
     
