@@ -76,22 +76,28 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
   }
 
   def isAlpha(varMap: Variable => Expr)(t: Expr): Option[Expr] = t match {
-    case FunctionInvocation(fd, Seq(v@ Variable(_))) => asCatamorphism(program, fd) match {
+    case FunctionInvocation(fd, arg) => asCatamorphism(program, fd) match {
       case None => None
-      case Some(lstMatch) => varMap(v) match {
-        case CaseClass(cd, args) => {
+      case Some(lstMatch) => arg match {
+        case Seq(v@Variable(_)) => varMap(v) match {
+          case CaseClass(cd, args) => {
+            val (_, _, ids, rhs) = lstMatch.find( _._1 == cd).get
+            val repMap = Map( ids.map(id => Variable(id):Expr).zip(args): _* )
+            reporter.warning("Converting " + t + " to " + rhs)
+            Some(searchAndReplace(repMap.get)(rhs))
+          }
+          case u @ Variable(_) => {
+            val c = Variable(FreshIdentifier("Coll", true)).setType(t.getType)
+            // TODO: Keep track of these variables for M1(t, c)
+            Some(c)
+          }
+          case _ => error("Bad substitution")
+        }
+        case Seq(CaseClass(cd, _)) => 
           val (_, _, ids, rhs) = lstMatch.find( _._1 == cd).get
-          val repMap = Map( ids.map(id => Variable(id):Expr).zip(args): _* )
-          Some(searchAndReplace(repMap.get)(rhs))
-        }
-        case u @ Variable(_) => {
-          val c = Variable(FreshIdentifier("Coll", true)).setType(t.getType)
-          // TODO: Keep track of these variables for M1(t, c)
-          Some(c)
-        }
-        case _ => error("Bad substitution")
+          Some(rhs)
+        case _ => error("Not a catamorphism.")
       }
-      case _ => None
     }
     case _ => None
   }
