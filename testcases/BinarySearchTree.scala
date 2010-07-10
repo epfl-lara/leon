@@ -84,6 +84,12 @@ object BinarySearchTree {
         }
     }} ensuring (contents(_) == contents(tree) ++ Set(value))
 
+    def dumbInsert(tree: Tree): Node = {
+      tree match {
+        case Leaf() => Node(Leaf(), 0, Leaf())
+        case Node(l, e, r) => Node(dumbInsert(l), e, r)
+      }} ensuring (contents(_) == contents(tree) ++ Set(0))
+
 /*
     def remove(tree: Tree, value: Int) : Node = (tree match {
         case Leaf() => Node(Leaf(), value, Leaf())

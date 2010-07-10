@@ -43,7 +43,13 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
           // TODO: Might contain multiple c_i ~= {} for a fixed i
           val noAlphas = restFormula flatMap expandAlphas(varMap)
           reporter.info("The resulting formula is " + noAlphas)
+          // OrdBAPA finds the formula satisfiable
+          if((new Main(reporter)).solve(ExprToASTConverter(And(noAlphas.toList)))) {
+            throw(new SatException(null))
+          }  
         } catch {        
+          case ConversionException(badExpr, msg) =>
+            throw(new IncompleteException("BAPA< cannot handle :" + badExpr + " : " + msg))
           case UnificationImpossible(msg) =>
             reporter.info("Conjunction " + counter + " is UNSAT, unification impossible : " + msg)
         }
@@ -52,9 +58,7 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
       Some(true)
     } catch {
       case ConversionException(badExpr, msg) =>
-        reporter.info(msg + " : " + badExpr.getClass.toString)
-//        reporter.info(DNF.pp(badExpr))
-        //error("should not happen")
+        reporter.warning(msg + " : " + badExpr.getClass.toString)
         None
       case IncompleteException(msg) =>
         reporter.info("Unifier cannot disprove this because it is incomplete")
@@ -67,7 +71,7 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
         e.printStackTrace
         None
     } finally {
-      
+            Symbol.clearCache
     }
   }
 
@@ -93,14 +97,19 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
   }
 
 
-  def expandAlphas(varMap: Variable => Expr)(e: Expr) : Seq[Expr] = isAlpha(varMap)(e) match {
-      case None => Seq(e) // Not a catamorphism
-      case Some(cata) =>  // cata is the Partially evaluated expression
-        // The original expression is not returned
-        var nonEmptySetsExpr = Seq.empty[Expr]
-        // SetEquals or just Equals?
-        searchAndReplace({case v@Variable(_) => nonEmptySetsExpr :+= Not(SetEquals(v, EmptySet(v.getType))); None; case _ => None})(cata)
-        nonEmptySetsExpr
+  def expandAlphas(varMap: Variable => Expr)(e: Expr) : Seq[Expr] = {
+    val partiallyEvaluated = searchAndReplace(isAlpha(varMap))(e)
+    if(partiallyEvaluated == e) {
+      reporter.warning(e + " does not contain any catamorphism.")
+      Seq(e) // Not a catamorphism
+    }
+    else { // partiallyEvaluated is the Partially evaluated expression
+      reporter.warning(e + " found to contain one or more catamorphisms. Translated to: " + partiallyEvaluated)
+      var nonEmptySetsExpr = Seq(partiallyEvaluated)
+      // SetEquals or just Equals?
+      searchAndReplace({case v@Variable(_) => nonEmptySetsExpr :+= Not(SetEquals(v, EmptySet(v.getType))); None; case _ => None})(partiallyEvaluated)
+      nonEmptySetsExpr
+    }
   }
   
   def checkIsSupported(expr: Expr) {

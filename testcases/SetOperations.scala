@@ -45,7 +45,7 @@ object SetOperations {
     val x = a.min - 1
     val y = a.max + 1
     Set(x) ++ Set(y) ++ a
-  } ensuring {res => res.max > a.max && res.min < a.min}
+  } ensuring (res => res.max > a.max && res.min < a.min)
 
   // .. but this can no longer be proved by the OrderedBAPA solver,
   // because "Set(b)" is neither a set of uninterpreted elements (pure BAPA)

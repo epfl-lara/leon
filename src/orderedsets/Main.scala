@@ -33,6 +33,9 @@ class Main(reporter: Reporter) extends Solver(reporter) {
       case ConversionException(badExpr, msg) =>
         reporter.info(badExpr, msg)
         None
+      case IncompleteException(msg) =>
+        reporter.info(msg)
+        None
       case e =>
         reporter.error("BAPA with ordering just crashed.\n  exception = " + e.toString)
         None
@@ -44,7 +47,7 @@ class Main(reporter: Reporter) extends Solver(reporter) {
   // checks for U-N-S-A-T-I-S-F-I-A-B-I-L-I-T-Y !
   // true means formula is SAT
   // false means formula is UNSAT
-  private def solve(formula: Formula): Boolean = {
+  def solve(formula: Formula): Boolean = {
     reporter.info("BAPA< formula to be verified:\n" + NormalForms.nnf(!formula).toString)
 
     val z3 = new Context(formula, reporter)
@@ -74,7 +77,8 @@ class Main(reporter: Reporter) extends Solver(reporter) {
         for ((name, value) <- sets) 
           reporter.info("\t\t " + name + " -> " + value)
         // Return SAT
-        true
+        if(!ExprToASTConverter.formulaRelaxed) true
+        else throw(new IncompleteException("OrdBAPA: Relaxed formula was found satiafiable."))
     } finally {
       z3.delete
       val totalTime = ((System.nanoTime - startTime) / 1000000) / 1000.0
@@ -98,6 +102,7 @@ object ExprToASTConverter {
   import purescala.Trees._
   import Primitives._
 
+  var formulaRelaxed = false
   
   private def isSetType(_type: TypeTree) = _type match {
     case SetType(_) => true
@@ -106,20 +111,20 @@ object ExprToASTConverter {
 
   private def toSetTerm(expr: Expr): AST.Term = expr match {
     case ResultVariable() if isSetType(expr.getType) => Symbol("#res", Symbol.SetType)
-    case Variable(id) if isSetType(id.getType) => Symbol(id.name, Symbol.SetType)
+    case Variable(id) if isSetType(id.getType) => Symbol(id.uniqueName, Symbol.SetType)
     case EmptySet(_) => AST.emptyset
     case FiniteSet(elems) if elems forall {_.getType == Int32Type} => AST.Op(UNION, (elems map toIntTerm map {_.singleton}).toList)
     case SetCardinality(set) => toSetTerm(set).card
     case SetIntersection(set1, set2) => toSetTerm(set1) ** toSetTerm(set2)
     case SetUnion(set1, set2) => toSetTerm(set1) ++ toSetTerm(set2)
     case SetDifference(set1, set2) => toSetTerm(set1) -- toSetTerm(set2)
-    case Variable(_) => throw ConversionException(expr, "is a variable and cannot convert to bapa< set variable")
-    case _ => throw ConversionException(expr, "is of type " + expr.getType + ": Cannot convert to bapa< set term")
+    case Variable(_) => throw ConversionException(expr, "is a variable of type " + expr.getType + " and cannot be converted to bapa< set variable")
+    case _ => throw ConversionException(expr, "Cannot convert to bapa< set term")
   }
 
   private def toIntTerm(expr: Expr): AST.Term = expr match {
     case ResultVariable() if expr.getType == Int32Type => Symbol("#res", Symbol.IntType)
-    case Variable(id) if id.getType == Int32Type => Symbol(id.name, Symbol.IntType)
+    case Variable(id) if id.getType == Int32Type => Symbol(id.uniqueName, Symbol.IntType)
     case IntLiteral(v) => AST.Lit(IntLit(v))
     case Plus(lhs, rhs) => toIntTerm(lhs) + toIntTerm(rhs)
     case Minus(lhs, rhs) => toIntTerm(lhs) - toIntTerm(rhs)
@@ -134,7 +139,7 @@ object ExprToASTConverter {
   private def toFormula(expr: Expr): AST.Formula = expr match {
     case BooleanLiteral(true) => AST.True
     case BooleanLiteral(false) => AST.False
-    case Variable(id) if id.getType == BooleanType => Symbol(id.name, Symbol.BoolType)
+    case Variable(id) if id.getType == BooleanType => Symbol(id.uniqueName, Symbol.BoolType)
     case Or(exprs) => AST.Or((exprs map toFormula).toList)
     case And(exprs) => AST.And((exprs map toFormula).toList)
     case Not(expr) => !toFormula(expr)
@@ -151,9 +156,10 @@ object ExprToASTConverter {
     case LessEquals(lhs, rhs) => toIntTerm(lhs) <= toIntTerm(rhs)
     case GreaterThan(lhs, rhs) => toIntTerm(lhs) > toIntTerm(rhs)
     case GreaterEquals(lhs, rhs) => toIntTerm(lhs) >= toIntTerm(rhs)
-    case Equals(lhs, rhs) => toIntTerm(lhs) === toIntTerm(rhs)
+    case Equals(lhs, rhs) if lhs.getType == Int32Type && rhs.getType == Int32Type => toIntTerm(lhs) === toIntTerm(rhs)
 
-    case _ => throw ConversionException(expr, "Cannot convert to bapa< formula")
+    // Assuming the formula to be True
+    case _ => {formulaRelaxed = true; AST.True}
   }
 
   def getSetTypes(expr: Expr): Set[TypeTree] = expr match {
@@ -183,5 +189,5 @@ object ExprToASTConverter {
     case _ => Set.empty[TypeTree]
   }
 
-  def apply(expr: Expr) = toFormula(expr)
+  def apply(expr: Expr) = {formulaRelaxed = false; toFormula(expr)}
 }
