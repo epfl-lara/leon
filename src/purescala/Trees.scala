@@ -240,6 +240,8 @@ object Trees {
       case SetCardinality(t) => Some((t,SetCardinality))
       case Car(t) => Some((t,Car))
       case Cdr(t) => Some((t,Cdr))
+      case SetMin(s) => Some((s,SetMin))
+      case SetMax(s) => Some((s,SetMax))
       case _ => None
     }
   }
@@ -365,6 +367,9 @@ object Trees {
         else
           c
       }
+      case f @ FiniteSet(elems) => {
+        FiniteSet(elems.map(rec(_))).setType(f.getType)
+      }
       case _ => ex
     }
 
@@ -468,6 +473,9 @@ object Trees {
           CaseClassSelector(rc, sel).setType(c.getType)
         else
           c
+      }
+      case f @ FiniteSet(elems) => {
+        FiniteSet(elems.map(rec(_, s))).setType(f.getType)
       }
       case _ => ex
     }
