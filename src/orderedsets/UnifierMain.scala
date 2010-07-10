@@ -39,12 +39,23 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
         conjunction foreach checkIsSupported
         try {
           // restFormula is also a Sequence of conjunctions
-          val (varMap, restFormula) = solve(conjunction)
+          val (substTable, treeEquations, restFormula) = solve(conjunction)
+          // The substitution function (returns identity if unmapped)
+          def varMap(v: Variable): Expr = substTable getOrElse (v, v)
+
           // TODO: Might contain multiple c_i ~= {} for a fixed i
           val noAlphas = restFormula flatMap expandAlphas(varMap)
           reporter.info("The resulting formula is " + noAlphas)
+
+          // Extracting only the needed equalities Fe (to avoid unnecessary relaxations)
+          // Assuming that all the inequalities which did not involve TermAlgebra are already
+          // in restFormula
+          val usefulEqns = substTable.filter(x => ExprToASTConverter.isAcceptableType(x._1.getType)).map(x => ExprToASTConverter.makeEq(x._1, x._2))
+
+          reporter.info("The useful equations are: " + substTable)
+          reporter.info("The tree equations are: " + treeEquations)
           // OrdBAPA finds the formula satisfiable
-          if((new Main(reporter)).solve(ExprToASTConverter(And(noAlphas.toList)))) {
+          if((new Main(reporter)).solve(ExprToASTConverter(And(noAlphas.toList ++ usefulEqns.toList ++ treeEquations.toList)))) {
             throw(new SatException(null))
           }  
         } catch {        
@@ -83,8 +94,9 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
           case CaseClass(cd, args) => {
             val (_, _, ids, rhs) = lstMatch.find( _._1 == cd).get
             val repMap = Map( ids.map(id => Variable(id):Expr).zip(args): _* )
-            reporter.warning("Converting " + t + " to " + rhs)
-            Some(searchAndReplace(repMap.get)(rhs))
+            val repRHS = searchAndReplace(repMap.get)(rhs)
+            reporter.warning("Converting " + t + " to " + repRHS + " with variables = " + getVars(repRHS))
+            Some(repRHS)
           }
           case u @ Variable(_) => {
             val c = Variable(FreshIdentifier("Coll", true)).setType(t.getType)
@@ -95,6 +107,7 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
         }
         case Seq(CaseClass(cd, _)) => 
           val (_, _, ids, rhs) = lstMatch.find( _._1 == cd).get
+          reporter.warning("Converting " + t + " to " + rhs)
           Some(rhs)
         case _ => error("Not a catamorphism.")
       }
@@ -102,6 +115,11 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
     case _ => None
   }
 
+  def getVars(t: Expr) = {
+    var varNames = Set.empty[String]
+    searchAndReplace({ case Variable(id) => varNames += id.uniqueName; None; case _ => None })(t)
+    varNames
+  }
 
   def expandAlphas(varMap: Variable => Expr)(e: Expr) : Seq[Expr] = {
     val partiallyEvaluated = searchAndReplace(isAlpha(varMap))(e)
@@ -111,9 +129,11 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
     }
     else { // partiallyEvaluated is the Partially evaluated expression
       reporter.warning(e + " found to contain one or more catamorphisms. Translated to: " + partiallyEvaluated)
+      reporter.warning(e + " had variables = " + getVars(e))
+      reporter.warning(partiallyEvaluated + " has variables = " + getVars(partiallyEvaluated))
       var nonEmptySetsExpr = Seq(partiallyEvaluated)
       // SetEquals or just Equals?
-      searchAndReplace({case v@Variable(_) => nonEmptySetsExpr :+= Not(SetEquals(v, EmptySet(v.getType))); None; case _ => None})(partiallyEvaluated)
+      searchAndReplace({case v@Variable(_) if ExprToASTConverter.isSetType(v.getType) => nonEmptySetsExpr :+= Not(SetEquals(v, EmptySet(v.getType))); None; case _ => None})(partiallyEvaluated)
       nonEmptySetsExpr
     }
   }
@@ -131,7 +151,7 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
   /* Returns a conjunction which contains the rest of the formula
    * apart from the ADTs
    */
-  def solve(conjunction: Seq[Expr]): (Variable => Expr, Seq[Expr]) = {
+  def solve(conjunction: Seq[Expr]): (Map[Variable, Expr], Seq[Expr], Seq[Expr]) = {
     val (treeEquations, rest) = separateADT(conjunction)
     
     /*
@@ -144,10 +164,8 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
     // The substitution table
     val substTable = ADTUnifier.unify(treeEquations)
     
-    // The substitution function (returns identity if unmapped)
-    def subst(v: Variable): Expr = substTable getOrElse (v, v)
 
-    (subst, rest)
+    (substTable, treeEquations, rest)
 
   }
   

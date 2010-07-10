@@ -104,9 +104,17 @@ object ExprToASTConverter {
 
   var formulaRelaxed = false
   
-  private def isSetType(_type: TypeTree) = _type match {
+  def isSetType(_type: TypeTree) = _type match {
     case SetType(_) => true
     case _ => false
+  }
+  
+  def isAcceptableType(_type: TypeTree) = isSetType(_type) || _type == Int32Type
+
+  def makeEq(v: Variable, t: Expr) = v.getType match {
+    case Int32Type => Equals(v, t)
+    case tpe if isSetType(tpe) => SetEquals(v, t)
+    case _ => throw(new ConversionException(v, "is of type " + v.getType + " and cannot be handled by OrdBapa"))
   }
 
   private def toSetTerm(expr: Expr): AST.Term = expr match {

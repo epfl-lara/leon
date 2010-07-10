@@ -90,6 +90,10 @@ object BinarySearchTree {
         case Node(l, e, r) => Node(dumbInsert(l), e, r)
       }} ensuring (contents(_) == contents(tree) ++ Set(0))
 
+    def createRoot(v: Int): Node = {
+        Node(Leaf(), v, Leaf())
+    } ensuring (contents(_) == Set(v))
+
 /*
     def remove(tree: Tree, value: Int) : Node = (tree match {
         case Leaf() => Node(Leaf(), value, Leaf())
