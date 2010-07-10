@@ -2,7 +2,7 @@ package orderedsets
 
 import scala.{Symbol => ScalaSymbol}
 
-object Example extends Unifier2[String, String] {
+object ExampleUnifier extends Unifier[String, String] {
   
   // Tests and Examples
   val examplePage262 = List(
@@ -43,7 +43,7 @@ object Example extends Unifier2[String, String] {
       for ((v, t) <- unify(terms))
         println("  " + v + " -> " + pp(t))
     } catch {
-      case UnificationFailure(msg) =>
+      case UnificationImpossible(msg) =>
         println("Unification failed: " + msg)
     }
   }
@@ -76,44 +76,47 @@ import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.Definitions.CaseClassDef
 
-object PureScalaUnifier extends Unifier2[Variable,CaseClassDef] {
-  
-  def freshVar(typed: Typed) = Var(Variable(FreshIdentifier("UnifVar", true)) /*setType typed.getType*/)
-  
+
+
+object ADTUnifier extends Unifier[Variable,CaseClassDef] {
+
   def pv(v: Variable) = v.id.toString
   def pf(cc: CaseClassDef) = cc.id.toString
   
-  def unify(and: Expr) {
+  def freshVar(prefix: String)(typed: Typed) = Var(Variable(FreshIdentifier(prefix, true) setType typed.getType))
+  
+  def unify(conjunction: Seq[Expr]) {
     val equalities = new ArrayBuffer[(Term,Term)]()
     val inequalities = new ArrayBuffer[(Var,Var)]()
   
-    def extractConstraint(expr: Expr) { expr match {
+    def extractEquality(expr: Expr): Unit = expr match {
       case Equals(t1, t2) =>
-        equalities += ((convert(t1), convert(t2)))
+        equalities += expr2term(t1) -> expr2term(t2)
       case Not(Equals(t1, t2)) =>
-        val x1 = freshVar(t1)
-        val x2 = freshVar(t2)
-        equalities += ((x1, convert(t1)))
-        equalities += ((x2, convert(t2)))
-        inequalities += ((x1, x2))
-      case _ =>
-    }}
-    def convert(expr: Expr): Term = expr match {
+        inequalities += toPureTerm(t1) -> toPureTerm(t2)
+      case _ => error("Should not happen after separating the formula.")
+    }
+    def toPureTerm(expr: Expr) = expr2term(expr) match {
+      case v@Var(_) => v
+      case term =>
+        val v = freshVar("Diseq")(expr)
+        equalities += v -> term
+        v
+    }
+    def expr2term(expr: Expr): Term = expr match {
       case v@Variable(id) => Var(v)
-      case CaseClass(ccdef, args) => Fun(ccdef, args map convert)
+      case CaseClass(ccdef, args) => Fun(ccdef, args map expr2term)
       case CaseClassSelector(ex, sel) =>
         val CaseClassType(ccdef) = ex.getType
-        val args = ccdef.fields map freshVar
-        equalities += convert(ex) -> Fun(ccdef, args)     
+        val args = ccdef.fields map freshVar("Sel")
+        equalities += expr2term(ex) -> Fun(ccdef, args)     
         args(ccdef.fields findIndexOf {_.id == sel})
-      case _ => throw ConversionException(expr, "Cannot convert : ")
+      case _ => error("Should not happen after separating the formula.")
     }
-    // extract constraints
-    and match {
-      case And(exprs) => exprs foreach extractConstraint
-      case _ => extractConstraint(and)
-    }
+    // extract equality constraints
+    conjunction foreach extractEquality
   
+    /*
     println
     println("--- Input to the unifier ---")
     for ((l,r) <- equalities) println("  " + pp(l) + "  =  " + pp(r))
@@ -122,10 +125,13 @@ object PureScalaUnifier extends Unifier2[Variable,CaseClassDef] {
       for ((l,r) <- inequalities) println("  " + pp(l) + "  !=  " + pp(r))
     }    
     println
-  
-    val mgu = unify(equalities.toList)
-    val subst = blowUp(mgu)
+    */
     
+    val mgu = unify(equalities.toList)
+    val map = blowUp(mgu)
+    def subst(v: Variable) = map getOrElse (v, Var(v))
+    
+    /*
     def byName(entry1: (Variable,Term), entry2: (Variable,Term)) =
       pv(entry1._1) < pv(entry2._1)
     
@@ -134,38 +140,49 @@ object PureScalaUnifier extends Unifier2[Variable,CaseClassDef] {
     for ((x, t) <- mgu.toList sortWith byName)
       println("  " + x + "  =  " + pp(t))
     println
+    */
   
     // check inequalities
     for ((Var(x1), Var(x2)) <- inequalities) {
       val t1 = subst(x1)
       val t2 = subst(x2)
       if (t1 == t2)
-        throw UnificationFailure("Inequality '" +  x1.id + " != " + x2.id + "' does not hold")
+        throw UnificationImpossible("Inequality '" +  x1.id + " != " + x2.id + "' is violated (both reduce to " + pp(t1) + ")")
     }
+    
+    /*
     if (!inequalities.isEmpty)
       println("Inequalities were checked to hold\n")
     
     println("--- Output of the unifier (Substitution table) ---")
-    val subst1 = subst.filterKeys{_.getType != NoType}
-    for ((x, t) <- subst1.toList sortWith byName)
+    val map1 = map.filterKeys{_.getType != NoType}
+    for ((x, t) <- map1.toList sortWith byName)
       println("  " + x + "  =  " + pp(t))
-    if (subst1.isEmpty) println("  (empty table)")
-    println
+    if (map1.isEmpty) println("  (empty table)")
+    println 
+    */
+    ()
   }
   
   
+    def term2expr(term: Term): Expr = term match {
+      case Var(v) => v
+      case Fun(cd, args) => CaseClass(cd, args map term2expr)
+    }
 }
 
 
 
 import scala.collection.mutable.{ArrayBuffer => Seq, Map, Set, Stack}
 
-trait Unifier2[VarName >: Null, FunName >: Null] {
+case class UnificationImpossible(msg: String) extends Exception(msg)
+  
+trait Unifier[VarName >: Null, FunName >: Null] {
   
   type MGU = Seq[(VarName, Term)]
   type Subst = Map[VarName, Term]
 
-  // transitive closure for the mapping - the smart way
+  // transitive closure for the mapping - the smart way (in only one iteration)
   def blowUp(mgu: MGU): Subst = {
     val map = Map.empty[VarName, Term]
     def subst(term: Term): Term = term match {
@@ -188,7 +205,7 @@ trait Unifier2[VarName >: Null, FunName >: Null] {
   case class Var(name: VarName) extends Term
   case class Fun(name: FunName, args: scala.collection.Seq[Term]) extends Term
 
-  case class UnificationFailure(msg: String) extends Exception(msg)
+
 
   
   def pv(s: VarName): String
@@ -304,7 +321,7 @@ trait Unifier2[VarName >: Null, FunName >: Null] {
       */
       
       // Select multi equation
-      if (freeClasses.isEmpty) throw UnificationFailure("cycle")
+      if (freeClasses.isEmpty) throw UnificationImpossible("cycle")
 
       val currentClass = freeClasses.pop
       val currentVars = currentClass.eqn.vars
@@ -364,8 +381,8 @@ trait Unifier2[VarName >: Null, FunName >: Null] {
       case None => equation1.fun = equation2.fun
       case Some(Function(name1, args1)) => equation2.fun match {
         case Some(Function(name2, args2)) =>
-          if (name1 != name2) throw UnificationFailure("clash")
-          if (args1.size != args2.size) throw UnificationFailure("arity")
+          if (name1 != name2) throw UnificationImpossible("clash")
+          if (args1.size != args2.size) throw UnificationImpossible("arity")
           val args = for ((eqn1, eqn2) <- args1 zip args2) yield merge(eqn1, eqn2)
           equation1.fun = Some(Function(name1, args))
         case None =>

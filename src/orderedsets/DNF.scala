@@ -3,28 +3,8 @@ package orderedsets
 object DNF {
 
   import purescala.Trees._
-
-  def dnf(expr: Expr): Stream[Expr] = _dnf(expr) map And.apply
-     
-  private def _dnf(expr: Expr): Stream[Seq[Expr]] = expr match {
-    case And(Nil) => Stream(Nil)
-    case And(c :: Nil) => _dnf(c)
-    case And(c :: cs) =>
-      for (conj1 <- _dnf(c); conj2 <- _dnf(And(cs)))
-        yield conj1 ++ conj2
-    case Or(Nil) => Stream(Seq(BooleanLiteral(false)))
-    case Or(d :: Nil) => _dnf(d)
-    case Or(d :: ds) => _dnf(d) append _dnf(Or(ds))
-    // Rewrite Iff and Implies
-    case Iff(p, q) =>
-      _dnf(Or(And(p, q), And(negate(p), negate(q))))
-    case Implies(p, q) =>
-      _dnf(Or(negate(p), q))
-    // Convert to nnf
-    case Not(e@(And(_) | Or(_) | Iff(_, _) | Implies(_, _))) =>
-      _dnf(negate(e))
-    case _ => Stream(expr :: Nil)
-  }
+  import TreeOperations.dnf
+  
   
   // Printer (both && and || are printed as ? on windows..)
   def pp(expr: Expr): String = expr match {
@@ -57,11 +37,13 @@ object DNF {
   }
   
   def test(before: Expr) {
-  	val after = Or(dnf(before).toSeq)
+  	val after = Or((dnf(before) map And.apply).toSeq)
   	println
   	println("Before dnf : " + pp(before))
   	//println("After dnf  : " + pp(after))
   	println("After dnf  : ")
-  	for (and <- dnf(before)) println("  " + pp(and))
+  	for (and <- dnf(before)) println("  " + pp(And(and)))
   }
+  
+  
 }
