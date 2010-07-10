@@ -5,6 +5,12 @@ import purescala.Reporter
 import purescala.Extensions.Solver
 import Reconstruction.Model
 
+import purescala._
+import Trees._
+import Common._
+import TypeTrees._
+import Definitions._
+
 case class IncompleteException(msg: String) extends Exception(msg)
 
 class UnifierMain(reporter: Reporter) extends Solver(reporter) {
@@ -13,6 +19,9 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
 
   val description = "Unifier for ADTs with abstractions"
   override val shortDescription = "Unifier"
+
+  var program:Program = null
+  override def setProgram(p: Program) = program = p
 
   // checks for V-A-L-I-D-I-T-Y !
   // Some(true) means formula is valid (negation is unsat)
@@ -29,7 +38,11 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
         //conjunction foreach println
         conjunction foreach checkIsSupported
         try {
-          solve(conjunction)
+          // restFormula is also a Sequence of conjunctions
+          val (varMap, restFormula) = solve(conjunction)
+          // TODO: Might contain multiple c_i ~= {} for a fixed i
+          val noAlphas = restFormula flatMap expandAlphas(varMap)
+          reporter.info("The resulting formula is " + noAlphas)
         } catch {        
           case UnificationImpossible(msg) =>
             reporter.info("Conjunction " + counter + " is UNSAT, unification impossible : " + msg)
@@ -57,6 +70,38 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
       
     }
   }
+
+  def isAlpha(varMap: Variable => Expr)(t: Expr): Option[Expr] = t match {
+    case FunctionInvocation(fd, Seq(v@ Variable(_))) => asCatamorphism(program, fd) match {
+      case None => None
+      case Some(lstMatch) => varMap(v) match {
+        case CaseClass(cd, args) => {
+          val (_, _, ids, rhs) = lstMatch.find( _._1 == cd).get
+          val repMap = Map( ids.map(id => Variable(id):Expr).zip(args): _* )
+          Some(searchAndReplace(repMap.get)(rhs))
+        }
+        case u @ Variable(_) => {
+          val c = Variable(FreshIdentifier("Coll", true)).setType(t.getType)
+          // TODO: Keep track of these variables for M1(t, c)
+          Some(c)
+        }
+        case _ => error("Bad substitution")
+      }
+      case _ => None
+    }
+    case _ => None
+  }
+
+
+  def expandAlphas(varMap: Variable => Expr)(e: Expr) : Seq[Expr] = isAlpha(varMap)(e) match {
+      case None => Seq(e) // Not a catamorphism
+      case Some(cata) =>  // cata is the Partially evaluated expression
+        // The original expression is not returned
+        var nonEmptySetsExpr = Seq.empty[Expr]
+        // SetEquals or just Equals?
+        searchAndReplace({case v@Variable(_) => nonEmptySetsExpr :+= Not(SetEquals(v, EmptySet(v.getType))); None; case _ => None})(cata)
+        nonEmptySetsExpr
+  }
   
   def checkIsSupported(expr: Expr) {
     def check(ex: Expr): Option[Expr] = ex match {
@@ -68,7 +113,10 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
   }
 
   
-  def solve(conjunction: Seq[Expr]) {
+  /* Returns a conjunction which contains the rest of the formula
+   * apart from the ADTs
+   */
+  def solve(conjunction: Seq[Expr]): (Variable => Expr, Seq[Expr]) = {
     val (treeEquations, rest) = separateADT(conjunction)
     
     /*
@@ -83,10 +131,9 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
     
     // The substitution function (returns identity if unmapped)
     def subst(v: Variable): Expr = substTable getOrElse (v, v)
-    
-    throw IncompleteException(null)
-    
-    ()
+
+    (subst, rest)
+
   }
   
   /* Step 1 : Do DNF transformation (done elsewhere) */

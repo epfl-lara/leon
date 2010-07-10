@@ -105,6 +105,7 @@ object ExprToASTConverter {
   }
 
   private def toSetTerm(expr: Expr): AST.Term = expr match {
+    case ResultVariable() if isSetType(expr.getType) => Symbol("#res", Symbol.SetType)
     case Variable(id) if isSetType(id.getType) => Symbol(id.name, Symbol.SetType)
     case EmptySet(_) => AST.emptyset
     case FiniteSet(elems) if elems forall {_.getType == Int32Type} => AST.Op(UNION, (elems map toIntTerm map {_.singleton}).toList)
@@ -112,10 +113,12 @@ object ExprToASTConverter {
     case SetIntersection(set1, set2) => toSetTerm(set1) ** toSetTerm(set2)
     case SetUnion(set1, set2) => toSetTerm(set1) ++ toSetTerm(set2)
     case SetDifference(set1, set2) => toSetTerm(set1) -- toSetTerm(set2)
-    case _ => throw ConversionException(expr, "Cannot convert to bapa< set term")
+    case Variable(_) => throw ConversionException(expr, "is a variable and cannot convert to bapa< set variable")
+    case _ => throw ConversionException(expr, "is of type " + expr.getType + ": Cannot convert to bapa< set term")
   }
 
   private def toIntTerm(expr: Expr): AST.Term = expr match {
+    case ResultVariable() if expr.getType == Int32Type => Symbol("#res", Symbol.IntType)
     case Variable(id) if id.getType == Int32Type => Symbol(id.name, Symbol.IntType)
     case IntLiteral(v) => AST.Lit(IntLit(v))
     case Plus(lhs, rhs) => toIntTerm(lhs) + toIntTerm(rhs)

@@ -39,6 +39,14 @@ object SetOperations {
             (a ** b ** c).size
   }
   
+  // OrderedBAPA verification with Min and Max
+  def expandSet(a: Set[Int]) : Set[Int] = {
+    require(a.size >= 1)
+    val x = a.min - 1
+    val y = a.max + 1
+    Set(x) ++ Set(y) ++ a
+  } ensuring {res => res.max > a.max && res.min < a.min}
+
   // .. but this can no longer be proved by the OrderedBAPA solver,
   // because "Set(b)" is neither a set of uninterpreted elements (pure BAPA)
   // nor it is a set of integers (ordered BAPA).
