@@ -117,17 +117,17 @@ class Analysis(val program: Program) {
       }
 
       import Analysis._
-      //reporter.info("Before unrolling:")
-      //reporter.info(expandLets(withPrec))
+      // reporter.info("Before unrolling:")
+      // reporter.info(expandLets(withPrec))
       val expr0 = unrollRecursiveFunctions(program, withPrec, Settings.unrollingLevel)
-      //reporter.info("Before inlining:")
-      //reporter.info(expandLets(expr0))
+      // reporter.info("Before inlining:")
+      // reporter.info(expandLets(expr0))
       val expr1 = inlineFunctionsAndContracts(program, expr0)
-      //reporter.info("Before PM-rewriting:")
-      //reporter.info(expandLets(expr1))
+      // reporter.info("Before PM-rewriting:")
+      // reporter.info(expandLets(expr1))
       val expr2 = rewriteSimplePatternMatching(expr1)
-      //reporter.info("After PM-rewriting:")
-      //reporter.info(expandLets(expr2))
+      // reporter.info("After PM-rewriting:")
+      // reporter.info(expandLets(expr2))
       expr2
     }
   }
