@@ -88,7 +88,7 @@ object BinarySearchTree {
       tree match {
         case Leaf() => Node(Leaf(), 0, Leaf())
         case Node(l, e, r) => Node(dumbInsert(l), e, r)
-      }} ensuring (contents(_) == contents(tree) ++ Set(0))
+      }} ensuring (x => { val S = contents(x); S == contents(tree) ++ Set(0) && S.min <= 0 && S.max >= 0} )
 
     def createRoot(v: Int): Node = {
         Node(Leaf(), v, Leaf())

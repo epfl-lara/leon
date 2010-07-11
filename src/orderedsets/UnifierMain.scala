@@ -24,6 +24,7 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
   override def setProgram(p: Program) = program = p
 
   var freshVarMap = Map.empty[Variable, Variable]
+  var alreadyConstrainedVars = Set.empty[Variable]
 
   // checks for V-A-L-I-D-I-T-Y !
   // Some(true) means formula is valid (negation is unsat)
@@ -37,6 +38,7 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
       for (conjunction <- dnf(negate(expr))) {
         // Refresh the Coll_i for each conjunct
         freshVarMap = Map.empty
+        alreadyConstrainedVars = Set.empty
         counter += 1
         reporter.info("Solving conjunction " + counter)
         //conjunction foreach println
@@ -49,7 +51,7 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
 
           // TODO: Might contain multiple c_i ~= {} for a fixed i
           val noAlphas = restFormula flatMap expandAlphas(varMap)
-          reporter.info("The resulting formula is " + noAlphas)
+          // reporter.info("The resulting formula is " + noAlphas)
           // OrdBAPA finds the formula satisfiable
           if((new Main(reporter)).solve(ExprToASTConverter(And(noAlphas.toList)))) {
             throw(new SatException(null))
@@ -97,7 +99,7 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
             val (_, _, ids, rhs) = lstMatch.find( _._1 == cd).get
             val repMap = Map( ids.map(id => Variable(id):Expr).zip(args): _* )
             val repRHS = searchAndReplace(repMap.get)(rhs)
-            reporter.warning("Converting " + t + " to " + repRHS + " with variables = " + getVars(repRHS))
+            // reporter.warning("Converting " + t + " to " + repRHS + " with variables = " + getVars(repRHS))
             Some(repRHS)
           }
           case u @ Variable(_) => {
@@ -113,7 +115,7 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
         }
         case Seq(CaseClass(cd, _)) => 
           val (_, _, ids, rhs) = lstMatch.find( _._1 == cd).get
-          reporter.warning("Converting " + t + " to " + rhs)
+          // reporter.warning("Converting " + t + " to " + rhs)
           Some(rhs)
         case _ => error("Not a catamorphism.")
       }
@@ -124,16 +126,16 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
   def expandAlphas(varMap: Variable => Expr)(e: Expr) : Seq[Expr] = {
     val partiallyEvaluated = searchAndReplace(isAlpha(varMap))(e)
     if(partiallyEvaluated == e) {
-      reporter.warning(e + " does not contain any catamorphism.")
+      // reporter.warning(e + " does not contain any catamorphism.")
       Seq(e) // Not a catamorphism
     }
     else { // partiallyEvaluated is the Partially evaluated expression
-      reporter.warning(e + " found to contain one or more catamorphisms. Translated to: " + partiallyEvaluated)
-      reporter.warning(e + " had variables = " + getVars(e))
-      reporter.warning(partiallyEvaluated + " has variables = " + getVars(partiallyEvaluated))
+      // reporter.warning(e + " found to contain one or more catamorphisms. Translated to: " + partiallyEvaluated)
+      // reporter.warning(e + " had variables = " + getVars(e))
+      // reporter.warning(partiallyEvaluated + " has variables = " + getVars(partiallyEvaluated))
       var nonEmptySetsExpr = Seq(partiallyEvaluated)
-      // SetEquals or just Equals?
-      searchAndReplace({case v@Variable(_) if ExprToASTConverter.isSetType(v.getType) => nonEmptySetsExpr :+= Not(SetEquals(v, EmptySet(v.getType))); None; case _ => None})(partiallyEvaluated)
+      // TODO: SetEquals or just Equals?
+      searchAndReplace({case v@Variable(_) if ExprToASTConverter.isSetType(v.getType) && !alreadyConstrainedVars(v) => alreadyConstrainedVars += v; nonEmptySetsExpr :+= GreaterThan(SetCardinality(v), IntLiteral(0)); None; case _ => None})(partiallyEvaluated)
       nonEmptySetsExpr
     }
   }
