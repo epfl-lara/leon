@@ -13,11 +13,11 @@ object Reconstruction {
   // The output type
   class Model(val intMap: Map[Symbol, Int], val setMap: Map[Symbol, Set[Int]])
   object Model {
-    def unapply(model: Model): Option[(List[(Symbol, Int)],List[(Symbol, String)])] = {
+    def unapply(model: Model): Option[(List[(Symbol, Int)], List[(Symbol, String)])] = {
       val sortedInts = model.intMap.toList.sortWith {_._1.name < _._1.name}
       val sortedSets = for ((sym, set) <- model.setMap.toList.sortWith {_._1.name < _._1.name})
-         yield (sym, set.toList.sortWith{_ < _}.mkString("Set { ", ", ", " }")) 
-      Some((sortedInts, sortedSets)) 
+      yield (sym, set.toList.sortWith {_ < _}.mkString("Set { ", ", ", " }"))
+      Some((sortedInts, sortedSets))
     }
   }
 

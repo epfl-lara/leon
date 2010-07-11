@@ -4,6 +4,8 @@ import purescala.Reporter
 import purescala.Extensions.Solver
 import Reconstruction.Model
 
+import RPrettyPrinter.rpp
+
 class Main(reporter: Reporter) extends Solver(reporter) {
   import purescala.Trees.Expr
   import AST.Formula
@@ -18,16 +20,21 @@ class Main(reporter: Reporter) extends Solver(reporter) {
   // If the formula was found to be not valid,
   // a counter-example is displayed (i.e. the model for negated formula)
   def solve(exprWithLets: Expr): Option[Boolean] = {
+    //reporter.info("INPUT to Ordered BAPA\n" + rpp(exprWithLets))
+
     val expr = purescala.Trees.expandLets(exprWithLets)
-    reporter.info("Sets: " + ExprToASTConverter.getSetTypes(expr))
+
+    //reporter.info("INPUT to Ordered BAPA\n" + rpp(expr))
+
+    //reporter.info("Sets: " + ExprToASTConverter.getSetTypes(expr))
     try {
       // Negate formula
       (Some(!solve(!ExprToASTConverter(expr))), {
-      
+
         val sets = ExprToASTConverter.getSetTypes(expr)
         if (sets.size > 1)
           reporter.warning("Heterogeneous set types: " + sets.mkString(", "))
-      
+
       })._1
     } catch {
       case ConversionException(badExpr, msg) =>
@@ -48,7 +55,7 @@ class Main(reporter: Reporter) extends Solver(reporter) {
   // true means formula is SAT
   // false means formula is UNSAT
   def solve(formula: Formula): Boolean = {
-    reporter.info("BAPA< formula to be verified:\n" + NormalForms.nnf(!formula).toString)
+    //reporter.info("BAPA< formula to be shown unsat:\n" + NormalForms.nnf(formula).toString)
 
     val z3 = new Context(formula, reporter)
     val startTime = System.nanoTime
@@ -74,15 +81,15 @@ class Main(reporter: Reporter) extends Solver(reporter) {
         reporter.info("Counter-example found :")
         for ((name, value) <- ints)
           reporter.info("\t\t " + name + " -> " + value)
-        for ((name, value) <- sets) 
+        for ((name, value) <- sets)
           reporter.info("\t\t " + name + " -> " + value)
         // Return SAT
-        if(!ExprToASTConverter.formulaRelaxed) true
-        else throw(new IncompleteException("OrdBAPA: Relaxed formula was found satiafiable."))
+        if (!ExprToASTConverter.formulaRelaxed) true
+        else throw (new IncompleteException("OrdBAPA: Relaxed formula was found satisfiable."))
     } finally {
       z3.delete
       val totalTime = ((System.nanoTime - startTime) / 1000000) / 1000.0
-      reporter.info("Total time : " + totalTime)
+      //reporter.info("BAPA< total time : " + totalTime)
     }
   }
 }
@@ -103,18 +110,18 @@ object ExprToASTConverter {
   import Primitives._
 
   var formulaRelaxed = false
-  
+
   def isSetType(_type: TypeTree) = _type match {
     case SetType(_) => true
     case _ => false
   }
-  
+
   def isAcceptableType(_type: TypeTree) = isSetType(_type) || _type == Int32Type
 
   def makeEq(v: Variable, t: Expr) = v.getType match {
     case Int32Type => Equals(v, t)
     case tpe if isSetType(tpe) => SetEquals(v, t)
-    case _ => throw(new ConversionException(v, "is of type " + v.getType + " and cannot be handled by OrdBapa"))
+    case _ => throw (new ConversionException(v, "is of type " + v.getType + " and cannot be handled by OrdBapa"))
   }
 
   private def toSetTerm(expr: Expr): AST.Term = expr match {
@@ -167,7 +174,7 @@ object ExprToASTConverter {
     case Equals(lhs, rhs) if lhs.getType == Int32Type && rhs.getType == Int32Type => toIntTerm(lhs) === toIntTerm(rhs)
 
     // Assuming the formula to be True
-    case _ => {formulaRelaxed = true; AST.True}
+    case _ => throw ConversionException(expr, "Cannot convert to bapa< formula")
   }
 
   def getSetTypes(expr: Expr): Set[TypeTree] = expr match {
@@ -197,5 +204,21 @@ object ExprToASTConverter {
     case _ => Set.empty[TypeTree]
   }
 
-  def apply(expr: Expr) = {formulaRelaxed = false; toFormula(expr)}
+  def apply(expr: Expr) = {
+    formulaRelaxed = false;
+    expr match {
+      case And(exprs) => AST.And((exprs map toRelaxedFormula).toList)
+      case _ => toFormula(expr)
+    }
+  }
+
+  private def toRelaxedFormula(expr: Expr): AST.Formula =
+    try {
+      toFormula(expr)
+    } catch {
+      case ConversionException(_, _) =>
+        formulaRelaxed = true
+        // Assuming the formula to be True
+        AST.True
+    }
 }

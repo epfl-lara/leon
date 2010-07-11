@@ -95,11 +95,9 @@ object TreeOperations {
           else
             c
         }
-
-        case f @ FiniteSet(elems) => {
+        case f@FiniteSet(elems) => {
           FiniteSet(elems.map(rec(_))).setType(f.getType)
         }
-
         case _ => ex
       }
     }

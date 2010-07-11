@@ -36,7 +36,7 @@ object GuessOrdering {
   private var debug: Search = null
 
   /**Topological graph **/
-  
+
   class Node(val _vars: List[IntVar]) {
     var isLEnodes = Set.empty[Node] // Nodes with smaller or equal value
     var isLTnodes = Set.empty[Node] // Nodes with strictly smaller value
@@ -411,33 +411,33 @@ object GuessOrdering {
     // TODO: Does not handle the card(A) > 0 like constrants
     // TODO: How to handle seq to {} ?
     //if (Flags.withMinMax)
-      for (f <- bapaform) f match {
-        case Predicate(SEQ, List(s1, s2)) => {
-          val lhsInf = infReduce(s1)
-          val rhsInf = infReduce(s2)
-          // TODO: Complemented set variables should be handled elegantly
-          val setVars = setvars(f)
-          if (setVars.forall(infmap.contains(_))) z3.impose(lhsInf === rhsInf)
+    for (f <- bapaform) f match {
+      case Predicate(SEQ, List(s1, s2)) => {
+        val lhsInf = infReduce(s1)
+        val rhsInf = infReduce(s2)
+        // TODO: Complemented set variables should be handled elegantly
+        val setVars = setvars(f)
+        if (setVars.forall(infmap.contains(_))) z3.impose(lhsInf === rhsInf)
 
-          addConstraint(lhsInf === rhsInf)
+        addConstraint(lhsInf === rhsInf)
 
-          val lhsSup = supReduce(s1)
-          val rhsSup = supReduce(s2)
-          if (setVars.forall(supmap.contains(_))) z3.impose(lhsSup === rhsSup)
+        val lhsSup = supReduce(s1)
+        val rhsSup = supReduce(s2)
+        if (setVars.forall(supmap.contains(_))) z3.impose(lhsSup === rhsSup)
 
-          addConstraint(lhsSup === rhsSup)
-        }
-        case Predicate(SUBSETEQ, List(s1, s2)) => {
-          val lhsInf = infReduce(s1)
-          val rhsInf = infReduce(s2)
-          addConstraint(lhsInf >= rhsInf)
-
-          val lhsSup = supReduce(s1)
-          val rhsSup = supReduce(s2)
-          addConstraint(rhsSup >= lhsSup)
-        }
-        case _ =>
+        addConstraint(lhsSup === rhsSup)
       }
+      case Predicate(SUBSETEQ, List(s1, s2)) => {
+        val lhsInf = infReduce(s1)
+        val rhsInf = infReduce(s2)
+        addConstraint(lhsInf >= rhsInf)
+
+        val lhsSup = supReduce(s1)
+        val rhsSup = supReduce(s2)
+        addConstraint(rhsSup >= lhsSup)
+      }
+      case _ =>
+    }
 
     // TODO: Magic/dirty work
     // This received formula of the form:
@@ -697,10 +697,10 @@ object GuessOrdering {
 
     def rek(current: Queue, later: Queue, acc: RecOrder, toBeGuessed: Set[Node]) {
       //if (Flags.intermediateZ3) {
-        if (!z3.isStillSAT) {
-          //println("HURRAY at " + toBeGuessed.size)
-          return
-        }
+      if (!z3.isStillSAT) {
+        //println("HURRAY at " + toBeGuessed.size)
+        return
+      }
       //}
 
       if (current.isEmpty && later.isEmpty) {
@@ -708,10 +708,10 @@ object GuessOrdering {
         val order = merge(z3, acc.reverse map {_.normalize})
 
         //if (Flags.intermediateZ3) {
-          if (!z3.isStillSAT) {
-            //println("HURRAY at " + toBeGuessed.size)
-            return
-          }
+        if (!z3.isStillSAT) {
+          //println("HURRAY at " + toBeGuessed.size)
+          return
+        }
         //}
 
         callback(order)
