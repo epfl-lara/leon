@@ -51,16 +51,15 @@ object Definitions {
       var resSet: Set[(FunDef,FunDef)] =
         new scala.collection.immutable.HashSet[(FunDef,FunDef)]()
 
-      def isFunCall(e: Expr) : Boolean = e.isInstanceOf[FunctionInvocation]
-      def applyToFunCall(f1: FunDef)(e: Expr) : Expr = e match {
-        case f @ FunctionInvocation(f2, _) => { resSet = resSet + ((f1,f2)); f }
-        case o => o
+      def applyToFunCall(f1: FunDef)(e: Expr) : Option[Expr] = e match {
+        case f @ FunctionInvocation(f2, _) => { resSet = resSet + ((f1,f2)); Some(f) }
+        case _ => None
       }
 
       for(funDef <- definedFunctions) {
-        funDef.precondition.map(searchAndApply(isFunCall, applyToFunCall(funDef), _))
-        funDef.body.map(searchAndApply(isFunCall, applyToFunCall(funDef), _))
-        funDef.postcondition.map(searchAndApply(isFunCall, applyToFunCall(funDef), _))
+        funDef.precondition.map(searchAndReplace(applyToFunCall(funDef))(_))
+        funDef.body.map(searchAndReplace(applyToFunCall(funDef))(_))
+        funDef.postcondition.map(searchAndReplace(applyToFunCall(funDef))(_))
       }
 
       var callers: Map[FunDef,Set[FunDef]] =

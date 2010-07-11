@@ -141,8 +141,7 @@ object Analysis {
   def inlineFunctionsAndContracts(program: Program, expr: Expr) : Expr = {
     var extras : List[Expr] = Nil
 
-    val isFunCall: Function[Expr,Boolean] = _.isInstanceOf[FunctionInvocation]
-    def applyToCall(e: Expr) : Expr = e match {
+    def applyToCall(e: Expr) : Option[Expr] = e match {
       case f @ FunctionInvocation(fd, args) => {
         val fArgsAsVars: List[Variable] = fd.args.map(_.toVariable).toList
         val fParamsAsLetVars: List[Identifier] = fd.args.map(a => FreshIdentifier("arg", true).setType(a.tpe)).toList
@@ -159,17 +158,17 @@ object Analysis {
             replace(substMap + (ResultVariable() -> newVar), fd.postcondition.get),
             Equals(newVar, FunctionInvocation(fd, fParamsAsLetVarVars).setType(fd.returnType))
           )) :: extras
-          newVar
+          Some(newVar)
         } else if(fd.hasImplementation && !program.isRecursive(fd)) { // means we can inline at least one level...
-          mkBigLet(replace(substMap, fd.body.get))
+          Some(mkBigLet(replace(substMap, fd.body.get)))
         } else { // we can't do much for calls to recursive functions or to functions with no bodies
-          f 
+          None
         }
       }
-      case o => o
+      case o => None
     }
 
-    val finalE = searchAndApply(isFunCall, applyToCall, expr)
+    val finalE = searchAndReplace(applyToCall)(expr)
     pulloutLets(Implies(And(extras.reverse), finalE))
   }
 
@@ -181,11 +180,7 @@ object Analysis {
       var extras : List[Expr] = Nil
 
       def urf(expr: Expr, left: Int) : Expr = {
-        def isRecursiveCall(e: Expr) = e match {
-          case f @ FunctionInvocation(fd, _) if fd.hasImplementation && program.isRecursive(fd) => true
-          case _ => false
-        }
-        def unrollCall(t: Int)(e: Expr) = e match {
+        def unrollCall(t: Int)(e: Expr) : Option[Expr] = e match {
           case f @ FunctionInvocation(fd, args) if fd.hasImplementation && program.isRecursive(fd) => {
             val newLetIDs = fd.args.map(a => FreshIdentifier(a.id.name, true).setType(a.tpe))
             val newLetVars = newLetIDs.map(Variable(_))
@@ -205,17 +200,17 @@ object Analysis {
               // println(" --- newVar is ------------------")
               // println(newVar)
               // println("*********************************")
-              newVar
+              Some(newVar)
             } else {
               val bigLet = (newLetIDs zip args).foldLeft(bodyWithLetVars)((e,p) => Let(p._1, p._2, e))
-              urf(bigLet, t-1)
+              Some(urf(bigLet, t-1))
             }
           }
-          case o => o
+          case o => None
         }
 
         if(left > 0)
-          searchAndApply(isRecursiveCall, unrollCall(left), expr, false)
+          searchAndReplace(unrollCall(left), false)(expr)
         else
           expr
       }
@@ -238,12 +233,8 @@ object Analysis {
     def rspm(expr: Expr) : (Expr,Seq[Expr]) = {
       var extras : List[Expr] = Nil
 
-      def isPMExpr(e: Expr) : Boolean = {
-        e.isInstanceOf[MatchExpr]
-      }
-
-      def rewritePM(e: Expr) : Expr = e.asInstanceOf[MatchExpr] match {
-        case SimplePatternMatching(scrutinee, classType, casesInfo) => {
+      def rewritePM(e: Expr) : Option[Expr] = e match {
+        case SimplePatternMatching(scrutinee, classType, casesInfo) => Some({
           val newVar = Variable(FreshIdentifier("pm", true)).setType(e.getType)
           val scrutAsLetID = FreshIdentifier("scrut", true).setType(scrutinee.getType)
           val lle : List[(Variable,List[Expr])] = casesInfo.map(cseInfo => {
@@ -256,11 +247,11 @@ object Analysis {
           val (newPVars, newExtras) = lle.unzip
           extras = Let(scrutAsLetID, scrutinee, And(Or(newPVars.map(Equals(Variable(scrutAsLetID), _))), And(newExtras.flatten))) :: extras
           newVar
-        }
-        case _ => e
+        })
+        case _ => None
       }
       
-      val cleanerTree = searchAndApply(isPMExpr, rewritePM, expr) 
+      val cleanerTree = searchAndReplace(rewritePM)(expr) 
       (cleanerTree, extras.reverse)
     }
     val (savedLets, naked) = pulloutAndKeepLets(expression)
