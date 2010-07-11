@@ -133,6 +133,12 @@ object BinarySearchTree {
       }) ensuring (contents(_) == contents(tree) -- Set(value))
   */
 
+  def mkInfiniteTree(x: Int): Node = {
+    Node(mkInfiniteTree(x), x, mkInfiniteTree(x))
+  } ensuring (res =>
+    res.left != Leaf() && res.right != Leaf()
+  )
+
   def contains(tree: Tree, value: Int): Boolean = tree match {
     case Leaf() => false
     case n@Node(l, v, r) => if (v < value) {

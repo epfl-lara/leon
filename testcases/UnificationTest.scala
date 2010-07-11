@@ -43,14 +43,6 @@ object UnificationTest {
   })*/
   
   
-  
-  // Proved by unifier
-  def mkInfiniteTree(x: Int): Node = {
-    Node(mkInfiniteTree(x), x, mkInfiniteTree(x))
-  } ensuring (res =>
-    res.left != Leaf() && res.right != Leaf()
-  )
-  
   // Cannot be solved yet, due to the presence of an if expression
   def insert(tree: Tree, value: Int) : Node = (tree match {
     case Leaf() => Node(Leaf(), value, Leaf())
