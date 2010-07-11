@@ -52,20 +52,21 @@ class Analysis(val program: Program) {
   }
 
   def checkVerificationConditions : Unit = {
+    // just for the summary:
+    var verifiedVCs: List[(String,String,String,String)] = Nil
+
     solverExtensions.foreach(_.setProgram(program))
 
-    // Analysis should check that:
-    //  - all the postconditions are implied by preconds. + body
-    //  - all callsites satisfy the preconditions
-    //  - all matches are exhaustive
-    // In the future:
-    //  - catamorphisms are catamorphisms (poss. with surjectivity conds.)
-    //  - injective functions are injective
-    //  - all global invariants are satisfied 
     for(funDef <- program.definedFunctions) if (Settings.functionsToAnalyse.isEmpty || Settings.functionsToAnalyse.contains(funDef.id.name)) {
       if(funDef.body.isDefined) {
         val vc = postconditionVC(funDef)
-        if(vc != BooleanLiteral(true)) {
+        if(vc == BooleanLiteral(false)) {
+          verifiedVCs = (funDef.id.toString, "postcondition", "invalid", "trivial") :: verifiedVCs
+        } else if(vc == BooleanLiteral(true)) {
+          if(funDef.hasPostcondition) {
+            verifiedVCs = (funDef.id.toString, "postcondition", "valid", "tautology") :: verifiedVCs
+          }
+        } else {
           reporter.info("Verification condition (post) for ==== " + funDef.id + " ====")
           if(Settings.unrollingLevel == 0) {
             reporter.info(vc)
@@ -83,20 +84,48 @@ class Analysis(val program: Program) {
             reporter.info("Trying with solver: " + se.shortDescription)
             se.solve(vc) match {
               case None => false
-              case Some(true) => reporter.info("==== VALID ===="); true
-              case Some(false) => reporter.error("==== INVALID ===="); true
+              case Some(true) => {
+                reporter.info("==== VALID ====")
+                verifiedVCs = (funDef.id.toString, "postcondition", "valid", se.shortDescription) :: verifiedVCs
+                true
+              }
+              case Some(false) => {
+                reporter.error("==== INVALID ====")
+                verifiedVCs = (funDef.id.toString, "postcondition", "invalid", se.shortDescription) :: verifiedVCs
+                true
+              }
             }
           }) match {
-            case None => reporter.warning("No solver could prove or disprove the verification condition.")
+            case None => {
+              reporter.warning("No solver could prove or disprove the verification condition.")
+              verifiedVCs = (funDef.id.toString, "postcondition", "unknown", "---") :: verifiedVCs
+            }
             case _ => 
           } 
         }
       } else {
         if(funDef.postcondition.isDefined) {
           reporter.warning(funDef, "Could not verify postcondition: function implementation is unknown.")
+          verifiedVCs = (funDef.id.toString, "postcondition", "unknown", "no body") :: verifiedVCs
         }
       }
     } 
+
+    verifiedVCs = verifiedVCs.reverse
+    val col1wdth  = verifiedVCs.map(_._1).map(_.length).max + 2
+    val col2wdth  = verifiedVCs.map(_._2).map(_.length).max + 2
+    val col3wdth  = verifiedVCs.map(_._3).map(_.length).max + 2
+    val col4wdth  = verifiedVCs.map(_._4).map(_.length).max 
+    def mk1line(line: (String,String,String,String)) : String = {
+      line._1 + (" " * (col1wdth - line._1.length)) +
+      line._2 + (" " * (col2wdth - line._2.length)) +
+      line._3 + (" " * (col3wdth - line._3.length)) +
+      line._4 
+    }
+    val dashes : String = "=" * (col1wdth + col2wdth + col3wdth + col4wdth)
+    
+    reporter.info("Summary:\n" + dashes + "\n" + verifiedVCs.map(mk1line(_)).mkString("\n") + "\n" + dashes)
+
   }
 
   def postconditionVC(functionDefinition: FunDef) : Expr = {
