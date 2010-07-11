@@ -38,7 +38,7 @@ object TreeOperations {
         if (ex == newExpr)
           if (recursive) rec(ex, ex) else ex
         else
-        if (recursive) rec(newExpr) else newExpr
+          if (recursive) rec(newExpr) else newExpr
       }
       case None => ex match {
         case l@Let(i, e, b) => {
@@ -98,7 +98,8 @@ object TreeOperations {
         case f@FiniteSet(elems) => {
           FiniteSet(elems.map(rec(_))).setType(f.getType)
         }
-        case _ => ex
+        case Terminal() => ex   // Ok
+        case _ => error("Unsupported case in searchAndReplace : " + ex.getClass) // Missed case
       }
     }
 
@@ -126,4 +127,74 @@ object TreeOperations {
       None
     }
   }
+  
+  // 'Lazy' rewriter
+  // 
+  // Hoists if expressions to the top level and
+  // transforms them to disjunctions.
+  //
+  // The implementation is totally brain-teasing
+  def rewrite(expr: Expr): Expr =
+    rewrite(expr, ex => ex)
+  
+  private def rewrite(expr: Expr, context: Expr => Expr): Expr = expr match {
+    case IfExpr(_c, _t, _e) =>
+      rewrite(_c, c =>
+        rewrite(_t, t =>
+          rewrite(_e, e =>
+            Or(And(c, context(t)), And(negate(c), context(e)))
+          )))
+    case And(_exs) =>
+      rewrite_*(_exs, exs =>
+        context(And(exs)))
+    case Or(_exs) =>
+      rewrite_*(_exs, exs =>
+        context(Or(exs)))
+    case Not(_ex) =>
+      rewrite(_ex, ex => 
+        context(Not(ex)))
+    case f@FunctionInvocation(fd, _args) =>
+      rewrite_*(_args, args =>
+        context(FunctionInvocation(fd, args) setType f.getType))
+    case u@UnaryOperator(_t, recons) =>
+      rewrite(_t, t =>
+        context(recons(t) setType u.getType))
+    case b@BinaryOperator(_t1, _t2, recons) =>
+      rewrite(_t1, t1 => 
+        rewrite(_t2, t2 => 
+          context(recons(t1, t2) setType b.getType)))
+    case c@CaseClass(cd, _args) =>
+      rewrite_*(_args, args =>
+        context(CaseClass(cd, args) setType c.getType))
+    case c@CaseClassSelector(_cc, sel) =>
+      rewrite(_cc, cc =>
+        context(CaseClassSelector(cc, sel) setType c.getType))
+    case f@FiniteSet(_elems) =>
+      rewrite_*(_elems, elems =>
+        context(FiniteSet(elems) setType f.getType))
+    case Terminal() =>
+      context(expr)
+    case _ => // Missed case
+      error("Unsupported case in rewrite : " + expr.getClass)
+  }
+  
+  private def rewrite_*(exprs: Seq[Expr], context: Seq[Expr] => Expr): Expr =
+    exprs match {
+      case Nil => context(Nil)
+      case _t :: _ts =>
+        rewrite(_t, t => rewrite_*(_ts, ts => context(t +: ts)))
+    }
+  
+  // This should rather be a marker interface, but I don't want
+  // to change Trees.scala without Philippe's permission.
+  object Terminal {
+    def unapply(expr: Expr): Boolean = expr match {
+      case Variable(_) | ResultVariable() | OptionNone(_) | EmptySet(_) | EmptyMultiset(_) | EmptyMap(_, _) | NilList(_) => true
+      case _: Literal[_] => true
+      case _ => false
+    }
+  }
+  
+  
+  
 }

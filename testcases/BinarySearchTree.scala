@@ -86,7 +86,7 @@ object BinarySearchTree {
         n
       }
     }
-  } //ensuring (contents(_) == contents(tree) ++ Set(value))
+  } ensuring (contents(_) == contents(tree) ++ Set(value))
 
   def dumbInsert(tree: Tree): Node = {
     tree match {

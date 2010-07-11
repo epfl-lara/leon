@@ -33,11 +33,13 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
   // None means you don't know.
   //
   def solve(exprWithLets: Expr): Option[Boolean] = {
-    val expr = expandLets(exprWithLets)
+    val exprWithIfs = expandLets(exprWithLets)
+    val negatedExprWithIfs = negate(exprWithIfs)
+    val expr = rewrite(negatedExprWithIfs)
     //println(rpp(expr))
     try {
       var counter = 0
-      for (conjunction <- dnf(negate(expr))) {
+      for (conjunction <- dnf(expr)) {
         counter += 1
         //reporter.info("Solving conjunction " + counter)
         //println(rpp(And(conjunction)))
@@ -93,7 +95,19 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
 
   def checkIsSupported(expr: Expr) {
     def check(ex: Expr): Option[Expr] = ex match {
-      case IfExpr(_, _, _) | Let(_, _, _) | MatchExpr(_, _) =>
+      case Let(_, _, _) | MatchExpr(_, _) =>
+        throw ConversionException(ex, "Unifier does not support this expression")
+      case IfExpr(_, _, _) =>
+       
+       println
+       println("--- BEFORE ---")
+       println(rpp(expr))
+       println
+       println("--- AFTER ---")
+       println(rpp(rewrite(expr)))
+       println
+         
+      
         throw ConversionException(ex, "Unifier does not support this expression")
       case _ => None
     }
