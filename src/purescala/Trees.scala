@@ -12,6 +12,8 @@ object Trees {
     override def toString: String = PrettyPrinter(this)
   }
 
+  sealed trait Terminal
+
   /* Like vals */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
     val et = body.getType
@@ -124,16 +126,16 @@ object Trees {
     val fixedType = BooleanType
   }
   
-  case class Variable(id: Identifier) extends Expr {
+  case class Variable(id: Identifier) extends Expr with Terminal {
     override def getType = id.getType
     override def setType(tt: TypeTree) = { id.setType(tt); this }
   }
 
   // represents the result in post-conditions
-  case class ResultVariable() extends Expr
+  case class ResultVariable() extends Expr with Terminal
 
   /* Literals */
-  sealed abstract class Literal[T] extends Expr {
+  sealed abstract class Literal[T] extends Expr with Terminal {
     val value: T
   }
 
@@ -183,10 +185,10 @@ object Trees {
 
   /* Option expressions */
   case class OptionSome(value: Expr) extends Expr 
-  case class OptionNone(baseType: TypeTree) extends Expr 
+  case class OptionNone(baseType: TypeTree) extends Expr with Terminal
 
   /* Set expressions */
-  case class EmptySet(baseType: TypeTree) extends Expr 
+  case class EmptySet(baseType: TypeTree) extends Expr with Terminal
   case class FiniteSet(elements: Seq[Expr]) extends Expr 
   case class ElementOfSet(element: Expr, set: Expr) extends Expr 
   case class IsEmptySet(set: Expr) extends Expr 
@@ -204,7 +206,7 @@ object Trees {
   case class SetMax(set: Expr) extends Expr
 
   /* Multiset expressions */
-  case class EmptyMultiset(baseType: TypeTree) extends Expr 
+  case class EmptyMultiset(baseType: TypeTree) extends Expr with Terminal
   case class FiniteMultiset(elements: Seq[Expr]) extends Expr 
   case class Multiplicity(element: Expr, multiset: Expr) extends Expr 
   case class IsEmptyMultiset(multiset: Expr) extends Expr 
@@ -218,7 +220,7 @@ object Trees {
   case class MultisetToSet(multiset: Expr) extends Expr
 
   /* Map operations. */
-  case class EmptyMap(fromType: TypeTree, toType: TypeTree) extends Expr 
+  case class EmptyMap(fromType: TypeTree, toType: TypeTree) extends Expr with Terminal
   case class SingletonMap(from: Expr, to: Expr) extends Expr 
   case class FiniteMap(singletons: Seq[SingletonMap]) extends Expr 
 
@@ -227,7 +229,7 @@ object Trees {
   case class MapDifference(map: Expr, keys: Expr) extends Expr 
 
   /* List operations */
-  case class NilList(baseType: TypeTree) extends Expr 
+  case class NilList(baseType: TypeTree) extends Expr with Terminal
   case class Cons(head: Expr, tail: Expr) extends Expr 
   case class Car(list: Expr) extends Expr 
   case class Cdr(list: Expr) extends Expr 
@@ -237,7 +239,10 @@ object Trees {
   object UnaryOperator {
     def unapply(expr: Expr) : Option[(Expr,(Expr)=>Expr)] = expr match {
       case IsEmptySet(t) => Some((t,IsEmptySet))
+      case IsEmptyMultiset(t) => Some((t,IsEmptyMultiset))
       case SetCardinality(t) => Some((t,SetCardinality))
+      case MultisetCardinality(t) => Some((t,MultisetCardinality))
+      case MultisetToSet(t) => Some((t,MultisetToSet))
       case Car(t) => Some((t,Car))
       case Cdr(t) => Some((t,Cdr))
       case SetMin(s) => Some((s,SetMin))
@@ -265,6 +270,13 @@ object Trees {
       case SetIntersection(t1,t2) => Some((t1,t2,SetIntersection))
       case SetUnion(t1,t2) => Some((t1,t2,SetUnion))
       case SetDifference(t1,t2) => Some((t1,t2,SetDifference))
+      case Multiplicity(t1,t2) => Some((t1,t2,Multiplicity))
+      case MultisetEquals(t1,t2) => Some((t1,t2,MultisetEquals))
+      case SubmultisetOf(t1,t2) => Some((t1,t2,SubmultisetOf))
+      case MultisetIntersection(t1,t2) => Some((t1,t2,MultisetIntersection))
+      case MultisetUnion(t1,t2) => Some((t1,t2,MultisetUnion))
+      case MultisetPlus(t1,t2) => Some((t1,t2,MultisetPlus))
+      case MultisetDifference(t1,t2) => Some((t1,t2,MultisetDifference))
       case SingletonMap(t1,t2) => Some((t1,t2,SingletonMap))
       case MapGet(t1,t2) => Some((t1,t2,MapGet))
       case MapUnion(t1,t2) => Some((t1,t2,MapUnion))
@@ -370,7 +382,8 @@ object Trees {
       case f @ FiniteSet(elems) => {
         FiniteSet(elems.map(rec(_))).setType(f.getType)
       }
-      case _ => ex
+      case t: Terminal => t
+      case unhandled => scala.Predef.error("Non-terminal case should be handled in searchAndApply: " + unhandled)
     }
 
     def inCase(cse: MatchCase) : MatchCase = cse match {
