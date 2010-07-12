@@ -29,7 +29,7 @@ class Main(reporter: Reporter) extends Solver(reporter) {
     //reporter.info("Sets: " + ExprToASTConverter.getSetTypes(expr))
     try {
       // Negate formula
-      (Some(!solve(!ExprToASTConverter(expr))), {
+      (Some(!solve(!ExprToASTConverter(expr, reporter))), {
 
         val sets = ExprToASTConverter.getSetTypes(expr)
         if (sets.size > 1)
@@ -38,7 +38,7 @@ class Main(reporter: Reporter) extends Solver(reporter) {
       })._1
     } catch {
       case ConversionException(badExpr, msg) =>
-        reporter.info(badExpr, msg)
+        reporter.info(badExpr, msg + " in " + badExpr.getClass)
         None
       case IncompleteException(msg) =>
         reporter.info(msg)
@@ -121,7 +121,7 @@ object ExprToASTConverter {
   def makeEq(v: Variable, t: Expr) = v.getType match {
     case Int32Type => Equals(v, t)
     case tpe if isSetType(tpe) => SetEquals(v, t)
-    case _ => throw (new ConversionException(v, "is of type " + v.getType + " and cannot be handled by OrdBapa"))
+    case _ => throw (new ConversionException(v, "type " + v.getType))
   }
 
   private def toSetTerm(expr: Expr): AST.Term = expr match {
@@ -133,8 +133,8 @@ object ExprToASTConverter {
     case SetIntersection(set1, set2) => toSetTerm(set1) ** toSetTerm(set2)
     case SetUnion(set1, set2) => toSetTerm(set1) ++ toSetTerm(set2)
     case SetDifference(set1, set2) => toSetTerm(set1) -- toSetTerm(set2)
-    case Variable(_) => throw ConversionException(expr, "is a variable of type " + expr.getType + " and cannot be converted to bapa< set variable")
-    case _ => throw ConversionException(expr, "Cannot convert to bapa< set term")
+    case Variable(_) => throw ConversionException(expr, "type " + expr.getType)
+    case _ => throw ConversionException(expr, "bad set term")
   }
 
   private def toIntTerm(expr: Expr): AST.Term = expr match {
@@ -148,7 +148,7 @@ object ExprToASTConverter {
     case SetCardinality(e) => toSetTerm(e).card
     case SetMin(set) if set.getType == SetType(Int32Type) => toSetTerm(set).inf
     case SetMax(set) if set.getType == SetType(Int32Type) => toSetTerm(set).sup
-    case _ => throw ConversionException(expr, "Cannot convert to bapa< int term")
+    case _ => throw ConversionException(expr, "bad int term")
   }
 
   private def toFormula(expr: Expr): AST.Formula = expr match {
@@ -159,6 +159,10 @@ object ExprToASTConverter {
     case And(exprs) => AST.And((exprs map toFormula).toList)
     case Not(expr) => !toFormula(expr)
     case Implies(expr1, expr2) => !(toFormula(expr1)) || toFormula(expr2)
+    case Iff(expr1, expr2) =>
+      val f1 = toFormula(expr1)
+      val f2 = toFormula(expr2)
+      (f1 && f2) || (!f1 && !f2)
 
     // Set Formulas
     case ElementOfSet(elem, set) => toIntTerm(elem) selem toSetTerm(set)
@@ -171,10 +175,13 @@ object ExprToASTConverter {
     case LessEquals(lhs, rhs) => toIntTerm(lhs) <= toIntTerm(rhs)
     case GreaterThan(lhs, rhs) => toIntTerm(lhs) > toIntTerm(rhs)
     case GreaterEquals(lhs, rhs) => toIntTerm(lhs) >= toIntTerm(rhs)
-    case Equals(lhs, rhs) if lhs.getType == Int32Type && rhs.getType == Int32Type => toIntTerm(lhs) === toIntTerm(rhs)
+    case Equals(lhs, rhs) => (lhs.getType, rhs.getType) match {
+      case (Int32Type, Int32Type) => toIntTerm(lhs) === toIntTerm(rhs)
+      case types => throw ConversionException(expr, "types " + types)
+    }
 
     // Assuming the formula to be True
-    case _ => throw ConversionException(expr, "Cannot convert to bapa< formula")
+    case _ => throw ConversionException(expr, "bad formula")
   }
 
   def getSetTypes(expr: Expr): Set[TypeTree] = expr match {
@@ -204,7 +211,16 @@ object ExprToASTConverter {
     case _ => Set.empty[TypeTree]
   }
 
-  def apply(expr: Expr) = {
+  def apply(expr: Expr, reporter: Reporter) = {
+    def toRelaxedFormula(expr: Expr): AST.Formula =
+      try {
+        toFormula(expr)
+      } catch {
+        case ConversionException(badExpr, msg) =>
+          //reporter.warning("BAPA was relaxed : " + msg + " in " + badExpr.getClass + "\n" + rpp(badExpr))
+          formulaRelaxed = true
+          AST.True // Assuming the formula to be True
+      }
     formulaRelaxed = false;
     expr match {
       case And(exprs) => AST.And((exprs map toRelaxedFormula).toList)
@@ -212,13 +228,5 @@ object ExprToASTConverter {
     }
   }
 
-  private def toRelaxedFormula(expr: Expr): AST.Formula =
-    try {
-      toFormula(expr)
-    } catch {
-      case ConversionException(_, _) =>
-        formulaRelaxed = true
-        // Assuming the formula to be True
-        AST.True
-    }
+
 }

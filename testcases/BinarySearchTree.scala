@@ -1,5 +1,5 @@
 import scala.collection.immutable.Set
-// import scala.collection.immutable.Multiset
+//import scala.collection.immutable.Multiset
 
 object BinarySearchTree {
   sealed abstract class Tree
@@ -15,56 +15,56 @@ object BinarySearchTree {
   sealed abstract class Triple
   case class SortedTriple(min: Option, max: Option, sorted: Boolean) extends Triple
 
-   def isSorted(tree: Tree): SortedTriple = tree match {
+  def isSorted(tree: Tree): SortedTriple = tree match {
     case Leaf() => SortedTriple(None(), None(), true)
-    case Node(l,v,r) => isSorted(l) match {
-      case SortedTriple(minl,maxl,sortl) => if (!sortl) SortedTriple(None(), None(), false)
-        else minl match {
-    	  case None() => maxl match {
-      	    case None() =>  isSorted(r) match {
-              case SortedTriple(minr,maxr,sortr) => if (!sortr) SortedTriple(None(), None(), false)
-        	else minr match {
-          	  case None() => maxr match {
-      		    case None() => SortedTriple(Some(v),Some(v),true)
-      		    case Some(maxrv) => SortedTriple(None(),None(),false)
-    		    }
-   		  case Some(minrv) => maxr match {
-      		    case Some(maxrv) => if (minrv > v) SortedTriple(Some(v),Some(maxrv),true) else SortedTriple(None(),None(),false)
-      		    case None() => SortedTriple(None(),None(),false)
-    		    }
-        	  }
-       	      }
-      	    case Some(maxlv) => SortedTriple(None(),None(),false)
-    	    }
-    	  case Some(minlv) => maxl match {
-      	    case Some(maxlv) => isSorted(r) match {
-              case SortedTriple(minr,maxr,sortr) => if (!sortr) SortedTriple(None(), None(), false)
-        	else minr match {
-          	  case None() => maxr match {
-      		    case None() => if (maxlv <= v) SortedTriple(Some(minlv),Some(v),true) else SortedTriple(None(),None(),false)
-      		    case Some(maxrv) => SortedTriple(None(),None(),false)
-    		    }
-    		  case Some(minrv) => maxr match {
-      		    case Some(maxrv) => if (maxlv <= v && minrv > v) SortedTriple(Some(minlv),Some(maxrv),true) else SortedTriple(None(),None(),false)
-      		    case None() => SortedTriple(None(),None(),false)
-    		    }
-        	  }
-     	      }
-      	    case None() => SortedTriple(None(),None(),false)
-    	    }
-  	  }
+    case Node(l, v, r) => isSorted(l) match {
+      case SortedTriple(minl, maxl, sortl) => if (!sortl) SortedTriple(None(), None(), false)
+      else minl match {
+        case None() => maxl match {
+          case None() => isSorted(r) match {
+            case SortedTriple(minr, maxr, sortr) => if (!sortr) SortedTriple(None(), None(), false)
+            else minr match {
+              case None() => maxr match {
+                case None() => SortedTriple(Some(v), Some(v), true)
+                case Some(maxrv) => SortedTriple(None(), None(), false)
+              }
+              case Some(minrv) => maxr match {
+                case Some(maxrv) => if (minrv > v) SortedTriple(Some(v), Some(maxrv), true) else SortedTriple(None(), None(), false)
+                case None() => SortedTriple(None(), None(), false)
+              }
+            }
+          }
+          case Some(maxlv) => SortedTriple(None(), None(), false)
         }
+        case Some(minlv) => maxl match {
+          case Some(maxlv) => isSorted(r) match {
+            case SortedTriple(minr, maxr, sortr) => if (!sortr) SortedTriple(None(), None(), false)
+            else minr match {
+              case None() => maxr match {
+                case None() => if (maxlv <= v) SortedTriple(Some(minlv), Some(v), true) else SortedTriple(None(), None(), false)
+                case Some(maxrv) => SortedTriple(None(), None(), false)
+              }
+              case Some(minrv) => maxr match {
+                case Some(maxrv) => if (maxlv <= v && minrv > v) SortedTriple(Some(minlv), Some(maxrv), true) else SortedTriple(None(), None(), false)
+                case None() => SortedTriple(None(), None(), false)
+              }
+            }
+          }
+          case None() => SortedTriple(None(), None(), false)
+        }
+      }
     }
-  
+  }
 
   def treeMin(tree: Node): Int = {
     require(isSorted(tree).sorted)
     tree match {
-    case Node(left, v, _) => left match {
-      case Leaf() => v
-      case n@Node(_, _, _) => treeMin(n)
+      case Node(left, v, _) => left match {
+        case Leaf() => v
+        case n@Node(_, _, _) => treeMin(n)
+      }
     }
-  }} ensuring (_ == contents(tree).min)
+  } ensuring (_ == contents(tree).min)
 
   def treeMax(tree: Node): Int = {
     require(isSorted(tree).sorted)
@@ -77,6 +77,19 @@ object BinarySearchTree {
   } ensuring (_ == contents(tree).max)
 
   def insert(tree: Tree, value: Int): Node = {
+    tree match {
+      case Leaf() => Node(Leaf(), value, Leaf())
+      case n@Node(l, v, r) => if (v < value) {
+        Node(l, v, insert(r, value))
+      } else if (v > value) {
+        Node(insert(l, value), v, r)
+      } else {
+        n
+      }
+    }
+  } ensuring (contents(_) == contents(tree) ++ Set(value))
+
+  def insertSorted(tree: Tree, value: Int): Node = {
     require(isSorted(tree).sorted)
     tree match {
       case Leaf() => Node(Leaf(), value, Leaf())
@@ -97,18 +110,18 @@ object BinarySearchTree {
     }
   } ensuring (contents(_) == contents(tree) ++ Set(0))
 
-/*
-    def remove(tree: Tree, value: Int) : Node = (tree match {
-        case Leaf() => Node(Leaf(), value, Leaf())
-        case n @ Node(l, v, r) => if(v < value) {
-          Node(l, v, insert(r, value))
-        } else if(v > value) {
-          Node(insert(l, value), v, r)
-        } else {
-          n
-        }
-    }) ensuring (contents(_) == contents(tree) -- Set(value))
-*/
+  /*
+      def remove(tree: Tree, value: Int) : Node = (tree match {
+          case Leaf() => Node(Leaf(), value, Leaf())
+          case n @ Node(l, v, r) => if(v < value) {
+            Node(l, v, insert(r, value))
+          } else if(v > value) {
+            Node(insert(l, value), v, r)
+          } else {
+            n
+          }
+      }) ensuring (contents(_) == contents(tree) -- Set(value))
+  */
 
   def dumbInsertWithOrder(tree: Tree): Node = {
     tree match {
@@ -139,20 +152,21 @@ object BinarySearchTree {
     Node(mkInfiniteTree(x), x, mkInfiniteTree(x))
   } ensuring (res =>
     res.left != Leaf() && res.right != Leaf()
-  )
+          )
 
   def contains(tree: Tree, value: Int): Boolean = {
     require(isSorted(tree).sorted)
     tree match {
-    case Leaf() => false
-    case n@Node(l, v, r) => if (v < value) {
-      contains(r, value)
-    } else if (v > value) {
-      contains(l, value)
-    } else {
-      true
+      case Leaf() => false
+      case n@Node(l, v, r) => if (v < value) {
+        contains(r, value)
+      } else if (v > value) {
+        contains(l, value)
+      } else {
+        true
+      }
     }
-  } } ensuring( _ || !(contents(tree) == contents(tree) ++ Set(value)))
+  } ensuring (_ || !(contents(tree) == contents(tree) ++ Set(value)))
 
   def contents(tree: Tree): Set[Int] = tree match {
     case Leaf() => Set.empty[Int]

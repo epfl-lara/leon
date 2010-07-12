@@ -52,7 +52,7 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
           val noAlphas = And(restFormula flatMap expandAlphas(varMap))
           reporter.info("The resulting formula is\n" + rpp(noAlphas))
           tryAllSolvers(noAlphas)
-          } catch {
+        } catch {
           case ex@ConversionException(badExpr, msg) =>
             reporter.info("Conjunction " + counter + " is UNKNOWN, could not be parsed")
             throw ex
@@ -88,36 +88,38 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
     }
   }
 
-  def tryAllSolvers(f : Expr): Unit = {
-    for(solver <- Extensions.loadedSolverExtensions; if solver != this) {
-          reporter.info("Trying solver: " + solver.shortDescription + " from inside the unifier.")
-          solver.isUnsat(f) match {
-            case Some(true) => 
-                reporter.info("Solver: " + solver.shortDescription + " proved the formula unsatisfiable") 
-                return
-            case Some(false) => 
-                reporter.warning("Solver: " + solver.shortDescription + " proved the formula satisfiable")
-                throw (new SatException(null))
-            case None =>
-                reporter.info("Solver: " + solver.shortDescription + " was unable to conclusively determine the correctness of the formula") 
-          }
-    }; throw IncompleteException("All the solvers were unable to prove the formula unsatisfiable, giving up.") }
+  def tryAllSolvers(f: Expr): Unit = {
+    for (solver <- Extensions.loadedSolverExtensions; if solver != this) {
+      reporter.info("Trying solver: " + solver.shortDescription + " from inside the unifier.")
+      solver.isUnsat(f) match {
+        case Some(true) =>
+          reporter.info("Solver: " + solver.shortDescription + " proved the formula unsatisfiable")
+          return
+        case Some(false) =>
+          reporter.warning("Solver: " + solver.shortDescription + " proved the formula satisfiable")
+          throw (new SatException(null))
+        case None =>
+          reporter.info("Solver: " + solver.shortDescription + " was unable to conclusively determine the correctness of the formula")
+      }
+    };
+    throw IncompleteException("All the solvers were unable to prove the formula unsatisfiable, giving up.")
+  }
 
   def checkIsSupported(expr: Expr) {
     def check(ex: Expr): Option[Expr] = ex match {
       case Let(_, _, _) | MatchExpr(_, _) =>
         throw ConversionException(ex, "Unifier does not support this expression")
       case IfExpr(_, _, _) =>
-       
-       println
-       println("--- BEFORE ---")
-       println(rpp(expr))
-       println
-       println("--- AFTER ---")
-       println(rpp(rewrite(expr)))
-       println
-         
-      
+
+        println
+        println("--- BEFORE ---")
+        println(rpp(expr))
+        println
+        println("--- AFTER ---")
+        println(rpp(rewrite(expr)))
+        println
+
+
         throw ConversionException(ex, "Unifier does not support this expression")
       case _ => None
     }
@@ -139,12 +141,12 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
     */
 
     // The substitution table
-    val substTable = ADTUnifier.unify(treeEquations)
+    val (elementFormula, substTable) = ADTUnifier.unify(treeEquations)
 
     // The substitution function (returns identity if unmapped)
     def subst(v: Variable): Expr = substTable getOrElse (v, v)
 
-    (subst, rest)
+    (subst, elementFormula ++ rest)
 
   }
 
@@ -239,7 +241,9 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
           //reporter.warning("Result:\n" + rpp(res))
           Some(res)
         }
-        case _ => error("Bad argument/substitution to catamorphism: " + substArg(arg))
+        case badArg =>
+          println(rpp(badArg))
+          error("Bad argument/substitution to catamorphism")
       }
       case None => // Not a catamorphism
         warning("Function " + fd.id + " is not a catamorphism.")

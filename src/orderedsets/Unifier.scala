@@ -86,7 +86,7 @@ object ADTUnifier extends Unifier[Variable, CaseClassDef] {
 
   def freshVar(prefix: String)(typed: Typed) = Var(Variable(FreshIdentifier(prefix, true) setType typed.getType))
 
-  def unify(conjunction: Seq[Expr]): Map[Variable, Expr] = {
+  def unify(conjunction: Seq[Expr]): (Seq[Expr], Map[Variable, Expr]) = {
     val equalities = new ArrayBuffer[(Term, Term)]()
     val inequalities = new ArrayBuffer[(Var, Var)]()
 
@@ -168,13 +168,38 @@ object ADTUnifier extends Unifier[Variable, CaseClassDef] {
     if (map1.isEmpty) println("  (empty table)")
     println 
     */
-    table mapValues term2expr
+
+    // Extract element equalities and disequalities
+    val elementFormula = new ArrayBuffer[Expr]()
+    for ((e1, term) <- table; if isElementType(e1)) {
+      term2expr(term) match {
+        case e2@Variable(_) =>
+          //println("  " + e1 + ": " + e1.getType +
+          //    "  ->  " + e2 + ": " + e2.getType) 
+          elementFormula += Equals(e1, e2)
+        case expr =>
+          //println("  " + e1 + ": " + e1.getType +
+          //    "  ->  " + expr + ": " + expr.getType)
+          //println("UNEXPECTED: " + term)
+          error("Unexpected " + expr)
+      }
+    }
+    for ((Var(e1), Var(e2)) <- inequalities; if isElementType(e1))
+      elementFormula += Not(Equals(e1, e2))
+
+    (elementFormula.toSeq, table mapValues term2expr)
   }
 
   def term2expr(term: Term): Expr = term match {
     case Var(v) => v
     case Fun(cd, args) => CaseClass(cd, args map term2expr)
   }
+
+  def isElementType(typed: Typed) = typed.getType match {
+    case AbstractClassType(_) | CaseClassType(_) => false
+    case _ => true
+  }
+
 }
 
 

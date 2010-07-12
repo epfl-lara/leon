@@ -186,7 +186,7 @@ object NormalForms {
     case Not(Predicate(comp, terms)) =>
       rewriteNonPure_*(terms, ts => Not(Predicate(comp, ts)) :: Nil)
 
-    case And(_) | Or(_) if isAtom(f) =>
+    case And(_) | Or(_) if !isAtom(f) =>
       error("A simplified conjunction cannot contain " + f)
 
     case _ => List(f)
