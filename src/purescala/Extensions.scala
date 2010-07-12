@@ -18,6 +18,8 @@ object Extensions {
     // Returns Some(true) if valid, Some(false) if invalid,
     // None if unknown.
     def solve(expression: Expr) : Option[Boolean]
+
+    def isSat(expression: Expr) : Option[Boolean] = solve(expression).map(!_)
   }
   
   abstract class Analyser(reporter: Reporter) extends Extension(reporter) {
@@ -28,9 +30,20 @@ object Extensions {
 
   // The rest of the code is for dynamically loading extensions
 
-  def loadAll(reporter: Reporter) : Seq[Extension] = {
+  private var allLoaded : Seq[Extension] = Nil
+  private var analysisExtensions : Seq[Analyser] = Nil
+  private var solverExtensions : Seq[Solver] = Nil
+
+  // Returns the list of the newly loaded.
+  def loadAll : Seq[Extension] = {
+    val extensionsReporter =
+      if(Settings.quietExtensions) {
+        Settings.quietReporter
+      } else {
+        Settings.reporter
+      }
     val allNames: Seq[String] = Settings.extensionNames
-    if(!allNames.isEmpty) {
+    val loaded = (if(!allNames.isEmpty) {
       val classLoader = Extensions.getClass.getClassLoader
 
       val classes: Seq[Class[_]] = (for(name <- allNames) yield {
@@ -47,7 +60,7 @@ object Extensions {
       classes.map(cl => {
         try {
           val cons = cl.getConstructor(classOf[Reporter])
-          cons.newInstance(reporter).asInstanceOf[Extension]
+          cons.newInstance(extensionsReporter).asInstanceOf[Extension]
         } catch {
           case _ => {
             Settings.reporter.error("Extension class " + cl.getName + " does not seem to be of a proper type.")
@@ -57,6 +70,23 @@ object Extensions {
       }).filter(_ != null)
     } else {
       Nil
+    })
+    if(!loaded.isEmpty) {
+      Settings.reporter.info("The following extensions are loaded:\n" + loaded.toList.map(_.description).mkString("  ", "\n  ", ""))
     }
+    // these extensions are always loaded, unless specified otherwise
+    val defaultExtensions: Seq[Extension] = if(Settings.runDefaultExtensions) {
+      (new Z3Solver(extensionsReporter)) :: Nil
+    } else {
+      Nil
+    }
+    allLoaded = defaultExtensions ++ loaded
+    analysisExtensions = allLoaded.filter(_.isInstanceOf[Analyser]).map(_.asInstanceOf[Analyser])
+    solverExtensions = allLoaded.filter(_.isInstanceOf[Solver]).map(_.asInstanceOf[Solver])
+    loaded
   }
+
+  def loadedExtensions : Seq[Extension] = allLoaded
+  def loadedAnalysisExtensions : Seq[Analyser] = analysisExtensions
+  def loadedSolverExtensions : Seq[Solver] = solverExtensions
 }

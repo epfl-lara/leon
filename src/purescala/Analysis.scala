@@ -10,30 +10,11 @@ class Analysis(val program: Program) {
   // we always use the global reporter for this class
   val reporter = Settings.reporter
   // ...but not always for the extensions
-  val extensionsReporter =
-    if(Settings.quietExtensions) {
-      Settings.quietReporter
-    } else {
-      Settings.reporter
-    }
 
-  // these extensions are always loaded, unless specified otherwise
-  val defaultExtensions: Seq[Extension] =
-    if(Settings.runDefaultExtensions) {
-      (new Z3Solver(extensionsReporter)) :: Nil
-    } else {
-      Nil
-    }
+  Extensions.loadAll
 
-  // we load additional extensions
-  val moreExtensions: Seq[Extension] = loadAll(extensionsReporter)
-  if(!moreExtensions.isEmpty) {
-    reporter.info("The following extensions are loaded:\n" + moreExtensions.toList.map(_.description).mkString("  ", "\n  ", ""))
-  }
-  // ...and split the final list between solvers and analysers
-  val extensions: Seq[Extension] = defaultExtensions ++ moreExtensions
-  val analysisExtensions: Seq[Analyser] = extensions.filter(_.isInstanceOf[Analyser]).map(_.asInstanceOf[Analyser])
-  val solverExtensions: Seq[Solver] = extensions.filter(_.isInstanceOf[Solver]).map(_.asInstanceOf[Solver])
+  val analysisExtensions: Seq[Analyser] = loadedAnalysisExtensions
+  val solverExtensions: Seq[Solver] = loadedSolverExtensions
 
   // Calling this method will run all analyses on the program passed at
   // construction time. If at least one solver is loaded, verification
