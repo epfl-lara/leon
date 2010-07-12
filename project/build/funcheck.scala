@@ -6,12 +6,13 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
   override def shouldCheckOutputDirectories = false
 
   lazy val purescala      = project(".", "PureScala Definitions", new PureScalaProject(_))
-  lazy val plugin         = project(".", "FunCheck Plugin", new PluginProject(_), purescala)
-  lazy val multisets      = project(".", "Multiset Solver", new MultisetsProject(_), plugin, purescala)
+  lazy val plugin         = project(".", "FunCheck Plugin", new PluginProject(_), purescala, multisetsLib)
+  lazy val multisetsLib   = project(".", "Multiset Placeholder Library", new MultisetsLibProject(_))
+  lazy val multisets      = project(".", "Multiset Solver", new MultisetsProject(_), plugin, purescala, multisetsLib)
   lazy val orderedsets    = project(".", "Ordered Sets Solver", new OrderedSetsProject(_), plugin, purescala)
   lazy val setconstraints = project(".", "Type inference with set constraints", new SetConstraintsProject(_), plugin, purescala)
 
-  lazy val extensionJars : List[Path] = multisets.jarPath :: orderedsets.jarPath :: setconstraints.jarPath :: Nil
+  lazy val extensionJars : List[Path] = multisetsLib.jarPath :: multisets.jarPath :: orderedsets.jarPath :: setconstraints.jarPath :: Nil
 
   val scriptPath: Path = "." / "scalac-funcheck"
 
@@ -40,6 +41,7 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
       fw.write("    FUNCHECKCLASSPATH=${FUNCHECKCLASSPATH}:${f}" + nl)
       fw.write("  fi" + nl)
       fw.write("done" + nl + nl)
+      fw.write("SCALACCLASSPATH=\"" + (multisetsLib.jarPath.absolutePath) + "\"" + nl)
       fw.write("LD_LIBRARY_PATH=" + ("." / "lib-bin").absolutePath + " \\" + nl)
       fw.write("java \\" + nl)
 
@@ -48,7 +50,7 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
       fw.write("    -Dscala.home=" + libStr.substring(0, libStr.length-21) + " \\" + nl)
 
       fw.write("    -classpath ${FUNCHECKCLASSPATH} \\" + nl)
-      fw.write("  scala.tools.nsc.Main -Xplugin:" + plugin.jarPath.absolutePath + " $@" + nl)
+      fw.write("  scala.tools.nsc.Main -Xplugin:" + plugin.jarPath.absolutePath + " -classpath ${SCALACCLASSPATH} $@" + nl)
       fw.close
       f.setExecutable(true)
       None
@@ -77,8 +79,13 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
   class PluginProject(info: ProjectInfo) extends PersonalizedProject(info) {
     override def outputPath = "bin" / "funcheck"
     override def mainScalaSourcePath = "src" / "funcheck"
-    override def unmanagedClasspath = super.unmanagedClasspath +++ purescala.jarPath
+    override def unmanagedClasspath = super.unmanagedClasspath +++ purescala.jarPath +++ multisetsLib.jarPath
     override def mainResourcesPath   = "resources" / "funcheck"
+  }
+  class MultisetsLibProject(info: ProjectInfo) extends PersonalizedProject(info) {
+    override def outputPath = "bin" / "multisets-lib"
+    override def mainScalaSourcePath = "src" / "multisets-lib"
+    override def unmanagedClasspath = super.unmanagedClasspath 
   }
   class MultisetsProject(info: ProjectInfo) extends PersonalizedProject(info) {
     override def outputPath = "bin" / "multisets"

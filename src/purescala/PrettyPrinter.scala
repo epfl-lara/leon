@@ -77,7 +77,6 @@ object PrettyPrinter {
     case Iff(l,r) => ppBinary(sb, l, r, " <=> ", lvl)              
     case Implies(l,r) => ppBinary(sb, l, r, " ==> ", lvl)              
     case UMinus(expr) => ppUnary(sb, expr, "-(", ")", lvl)
-    case SetEquals(l,r) => ppBinary(sb, l, r, " =S= ", lvl)
     case Equals(l,r) => ppBinary(sb, l, r, " == ", lvl)
     case IntLiteral(v) => sb.append(v)
     case BooleanLiteral(v) => sb.append(v)
@@ -104,13 +103,21 @@ object PrettyPrinter {
     case LessEquals(l,r) => ppBinary(sb, l, r, " \u2264 ", lvl)      // \leq
     case GreaterEquals(l,r) => ppBinary(sb, l, r, " \u2265 ", lvl)   // \geq
     case FiniteSet(rs) => ppNary(sb, rs, "{", ", ", "}", lvl)
+    case FiniteMultiset(rs) => ppNary(sb, rs, "{|", ", ", "|}", lvl)
     case EmptySet(_) => sb.append("\u2205")                          // Ø
+    case EmptyMultiset(_) => sb.append("\u2205")                     // Ø
     case SetMin(s) => pp(s, sb, lvl).append(".min")
     case SetMax(s) => pp(s, sb, lvl).append(".max")
     case SetUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)        // \cup
+    case MultisetUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)   // \cup
     case SetDifference(l,r) => ppBinary(sb, l, r, " \\ ", lvl)       
+    case MultisetDifference(l,r) => ppBinary(sb, l, r, " \\ ", lvl)       
     case SetIntersection(l,r) => ppBinary(sb, l, r, " \u2229 ", lvl) // \cap
+    case MultisetIntersection(l,r) => ppBinary(sb, l, r, " \u2229 ", lvl) // \cap
     case SetCardinality(t) => ppUnary(sb, t, "|", "|", lvl)
+    case MultisetCardinality(t) => ppUnary(sb, t, "|", "|", lvl)
+    case MultisetPlus(l,r) => ppBinary(sb, l, r, " \u228E ", lvl)    // U+
+    case MultisetToSet(e) => pp(e, sb, lvl).append(".toSet")
     
     case IfExpr(c, t, e) => {
       var nsb = sb
@@ -186,6 +193,7 @@ object PrettyPrinter {
     case Int32Type => sb.append("Int")
     case BooleanType => sb.append("Boolean")
     case SetType(bt) => pp(bt, sb.append("Set["), lvl).append("]")
+    case MultisetType(bt) => pp(bt, sb.append("Multiset["), lvl).append("]")
     case c: ClassType => sb.append(c.classDef.id)
     case _ => sb.append("Type?")
   }

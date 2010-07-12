@@ -34,9 +34,6 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     }
     prepareSorts
     prepareFunctions
-
-    //println(prog.callGraph.map(p => (p._1.id.name, p._2.id.name).toString))
-    //println(prog.transitiveCallGraph.map(p => (p._1.id.name, p._2.id.name).toString))
   }
 
   private object nextIntForSymbol {
@@ -53,6 +50,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   private var boolSort : Z3Sort = null
   private var setSorts : Map[TypeTree,Z3Sort] = Map.empty
   private var adtSorts : Map[ClassTypeDef, Z3Sort] = Map.empty
+  private var fallbackSorts : Map[TypeTree,Z3Sort] = Map.empty
   private var adtTesters : Map[CaseClassDef, Z3FuncDecl] = Map.empty
   private var adtConstructors : Map[CaseClassDef, Z3FuncDecl] = Map.empty
   private var adtFieldSelectors : Map[Identifier,Z3FuncDecl] = Map.empty
@@ -133,8 +131,8 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
 
   def prepareFunctions : Unit = {
     for(funDef <- program.definedFunctions) {
-      val sortSeq = funDef.args.map(vd => typeToSort(vd.tpe).get)
-      functionDefToDef = functionDefToDef + (funDef -> z3.mkFreshFuncDecl(funDef.id.name, sortSeq, typeToSort(funDef.returnType).get))
+      val sortSeq = funDef.args.map(vd => typeToSort(vd.tpe))
+      functionDefToDef = functionDefToDef + (funDef -> z3.mkFreshFuncDecl(funDef.id.name, sortSeq, typeToSort(funDef.returnType)))
     }
 
     // universally quantifies all functions !
@@ -145,7 +143,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
             funDef.args.size == 1 && funDef.args(0).toVariable == scrutinee
           ) => infos.foreach(i => {
             val (ccd, pid, subids, rhs) = i
-            val argSorts: Seq[Z3Sort] = subids.map(id => typeToSort(id.getType).get)
+            val argSorts: Seq[Z3Sort] = subids.map(id => typeToSort(id.getType))
             val boundVars = argSorts.zipWithIndex.map(p => z3.mkBound(p._2, p._1))
             val matcher: Z3AST = adtConstructors(ccd)(boundVars: _*)
             val pattern: Z3Pattern = z3.mkPattern(functionDefToDef(funDef)(matcher))
@@ -173,7 +171,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
           case _ => {
             // Newly introduced variables should in fact
             // probably also be universally quantified.
-            val argSorts: Seq[Z3Sort] = funDef.args.map(vd => typeToSort(vd.getType).get)
+            val argSorts: Seq[Z3Sort] = funDef.args.map(vd => typeToSort(vd.getType))
             val boundVars = argSorts.zipWithIndex.map(p => z3.mkBound(p._2, p._1))
             val pattern: Z3Pattern = z3.mkPattern(functionDefToDef(funDef)(boundVars: _*))
             val nameTypePairs = argSorts.map(s => (z3.mkIntSymbol(nextIntForSymbol()), s))
@@ -204,28 +202,34 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   }
 
   // assumes prepareSorts has been called....
-  def typeToSort(tt: TypeTree) : Option[Z3Sort] = tt match {
-    case Int32Type => Some(intSort)
-    case BooleanType => Some(boolSort)
-    case AbstractClassType(cd) => Some(adtSorts(cd))
+  def typeToSort(tt: TypeTree) : Z3Sort = tt match {
+    case Int32Type => intSort
+    case BooleanType => boolSort
+    case AbstractClassType(cd) => adtSorts(cd)
     case CaseClassType(cd) => {
-      Some(if(cd.hasParent) {
+      if(cd.hasParent) {
         adtSorts(cd.parent.get)
       } else {
         adtSorts(cd)
-      })
+      }
     }
     case SetType(base) => setSorts.get(base) match {
-      case s @ Some(_) => s
-      case None => typeToSort(base).map(s => {
-        val newSetSort = z3.mkSetSort(s)
+      case Some(s) => s
+      case None => {
+        val newSetSort = z3.mkSetSort(typeToSort(base))
         setSorts = setSorts + (base -> newSetSort)
         newSetSort
-      })
+      }
     }
-    case _ => {
-      reporter.warning("No sort for type " + tt) 
-      None
+    case other => fallbackSorts.get(other) match {
+      case Some(s) => s
+      case None => {
+        reporter.warning("Resorting to uninterpreted type for : " + other)
+        val symbol = z3.mkIntSymbol(nextIntForSymbol())
+        val newFBSort = z3.mkUninterpretedSort(symbol)
+        fallbackSorts = fallbackSorts + (other -> newFBSort)
+        newFBSort
+      }
     }
   }
 
@@ -284,15 +288,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
       case v @ Variable(id) => z3Vars.get(id.uniqueName) match {
         case Some(ast) => ast
         case None => {
-          val newAST = typeToSort(v.getType) match {
-            case Some(s) => {
-              z3.mkFreshConst(id.name, s)
-            }
-            case None => {
-              reporter.warning("Unsupported type in Z3 transformation: " + v.getType)
-              throw new CantTranslateException
-            }
-          }
+          val newAST = z3.mkFreshConst(id.name, typeToSort(v.getType))
           z3Vars = z3Vars + (id.uniqueName -> newAST)
           newAST
         }
@@ -329,13 +325,13 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
         abstractedFormula = true
         z3.mkApp(functionDefToDef(fd), args.map(rec(_)): _*)
       }
-      case e @ EmptySet(_) => z3.mkEmptySet(typeToSort(e.getType.asInstanceOf[SetType].base).get)
+      case e @ EmptySet(_) => z3.mkEmptySet(typeToSort(e.getType.asInstanceOf[SetType].base))
       case SetEquals(s1,s2) => z3.mkEq(rec(s1), rec(s2))
       case SubsetOf(s1,s2) => z3.mkSetSubset(rec(s1), rec(s2))
       case SetIntersection(s1,s2) => z3.mkSetIntersect(rec(s1), rec(s2))
       case SetUnion(s1,s2) => z3.mkSetUnion(rec(s1), rec(s2))
       case SetDifference(s1,s2) => z3.mkSetDifference(rec(s1), rec(s2))
-      case f @ FiniteSet(elems) => elems.foldLeft(z3.mkEmptySet(typeToSort(f.getType.asInstanceOf[SetType].base).get))((ast,el) => z3.mkSetAdd(ast,rec(el)))
+      case f @ FiniteSet(elems) => elems.foldLeft(z3.mkEmptySet(typeToSort(f.getType.asInstanceOf[SetType].base)))((ast,el) => z3.mkSetAdd(ast,rec(el)))
       case _ => {
         reporter.warning("Can't handle this in translation to Z3: " + ex)
         throw new CantTranslateException

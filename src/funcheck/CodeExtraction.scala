@@ -17,6 +17,7 @@ trait CodeExtraction extends Extractors {
   import ExpressionExtractors._
 
   private lazy val setTraitSym = definitions.getClass("scala.collection.immutable.Set")
+  private lazy val multisetTraitSym = definitions.getClass("scala.collection.immutable.Multiset")
 
   private val varSubsts: scala.collection.mutable.Map[Symbol,Function0[Expr]] =
     scala.collection.mutable.Map.empty[Symbol,Function0[Expr]]
@@ -368,18 +369,24 @@ trait CodeExtraction extends Extractors {
       case ExLessEqThan(l, r) => LessEquals(rec(l), rec(r)).setType(BooleanType)
       case ExFiniteSet(tt, args) => {
         val underlying = scalaType2PureScala(unit, silent)(tt.tpe)
-          FiniteSet(args.map(rec(_))).setType(SetType(underlying))
+        FiniteSet(args.map(rec(_))).setType(SetType(underlying))
+      }
+      case ExFiniteMultiset(tt, args) => {
+        val underlying = scalaType2PureScala(unit, silent)(tt.tpe)
+        FiniteMultiset(args.map(rec(_))).setType(MultisetType(underlying))
       }
       case ExEmptySet(tt) => {
         val underlying = scalaType2PureScala(unit, silent)(tt.tpe)
         EmptySet(underlying).setType(SetType(underlying))          
       }
+      case ExEmptyMultiset(tt) => {
+        val underlying = scalaType2PureScala(unit, silent)(tt.tpe)
+        EmptyMultiset(underlying).setType(MultisetType(underlying))          
+      }
       case ExSetMin(t) => {
         val set = rec(t)
         if(!set.getType.isInstanceOf[SetType]) {
-          if(!silent) {
-            unit.error(t.pos, "Min should be computed on a set.")
-          }
+          if(!silent) unit.error(t.pos, "Min should be computed on a set.")
           throw ImpureCodeEncounteredException(tree)
         }
         SetMin(set).setType(set.getType.asInstanceOf[SetType].base)
@@ -387,9 +394,7 @@ trait CodeExtraction extends Extractors {
       case ExSetMax(t) => {
         val set = rec(t)
         if(!set.getType.isInstanceOf[SetType]) {
-          if(!silent) {
-            unit.error(t.pos, "Max should be computed on a set.")
-          }
+          if(!silent) unit.error(t.pos, "Max should be computed on a set.")
           throw ImpureCodeEncounteredException(tree)
         }
         SetMax(set).setType(set.getType.asInstanceOf[SetType].base)
@@ -397,21 +402,65 @@ trait CodeExtraction extends Extractors {
       case ExUnion(t1,t2) => {
         val rl = rec(t1)
         val rr = rec(t2)
-        SetUnion(rl, rr).setType(rl.getType) // this is not entirely correct: should be a setype of LUB of underlying types of left and right.
+        rl.getType match {
+          case s @ SetType(_) => SetUnion(rl, rr).setType(s)
+          case m @ MultisetType(_) => MultisetUnion(rl, rr).setType(m)
+          case _ => {
+            if(!silent) unit.error(tree.pos, "Union of non set/multiset expressions.")
+            throw ImpureCodeEncounteredException(tree)
+          }
+        }
       }
       case ExIntersection(t1,t2) => {
         val rl = rec(t1)
         val rr = rec(t2)
-        SetIntersection(rl, rr).setType(rl.getType) // same as union
+        rl.getType match {
+          case s @ SetType(_) => SetIntersection(rl, rr).setType(s)
+          case m @ MultisetType(_) => MultisetIntersection(rl, rr).setType(m)
+          case _ => {
+            if(!silent) unit.error(tree.pos, "Intersection of non set/multiset expressions.")
+            throw ImpureCodeEncounteredException(tree)
+          }
+        }
       } 
       case ExSetMinus(t1,t2) => {
         val rl = rec(t1)
         val rr = rec(t2)
-        SetDifference(rl, rr).setType(rl.getType) // same as union
+        rl.getType match {
+          case s @ SetType(_) => SetDifference(rl, rr).setType(s)
+          case m @ MultisetType(_) => MultisetDifference(rl, rr).setType(m)
+          case _ => {
+            if(!silent) unit.error(tree.pos, "Difference of non set/multiset expressions.")
+            throw ImpureCodeEncounteredException(tree)
+          }
+        }
       } 
       case ExSetCard(t) => {
         val rt = rec(t)
-        SetCardinality(rt)  
+        rt.getType match {
+          case s @ SetType(_) => SetCardinality(rt)
+          case m @ MultisetType(_) => MultisetCardinality(rt)
+          case _ => {
+            if(!silent) unit.error(tree.pos, "Cardinality of non set/multiset expressions.")
+            throw ImpureCodeEncounteredException(tree)
+          }
+        }
+      }
+      case ExMultisetToSet(t) => {
+        val rt = rec(t)
+        rt.getType match {
+          case m @ MultisetType(u) => MultisetToSet(rt).setType(SetType(u))
+          case _ => {
+            if(!silent) unit.error(tree.pos, "toSet can only be applied to multisets.")
+            throw ImpureCodeEncounteredException(tree)
+          }
+        }
+      }
+
+      case ExPlusPlusPlus(t1,t2) => {
+        val rl = rec(t1)
+        val rr = rec(t2)
+        MultisetPlus(rl, rr).setType(rl.getType)
       }
       case ExIfThenElse(t1,t2,t3) => {
         val r1 = rec(t1)
@@ -479,6 +528,7 @@ trait CodeExtraction extends Extractors {
       case tpe if tpe == IntClass.tpe => Int32Type
       case tpe if tpe == BooleanClass.tpe => BooleanType
       case TypeRef(_, sym, btt :: Nil) if sym == setTraitSym => SetType(rec(btt))
+      case TypeRef(_, sym, btt :: Nil) if sym == multisetTraitSym => MultisetType(rec(btt))
       case TypeRef(_, sym, Nil) if classesToClasses.keySet.contains(sym) => classDefToClassType(classesToClasses(sym))
 
       case _ => {

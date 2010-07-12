@@ -11,6 +11,7 @@ trait Extractors {
   import global.definitions._
 
   private lazy val setTraitSym = definitions.getClass("scala.collection.immutable.Set")
+  private lazy val multisetTraitSym = definitions.getClass("scala.collection.immutable.Multiset")
 
   object StructuralExtractors {
     object ScalaPredef {
@@ -338,6 +339,22 @@ trait Extractors {
       }
     }
 
+    object ExEmptyMultiset {
+      def unapply(tree: TypeApply): Option[Tree] = tree match {
+        case TypeApply(
+          Select(
+            Select(
+              Select(
+                Select(Ident(s), collectionName),
+                immutableName),
+              setName),
+            emptyName),  theTypeTree :: Nil) if (
+            collectionName.toString == "collection" && immutableName.toString == "immutable" && setName.toString == "Multiset" && emptyName.toString == "empty"
+          ) => Some(theTypeTree)
+        case _ => None
+      }
+    }
+
     object ExFiniteSet {
       def unapply(tree: Apply): Option[(Tree,List[Tree])] = tree match {
         case Apply(
@@ -355,9 +372,33 @@ trait Extractors {
       }
     }
 
+    object ExFiniteMultiset {
+      def unapply(tree: Apply): Option[(Tree,List[Tree])] = tree match {
+        case Apply(
+          TypeApply(
+            Select(
+              Select(
+                Select(
+                  Select(Ident(s), collectionName),
+                  immutableName),
+                setName),
+              emptyName),  theTypeTree :: Nil), args) if (
+              collectionName.toString == "collection" && immutableName.toString == "immutable" && setName.toString == "Multiset" && emptyName.toString == "apply"
+            )=> Some(theTypeTree, args)
+        case _ => None
+      }
+    }
+
     object ExUnion {
       def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
         case Apply(Select(lhs, n), List(rhs)) if (n == nme.PLUSPLUS) => Some((lhs,rhs))
+        case _ => None
+      }
+    }
+
+    object ExPlusPlusPlus {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n.toString == "$plus$plus$plus") => Some((lhs,rhs))
         case _ => None
       }
     }
@@ -379,6 +420,13 @@ trait Extractors {
     object ExSetCard {
       def unapply(tree: Select): Option[Tree] = tree match {
         case Select(t, n) if (n.toString == "size") => Some(t)
+        case _ => None
+      }
+    }
+
+    object ExMultisetToSet {
+      def unapply(tree: Select): Option[Tree] = tree match {
+        case Select(t, n) if (n.toString == "toSet") => Some(t)
         case _ => None
       }
     }

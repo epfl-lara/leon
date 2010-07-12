@@ -122,7 +122,28 @@ object Trees {
   }
 
   /* For all types that don't have their own XXXEquals */
-  case class Equals(left: Expr, right: Expr) extends Expr with FixedType {
+  object Equals {
+    def apply(l : Expr, r : Expr) : Equals = new Equals(l,r)
+    def unapply(e : Equals) : Option[(Expr,Expr)] = if (e == null) None else Some((e.left, e.right))
+  }
+
+  object SetEquals {
+    def apply(l : Expr, r : Expr) : Equals = new Equals(l,r)
+    def unapply(e : Equals) : Option[(Expr,Expr)] = if(e == null) None else (e.left.getType, e.right.getType) match {
+      case (SetType(_), SetType(_)) => Some((e.left, e.right))
+      case _ => None
+    }
+  }
+
+  object MultisetEquals {
+    def apply(l : Expr, r : Expr) : Equals = new Equals(l,r)
+    def unapply(e : Equals) : Option[(Expr,Expr)] = if(e == null) None else (e.left.getType, e.right.getType) match {
+      case (MultisetType(_), MultisetType(_)) => Some((e.left, e.right))
+      case _ => None
+    }
+  }
+
+  class Equals(val left: Expr, val right: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }
   
@@ -191,10 +212,6 @@ object Trees {
   case class EmptySet(baseType: TypeTree) extends Expr with Terminal
   case class FiniteSet(elements: Seq[Expr]) extends Expr 
   case class ElementOfSet(element: Expr, set: Expr) extends Expr 
-  case class IsEmptySet(set: Expr) extends Expr 
-  case class SetEquals(set1: Expr, set2: Expr) extends Expr with FixedType {
-    val fixedType = BooleanType
-  }
   case class SetCardinality(set: Expr) extends Expr with FixedType {
     val fixedType = Int32Type
   }
@@ -209,9 +226,9 @@ object Trees {
   case class EmptyMultiset(baseType: TypeTree) extends Expr with Terminal
   case class FiniteMultiset(elements: Seq[Expr]) extends Expr 
   case class Multiplicity(element: Expr, multiset: Expr) extends Expr 
-  case class IsEmptyMultiset(multiset: Expr) extends Expr 
-  case class MultisetEquals(multiset1: Expr, multiset2: Expr) extends Expr 
-  case class MultisetCardinality(multiset: Expr) extends Expr 
+  case class MultisetCardinality(multiset: Expr) extends Expr with FixedType {
+    val fixedType = Int32Type
+  }
   case class SubmultisetOf(multiset1: Expr, multiset2: Expr) extends Expr 
   case class MultisetIntersection(multiset1: Expr, multiset2: Expr) extends Expr 
   case class MultisetUnion(multiset1: Expr, multiset2: Expr) extends Expr 
@@ -239,8 +256,6 @@ object Trees {
   object UnaryOperator {
     def unapply(expr: Expr) : Option[(Expr,(Expr)=>Expr)] = expr match {
       case Not(t) => Some((t,Not(_)))
-      case IsEmptySet(t) => Some((t,IsEmptySet))
-      case IsEmptyMultiset(t) => Some((t,IsEmptyMultiset))
       case SetCardinality(t) => Some((t,SetCardinality))
       case MultisetCardinality(t) => Some((t,MultisetCardinality))
       case MultisetToSet(t) => Some((t,MultisetToSet))
@@ -255,7 +270,7 @@ object Trees {
 
   object BinaryOperator {
     def unapply(expr: Expr) : Option[(Expr,Expr,(Expr,Expr)=>Expr)] = expr match {
-      case Equals(t1,t2) => Some((t1,t2,Equals))
+      case Equals(t1,t2) => Some((t1,t2,Equals(_,_)))
       case Iff(t1,t2) => Some((t1,t2,Iff))
       case Implies(t1,t2) => Some((t1,t2, ((e1,e2) => Implies(e1,e2))))
       case Plus(t1,t2) => Some((t1,t2,Plus))
@@ -267,13 +282,11 @@ object Trees {
       case LessEquals(t1,t2) => Some((t1,t2,LessEquals))
       case GreaterEquals(t1,t2) => Some((t1,t2,GreaterEquals))
       case ElementOfSet(t1,t2) => Some((t1,t2,ElementOfSet))
-      case SetEquals(t1,t2) => Some((t1,t2,SetEquals))
       case SubsetOf(t1,t2) => Some((t1,t2,SubsetOf))
       case SetIntersection(t1,t2) => Some((t1,t2,SetIntersection))
       case SetUnion(t1,t2) => Some((t1,t2,SetUnion))
       case SetDifference(t1,t2) => Some((t1,t2,SetDifference))
       case Multiplicity(t1,t2) => Some((t1,t2,Multiplicity))
-      case MultisetEquals(t1,t2) => Some((t1,t2,MultisetEquals))
       case SubmultisetOf(t1,t2) => Some((t1,t2,SubmultisetOf))
       case MultisetIntersection(t1,t2) => Some((t1,t2,MultisetIntersection))
       case MultisetUnion(t1,t2) => Some((t1,t2,MultisetUnion))
@@ -319,7 +332,7 @@ object Trees {
   // Warning ! This may loop forever if the substitutions are not
   // well-formed!
   def replace(substs: Map[Expr,Expr], expr: Expr) : Expr = {
-    searchAndApply(substs.isDefinedAt(_), substs(_), expr)
+    searchAndReplace(substs.get(_))(expr)
   }
 
   // the replacement map should be understood as follows:
@@ -327,78 +340,78 @@ object Trees {
   //   - repFun is applied is checkFun succeeded
   //   - if the result of repFun is different from its argument and recursive
   //     is set to true, search/replace is reapplied on the result.
-  def searchAndApply(checkFun: Expr=>Boolean, repFun: Expr=>Expr, expr: Expr, recursive: Boolean=true) : Expr = {
-    def rec(ex: Expr, skip: Expr = null) : Expr = ex match {
-      case _ if (ex != skip && checkFun(ex)) => {
-        val newExpr = repFun(ex)
-        if(newExpr.getType == NoType) {
-          Settings.reporter.warning("REPLACING IN EXPRESSION WITH AN UNTYPED TREE ! " + ex + " --to--> " + newExpr)
-        }
-        if(ex == newExpr)
-          if(recursive) rec(ex, ex) else ex
-        else
-          if(recursive) rec(newExpr) else newExpr
-      }
-      case l @ Let(i,e,b) => {
-        val re = rec(e)
-        val rb = rec(b)
-        if(re != e || rb != b)
-          Let(i, re, rb).setType(l.getType)
-        else
-          l
-      }
-      case n @ NAryOperator(args, recons) => {
-        var change = false
-        val rargs = args.map(a => {
-          val ra = rec(a)
-          if(ra != a) {
-            change = true  
-            ra
-          } else {
-            a
-          }            
-        })
-        if(change)
-          recons(rargs).setType(n.getType)
-        else
-          n
-      }
-      case b @ BinaryOperator(t1,t2,recons) => {
-        val r1 = rec(t1)
-        val r2 = rec(t2)
-        if(r1 != t1 || r2 != t2)
-          recons(r1,r2).setType(b.getType)
-        else
-          b
-      }
-      case u @ UnaryOperator(t,recons) => {
-        val r = rec(t)
-        if(r != t)
-          recons(r).setType(u.getType)
-        else
-          u
-      }
-      case i @ IfExpr(t1,t2,t3) => {
-        val r1 = rec(t1)
-        val r2 = rec(t2)
-        val r3 = rec(t3)
-        if(r1 != t1 || r2 != t2 || r3 != t3)
-          IfExpr(rec(t1),rec(t2),rec(t3)).setType(i.getType)
-        else
-          i
-      }
-      case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut), cses.map(inCase(_))).setType(m.getType)
-      case t if t.isInstanceOf[Terminal] => t
-      case unhandled => scala.Predef.error("Non-terminal case should be handled in searchAndApply: " + unhandled)
-    }
+  // def searchAndApply(checkFun: Expr=>Boolean, repFun: Expr=>Expr, expr: Expr, recursive: Boolean=true) : Expr = {
+  //   def rec(ex: Expr, skip: Expr = null) : Expr = ex match {
+  //     case _ if (ex != skip && checkFun(ex)) => {
+  //       val newExpr = repFun(ex)
+  //       if(newExpr.getType == NoType) {
+  //         Settings.reporter.warning("REPLACING IN EXPRESSION WITH AN UNTYPED TREE ! " + ex + " --to--> " + newExpr)
+  //       }
+  //       if(ex == newExpr)
+  //         if(recursive) rec(ex, ex) else ex
+  //       else
+  //         if(recursive) rec(newExpr) else newExpr
+  //     }
+  //     case l @ Let(i,e,b) => {
+  //       val re = rec(e)
+  //       val rb = rec(b)
+  //       if(re != e || rb != b)
+  //         Let(i, re, rb).setType(l.getType)
+  //       else
+  //         l
+  //     }
+  //     case n @ NAryOperator(args, recons) => {
+  //       var change = false
+  //       val rargs = args.map(a => {
+  //         val ra = rec(a)
+  //         if(ra != a) {
+  //           change = true  
+  //           ra
+  //         } else {
+  //           a
+  //         }            
+  //       })
+  //       if(change)
+  //         recons(rargs).setType(n.getType)
+  //       else
+  //         n
+  //     }
+  //     case b @ BinaryOperator(t1,t2,recons) => {
+  //       val r1 = rec(t1)
+  //       val r2 = rec(t2)
+  //       if(r1 != t1 || r2 != t2)
+  //         recons(r1,r2).setType(b.getType)
+  //       else
+  //         b
+  //     }
+  //     case u @ UnaryOperator(t,recons) => {
+  //       val r = rec(t)
+  //       if(r != t)
+  //         recons(r).setType(u.getType)
+  //       else
+  //         u
+  //     }
+  //     case i @ IfExpr(t1,t2,t3) => {
+  //       val r1 = rec(t1)
+  //       val r2 = rec(t2)
+  //       val r3 = rec(t3)
+  //       if(r1 != t1 || r2 != t2 || r3 != t3)
+  //         IfExpr(rec(t1),rec(t2),rec(t3)).setType(i.getType)
+  //       else
+  //         i
+  //     }
+  //     case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut), cses.map(inCase(_))).setType(m.getType)
+  //     case t if t.isInstanceOf[Terminal] => t
+  //     case unhandled => scala.Predef.error("Non-terminal case should be handled in searchAndApply: " + unhandled)
+  //   }
 
-    def inCase(cse: MatchCase) : MatchCase = cse match {
-      case SimpleCase(pat, rhs) => SimpleCase(pat, rec(rhs))
-      case GuardedCase(pat, guard, rhs) => GuardedCase(pat, rec(guard), rec(rhs))
-    }
+  //   def inCase(cse: MatchCase) : MatchCase = cse match {
+  //     case SimpleCase(pat, rhs) => SimpleCase(pat, rec(rhs))
+  //     case GuardedCase(pat, guard, rhs) => GuardedCase(pat, rec(guard), rec(rhs))
+  //   }
 
-    rec(expr)
-  }
+  //   rec(expr)
+  // }
 
   def searchAndReplace(subst: Expr=>Option[Expr], recursive: Boolean=true)(expr: Expr) : Expr = {
     def rec(ex: Expr, skip: Expr = null) : Expr = (if (ex == skip) None else subst(ex)) match {
@@ -462,7 +475,7 @@ object Trees {
         }
         case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut), cses.map(inCase(_))).setType(m.getType)
         case t if t.isInstanceOf[Terminal] => t
-        case unhandled => scala.Predef.error("Non-terminal case should be handled in searchAndApply: " + unhandled)
+        case unhandled => scala.Predef.error("Non-terminal case should be handled in searchAndReplace: " + unhandled)
       }
     }
 
@@ -481,26 +494,27 @@ object Trees {
    * Note that the code is simple but far from optimal (many traversals...)
    */
   def simplifyLets(expr: Expr) : Expr = {
-    val isLet = ((t: Expr) => t.isInstanceOf[Let])
-    def simplerLet(t: Expr) : Expr = t match {
-      case letExpr @ Let(i, Variable(v), b) => replace(Map((Variable(i) -> Variable(v))), b)
-      case letExpr @ Let(i, l: Literal[_], b) => replace(Map((Variable(i) -> l)), b)
+    def simplerLet(t: Expr) : Option[Expr] = t match {
+      case letExpr @ Let(i, Variable(v), b) => Some(replace(Map((Variable(i) -> Variable(v))), b))
+      case letExpr @ Let(i, l: Literal[_], b) => Some(replace(Map((Variable(i) -> l)), b))
       case letExpr @ Let(i,e,b) => {
         var occurences = 0
-        def isOcc(tr: Expr) = (occurences < 2 && tr == Variable(i))
-        def incCount(tr: Expr) = { occurences = occurences + 1; tr } 
-        searchAndApply(isOcc, incCount, b, false)
+        def incCount(tr: Expr) = tr match {
+          case Variable(x) if x == i => { occurences = occurences + 1; None } 
+          case _ => None
+        }
+        searchAndReplace(incCount, false)(b)
         if(occurences == 0) {
-          b
+          Some(b)
         } else if(occurences == 1) {
-          replace(Map((Variable(i) -> e)), b)
+          Some(replace(Map((Variable(i) -> e)), b))
         } else {
-          t
+          None
         }
       }
-      case o => o
+      case _ => None 
     }
-    searchAndApply(isLet,simplerLet,expr)
+    searchAndReplace(simplerLet)(expr)
   }
 
   /* Rewrites the expression so that all lets are at the top levels. */
@@ -512,18 +526,17 @@ object Trees {
   def pulloutAndKeepLets(expr: Expr) : (Seq[(Identifier,Expr)], Expr) = {
     var storedLets: List[(Identifier,Expr)] = Nil
 
-    val isLet = ((t: Expr) => t.isInstanceOf[Let])
-    def storeLet(t: Expr) : Expr = t match {
-      case l @ Let(i, e, b) => (storedLets = ((i,e)) :: storedLets); l
-      case _ => t
+    def storeLet(t: Expr) : Option[Expr] = t match {
+      case l @ Let(i, e, b) => (storedLets = ((i,e)) :: storedLets); None
+      case _ => None
     }
-    def killLet(t: Expr) : Expr = t match {
-      case l @ Let(i, e, b) => b
-      case _ => t
+    def killLet(t: Expr) : Option[Expr] = t match {
+      case l @ Let(i, e, b) => Some(b)
+      case _ => None
     }
 
-    searchAndApply(isLet, storeLet, expr)
-    val noLets = searchAndApply(isLet, killLet, expr)
+    searchAndReplace(storeLet)(expr)
+    val noLets = searchAndReplace(killLet)(expr)
     (storedLets, noLets)
   }
 

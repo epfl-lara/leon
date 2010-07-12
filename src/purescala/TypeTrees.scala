@@ -92,6 +92,7 @@ object TypeTrees {
       case InfiniteSize => InfiniteSize
       case FiniteSize(n) => FiniteSize(scala.math.pow(2, n).toInt)
     }
+    case MultisetType(_) => InfiniteSize
     case MapType(from,to) => (domainSize(from),domainSize(to)) match {
       case (InfiniteSize,_) => InfiniteSize
       case (_,InfiniteSize) => InfiniteSize
@@ -113,7 +114,7 @@ object TypeTrees {
   case class ListType(base: TypeTree) extends TypeTree
   case class TupleType(bases: Seq[TypeTree]) extends TypeTree { lazy val dimension: Int = bases.length }
   case class SetType(base: TypeTree) extends TypeTree
-  // case class MultisetType(base: TypeTree) extends TypeTree
+  case class MultisetType(base: TypeTree) extends TypeTree
   case class MapType(from: TypeTree, to: TypeTree) extends TypeTree
   case class OptionType(base: TypeTree) extends TypeTree
 

@@ -163,7 +163,7 @@ object ExprToASTConverter {
     // Set Formulas
     case ElementOfSet(elem, set) => toIntTerm(elem) selem toSetTerm(set)
     case SetEquals(set1, set2) => toSetTerm(set1) seq toSetTerm(set2)
-    case IsEmptySet(set) => toSetTerm(set).card === 0
+    // case IsEmptySet(set) => toSetTerm(set).card === 0
     case SubsetOf(set1, set2) => toSetTerm(set1) subseteq toSetTerm(set2)
 
     // Integer Formulas
@@ -185,7 +185,7 @@ object ExprToASTConverter {
     // Set formulas
     case ElementOfSet(_, set) => Set(set.getType, SetType(Int32Type))
     case SetEquals(set1, set2) => Set(set1.getType, set2.getType)
-    case IsEmptySet(set) => Set(set.getType)
+    // case IsEmptySet(set) => Set(set.getType)
     case SubsetOf(set1, set2) => Set(set1.getType, set2.getType)
     // Integer formulas
     case LessThan(lhs, rhs) => getSetTypes(lhs) ++ getSetTypes(rhs)
