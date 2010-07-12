@@ -269,7 +269,7 @@ object Analysis {
             (newPVar, List(Equals(newPVar, CaseClass(ccd, argVars)), Implies(Equals(Variable(scrutAsLetID), newPVar), Equals(newVar, rewrittenRHS))) ::: moreExtras.toList)
           }).toList
           val (newPVars, newExtras) = lle.unzip
-          extras = Let(scrutAsLetID, scrutinee, And(/*Or(newPVars.map(Equals(Variable(scrutAsLetID), _))),*/BooleanLiteral(true), And(newExtras.flatten))) :: extras
+          extras = Let(scrutAsLetID, scrutinee, And(Or(newPVars.map(Equals(Variable(scrutAsLetID), _))), And(newExtras.flatten))) :: extras
           newVar
         })
         case _ => None
