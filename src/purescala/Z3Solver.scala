@@ -234,7 +234,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   }
 
   private var abstractedFormula = false
-  override def isSat(vc: Expr) = decide(vc, false)
+  override def isUnsat(vc: Expr) = decide(vc, false)
   def solve(vc: Expr) = decide(vc, true)
   def decide(vc: Expr, forValidity: Boolean) : Option[Boolean] = {
     abstractedFormula = false
