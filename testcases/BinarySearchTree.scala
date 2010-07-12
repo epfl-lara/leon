@@ -57,22 +57,24 @@ object BinarySearchTree {
     }
   
 
-  def treeMin(tree: Node): Int = tree match {
+  def treeMin(tree: Node): Int = {
+    require(isSorted(tree).sorted)
+    tree match {
     case Node(left, v, _) => left match {
       case Leaf() => v
       case n@Node(_, _, _) => treeMin(n)
     }
-  }
+  }} ensuring (_ == contents(tree).min)
 
   def treeMax(tree: Node): Int = {
-    // requires(isSorted(tree))
+    require(isSorted(tree).sorted)
     tree match {
       case Node(_, v, right) => right match {
         case Leaf() => v
         case n@Node(_, _, _) => treeMax(n)
       }
     }
-  } //ensuring (_ == contents(tree).max)
+  } ensuring (_ == contents(tree).max)
 
   def insert(tree: Tree, value: Int): Node = {
     require(isSorted(tree).sorted)

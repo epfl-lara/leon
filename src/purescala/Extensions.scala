@@ -19,7 +19,7 @@ object Extensions {
     // None if unknown.
     def solve(expression: Expr) : Option[Boolean]
 
-    def isSat(expression: Expr) : Option[Boolean] = solve(expression).map(!_)
+    def isUnsat(expression: Expr) : Option[Boolean] = solve(negate(expression))
   }
   
   abstract class Analyser(reporter: Reporter) extends Extension(reporter) {

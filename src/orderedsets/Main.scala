@@ -208,7 +208,7 @@ object ExprToASTConverter {
     formulaRelaxed = false;
     expr match {
       case And(exprs) => AST.And((exprs map toRelaxedFormula).toList)
-      case _ => toFormula(expr)
+      case _ => toRelaxedFormula(expr)
     }
   }
 
