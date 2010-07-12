@@ -257,7 +257,7 @@ object Analysis {
       var extras : List[Expr] = Nil
 
       def rewritePM(e: Expr) : Option[Expr] = e match {
-        case NotSoSimplePatternMatching(_) => None
+        // case NotSoSimplePatternMatching(_) => None
         case SimplePatternMatching(scrutinee, classType, casesInfo) => Some({
           val newVar = Variable(FreshIdentifier("pm", true)).setType(e.getType)
           val scrutAsLetID = FreshIdentifier("scrut", true).setType(scrutinee.getType)
