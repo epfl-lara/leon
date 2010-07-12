@@ -14,7 +14,7 @@ object InsertionSort {
     case Nil() => true
     case Cons(x, xs) => xs match {
       case Nil() => true
-      case Cons(y, ys) => x < y && isSorted(Cons(y, xs))
+      case Cons(y, ys) => x <= y && isSorted(Cons(y, xs))
     }
   }    
 
@@ -23,15 +23,15 @@ object InsertionSort {
     case Cons(x,xs) => if (x < e) Cons(x,sortedIns(e, xs))  else Cons(e, l)
   }) ensuring(res => contents(res) == contents(l) ++ Set(e))
 
-  def sorted(l: List): List = (l match {
+  def sort(l: List): List = (l match {
     case Nil() => Nil()
-    case Cons(x,xs) => sortedIns(x, sorted(xs))
+    case Cons(x,xs) => sortedIns(x, sort(xs))
   }) ensuring(res => contents(res) == contents(l))// && isSorted(res))
 
   def main(args: Array[String]): Unit = {
     val ls: List = Cons(5, Cons(2, Cons(4, Cons(5, Cons(1, Cons(8,Nil()))))))
 
     println(ls)
-    println(sorted(ls))
+    println(sort(ls))
   }
 }

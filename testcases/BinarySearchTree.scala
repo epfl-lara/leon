@@ -1,4 +1,5 @@
 import scala.collection.immutable.Set
+import scala.collection.immutable.Multiset
 
 object BinarySearchTree {
   sealed abstract class Tree
