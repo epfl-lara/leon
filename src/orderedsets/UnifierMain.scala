@@ -22,6 +22,7 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
 
   val description = "Unifier for ADTs with abstractions"
   override val shortDescription = "Unifier"
+  override def superseeds = List("BAPA<", "MUNCH")
 
   var program: Program = null
 

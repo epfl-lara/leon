@@ -61,19 +61,26 @@ class Analysis(val program: Program) {
           // reporter.info(exp)
 
           // try all solvers until one returns a meaningful answer
+          var superseeded : Set[String] = Set.empty[String]
           solverExtensions.find(se => {
             reporter.info("Trying with solver: " + se.shortDescription)
-            se.solve(vc) match {
-              case None => false
-              case Some(true) => {
-                reporter.info("==== VALID ====")
-                verifiedVCs = (funDef.id.toString, "postcondition", "valid", se.shortDescription) :: verifiedVCs
-                true
-              }
-              case Some(false) => {
-                reporter.error("==== INVALID ====")
-                verifiedVCs = (funDef.id.toString, "postcondition", "invalid", se.shortDescription) :: verifiedVCs
-                true
+            if(superseeded(se.shortDescription) || superseeded(se.description)) {
+              reporter.info("Solver was superseeded. Skipping.")
+              false
+            } else {
+              superseeded = superseeded ++ Set(se.superseeds: _*)
+              se.solve(vc) match {
+                case None => false
+                case Some(true) => {
+                  reporter.info("==== VALID ====")
+                  verifiedVCs = (funDef.id.toString, "postcondition", "valid", se.shortDescription) :: verifiedVCs
+                  true
+                }
+                case Some(false) => {
+                  reporter.error("==== INVALID ====")
+                  verifiedVCs = (funDef.id.toString, "postcondition", "invalid", se.shortDescription) :: verifiedVCs
+                  true
+                }
               }
             }
           }) match {

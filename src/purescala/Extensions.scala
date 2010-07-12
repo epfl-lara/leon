@@ -20,6 +20,7 @@ object Extensions {
     def solve(expression: Expr) : Option[Boolean]
 
     def isUnsat(expression: Expr) : Option[Boolean] = solve(negate(expression))
+    def superseeds : Seq[String] = Nil
   }
   
   abstract class Analyser(reporter: Reporter) extends Extension(reporter) {

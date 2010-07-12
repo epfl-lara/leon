@@ -6,6 +6,7 @@ import purescala.Trees._
 
 class Main(reporter: Reporter) extends Solver(reporter) {
   val description = "Multiset Solver"
+  override def shortDescription = "MUNCH"
 
   def solve(expr: Expr) : Option[Boolean] = {
     reporter.info("Don't know how to solve anything.")
