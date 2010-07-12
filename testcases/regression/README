@@ -16,14 +16,14 @@ createRoot           postcondition  valid    Unifier
 dumbInsertWithOrder  postcondition  unknown  ---
 ====================================================
 
-Revision 1157, now, even worse
-====================================================
-dumbInsertWithOrder  postcondition  unknown  ---
-createRoot           postcondition  unknown  ---
-mkInfiniteTree       postcondition  valid    Unifier
-insert               postcondition  unknown  ---
-dumbInsert           postcondition  unknown  ---
-====================================================
+Revision 1157, now, better again
+==================================================
+createRoot           postcondition  valid  Unifier
+dumbInsert           postcondition  valid  Unifier
+mkInfiniteTree       postcondition  valid  Unifier
+dumbInsertWithOrder  postcondition  valid  Unifier
+insert               postcondition  <BAPA seems to hang on conjunction 11>
+==================================================
 
-Would be great if we could this working again...
+Okay, we're getting there..
 
