@@ -166,11 +166,23 @@ object Analysis {
         val substMap = Map[Expr,Expr]((fArgsAsVars zip fParamsAsLetVarVars) : _*)
         if(fd.hasPostcondition) {
           val newVar = Variable(FreshIdentifier("call", true)).setType(fd.returnType)
+          /* START CHANGE */
+          //  Code before
+          /*
           extras = mkBigLet(And(
             replace(substMap + (ResultVariable() -> newVar), fd.postcondition.get),
             Equals(newVar, FunctionInvocation(fd, fParamsAsLetVarVars).setType(fd.returnType))
           )) :: extras
           Some(newVar)
+          */
+          
+          // Fixed code ?!?
+          extras = And(
+            replace(substMap + (ResultVariable() -> newVar), fd.postcondition.get),
+            Equals(newVar, FunctionInvocation(fd, fParamsAsLetVarVars).setType(fd.returnType))
+          ) :: extras
+          Some(mkBigLet(newVar))
+          /* END CHANGE */
         } else if(fd.hasImplementation && !program.isRecursive(fd)) { // means we can inline at least one level...
           Some(mkBigLet(replace(substMap, fd.body.get)))
         } else { // we can't do much for calls to recursive functions or to functions with no bodies
