@@ -234,14 +234,17 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   }
 
   private var abstractedFormula = false
-  def solve(vc: Expr) : Option[Boolean] = {
+  override def isSat(vc: Expr) = decide(vc, false)
+  def solve(vc: Expr) = decide(vc, true)
+  def decide(vc: Expr, forValidity: Boolean) : Option[Boolean] = {
     abstractedFormula = false
 
     if(neverInitialized) {
         reporter.error("Z3 Solver was not initialized with a PureScala Program.")
         None
     }
-    val result = toZ3Formula(z3, negate(vc)) match {
+    val toConvert = if(forValidity) negate(vc) else vc
+    val result = toZ3Formula(z3, toConvert) match {
       case None => None // means it could not be translated
       case Some(z3f) => {
         z3.push

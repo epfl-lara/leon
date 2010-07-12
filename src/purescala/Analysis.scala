@@ -50,7 +50,7 @@ class Analysis(val program: Program) {
         } else {
           reporter.info("Verification condition (post) for ==== " + funDef.id + " ====")
           if(Settings.unrollingLevel == 0) {
-            reporter.info(vc)
+            reporter.info(simplifyLets(vc))
           } else {
             reporter.info("(not showing unrolled VCs)")
           }
@@ -246,6 +246,7 @@ object Analysis {
       var extras : List[Expr] = Nil
 
       def rewritePM(e: Expr) : Option[Expr] = e match {
+        case NotSoSimplePatternMatching(_) => None
         case SimplePatternMatching(scrutinee, classType, casesInfo) => Some({
           val newVar = Variable(FreshIdentifier("pm", true)).setType(e.getType)
           val scrutAsLetID = FreshIdentifier("scrut", true).setType(scrutinee.getType)
@@ -257,7 +258,7 @@ object Analysis {
             (newPVar, List(Equals(newPVar, CaseClass(ccd, argVars)), Implies(Equals(Variable(scrutAsLetID), newPVar), Equals(newVar, rewrittenRHS))) ::: moreExtras.toList)
           }).toList
           val (newPVars, newExtras) = lle.unzip
-          extras = Let(scrutAsLetID, scrutinee, And(Or(newPVars.map(Equals(Variable(scrutAsLetID), _))), And(newExtras.flatten))) :: extras
+          extras = Let(scrutAsLetID, scrutinee, And(/*Or(newPVars.map(Equals(Variable(scrutAsLetID), _))),*/BooleanLiteral(true), And(newExtras.flatten))) :: extras
           newVar
         })
         case _ => None

@@ -26,7 +26,9 @@ object Trees {
     val fixedType = funDef.returnType
   }
   case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr 
-  case class MatchExpr(scrutinee: Expr, cases: Seq[MatchCase]) extends Expr
+  case class MatchExpr(scrutinee: Expr, cases: Seq[MatchCase]) extends Expr {
+    def scrutineeClassType: ClassType = scrutinee.getType.asInstanceOf[ClassType]
+  }
 
   sealed abstract class MatchCase {
     val pattern: Pattern
@@ -335,84 +337,6 @@ object Trees {
     searchAndReplace(substs.get(_))(expr)
   }
 
-  // the replacement map should be understood as follows:
-  //   - on each subexpression, checkFun checks whether it should be replaced
-  //   - repFun is applied is checkFun succeeded
-  //   - if the result of repFun is different from its argument and recursive
-  //     is set to true, search/replace is reapplied on the result.
-  // def searchAndApply(checkFun: Expr=>Boolean, repFun: Expr=>Expr, expr: Expr, recursive: Boolean=true) : Expr = {
-  //   def rec(ex: Expr, skip: Expr = null) : Expr = ex match {
-  //     case _ if (ex != skip && checkFun(ex)) => {
-  //       val newExpr = repFun(ex)
-  //       if(newExpr.getType == NoType) {
-  //         Settings.reporter.warning("REPLACING IN EXPRESSION WITH AN UNTYPED TREE ! " + ex + " --to--> " + newExpr)
-  //       }
-  //       if(ex == newExpr)
-  //         if(recursive) rec(ex, ex) else ex
-  //       else
-  //         if(recursive) rec(newExpr) else newExpr
-  //     }
-  //     case l @ Let(i,e,b) => {
-  //       val re = rec(e)
-  //       val rb = rec(b)
-  //       if(re != e || rb != b)
-  //         Let(i, re, rb).setType(l.getType)
-  //       else
-  //         l
-  //     }
-  //     case n @ NAryOperator(args, recons) => {
-  //       var change = false
-  //       val rargs = args.map(a => {
-  //         val ra = rec(a)
-  //         if(ra != a) {
-  //           change = true  
-  //           ra
-  //         } else {
-  //           a
-  //         }            
-  //       })
-  //       if(change)
-  //         recons(rargs).setType(n.getType)
-  //       else
-  //         n
-  //     }
-  //     case b @ BinaryOperator(t1,t2,recons) => {
-  //       val r1 = rec(t1)
-  //       val r2 = rec(t2)
-  //       if(r1 != t1 || r2 != t2)
-  //         recons(r1,r2).setType(b.getType)
-  //       else
-  //         b
-  //     }
-  //     case u @ UnaryOperator(t,recons) => {
-  //       val r = rec(t)
-  //       if(r != t)
-  //         recons(r).setType(u.getType)
-  //       else
-  //         u
-  //     }
-  //     case i @ IfExpr(t1,t2,t3) => {
-  //       val r1 = rec(t1)
-  //       val r2 = rec(t2)
-  //       val r3 = rec(t3)
-  //       if(r1 != t1 || r2 != t2 || r3 != t3)
-  //         IfExpr(rec(t1),rec(t2),rec(t3)).setType(i.getType)
-  //       else
-  //         i
-  //     }
-  //     case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut), cses.map(inCase(_))).setType(m.getType)
-  //     case t if t.isInstanceOf[Terminal] => t
-  //     case unhandled => scala.Predef.error("Non-terminal case should be handled in searchAndApply: " + unhandled)
-  //   }
-
-  //   def inCase(cse: MatchCase) : MatchCase = cse match {
-  //     case SimpleCase(pat, rhs) => SimpleCase(pat, rec(rhs))
-  //     case GuardedCase(pat, guard, rhs) => GuardedCase(pat, rec(guard), rec(rhs))
-  //   }
-
-  //   rec(expr)
-  // }
-
   def searchAndReplace(subst: Expr=>Option[Expr], recursive: Boolean=true)(expr: Expr) : Expr = {
     def rec(ex: Expr, skip: Expr = null) : Expr = (if (ex == skip) None else subst(ex)) match {
       case Some(newExpr) => {
@@ -664,6 +588,53 @@ object Trees {
           None
         }
       }
+    }
+  }
+
+  object NotSoSimplePatternMatching {
+    def coversType(tpe: ClassTypeDef, patterns: Seq[Pattern]) : Boolean = {
+      if(patterns.isEmpty) {
+        false
+      } else if(patterns.exists(_.isInstanceOf[WildcardPattern])) {
+        true
+      } else {
+        val allSubtypes: Seq[CaseClassDef] = tpe match {
+          case acd @ AbstractClassDef(_,_) => acd.knownDescendents.filter(_.isInstanceOf[CaseClassDef]).map(_.asInstanceOf[CaseClassDef])
+          case ccd: CaseClassDef => List(ccd)
+        }
+
+        var seen: Set[CaseClassDef] = Set.empty
+        var secondLevel: Map[(CaseClassDef,Int),List[Pattern]] = Map.empty
+
+        for(pat <- patterns) if (pat.isInstanceOf[CaseClassPattern]) {
+          val pattern: CaseClassPattern = pat.asInstanceOf[CaseClassPattern]
+          val ccd: CaseClassDef = pattern.caseClassDef
+          seen = seen + ccd
+
+          for((subPattern,i) <- (pattern.subPatterns.zipWithIndex)) {
+            val seenSoFar = secondLevel.getOrElse((ccd,i), Nil)
+            secondLevel = secondLevel + ((ccd,i) -> (subPattern :: seenSoFar))
+          }
+        }
+
+        allSubtypes.forall(ccd => {
+          seen(ccd) && ccd.fields.zipWithIndex.forall(p => p._1.tpe match {
+            case t: ClassType => coversType(t.classDef, secondLevel.getOrElse((ccd, p._2), Nil))
+            case _ => true
+          })
+        })
+      }
+    }
+
+    def unapply(pm : MatchExpr) : Option[MatchExpr] = pm match {
+      case MatchExpr(scrutinee, cases) if cases.forall(_.isInstanceOf[SimpleCase]) => {
+        val allPatterns = cases.map(_.pattern)
+        Settings.reporter.info("This might be a complete pattern-matching expression:")
+        Settings.reporter.info(pm)
+        Settings.reporter.info("Covered? " + coversType(pm.scrutineeClassType.classDef, allPatterns))
+        None
+      }
+      case _ => None
     }
   }
 }
