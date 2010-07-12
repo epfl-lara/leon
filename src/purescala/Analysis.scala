@@ -140,6 +140,7 @@ class Analysis(val program: Program) {
       val expr2 = rewriteSimplePatternMatching(expr1)
       // reporter.info("After PM-rewriting:")
       // reporter.info(expandLets(expr2))
+      assert(wellOrderedLets(expr2))
       expr2
     }
   }
@@ -166,17 +167,6 @@ object Analysis {
         val substMap = Map[Expr,Expr]((fArgsAsVars zip fParamsAsLetVarVars) : _*)
         if(fd.hasPostcondition) {
           val newVar = Variable(FreshIdentifier("call", true)).setType(fd.returnType)
-          /* START CHANGE */
-          //  Code before
-          /*
-          extras = mkBigLet(And(
-            replace(substMap + (ResultVariable() -> newVar), fd.postcondition.get),
-            Equals(newVar, FunctionInvocation(fd, fParamsAsLetVarVars).setType(fd.returnType))
-          )) :: extras
-          Some(newVar)
-          */
-          
-          // Fixed code ?!?
           extras = And(
             replace(substMap + (ResultVariable() -> newVar), fd.postcondition.get),
             Equals(newVar, FunctionInvocation(fd, fParamsAsLetVarVars).setType(fd.returnType))
@@ -193,7 +183,8 @@ object Analysis {
     }
 
     val finalE = searchAndReplace(applyToCall)(expr)
-    pulloutLets(Implies(And(extras.reverse), finalE))
+    val toReturn = pulloutLets(Implies(And(extras.reverse), finalE))
+    toReturn
   }
 
   // Warning: this should only be called on a top-level formula ! It will add
@@ -248,7 +239,8 @@ object Analysis {
     val newLetBodies: Seq[Expr] = infoFromLets.map(_._1)
     val newSavedLets: Seq[(Identifier,Expr)] = savedLets.map(_._1) zip newLetBodies
     val (cleaned, extras) = unroll(naked)
-    rebuildLets(newSavedLets, Implies(And(extrasFromLets ++ extras), cleaned))
+    val toReturn = rebuildLets(newSavedLets, Implies(And(extrasFromLets ++ extras), cleaned))
+    toReturn
   }
 
   // Rewrites pattern matching expressions where the cases simply correspond to
@@ -285,7 +277,7 @@ object Analysis {
     val newLetBodies: Seq[Expr] = infoFromLets.map(_._1)
     val newSavedLets: Seq[(Identifier,Expr)] = savedLets.map(_._1) zip newLetBodies
     val (cleaned, extras) = rspm(naked)
-    rebuildLets(newSavedLets, Implies(And(extrasFromLets ++ extras), cleaned))
+    val toReturn = rebuildLets(newSavedLets, Implies(And(extrasFromLets ++ extras), cleaned))
+    toReturn
   }
-
 }
