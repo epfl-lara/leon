@@ -1,5 +1,5 @@
 import scala.collection.immutable.Set
-import scala.collection.immutable.Multiset
+// import scala.collection.immutable.Multiset
 
 object BinarySearchTree {
   sealed abstract class Tree
@@ -15,8 +15,7 @@ object BinarySearchTree {
   sealed abstract class Triple
   case class SortedTriple(min: Option, max: Option, sorted: Boolean) extends Triple
 
-  
-  def isSorted(tree: Tree): SortedTriple = tree match {
+   def isSorted(tree: Tree): SortedTriple = tree match {
     case Leaf() => SortedTriple(None(), None(), true)
     case Node(l,v,r) => isSorted(l) match {
       case SortedTriple(minl,maxl,sortl) => if (!sortl) SortedTriple(None(), None(), false)
@@ -140,7 +139,9 @@ object BinarySearchTree {
     res.left != Leaf() && res.right != Leaf()
   )
 
-  def contains(tree: Tree, value: Int): Boolean = tree match {
+  def contains(tree: Tree, value: Int): Boolean = {
+    require(isSorted(tree).sorted)
+    tree match {
     case Leaf() => false
     case n@Node(l, v, r) => if (v < value) {
       contains(r, value)
@@ -149,7 +150,7 @@ object BinarySearchTree {
     } else {
       true
     }
-  }
+  } } ensuring( _ || !(contents(tree) == contents(tree) ++ Set(value)))
 
   def contents(tree: Tree): Set[Int] = tree match {
     case Leaf() => Set.empty[Int]
