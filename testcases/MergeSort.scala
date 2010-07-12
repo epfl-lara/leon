@@ -14,8 +14,10 @@ object MergeSort {
 
   def is_sorted(l: List): Boolean = l match {
     case Nil() => true
-    case Cons(x,Nil()) => true
-    case Cons(x,Cons(y,xs)) => x<=y && is_sorted(Cons(y,xs))
+    case Cons(x,xs) => xs match {
+      case Nil() => true
+      case Cons(y, ys) => x <= y && is_sorted(Cons(y, ys))
+    }
   }    
 
   def length(list:List): Int = list match {

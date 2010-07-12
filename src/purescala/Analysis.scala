@@ -111,21 +111,23 @@ class Analysis(val program: Program) {
       }
     } 
 
-    verifiedVCs = verifiedVCs.reverse
-    val col1wdth  = verifiedVCs.map(_._1).map(_.length).max + 2
-    val col2wdth  = verifiedVCs.map(_._2).map(_.length).max + 2
-    val col3wdth  = verifiedVCs.map(_._3).map(_.length).max + 2
-    val col4wdth  = verifiedVCs.map(_._4).map(_.length).max 
-    def mk1line(line: (String,String,String,String)) : String = {
-      line._1 + (" " * (col1wdth - line._1.length)) +
-      line._2 + (" " * (col2wdth - line._2.length)) +
-      line._3 + (" " * (col3wdth - line._3.length)) +
-      line._4 
+    if(verifiedVCs.size > 0) {
+      verifiedVCs = verifiedVCs.reverse
+      val col1wdth  = verifiedVCs.map(_._1).map(_.length).max + 2
+      val col2wdth  = verifiedVCs.map(_._2).map(_.length).max + 2
+      val col3wdth  = verifiedVCs.map(_._3).map(_.length).max + 2
+      val col4wdth  = verifiedVCs.map(_._4).map(_.length).max 
+      def mk1line(line: (String,String,String,String)) : String = {
+        line._1 + (" " * (col1wdth - line._1.length)) +
+        line._2 + (" " * (col2wdth - line._2.length)) +
+        line._3 + (" " * (col3wdth - line._3.length)) +
+        line._4 
+      }
+      val dashes : String = "=" * (col1wdth + col2wdth + col3wdth + col4wdth)
+      reporter.info("Summary:\n" + dashes + "\n" + verifiedVCs.map(mk1line(_)).mkString("\n") + "\n" + dashes)
+    } else {
+      reporter.info("No verification conditions were generated.")
     }
-    val dashes : String = "=" * (col1wdth + col2wdth + col3wdth + col4wdth)
-    
-    reporter.info("Summary:\n" + dashes + "\n" + verifiedVCs.map(mk1line(_)).mkString("\n") + "\n" + dashes)
-
   }
 
   def postconditionVC(functionDefinition: FunDef) : Expr = {
