@@ -7,7 +7,7 @@ import Reconstruction.Model
 import RPrettyPrinter.rpp
 
 class Main(reporter: Reporter) extends Solver(reporter) {
-  import purescala.Trees.Expr
+  import purescala.Trees.{Expr,expandLets,negate}
   import AST.Formula
   val description = "BAPA with ordering"
   override val shortDescription = "BAPA<"
@@ -22,14 +22,14 @@ class Main(reporter: Reporter) extends Solver(reporter) {
   def solve(exprWithLets: Expr): Option[Boolean] = {
     //reporter.info("INPUT to Ordered BAPA\n" + rpp(exprWithLets))
 
-    val expr = purescala.Trees.expandLets(exprWithLets)
+    val expr = expandLets(exprWithLets)
 
     //reporter.info("INPUT to Ordered BAPA\n" + rpp(expr))
 
     //reporter.info("Sets: " + ExprToASTConverter.getSetTypes(expr))
     try {
       // Negate formula
-      (Some(!solve(!ExprToASTConverter(expr, reporter))), {
+      (Some(!solve(ExprToASTConverter(negate(expr), reporter))), {
 
         val sets = ExprToASTConverter.getSetTypes(expr)
         if (sets.size > 1)
@@ -55,7 +55,8 @@ class Main(reporter: Reporter) extends Solver(reporter) {
   // true means formula is SAT
   // false means formula is UNSAT
   def solve(formula: Formula): Boolean = {
-    //reporter.info("BAPA< formula to be shown unsat:\n" + NormalForms.nnf(formula).toString)
+    reporter.info("BAPA< formula to be shown unsat:\n" + formula.toString)
+//    reporter.info("BAPA< formula to be shown unsat:\n" + NormalForms.nnf(formula).toString)
 
     val z3 = new Context(formula, reporter)
     val startTime = System.nanoTime
@@ -217,7 +218,7 @@ object ExprToASTConverter {
         toFormula(expr)
       } catch {
         case ConversionException(badExpr, msg) =>
-          //reporter.warning("BAPA was relaxed : " + msg + " in " + badExpr.getClass + "\n" + rpp(badExpr))
+          reporter.warning("BAPA was relaxed : " + msg + " in " + badExpr.getClass + "\n" + rpp(badExpr))
           formulaRelaxed = true
           AST.True // Assuming the formula to be True
       }
