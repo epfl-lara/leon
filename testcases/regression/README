@@ -1,0 +1,29 @@
+Revision 1137, this morning 11:20, everything worked:
+====================================================
+mkInfiniteTree       postcondition  valid    Unifier
+dumbInsert           postcondition  valid    Unifier
+insert               postcondition  valid    Unifier
+createRoot           postcondition  valid    Unifier
+dumbInsertWithOrder  postcondition  valid    Unifier
+====================================================
+
+Revision 1147, this evening 19:32, already broken:
+====================================================
+mkInfiniteTree       postcondition  valid    Unifier
+dumbInsert           postcondition  unknown  ---
+insert               postcondition  unknown  ---
+createRoot           postcondition  valid    Unifier
+dumbInsertWithOrder  postcondition  unknown  ---
+====================================================
+
+Revision 1157, now, even worse
+====================================================
+dumbInsertWithOrder  postcondition  unknown  ---
+createRoot           postcondition  unknown  ---
+mkInfiniteTree       postcondition  valid    Unifier
+insert               postcondition  unknown  ---
+dumbInsert           postcondition  unknown  ---
+====================================================
+
+Would be great if we could this working again...
+
