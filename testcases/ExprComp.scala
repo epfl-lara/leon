@@ -67,15 +67,14 @@ object ExprComp {
   def run0(p : Program) = run(p, EStack())
 
   // Compiling expressions to programs
-  def compile(e : Expr, acc : Program, vs : /* ghost */ ValueStack) : Program = { e match {
+  def compile(e : Expr, acc : Program) : Program = e match {
     case Constant(v) => NProgram(PushVal(v), acc)
     case Binary(e1,op,e2) => NProgram(ApplyBinOp(op),compile(e2,compile(e1,acc)))
-  } } // ensuring (res => run(res, vs) = NStack(eval(e), vs))
+  }
 
-  def compile0(e : Expr) : Program = compile(e, EProgram(), EStack())
+  def compile0(e : Expr) : Program = compile(e, EProgram())
 
-  // Correctness statement
-  // val anyS : ValueStack = EStack() // not really, but arbitrary
-  // val anyE : Expr = Constant(Value(42)) // not really, but arbitrary
-  // assert(run(compile0(anyE),anyS) == NStack(eval(anyE),anyS))
+  def property(e : Expr, acc : Program, vs : ValueStack) : Boolean = {
+    run(compile(e, acc), vs) == Ok(NStack(eval(e), vs))
+  } ensuring (res => res)
 }
