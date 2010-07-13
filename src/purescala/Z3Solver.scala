@@ -139,7 +139,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     }
 
     // universally quantifies all functions !
-    if(!Settings.noForallAxioms) {
+    if(Settings.experimental && !Settings.noForallAxioms) {
       for(funDef <- program.definedFunctions) if(funDef.hasImplementation && program.isRecursive(funDef) && funDef.args.size > 0) {
         funDef.body.get match {
           case SimplePatternMatching(scrutinee,_,infos) if (

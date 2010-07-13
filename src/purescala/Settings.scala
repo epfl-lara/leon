@@ -2,6 +2,7 @@ package purescala
 
 // typically these settings can be changed through some command-line switch.
 object Settings {
+  var experimental : Boolean = false
   var showIDs: Boolean = false
   var quietExtensions: Boolean = false
   var functionsToAnalyse: Set[String] = Set.empty

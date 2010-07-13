@@ -654,7 +654,7 @@ object Trees {
       }
     }
 
-    def unapply(pm : MatchExpr) : Option[MatchExpr] = pm match {
+    def unapply(pm : MatchExpr) : Option[MatchExpr] = if(!Settings.experimental) None else (pm match {
       case MatchExpr(scrutinee, cases) if cases.forall(_.isInstanceOf[SimpleCase]) => {
         val allPatterns = cases.map(_.pattern)
         Settings.reporter.info("This might be a complete pattern-matching expression:")
@@ -663,7 +663,7 @@ object Trees {
         None
       }
       case _ => None
-    }
+    })
   }
 
   // we use this when debugging our tree transformations...
