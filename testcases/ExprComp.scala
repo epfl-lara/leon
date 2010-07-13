@@ -58,7 +58,7 @@ object ExprComp {
 	case EStack() => Fail()
 	case NStack(v1,vs1) => vs1 match {
 	  case EStack() => Fail()
-	  case NStack(v2,vs2) => run(rest, NStack(evalOp(v1,op,v2),vs2))
+	  case NStack(v2,vs2) => Fail() // should be: run(rest, NStack(evalOp(v1,op,v2),vs2))
 	}
       }
     }
@@ -77,4 +77,13 @@ object ExprComp {
   def property(e : Expr, acc : Program, vs : ValueStack) : Boolean = {
     run(compile(e, acc), vs) == Ok(NStack(eval(e), vs))
   } ensuring (res => res)
+
+  def main(args : Array[String]) = {
+    val e = Binary(Constant(Value(3)), Plus(), Constant(Value(5)))
+    val vs = EStack()
+    val acc = EProgram()
+    println(run(compile(e, acc), vs))
+    println(Ok(NStack(eval(e), vs)))
+    println(property(e,acc,vs))
+  }
 }
