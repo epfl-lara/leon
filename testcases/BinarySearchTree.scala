@@ -15,7 +15,7 @@ object BinarySearchTree {
   sealed abstract class Triple
   case class SortedTriple(min: Option, max: Option, sorted: Boolean) extends Triple
 
-  def isSorted(tree: Tree): SortedTriple = tree match {
+  def isSorted(tree: Tree): SortedTriple = (tree match {
     case Leaf() => SortedTriple(None(), None(), true)
     case Node(l, v, r) => isSorted(l) match {
       case SortedTriple(minl, maxl, sortl) => if (!sortl) SortedTriple(None(), None(), false)
@@ -54,7 +54,11 @@ object BinarySearchTree {
         }
       }
     }
-  }
+  }) ensuring (res => res match { case SortedTriple(min,max,sort) => min match {
+     	      	      	  				   case None() => res == SortedTriple(None(),None(),false)
+							   case Some(minv) => max match {
+							     case None() => false
+							     case Some(maxv) => sort && minv <= maxv}}})
 
   def treeMin(tree: Node): Int = {
     require(isSorted(tree).sorted)
