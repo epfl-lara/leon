@@ -55,7 +55,7 @@ object BinarySearchTree {
       }
     }
   }) ensuring (res => res match { case SortedTriple(min,max,sort) => min match {
-     	      	      	  				   case None() => res == SortedTriple(None(),None(),false)
+     	      	      	  				   case None() => res == SortedTriple(None(),None(),sort)
 							   case Some(minv) => max match {
 							     case None() => false
 							     case Some(maxv) => sort && minv <= maxv}}})
