@@ -1,0 +1,1 @@
+./scalac-funcheck -P:funcheck:extensions=multisets.Main testcases/MultisetOperations.scala
