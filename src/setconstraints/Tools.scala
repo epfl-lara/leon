@@ -8,4 +8,9 @@ object Tools {
 
   def toCaseClasses(classes: Seq[ClassTypeDef]): Seq[CaseClassDef] = 
     classes.filter(_.isInstanceOf[CaseClassDef]).map(_.asInstanceOf[CaseClassDef])
+
+  def fix[A](f: (A) => A, a: A): A = {
+    val res = f(a)
+    if(res == a) a else fix(f, res)
+  }
 }
