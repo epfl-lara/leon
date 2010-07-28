@@ -11,14 +11,7 @@ object Trees {
   sealed abstract trait SetType 
 
   case class Include(s1: SetType, s2: SetType) extends Relation
-
-  object Equals {
-    def apply(s1: SetType, s2: SetType) = And(List(Include(s1, s2), Include(s2, s1)))
-    def unapply(f: Formula): Boolean = f match {
-      case And(List(Include(s1, s2), Include(s3, s4))) if s1 == s4 && s2 == s3 => true
-      case _ => false
-    }
-  }
+  case class Equals(s1: SetType, s2: SetType) extends Relation
 
   case class UnionType(sets: Seq[SetType]) extends SetType
   case class IntersectionType(sets: Seq[SetType]) extends SetType
@@ -32,5 +25,7 @@ object Trees {
     varCounter += 1
     VariableType(name + "_" + varCounter)
   }
+
+  case class FixPoint(t: VariableType, s: SetType)
 
 }

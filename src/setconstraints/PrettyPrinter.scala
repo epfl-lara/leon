@@ -8,9 +8,12 @@ object PrettyPrinter {
 
   def apply(st: SetType): String = ppSetType(st)
 
+  def apply(fp: FixPoint): String = ppFixPoint(fp)
+
   private def ppFormula(f: Formula): String = f match {
     case And(fs) => fs.map(ppFormula).mkString("(", " \u2227 ", ")")
     case Include(s1, s2) => ppSetType(s1) + " \u2282 " + ppSetType(s2)
+    case Equals(s1, s2) => ppSetType(s1) + " = " + ppSetType(s2)
   }
 
   private def ppSetType(st: SetType): String = st match {
@@ -21,5 +24,9 @@ object PrettyPrinter {
     case FunctionType(s1, s2) => "(" + ppSetType(s1) + " --> " + ppSetType(s2) + ")"
     case TupleType(sts) => sts.map(ppSetType).mkString("(", ", ", ")")
     case VariableType(name) => name
+  }
+
+  private def ppFixPoint(fp: FixPoint): String = fp match {
+    case FixPoint(t, s) => ppSetType(t) + " = " + ppSetType(s)
   }
 }
