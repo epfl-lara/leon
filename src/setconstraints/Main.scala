@@ -15,7 +15,7 @@ class Main(reporter: Reporter) extends Analyser(reporter) {
     val (tpeVars, funVars) = LabelProgram(pgm)
     val cl2adt = ADTExtractor(pgm)
 
-    val cnstr = CnstrtGen(pgm, tpeVars, funVars, cl2adt)
+    val cnstr = CnstrtGen(pgm, Map(tpeVars.toList: _*), Map(funVars.toList: _*), Map(cl2adt.toList: _*))
 
     reporter.info("The constraints are:")
     reporter.info(PrettyPrinter(cnstr))

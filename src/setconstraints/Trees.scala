@@ -15,10 +15,13 @@ object Trees {
 
   case class UnionType(sets: Seq[SetType]) extends SetType
   case class IntersectionType(sets: Seq[SetType]) extends SetType
+  case class ComplementType(st: SetType) extends SetType
   case class FunctionType(s1: SetType, s2: SetType) extends SetType
   case class TupleType(sets: Seq[SetType]) extends SetType
   case class ConstructorType(name: String, sets: Seq[SetType]) extends SetType
   case class VariableType(name: String) extends SetType
+  case object EmptyType extends SetType
+  case object UniversalType extends SetType
 
   private var varCounter = -1
   def freshVar(name: String) = {

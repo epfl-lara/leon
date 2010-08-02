@@ -1,12 +1,9 @@
 package setconstraints
 
-import scala.collection.mutable.{Map, HashMap, ListBuffer}
-
 import purescala.Definitions._
 import purescala.Trees.{And => _, Equals => _, _}
 import purescala.Common.Identifier
 import purescala.TypeTrees.ClassType
-
 
 import Trees._
 
@@ -18,67 +15,85 @@ object CnstrtGen {
                 cl2adt: Map[ClassTypeDef, SetType]
               ): Formula = {
 
-    val funCallsCnstr: ListBuffer[Relation] = new ListBuffer[Relation]()
-    val patternCnstr: ListBuffer[Relation] = new ListBuffer[Relation]()
+    def unzip3[A,B,C](seqs: Seq[(A,B,C)]): (Seq[A],Seq[B],Seq[C]) = 
+      seqs.foldLeft((Seq[A](), Seq[B](), Seq[C]()))((a, t) => (t._1 +: a._1, t._2 +: a._2, t._3 +: a._3))
 
-    def cnstrExpr(expr: Expr, context: Map[Identifier, VariableType]): (SetType, Seq[Relation]) = expr match {
-      case Variable(id) => {
-        (context(id), Seq())
-      }
-      case IfExpr(cond, then, elze) => {
-        val (tType, tCnstrs) = cnstrExpr(then, context)
-        val (eType, eCnstrs) = cnstrExpr(elze, context)
-        (UnionType(Seq(tType, eType)), tCnstrs ++ eCnstrs)
-      }
-      case MatchExpr(scrut, cases) => {
-        val (sType, sCnstrs) = cnstrExpr(scrut, context)
-        val (cType, cCnstrs) = cases.map(mc => {
-          //val theGuard = mc.theGuard
-          val rhs = mc.rhs
-          val (pt, pvc) = pattern2Type(mc.pattern)
-          cnstrExpr(rhs, context ++ pvc)
-        }).unzip
-        val mType = freshVar("match")
-        val mCnstrs = cType.map(t => Include(t, mType))
-        (mType, mCnstrs ++ cCnstrs.flatMap(x => x))
-      }
-      case FunctionInvocation(fd, args) => {
-        val (tArgs,rt) = funVars(fd)
-        tArgs.zip(args).foreach{case (v, expr) => {
-            val (newT, newCnstr) = cnstrExpr(expr, context)
-            funCallsCnstr ++= newCnstr
-            funCallsCnstr += Include(newT, v)
-          }
+    def cnstrExpr(expr: Expr, context: Map[Identifier, VariableType]): (VariableType, Seq[Relation], Map[Expr, VariableType]) = {
+      val exprVarType = freshVar("expr")
+      val (rels, e2t) = expr match {
+        case Variable(id) => {
+          (Seq(Equals(context(id), exprVarType)), Map[Expr, VariableType]())
         }
-        (rt, Seq())
+        case IfExpr(cond, then, elze) => {
+          val (tType, tCnstrs, tMap) = cnstrExpr(then, context)
+          val (eType, eCnstrs, eMap) = cnstrExpr(elze, context)
+          val newCnstrs = Equals(UnionType(Seq(tType, eType)), exprVarType) +: (tCnstrs ++ eCnstrs)
+          (newCnstrs, (tMap ++ eMap)) 
+        }
+        case MatchExpr(scrut, cases) => {
+          val (sType, sCnstrs, sMap) = cnstrExpr(scrut, context)
+          val (pts, ptexpcnstr) = cases.map(mc => {
+            val (pt, cnstrs, pvc) = pattern2Type(mc.pattern)
+            val (expT, expC, expM) = cnstrExpr(mc.rhs, context ++ pvc)
+            (pt, (expT, expC ++ cnstrs, expM))
+          }).unzip
+          val (cTypes, cCnstrs, cMaps) = unzip3(ptexpcnstr)
+          val mCnstrs = cTypes.map(t => Include(t, exprVarType))
+          val scrutPatternCnstr = Include(sType, UnionType(pts))
+          val fMap: Map[Expr, VariableType] = cMaps.foldLeft(sMap)((a, m) => a ++ m)
+          val finalCnstrs = scrutPatternCnstr +: (mCnstrs ++ cCnstrs.flatMap(x => x) ++ sCnstrs)
+          (finalCnstrs, fMap)
+        }
+        case FunctionInvocation(fd, args) => {
+          val (tArgs,rt) = funVars(fd)
+          /*
+          tArgs.zip(args).foreach{case (v, expr) => {
+              val (newT, newCnstr) = cnstrExpr(expr, context)
+              funCallsCnstr ++= newCnstr
+              funCallsCnstr += Include(newT, v)
+            }
+          }
+          */
+          (Seq(Equals(rt, exprVarType)), Map[Expr, VariableType]())
+        }
+        case CaseClass(ccd, args) => {
+          val (argsType, cnstrts, maps) = unzip3(args.map(e => cnstrExpr(e, context)))
+          val fMap = maps.foldLeft(Map[Expr, VariableType]())((a, m) => a ++ m)
+          val fcnstrts = Equals(ConstructorType(ccd.id.name, argsType), exprVarType) +: cnstrts.flatMap(x => x)
+          (fcnstrts, fMap)
+        }
+        case _ => error("Not yet supported: " + expr)
       }
-      case CaseClass(ccd, args) => {
-        val (argsType, cnstrts) = args.map(e => cnstrExpr(e, context)).unzip
-        (ConstructorType(ccd.id.name, argsType), cnstrts.flatMap(x => x))
-      }
-      case _ => error("Not yet supported: " + expr)
+      (exprVarType, rels, (e2t: Map[Expr, VariableType]) + (expr -> exprVarType))
     }
 
-    def pattern2Type(pattern: Pattern): (SetType, Map[Identifier, VariableType]) = pattern match {
+    def pattern2Type(pattern: Pattern): (VariableType, Seq[Relation], Map[Identifier, VariableType]) = pattern match {
       case InstanceOfPattern(binder, ctd) => error("not yet supported")
       case WildcardPattern(binder) => {
         val v = freshVar(binder match {case Some(id) => id.name case None => "x"})
-        (v, binder match {case Some(id) => Map(id -> v) case None => Map()})
+        (v, Seq[Relation](), binder match {case Some(id) => Map(id -> v) case None => Map()})
       }
       case CaseClassPattern(binder, ccd, sps) => {
-        val (subConsType, subVarType) = sps.map(p => pattern2Type(p)).unzip
+        val cvt = freshVar(ccd.id.name)
+        val (subConsType, cnstrs, subVarType) = unzip3(sps.map(p => pattern2Type(p)))
         val newMap = subVarType.foldLeft(Map[Identifier, VariableType]())((acc, el) => acc ++ el)
-        subConsType.zip(ccd.fields)foreach{case (t, vd) => patternCnstr += Equals(t, cl2adt(vd.tpe.asInstanceOf[ClassType].classDef))} //TODO bug if there are nested pattern
-        (ConstructorType(ccd.id.name, subConsType), newMap)
+        val nCnstrs: Seq[Relation] = subConsType.zip(ccd.fields).zip(sps).foldLeft(cnstrs.flatMap(x => x))((a, el) => el match {
+          case ((t, vd), sp) => sp match {
+            case WildcardPattern(_) => a :+ Equals(t, cl2adt(vd.tpe.asInstanceOf[ClassType].classDef))
+            case _ => a
+          }
+        })
+        val ccnstr = Equals(ConstructorType(ccd.id.name, subConsType), cvt)
+        (cvt, ccnstr +: nCnstrs, newMap)
       }
     }
 
-    def cnstrFun(fd: FunDef): Seq[Relation] = {
+    def cnstrFun(fd: FunDef): (Seq[Relation], Map[Expr, VariableType]) = {
       val argsT = funVars(fd)._1
       val argsID = fd.args.map(vd => vd.id)
       val context = argsID.zip(argsT).foldLeft(Map[Identifier, VariableType]())((acc, el) => acc + el)
-      val (bodyType, cnstrts) = cnstrExpr(fd.body.get, context)
-      cnstrts :+ Include(bodyType, funVars(fd)._2)
+      val (bodyType, cnstrts, map) = cnstrExpr(fd.body.get, context)
+      (cnstrts :+ Include(bodyType, funVars(fd)._2), map)
     }
 
     def cnstrTypeHierarchy(pgm: Program): Seq[Relation] = {
@@ -88,13 +103,12 @@ object CnstrtGen {
 
     val cnstrtsTypes = cnstrTypeHierarchy(pgm)
 
-    println(typeVars)
-    println(cnstrtsTypes)
-
     val funs = pgm.definedFunctions
-    val cnstrtsFunctions = funs.flatMap(cnstrFun)
-
-    And(cnstrtsTypes ++ cnstrtsFunctions ++ funCallsCnstr ++ patternCnstr)
+    val (cnstrtsFunctions, map) = funs.foldLeft(Seq[Relation](), Map[Expr, VariableType]())((a, f) => {
+      val (rels, m) = cnstrFun(f)
+      (a._1 ++ rels, a._2 ++ m)
+    })
+    And(cnstrtsTypes ++ cnstrtsFunctions)
   }
 
 }
