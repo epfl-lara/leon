@@ -1,6 +1,8 @@
 import sbt._
 
 class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileTasks {
+  val scalatest = "org.scalatest" % "scalatest" % "1.2"
+
   override def outputDirectoryName = "bin"
   override def dependencyPath      = "lib"
   override def shouldCheckOutputDirectories = false
@@ -100,6 +102,7 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
   class SetConstraintsProject(info: ProjectInfo) extends PersonalizedProject(info) {
     override def outputPath = "bin" / "setconstraints"
     override def mainScalaSourcePath = "src" / "setconstraints"
+    override def testScalaSourcePath = "src" / "setconstraints-tests"
     override def unmanagedClasspath = super.unmanagedClasspath +++ purescala.jarPath
   }
 }
