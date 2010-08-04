@@ -282,6 +282,8 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   private def toZ3Formula(z3: Z3Context, expr: Expr, initialMap: Map[String,Z3AST] = Map.empty) : Option[Z3AST] = {
     class CantTranslateException extends Exception
 
+    val varsInformula: Set[Identifier] = variablesOf(expr)
+
     var z3Vars: Map[String,Z3AST] = initialMap
 
     def rec(ex: Expr) : Z3AST = ex match {
@@ -295,6 +297,9 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
       case v @ Variable(id) => z3Vars.get(id.uniqueName) match {
         case Some(ast) => ast
         case None => {
+          if(id.isLetBinder) {
+            scala.Predef.error("Error in formula being translated to Z3: identifier " + id + " seems to have escaped its let-definition")
+          }
           val newAST = z3.mkFreshConst(id.name, typeToSort(v.getType))
           z3Vars = z3Vars + (id.uniqueName -> newAST)
           newAST
@@ -346,7 +351,11 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     }
     
     try {
-      Some(rec(expr))
+      val res = Some(rec(expr))
+      val usedInZ3Form = z3Vars.keys.toSet
+      println("Variables in formula:   " + varsInformula.map(_.uniqueName))
+      println("Variables passed to Z3: " + usedInZ3Form)
+      res
     } catch {
       case e: CantTranslateException => None
     }

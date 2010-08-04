@@ -48,19 +48,20 @@ object Definitions {
     lazy val classHierarchyRoots : Seq[ClassTypeDef] = defs.filter(_.isInstanceOf[ClassTypeDef]).map(_.asInstanceOf[ClassTypeDef]).filter(!_.hasParent)
 
     lazy val (callGraph, callers, callees) = {
-      var resSet: Set[(FunDef,FunDef)] =
-        new scala.collection.immutable.HashSet[(FunDef,FunDef)]()
+      type CallGraph = Set[(FunDef,FunDef)]
 
-      def applyToFunCall(f1: FunDef)(e: Expr) : Option[Expr] = e match {
-        case f @ FunctionInvocation(f2, _) => { resSet = resSet + ((f1,f2)); Some(f) }
-        case _ => None
+      val convert: Expr=>CallGraph = (_ => Set.empty)
+      val combine: (CallGraph,CallGraph)=>CallGraph = (s1,s2) => s1 ++ s2
+      def compute(fd: FunDef)(e: Expr, g: CallGraph) : CallGraph = e match {
+        case f @ FunctionInvocation(f2, _) => g + ((fd, f2))
+        case _ => g
       }
 
-      for(funDef <- definedFunctions) {
-        funDef.precondition.map(searchAndReplace(applyToFunCall(funDef))(_))
-        funDef.body.map(searchAndReplace(applyToFunCall(funDef))(_))
-        funDef.postcondition.map(searchAndReplace(applyToFunCall(funDef))(_))
-      }
+      val resSet: CallGraph = (for(funDef <- definedFunctions) yield {
+        funDef.precondition.map(treeCatamorphism[CallGraph](convert, combine, compute(funDef)_, _)).getOrElse(Set.empty) ++
+        funDef.body.map(treeCatamorphism[CallGraph](convert, combine, compute(funDef)_, _)).getOrElse(Set.empty) ++
+        funDef.postcondition.map(treeCatamorphism[CallGraph](convert, combine, compute(funDef)_, _)).getOrElse(Set.empty)
+      }).reduceLeft(_ ++ _)
 
       var callers: Map[FunDef,Set[FunDef]] =
         new scala.collection.immutable.HashMap[FunDef,Set[FunDef]]

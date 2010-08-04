@@ -16,6 +16,7 @@ object Trees {
 
   /* Like vals */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
+    binder.markAsLetBinder
     val et = body.getType
     if(et != NoType)
       setType(et)
@@ -26,7 +27,23 @@ object Trees {
     val fixedType = funDef.returnType
   }
   case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr 
-  case class MatchExpr(scrutinee: Expr, cases: Seq[MatchCase]) extends Expr {
+
+  object MatchExpr {
+    def apply(scrutinee: Expr, cases: Seq[MatchCase]) : MatchExpr = {
+      scrutinee.getType match {
+        case a: AbstractClassType => new MatchExpr(scrutinee, cases)
+        case c: CaseClassType => new MatchExpr(scrutinee, cases.filter(_.pattern match {
+          case CaseClassPattern(_, ccd, _) if ccd != c.classDef => false
+          case _ => true
+        }))
+        case _ => scala.Predef.error("Constructing match expression on non-class type.")
+      }
+    }
+
+    def unapply(me: MatchExpr) : Option[(Expr,Seq[MatchCase])] = if (me == null) None else Some((me.scrutinee, me.cases))
+  }
+
+  class MatchExpr(val scrutinee: Expr, val cases: Seq[MatchCase]) extends Expr {
     def scrutineeClassType: ClassType = scrutinee.getType.asInstanceOf[ClassType]
   }
 
@@ -35,13 +52,16 @@ object Trees {
     val rhs: Expr
     val theGuard: Option[Expr]
     def hasGuard = theGuard.isDefined
+    def expressions: Seq[Expr]
   }
 
   case class SimpleCase(pattern: Pattern, rhs: Expr) extends MatchCase {
     val theGuard = None
+    def expressions = List(rhs)
   }
   case class GuardedCase(pattern: Pattern, guard: Expr, rhs: Expr) extends MatchCase {
     val theGuard = Some(guard)
+    def expressions = List(guard, rhs)
   }
 
   sealed abstract class Pattern
@@ -338,14 +358,14 @@ object Trees {
   // Warning ! This may loop forever if the substitutions are not
   // well-formed!
   def replace(substs: Map[Expr,Expr], expr: Expr) : Expr = {
-    searchAndReplace(substs.get)(expr)
+    searchAndReplaceDFS(substs.get)(expr)
   }
 
   def searchAndReplace(subst: Expr=>Option[Expr], recursive: Boolean=true)(expr: Expr) : Expr = {
     def rec(ex: Expr, skip: Expr = null) : Expr = (if (ex == skip) None else subst(ex)) match {
       case Some(newExpr) => {
         if(newExpr.getType == NoType) {
-          Settings.reporter.warning("REPLACING IN EXPRESSION WITH AN UNTYPED TREE ! " + ex + " --to--> " + newExpr)
+          Settings.reporter.error("REPLACING IN EXPRESSION WITH AN UNTYPED TREE ! " + ex + " --to--> " + newExpr)
         }
         if(ex == newExpr)
           if(recursive) rec(ex, ex) else ex
@@ -415,29 +435,153 @@ object Trees {
     rec(expr)
   }
 
-  def variablesOf(expr: Expr) : Set[Identifier] = {
-    def rec(ex: Expr, lets: Set[Identifier]) : Set[Identifier] = ex match {
-      case l @ Let(i,e,b) => {
-        val newLets = lets + i
-        rec(e, newLets) ++ rec(b, newLets)
+  def searchAndReplaceDFS(subst: Expr=>Option[Expr])(expr: Expr) : Expr = {
+    val (res,_) = searchAndReplaceDFSandTrackChanges(subst)(expr)
+    res
+  }
+
+  def searchAndReplaceDFSandTrackChanges(subst: Expr=>Option[Expr])(expr: Expr) : (Expr,Boolean) = {
+    var somethingChanged: Boolean = false
+    def applySubst(ex: Expr) : Expr = subst(ex) match {
+      case None => ex
+      case Some(newEx) => {
+        somethingChanged = true
+        if(newEx.getType == NoType) {
+          Settings.reporter.warning("REPLACING WITH AN UNTYPED EXPRESSION !")
+        }
+        newEx
       }
-      case Variable(i) => if(lets(i)) Set.empty[Identifier] else Set(i)
-      case n @ NAryOperator(args, _) => if(args.isEmpty) Set.empty[Identifier] else args.map(rec(_, lets)).reduceLeft(_ ++ _)
-      case b @ BinaryOperator(t1,t2,_) => rec(t1,lets) ++ rec(t2,lets)
-      case u @ UnaryOperator(t,_) => rec(t, lets)
-      case i @ IfExpr(t1,t2,t3) => rec(t1,lets) ++ rec(t2,lets) ++ rec(t3,lets)
-      case m @ MatchExpr(scrut,cses) => rec(scrut, lets) ++ cses.map(inCase(_, lets)).reduceLeft(_ ++ _)
-      case t if t.isInstanceOf[Terminal] => Set.empty[Identifier]
-      case unhandled => scala.Predef.error("Non-terminal case should be handled in searchAndReplace: " + unhandled)
     }
 
-    // note that the identifiers in the patterns are not included if they don't show up on the rhs.
-    def inCase(cse: MatchCase, lets: Set[Identifier]) : Set[Identifier] = cse match {
-      case SimpleCase(pat, rhs) => rec(rhs, lets)
-      case GuardedCase(pat, guard, rhs) => rec(guard, lets) ++ rec(rhs, lets)
+    def rec(ex: Expr) : Expr = ex match {
+      case l @ Let(i,e,b) => {
+        val re = rec(e)
+        val rb = rec(b)
+        applySubst(if(re != e || rb != b) {
+          Let(i, re, rb).setType(l.getType)
+        } else {
+          l
+        })
+      }
+      case n @ NAryOperator(args, recons) => {
+        var change = false
+        val rargs = args.map(a => {
+          val ra = rec(a)
+          if(ra != a) {
+            change = true  
+            ra
+          } else {
+            a
+          }            
+        })
+        applySubst(if(change) {
+          recons(rargs).setType(n.getType)
+        } else {
+          n
+        })
+      }
+      case b @ BinaryOperator(t1,t2,recons) => {
+        val r1 = rec(t1)
+        val r2 = rec(t2)
+        applySubst(if(r1 != t1 || r2 != t2) {
+          recons(r1,r2).setType(b.getType)
+        } else {
+          b
+        })
+      }
+      case u @ UnaryOperator(t,recons) => {
+        val r = rec(t)
+        applySubst(if(r != t) {
+          recons(r).setType(u.getType)
+        } else {
+          u
+        })
+      }
+      case i @ IfExpr(t1,t2,t3) => {
+        val r1 = rec(t1)
+        val r2 = rec(t2)
+        val r3 = rec(t3)
+        applySubst(if(r1 != t1 || r2 != t2 || r3 != t3) {
+          IfExpr(rec(t1),rec(t2),rec(t3)).setType(i.getType)
+        } else {
+          i
+        })
+      }
+      case m @ MatchExpr(scrut,cses) => {
+        val rscrut = rec(scrut)
+        val (newCses,changes) = cses.map(inCase(_)).unzip
+        applySubst(if(rscrut != scrut || changes.exists(res=>res)) {
+          MatchExpr(rscrut, newCses).setType(m.getType)
+        } else {
+          m
+        })
+      }
+      case t if t.isInstanceOf[Terminal] => applySubst(t)
+      case unhandled => scala.Predef.error("Non-terminal case should be handled in searchAndReplaceDFS: " + unhandled)
     }
 
-    rec(expr, Set.empty)
+    def inCase(cse: MatchCase) : (MatchCase,Boolean) = cse match {
+      case s @ SimpleCase(pat, rhs) => {
+        val rrhs = rec(rhs)
+        if(rrhs != rhs) {
+          (SimpleCase(pat, rrhs), true)
+        } else {
+          (s, false)
+        }
+      }
+      case g @ GuardedCase(pat, guard, rhs) => {
+        val rguard = rec(guard)
+        val rrhs = rec(rhs)
+        if(rguard != guard || rrhs != rhs) {
+          (GuardedCase(pat, rguard, rrhs), true)
+        } else {
+          (g, false)
+        }
+      }
+    }
+
+    val res = rec(expr)
+    (res, somethingChanged)
+  }
+
+  // convert describes how to compute a value for the leaves (that includes
+  // functions with no args.)
+  // combine descriess how to combine two values
+  def treeCatamorphism[A](convert: Expr=>A, combine: (A,A)=>A, expression: Expr) : A = {
+    treeCatamorphism(convert, combine, (e:Expr,a:A)=>a, expression)
+  }
+  // compute allows the catamorphism to change the combined value depending on the tree
+  def treeCatamorphism[A](convert: Expr=>A, combine: (A,A)=>A, compute: (Expr,A)=>A, expression: Expr) : A = {
+    def rec(expr: Expr) : A = expr match {
+      case l @ Let(_, e, b) => compute(l, combine(rec(e), rec(b)))
+      case n @ NAryOperator(args, _) => {
+        if(args.size == 0)
+          compute(n, convert(n))
+        else
+          compute(n, args.map(rec(_)).reduceLeft(combine))
+      }
+      case b @ BinaryOperator(a1,a2,_) => compute(b, combine(rec(a1),rec(a2)))
+      case u @ UnaryOperator(a,_) => compute(u, rec(a))
+      case i @ IfExpr(a1,a2,a3) => compute(i, combine(combine(rec(a1), rec(a2)), rec(a3)))
+      case m @ MatchExpr(scrut, cses) => compute(m, (scrut +: cses.flatMap(_.expressions)).map(rec(_)).reduceLeft(combine))
+      case t: Terminal => compute(t, convert(t))
+      case unhandled => scala.Predef.error("Non-terminal case should be handled in treeCatamorphism: " + unhandled)
+    }
+
+    rec(expression)
+  }
+
+  def variablesOf(expr: Expr) : Set[Identifier] = {
+    def convert(t: Expr) : Set[Identifier] = t match {
+      case Variable(i) => Set(i)
+      case _ => Set.empty
+    }
+    def combine(s1: Set[Identifier], s2: Set[Identifier]) = s1 ++ s2
+    def compute(t: Expr, s: Set[Identifier]) = t match {
+      case Let(i,_,_) => s -- Set(i)
+      case _ => s
+    }
+    treeCatamorphism(convert, combine, compute, expr)
   }
 
   /* Simplifies let expressions:
@@ -448,15 +592,12 @@ object Trees {
    */
   def simplifyLets(expr: Expr) : Expr = {
     def simplerLet(t: Expr) : Option[Expr] = t match {
-      case letExpr @ Let(i, Variable(v), b) => Some(replace(Map((Variable(i) -> Variable(v))), b))
-      case letExpr @ Let(i, l: Literal[_], b) => Some(replace(Map((Variable(i) -> l)), b))
+      case letExpr @ Let(i, t: Terminal, b) => Some(replace(Map((Variable(i) -> t)), b))
       case letExpr @ Let(i,e,b) => {
-        var occurences = 0
-        def incCount(tr: Expr) = tr match {
-          case Variable(x) if x == i => { occurences = occurences + 1; None } 
-          case _ => None
-        }
-        searchAndReplace(incCount, false)(b)
+        val occurences = treeCatamorphism[Int]((e:Expr) => e match {
+          case Variable(x) if x == i => 1
+          case _ => 0
+        }, (x:Int,y:Int)=>x+y, b)
         if(occurences == 0) {
           Some(b)
         } else if(occurences == 1) {
@@ -470,30 +611,72 @@ object Trees {
     searchAndReplace(simplerLet)(expr)
   }
 
-  /* Rewrites the expression so that all lets are at the top levels. */
-  def pulloutLets(expr: Expr) : Expr = {
-    val (storedLets, noLets) = pulloutAndKeepLets(expr)
-    rebuildLets(storedLets, noLets)
-  }
+  // Pulls out all let constructs to the top level, and makes sure they're
+  // properly ordered.
+  private type DefPair  = (Identifier,Expr)
+  private type DefPairs = List[DefPair]
+  private def allLetDefinitions(expr: Expr) : DefPairs = treeCatamorphism[DefPairs](
+    (e: Expr) => Nil,
+    (s1: DefPairs, s2: DefPairs) => s1 ::: s2,
+    (e: Expr, dps: DefPairs) => e match {
+      case Let(i, e, _) => (i,e) :: dps
+      case _ => dps
+    },
+    expr)
   
-  // new code (keep this if nested lets can appear in the value part, too)
-  def pulloutAndKeepLets(expr: Expr) : (List[(Identifier,Expr)], Expr) = {
-    var storedLets: List[(Identifier,Expr)] = Nil
+  private def killAllLets(expr: Expr) : Expr = searchAndReplaceDFS((e: Expr) => e match {
+    case Let(i,_,ex) => Some(ex)
+    case _ => None
+  })(expr)
 
-    def storeLet(t: Expr) : Option[Expr] = t match {
-      case l @ Let(i, e, b) =>
-        val (stored, value) = pulloutAndKeepLets(e)
-        storedLets :::= stored
-        storedLets ::= i -> value
-        Some(b)
-      case _ => None
+  def liftLets(expr: Expr) : Expr = {
+    val initialDefinitionPairs = allLetDefinitions(expr)
+    val definitionPairs = initialDefinitionPairs.map(p => (p._1, killAllLets(p._2)))
+    val occursLists : Map[Identifier,Set[Identifier]] = Map(definitionPairs.map((dp: DefPair) => (dp._1 -> variablesOf(dp._2).toSet.filter(_.isLetBinder))) : _*)
+    var newList : DefPairs = Nil
+    var placed  : Set[Identifier] = Set.empty
+    val toPlace = definitionPairs.size
+    var placedC = 0
+    var traversals = 0
+
+    while(placedC < toPlace) {
+      if(traversals > toPlace + 1) {
+        scala.Predef.error("Cycle in let definitions or multiple definition for the same identifier in liftLets : " + definitionPairs.mkString("\n"))
+      }
+      for((id,ex) <- definitionPairs) if (!placed(id)) {
+        if((occursLists(id) -- placed) == Set.empty) {
+          placed = placed + id
+          newList = (id,ex) :: newList
+          placedC = placedC + 1
+        }
+      }
+      traversals = traversals + 1
     }
-    val noLets = searchAndReplace(storeLet)(expr)
-    (storedLets, noLets)
+
+    val noLets = killAllLets(expr)
+
+    val res = (newList.foldLeft(noLets)((e,iap) => Let(iap._1, iap._2, e)))
+    simplifyLets(res)
   }
 
-  def rebuildLets(lets: Seq[(Identifier,Expr)], expr: Expr) : Expr = {
-    lets.foldLeft(expr)((e,p) => Let(p._1, p._2, e))
+  def wellOrderedLets(tree : Expr) : Boolean = {
+    val pairs = allLetDefinitions(tree)
+    val definitions: Set[Identifier] = Set(pairs.map(_._1) : _*)
+    val vars: Set[Identifier] = variablesOf(tree)
+    val intersection = vars intersect definitions
+    if(!intersection.isEmpty) {
+      intersection.foreach(id => {
+        Settings.reporter.error("Variable with identifier '" + id + "' has escaped its let-definition !")
+      })
+      false
+    } else {
+      vars.forall(id => if(id.isLetBinder) {
+        Settings.reporter.error("Variable with identifier '" + id + "' has lost its let-definition (it disappeared??)")
+        false
+      } else {
+        true
+      })
+    }
   }
 
   /* Fully expands all let expressions. */
@@ -666,18 +849,4 @@ object Trees {
     })
   }
 
-  // we use this when debugging our tree transformations...
-  def wellOrderedLets(tree : Expr) : Boolean = {
-    val (pairs, _) = pulloutAndKeepLets(tree)
-    val definitions: Set[Identifier] = Set(pairs.map(_._1) : _*)
-    val vars: Set[Identifier] = variablesOf(tree)
-    val intersection = vars intersect definitions
-    if(intersection.isEmpty) true
-    else {
-      intersection.foreach(id => {
-        Settings.reporter.error("Variable with identifier '" + id + "' has escaped its let-definition !")
-      })
-      false
-    }
-  }
 }

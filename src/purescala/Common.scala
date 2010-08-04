@@ -26,6 +26,10 @@ object Common {
     }
 
     def uniqueName : String = name + id
+
+    private var _islb: Boolean = false
+    def markAsLetBinder : Identifier = { _islb = true; this }
+    def isLetBinder : Boolean = _islb
   }
 
   private object UniqueCounter {
