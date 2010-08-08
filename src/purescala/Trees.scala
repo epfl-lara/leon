@@ -458,7 +458,7 @@ object Trees {
         val re = rec(e)
         val rb = rec(b)
         applySubst(if(re != e || rb != b) {
-          Let(i, re, rb).setType(l.getType)
+          Let(i,re,rb).setType(l.getType)
         } else {
           l
         })
@@ -502,7 +502,7 @@ object Trees {
         val r2 = rec(t2)
         val r3 = rec(t3)
         applySubst(if(r1 != t1 || r2 != t2 || r3 != t3) {
-          IfExpr(rec(t1),rec(t2),rec(t3)).setType(i.getType)
+          IfExpr(r1,r2,r3).setType(i.getType)
         } else {
           i
         })
@@ -584,6 +584,14 @@ object Trees {
     treeCatamorphism(convert, combine, compute, expr)
   }
 
+  def contains(expr: Expr, matcher: Expr=>Boolean) : Boolean = {
+    treeCatamorphism[Boolean](
+      matcher,
+      (b1: Boolean, b2: Boolean) => b1 || b2,
+      (t: Expr, b: Boolean) => b || matcher(t),
+      expr)
+  }
+
   /* Simplifies let expressions:
    *  - removes lets when expression never occurs
    *  - simplifies when expressions occurs exactly once
@@ -625,7 +633,7 @@ object Trees {
     expr)
   
   private def killAllLets(expr: Expr) : Expr = searchAndReplaceDFS((e: Expr) => e match {
-    case Let(i,_,ex) => Some(ex)
+    case Let(_,_,ex) => Some(ex)
     case _ => None
   })(expr)
 
