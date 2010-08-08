@@ -5,6 +5,7 @@ import Definitions._
 import Trees._
 import TypeTrees._
 import Extensions._
+import scala.collection.mutable.{Set => MutableSet}
 
 class Analysis(val program: Program) {
   // we always use the global reporter for this class
@@ -35,10 +36,12 @@ class Analysis(val program: Program) {
   def checkVerificationConditions : Unit = {
     // just for the summary:
     var verifiedVCs: List[(String,String,String,String)] = Nil
+    var analysedFunctions: MutableSet[String] = MutableSet.empty
 
     solverExtensions.foreach(_.setProgram(program))
 
     for(funDef <- program.definedFunctions) if (Settings.functionsToAnalyse.isEmpty || Settings.functionsToAnalyse.contains(funDef.id.name)) {
+      analysedFunctions += funDef.id.name
       if(funDef.body.isDefined) {
         val vc = postconditionVC(funDef)
         if(vc == BooleanLiteral(false)) {
@@ -116,6 +119,9 @@ class Analysis(val program: Program) {
     } else {
       reporter.info("No verification conditions were generated.")
     }
+
+    val notFound: Set[String] = Settings.functionsToAnalyse -- analysedFunctions
+    notFound.foreach(fn => reporter.error("Did not find function \"" + fn + "\" though it was marked for analysis."))
   }
 
   def postconditionVC(functionDefinition: FunDef) : Expr = {

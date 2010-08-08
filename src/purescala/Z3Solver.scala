@@ -12,11 +12,12 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   override val shortDescription = "Z3"
 
   // this is fixed
-  private val z3cfg = new Z3Config()
-  z3cfg.setParamValue("MODEL", "true")
-  z3cfg.setParamValue("SOFT_TIMEOUT", "5000") // this one doesn't work apparently
-  z3cfg.setParamValue("TYPE_CHECK", "true")
-  z3cfg.setParamValue("WELL_SORTED_CHECK", "true")
+  private val z3cfg = new Z3Config(
+    "MODEL" -> true,
+    "SOFT_TIMEOUT" -> 5000, // this one doesn't work apparently
+    "TYPE_CHECK" -> true,
+    "WELL_SORTED_CHECK" -> true
+  )
   Z3Global.toggleWarningMessages(true)
 
   // we restart Z3 for each new program
@@ -29,11 +30,9 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     if(neverInitialized) {
       neverInitialized = false
       z3 = new Z3Context(z3cfg)
-      //z3.traceToStdout()
     } else {
       z3.delete
       z3 = new Z3Context(z3cfg)
-      //z3.traceToStdout()
     }
     prepareSorts
     prepareFunctions
@@ -139,66 +138,81 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     }
 
     // universally quantifies all functions !
-    if(Settings.experimental && !Settings.noForallAxioms) {
+    if(!Settings.noForallAxioms) {
       for(funDef <- program.definedFunctions) if(funDef.hasImplementation && program.isRecursive(funDef) && funDef.args.size > 0) {
+        // println("Generating forall axioms for " + funDef.id.name)
         funDef.body.get match {
           case SimplePatternMatching(scrutinee,_,infos) if (
-            funDef.args.size == 1 && funDef.args(0).toVariable == scrutinee
-          ) => infos.foreach(i => {
-            val (ccd, pid, subids, rhs) = i
-            val argSorts: Seq[Z3Sort] = subids.map(id => typeToSort(id.getType))
-            val boundVars = argSorts.zipWithIndex.map(p => z3.mkBound(p._2, p._1))
-            val matcher: Z3AST = adtConstructors(ccd)(boundVars: _*)
-            val pattern: Z3Pattern = z3.mkPattern(functionDefToDef(funDef)(matcher))
-            val nameTypePairs = argSorts.map(s => (z3.mkIntSymbol(nextIntForSymbol()), s))
-
-            val fOfT: Expr = FunctionInvocation(funDef, List(CaseClass(ccd, subids.map(Variable(_)))))
-            val toConvert = Equals(fOfT, rhs)
-            //println(toConvert)
-            val initialMap: Map[String,Z3AST] = Map((subids.map(_.uniqueName) zip boundVars):_*) + (pid.uniqueName -> matcher) + (funDef.args(0).id.uniqueName -> matcher)
-            toZ3Formula(z3, toConvert, initialMap) match {
-              case Some(axiomTree) => {
-                val toAssert = if(boundVars.size == 0) {
-                  axiomTree
-                } else {
-                  z3.mkForAll(0, List(pattern), nameTypePairs, axiomTree)
+            // funDef.args.size == 1 && funDef.args(0).toVariable == scrutinee
+            funDef.args.size >= 1 && funDef.args.map(_.toVariable).contains(scrutinee)
+          ) => {
+            // println("...has simple PM structure.")
+            infos.foreach(i => if (!contains(i._4, _.isInstanceOf[MatchExpr])) {
+              val argsAsVars: Seq[Option[Variable]] = funDef.args.map(a => {
+                val v = a.toVariable
+                if(v == scrutinee)
+                  None
+                else
+                  Some(v)
+              })
+              val otherFunIDs: Seq[Option[Identifier]] = argsAsVars.map(_.map(_.id))
+              val otherFunSorts: Seq[Option[Z3Sort]] = argsAsVars.map(_.map(v => typeToSort(v.getType)))
+              var c = -1
+              val otherFunBounds: Seq[Option[Z3AST]] = for(os <- otherFunSorts) yield {
+                os match {
+                  case None => None
+                  case Some(s) => {
+                    c = c + 1
+                    Some(z3.mkBound(c, s))
+                  }
                 }
-                //z3.printAST(toAssert)
-                z3.assertCnstr(toAssert)
               }
-              case None => {
-                reporter.warning("Could not convert to axiom:")
-                reporter.warning(toConvert)
+              val (ccd, pid, subids, rhs) = i
+              val argSorts: Seq[Z3Sort] = subids.map(id => typeToSort(id.getType))
+              val boundVars = argSorts.zip((c+1) until (c+1+argSorts.size)).map(p => z3.mkBound(p._2, p._1))
+              val matcher: Z3AST = adtConstructors(ccd)(boundVars: _*)
+              val pattern: Z3Pattern = z3.mkPattern(functionDefToDef(funDef)(
+                otherFunBounds.map(_ match {
+                  case None => matcher
+                  case Some(b) => b
+                }) : _*))
+
+              val fOfT: Expr = FunctionInvocation(funDef,
+                argsAsVars.map(_ match {
+                  case None => CaseClass(ccd, subids.map(Variable(_)))
+                  case Some(v) => v
+                }))
+
+              val toConvert = Equals(fOfT, rhs)
+              //println(toConvert)
+              val initialMap: Map[String,Z3AST] =
+                Map((funDef.args.map(_.id) zip otherFunBounds).map(_ match {
+                  case (i, Some(b)) => (i.uniqueName -> b)
+                  case (i, None) => (i.uniqueName -> matcher)
+                }) : _*) ++
+                Map((subids.map(_.uniqueName) zip boundVars) : _*) +
+                (pid.uniqueName -> matcher)
+
+              toZ3Formula(z3, toConvert, initialMap) match {
+                case Some(axiomTree) => {
+                  val toAssert = if(boundVars.size == 0 && otherFunBounds.flatten.size == 0) {
+                    axiomTree
+                  } else {
+                    val nameTypePairs = (otherFunSorts.flatten ++ argSorts).map(s => (z3.mkIntSymbol(nextIntForSymbol()), s))
+                    z3.mkForAll(0, List(pattern), nameTypePairs, axiomTree)
+                  }
+                  //println("Cool axiom: " + toAssert)
+                  z3.assertCnstr(toAssert)
+                }
+                case None => {
+                  reporter.warning("Could not convert to axiom:")
+                  reporter.warning(toConvert)
+                }
               }
-            }
-          })
+            })
+          }
           case _ => {
-            // // Newly introduced variables should in fact
-            // // probably also be universally quantified.
-            // val argSorts: Seq[Z3Sort] = funDef.args.map(vd => typeToSort(vd.getType))
-            // val boundVars = argSorts.zipWithIndex.map(p => z3.mkBound(p._2, p._1))
-            // val pattern: Z3Pattern = z3.mkPattern(functionDefToDef(funDef)(boundVars: _*))
-            // val nameTypePairs = argSorts.map(s => (z3.mkIntSymbol(nextIntForSymbol()), s))
-            // val fOfX: Expr = FunctionInvocation(funDef, funDef.args.map(_.toVariable))
-            // val toConvert: Expr = if(funDef.hasPrecondition) {
-            //   Implies(funDef.precondition.get, Equals(fOfX, funDef.body.get))
-            // } else {
-            //   Equals(fOfX, funDef.body.get)
-            // }
-            // val finalToConvert = Analysis.rewriteSimplePatternMatching(toConvert)
-            // val initialMap: Map[String,Z3AST] = Map((funDef.args.map(_.id.uniqueName) zip boundVars):_*)
-            // toZ3Formula(z3, finalToConvert, initialMap) match {
-            //   case Some(axiomTree) => {
-            //     val quantifiedAxiom = z3.mkForAll(0, List(pattern), nameTypePairs, axiomTree)
-            //     //z3.printAST(quantifiedAxiom)
-            //     z3.assertCnstr(quantifiedAxiom)
-            //   }
-            //   case None => {
-            //     reporter.warning("Could not generate forall axiom for " + funDef.id.name)
-            //     reporter.warning(toConvert)
-            //     reporter.warning(finalToConvert)
-            //   }
-            // }
+            // we don't generate axioms that are not simple.
           }
         }
       }
@@ -353,8 +367,8 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     try {
       val res = Some(rec(expr))
       val usedInZ3Form = z3Vars.keys.toSet
-      println("Variables in formula:   " + varsInformula.map(_.uniqueName))
-      println("Variables passed to Z3: " + usedInZ3Form)
+      // println("Variables in formula:   " + varsInformula.map(_.uniqueName))
+      // println("Variables passed to Z3: " + usedInZ3Form)
       res
     } catch {
       case e: CantTranslateException => None

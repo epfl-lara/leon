@@ -24,7 +24,7 @@ class FunCheckPlugin(val global: Global) extends Plugin {
     "  -P:funcheck:nodefaults         Runs only the analyses provided by the extensions" + "\n" +
     "  -P:funcheck:functions=fun1:... Only generates verification conditions for the specified functions" + "\n" +
     "  -P:funcheck:unrolling=[0,1,2]  Unrolling depth for recursive functions" + "\n" + 
-    "  -P:funcheck:noaxioms           Don't generate forall axioms for recursive functions" + "\n" + 
+    "  -P:funcheck:axioms             Generate simple forall axioms for recursive functions when possible" + "\n" + 
     "  -P:funcheck:tolerant           Silently extracts non-pure function bodies as ''unknown''" + "\n" +
     "  -P:funcheck:quiet              No info and warning messages from the extensions" + "\n" +
     "  -P:funcheck:XP                 Enable weird transformations and other bug-producing features"
@@ -41,7 +41,7 @@ class FunCheckPlugin(val global: Global) extends Plugin {
         case "tolerant"   =>                     silentlyTolerateNonPureBodies = true
         case "quiet"      =>                     purescala.Settings.quietExtensions = true
         case "nodefaults" =>                     purescala.Settings.runDefaultExtensions = false
-        case "noaxioms"   =>                     purescala.Settings.noForallAxioms = true
+        case "axioms"     =>                     purescala.Settings.noForallAxioms = false
         case "XP"         =>                     purescala.Settings.experimental = true
         case s if s.startsWith("unrolling=") =>  purescala.Settings.unrollingLevel = try { s.substring("unrolling=".length, s.length).toInt } catch { case _ => 0 }
         case s if s.startsWith("functions=") =>  purescala.Settings.functionsToAnalyse = Set(splitList(s.substring("functions=".length, s.length)): _*)
