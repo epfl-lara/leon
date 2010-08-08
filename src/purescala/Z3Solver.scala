@@ -272,11 +272,11 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
           case (Some(true),m) => {
             if(!abstractedFormula) {
               reporter.error("There's a bug! Here's a model for a counter-example:")
-              m.print
+              reporter.error(m)
               Some(false)
             } else {
               reporter.info("Could or could not be a bug (formula was relaxed):")
-              m.print
+              reporter.info(m)
               None
             }
           }
