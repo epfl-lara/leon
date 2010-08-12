@@ -143,7 +143,6 @@ object Trees {
     val fixedType = BooleanType
   }
 
-  /* For all types that don't have their own XXXEquals */
   object Equals {
     def apply(l : Expr, r : Expr) : Expr = (l.getType, r.getType) match {
       case (BooleanType, BooleanType) => Iff(l, r)
