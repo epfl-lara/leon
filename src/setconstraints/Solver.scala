@@ -13,6 +13,28 @@ object Solver {
     error("TODO")
   }
 
+  def cascadingEquations(systems: Set[Set[Include]]): Set[Set[Equals]] = {
+    def cascadingEquations0(system: Set[Include]): Set[Equals] = {
+      val vs = vars(system)
+      val nvs = vs.map(freshVar(_))
+      val ts = vs.zip(nvs).map{case (v, nv) => {
+        val lb = UnionType(system.flatMap{
+          case Include(IntersectionType(lits), EmptyType) if !lits.isEmpty && lits.head == ComplementType(VariableType(v)) => lits.tail
+          case _ => Seq()
+        }.toSeq)
+        val ub = IntersectionType(system.flatMap{
+          case Include(IntersectionType(lits), EmptyType) if !lits.isEmpty && lits.head == VariableType(v) => 
+            Seq(ComplementType(IntersectionType(lits.tail)))
+          case _ => Seq()
+        }.toSeq)
+        UnionType(Seq(lb, IntersectionType(Seq(nv, ub))))
+      }}
+      val ns = vs.zip(ts).map{case (v, t) => Equals(VariableType(v), t)}
+      ns.map{case Equals(v, rhs) => Equals(v, simplify(rhs))}
+    }
+    systems.map(cascadingEquations0)
+  }
+
   def cascadingSystems(system: Set[Include], constructors: Map[String, Int]): Set[Set[Include]] = {
 
     def constructorRule(system: Set[Include]): Set[Set[Include]] = {

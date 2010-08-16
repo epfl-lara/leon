@@ -79,5 +79,7 @@ class SolverSuite extends FunSuite {
     println("decreasing order system:\n" + PrettyPrinter(And(decrOrder.toSeq)))
     val cascad = cascadingSystems(decrOrder, constructors)
     println("cascading systems:\n" + cascad.map(sys => PrettyPrinter(And(sys.toSeq))))
+    val cascadEq = cascadingEquations(cascad)
+    println("cascading equations systems:\n" + cascadEq.map(sys => PrettyPrinter(And(sys.toSeq))))
   }
 }
