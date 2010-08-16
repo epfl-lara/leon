@@ -17,17 +17,19 @@ object Solver {
 
     def constructorRule(system: Set[Include]): Set[Set[Include]] = {
       val (option, rest) = extract((x: Include) => x match {
-        case Include(ConstructorType(_, args), EmptyType) => true 
+        case Include(IntersectionType(Seq(ConstructorType(_, args))), EmptyType) => true 
         case _ => false
       }, system)
       option match {
-        case Some(Include(ConstructorType(_, args), EmptyType)) =>
+        case Some(Include(IntersectionType(Seq(ConstructorType(_, args))), EmptyType)) =>
           args.map(arg => rest + Include(arg, EmptyType)).toSet
-        case _ => error("no constructor found to apply rule")
+        case None => Set(system)
+        case _ => error("")
       }
     }
 
     def transitiveRule(system: Set[Include]): Set[Include] = {
+    /*
       val (candidates, r1) = system.partition{
         case Include(IntersectionType(List(VariableType(_), _)), EmptyType) => true
         case _ => false
@@ -36,7 +38,6 @@ object Solver {
         case Include(IntersectionType(List(ComplementType(VariableType(_)), _)), EmptyType) => true
         case _ => false
       }
-
       val newCnstrs = candidates.flatMap{
         case Include(IntersectionType(List(VariableType(v1), s1)), EmptyType) => {
           candidatesNeg.flatMap{
@@ -52,49 +53,165 @@ object Solver {
         case _ => error("")
       }
       newCnstrs ++ system
+      */
+
+      def keepOneLevel(s: SetType): SetType = {
+        val res = s match {
+          case IntersectionType(Seq(EmptyType, _)) => EmptyType
+          case IntersectionType(Seq(_, EmptyType)) => EmptyType
+          case IntersectionType(Seq(v1, ComplementType(v2))) if v1 == v2 => EmptyType
+          case IntersectionType(Seq(ComplementType(v1), v2)) if v1 == v2 => EmptyType
+          case IntersectionType(Seq(ConstructorType(_, args))) if args.exists(_ == EmptyType) => EmptyType
+          case IntersectionType(Seq(ConstructorType(n1, _), ConstructorType(n2, _))) if n1 != n2 => EmptyType
+          case i@IntersectionType(Seq(ConstructorType(n1, args1), ConstructorType(n2, args2))) =>
+            if(n1 != n2) 
+              error("unexpected")
+            else
+              keepOneLevel(IntersectionType(Seq(ConstructorType(n1, args1.zip(args2).map{
+                case (IntersectionType(lits1), IntersectionType(lits2)) => simplify(IntersectionType(lits1 ++ lits2)) match {
+                  case EmptyType => EmptyType
+                  case UniversalType => IntersectionType(Seq())
+                  case i@IntersectionType(_) => i
+                  case v@VariableType(_) => IntersectionType(Seq(v))
+                  case v@ComplementType(VariableType(_)) => IntersectionType(Seq(v))
+                  case _ => error("unexpected")
+                }
+                case _ => error("not one level: " + i)
+              }))))
+          case _ => s
+        }
+        decreasingOrder(res)
+      }
+
+      val trans = system.flatMap[Include, Set[Include]]{
+        case Include(EmptyType, EmptyType) => Set()
+        case i@Include(IntersectionType(Seq()), EmptyType) => Set()
+        case i@Include(IntersectionType(lits), EmptyType) => lits.head match {
+          case ConstructorType(_, _) => Set()
+          case v@VariableType(_) => system.flatMap[Include, Set[Include]]{
+            case Include(IntersectionType(lits2), EmptyType) => {
+              if(!lits2.isEmpty && lits2.head == ComplementType(v))
+                Set(Include(
+                  keepOneLevel(IntersectionType(lits.tail ++ lits2.tail)),
+                  EmptyType))
+              else Set()
+            }
+            case _ => Set()
+          }
+          case ComplementType(v@VariableType(_)) => system.flatMap[Include, Set[Include]]{
+            case Include(IntersectionType(lits2), EmptyType) => {
+              if(!lits2.isEmpty && lits2.head == v)
+                Set(Include(
+                  keepOneLevel(IntersectionType(lits.tail ++ lits2.tail)),
+                  EmptyType))
+              else Set()
+            }
+            case _ => Set()
+          }
+          case _ => error("not one level")
+        }
+        case _ => error("not one level")
+      }
+
+      trans ++ system
     }
 
-    import scala.collection.mutable.{Set => MSet}
+    def iter(systems: Set[Set[Include]]): Set[Set[Include]] = systems.flatMap(system => {
+      val trans = transitiveRule(system)
+      val constrSystem = constructorRule(trans)
+      val consistentSystems: Set[Set[Include]] = constrSystem.filterNot(sys => sys.exists{
+        case Include(UniversalType, EmptyType) => true
+        case Include(IntersectionType(Seq(ConstructorType(_, Seq()))), EmptyType) => true
+        case _ => false
+      })
+      val res = consistentSystems.map((system: Set[Include]) => system.flatMap[Include, Set[Include]]{
+        case Include(EmptyType, EmptyType) => Set()
+        case i => Set(i)
+      })
+      res
+    })
 
-    def findS0(s: MSet[Set[Include]]): Option[(Set[Include], (Include, Include))] = {
-      null
-    }
-    val systems = MSet[Set[Include]]()
-    while(!systems.isEmpty) {
-
-    }
-
-    null
+    fix(iter, Set(system))
   }
 
-  def decreasingOrder(system: Set[Include]): Set[Include] = {
+  def decreasingOrder(s: SetType): SetType = {
     def order(s1: SetType, s2: SetType): Boolean = (s1, s2) match {
       case (VariableType(n1), VariableType(n2)) => n1 > n2
+      case (ComplementType(VariableType(n1)), VariableType(n2)) => n1 > n2
+      case (VariableType(n1), ComplementType(VariableType(n2))) => n1 > n2
+      case (ComplementType(VariableType(n1)), ComplementType(VariableType(n2))) => n1 > n2
       case (VariableType(_), ConstructorType(_, _)) => true
+      case (ComplementType(VariableType(_)), ConstructorType(_, _)) => true
       case (ConstructorType(_, _), VariableType(_)) => false
+      case (ConstructorType(_, _), ComplementType(VariableType(_))) => false
       case _ => error("not one level")
     }
-    system.map{
-      case Include(s, EmptyType) => {
-        val ns = s match {
-          case EmptyType => EmptyType
-          case IntersectionType(sts) => IntersectionType(sts.sortWith(order))
-          case _ => error("not expected")
-        }
-        Include(ns, EmptyType)
-      }
+    val ns = s match {
+      case EmptyType => EmptyType
+      case IntersectionType(sts) => IntersectionType(sts.sortWith(order))
       case _ => error("not expected")
     }
-
+    ns
+  }
+  def decreasingOrder(system: Set[Include]): Set[Include] = system.map{
+    case Include(s, EmptyType) => Include(decreasingOrder(s), EmptyType)
+    case _ => error("not expected")
   }
 
   def oneLevel(system: Set[Include], constructors: Map[String, Int]): Set[Include] = {
 
+    def canIntersectionLit(lhs: SetType): Option[SetType] = simplify(lhs) match {
+      case UniversalType => Some(IntersectionType(Seq()))
+      case v@VariableType(_) => Some(IntersectionType(Seq(v)))
+      case c@ComplementType(VariableType(_)) => Some(IntersectionType(Seq(c)))
+      case i@IntersectionType(sts) if sts.forall(isLiteral) => Some(i)
+      case _ => None
+    }
+    def canOneLevel(lhs: SetType): Option[SetType] = simplify(lhs) match {
+      case e@EmptyType => Some(e)
+      case UniversalType => Some(IntersectionType(Seq()))
+      case v@VariableType(_) => Some(IntersectionType(Seq(v)))
+      case c@ComplementType(VariableType(_)) => Some(IntersectionType(Seq(c)))
+      case ConstructorType(n, args) => {
+        val oneArgs = args.map(canIntersectionLit)
+        if(oneArgs.forall(_ != None))
+          Some(IntersectionType(Seq(ConstructorType(n, oneArgs.map{_.get}))))
+        else
+          None
+      }
+      case i@IntersectionType(sts) => {
+        val (constr, rest) = extract(isConstructor _, sts)
+        if(!rest.forall(isLiteral))
+          None
+        else constr match {
+          case None => Some(i)
+          case Some(c@ConstructorType(_, _)) => {
+            canOneLevel(c) match {
+              case Some(IntersectionType(Seq(c))) => Some(IntersectionType(rest :+ c))
+              case _ => None
+            }
+          }
+          case _ => error("unexpected")
+        }
+      }
+      case _ => None
+    }
+
+    def normalForm(lhs: SetType): SetType = lhs match {
+      case EmptyType => lhs
+      case IntersectionType(sts) => IntersectionType(sts.map{
+        case ConstructorType(n, args) => ConstructorType(n, args.map(normalForm))
+        case x => x
+      })
+      case s => IntersectionType(Seq(s))
+    }
     def toOneLevels(lhs: SetType): Set[SetType] = {
       import scala.collection.mutable.ListBuffer
       val newCnstrs = ListBuffer[SetType]()
       def toOneLevel0(lhs: SetType): SetType = lhs match {
         case VariableType(_) => lhs
+        case IntersectionType(Seq(s)) => s
+        case UnionType(Seq(s)) => s
         case _ => {
           val nv = freshVar("x")
           lhs match {
@@ -131,22 +248,16 @@ object Solver {
       newCnstrs.toSet + nlhs
     }
 
-    def normalForm(lhs: SetType): SetType = lhs match {
-      case EmptyType => lhs
-      case IntersectionType(sts) => IntersectionType(sts.map{
-        case ConstructorType(n, args) => ConstructorType(n, args.map(normalForm))
-        case x => x
-      })
-      case s => IntersectionType(Seq(s))
-    }
 
     val lhsSystem = system.map{
       case Include(s, EmptyType) => s
       case Include(s1, s2) => IntersectionType(Seq(s1, ComplementType(s2)))
     }
-    val (oneLev, notOneLev) = lhsSystem.partition(isOneLevel)
-    val res = notOneLev.flatMap(lhs => toOneLevels(lhs))
-    val normalRes = (res ++ oneLev).map(normalForm)
+    val res = lhsSystem.flatMap(lhs => canOneLevel(lhs) match {
+      case Some(s) => Set(s)
+      case None => toOneLevels(lhs)
+    })
+    val normalRes = res.map(normalForm)
     normalRes.map(lhs => Include(lhs, EmptyType))
   }
 
@@ -183,16 +294,13 @@ object Solver {
     case _ => false
   }
   def isOneLevel(system: Set[Relation]): Boolean = system.forall(isOneLevel)
-  /*
-  def isConjunctionLit(s: SetType): Boolean = s match {
-    case IntersectionType(sts) if sts.foldLeft(true)((b, st) => b && isLiteral(st) && sts.forall(l => l != ComplementType(st))) => false
-    case _ => false
+  def extract[A](p: (A) => Boolean, seq: Seq[A]): (Option[A], Seq[A]) = {
+    val (s1, s2) = seq.partition(p)
+    if(s1.isEmpty)
+      (None, s2)
+    else
+      (Some(s1.head), s2 ++ s1.tail)
   }
-  def isConjunctionLitWithUniversal(s: SetType): Boolean = flatten(s) match {
-    case IntersectionType(sts) if sts.last == UniversalType && isConjunctionLit(IntersectionType(sts.init)) => true
-    case _ => false
-  }
-  */
   def extract[A](p: (A) => Boolean, set: Set[A]): (Option[A], Set[A]) = {
     val (s1, s2) = set.partition(p)
     if(s1.isEmpty)
@@ -200,4 +308,10 @@ object Solver {
     else
       (Some(s1.head), s2 ++ s1.tail)
   }
+  def fix[A](f: (A) => A, a: A): A = {
+    val na = f(a)
+    if(na == a) a else fix(f, na)
+  }
+  def vars(system: Set[Include]): Set[String] = system.foldLeft(Set[String]())((a, incl) => 
+    a ++ Manip.vars(incl))
 }

@@ -58,7 +58,26 @@ class SolverSuite extends FunSuite {
     println("decreasing order system:\n" + PrettyPrinter(And(decrOrder.toSeq)))
   }
 
+  val system3 = Set(
+    Include(i(c(x2), x1), EmptyType),
+    Include(i(x2, fc(x2)), EmptyType),
+    Include(i(c(x2), fc(c(x2))), EmptyType)
+  )
+
+  test("cascading systems"){
+    val cascad = cascadingSystems(oneLevel(system3, constructors), constructors)
+    println("cascading systems:\n" + cascad.map(sys => PrettyPrinter(And(sys.toSeq))))
+    assert(cascad.forall((system: Set[Include]) => isOneLevel(system.asInstanceOf[Set[Relation]])))
+  }
+
   test("solver"){
-    //println("solving system:\n" + PrettyPrinter(And(system.toSeq)))
+    println("solving system:\n" + PrettyPrinter(And(system.toSeq)))
+    val oneLevelSystem = oneLevel(system, constructors)
+    println("one level system:\n" + PrettyPrinter(And(oneLevelSystem.toSeq)))
+    assert(isOneLevel(oneLevelSystem.asInstanceOf[Set[Relation]]))
+    val decrOrder = decreasingOrder(oneLevelSystem)
+    println("decreasing order system:\n" + PrettyPrinter(And(decrOrder.toSeq)))
+    val cascad = cascadingSystems(decrOrder, constructors)
+    println("cascading systems:\n" + cascad.map(sys => PrettyPrinter(And(sys.toSeq))))
   }
 }
