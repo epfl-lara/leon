@@ -81,5 +81,9 @@ class SolverSuite extends FunSuite {
     println("cascading systems:\n" + cascad.map(sys => PrettyPrinter(And(sys.toSeq))))
     val cascadEq = cascadingEquations(cascad)
     println("cascading equations systems:\n" + cascadEq.map(sys => PrettyPrinter(And(sys.toSeq))))
+    val remTLV = removeTopLevelVars(cascadEq)
+    println("no top level vars systems:\n" + remTLV.map(sys => PrettyPrinter(And(sys.toSeq))))
+    val solvedSys = solvedForm(remTLV, constructors)
+    println("solved form systems:\n" + solvedSys.map(sys => PrettyPrinter(And(sys.toSeq))))
   }
 }

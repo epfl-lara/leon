@@ -13,9 +13,55 @@ object Solver {
     error("TODO")
   }
 
-  def cascadingEquations(systems: Set[Set[Include]]): Set[Set[Equals]] = {
-    def cascadingEquations0(system: Set[Include]): Set[Equals] = {
-      val vs = vars(system)
+  def solvedForm(systems: Set[Seq[Equals]], constructors: Map[String, Int]): Set[Seq[Equals]] = {
+    def substComp(s: SetType, ov: VariableType, ns: SetType) = mapPostorder(s, {
+      case ComplementType(v@VariableType(_)) if v == ov => ns
+      case s => s
+    })
+    def solvedForm(system: Seq[Equals]): Seq[Equals] = {
+      val vs: Seq[VariableType] = system.map{case Equals(v@VariableType(_), _) => v case _ => error("not cascading equations")}
+      val nvs = vs.map{case VariableType(n) => freshVar(n)}
+      def doAllSubst(s: SetType): SetType = vs.zip(nvs).foldLeft(s)((a, p) => p match {
+        case (v, nv) => substComp(a, v, nv)
+      })
+      val nps = system.zip(nvs).map{
+        case (Equals(v@VariableType(_), s), nv) => Equals(v, doAllSubst(nnf(s, constructors)))
+        case _ => error("not format")
+      }
+      val nns = system.zip(nvs).map{
+        case (Equals(v@VariableType(_), s), nv) => Equals(nv, doAllSubst(nnf(ComplementType(s), constructors)))
+        case _ => error("not format")
+      }
+      val nnns = nns.zipWithIndex.filter{
+        case (Equals(VariableType(n), s), i) =>
+          nps.exists{case Equals(_, s2) => Manip.vars(s2).exists(_ == n)} ||
+          nns.zipWithIndex.exists{case (Equals(_, s2), i2) => i != i2 && Manip.vars(s2).exists(_ == n)}
+        case _ => error("unexpected")
+      }.unzip._1
+      nps ++ nnns
+    }
+    systems.map(solvedForm)
+  }
+
+  def removeTopLevelVars(systems: Set[Seq[Equals]]): Set[Seq[Equals]] = {
+    def removeTopLevelVars0(system: Seq[Equals]): Seq[Equals] = {
+      def subst(s: SetType, ov: VariableType, eqs: Seq[Equals]) = eqs.find{case Equals(v, _) => v == ov} match {
+        case Some(Equals(_, ns)) => substitute(s, ov, ns)
+        case None => s
+      }
+      system.foldLeft(Seq[Equals]())((initEqs, eq) => eq match {
+          case Equals(v, s) => {
+            val ns = Manip.vars(s).foldLeft(s)((a, v) => subst(a, VariableType(v), initEqs))
+            initEqs :+ Equals(v, ns)
+          }
+      })
+    }
+    systems.map(removeTopLevelVars0)
+  }
+
+  def cascadingEquations(systems: Set[Set[Include]]): Set[Seq[Equals]] = {
+    def cascadingEquations0(system: Set[Include]): Seq[Equals] = {
+      val vs = vars(system).toSeq
       val nvs = vs.map(freshVar(_))
       val ts = vs.zip(nvs).map{case (v, nv) => {
         val lb = UnionType(system.flatMap{
@@ -30,7 +76,11 @@ object Solver {
         UnionType(Seq(lb, IntersectionType(Seq(nv, ub))))
       }}
       val ns = vs.zip(ts).map{case (v, t) => Equals(VariableType(v), t)}
-      ns.map{case Equals(v, rhs) => Equals(v, simplify(rhs))}
+      val sns = ns.map{case Equals(v, rhs) => Equals(v, simplify(rhs))}
+      sns.sortWith((eq1, eq2) => (eq1.s1, eq2.s1) match {
+        case (VariableType(v1), VariableType(v2)) => v1 < v2
+        case _ => error("no vars as lhs of equals")
+      })
     }
     systems.map(cascadingEquations0)
   }

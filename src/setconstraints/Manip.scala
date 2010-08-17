@@ -146,6 +146,38 @@ object Manip {
     case _ => a
   })
 
+  def substitute(s: SetType, ov: VariableType, ns: SetType): SetType = mapPostorder(s, {
+    case v@VariableType(_) if v == ov => ns
+    case s => s
+  })
+  def substitute(s: SetType, maps: Map[VariableType, SetType]): SetType = mapPostorder(s, {
+    case v@VariableType(_) if maps.contains(v) => maps(v)
+    case s => s
+  })
+
+  def nnf(s: SetType, constructors: Map[String, Int]): SetType = {
+    def nnf0(s: SetType) = s match {
+      case ComplementType(EmptyType) => UniversalType
+      case ComplementType(UniversalType) => EmptyType
+      case ComplementType(ComplementType(s)) => s
+      case ComplementType(UnionType(sts)) => IntersectionType(sts.map(s => ComplementType(s)))
+      case ComplementType(IntersectionType(sts)) => UnionType(sts.map(s => ComplementType(s)))
+      case ComplementType(ConstructorType(name, sts)) =>
+        UnionType(constructors.flatMap{case (n, a) => {
+          if(n != name) 
+            Seq(ConstructorType(n, (1 to a).map(_ => UniversalType)))
+          else
+            sts.zipWithIndex.map{
+              case (s, i1) => ConstructorType(name, sts.zipWithIndex.map{
+                case (_, i2) => if(i1 == i2) ComplementType(s) else UniversalType
+              })
+            }
+        }}.toSeq)
+      case _ => s
+    }
+    mapPreorder(s, nnf0)
+  }
+
   def flatten(formula: Formula): Formula = {
     def flatten0(f: Formula) = f match {
       case And(fs) => And(fs.flatMap{
