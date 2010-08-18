@@ -7,7 +7,7 @@ import AST._
 
 trait VennRegions {
   val z3: Z3Context
-  protected def assertAxiom(ast: Z3AST): Unit
+  protected def assertAxiom2(ast: Z3AST): Unit
 
   case class SetName(val name: String) {
     def complName = name.toLowerCase
@@ -130,9 +130,9 @@ trait VennRegions {
 //         val axiom = z3.mkAnd(axiom1, axiom2, axiom3)
 //         assertAxiom(axiom)
 //         println(axiom)
-        assertAxiom(axiom1)
-        assertAxiom(axiom2)
-        assertAxiom(axiom3)
+        assertAxiom2(axiom1)
+        assertAxiom2(axiom2)
+        assertAxiom2(axiom3)
 //         println(axiom1)
 //         println(axiom2)
 //         println(axiom3)

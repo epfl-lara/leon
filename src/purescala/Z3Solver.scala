@@ -28,6 +28,8 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   private var program: Program = null
   private var neverInitialized = true
 
+  private val IntSetType = SetType(Int32Type)
+
   override def setProgram(prog: Program) : Unit = {
     program = prog
     if(neverInitialized) {
@@ -236,6 +238,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
         adtSorts(cd)
       }
     }
+    case IntSetType => bapa.mkSetSort
     case SetType(base) => setSorts.get(base) match {
       case Some(s) => s
       case None => {
@@ -270,6 +273,8 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     val result = toZ3Formula(z3, toConvert) match {
       case None => None // means it could not be translated
       case Some(z3f) => {
+        reporter.info("Z3 Formula:")
+        reporter.info(z3f)
         z3.push
         z3.assertCnstr(z3f)
         //z3.print
@@ -356,13 +361,40 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
         abstractedFormula = true
         z3.mkApp(functionDefToDef(fd), args.map(rec(_)): _*)
       }
-      case e @ EmptySet(_) => z3.mkEmptySet(typeToSort(e.getType.asInstanceOf[SetType].base))
+      case e @ EmptySet(_) => if(e.getType == IntSetType) {
+        bapa.mkEmptySet
+      } else {
+        z3.mkEmptySet(typeToSort(e.getType.asInstanceOf[SetType].base))
+      }
       case SetEquals(s1,s2) => z3.mkEq(rec(s1), rec(s2))
-      case SubsetOf(s1,s2) => z3.mkSetSubset(rec(s1), rec(s2))
-      case SetIntersection(s1,s2) => z3.mkSetIntersect(rec(s1), rec(s2))
-      case SetUnion(s1,s2) => z3.mkSetUnion(rec(s1), rec(s2))
-      case SetDifference(s1,s2) => z3.mkSetDifference(rec(s1), rec(s2))
-      case f @ FiniteSet(elems) => elems.foldLeft(z3.mkEmptySet(typeToSort(f.getType.asInstanceOf[SetType].base)))((ast,el) => z3.mkSetAdd(ast,rec(el)))
+      case SubsetOf(s1,s2) => if(s1.getType == IntSetType) {
+        bapa.mkSubsetEq(rec(s1), rec(s2))
+      } else {
+        z3.mkSetSubset(rec(s1), rec(s2))
+      } 
+      case SetIntersection(s1,s2) => if(s1.getType == IntSetType) {
+        bapa.mkIntersect(rec(s1), rec(s2)) 
+      } else {
+        z3.mkSetIntersect(rec(s1), rec(s2))
+      }
+      case SetUnion(s1,s2) => if(s1.getType == IntSetType) {
+        bapa.mkUnion(rec(s1), rec(s2))
+      } else {
+        z3.mkSetUnion(rec(s1), rec(s2))
+      }
+      case SetDifference(s1,s2) => if(s1.getType == IntSetType) {
+        bapa.mkIntersect(rec(s1), bapa.mkComplement(rec(s2))) 
+      } else {
+        z3.mkSetDifference(rec(s1), rec(s2))
+      }
+      case f @ FiniteSet(elems) => if(f.getType == IntSetType) {
+        throw new CantTranslateException
+      } else {
+        elems.foldLeft(z3.mkEmptySet(typeToSort(f.getType.asInstanceOf[SetType].base)))((ast,el) => z3.mkSetAdd(ast,rec(el)))
+      }
+      case SetCardinality(s) if s.getType == IntSetType => {
+        bapa.mkCard(rec(s))
+      }
       case _ => {
         reporter.warning("Can't handle this in translation to Z3: " + ex)
         throw new CantTranslateException
@@ -371,7 +403,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     
     try {
       val res = Some(rec(expr))
-      val usedInZ3Form = z3Vars.keys.toSet
+      // val usedInZ3Form = z3Vars.keys.toSet
       // println("Variables in formula:   " + varsInformula.map(_.uniqueName))
       // println("Variables passed to Z3: " + usedInZ3Form)
       res

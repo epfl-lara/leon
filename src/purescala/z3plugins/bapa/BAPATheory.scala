@@ -26,7 +26,7 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
   )
 
 // This makes the Theory Proxy print out all calls that are forwarded to the theory.
-  //showCallbacks(true)
+  showCallbacks(true)
 
   /* Theory constructs */
   
@@ -66,24 +66,25 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
 
   /* Callbacks */
 
-//   override def assertAxiom(ast: Z3AST) {
-//     println(ast)
-//     assertAxiom(ast)
-//   }
+  def assertAxiom2(ast: Z3AST) {
+    println("Asserting: " + ast)
+    assertAxiom(ast)
+  }
 
   // We use this trick to circumvent the fact that you (apparently) can't
   // assertAxioms with some callbacks, such as newApp...
   private val axiomsToAssert: MutableSet[Z3AST] = MutableSet.empty
   private def assertAxiomEventually(axiom: Z3AST) = {
     axiomsToAssert += axiom
+    //assertAxiom2(axiom)
   }
   private def assertAllRemaining : Unit = {
     if(axiomsToAssert.nonEmpty) {
       for(ax <- axiomsToAssert) {
-        println("Asserting eventual axiom: " + ax)
-        assertAxiom(ax)
+        // println("Asserting eventual axiom: " + ax)
+        assertAxiom2(ax)
       }
-      axiomsToAssert.clear
+      // axiomsToAssert.clear
     }
   }
 
@@ -99,9 +100,15 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
     stack.clear
   }
 
-  override def push { stack push stack.head }
+  override def push {
+    stack push stack.head
+    assertAllRemaining
+  }
 
-  override def pop { stack.pop }
+  override def pop { 
+    stack.pop
+    assertAllRemaining
+  }
 
   override def newAssignment(ast: Z3AST, polarity: Boolean) {
     assertAllRemaining
@@ -110,7 +117,7 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
     val bapaTree = if (polarity) z3ToTree(ast) else !z3ToTree(ast)
     val paTree = NaiveBapaToPaTranslator(bapaTree)
     val axiom = z3.mkImplies(assumption, treeToZ3(paTree))
-    assertAxiom(axiom)
+    assertAxiom2(axiom)
 //     println(axiom)
 //     println("New Axiom       : " + bapaTree + " implies\n" + paTree)
   }
@@ -135,7 +142,7 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
       val bapaTree = z3ToTree(ast1) seteq z3ToTree(ast2)
       val paTree = NaiveBapaToPaTranslator(bapaTree)
       val axiom = z3.mkImplies(assumption, treeToZ3(paTree))
-      assertAxiom(axiom)
+      assertAxiom2(axiom)
     }
   }
 
@@ -148,7 +155,7 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
       val bapaTree = !(z3ToTree(ast1) seteq z3ToTree(ast2))
       val paTree = NaiveBapaToPaTranslator(bapaTree)
       val axiom = z3.mkImplies(assumption, treeToZ3(paTree))
-      assertAxiom(axiom)
+      assertAxiom2(axiom)
     }
   }
 
@@ -156,12 +163,9 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
 //    println("*** new App : " + ast)
     z3.getASTKind(ast) match {
       case Z3AppAST(decl, args) if decl == mkCard =>
-        val bapaTree = z3ToTree(ast) === Var(IntSymbol(ast))
+        val bapaTree = z3ToTree(ast)
         val paTree = NaiveBapaToPaTranslator(bapaTree)
-        val axiom = treeToZ3(paTree)
-        assertAxiomEventually(axiom)
-//        println(axiom)
-//        println("New (eventual) Axiom     : " + paTree)
+        assertAxiomEventually(z3.mkEq(treeToZ3(paTree), ast))
       case _ =>
      // ignore other functions
     }
