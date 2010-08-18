@@ -7,6 +7,8 @@ import Extensions._
 import Trees._
 import TypeTrees._
 
+import z3plugins.bapa.BAPATheory
+
 class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   val description = "Z3 Solver"
   override val shortDescription = "Z3"
@@ -22,6 +24,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
 
   // we restart Z3 for each new program
   private var z3: Z3Context = null
+  private var bapa: BAPATheory = null
   private var program: Program = null
   private var neverInitialized = true
 
@@ -30,9 +33,11 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     if(neverInitialized) {
       neverInitialized = false
       z3 = new Z3Context(z3cfg)
+      bapa = new BAPATheory(z3)
     } else {
       z3.delete
       z3 = new Z3Context(z3cfg)
+      bapa = new BAPATheory(z3)
     }
     prepareSorts
     prepareFunctions

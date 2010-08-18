@@ -118,7 +118,21 @@ object Trees {
     val fixedType = BooleanType
   }
 
-  case class Iff(left: Expr, right: Expr) extends Expr with FixedType {
+  object Iff {
+    def apply(left: Expr, right: Expr) : Expr = (left, right) match {
+      case (BooleanLiteral(true), r) => r
+      case (l, BooleanLiteral(true)) => l
+      case (BooleanLiteral(false), r) => Not(r)
+      case (l, BooleanLiteral(false)) => Not(l)
+      case (l,r) => new Iff(l, r)  
+    }
+
+    def unapply(iff: Iff) : Option[(Expr,Expr)] = {
+      if(iff != null) Some((iff.left, iff.right)) else None
+    }
+  }
+
+  class Iff(val left: Expr, val right: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }
 
@@ -295,7 +309,7 @@ object Trees {
   object BinaryOperator {
     def unapply(expr: Expr) : Option[(Expr,Expr,(Expr,Expr)=>Expr)] = expr match {
       case Equals(t1,t2) => Some((t1,t2,Equals.apply))
-      case Iff(t1,t2) => Some((t1,t2,Iff))
+      case Iff(t1,t2) => Some((t1,t2,Iff(_,_)))
       case Implies(t1,t2) => Some((t1,t2,Implies.apply))
       case Plus(t1,t2) => Some((t1,t2,Plus))
       case Minus(t1,t2) => Some((t1,t2,Minus))
