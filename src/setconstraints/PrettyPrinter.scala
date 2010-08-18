@@ -8,7 +8,7 @@ object PrettyPrinter {
 
   def apply(st: SetType): String = ppSetType(st)
 
-  def apply(fp: FixPoint): String = ppFixPoint(fp)
+//  def apply(fp: FixPoint): String = ppFixPoint(fp)
 
   private def ppFormula(f: Formula): String = f match {
     case And(fs) => fs.map(ppFormula).mkString("(  ", "\n \u2227 ", ")")
@@ -28,8 +28,9 @@ object PrettyPrinter {
     case EmptyType => "0"
     case UniversalType => "1"
   }
-
+/*
   private def ppFixPoint(fp: FixPoint): String = fp match {
     case FixPoint(t, s) => ppSetType(t) + " = " + ppSetType(s)
   }
+  */
 }

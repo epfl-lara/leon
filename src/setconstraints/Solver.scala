@@ -5,12 +5,44 @@ import Manip._
 
 object Solver {
 
-  def apply(system: Set[Relation], constructors: Map[String, Int]): Option[List[FixPoint]] = {
-    error("TODO")
+  def apply(system: Set[Relation], constructors: Map[String, Int]): Option[Map[VariableType, SetType]] = {
+    val solvedSystems = solve(system, constructors)
+    if(solvedSystems.isEmpty)
+      None
+    else {
+      val sys = solvedSystems.head
+      val freeVarsMap = Map(freeVars(sys).map(v => (v, EmptyType)).toSeq: _*)
+      val system = sys.map{case Equals(v, s) => Equals(v, simplify(substitute(s, freeVarsMap)))}
+      val initMap: Map[VariableType, SetType] = Map(system.map{case Equals(v, _) => (v.asInstanceOf[VariableType], EmptyType)}.toSeq: _*)
+      println(system.map(PrettyPrinter(_)))
+      Some(fix(
+        (m: Map[VariableType, SetType]) => {
+          println("new iteration")
+          println(m.map{case (v, s) => (PrettyPrinter(v), PrettyPrinter(s))})
+          val ns = system.map{case Equals(v, s) => Equals(v, simplify(substitute(s, m)))}
+          println(ns.map(PrettyPrinter(_)))
+          Map(ns.map{case Equals(v, s) => (v.asInstanceOf[VariableType], s)}.toSeq: _*)
+        },
+        initMap))
+    }
   }
 
-  def solve(system: Set[Relation]): Option[List[Equals]] = {
-    error("TODO")
+  def solve(system: Set[Relation], constructors: Map[String, Int]): Set[Seq[Equals]] = {
+    val includes = system.flatMap(Manip.removeEquals)
+    val oneLevelSystem = oneLevel(includes, constructors)
+    val decrOrder = decreasingOrder(oneLevelSystem)
+    val cascad = cascadingSystems(decrOrder, constructors)
+    val cascadEq = cascadingEquations(cascad)
+    val remTLV = removeTopLevelVars(cascadEq)
+    val solvedSys = solvedForm(remTLV, constructors)
+    solvedSys
+  }
+
+  def freeVars(system: Seq[Equals]): Set[VariableType] = {
+    val bvs = system.map{case Equals(v, _) => v}.toSet
+    system.foldLeft(Set[VariableType]())((a, eq) => eq match {
+      case Equals(_, s) => a ++ Manip.vars(s).filter((v: String) => !bvs.contains(VariableType(v))).map(VariableType(_))
+    })
   }
 
   def solvedForm(systems: Set[Seq[Equals]], constructors: Map[String, Int]): Set[Seq[Equals]] = {

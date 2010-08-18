@@ -85,5 +85,10 @@ class SolverSuite extends FunSuite {
     println("no top level vars systems:\n" + remTLV.map(sys => PrettyPrinter(And(sys.toSeq))))
     val solvedSys = solvedForm(remTLV, constructors)
     println("solved form systems:\n" + solvedSys.map(sys => PrettyPrinter(And(sys.toSeq))))
+    val fvs = freeVars(solvedSys.head)
+    println(fvs)
+
+//    val res = Solver(system.asInstanceOf[Set[Relation]], constructors)
+ //   println(res)
   }
 }

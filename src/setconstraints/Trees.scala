@@ -29,6 +29,4 @@ object Trees {
     VariableType(name + "_" + varCounter)
   }
 
-  case class FixPoint(t: VariableType, s: SetType)
-
 }

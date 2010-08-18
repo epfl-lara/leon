@@ -6,7 +6,7 @@ import purescala.Reporter
 
 object MatchAnalyzer {
 
-  def apply(pgm: Program, fixPoints: Seq[FixPoint], reporter: Reporter) {
+  def apply(pgm: Program, fixPoints: Seq[Equals], reporter: Reporter) {
 
   }
 

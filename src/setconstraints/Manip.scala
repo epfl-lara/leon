@@ -208,7 +208,7 @@ object Manip {
     case f@_ => error("unexpected formula :" + f)
   }
 
-  private def removeEquals(r: Relation): Seq[Include] = r match {
+  def removeEquals(r: Relation): Seq[Include] = r match {
     case Equals(s1, s2) => Seq(Include(s1, s2), Include(s2, s1))
     case i@Include(_,_) => Seq(i)
   }
