@@ -34,13 +34,12 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     program = prog
     if(neverInitialized) {
       neverInitialized = false
-      z3 = new Z3Context(z3cfg)
-      bapa = new BAPATheory(z3)
     } else {
       z3.delete
-      z3 = new Z3Context(z3cfg)
-      bapa = new BAPATheory(z3)
     }
+    z3 = new Z3Context(z3cfg)
+    bapa = new BAPATheory(z3)
+    // z3.assertCnstr(z3.mkEq(bapa.mkCard(bapa.mkEmptySet), z3.mkInt(0, z3.mkIntSort)))
     prepareSorts
     prepareFunctions
   }
@@ -333,7 +332,11 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
       case And(exs) => z3.mkAnd(exs.map(rec(_)) : _*)
       case Or(exs) => z3.mkOr(exs.map(rec(_)) : _*)
       case Implies(l,r) => z3.mkImplies(rec(l), rec(r))
-      case Iff(l,r) => z3.mkIff(rec(l), rec(r))
+      case Iff(l,r) => {
+        val rl = rec(l)
+        val rr = rec(r)
+        z3.mkAnd(z3.mkImplies(rl, rr), z3.mkImplies(rr, rl))
+      }
       case Not(Iff(l,r)) => z3.mkXor(rec(l), rec(r))   
       case Not(Equals(l,r)) => z3.mkDistinct(rec(l),rec(r))
       case Not(e) => z3.mkNot(rec(e))

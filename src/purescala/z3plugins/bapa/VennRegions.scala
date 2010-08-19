@@ -4,10 +4,9 @@ import scala.collection.mutable.HashMap
 import z3.scala.{Z3Context, Z3AST, Z3Theory}
 import AST._
 
-
 trait VennRegions {
   val z3: Z3Context
-  protected def assertAxiom2(ast: Z3AST): Unit
+  protected def assertAxiomEventually(ast: Z3AST): Unit
 
   case class SetName(val name: String) {
     def complName = name.toLowerCase
@@ -130,9 +129,9 @@ trait VennRegions {
 //         val axiom = z3.mkAnd(axiom1, axiom2, axiom3)
 //         assertAxiom(axiom)
 //         println(axiom)
-        assertAxiom2(axiom1)
-        assertAxiom2(axiom2)
-        assertAxiom2(axiom3)
+        assertAxiomEventually(axiom1)
+        assertAxiomEventually(axiom2)
+        assertAxiomEventually(axiom3)
 //         println(axiom1)
 //         println(axiom2)
 //         println(axiom3)

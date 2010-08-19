@@ -73,18 +73,22 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
 
   // We use this trick to circumvent the fact that you (apparently) can't
   // assertAxioms with some callbacks, such as newApp...
-  private val axiomsToAssert: MutableSet[Z3AST] = MutableSet.empty
-  private def assertAxiomEventually(axiom: Z3AST) = {
-    axiomsToAssert += axiom
-    //assertAxiom2(axiom)
+  private val axiomsToAssert: MutableSet[(Int,Z3AST)] = MutableSet.empty
+  protected def assertAxiomEventually(axiom: Z3AST) = {
+    //axiomsToAssert += axiom
+    axiomsToAssert += ((pushLevel, axiom))
   }
   private def assertAllRemaining : Unit = {
     if(axiomsToAssert.nonEmpty) {
-      for(ax <- axiomsToAssert) {
+      val toPreserve : MutableSet[(Int,Z3AST)] = MutableSet.empty
+
+      for((lvl,ax) <- axiomsToAssert) {
         // println("Asserting eventual axiom: " + ax)
         assertAxiom2(ax)
+        if(lvl < pushLevel) toPreserve += ((lvl,ax))
       }
-      // axiomsToAssert.clear
+      axiomsToAssert.clear
+      axiomsToAssert ++= toPreserve
     }
   }
 
@@ -100,14 +104,17 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
     stack.clear
   }
 
+  private var pushLevel = 0
   override def push {
+    pushLevel = pushLevel + 1
+    //assertAllRemaining
     stack push stack.head
-    assertAllRemaining
   }
 
   override def pop { 
+    pushLevel = pushLevel - 1
+    //assertAllRemaining
     stack.pop
-    assertAllRemaining
   }
 
   override def newAssignment(ast: Z3AST, polarity: Boolean) {
@@ -116,7 +123,7 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
     val assumption = if (polarity) ast else z3.mkNot(ast)
     val bapaTree = if (polarity) z3ToTree(ast) else !z3ToTree(ast)
     val paTree = NaiveBapaToPaTranslator(bapaTree)
-    val axiom = z3.mkImplies(assumption, treeToZ3(paTree))
+    val axiom = z3.mkIff(assumption, treeToZ3(paTree))
     assertAxiom2(axiom)
 //     println(axiom)
 //     println("New Axiom       : " + bapaTree + " implies\n" + paTree)
@@ -128,15 +135,48 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
     if(z3.getSort(ast1) == mkSetSort) {
       // TODO: if either ast1 or ast2 is a variable => don't add it/remove it from the stack and remember congruence class
 //       println("*** new Eq : " + ast1 + "  ==  " + ast2)
-
-      /*
+      
       println("Equals : " + (ast1 == ast2))
       println("Root Equals : " + (getEqClassRoot(ast1) == getEqClassRoot(ast2)))
       println("Ast 1 : " + ast1)
       println("Ast 2 : " + ast2)
       println("Ast 1 root : " + getEqClassRoot(ast1))
       println("Ast 2 root : " + getEqClassRoot(ast2))
-      */
+      println("Ast 1 class : " + getEqClassMembers(ast1).toList.mkString(", "))
+      println("Ast 2 class : " + getEqClassMembers(ast2).toList.mkString(", "))
+      println("Ast 1 parents : " + getParents(ast1).toList.mkString(", "))
+      println("Ast 2 parents : " + getParents(ast2).toList.mkString(", "))
+      
+      if(ast1 == mkEmptySet || ast2 == mkEmptySet) {
+        val nonEmpty = if(ast1 == mkEmptySet) ast2 else ast1
+        for(congruent <- getEqClassMembers(nonEmpty)) {
+          for(parent <- getParents(congruent)) {
+            z3.getASTKind(parent) match {
+              case Z3AppAST(decl, args) if decl == mkCard && args(0) == congruent =>
+                assertAxiom2(z3.mkIff(
+                  z3.mkEq(congruent, mkEmptySet),
+                  z3.mkEq(mkCard(congruent), z3.mkInt(0, z3.mkIntSort))))
+              case Z3AppAST(decl, args) if decl == mkUnion && args(0) == congruent =>
+                assertAxiom2(z3.mkImplies(
+                  z3.mkEq(congruent, mkEmptySet),
+                  z3.mkEq(mkUnion(congruent, args(1)), args(1))))
+              case Z3AppAST(decl, args) if decl == mkUnion && args(1) == congruent =>
+                assertAxiom2(z3.mkImplies(
+                  z3.mkEq(congruent, mkEmptySet),
+                  z3.mkEq(mkUnion(args(0), congruent), args(0))))
+              case Z3AppAST(decl, args) if decl == mkIntersect && args(0) == congruent =>
+                assertAxiom2(z3.mkImplies(
+                  z3.mkEq(congruent, mkEmptySet),
+                  z3.mkEq(mkUnion(congruent, args(1)), mkEmptySet)))
+              case Z3AppAST(decl, args) if decl == mkIntersect && args(1) == congruent =>
+                assertAxiom2(z3.mkImplies(
+                  z3.mkEq(congruent, mkEmptySet),
+                  z3.mkEq(mkUnion(args(0), congruent), mkEmptySet)))
+              case _ => ;
+            }
+          }
+        }
+      }
       
       val assumption = z3.mkEq(ast1, ast2)
       val bapaTree = z3ToTree(ast1) seteq z3ToTree(ast2)
@@ -151,6 +191,30 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
 //     println("*** new Diseq : " + ast1 + "  ==  " + ast2)
     
     if(z3.getSort(ast1) == mkSetSort) {
+      println("Ast 1 : " + ast1)
+      println("Ast 2 : " + ast2)
+      println("Ast 1 root : " + getEqClassRoot(ast1))
+      println("Ast 2 root : " + getEqClassRoot(ast2))
+      println("Ast 1 class : " + getEqClassMembers(ast1).toList.mkString(", "))
+      println("Ast 2 class : " + getEqClassMembers(ast2).toList.mkString(", "))
+      println("Ast 1 parents : " + getParents(ast1).toList.mkString(", "))
+      println("Ast 2 parents : " + getParents(ast2).toList.mkString(", "))
+
+      if(ast1 == mkEmptySet || ast2 == mkEmptySet) {
+        val nonEmpty = if(ast1 == mkEmptySet) ast2 else ast1
+        for(congruent <- getEqClassMembers(nonEmpty)) {
+          for(parent <- getParents(congruent)) {
+            z3.getASTKind(parent) match {
+              case Z3AppAST(decl, args) if decl == mkCard && args(0) == congruent =>
+                assertAxiom2(z3.mkImplies(
+                  z3.mkDistinct(congruent, mkEmptySet),
+                  z3.mkGT(mkCard(congruent), z3.mkInt(0, z3.mkIntSort))))
+              case _ => ;
+            }
+          }
+        }
+      }
+
       val assumption = z3.mkDistinct(ast1, ast2)
       val bapaTree = !(z3ToTree(ast1) seteq z3ToTree(ast2))
       val paTree = NaiveBapaToPaTranslator(bapaTree)
@@ -161,11 +225,13 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
 
   override def newApp(ast: Z3AST) {
 //    println("*** new App : " + ast)
+    assertAxiom(z3.mkFalse)
     z3.getASTKind(ast) match {
       case Z3AppAST(decl, args) if decl == mkCard =>
         val bapaTree = z3ToTree(ast)
         val paTree = NaiveBapaToPaTranslator(bapaTree)
         assertAxiomEventually(z3.mkEq(treeToZ3(paTree), ast))
+        assertAxiomEventually(z3.mkIff(z3.mkEq(ast, z3.mkInt(0, z3.mkIntSort)), z3.mkEq(args(0), mkEmptySet)))
       case _ =>
      // ignore other functions
     }
@@ -265,17 +331,9 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
     // This can get slow in theory. I'd use a Set for inClass, but the hashing
     // of Z3AST does not seem to work like it should. We need to check whether
     // we can trust the C pointer to be a valid hash.
-    var inClass: List[Z3AST] = Nil
-
-    var current = set
-    do {
-      inClass = current :: inClass
-      current = getEqClassNext(current)
-    } while(current != set)
-    inClass = inClass.reverse
-
-    // println(" -- Equivalence class contains " + inClass)
-    // println(" -- List is " + knownSetExprs)
+    var inClass: List[Z3AST] = getEqClassMembers(set).toList
+    println(" -- Equivalence class contains " + getEqClassMembers(set).toList)
+    println(" -- List is " + knownSetExprs)
 
     val result = knownSetExprs.find(inClass.contains(_)) match {
       case Some(repr) => repr
