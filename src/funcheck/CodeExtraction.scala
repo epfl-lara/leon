@@ -422,7 +422,29 @@ trait CodeExtraction extends Extractors {
             throw ImpureCodeEncounteredException(tree)
           }
         }
-      } 
+      }
+      case ExSetContains(t1,t2) => {
+        val rl = rec(t1)
+        val rr = rec(t2)
+        rl.getType match {
+          case s @ SetType(_) => ElementOfSet(rr, rl)
+          case _ => {
+            if(!silent) unit.error(tree.pos, ".contains on non set expression.")
+            throw ImpureCodeEncounteredException(tree)
+          }
+        }
+      }
+      case ExSetSubset(t1,t2) => {
+        val rl = rec(t1)
+        val rr = rec(t2)
+        rl.getType match {
+          case s @ SetType(_) => SubsetOf(rl, rr)
+          case _ => {
+            if(!silent) unit.error(tree.pos, "Subset on non set expression.")
+            throw ImpureCodeEncounteredException(tree)
+          }
+        }
+      }
       case ExSetMinus(t1,t2) => {
         val rl = rec(t1)
         val rr = rec(t2)

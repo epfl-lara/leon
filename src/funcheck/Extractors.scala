@@ -409,6 +409,20 @@ trait Extractors {
         case _ => None
       }
     }
+
+    object ExSetContains {
+      def unapply(tree: Apply) : Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n.toString == "contains") => Some((lhs,rhs))
+        case _ => None
+      }
+    }
+
+    object ExSetSubset {
+      def unapply(tree: Apply) : Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n.toString == "subsetOf") => Some((lhs,rhs))
+        case _ => None
+      }
+    }
   
     object ExSetMinus {
       def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {

@@ -73,7 +73,6 @@ object PrettyPrinter {
     case And(exprs) => ppNary(sb, exprs, "(", " \u2227 ", ")", lvl)            // \land
     case Or(exprs) => ppNary(sb, exprs, "(", " \u2228 ", ")", lvl)             // \lor
     case Not(Equals(l, r)) => ppBinary(sb, l, r, " \u2260 ", lvl)    // \neq
-    case Not(expr) => ppUnary(sb, expr, "\u00AC(", ")", lvl)               // \neg
     case Iff(l,r) => ppBinary(sb, l, r, " <=> ", lvl)              
     case Implies(l,r) => ppBinary(sb, l, r, " ==> ", lvl)              
     case UMinus(expr) => ppUnary(sb, expr, "-(", ")", lvl)
@@ -106,6 +105,10 @@ object PrettyPrinter {
     case FiniteMultiset(rs) => ppNary(sb, rs, "{|", ", ", "|}", lvl)
     case EmptySet(_) => sb.append("\u2205")                          // Ø
     case EmptyMultiset(_) => sb.append("\u2205")                     // Ø
+    case Not(ElementOfSet(s,e)) => ppBinary(sb, s, e, " \u2209 ", lvl) // \notin
+    case ElementOfSet(s,e) => ppBinary(sb, s, e, " \u2208 ", lvl)    // \in
+    case SubsetOf(l,r) => ppBinary(sb, l, r, " \u2286 ", lvl)        // \subseteq
+    case Not(SubsetOf(l,r)) => ppBinary(sb, l, r, " \u2288 ", lvl)        // \notsubseteq
     case SetMin(s) => pp(s, sb, lvl).append(".min")
     case SetMax(s) => pp(s, sb, lvl).append(".max")
     case SetUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)        // \cup
@@ -181,7 +184,7 @@ object PrettyPrinter {
     }
 
     case ResultVariable() => sb.append("#res")
-
+    case Not(expr) => ppUnary(sb, expr, "\u00AC(", ")", lvl)               // \neg
 
     case _ => sb.append("Expr?")
   }

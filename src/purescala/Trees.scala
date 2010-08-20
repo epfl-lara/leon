@@ -249,11 +249,15 @@ object Trees {
   /* Set expressions */
   case class EmptySet(baseType: TypeTree) extends Expr with Terminal
   case class FiniteSet(elements: Seq[Expr]) extends Expr 
-  case class ElementOfSet(element: Expr, set: Expr) extends Expr 
+  case class ElementOfSet(element: Expr, set: Expr) extends Expr with FixedType {
+    val fixedType = BooleanType
+  }
   case class SetCardinality(set: Expr) extends Expr with FixedType {
     val fixedType = Int32Type
   }
-  case class SubsetOf(set1: Expr, set2: Expr) extends Expr 
+  case class SubsetOf(set1: Expr, set2: Expr) extends Expr with FixedType {
+    val fixedType = BooleanType
+  }
   case class SetIntersection(set1: Expr, set2: Expr) extends Expr 
   case class SetUnion(set1: Expr, set2: Expr) extends Expr 
   case class SetDifference(set1: Expr, set2: Expr) extends Expr 
