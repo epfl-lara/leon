@@ -370,6 +370,9 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
         z3.mkEmptySet(typeToSort(e.getType.asInstanceOf[SetType].base))
       }
       case SetEquals(s1,s2) => z3.mkEq(rec(s1), rec(s2))
+      case ElementOfSet(e, s) if s.getType == IntSetType => {
+        bapa.mkElementOf(rec(e), rec(s))
+      }
       case SubsetOf(s1,s2) => if(s1.getType == IntSetType) {
         bapa.mkSubsetEq(rec(s1), rec(s2))
       } else {

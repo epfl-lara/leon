@@ -98,7 +98,7 @@ object AST {
   case object ADD extends Operand("+")
   case object ITE extends Operand("IF-THEN-ELSE")
   case object CARD extends Operand("CARD")
-  case object CARD_PRED extends Operand("CARD-predicate")
+//  case object CARD_PRED extends Operand("CARD-predicate")
   case object MIN extends Operand("MIN")
   case object MAX extends Operand("MAX")
   // return sets

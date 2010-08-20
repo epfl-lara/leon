@@ -26,7 +26,7 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
   )
 
 // This makes the Theory Proxy print out all calls that are forwarded to the theory.
-  showCallbacks(true)
+  //showCallbacks(true)
 
   /* Theory constructs */
   
@@ -34,7 +34,7 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
   val mkEmptySet = mkTheoryValue(z3.mkStringSymbol("EmptySet"), mkSetSort)
   val mkIsSingleton = mkUnarySetfun("IsSingleton", z3.mkBoolSort)
   val mkCard = mkUnarySetfun("Cardinality", z3.mkIntSort)
-  val mkCardPred = mkTheoryFuncDecl(z3.mkStringSymbol("HasCardinality"), Seq(mkSetSort, z3.mkIntSort), z3.mkBoolSort)
+  // val mkCardPred = mkTheoryFuncDecl(z3.mkStringSymbol("HasCardinality"), Seq(mkSetSort, z3.mkIntSort), z3.mkBoolSort)
   val mkElementOf = mkTheoryFuncDecl(z3.mkStringSymbol("IsElementOf"), Seq(z3.mkIntSort, mkSetSort), z3.mkBoolSort)
   val mkAsSingleton = mkTheoryFuncDecl(z3.mkStringSymbol("AsSingleton"), Seq(z3.mkIntSort), mkSetSort)
   val mkAsElement = mkUnarySetfun("AsElement", z3.mkIntSort)
@@ -67,7 +67,7 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
   /* Callbacks */
 
   def assertAxiom2(ast: Z3AST) {
-    println("Asserting: " + ast)
+    //println("Asserting: " + ast)
     assertAxiom(ast)
   }
 
@@ -136,16 +136,16 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
       // TODO: if either ast1 or ast2 is a variable => don't add it/remove it from the stack and remember congruence class
 //       println("*** new Eq : " + ast1 + "  ==  " + ast2)
       
-      println("Equals : " + (ast1 == ast2))
-      println("Root Equals : " + (getEqClassRoot(ast1) == getEqClassRoot(ast2)))
-      println("Ast 1 : " + ast1)
-      println("Ast 2 : " + ast2)
-      println("Ast 1 root : " + getEqClassRoot(ast1))
-      println("Ast 2 root : " + getEqClassRoot(ast2))
-      println("Ast 1 class : " + getEqClassMembers(ast1).toList.mkString(", "))
-      println("Ast 2 class : " + getEqClassMembers(ast2).toList.mkString(", "))
-      println("Ast 1 parents : " + getParents(ast1).toList.mkString(", "))
-      println("Ast 2 parents : " + getParents(ast2).toList.mkString(", "))
+      //println("Equals : " + (ast1 == ast2))
+      //println("Root Equals : " + (getEqClassRoot(ast1) == getEqClassRoot(ast2)))
+      //println("Ast 1 : " + ast1)
+      //println("Ast 2 : " + ast2)
+      //println("Ast 1 root : " + getEqClassRoot(ast1))
+      //println("Ast 2 root : " + getEqClassRoot(ast2))
+      //println("Ast 1 class : " + getEqClassMembers(ast1).toList.mkString(", "))
+      //println("Ast 2 class : " + getEqClassMembers(ast2).toList.mkString(", "))
+      //println("Ast 1 parents : " + getParents(ast1).toList.mkString(", "))
+      //println("Ast 2 parents : " + getParents(ast2).toList.mkString(", "))
       
       if(ast1 == mkEmptySet || ast2 == mkEmptySet) {
         val nonEmpty = if(ast1 == mkEmptySet) ast2 else ast1
@@ -191,14 +191,14 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
 //     println("*** new Diseq : " + ast1 + "  ==  " + ast2)
     
     if(z3.getSort(ast1) == mkSetSort) {
-      println("Ast 1 : " + ast1)
-      println("Ast 2 : " + ast2)
-      println("Ast 1 root : " + getEqClassRoot(ast1))
-      println("Ast 2 root : " + getEqClassRoot(ast2))
-      println("Ast 1 class : " + getEqClassMembers(ast1).toList.mkString(", "))
-      println("Ast 2 class : " + getEqClassMembers(ast2).toList.mkString(", "))
-      println("Ast 1 parents : " + getParents(ast1).toList.mkString(", "))
-      println("Ast 2 parents : " + getParents(ast2).toList.mkString(", "))
+      //println("Ast 1 : " + ast1)
+      //println("Ast 2 : " + ast2)
+      //println("Ast 1 root : " + getEqClassRoot(ast1))
+      //println("Ast 2 root : " + getEqClassRoot(ast2))
+      //println("Ast 1 class : " + getEqClassMembers(ast1).toList.mkString(", "))
+      //println("Ast 2 class : " + getEqClassMembers(ast2).toList.mkString(", "))
+      //println("Ast 1 parents : " + getParents(ast1).toList.mkString(", "))
+      //println("Ast 2 parents : " + getParents(ast2).toList.mkString(", "))
 
       if(ast1 == mkEmptySet || ast2 == mkEmptySet) {
         val nonEmpty = if(ast1 == mkEmptySet) ast2 else ast1
@@ -315,8 +315,8 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
     case Op(LT, Seq(t1, t2)) => z3.mkLT(treeToZ3_rec(t1), treeToZ3_rec(t2))
     case Op(ADD, ts) => z3.mkAdd((ts map treeToZ3_rec):_*)
     case Op(ITE, Seq(t1, t2, t3)) => z3.mkITE(treeToZ3_rec(t1), treeToZ3_rec(t2), treeToZ3_rec(t3))
-//     case Op(CARD, Seq(t)) => mkCard(treeToZ3_rec(t))
-    case Op(CARD_PRED, Seq(s, t)) => mkCardPred(treeToZ3_rec(s), treeToZ3_rec(t))
+    case Op(CARD, Seq(t)) => mkCard(treeToZ3_rec(t))
+//    case Op(CARD_PRED, Seq(s, t)) => mkCardPred(treeToZ3_rec(s), treeToZ3_rec(t))
     case Op(SETEQ, Seq(t1, t2)) => z3.mkEq(treeToZ3_rec(t1), treeToZ3_rec(t2))
     case Op(SUBSETEQ, Seq(t1, t2)) => mkSubsetEq(treeToZ3_rec(t1), treeToZ3_rec(t2))
     case Op(UNION, ts) => mkUnion((ts map treeToZ3_rec):_*)
@@ -332,8 +332,8 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
     // of Z3AST does not seem to work like it should. We need to check whether
     // we can trust the C pointer to be a valid hash.
     var inClass: List[Z3AST] = getEqClassMembers(set).toList
-    println(" -- Equivalence class contains " + getEqClassMembers(set).toList)
-    println(" -- List is " + knownSetExprs)
+   // println(" -- Equivalence class contains " + getEqClassMembers(set).toList)
+   // println(" -- List is " + knownSetExprs)
 
     val result = knownSetExprs.find(inClass.contains(_)) match {
       case Some(repr) => repr
@@ -355,7 +355,7 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
     case Z3AppAST(decl, args) if decl == mkIntersect => Op(INTER, args map z3ToTree)
     case Z3AppAST(decl, args) if decl == mkComplement => Op(COMPL, args map z3ToTree)
     case Z3AppAST(decl, args) if decl == mkIsSingleton => z3ToTree(args(0)).card === 1
-    case Z3AppAST(decl, args) if decl == mkCardPred => Op(EQ, Seq(Op(CARD, Seq(z3ToTree(args(0)))), IntSymbol(args(1))))
+//    case Z3AppAST(decl, args) if decl == mkCardPred => Op(EQ, Seq(Op(CARD, Seq(z3ToTree(args(0)))), IntSymbol(args(1))))
     case Z3AppAST(decl, args) if decl == mkCard => Op(CARD, Seq(z3ToTree(args(0))))
     case _ =>
       //println("** Cannot convert Z3AST to BAPA-tree :\n** " + ast)

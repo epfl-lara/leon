@@ -104,19 +104,21 @@ object NormalForms {
   }
 
 
-  def purify(z3: Z3Context, tree0: Tree) = {
-    var defs: Seq[Tree] = Nil
-    def rec(tree: Tree): Tree = tree match {
-      case Op(EQ, Seq(Op(CARD, Seq(s)), t)) => Op(CARD_PRED, Seq(rec(s), rec(t)))
-      case Op(EQ, Seq(t, Op(CARD, Seq(s)))) => Op(CARD_PRED, Seq(rec(s), rec(t)))
-      case Op(CARD, Seq(s)) =>
-        val t = Var(IntSymbol(z3.mkFreshConst("pure", z3.mkIntSort)))
-        defs = defs :+ Op(CARD_PRED, Seq(rec(s), t))
-        t
-      case Op(op, ts) => Op(op, ts map rec)
-      case Var(_) | Lit(_) => tree
-    }
-    val tree1 = rec(tree0)
-    if (defs.size > 0) Op(AND, defs :+ tree1) else tree1
-  }
+  def purify(z3: Z3Context, tree0: Tree) = tree0
+// Used to be that this replaced the cardinality function with the cardinality operator...
+//  def purify(z3: Z3Context, tree0: Tree) = {
+//    var defs: Seq[Tree] = Nil
+//    def rec(tree: Tree): Tree = tree match {
+//      case Op(EQ, Seq(Op(CARD, Seq(s)), t)) => Op(CARD_PRED, Seq(rec(s), rec(t)))
+//      case Op(EQ, Seq(t, Op(CARD, Seq(s)))) => Op(CARD_PRED, Seq(rec(s), rec(t)))
+//      case Op(CARD, Seq(s)) =>
+//        val t = Var(IntSymbol(z3.mkFreshConst("pure", z3.mkIntSort)))
+//        defs = defs :+ Op(CARD_PRED, Seq(rec(s), t))
+//        t
+//      case Op(op, ts) => Op(op, ts map rec)
+//      case Var(_) | Lit(_) => tree
+//    }
+//    val tree1 = rec(tree0)
+//    if (defs.size > 0) Op(AND, defs :+ tree1) else tree1
+//  }
 }
