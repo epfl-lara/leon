@@ -105,10 +105,6 @@ object PrettyPrinter {
     case Op(SETEQ, ts) => op(_SEQ, ts map pp)
     case Op(SUBSETEQ, ts) => op(_SSEQ, ts map pp)
     case Op(ADD, ts) => op("+", ts map pp)
-    case Op(ITE, Seq(c, t, e)) =>
-      g(gn("if" :/: pp(c)) :/:
-      gn("then" :/: bp(t)) :/:
-      gn("else" :/: bp(e)))
     case Op(CARD, Seq(t)) => "|" :: pp(t) :: "|"
     case Op(UNION, ts) => op(_UNION, ts map pp)
     case Op(INTER, ts) => op(_INTER, ts map pp)

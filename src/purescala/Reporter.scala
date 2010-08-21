@@ -27,7 +27,7 @@ class DefaultReporter extends Reporter {
   protected val fatalPfx   = "[ Fatal ] "
 
   def output(msg: String) : Unit = {
-    Console.err.println(msg)
+    /*Console.err.*/println(msg)
   }
 
   protected def reline(pfx: String, msg: String) : String = {

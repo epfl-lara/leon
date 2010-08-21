@@ -57,11 +57,11 @@ object NormalForms {
     case Op(COMPL, Seq(Op(INTER, ts))) => simplify(Op(UNION, ts map {~_}))
     case Op(COMPL, Seq(Op(UNION, ts))) => simplify(Op(INTER, ts map {~_}))
     case Op(CARD, Seq(Lit(EmptySetLit))) => 0
-    case Op(ITE, Seq(c, t, e)) => simplify(c) match {
-      case Lit(TrueLit) => simplify(t)
-      case Lit(FalseLit) => simplify(e)
-      case cond => cond ifThenElse (simplify(t), simplify(e))
-    }
+//    case Op(ITE, Seq(c, t, e)) => simplify(c) match {
+//      case Lit(TrueLit) => simplify(t)
+//      case Lit(FalseLit) => simplify(e)
+//      case cond => cond ifThenElse (simplify(t), simplify(e))
+//    }
     case Op(ADD, ts) =>
       var intPart = 0
       val acc = new scala.collection.mutable.ListBuffer[Tree]

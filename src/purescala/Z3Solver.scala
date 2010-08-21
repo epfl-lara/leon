@@ -394,7 +394,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
         z3.mkSetDifference(rec(s1), rec(s2))
       }
       case f @ FiniteSet(elems) => if(f.getType == IntSetType) {
-        throw new CantTranslateException
+        elems.map(e => bapa.mkSingleton(rec(e))).reduceLeft(bapa.mkUnion(_,_))
       } else {
         elems.foldLeft(z3.mkEmptySet(typeToSort(f.getType.asInstanceOf[SetType].base)))((ast,el) => z3.mkSetAdd(ast,rec(el)))
       }

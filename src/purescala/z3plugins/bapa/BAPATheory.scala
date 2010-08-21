@@ -9,10 +9,7 @@ import AST._
 import NormalForms.{simplify, rewriteSetRel, setVariables, purify}
 
 class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with VennRegions {
-  // def this() = this(new Z3Context(new Z3Config("MODEL" -> true)))
-  //def this() = this(new Z3Context(new Z3Config("MODEL" -> true, "RELEVANCY" -> 0)))
   setCallbacks(
-//     initSearch = true,
     reduceApp = true,
     finalCheck = true,
     push = true,
@@ -25,33 +22,32 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
     restart = true
   )
 
-// This makes the Theory Proxy print out all calls that are forwarded to the theory.
-  //showCallbacks(true)
+  // This makes the Theory Proxy print out all calls that are
+  // forwarded to the theory.
+  showCallbacks(true)
 
   /* Theory constructs */
-  
   val mkSetSort = mkTheorySort(z3.mkStringSymbol("SetSort"))
   val mkEmptySet = mkTheoryValue(z3.mkStringSymbol("EmptySet"), mkSetSort)
-  val mkIsSingleton = mkUnarySetfun("IsSingleton", z3.mkBoolSort)
+  val mkSingleton = mkTheoryFuncDecl(z3.mkStringSymbol("Singleton"), Seq(z3.mkIntSort), mkSetSort)
   val mkCard = mkUnarySetfun("Cardinality", z3.mkIntSort)
-  // val mkCardPred = mkTheoryFuncDecl(z3.mkStringSymbol("HasCardinality"), Seq(mkSetSort, z3.mkIntSort), z3.mkBoolSort)
-  val mkElementOf = mkTheoryFuncDecl(z3.mkStringSymbol("IsElementOf"), Seq(z3.mkIntSort, mkSetSort), z3.mkBoolSort)
-  val mkAsSingleton = mkTheoryFuncDecl(z3.mkStringSymbol("AsSingleton"), Seq(z3.mkIntSort), mkSetSort)
-  val mkAsElement = mkUnarySetfun("AsElement", z3.mkIntSort)
   val mkSubsetEq = mkBinarySetfun("SubsetEq", z3.mkBoolSort)
+  val mkElementOf = mkTheoryFuncDecl(z3.mkStringSymbol("IsElementOf"), Seq(z3.mkIntSort, mkSetSort), z3.mkBoolSort)
   val mkUnion = mkBinarySetfun("Union", mkSetSort)
   val mkIntersect = mkBinarySetfun("Intersect", mkSetSort)
   val mkComplement = mkUnarySetfun("Complement", mkSetSort)
-  val mkDomainSize = z3.mkFreshConst("DomainSize", z3.mkIntSort)
+
+  private[bapa] val mkDomainSize = z3.mkFreshConst("DomainSize", z3.mkIntSort)
+  private[bapa] val mkAsElement = mkUnarySetfun("AsElement", z3.mkIntSort)
 
   def mkDisjoint(set1: Z3AST, set2: Z3AST) =
     z3.mkEq(mkIntersect(set1, set2), mkEmptySet)
 
   private var freshCounter = 0
-  def mkConst(name: String) = mkTheoryConstant(z3.mkStringSymbol(name), mkSetSort)
+  def mkSetConst(name: String) = mkTheoryConstant(z3.mkStringSymbol(name), mkSetSort)
   def mkFreshConst(name: String) = {
     freshCounter += 1
-    mkConst(name + "." + freshCounter)
+    mkSetConst(name + "." + freshCounter)
   }
   
   private def mkUnarySetfun(name: String, rType: Z3Sort) =
@@ -60,14 +56,13 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
     mkTheoryFuncDecl(z3.mkStringSymbol(name), Seq(mkSetSort, mkSetSort), rType)
 
   /* Theory stack */
-  
   private val stack = new Stack[Universe]
   stack push new EmptyUniverse(mkDomainSize)
 
   /* Callbacks */
 
   def assertAxiom2(ast: Z3AST) {
-    //println("Asserting: " + ast)
+    println("Asserting: " + ast)
     assertAxiom(ast)
   }
 
@@ -93,13 +88,11 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
   }
 
   override def reset {
-    knownSetExprs = Nil
     axiomsToAssert.clear
     stack.clear
   }
 
   override def restart {
-    knownSetExprs = Nil
     axiomsToAssert.clear
     stack.clear
   }
@@ -232,22 +225,13 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
         val paTree = NaiveBapaToPaTranslator(bapaTree)
         assertAxiomEventually(z3.mkEq(treeToZ3(paTree), ast))
         assertAxiomEventually(z3.mkIff(z3.mkEq(ast, z3.mkInt(0, z3.mkIntSort)), z3.mkEq(args(0), mkEmptySet)))
+      case Z3AppAST(decl, args) if decl == mkSingleton =>
+        //XXXX
+        assertAxiomEventually(z3.mkEq(mkAsElement(ast), args(0)))
+        assertAxiomEventually(z3.mkEq(mkCard(ast), z3.mkInt(1, z3.mkIntSort)))
       case _ =>
      // ignore other functions
     }
-  }
-
-  override def initSearch : Unit = {
-    // Indicates that mkUnion is commutative
-    // val b1 = z3.mkBound(0, mkSetSort)
-    // val b2 = z3.mkBound(1, mkSetSort)
-    // val pattern = z3.mkPattern(mkUnion(b1, b2))
-    // val axiomTree = z3.mkEq(mkUnion(b1,b2),mkUnion(b2,b1))
-    // // TODO: make sure these symbols are unique.
-    // val bn1 = z3.mkIntSymbol(0)
-    // val bn2 = z3.mkIntSymbol(1)
-    // val axiom = z3.mkForAll(0, List(pattern), List((bn1, mkSetSort), (bn2, mkSetSort)), axiomTree)
-    // z3.assertCnstr(axiom)
   }
 
   // TODO: add reductions for union & inter (empty set) and compl (nnf ?)
@@ -266,25 +250,19 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
       } else {
         None
       }
-    } else if (fd == mkIsSingleton) {
-      if (args(0) == mkEmptySet) {
-        Some(z3.mkFalse)
-      } else {
-        None
-      }
+//    } else if (fd == mkIsSingleton) {
+//      if (args(0) == mkEmptySet) {
+//        Some(z3.mkFalse)
+//      } else {
+//        None
+//      }
     } else if (fd == mkElementOf) {
       val elem = args(0)
       val set  = args(1)
       if (set == mkEmptySet) {
         Some(z3.mkFalse)
       } else {
-        val singleton = z3.mkFreshConst("singleton", mkSetSort)
-        Some(z3.mkAnd(
-          mkIsSingleton(singleton),
-          z3.mkEq(mkAsSingleton(elem), singleton),
-          z3.mkEq(mkAsElement(singleton), elem),
-          mkSubsetEq(singleton, set)
-        ))
+        Some(mkSubsetEq(mkSingleton(elem), set))
       }
     } else {
       None
@@ -309,14 +287,12 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
     case Op(OR, ts) => z3.mkOr((ts map treeToZ3_rec):_*)
     case Op(NOT, Seq(t)) => z3.mkNot(treeToZ3_rec(t))
     case Op(IFF, Seq(t1, t2)) => z3.mkIff(treeToZ3_rec(t1), treeToZ3_rec(t2))
-    case Op(EQ, Seq(Op(CARD, Seq(t)), Lit(IntLit(1)))) => mkIsSingleton(treeToZ3_rec(t))
-    case Op(EQ, Seq(Lit(IntLit(1)), Op(CARD, Seq(t)))) => mkIsSingleton(treeToZ3_rec(t))
+//    case Op(EQ, Seq(Op(CARD, Seq(t)), Lit(IntLit(1)))) => mkIsSingleton(treeToZ3_rec(t))
+//    case Op(EQ, Seq(Lit(IntLit(1)), Op(CARD, Seq(t)))) => mkIsSingleton(treeToZ3_rec(t))
     case Op(EQ, Seq(t1, t2)) => z3.mkEq(treeToZ3_rec(t1), treeToZ3_rec(t2))
     case Op(LT, Seq(t1, t2)) => z3.mkLT(treeToZ3_rec(t1), treeToZ3_rec(t2))
     case Op(ADD, ts) => z3.mkAdd((ts map treeToZ3_rec):_*)
-    case Op(ITE, Seq(t1, t2, t3)) => z3.mkITE(treeToZ3_rec(t1), treeToZ3_rec(t2), treeToZ3_rec(t3))
     case Op(CARD, Seq(t)) => mkCard(treeToZ3_rec(t))
-//    case Op(CARD_PRED, Seq(s, t)) => mkCardPred(treeToZ3_rec(s), treeToZ3_rec(t))
     case Op(SETEQ, Seq(t1, t2)) => z3.mkEq(treeToZ3_rec(t1), treeToZ3_rec(t2))
     case Op(SUBSETEQ, Seq(t1, t2)) => mkSubsetEq(treeToZ3_rec(t1), treeToZ3_rec(t2))
     case Op(UNION, ts) => mkUnion((ts map treeToZ3_rec):_*)
@@ -326,26 +302,7 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
     case _ => error("Unsupported conversion from BAPA-tree to Z3AST :\n" + tree)
   }
 
-  private var knownSetExprs: List[Z3AST] = Nil
-  private def knownRepresentative(set: Z3AST) : Z3AST = {
-    // This can get slow in theory. I'd use a Set for inClass, but the hashing
-    // of Z3AST does not seem to work like it should. We need to check whether
-    // we can trust the C pointer to be a valid hash.
-    var inClass: List[Z3AST] = getEqClassMembers(set).toList
-   // println(" -- Equivalence class contains " + getEqClassMembers(set).toList)
-   // println(" -- List is " + knownSetExprs)
-
-    val result = knownSetExprs.find(inClass.contains(_)) match {
-      case Some(repr) => repr
-      case None => {
-        knownSetExprs = knownSetExprs ::: List(set)
-        set
-      }
-    }
-
-    // println("  -- Known representative for : " + set + " is : " + result)
-    result
-  }
+  def knownRepresentative(ast: Z3AST) : Z3AST = ast
 
   def z3ToTree(ast: Z3AST): Tree = z3.getASTKind(ast) match {
     case _ if ast == mkEmptySet => EmptySet
@@ -354,7 +311,7 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
     case Z3AppAST(decl, args) if decl == mkUnion => Op(UNION, args map z3ToTree)
     case Z3AppAST(decl, args) if decl == mkIntersect => Op(INTER, args map z3ToTree)
     case Z3AppAST(decl, args) if decl == mkComplement => Op(COMPL, args map z3ToTree)
-    case Z3AppAST(decl, args) if decl == mkIsSingleton => z3ToTree(args(0)).card === 1
+//    case Z3AppAST(decl, args) if decl == mkIsSingleton => z3ToTree(args(0)).card === 1
 //    case Z3AppAST(decl, args) if decl == mkCardPred => Op(EQ, Seq(Op(CARD, Seq(z3ToTree(args(0)))), IntSymbol(args(1))))
     case Z3AppAST(decl, args) if decl == mkCard => Op(CARD, Seq(z3ToTree(args(0))))
     case _ =>

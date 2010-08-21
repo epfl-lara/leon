@@ -55,8 +55,13 @@ trait VennRegions {
 
     def addSet(symbol: Symbol) = {
       val name = mkName(symbol)
-      if (setVariables contains name) this
-      else new ExtendedUniverse(name, this)
+      if (setVariables contains name) {
+        this
+      } else {
+        println("Adding set: " + symbol)
+        println("AKA       : " + name)
+        new ExtendedUniverse(name, this)
+      }
     }
     
     def addSets(symbols: Iterable[Symbol]) = {

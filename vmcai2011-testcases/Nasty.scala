@@ -103,5 +103,5 @@ object Nasty {
    && (objAlloc16 -- objAlloc30).size <= s241.size
     )
     objAlloc16 -- objAlloc
-  } ensuring(_.size < s142.size)
+  } ensuring(_.size <= s142.size)
 }

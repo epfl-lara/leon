@@ -27,7 +27,7 @@ object JustFormulas {
   def vc5_V(x: Int, y: Int, a: Set[Int], b: Set[Int]) : Boolean = {
     require(
       a.contains(f1(x))
-   && b.contains(f1(x))
+   && b.contains(f1(y))
    && x < y + 1
    && 2*y - 1 < 2*x
     )
@@ -36,7 +36,8 @@ object JustFormulas {
 
   def vc6_V(x: Int, y: Int, a: Set[Int], b: Set[Int]) : Boolean = {
     require(
-      f2(a).contains(x)
+      (!((a -- b).size == 0 && (b -- a).size == 0) || a == b)
+   && f2(a).contains(x)
    && f2(b).contains(y)
    && (a -- b) == Set.empty[Int]
    && (b -- a) == Set.empty[Int]
