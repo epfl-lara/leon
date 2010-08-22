@@ -7,8 +7,9 @@ import AST._
 trait VennRegions {
   val z3: Z3Context
   protected def assertAxiomEventually(ast: Z3AST): Unit
+  protected def assertAxiomEventually(tree: Tree): Unit
 
-  case class SetName(val name: String) {
+  case class SetName(name: String, sym: Symbol) {
     def complName = name.toLowerCase
     override def toString = name
   }
@@ -27,7 +28,7 @@ trait VennRegions {
   
   private def mkName(sym: Symbol) = {
     cachedNames getOrElse (sym, {
-      val name = SetName(('A' + namesCounter).toChar.toString)
+      val name = SetName(('A' + namesCounter).toChar.toString, sym)
       namesCounter += 1
       cachedNames(sym) = name
 //       println("*** New Set :  " + sym + " -> '" + name + "' ***")
@@ -143,6 +144,19 @@ trait VennRegions {
 //         println("*** " + old.ast + " := " + vr1.ast + " + " + vr2.ast)
       }
       _vennRegions
+    }
+    // (Ab = 0 & aB = 0) <=> A = B
+    {
+      val a = Var(setVar.sym)
+      for (oldSetVar <- parent.setVariables) {
+        val b = Var(oldSetVar.sym)
+//         println("******** LOOOL : " + (a seteq b))
+        val tree = (
+         (translate(a ** ~b) === 0) &&
+         (translate(~a ** b) === 0)
+        ) iff (a seteq b)
+        assertAxiomEventually(tree)
+      }
     }
   }
 }

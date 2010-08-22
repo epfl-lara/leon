@@ -86,6 +86,9 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
       axiomsToAssert ++= toPreserve
     }
   }
+  protected def assertAxiomEventually(tree: Tree) {
+    assertAxiomEventually(treeToZ3(tree))
+  }
 
   override def reset {
     axiomsToAssert.clear
