@@ -1,6 +1,5 @@
 package purescala.z3plugins.bapa
 
-// import scala.collection.mutable.{Stack,ArrayBuffer,HashSet,HashMap}
 import scala.collection.mutable.Stack
 import scala.collection.mutable.{Set => MutableSet}
 import scala.collection.immutable.{Map => ImmutableMap}
@@ -8,7 +7,7 @@ import z3.scala._
 import AST._
 import NormalForms.{simplify, rewriteSetRel, setVariables, purify}
 
-class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with VennRegions {
+class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with VennRegions with InclusionGraphs {
   setCallbacks(
     reduceApp = true,
     finalCheck = true,
@@ -38,6 +37,7 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
   val mkComplement = mkUnarySetfun("Complement", mkSetSort)
 
   private[bapa] val mkDomainSize = z3.mkFreshConst("DomainSize", z3.mkIntSort)
+  // This function returns the single element for singletons, and is uninterpreted otherwise.
   private[bapa] val mkAsElement = mkUnarySetfun("AsElement", z3.mkIntSort)
 
   def mkDisjoint(set1: Z3AST, set2: Z3AST) =
@@ -56,8 +56,10 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
     mkTheoryFuncDecl(z3.mkStringSymbol(name), Seq(mkSetSort, mkSetSort), rType)
 
   /* Theory stack */
-  private val stack = new Stack[Universe]
-  stack push new EmptyUniverse(mkDomainSize)
+  private val universeStack = new Stack[Universe]
+  universeStack push new EmptyUniverse(mkDomainSize)
+  private val inclusionStack = new Stack[InclusionGraph]
+  inclusionStack push EmptyInclusionGraph()
 
   /* Callbacks */
 
@@ -92,30 +94,41 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
 
   override def reset {
     axiomsToAssert.clear
-    stack.clear
+    universeStack.clear
+    inclusionStack.clear
   }
 
   override def restart {
     axiomsToAssert.clear
-    stack.clear
+    universeStack.clear
+    inclusionStack.clear
   }
 
   private var pushLevel = 0
   override def push {
     pushLevel = pushLevel + 1
     //assertAllRemaining
-    stack push stack.head
+    universeStack push universeStack.head
+    inclusionStack push inclusionStack.head
   }
 
   override def pop { 
     pushLevel = pushLevel - 1
     //assertAllRemaining
-    stack.pop
+    universeStack.pop
+    inclusionStack.pop
   }
 
   override def newAssignment(ast: Z3AST, polarity: Boolean) {
     assertAllRemaining
-//     println("*** new App : " + ast + " is set to " + polarity)
+  
+    if(polarity) {
+      z3.getASTKind(ast) match {
+        case Z3AppAST(decl, args) if decl == mkSubsetEq => inclusionStack.push(inclusionStack.pop.newSubsetEq(args(0), args(1)))
+        case _ => ;
+      }
+    }
+
     val assumption = if (polarity) ast else z3.mkNot(ast)
     val bapaTree = if (polarity) z3ToTree(ast) else !z3ToTree(ast)
     val paTree = NaiveBapaToPaTranslator(bapaTree)
@@ -129,6 +142,7 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
     assertAllRemaining
 
     if(z3.getSort(ast1) == mkSetSort) {
+      inclusionStack.push(inclusionStack.pop.newEq(ast1, ast2))
       // TODO: if either ast1 or ast2 is a variable => don't add it/remove it from the stack and remember congruence class
 //       println("*** new Eq : " + ast1 + "  ==  " + ast2)
       
@@ -327,12 +341,12 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
 
   def NaiveBapaToPaTranslator(tree0: Tree) = {
     def rec(tree: Tree): Tree = tree match {
-      case Op(CARD, Seq(set)) => stack.head translate set
+      case Op(CARD, Seq(set)) => universeStack.head translate set
       case Op(op, ts) => Op(op, ts map rec)
       case Var(_) | Lit(_) => tree
     }
     val tree1 = simplify(tree0)
-    stack.push( stack.pop addSets setVariables(tree1))
+    universeStack.push( universeStack.pop addSets setVariables(tree1))
     simplify(rec(simplify(rewriteSetRel(tree1))))
   }
   
