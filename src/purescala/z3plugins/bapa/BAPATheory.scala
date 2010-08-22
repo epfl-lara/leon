@@ -24,7 +24,7 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
 
   // This makes the Theory Proxy print out all calls that are
   // forwarded to the theory.
-  showCallbacks(true)
+  // showCallbacks(true)
 
   /* Theory constructs */
   val mkSetSort = mkTheorySort(z3.mkStringSymbol("SetSort"))
@@ -62,7 +62,7 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
   /* Callbacks */
 
   def assertAxiom2(ast: Z3AST) {
-    println("Asserting: " + ast)
+    // println("Asserting: " + ast)
     assertAxiom(ast)
   }
 

@@ -59,8 +59,8 @@ trait VennRegions {
       if (setVariables contains name) {
         this
       } else {
-        println("Adding set: " + symbol)
-        println("AKA       : " + name)
+        // println("Adding set: " + symbol)
+        // println("AKA       : " + name)
         new ExtendedUniverse(name, this)
       }
     }

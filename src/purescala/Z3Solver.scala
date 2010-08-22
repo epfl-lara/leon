@@ -22,7 +22,6 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   )
   Z3Global.toggleWarningMessages(true)
 
-  // we restart Z3 for each new program
   private var z3: Z3Context = null
   private var bapa: BAPATheory = null
   private var program: Program = null
@@ -49,6 +48,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     bapa = new BAPATheory(z3)
     counter = 0
     prepareSorts
+    prepareFunctions
   }
 
   private var counter = 0

@@ -45,4 +45,21 @@ object JustFormulas {
     )
     x != y
   } ensuring(!_)
+
+  def vc7_I(a: Set[Int], b: Set[Int]) : Boolean = {
+    require(
+      a == Set(1, 2, 3)
+   && (b subsetOf a)
+    )
+    a.contains(b.size)
+  } ensuring(_ == true)
+
+  def vc8_V(a: Set[Int], b: Set[Int]) : Boolean = {
+    require(
+      a == Set(1, 2, 3)
+   && (b subsetOf a)
+   && b != Set.empty[Int]
+    )
+    a.contains(b.size)
+  } ensuring(_ == true)
 }
