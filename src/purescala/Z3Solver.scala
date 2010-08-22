@@ -32,6 +32,14 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
 
   override def setProgram(prog: Program) : Unit = {
     program = prog
+    // commented out: Z3 is now restarted for each VC... Could be slow if we
+    // have axioms, but we'll make sure we don't count that in the timing..
+    // The main advantage is that Z3 is not overwhelmed with old axioms (in
+    // BAPA theory)
+    // restartZ3
+  }
+
+  private def restartZ3 : Unit = {
     if(neverInitialized) {
       neverInitialized = false
     } else {
@@ -39,13 +47,12 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     }
     z3 = new Z3Context(z3cfg)
     bapa = new BAPATheory(z3)
-    // z3.assertCnstr(z3.mkEq(bapa.mkCard(bapa.mkEmptySet), z3.mkInt(0, z3.mkIntSort)))
+    counter = 0
     prepareSorts
-    prepareFunctions
   }
 
+  private var counter = 0
   private object nextIntForSymbol {
-    private var counter = 0
 
     def apply() : Int = {
       val res = counter
@@ -262,6 +269,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   override def isUnsat(vc: Expr) = decide(vc, false)
   def solve(vc: Expr) = decide(vc, true)
   def decide(vc: Expr, forValidity: Boolean) : Option[Boolean] = {
+    restartZ3
     abstractedFormula = false
 
     if(neverInitialized) {

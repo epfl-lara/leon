@@ -115,7 +115,7 @@ class Analysis(val program: Program) {
         line._4 
       }
       val dashes : String = "=" * (col1wdth + col2wdth + col3wdth + col4wdth)
-      reporter.info("Summary:\n" + dashes + "\n" + verifiedVCs.map(mk1line(_)).mkString("\n") + "\n" + dashes)
+      reporter.info("Summary:\n" + dashes + "\n" + verifiedVCs.sortWith(_._1 < _._1).map(mk1line(_)).mkString("\n") + "\n" + dashes)
     } else {
       reporter.info("No verification conditions were generated.")
     }
