@@ -10,6 +10,7 @@ import TypeTrees._
 import z3plugins.bapa.BAPATheory
 
 class Z3Solver(reporter: Reporter) extends Solver(reporter) {
+  import Settings.useBAPA
   val description = "Z3 Solver"
   override val shortDescription = "Z3"
 
@@ -45,7 +46,8 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
       z3.delete
     }
     z3 = new Z3Context(z3cfg)
-    bapa = new BAPATheory(z3)
+    // z3.traceToStdout
+    if(useBAPA) bapa = new BAPATheory(z3)
     counter = 0
     prepareSorts
     prepareFunctions
@@ -244,7 +246,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
         adtSorts(cd)
       }
     }
-    case IntSetType => bapa.mkSetSort
+    case IntSetType if(useBAPA) => bapa.mkSetSort
     case SetType(base) => setSorts.get(base) match {
       case Some(s) => s
       case None => {
@@ -372,41 +374,41 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
         abstractedFormula = true
         z3.mkApp(functionDefToDef(fd), args.map(rec(_)): _*)
       }
-      case e @ EmptySet(_) => if(e.getType == IntSetType) {
+      case e @ EmptySet(_) => if(useBAPA && e.getType == IntSetType) {
         bapa.mkEmptySet
       } else {
         z3.mkEmptySet(typeToSort(e.getType.asInstanceOf[SetType].base))
       }
       case SetEquals(s1,s2) => z3.mkEq(rec(s1), rec(s2))
-      case ElementOfSet(e, s) if s.getType == IntSetType => {
+      case ElementOfSet(e, s) if(useBAPA && s.getType == IntSetType) => {
         bapa.mkElementOf(rec(e), rec(s))
       }
-      case SubsetOf(s1,s2) => if(s1.getType == IntSetType) {
+      case SubsetOf(s1,s2) => if(useBAPA && s1.getType == IntSetType) {
         bapa.mkSubsetEq(rec(s1), rec(s2))
       } else {
         z3.mkSetSubset(rec(s1), rec(s2))
       } 
-      case SetIntersection(s1,s2) => if(s1.getType == IntSetType) {
+      case SetIntersection(s1,s2) => if(useBAPA && s1.getType == IntSetType) {
         bapa.mkIntersect(rec(s1), rec(s2)) 
       } else {
         z3.mkSetIntersect(rec(s1), rec(s2))
       }
-      case SetUnion(s1,s2) => if(s1.getType == IntSetType) {
+      case SetUnion(s1,s2) => if(useBAPA && s1.getType == IntSetType) {
         bapa.mkUnion(rec(s1), rec(s2))
       } else {
         z3.mkSetUnion(rec(s1), rec(s2))
       }
-      case SetDifference(s1,s2) => if(s1.getType == IntSetType) {
+      case SetDifference(s1,s2) => if(useBAPA && s1.getType == IntSetType) {
         bapa.mkIntersect(rec(s1), bapa.mkComplement(rec(s2))) 
       } else {
         z3.mkSetDifference(rec(s1), rec(s2))
       }
-      case f @ FiniteSet(elems) => if(f.getType == IntSetType) {
+      case f @ FiniteSet(elems) => if(useBAPA && f.getType == IntSetType) {
         elems.map(e => bapa.mkSingleton(rec(e))).reduceLeft(bapa.mkUnion(_,_))
       } else {
         elems.foldLeft(z3.mkEmptySet(typeToSort(f.getType.asInstanceOf[SetType].base)))((ast,el) => z3.mkSetAdd(ast,rec(el)))
       }
-      case SetCardinality(s) if s.getType == IntSetType => {
+      case SetCardinality(s) if (useBAPA && s.getType == IntSetType) => {
         bapa.mkCard(rec(s))
       }
       case _ => {

@@ -64,9 +64,19 @@ object Trees {
     def expressions = List(guard, rhs)
   }
 
-  sealed abstract class Pattern
-  case class InstanceOfPattern(binder: Option[Identifier], classTypeDef: ClassTypeDef) extends Pattern // c: Class
-  case class WildcardPattern(binder: Option[Identifier]) extends Pattern // c @ _
+  sealed abstract class Pattern {
+    val subPatterns: Seq[Pattern]
+    val binder: Option[Identifier]
+
+    private def subBinders = subPatterns.map(_.binders).foldLeft[Set[Identifier]](Set.empty)(_ ++ _)
+    def binders: Set[Identifier] = subBinders ++ (if(binder.isDefined) Set(binder.get) else Set.empty)
+  }
+  case class InstanceOfPattern(binder: Option[Identifier], classTypeDef: ClassTypeDef) extends Pattern { // c: Class
+    val subPatterns = Seq.empty
+  }
+  case class WildcardPattern(binder: Option[Identifier]) extends Pattern { // c @ _
+    val subPatterns = Seq.empty
+  } 
   case class CaseClassPattern(binder: Option[Identifier], caseClassDef: CaseClassDef, subPatterns: Seq[Pattern]) extends Pattern
   // case class ExtractorPattern(binder: Option[Identifier], 
   //   		      extractor : ExtractorTypeDef, 
@@ -559,6 +569,38 @@ object Trees {
 
     val res = rec(expr)
     (res, somethingChanged)
+  }
+
+  // rewrites pattern-matching expressions to use fresh variables for the binders
+  def freshenLocals(expr: Expr) : Expr = {
+    def rewritePattern(p: Pattern, sm: Map[Identifier,Identifier]) : Pattern = p match {
+      case InstanceOfPattern(Some(b), ctd) => InstanceOfPattern(Some(sm(b)), ctd)
+      case WildcardPattern(Some(b)) => WildcardPattern(Some(sm(b)))
+      case CaseClassPattern(ob, ccd, sps) => CaseClassPattern(ob.map(sm(_)), ccd, sps.map(rewritePattern(_, sm)))
+      case other => other
+    }
+
+    def freshenCase(cse: MatchCase) : MatchCase = {
+      val allBinders: Set[Identifier] = cse.pattern.binders
+      val subMap: Map[Identifier,Identifier] = Map(allBinders.map(i => (i, FreshIdentifier(i.name, true).setType(i.getType))).toSeq : _*)
+      val subVarMap: Map[Expr,Expr] = subMap.map(kv => (Variable(kv._1) -> Variable(kv._2)))
+      
+      cse match {
+        case SimpleCase(pattern, rhs) => SimpleCase(rewritePattern(pattern, subMap), replace(subVarMap, rhs))
+        case GuardedCase(pattern, guard, rhs) => GuardedCase(rewritePattern(pattern, subMap), replace(subVarMap, guard), replace(subVarMap, rhs))
+      }
+    }
+
+    def applyToTree(e : Expr) : Option[Expr] = e match {
+      case m @ MatchExpr(s, cses) => Some(MatchExpr(s, cses.map(freshenCase(_))).setType(m.getType))
+      case l @ Let(i,e,b) => {
+        val newID = FreshIdentifier(i.name, true).setType(i.getType)
+        Some(Let(newID, e, replace(Map(Variable(i) -> Variable(newID)), b)))
+      }
+      case _ => None
+    }
+
+    searchAndReplaceDFS(applyToTree)(expr)
   }
 
   // convert describes how to compute a value for the leaves (that includes
