@@ -13,7 +13,7 @@ object IntListProperties {
   def content(list: IntList) : Set[Int] = (list match {
     case Nil() => Set.empty[Int]
     case Cons(x, xs) => Set(x) ++ content(xs)
-  }) //ensuring(_.size <= size(list))
+  }) ensuring(_.size <= size(list))
 
   def removeDuplicates(list: IntList) : IntList = (list match {
     case Nil() => Nil()
