@@ -19,6 +19,7 @@ object IntListProperties {
     case Nil() => Nil()
     case Cons(x, xs) => Cons(x, removeDuplicates(removeFrom(x, xs)))
   }) ensuring(newList => content(newList) == content(list))
+
   def removeFrom(v: Int, list: IntList) : IntList = (list match {
     case Nil() => Nil()
     case Cons(x, xs) => {
