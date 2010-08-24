@@ -91,7 +91,7 @@ object Solver {
       system.foldLeft(Seq[Equals]())((initEqs, eq) => eq match {
           case Equals(v, s) => {
             val ns = Manip.vars(s).foldLeft(s)((a, v) => subst(a, VariableType(v), initEqs))
-            initEqs :+ Equals(v, ns)
+            initEqs :+ Equals(v, simplify(ns))
           }
       })
     }

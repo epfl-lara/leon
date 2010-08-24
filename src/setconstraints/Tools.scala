@@ -15,7 +15,7 @@ object Tools {
   }
 
   def unzip3[A,B,C](seqs: Seq[(A,B,C)]): (Seq[A],Seq[B],Seq[C]) = 
-    seqs.foldLeft((Seq[A](), Seq[B](), Seq[C]()))((a, t) => (t._1 +: a._1, t._2 +: a._2, t._3 +: a._3))
+    seqs.foldLeft((Seq[A](), Seq[B](), Seq[C]()))((a, t) => (a._1 :+ t._1, a._2 :+ t._2, a._3 :+ t._3))
 
   def unzip3[A,B,C](sets: Set[(A,B,C)]): (Set[A],Set[B],Set[C]) = 
       sets.foldLeft((Set[A](), Set[B](), Set[C]()))((a, t) => (a._1 + t._1, a._2 + t._2, a._3 + t._3))

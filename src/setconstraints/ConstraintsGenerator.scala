@@ -57,7 +57,7 @@ object ConstraintsGenerator {
           }
         })
         val ccnstr = Equals(ConstructorType(ccd.id.name, subConsType), cvt)
-        (cvt, nCnstrs + ccnstr, newMap)
+        (cvt, nCnstrs + ccnstr, newMap ++ (binder match {case Some(id) => Map(id -> cvt) case None => Map()}))
       }
     }
 
@@ -92,9 +92,10 @@ object ConstraintsGenerator {
           (Set[Relation](Equals(rt, exprVarType)), Map[Expr, VariableType]())
         }
         case CaseClass(ccd, args) => {
-          val (argsType, cnstrts, maps) = unzip3(args.map(e => constraintsExpr0(e, context)))
+          val test = args.map(e => constraintsExpr0(e, context))
+          val (argsType, cnstrts, maps) = unzip3(test)
           val fMap = maps.foldLeft(Map[Expr, VariableType]())((a, m) => a ++ m)
-          val fcnstrts = cnstrts.toSet. flatten + Equals(ConstructorType(ccd.id.name, argsType), exprVarType)
+          val fcnstrts = cnstrts.toSet.flatten + Equals(ConstructorType(ccd.id.name, argsType), exprVarType)
           (fcnstrts, fMap)
         }
         case _ => error("Not yet supported: " + expr)
@@ -159,7 +160,7 @@ object ConstraintsGenerator {
     val argsID = fd.args.map(vd => vd.id)
     val context = argsID.zip(argsT).foldLeft(Map[Identifier, VariableType]())((acc, el) => acc + el)
     val (bodyType, cnstrts, map) = constraintsExpr(fd.body.get, context, funVars, traits, constructors)
-    (cnstrts + Include(bodyType, funVars(fd)._2), map)
+    (cnstrts + Equals(bodyType, funVars(fd)._2), map)
   }
 
   def constraintsTypes(cls: Seq[ClassTypeDef], constructors: Map[CaseClassDef, ConstructorType], traits: Map[AbstractClassDef, VariableType]): Set[Relation] = {

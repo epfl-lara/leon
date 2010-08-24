@@ -11,7 +11,6 @@ class Main(reporter: Reporter) extends Analyser(reporter) {
   override val shortDescription = "Set constraints"
 
   def analyse(pgm: Program) : Unit = {
-
     val (cnstr, traits, constructors) = ConstraintsGenerator(pgm)
     reporter.info("The constraints are: " + PrettyPrinter(cnstr))
     val solvedSystem = Solver.solve(cnstr, constructors)
