@@ -4,6 +4,8 @@ import setconstraints.Trees._
 
 object PrettyPrinter {
 
+  def apply(rels: Set[Relation]) = ppFormula(And(rels.toSeq))
+
   def apply(f: Formula): String = ppFormula(f)
 
   def apply(st: SetType): String = ppSetType(st)
@@ -11,7 +13,7 @@ object PrettyPrinter {
 //  def apply(fp: FixPoint): String = ppFixPoint(fp)
 
   private def ppFormula(f: Formula): String = f match {
-    case And(fs) => fs.map(ppFormula).mkString("(  ", "\n \u2227 ", ")")
+    case And(fs) => fs.map(ppFormula).mkString("(\n  ", "\n \u2227 ", ")")
     case Include(s1, s2) => ppSetType(s1) + " \u2286 " + ppSetType(s2)
     case Equals(s1, s2) => ppSetType(s1) + " = " + ppSetType(s2)
   }
@@ -19,7 +21,11 @@ object PrettyPrinter {
   private def ppSetType(st: SetType): String = st match {
     case ConstructorType(name, Seq()) => name
     case ConstructorType(name, sts) => name + sts.map(ppSetType).mkString("(", ", ", ")")
+    case UnionType(Seq()) => "0"
+    case UnionType(Seq(s)) => ppSetType(s)
     case UnionType(sts) => sts.map(ppSetType).mkString("(", " \u222A ", ")")
+    case IntersectionType(Seq()) => "1"
+    case IntersectionType(Seq(s)) => ppSetType(s)
     case IntersectionType(sts) => sts.map(ppSetType).mkString("(", " \u2229 ", ")")
     case ComplementType(s) => "\u00AC" + ppSetType(s)
     case FunctionType(s1, s2) => "(" + ppSetType(s1) + " --> " + ppSetType(s2) + ")"

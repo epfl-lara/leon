@@ -13,7 +13,7 @@ object CnstrtGen {
                 typeVars: Map[ClassTypeDef, VariableType],
                 funVars: Map[FunDef, (Seq[VariableType], VariableType)],
                 cl2adt: Map[ClassTypeDef, SetType]
-              ): Formula = {
+              ): Set[Relation] = {
 
     def unzip3[A,B,C](seqs: Seq[(A,B,C)]): (Seq[A],Seq[B],Seq[C]) = 
       seqs.foldLeft((Seq[A](), Seq[B](), Seq[C]()))((a, t) => (t._1 +: a._1, t._2 +: a._2, t._3 +: a._3))
@@ -101,6 +101,10 @@ object CnstrtGen {
       caseClasses.map(cc => Include(cl2adt(cc), cl2adt(cc.parent.get)))
     }
 
+    def propagateEq(cnstrts: Set[Relation]): Set[Relation] = {
+      null
+    }
+
     val cnstrtsTypes = cnstrTypeHierarchy(pgm)
 
     val funs = pgm.definedFunctions
@@ -108,7 +112,7 @@ object CnstrtGen {
       val (rels, m) = cnstrFun(f)
       (a._1 ++ rels, a._2 ++ m)
     })
-    And(cnstrtsTypes ++ cnstrtsFunctions)
+    (cnstrtsTypes ++ cnstrtsFunctions).toSet
   }
 
 }
