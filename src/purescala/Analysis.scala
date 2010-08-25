@@ -40,7 +40,7 @@ class Analysis(val program: Program) {
 
     solverExtensions.foreach(_.setProgram(program))
 
-    for(funDef <- program.definedFunctions) if (Settings.functionsToAnalyse.isEmpty || Settings.functionsToAnalyse.contains(funDef.id.name)) {
+    for(funDef <- program.definedFunctions.toList.sortWith((fd1,fd2) => fd1.id.name < fd2.id.name)) if (Settings.functionsToAnalyse.isEmpty || Settings.functionsToAnalyse.contains(funDef.id.name)) {
       analysedFunctions += funDef.id.name
       if(funDef.body.isDefined) {
         val vc = postconditionVC(funDef)
