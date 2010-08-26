@@ -52,4 +52,14 @@ object SanityChecks {
     A
   } ensuring {_ != B}
 
+  def vc7(A: Set[Int], B: Set[Int], C: Set[Int]) = {
+    require(
+       A.size == 1
+    && B.size == 1
+    && C.size == 1
+    && (C -- A).size == 0
+    && (C -- B).size == 0
+    )
+    A ** B
+  } ensuring(_.size == 1)
 }

@@ -284,7 +284,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
       case Some(z3f) => {
         reporter.info("Z3 Formula:")
         reporter.info(z3f)
-        z3.push
+        //z3.push
         z3.assertCnstr(z3f)
         //z3.print
         val actualResult = (z3.checkAndGetModel() match {
@@ -305,7 +305,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
             None
           }
         })
-        z3.pop(1) 
+        //z3.pop(1) 
         actualResult
       }
     }
