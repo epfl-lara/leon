@@ -1,13 +1,12 @@
 package purescala.z3plugins.bapa
 
-import scala.collection.mutable.HashMap
+import scala.collection.mutable.{ArrayBuffer,HashMap}
 import z3.scala.{Z3Context, Z3AST, Z3Theory}
 import AST._
 
 trait VennRegions {
   val z3: Z3Context
-  protected def assertAxiomEventually(ast: Z3AST): Unit
-  protected def assertAxiomEventually(tree: Tree): Unit
+  protected def assertAxiomSafe(ast: Z3AST): Unit
 
   case class SetName(name: String, sym: Symbol) {
     def complName = name.toLowerCase
@@ -53,14 +52,16 @@ trait VennRegions {
   sealed abstract class Universe {
     val setVariables: Seq[SetName]
     val vennRegions: Array[VennRegion]
-
+    
+    def variables = setVariables map {_.sym}
+    
     def addSet(symbol: Symbol) = {
       val name = mkName(symbol)
       if (setVariables contains name) {
         this
       } else {
-        // println("Adding set: " + symbol)
-        // println("AKA       : " + name)
+//         println("Adding set: " + symbol)
+//         println("AKA       : " + name)
         new ExtendedUniverse(name, this)
       }
     }
@@ -70,12 +71,12 @@ trait VennRegions {
       for (sym <- symbols) universe = universe addSet sym
       universe
     }
-
+    
     def translate(tree: Tree): Tree = {
       val regions = translate0(tree).toSeq.sortWith{_ < _} map {i => vennRegions(i).toTree}
       if (regions.size > 0) Op(ADD, regions) else 0
     }
-
+    
     private def translate0(tree: Tree): Set[Int] = tree match {
       case Lit(EmptySetLit) =>
         Set.empty
@@ -106,22 +107,26 @@ trait VennRegions {
       case _ =>
         error("Not a simplified set expression : " + tree)
     }
+
+    def assertAllAxioms: Unit
   }
 
   class EmptyUniverse(val domainSize: Z3AST) extends Universe {
     val setVariables = Nil
     val vennRegions = Array(VennRegion("UnivRegion", domainSize))
+    def assertAllAxioms { }
   }
 
   class ExtendedUniverse(setVar: SetName, val parent: Universe) extends Universe {
     val setVariables = parent.setVariables :+ setVar
-    val vennRegions = {
+    val (vennRegions, axioms) = {
       if (setVariables.size > 16) {
         println("WARNING: Creating venn regions for more than 16 set variables (" + setVariables.size + " variables).")
 //         error("More than 16 set variables")
       }
       val n = parent.vennRegions.size
       val _vennRegions = new Array[VennRegion](2 * n)
+      val _axioms = new ArrayBuffer[Z3AST](3 * n)
       
       for (i <- 0 until n) {
         val old = parent.vennRegions(i)
@@ -129,22 +134,29 @@ trait VennRegions {
         val vr2 = mkRegion(setVariables, i + n)
         _vennRegions(i) = vr1
         _vennRegions(i + n) = vr2
-        val axiom1 = z3.mkEq(old.ast, z3.mkAdd(vr1.ast, vr2.ast))
-        val axiom2 = z3.mkGE(vr1.ast, mkZero)
-        val axiom3 = z3.mkGE(vr2.ast, mkZero)
+        _axioms += z3.mkEq(old.ast, z3.mkAdd(vr1.ast, vr2.ast))
+        _axioms += z3.mkGE(vr1.ast, mkZero)
+        _axioms += z3.mkGE(vr2.ast, mkZero)
 //         val axiom = z3.mkAnd(axiom1, axiom2, axiom3)
 //         assertAxiom(axiom)
 //         println(axiom)
-        assertAxiomEventually(axiom1)
-        assertAxiomEventually(axiom2)
-        assertAxiomEventually(axiom3)
+//         assertAxiomEventually(axiom1)
+//         assertAxiomEventually(axiom2)
+//         assertAxiomEventually(axiom3)
 //         println(axiom1)
 //         println(axiom2)
 //         println(axiom3)
 //         println("*** " + old.ast + " := " + vr1.ast + " + " + vr2.ast)
       }
-      _vennRegions
+      (_vennRegions, _axioms.toArray)
     }
+    assertAllAxioms
+
+    def assertAllAxioms {
+      parent.assertAllAxioms
+      axioms foreach assertAxiomSafe
+    }
+    /*
     // (Ab = 0 & aB = 0) <=> A = B
     {
       val a = Var(setVar.sym)
@@ -158,6 +170,7 @@ trait VennRegions {
         assertAxiomEventually(tree)
       }
     }
+    */
   }
 }
 

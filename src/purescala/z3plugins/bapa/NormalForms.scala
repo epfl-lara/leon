@@ -4,12 +4,13 @@ import z3.scala.Z3Context
 import AST._
 
 object NormalForms {
-
   def boolVariables(tree: Tree) = variables(tree, _ == BoolType)
+
   def intVariables(tree: Tree) = variables(tree, _ == IntType)
+
   def setVariables(tree: Tree) = variables(tree, _ == SetType)
-  
-  private def variables(tree0: Tree, pred: Type => Boolean) = {
+
+  private def variables(tree0: Tree, pred: Type => Boolean): Set[Symbol] = {
     val set = new scala.collection.mutable.HashSet[Symbol]
     def rec(tree: Tree): Unit = tree match {
       case Var(sym) if pred(sym.typ) => set += sym
@@ -57,11 +58,11 @@ object NormalForms {
     case Op(COMPL, Seq(Op(INTER, ts))) => simplify(Op(UNION, ts map {~_}))
     case Op(COMPL, Seq(Op(UNION, ts))) => simplify(Op(INTER, ts map {~_}))
     case Op(CARD, Seq(Lit(EmptySetLit))) => 0
-//    case Op(ITE, Seq(c, t, e)) => simplify(c) match {
-//      case Lit(TrueLit) => simplify(t)
-//      case Lit(FalseLit) => simplify(e)
-//      case cond => cond ifThenElse (simplify(t), simplify(e))
-//    }
+    //    case Op(ITE, Seq(c, t, e)) => simplify(c) match {
+    //      case Lit(TrueLit) => simplify(t)
+    //      case Lit(FalseLit) => simplify(e)
+    //      case cond => cond ifThenElse (simplify(t), simplify(e))
+    //    }
     case Op(ADD, ts) =>
       var intPart = 0
       val acc = new scala.collection.mutable.ListBuffer[Tree]
@@ -105,20 +106,20 @@ object NormalForms {
 
 
   def purify(z3: Z3Context, tree0: Tree) = tree0
-// Used to be that this replaced the cardinality function with the cardinality operator...
-//  def purify(z3: Z3Context, tree0: Tree) = {
-//    var defs: Seq[Tree] = Nil
-//    def rec(tree: Tree): Tree = tree match {
-//      case Op(EQ, Seq(Op(CARD, Seq(s)), t)) => Op(CARD_PRED, Seq(rec(s), rec(t)))
-//      case Op(EQ, Seq(t, Op(CARD, Seq(s)))) => Op(CARD_PRED, Seq(rec(s), rec(t)))
-//      case Op(CARD, Seq(s)) =>
-//        val t = Var(IntSymbol(z3.mkFreshConst("pure", z3.mkIntSort)))
-//        defs = defs :+ Op(CARD_PRED, Seq(rec(s), t))
-//        t
-//      case Op(op, ts) => Op(op, ts map rec)
-//      case Var(_) | Lit(_) => tree
-//    }
-//    val tree1 = rec(tree0)
-//    if (defs.size > 0) Op(AND, defs :+ tree1) else tree1
-//  }
+  // Used to be that this replaced the cardinality function with the cardinality operator...
+  //  def purify(z3: Z3Context, tree0: Tree) = {
+  //    var defs: Seq[Tree] = Nil
+  //    def rec(tree: Tree): Tree = tree match {
+  //      case Op(EQ, Seq(Op(CARD, Seq(s)), t)) => Op(CARD_PRED, Seq(rec(s), rec(t)))
+  //      case Op(EQ, Seq(t, Op(CARD, Seq(s)))) => Op(CARD_PRED, Seq(rec(s), rec(t)))
+  //      case Op(CARD, Seq(s)) =>
+  //        val t = Var(IntSymbol(z3.mkFreshConst("pure", z3.mkIntSort)))
+  //        defs = defs :+ Op(CARD_PRED, Seq(rec(s), t))
+  //        t
+  //      case Op(op, ts) => Op(op, ts map rec)
+  //      case Var(_) | Lit(_) => tree
+  //    }
+  //    val tree1 = rec(tree0)
+  //    if (defs.size > 0) Op(AND, defs :+ tree1) else tree1
+  //  }
 }
