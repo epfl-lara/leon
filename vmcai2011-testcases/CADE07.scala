@@ -35,6 +35,67 @@ object CADE07 {
     listContent ++ Set(x)
   } ensuring(_.size <= listContent.size + 1)
 
+  def vc3a(x: Int, a: Int, b: Int, alloc: Set[Int], listContent: Set[Int]) : Set[Int] = {
+    require(
+      listContent.subsetOf(alloc)
+   && alloc.contains(a)
+   && alloc.contains(b)
+    )
+    listContent ++ Set(x)
+  } ensuring(_.size <= listContent.size + 1)
+
+  def vc3b(x: Int, a: Int, b: Int, alloc: Set[Int], listContent: Set[Int]) : Set[Int] = {
+    require(
+      listContent.subsetOf(alloc)
+   && alloc.contains(a)
+   && alloc.contains(b)
+    )
+    listContent ++ Set(x)
+  } ensuring(_.size == listContent.size + 1)
+
+  def vc4(content: Set[Int], alloc: Set[Int], x1: Int, x2: Int, x3: Int) : Set[Int] = {
+    require(
+      content.subsetOf(alloc)
+   && !alloc.contains(x1)
+   && !(alloc ++ Set(x1)).contains(x2)
+   && !(alloc ++ Set(x1, x2)).contains(x3)
+    )
+    content ++ Set(x1, x2, x3)
+  } ensuring(_.size == content.size + 3)
+
+  def vc4b(content: Set[Int], alloc: Set[Int], x1: Int, x2: Int, x3: Int) : Set[Int] = {
+    require(
+      content.subsetOf(alloc)
+   && !alloc.contains(x1)
+   && !alloc.contains(x2)
+   && !(alloc ++ Set(x1, x2)).contains(x3)
+    )
+    content ++ Set(x1, x2, x3)
+  } ensuring(_.size == content.size + 3)
+
+  def vc5(content: Set[Int], alloc0: Set[Int], x1: Int, alloc1: Set[Int], x2: Int, alloc2: Set[Int], x3: Int) : Set[Int] = {
+    require(
+      content.subsetOf(alloc0)
+   && !alloc0.contains(x1)
+   && (alloc0 ++ Set(x1)).subsetOf(alloc1)
+   && !alloc1.contains(x2)
+   && (alloc1 ++ Set(x2)).subsetOf(alloc2)
+   && !alloc2.contains(x3)
+    )
+    content ++ Set(x1, x2, x3)
+  } ensuring(_.size == content.size + 3)
+
+  def vc5b(content: Set[Int], alloc0: Set[Int], x1: Int, alloc1: Set[Int], x2: Int, alloc2: Set[Int], x3: Int) : Set[Int] = {
+    require(
+      content.subsetOf(alloc0)
+   && (alloc0 ++ Set(x1)).subsetOf(alloc1)
+   && !alloc1.contains(x2)
+   && (alloc1 ++ Set(x2)).subsetOf(alloc2)
+   && !alloc2.contains(x3)
+    )
+    content ++ Set(x1, x2, x3)
+  } ensuring(_.size == content.size + 3)
+
   def vc6(x: Int, c: Set[Int], c1: Set[Int], alloc0: Set[Int], alloc1: Set[Int], alloc2: Set[Int]) : Set[Int] = {
     require(
       c.contains(x)
