@@ -1,7 +1,6 @@
 import scala.collection.immutable.Set
 
 object SanityChecks {
-  
   // These are just to provide some "uninterpreted function symbols"
   // Use the option -P:funcheck:tolerant to avoid warnings about it.
   def f1(x: Int) : Int =           { throw new Exception("Not implemented") }
@@ -9,18 +8,17 @@ object SanityChecks {
   def f3(x: Int) : Set[Int] =      { throw new Exception("Not implemented") }
   def f4(s: Set[Int]) : Int =      { throw new Exception("Not implemented") }
 
-
-  def vc1(x: Int, y: Int) = {
+  def vc01(x: Int, y: Int) = {
     require (x != y)
     Set(x, y)
   } ensuring {_.size == 2}
 
-  def vc2(x: Int, y: Int) = {
+  def vc02(x: Int, y: Int) = {
     require (x == y)
     Set(x, y)
   } ensuring {_.size == 1}
 
-  def vc3(A: Set[Int], B: Set[Int]) = {
+  def vc03(A: Set[Int], B: Set[Int]) = {
     require(
       (A -- B).size == 0 &&
       (B -- A).size == 0
@@ -28,7 +26,7 @@ object SanityChecks {
     f2(A)
   } ensuring {_ == f2(B)}
 
-  def vc4(A: Set[Int], B: Set[Int]) = {
+  def vc04(A: Set[Int], B: Set[Int]) = {
     require(
       (A -- B).size == 0 &&
       (B -- A).size == 0
@@ -36,7 +34,7 @@ object SanityChecks {
     f4(A)
   } ensuring {_ == f4(B)}
 
-  def vc5(x: Int, y: Int) = {
+  def vc05(x: Int, y: Int) = {
     require(
       (f3(x) -- f3(y)).size > 0 ||
       (f3(y) -- f3(x)).size > 0
@@ -44,7 +42,7 @@ object SanityChecks {
     x
   } ensuring {_ != y}
 
-  def vc6(A: Set[Int], B: Set[Int]) = {
+  def vc06(A: Set[Int], B: Set[Int]) = {
     require(
       (f2(A) -- f2(B)).size > 0 ||
       (f2(B) -- f2(A)).size > 0
@@ -52,7 +50,7 @@ object SanityChecks {
     A
   } ensuring {_ != B}
 
-  def vc7(A: Set[Int], B: Set[Int], C: Set[Int]) = {
+  def vc07(A: Set[Int], B: Set[Int], C: Set[Int]) = {
     require(
        A.size == 1
     && B.size == 1
@@ -62,4 +60,26 @@ object SanityChecks {
     )
     A ** B
   } ensuring(_.size == 1)
+
+  def vc08(a: Set[Int], b: Set[Int]) : Boolean = {
+    require(
+      a.size == 0
+   && b.size == 0
+    )
+    f4(a) == f4(b)
+  } ensuring(_ == true)
+
+  def vc09(x: Int, a: Set[Int], b: Set[Int]) : Boolean = {
+    require(
+      a.size == 1
+   && b.size == 1
+   && a.contains(x)
+   && b.contains(x)
+    )
+    f4(a) == f4(b)
+  } ensuring(_ == true)
+
+  def vc10_broken(a: Set[Int], b: Set[Int]) : Boolean = {
+    f4(a ++ b) == f4(b ++ a)
+  } ensuring(_ == true)
 }
