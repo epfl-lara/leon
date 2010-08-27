@@ -28,7 +28,12 @@ object IntListProperties {
       val rest = filter(xs)
       if(p(x)) Cons(x, rest) else rest
     }
-  }) ensuring(res => content(res).size <= (content(list)).size)
+  }) ensuring(res => {
+    val cr = content(res)
+    val cl = content(list)
+    /*cr.subsetOf(cl) &&*/ cr.size <= cl.size
+    // we can check whether adding the first part helps (but it shouldn't !)
+  })
 
 //  def removeDuplicates(list: IntList) : IntList = (list match {
 //    case Nil() => Nil()
