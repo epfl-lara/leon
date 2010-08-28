@@ -73,23 +73,15 @@ object IntListProperties {
   && size(res) == size(acc) + s.size
     )
 
-  def treeFromSet0(s: Set[Int], acc: IntTree) : IntTree = {
-    require(treeContent(acc) ** s == Set.empty[Int])
-    if(s == Set.empty[Int]) {
-      acc
-    } else {
-      val e = pickOne(s)
-      treeFromSet0(s -- Set(e), treeInsert(e, acc))
+  def treeToList0(tree: IntTree, acc: IntList) : IntList = {
+    tree match {
+      case Leaf() => acc
+      case Node(l,v,r) => l match {
+        case Leaf() => treeToList0(r, Cons(v, acc))
+        case Node(l2,v2,r2) => treeToList0(Node(l2, v2, Node(r2, v, r)), acc)
+      }
     }
-  } ensuring(res =>
-    treeContent(res) == treeContent(acc) ++ s
- && size(res) == size(acc) + s.size
-    )
-
-  def treeInsert(e: Int, tree: IntTree) : IntTree = {
-    throw new Exception("not implemented")
-    tree
-  } ensuring(res => treeContent(res) == treeContent(tree) ++ Set(e))
+  } ensuring(listContent(_).size == treeContent(tree).size + listContent(acc).size)
 
   def concatReverse(l1: IntList, l2: IntList) : IntList = concatReverse0(l1, l2, Nil())
   def concatReverse0(l1: IntList, l2: IntList, acc: IntList) : IntList = {
