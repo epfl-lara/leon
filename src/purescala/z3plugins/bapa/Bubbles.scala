@@ -9,8 +9,8 @@ import AST._
 import NormalForms.simplify
 
 trait Bubbles {
-  val SHOW_STATISTICS = false
-  //   val SHOW_STATISTICS = true
+  //val SHOW_STATISTICS = false
+  val SHOW_STATISTICS = true
 
 
   val z3: Z3Context

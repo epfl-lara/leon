@@ -18,6 +18,8 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   //   type BAPATheoryType = BAPATheoryEqc
   type BAPATheoryType = BAPATheoryBubbles
 
+  private val reportUnknownAsSat = true
+
   // this is fixed
   private val z3cfg = new Z3Config(
     "MODEL" -> true,
@@ -69,6 +71,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   private var intSort: Z3Sort = null
   private var boolSort: Z3Sort = null
   private var setSorts: Map[TypeTree, Z3Sort] = Map.empty
+  private var setCardFuns: Map[TypeTree, Z3FuncDecl] = Map.empty
   private var adtSorts: Map[ClassTypeDef, Z3Sort] = Map.empty
   private var fallbackSorts: Map[TypeTree, Z3Sort] = Map.empty
   private var adtTesters: Map[CaseClassDef, Z3FuncDecl] = Map.empty
@@ -83,6 +86,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     intSort = z3.mkIntSort
     boolSort = z3.mkBoolSort
     setSorts = Map.empty
+    setCardFuns = Map.empty
 
     val roots = program.classHierarchyRoots
     val indexMap: Map[ClassTypeDef, Int] = Map(roots.zipWithIndex: _*)
@@ -255,6 +259,8 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
       case None => {
         val newSetSort = z3.mkSetSort(typeToSort(base))
         setSorts = setSorts + (base -> newSetSort)
+        val newCardFun = z3.mkFreshFuncDecl("card", Seq(newSetSort), z3.mkIntSort)
+        setCardFuns = setCardFuns + (base -> newCardFun)
         newSetSort
       }
     }
@@ -288,27 +294,41 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     val result = toZ3Formula(z3, toConvert) match {
       case None => None // means it could not be translated
       case Some(z3f) => {
-        reporter.info("Z3 Formula:")
-        reporter.info(z3f)
+        if(Settings.experimental) {
+          reporter.info("Z3 Formula:")
+          reporter.info(z3f)
+        }
         //z3.push
         z3.assertCnstr(z3f)
         //z3.print
         val actualResult = (z3.checkAndGetModel() match {
           case (Some(true), m) => {
             if (!abstractedFormula) {
-              reporter.error("There's a bug! Here's a model for a counter-example:")
-              reporter.error(m)
+              reporter.error("There's a bug!")
+              if(Settings.experimental) {
+                reporter.error(m)
+              }
               Some(false)
             } else {
-              reporter.info("Could or could not be a bug (formula was relaxed):")
-              reporter.info(m)
-              None
+              reporter.info("Could or could not be a bug (formula was relaxed).")
+              if(Settings.experimental) {
+                reporter.info(m)
+              }
+              if(reportUnknownAsSat) {
+                Some(false)
+              } else {
+                None
+              }
             }
           }
           case (Some(false), _) => Some(true)
           case (None, _) => {
             reporter.warning("Z3 doesn't know because: " + z3.getSearchFailure.message)
-            None
+            if(reportUnknownAsSat) {
+              Some(false)
+            } else {
+              None
+            }
           }
         })
         //z3.pop(1) 
@@ -416,8 +436,11 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
       } else {
         elems.foldLeft(z3.mkEmptySet(typeToSort(f.getType.asInstanceOf[SetType].base)))((ast, el) => z3.mkSetAdd(ast, rec(el)))
       }
-      case SetCardinality(s) if (useBAPA && s.getType == IntSetType) => {
+      case SetCardinality(s) => if (useBAPA && s.getType == IntSetType) {
         bapa.mkCard(rec(s))
+      } else {
+        val rs = rec(s)
+        setCardFuns(s.getType.asInstanceOf[SetType].base)(rs)
       }
       case _ => {
         reporter.warning("Can't handle this in translation to Z3: " + ex)
