@@ -420,7 +420,7 @@ trait Bubbles {
     println("________________________________________")
     println
     println("Bubble sizes  : " + bubbleSizes.mkString("{", ", ", "}"))
-    println("Edge sizes    : " + bubbleSizes.mkString("{", ", ", "}"))
+    println("Edge sizes    : " + edgeSizes.mkString("{", ", ", "}"))
     println("Set variables : " + setVars.mkString("{", ", ", "}"))
     println
   }
