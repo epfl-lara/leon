@@ -92,5 +92,6 @@ object IntListProperties {
       }
       case Cons(x, xs) => concatReverse0(xs, l2, Cons(x, acc))
     }
-  } ensuring(res => listContent(res).size <= listContent(l1).size + listContent(l2).size + listContent(acc).size)
+  //} ensuring(res => listContent(res).size <= listContent(l1).size + listContent(l2).size + listContent(acc).size)
+  } ensuring(res => listContent(res) == listContent(l1) ++ listContent(l2) ++ listContent(acc))
 }
