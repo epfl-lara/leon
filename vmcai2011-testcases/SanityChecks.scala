@@ -82,4 +82,12 @@ object SanityChecks {
   def vc10_broken(a: Set[Int], b: Set[Int]) : Boolean = {
     f4(a ++ b) == f4(b ++ a)
   } ensuring(_ == true)
+
+  def vc11_broken(a: Int, b: Int, c: Int, S: Set[Int]) : Int = {
+    require (
+      f1(a) != f1(b) && (b + 1) != (c + 1) && (c * 2) != (a * 2) &&
+      (S contains a) && (S contains b) && (S contains c)
+    )
+    S.size
+  } ensuring(_ > 2)
 }
