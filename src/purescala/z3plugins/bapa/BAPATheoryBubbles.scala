@@ -190,29 +190,27 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
     }
   }
 
-  override def newElem(ast: Z3AST) {
-    /*
+  override def newElem(ast1: Z3AST) {
     def asSingleton(ast: Z3AST) = z3.getASTKind(ast) match {
       case Z3AppAST(decl, args) if decl == mkSingleton => Some(args(0))
       case _ => None
     }
-    if (NAIVE_SINGLETON_DISEQUALITIES) asSingleton(ast) match {
+    if (SINGLETON_DISEQUALITIES) asSingleton(ast1) match {
       case None =>
-      case Some(elem) =>
-        for (ast2 <- getElems; if ast2 != ast) asSingleton(ast2) match {
+      case Some(elem1) =>
+        for (ast2 <- getElems; if ast2 != ast1) asSingleton(ast2) match {
           case None =>
           case Some(elem2) =>
-            val bapaTree = (z3ToTree(ast) seteq z3ToTree(ast2))
+            val bapaTree = !(z3ToTree(ast1) seteq z3ToTree(ast2))
             val paTree = BubbleBapaToPaTranslator(bapaTree)
-            assertAxiomSafe(z3.mkIff(
-              treeToZ3(paTree),
-              z3.mkEq(elem, elem2)
+            assertAxiomSafe(z3.mkImplies(
+              z3.mkDistinct(elem1, elem2),
+              treeToZ3(paTree)
             ))
         }
     }
-    */
     // Connection to Z3 sets
-    if (WITH_Z3_SET_AXIOMS) addSetExpression(ast)
+    if (WITH_Z3_SET_AXIOMS) addSetExpression(ast1)
   }
 
   override def newApp(ast: Z3AST) {
@@ -317,6 +315,7 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
       }
       addClause(DiseqClause(z3ToTree(ast1), z3ToTree(ast2)))
     } else {
+      /*
       val set1 = mkSingleton(ast1)
       val set2 = mkSingleton(ast2)
       if (SINGLETON_DISEQUALITIES && (getElems contains set1) && (getElems contains set2)) {
@@ -327,6 +326,7 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
           z3.mkEq(ast1, ast2)
         ))
       }
+      */
     }
   }
 
