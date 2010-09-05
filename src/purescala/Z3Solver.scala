@@ -307,12 +307,16 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
               reporter.error("There's a bug!")
               if(Settings.experimental) {
                 reporter.error(m)
+              } else {
+                if (useBAPA) reporter.error(bapa.toBapaModel(m))
               }
               Some(false)
             } else {
               reporter.info("Could or could not be a bug (formula was relaxed).")
               if(Settings.experimental) {
                 reporter.info(m)
+              } else {
+                if (useBAPA) reporter.error(bapa.toBapaModel(m))
               }
               if(reportUnknownAsSat) {
                 Some(false)

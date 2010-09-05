@@ -1,6 +1,6 @@
 package purescala.z3plugins.bapa
 
-import scala.collection.mutable.{Stack, ArrayBuffer, Set => MutableSet}
+import scala.collection.mutable.{Stack, ArrayBuffer, Set => MutableSet, HashMap => MutableMap}
 import scala.collection.immutable.{Map => ImmutableMap}
 import z3.scala._
 import AST._
@@ -8,6 +8,14 @@ import NormalForms.{simplify, setVariables, rewriteSetRel}
 
 class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bubbles)") with Bubbles {
 
+  /* Flags */
+
+//   private val WITH_Z3_SET_AXIOMS = true
+  private val WITH_Z3_SET_AXIOMS = false
+
+  private val NAIVE_SINGLETON_DISEQUALITIES = true // theory is incomplete otherwise
+//   private val NAIVE_SINGLETON_DISEQUALITIES = false
+  
   /* Register callbacks */
 
   setCallbacks(
@@ -17,23 +25,25 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
     pop = true,
     reduceApp = true,
     newApp = true,
+    newElem = true,
     newAssignment = true,
     newEq = true,
     newDiseq = true,
     finalCheck = true
-    )
+  )
   // This makes the Theory Proxy print out all calls that are
   // forwarded to the theory.
   //   showCallbacks(true)
 
   /* Theory constructs */
 
+  val mkElemSort = z3.mkIntSort
   val mkSetSort = mkTheorySort(z3.mkStringSymbol("SetSort"))
   val mkEmptySet = mkTheoryValue(z3.mkStringSymbol("EmptySet"), mkSetSort)
-  val mkSingleton = mkTheoryFuncDecl(z3.mkStringSymbol("Singleton"), Seq(z3.mkIntSort), mkSetSort)
+  val mkSingleton = mkTheoryFuncDecl(z3.mkStringSymbol("Singleton"), Seq(mkElemSort), mkSetSort)
   val mkCard = mkUnarySetfun("Cardinality", z3.mkIntSort)
   val mkSubsetEq = mkBinarySetfun("SubsetEq", z3.mkBoolSort)
-  val mkElementOf = mkTheoryFuncDecl(z3.mkStringSymbol("IsElementOf"), Seq(z3.mkIntSort, mkSetSort), z3.mkBoolSort)
+  val mkElementOf = mkTheoryFuncDecl(z3.mkStringSymbol("IsElementOf"), Seq(mkElemSort, mkSetSort), z3.mkBoolSort)
   val mkUnion = mkBinarySetfun("Union", mkSetSort)
   val mkIntersect = mkBinarySetfun("Intersect", mkSetSort)
   val mkComplement = mkUnarySetfun("Complement", mkSetSort)
@@ -41,16 +51,18 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
   private[bapa] val mkDomainSize = z3.mkFreshConst("DomainSize", z3.mkIntSort)
   // This function returns the single element for singletons, and is uninterpreted otherwise.
   private[bapa] val mkAsElement = mkUnarySetfun("AsElement", z3.mkIntSort)
-
+  private[bapa] val mkZ3SetSort = z3.mkSetSort(mkElemSort)
+  private[bapa] val mkAsBAPA = mkTheoryFuncDecl(z3.mkStringSymbol("asBAPA"), Seq(mkZ3SetSort), mkSetSort)
+  
   def mkDisjoint(set1: Z3AST, set2: Z3AST) =
     z3.mkEq(mkIntersect(set1, set2), mkEmptySet)
 
   def mkDifference(set1: Z3AST, set2: Z3AST) =
     mkIntersect(set1, mkComplement(set2))
 
-  private var freshCounter = 0
-
   def mkConst(name: String) = mkTheoryConstant(z3.mkStringSymbol(name), mkSetSort)
+
+  private var freshCounter = 0
 
   def mkFreshConst(name: String) = {
     freshCounter += 1
@@ -65,6 +77,8 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
 
   /* Theory stack */
 
+  private val bubbleStack = new Stack[(Int,Bubble)]()
+
   private sealed abstract class Clause
   private case class CardClause(tree: Tree) extends Clause
   private case class SingletonClause(tree: Tree) extends Clause
@@ -77,12 +91,13 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
   }
 
   /* Axiom assertion helper functions */
-  def assertAxiomNow(axiom: Z3AST) {
+  
+  private def assertAxiomNow(axiom: Z3AST) {
     //     println(axiom)
     assertAxiom(axiom)
   }
 
-  def assertAxiomSafe(axiom: Z3AST) {
+  protected def assertAxiomSafe(axiom: Z3AST) {
     if (canAssertAxiom) {
       assertAxiomNow(axiom)
     } else {
@@ -104,7 +119,7 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
       // Assert all remaining axioms
       if (axiomsToAssert.nonEmpty) {
         val toPreserve: MutableSet[(Int, Z3AST)] = MutableSet.empty
-
+        
         for ((lvl, ax) <- axiomsToAssert) {
           // println("Asserting eventual axiom: " + ax)
           assertAxiomNow(ax)
@@ -142,6 +157,9 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
 
   override def pop {
     pushLevel -= 1
+    while (bubbleStack.nonEmpty && bubbleStack.head._1 > pushLevel) {
+      Universe removeBubble bubbleStack.pop._2
+    }
   }
 
   override def reduceApp(fd: Z3FuncDecl, args: Z3AST*): Option[Z3AST] = {
@@ -172,17 +190,45 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
     }
   }
 
+  override def newElem(ast: Z3AST) {
+    def asSingleton(ast: Z3AST) = z3.getASTKind(ast) match {
+      case Z3AppAST(decl, args) if decl == mkSingleton => Some(args(0))
+      case _ => None
+    }
+    if (NAIVE_SINGLETON_DISEQUALITIES) asSingleton(ast) match {
+      case None =>
+      case Some(elem) =>
+        for (ast2 <- getElems; if ast2 != ast) asSingleton(ast2) match {
+          case None =>
+          case Some(elem2) =>
+            val bapaTree = (z3ToTree(ast) seteq z3ToTree(ast2))
+            val paTree = BubbleBapaToPaTranslator(bapaTree)
+            assertAxiomSafe(z3.mkIff(
+              treeToZ3(paTree),
+              z3.mkEq(elem, elem2)
+            ))
+        }
+    }
+    // Connection to Z3 sets
+    if (WITH_Z3_SET_AXIOMS) addSetExpression(ast)
+  }
+
   override def newApp(ast: Z3AST) {
     z3.getASTKind(ast) match {
       case Z3AppAST(decl, args) if decl == mkCard =>
         addClause(CardClause(z3ToTree(ast)))
-        assertAxiomSafe(z3.mkIff(z3.mkEq(ast, z3.mkInt(0, z3.mkIntSort)), z3.mkEq(args(0), mkEmptySet)))
+        assertAxiomSafe(z3.mkIff(
+          z3.mkEq(ast, z3.mkInt(0, z3.mkIntSort)),
+          z3.mkEq(args(0), mkEmptySet)
+        ))
       case Z3AppAST(decl, args) if decl == mkSingleton =>
         addClause(SingletonClause(z3ToTree(ast)))
         assertAxiomSafe(z3.mkEq(mkAsElement(ast), args(0)))
         assertAxiomSafe(z3.mkEq(mkCard(ast), z3.mkInt(1, z3.mkIntSort)))
       case _ =>
     }
+    // Connection to Z3 sets
+    if (WITH_Z3_SET_AXIOMS) addSetExpression(ast)
   }
 
   override def newAssignment(ast: Z3AST, polarity: Boolean): Unit = safeBlockToAssertAxioms {
@@ -199,10 +245,16 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
   }
 
   override def newEq(ast1: Z3AST, ast2: Z3AST): Unit = safeBlockToAssertAxioms {
-    if (z3.getSort(ast1) == mkSetSort) {
+    if (z3.getSort(ast1) == mkSetSort && !(WITH_Z3_SET_AXIOMS && (isAsBapa(ast1) || isAsBapa(ast2)))) {
       /*
       inclusionStack.push(inclusionStack.pop.newEq(ast1, ast2))
       */
+      // S = {} implies the following for sets T in the equivalence class of S
+      // -  |T| = 0
+      // -  T ++ U = U
+      // -  U ++ T = U
+      // -  T ** U = {}
+      // -  U ** T = {}
       if (ast1 == mkEmptySet || ast2 == mkEmptySet) {
         val nonEmpty = if (ast1 == mkEmptySet) ast2 else ast1
         for (congruent <- getEqClassMembers(nonEmpty)) {
@@ -211,24 +263,29 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
               case Z3AppAST(decl, args) if decl == mkCard && args(0) == congruent =>
                 assertAxiomSafe(z3.mkIff(
                   z3.mkEq(congruent, mkEmptySet),
-                  z3.mkEq(mkCard(congruent), z3.mkInt(0, z3.mkIntSort))))
+                  z3.mkEq(parent, z3.mkInt(0, z3.mkIntSort))))
+//                   z3.mkEq(mkCard(congruent), z3.mkInt(0, z3.mkIntSort))))
               case Z3AppAST(decl, args) if decl == mkUnion && args(0) == congruent =>
                 assertAxiomSafe(z3.mkImplies(
                   z3.mkEq(congruent, mkEmptySet),
-                  z3.mkEq(mkUnion(congruent, args(1)), args(1))))
+                  z3.mkEq(parent, args(1))))
+//                   z3.mkEq(mkUnion(congruent, args(1)), args(1))))
               case Z3AppAST(decl, args) if decl == mkUnion && args(1) == congruent =>
                 assertAxiomSafe(z3.mkImplies(
                   z3.mkEq(congruent, mkEmptySet),
-                  z3.mkEq(mkUnion(args(0), congruent), args(0))))
+                  z3.mkEq(parent, args(0))))
+//                   z3.mkEq(mkUnion(args(0), congruent), args(0))))
               case Z3AppAST(decl, args) if decl == mkIntersect && args(0) == congruent =>
                 assertAxiomSafe(z3.mkImplies(
                   z3.mkEq(congruent, mkEmptySet),
-                  z3.mkEq(mkUnion(congruent, args(1)), mkEmptySet)))
+                  z3.mkEq(parent, mkEmptySet)))
+//                   z3.mkEq(mkUnion(congruent, args(1)), mkEmptySet)))
               case Z3AppAST(decl, args) if decl == mkIntersect && args(1) == congruent =>
                 assertAxiomSafe(z3.mkImplies(
                   z3.mkEq(congruent, mkEmptySet),
-                  z3.mkEq(mkUnion(args(0), congruent), mkEmptySet)))
-              case _ =>;
+                  z3.mkEq(parent, mkEmptySet)))
+//                   z3.mkEq(mkUnion(args(0), congruent), mkEmptySet)))
+              case _ =>
             }
           }
         }
@@ -238,7 +295,8 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
   }
 
   override def newDiseq(ast1: Z3AST, ast2: Z3AST): Unit = safeBlockToAssertAxioms {
-    if (z3.getSort(ast1) == mkSetSort) {
+    if (z3.getSort(ast1) == mkSetSort && !(WITH_Z3_SET_AXIOMS && (isAsBapa(ast1) || isAsBapa(ast2)))) {
+      // S != {} implies |T| > 0 for all sets T in the equivalence class of S
       if (ast1 == mkEmptySet || ast2 == mkEmptySet) {
         val nonEmpty = if (ast1 == mkEmptySet) ast2 else ast1
         for (congruent <- getEqClassMembers(nonEmpty)) {
@@ -247,7 +305,8 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
               case Z3AppAST(decl, args) if decl == mkCard && args(0) == congruent =>
                 assertAxiomSafe(z3.mkImplies(
                   z3.mkDistinct(congruent, mkEmptySet),
-                  z3.mkGT(mkCard(congruent), z3.mkInt(0, z3.mkIntSort))))
+                  z3.mkGT(parent, z3.mkInt(0, z3.mkIntSort))))
+//                   z3.mkGT(mkCard(congruent), z3.mkInt(0, z3.mkIntSort))))
               case _ =>
             }
           }
@@ -258,12 +317,9 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
   }
 
   override def finalCheck: Boolean = safeBlockToAssertAxioms {
-
     //     println("==== Bubbles at final check ====")
     //     Universe.showState
     //     println("================================")
-
-
     true
   }
 
@@ -300,13 +356,90 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
       case Z3AppAST(decl, args) if decl == mkIntersect => Op(INTER, args map z3ToTree)
       case Z3AppAST(decl, args) if decl == mkComplement => Op(COMPL, args map z3ToTree)
       case Z3AppAST(decl, args) if decl == mkCard => Op(CARD, Seq(z3ToTree(args(0))))
+      case Z3AppAST(decl, args) if decl == mkAsBAPA =>
+        if (!(asBapaToBapa contains ast)) {
+          for ((asB, b) <- asBapaToBapa)  println(asB + "  ->  " + b)
+          error("Could not find : \n" + ast)
+        }
+        z3ToTree(asBapaToBapa(ast))
       case _ => SetSymbol(ast)
     }
   }
 
+  /* Interaction with Z3 sets */
+
+  private val asBapaToBapa = new MutableMap[Z3AST,Z3AST]()
+  private val cachedBapaToAsBapa = new MutableMap[Z3AST,Z3AST]()
+  private val cachedBapaVarToZ3set = new MutableMap[Z3AST,Z3AST]()
+
+  def addSetExpression(ast: Z3AST) {
+    if (z3.getSort(ast) == mkSetSort) z3.getASTKind(ast) match {
+      case Z3AppAST(decl, args) if decl == mkAsBAPA =>
+        // Not needed
+//         println("Not needed : " + ast)
+      case _ if cachedBapaToAsBapa contains ast =>
+        // Already added
+//         println("Already added : " + ast)
+      case _ =>
+        val axiom = z3.mkEq(ast, bapaSetToAsBapa(ast))
+//         println("Axiom : " + axiom)
+        assertAxiomSafe(axiom)
+    }
+  }
+
+  private def bapaSetToAsBapa(ast: Z3AST) = {
+//     var level = 0
+    def toZ3set(ast: Z3AST): Z3AST = {
+//       level += 1
+//       println(("  " * level) + "translating " + ast)
+      val res = if (ast == mkEmptySet) z3.mkEmptySet(mkElemSort)
+      else z3.getASTKind(ast) match {
+        case Z3AppAST(decl, Nil) =>
+          mkZ3SetVar(ast)
+        case Z3AppAST(decl, args) if decl == mkSubsetEq =>
+          z3.mkSetSubset(toZ3set(args(0)), toZ3set(args(1)))
+        case Z3AppAST(decl, args) if decl == mkUnion =>
+          z3.mkSetUnion(toZ3set(args(0)), toZ3set(args(1)))
+        case Z3AppAST(decl, args) if decl == mkIntersect =>
+          z3.mkSetIntersect(toZ3set(args(0)), toZ3set(args(1)))
+        case Z3AppAST(decl, args) if decl == mkComplement =>
+          z3.mkSetComplement(toZ3set(args(0)))
+        case Z3AppAST(decl, args) if decl == mkSingleton =>
+          z3.mkSetAdd(z3.mkEmptySet(mkElemSort), args(0))
+        case Z3AppAST(decl, args) if decl == mkAsBAPA =>
+          args(0)
+        case _ =>
+          mkZ3SetVar(ast)
+        }
+//       println(("  " * level) + "result " + res)
+//       level -= 1
+      res
+    }
+    cachedBapaToAsBapa getOrElse(ast, {
+      val asBapa = mkAsBAPA(toZ3set(ast))
+      cachedBapaToAsBapa(ast) = asBapa
+      asBapaToBapa(asBapa) = ast
+      asBapa
+    })
+  }
+
+  private def mkZ3SetVar(ast: Z3AST) = cachedBapaVarToZ3set getOrElse(ast, {
+    val fresh = z3.mkFreshConst("z3twin", mkZ3SetSort)
+    cachedBapaVarToZ3set(ast) = fresh
+    fresh
+  })
+
+  private def isAsBapa(ast: Z3AST) = z3.getASTKind(ast) match {
+    case Z3AppAST(decl, args) if decl == mkAsBAPA => true
+    case _ => false
+  }
+
+  /* PA translation */
+
   def BubbleBapaToPaTranslator(tree0: Tree) = {
     val tree1 = simplify(tree0)
-    val myBubble = Universe addBubble setVariables(tree1)
+    val (myBubble, isNew) = Universe addBubble setVariables(tree1)
+    if (isNew) bubbleStack push ((pushLevel, myBubble))
     def rec(tree: Tree): Tree = tree match {
       case Op(CARD, Seq(set)) => myBubble translate set
       case Op(op, ts) => Op(op, ts map rec)
@@ -321,29 +454,29 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
       assertAxiomSafe(z3.mkEq(
         treeToZ3(bapaTree),
         treeToZ3(paTree)
-        ))
+      ))
     case SingletonClause(tree) =>
-    // nothing to do (except optimizations :P)
+      // nothing to do (except optimizations :P)
     case AssignClause(tree, polarity) =>
       val bapaTree = if (polarity) tree else !tree
       val paTree = BubbleBapaToPaTranslator(bapaTree)
-      assertAxiomSafe(z3.mkIff(
+      assertAxiomSafe(z3.mkImplies(
         treeToZ3(bapaTree),
         treeToZ3(paTree)
-        ))
+      ))
     case EqClause(tree1, tree2) =>
       val bapaTree = tree1 seteq tree2
       val paTree = BubbleBapaToPaTranslator(bapaTree)
-      assertAxiomSafe(z3.mkIff(
+      assertAxiomSafe(z3.mkImplies(
         treeToZ3(bapaTree),
         treeToZ3(paTree)
-        ))
+      ))
     case DiseqClause(tree1, tree2) =>
       val bapaTree = !(tree1 seteq tree2)
       val paTree = BubbleBapaToPaTranslator(bapaTree)
-      assertAxiomSafe(z3.mkIff(
+      assertAxiomSafe(z3.mkImplies(
         treeToZ3(bapaTree),
         treeToZ3(paTree)
-        ))
+      ))
   }
 }
