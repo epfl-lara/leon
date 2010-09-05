@@ -13,8 +13,8 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
 //   private val WITH_Z3_SET_AXIOMS = true
   private val WITH_Z3_SET_AXIOMS = false
 
-  private val NAIVE_SINGLETON_DISEQUALITIES = true // theory is incomplete otherwise
-//   private val NAIVE_SINGLETON_DISEQUALITIES = false
+  private val SINGLETON_DISEQUALITIES = true // theory is incomplete otherwise
+//   private val SINGLETON_DISEQUALITIES = false
   
   /* Register callbacks */
 
@@ -191,6 +191,7 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
   }
 
   override def newElem(ast: Z3AST) {
+    /*
     def asSingleton(ast: Z3AST) = z3.getASTKind(ast) match {
       case Z3AppAST(decl, args) if decl == mkSingleton => Some(args(0))
       case _ => None
@@ -209,6 +210,7 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
             ))
         }
     }
+    */
     // Connection to Z3 sets
     if (WITH_Z3_SET_AXIOMS) addSetExpression(ast)
   }
@@ -295,7 +297,8 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
   }
 
   override def newDiseq(ast1: Z3AST, ast2: Z3AST): Unit = safeBlockToAssertAxioms {
-    if (z3.getSort(ast1) == mkSetSort && !(WITH_Z3_SET_AXIOMS && (isAsBapa(ast1) || isAsBapa(ast2)))) {
+    if (z3.getSort(ast1) == mkSetSort) {
+      if (WITH_Z3_SET_AXIOMS && (isAsBapa(ast1) || isAsBapa(ast2))) return ()
       // S != {} implies |T| > 0 for all sets T in the equivalence class of S
       if (ast1 == mkEmptySet || ast2 == mkEmptySet) {
         val nonEmpty = if (ast1 == mkEmptySet) ast2 else ast1
@@ -313,6 +316,17 @@ class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bub
         }
       }
       addClause(DiseqClause(z3ToTree(ast1), z3ToTree(ast2)))
+    } else {
+      val set1 = mkSingleton(ast1)
+      val set2 = mkSingleton(ast2)
+      if (SINGLETON_DISEQUALITIES && (getElems contains set1) && (getElems contains set2)) {
+        val bapaTree = (z3ToTree(set1) seteq z3ToTree(set2))
+        val paTree = BubbleBapaToPaTranslator(bapaTree)
+        assertAxiomSafe(z3.mkIff(
+          treeToZ3(paTree),
+          z3.mkEq(ast1, ast2)
+        ))
+      }
     }
   }
 

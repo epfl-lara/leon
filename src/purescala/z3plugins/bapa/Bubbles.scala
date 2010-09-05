@@ -506,6 +506,7 @@ trait Bubbles {
       
     val cache = new MutableMap[BitSet,Option[Node]]()
     val nodeOrder = new ArrayBuffer[Node]()
+    var errorVennRegion: String = null
 
     // Read model for venn regions and add them to the cache
     def bubbleToNode(bubble: AbstractBubble) = cache getOrElse(bubble.label, {
@@ -527,7 +528,9 @@ trait Bubbles {
               }
             case None =>
               failure = true
-              println("Panic : evalAsInt on venn region failed ! " + bubble.vennRegions(i).ast)
+              if (errorVennRegion == null) {
+                errorVennRegion = "evalAsInt on venn region failed ! " + bubble.vennRegions(i).ast
+              }
           }
         }
         val result = if (failure) None else Some(Node(bubble.label, regions))
@@ -611,10 +614,9 @@ trait Bubbles {
         if (recons contains setID) {
           if (recons(setID) != set) {
             // DEBUG: assertion failed
-            println("Inconsistent set " + mkSym(setID) + " aka " + mkName(setID) + "  " +
+//             printDebug
+            error("Inconsistent set " + mkSym(setID) + " aka " + mkName(setID) + "  " +
               set + " != " + recons(setID))
-            printDebug
-            error("could not create a model")
           }
         } else {
           recons(setID) = set
@@ -671,7 +673,7 @@ trait Bubbles {
 //                   for ((i,j) <- map)  println(i+ " -> " + j)
                 }
               case None =>
-                println("Panic : evalAsInt on singleton element failed ! " + mkSym(setID).ast )
+                println("WARNING : evalAsInt on singleton element failed ! " + mkSym(setID).ast )
 //                 for (ast <- getEqClassMembers(args(0))) println("> " + ast)
             }
           case _ =>
@@ -689,21 +691,28 @@ trait Bubbles {
       for ((_, venn) <- cachedRegions) blacklist += venn.ast
       val result = MutableMap[Z3AST,Set[Int]]()
       for ((id, set) <- recons) result(mkSym(id).ast) = set.toSet
-      BAPAModel(z3model, result.toMap, blacklist.toSet)
+      BAPAModel(z3model, result.toMap, blacklist.toSet, null)
     }
-    init
-    populate
-//     printDebug
-//     Universe.showState
-//     nodeOrder foreach println
-    toModel(singletons(reconstruct))
+    try {
+      init
+      populate
+  //     printDebug
+  //     Universe.showState
+  //     nodeOrder foreach println
+      toModel(singletons(reconstruct))
+    } catch {
+      case ex =>
+        var err = ex.toString
+        if (errorVennRegion != null) err += "\nPossible cause :\n  " + errorVennRegion
+        BAPAModel(z3model, Map.empty[Z3AST,Set[Int]], Set.empty[Z3AST], err)
+    }
   }
 //   def getEqClassMembers(ast: Z3AST) : Iterator[Z3AST]
 }
 
 /* Bapa model class */
 
-case class BAPAModel(z3model: Z3Model, setModel: Map[Z3AST,Set[Int]], blacklist: Set[Z3AST]) {
+case class BAPAModel(z3model: Z3Model, setModel: Map[Z3AST,Set[Int]], blacklist: Set[Z3AST], error: String = null) {
 
   def evalAsIntSet(ast: Z3AST) = setModel get ast
 
@@ -733,16 +742,29 @@ case class BAPAModel(z3model: Z3Model, setModel: Map[Z3AST,Set[Int]], blacklist:
       badstart exists {line startsWith _}
     }
     buf ++= "Z3 model :\n"
-    for (line <- lines)
-      buf ++= "  " + line + "\n"
+    for (line <- lines) {
+      buf ++= "  "
+      buf ++= line
+      buf += '\n'
+    }
     // BAPA model
-    def format(pair: (Z3AST, Set[Int])): (String, String) = (pair._1.toString, pair._2.toList.sortWith{_ < _}.mkString("{ "," "," }"))
-    val pairs =  (setModel.toList map format) sortWith {_._1 < _._1}
-    val max2 = (pairs foldLeft 0){(a,b) => scala.math.max(a, b._1.size)}
-    buf ++= "BAPA model :\n"
-    for ((name, set) <- pairs) {
-      val n = max2 - name.size
-      buf ++= "  " + name + (" " * n) +"  ->  " + set + "\n"
+    if (error == null) {
+      def format(pair: (Z3AST, Set[Int])): (String, String) = (pair._1.toString, pair._2.toList.sortWith{_ < _}.mkString("{ "," "," }"))
+      val pairs =  (setModel.toList map format) sortWith {_._1 < _._1}
+      val max2 = (pairs foldLeft 0){(a,b) => scala.math.max(a, b._1.size)}
+      buf ++= "BAPA model :\n"
+      for ((name, set) <- pairs) {
+        val n = max2 - name.size
+        buf ++= "  "
+        buf ++= name
+        buf ++= " " * n
+        buf ++= "  ->  "
+        buf ++= set
+        buf += '\n'
+      }
+    } else {
+      buf ++= "An error occurred while creating the BAPA model :\n  "
+      buf ++= error
     }
     buf.toString
   }
