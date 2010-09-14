@@ -14,7 +14,7 @@ object MainAST2MultisetsTranslator {
     case class CantTranslateExpression() extends Exception
 
 
-   def multisetTranslate(m: Expr): (Multiset, Set[String]) = m match {
+   def multisetTranslate(m: Expr): (Multiset, Set[String]) = (m : @unchecked) match {
      case v @ Variable(id) if v.getType.isInstanceOf[MultisetType] => (MVariable(id.uniqueName), Set.empty[String])
      case EmptyMultiset(_) => (MEmpty, Set.empty[String])
      case MultisetIntersection(m1, m2) => {
@@ -43,7 +43,7 @@ object MainAST2MultisetsTranslator {
      }
   }
 
-  def termOutTranslate(exp: Expr): (TermOut, Set[String]) = exp match {
+  def termOutTranslate(exp: Expr): (TermOut, Set[String]) = (exp : @unchecked) match {
     case v @ Variable(id) if v.getType == Int32Type => (TOVariable(id.uniqueName), Set.empty[String])
     case IntLiteral(v) => (TOConstant(v), Set.empty[String])
     case MultisetCardinality(m) => {
@@ -66,7 +66,7 @@ object MainAST2MultisetsTranslator {
     }
   }
 
-   def setTranslate(s: Expr): (Multiset, Set[String]) = s match {
+   def setTranslate(s: Expr): (Multiset, Set[String]) = (s : @unchecked) match {
      case v @ Variable(id) if v.getType.isInstanceOf[SetType] => (MVariable(id.uniqueName), Set(id.uniqueName))
      case EmptySet(_) => (MEmpty, Set.empty[String])
      case SetIntersection(s1, s2) => {
