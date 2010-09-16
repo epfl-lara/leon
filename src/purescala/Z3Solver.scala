@@ -27,7 +27,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     "TYPE_CHECK" -> true,
     "WELL_SORTED_CHECK" -> true
     )
-  Z3Global.toggleWarningMessages(true)
+  toggleWarningMessages(true)
 
   private var z3: Z3Context = null
   private var bapa: BAPATheoryType = null
