@@ -1,0 +1,48 @@
+The original problem:
+*********************
+       isSorted(acc)
+    && lContent(acc).min > hContent(h).max
+    && isEmpty(h) <=> hContent(h) = ø
+    && hContent(removeMax(h)) = hContent(h) \ { hContent(h).max }
+    && findMax(h) = hContent(h).max
+    && lContent(heapToList(removeMax(h), findMax(h) :: acc)) = hContent(removeMax(h)) U lContent(findMax(h) :: acc)
+    && isSorted(heapToList(removeMax(h), findMax(h) :: acc))
+    ==> 
+       lContent(if(isEmpty(h)) acc else heapToList(removeMax(h), findMax(h) :: acc)) = hContent(h) U lContent(acc)
+    && isSorted(if(isEmpty(h)) acc else heapToList(removeMax(h), findMax(h) :: acc)) 
+    && isSorted(findMax(h) :: acc)
+    && lContent(findMax(h) :: acc).min > hContent(removeMax(h)).max
+
+Now, assuming h is empty:
+*************************
+       isSortedAcc
+    ==> 
+       lContentAcc = Ø U lContentAcc
+    && isSortedAcc
+
+Assuming h non-empty and acc empty:
+***********************************
+       hContent != ø
+    && hMinusMaxContent = hContent \ { hContent.max }
+    && recListContent = hMinusMaxContent U { hContent.max }
+    && isSortedRecList
+    ==> 
+       recListContent = hContent U Ø
+    && isSortedRecList
+    && hContent.max > hMinusMaxContent.max
+
+Assuming both non-empty:
+************************
+       isSortedAcc
+    && accContent != ø
+    && hContent != ø
+    && accContent.min > hContent.max
+    && hMinusMaxContent = hContent \ { hContent.max }
+    && recListContent = hMinusMaxContent U { hContent.max } U accContent
+    && isSortedRecList
+    ==>
+       recListContent = hContent U accContent
+    && isSortedRecList
+    && hContent.max < accContent.min
+    && isSortedAcc
+    && ({ hContent.max } U accContent).min > hMinusMaxContent.max

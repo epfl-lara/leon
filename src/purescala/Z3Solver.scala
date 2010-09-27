@@ -18,7 +18,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   //   type BAPATheoryType = BAPATheoryEqc
   type BAPATheoryType = BAPATheoryBubbles
 
-  private val reportUnknownAsSat = true
+  private val reportUnknownAsSat = false
 
   // this is fixed
   private val z3cfg = new Z3Config(
@@ -71,6 +71,8 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   private var intSort: Z3Sort = null
   private var boolSort: Z3Sort = null
   private var setSorts: Map[TypeTree, Z3Sort] = Map.empty
+  private var intSetMinFun: Z3FuncDecl = null
+  private var intSetMaxFun: Z3FuncDecl = null
   private var setCardFuns: Map[TypeTree, Z3FuncDecl] = Map.empty
   private var adtSorts: Map[ClassTypeDef, Z3Sort] = Map.empty
   private var fallbackSorts: Map[TypeTree, Z3Sort] = Map.empty
@@ -87,6 +89,10 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
     boolSort = z3.mkBoolSort
     setSorts = Map.empty
     setCardFuns = Map.empty
+
+    val intSetSort = typeToSort(SetType(Int32Type))
+    intSetMinFun = z3.mkFreshFuncDecl("setMin", Seq(intSetSort), intSort)
+    intSetMaxFun = z3.mkFreshFuncDecl("setMax", Seq(intSetSort), intSort)
 
     val roots = program.classHierarchyRoots
     val indexMap: Map[ClassTypeDef, Int] = Map(roots.zipWithIndex: _*)
@@ -451,6 +457,9 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
         val rs = rec(s)
         setCardFuns(s.getType.asInstanceOf[SetType].base)(rs)
       }
+      case SetMin(s) => intSetMinFun(rec(s))
+      case SetMax(s) => intSetMaxFun(rec(s))
+
       case _ => {
         reporter.warning("Can't handle this in translation to Z3: " + ex)
         throw new CantTranslateException
