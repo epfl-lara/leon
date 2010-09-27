@@ -326,8 +326,13 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
             }
           }
           case (Some(false), _) => Some(true)
-          case (None, _) => {
+          case (None, m) => {
             reporter.warning("Z3 doesn't know because: " + z3.getSearchFailure.message)
+            if(Settings.experimental) {
+              reporter.info(m)
+            } else {
+              if (useBAPA) reporter.error(bapa.toBapaModel(m))
+            }
             if(reportUnknownAsSat) {
               Some(false)
             } else {
