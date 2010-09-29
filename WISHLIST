@@ -1,0 +1,13 @@
+Add here what you would love FunCheck to be able to do
+------------------------------------------------------
+
+PS: rewrite pattern-matching translator to use if-then-else
+PS: generate VCs for preconditions
+PS: generate VCs for pattern-matching
+PS: support multiple top-level objects, and use 'private' accessor to indicate what's part of the interface
+
+
+Wishes granted so far
+---------------------
+
+PS: create a wishlist
