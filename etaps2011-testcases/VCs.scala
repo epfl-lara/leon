@@ -25,6 +25,30 @@ object VCs {
       a.contains(b.size)
   } ensuring(_ == true)
 
+  def theJacobsLemma(s: Set[Int], a: Set[Int], b: Set[Int], c: Set[Int], d: Set[Int]) : Boolean = {
+    require(
+        (s == a ++ b)
+     && (s == c ++ d)
+     && (a.max < b.min)
+     && (c.max < d.min)
+    )
+     (((a subsetOf c) && (d subsetOf b))
+   || ((c subsetOf a) && (b subsetOf d)))
+  } ensuring(_ == true)
+
+  def thePiskacLemma(s: Set[Int], a: Set[Int], b: Set[Int], c: Set[Int], d: Set[Int], e: Set[Int], f: Set[Int]) : Boolean = {
+    require(
+        (s == a ++ b ++ c)
+     && (s == d ++ e ++ f)
+     && (a.max < b.min)
+     && (b.max < c.min)
+     && (d.max < e.min)
+     && (e.max < f.min)
+    )
+     (((a subsetOf d) || (d subsetOf a))
+   && ((c subsetOf f) || (f subsetOf c)))
+  } ensuring(_ == true)
+
   def paperBSTFind_V(c: Set[Int], l: Set[Int], r: Set[Int], v: Int, range1: Set[Int], range2: Set[Int], range3: Set[Int]) : Boolean = {
     require(
          (c == l ++ Set(v) ++ r)
