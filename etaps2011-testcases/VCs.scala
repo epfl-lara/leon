@@ -1,7 +1,7 @@
 import scala.collection.immutable.Set
 
 object VCs {
-  def forFun1(a: Set[Int], b: Set[Int], n: Int) : Boolean = {
+  def forFun1_V(a: Set[Int], b: Set[Int], n: Int) : Boolean = {
     require(
         (a != Set.empty[Int])
      && (a.min == 0)
@@ -13,7 +13,7 @@ object VCs {
       a.contains(b.size)
   } ensuring(_ == true)
 
-  def forFun2(a: Set[Int], b: Set[Int], n: Int) : Boolean = {
+  def forFun2_V(a: Set[Int], b: Set[Int], n: Int) : Boolean = {
     require(
         (a != Set.empty[Int])
      && (a.min == 1)
@@ -25,7 +25,7 @@ object VCs {
       a.contains(b.size)
   } ensuring(_ == true)
 
-  def paperBSTFind(c: Set[Int], l: Set[Int], r: Set[Int], v: Int, range1: Set[Int], range2: Set[Int], range3: Set[Int]) : Boolean = {
+  def paperBSTFind_V(c: Set[Int], l: Set[Int], r: Set[Int], v: Int, range1: Set[Int], range2: Set[Int], range3: Set[Int]) : Boolean = {
     require(
          (c == l ++ Set(v) ++ r)
       && (l.max < v)
@@ -40,7 +40,7 @@ object VCs {
       Set(v) == range2
   } ensuring(_ == true)
 
-  def paperPartitionPivot(above: Set[Int], pivot: Int, e: Int, abovePrime: Set[Int]) : Boolean = {
+  def paperPartitionPivot_V(above: Set[Int], pivot: Int, e: Int, abovePrime: Set[Int]) : Boolean = {
     require(
          (above == Set.empty[Int] || pivot < above.min)
       && !(e <= pivot)
@@ -49,7 +49,7 @@ object VCs {
       pivot < abovePrime.min
   } ensuring(_ == true)
 
-  def heapSortNoRepeat1(hContent: Set[Int], hMinusMaxContent: Set[Int], recListContent: Set[Int]) : Boolean = {
+  def heapSortNoRepeat1_V(hContent: Set[Int], hMinusMaxContent: Set[Int], recListContent: Set[Int]) : Boolean = {
     require(
          (hContent != Set.empty[Int])
       && (hMinusMaxContent == hContent -- Set(hContent.max))
@@ -59,7 +59,7 @@ object VCs {
    && (hContent.max > hMinusMaxContent.max))
   } ensuring(_ == true)
 
-  def heapSortNoRepeat2(accContent: Set[Int], hContent: Set[Int], hMinusMaxContent: Set[Int], recListContent: Set[Int]) = {
+  def heapSortNoRepeat2_V(accContent: Set[Int], hContent: Set[Int], hMinusMaxContent: Set[Int], recListContent: Set[Int]) = {
     require(
          (accContent != Set.empty[Int])
       && (hContent != Set.empty[Int])
