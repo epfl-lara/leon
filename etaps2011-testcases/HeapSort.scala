@@ -1,12 +1,9 @@
 import scala.collection.immutable.Set
 
 object HeapSort {
+  // This first part is concerned with simulating a heap
   sealed abstract class Heap
   case class DummyHeap(i: Int) extends Heap
-
-  sealed abstract class List
-  case class Cons(head: Int, tail: List) extends List
-  case class Nil() extends List
 
   def emptyHeap() : Heap = {
     throw new Exception("Unimplemented")
@@ -33,7 +30,18 @@ object HeapSort {
     require(!isHeapEmpty(h))
     throw new Exception("Unimplemented")
     (DummyHeap(0) : Heap)
-  } ensuring(heapContent(_) == heapContent(h) -- Set(heapContent(h).max))
+  } ensuring(res => {
+      val cOld = heapContent(h)
+      val cNew = heapContent(res)
+      (cNew == Set.empty[Int] || cNew.max <= cOld.max) &&
+      (cNew subsetOf cOld) &&
+      (cOld.size - cNew.size <= 1)
+    })
+
+  // The rest is concerned with heapsort
+  sealed abstract class List
+  case class Cons(head: Int, tail: List) extends List
+  case class Nil() extends List
 
   def listContent(l: List) : Set[Int] = (l match {
     case Nil() => Set.empty[Int]
