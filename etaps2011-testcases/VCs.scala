@@ -38,6 +38,7 @@ object VCs {
       && (range3.size == c.size - l.size - 1)
     )
       Set(v) == range2
+      // v == range2.min // this should be equivalent, right?
   } ensuring(_ == true)
 
   def paperPartitionPivot_V(above: Set[Int], pivot: Int, e: Int, abovePrime: Set[Int]) : Boolean = {
