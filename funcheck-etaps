@@ -1,0 +1,2 @@
+#!/bin/bash
+./scalac-funcheck -P:funcheck:nodefaults -P:funcheck:extensions=orderedsets.Main "$@"

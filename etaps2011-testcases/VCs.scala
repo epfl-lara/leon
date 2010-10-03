@@ -36,35 +36,6 @@ object VCs {
    || ((c subsetOf a) && (b subsetOf d)))
   } ensuring(_ == true)
 
-  def thePiskacLemma(s: Set[Int], a: Set[Int], b: Set[Int], c: Set[Int], d: Set[Int], e: Set[Int], f: Set[Int]) : Boolean = {
-    require(
-        (s == a ++ b ++ c)
-     && (s == d ++ e ++ f)
-     && (a.max < b.min)
-     && (b.max < c.min)
-     && (d.max < e.min)
-     && (e.max < f.min)
-    )
-     (((a subsetOf d) || (d subsetOf a))
-   && ((c subsetOf f) || (f subsetOf c)))
-  } ensuring(_ == true)
-
-  def paperBSTFind_V(c: Set[Int], l: Set[Int], r: Set[Int], v: Int, range1: Set[Int], range2: Set[Int], range3: Set[Int]) : Boolean = {
-    require(
-         (c == l ++ Set(v) ++ r)
-      && (l.max < v)
-      && (v < r.min)
-      && (range1 ++ range2 ++ range3 == c)
-      && (range1.max < range2.min)
-      && (range2.min < range3.max)
-      && (range1.size == l.size)
-      && (range2.size == 1)
-      && (range3.size == c.size - l.size - 1)
-    )
-      Set(v) == range2
-      // v == range2.min // this should be equivalent, right?
-  } ensuring(_ == true)
-
   def paperPartitionPivot_V(above: Set[Int], pivot: Int, e: Int, abovePrime: Set[Int]) : Boolean = {
     require(
          (above == Set.empty[Int] || pivot < above.min)
