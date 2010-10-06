@@ -50,7 +50,7 @@ object HeapSort {
 
   def isSorted(l: List) : Boolean = (l match {
     case Nil() => true
-    case Cons(x, xs) => isSorted(xs) && (listContent(xs) == Set.empty[Int] || x < listContent(xs).min)
+    case Cons(x, xs) => isSorted(xs) && (listContent(xs) == Set.empty[Int] || x <= listContent(xs).min)
   })
 
   def listToHeap(l: List) : Heap = {
@@ -59,7 +59,7 @@ object HeapSort {
   } ensuring(heapContent(_) == listContent(l))
 
   def heapToList(h: Heap, acc: List) : List = {
-    require(isSorted(acc) && (listContent(acc) == Set.empty[Int] || heapContent(h) == Set.empty[Int] || listContent(acc).min > heapContent(h).max))
+    require(isSorted(acc) && (listContent(acc) == Set.empty[Int] || heapContent(h) == Set.empty[Int] || listContent(acc).min >= heapContent(h).max))
     if(isHeapEmpty(h)) {
       acc
     } else {
@@ -67,7 +67,8 @@ object HeapSort {
     }
   } ensuring(res => listContent(res) == heapContent(h) ++ listContent(acc) && isSorted(res))
 
+  // note that this does not ensure that the multiplicity of repeated elements is preserved
   def sort(l: List) : List = {
     heapToList(listToHeap(l), Nil())
-  } ensuring(listContent(_) == listContent(l))
+  } ensuring(res => isSorted(res) && listContent(res) == listContent(l))
 }
