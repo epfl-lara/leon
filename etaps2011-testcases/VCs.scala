@@ -25,7 +25,7 @@ object VCs {
       a.contains(b.size)
   } ensuring(_ == true)
 
-  def theJacobsLemma(s: Set[Int], a: Set[Int], b: Set[Int], c: Set[Int], d: Set[Int]) : Boolean = {
+  def theJacobsLemma_V(s: Set[Int], a: Set[Int], b: Set[Int], c: Set[Int], d: Set[Int]) : Boolean = {
     require(
         (s == a ++ b)
      && (s == c ++ d)
