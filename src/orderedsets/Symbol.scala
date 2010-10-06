@@ -28,8 +28,6 @@ class Symbol private(val name: String, val tpe: Type) {
   // the collection of set variables whose inf/sup is denoted by this symbol
   var infOfList: Set[Symbol] = null
   var supOfList: Set[Symbol] = null
-
-
 }
 
 object Symbol {
@@ -80,11 +78,20 @@ object Symbol {
   def freshSet: Symbol =
     new Symbol(freshName("S"), SetType)
 
+//   def freshInt(prefix: String = "t"): Symbol =
+//     new Symbol(freshName(prefix), IntType)
+// 
+//   def freshSet(prefix: String = "S"): Symbol =
+//     new Symbol(freshName(prefix), SetType)
+
 
   def partOf(setvar: TermVar, k: Int): Symbol =
     lookup(setvar.sym.name + "." + k, SetType)
+    
+//   def newPartOf(setvar: TermVar, k: Int): Symbol =
+//     lookup(setvar.sym.name + "#" + k, setvar.tpe)
 
-
+  /*
   def equiClass(k: Int): Symbol = error("do not use")
 
   def equiRange(k: Int): Symbol = error("do not use")
@@ -92,7 +99,7 @@ object Symbol {
   def partClass(setvar: TermVar, k: Int): Symbol = error("do not use")
 
   def partRange(setvar: TermVar, k: Int): Symbol = error("do not use")
-
+  */
 
   def infOf(setvar: TermVar): Symbol =
     lookup("inf." + setvar.sym.name, IntType)

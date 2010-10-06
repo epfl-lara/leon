@@ -8,7 +8,32 @@ import scala.math._
 object QFBAPAtoPATranslator {
   private implicit def rangeToList[T](r: IndexedSeq[T]): List[T] = r.toList
 
+  var useBapaPlugin = true
+    
   def apply(f: Formula, eqClassNum: Int) = {
+    if (useBapaPlugin)
+      rename(eqClassNum)(f)
+    else
+      nlognTransform(f, eqClassNum)
+  }
+
+  def rename(eqClassNum: Int) = {
+    def renameFormula(form: Formula): Formula = form match {
+      case True | False | PropVar(_) => form
+      case Not(f) => !renameFormula(f)
+      case And(fs) => And(fs map renameFormula)
+      case Or(fs) => Or(fs map renameFormula)
+      case Predicate(c, ts) => Predicate(c, ts map renameTerm)
+    }
+    def renameTerm(term: Term): Term = term match {
+      case TermVar(sym) if sym.isSet => Symbol.partOf(sym, eqClassNum)
+      case Lit(_) | TermVar(_) => term
+      case Op(c, ts) => Op(c, ts map renameTerm)
+    }
+    renameFormula _
+  }
+    
+  def nlognTransform(f: Formula, eqClassNum: Int) = {
     val setvars = ASTUtil.setvars(f)
     val f1 = rewriteSetRel(f)
     val (atoms, zeroes, ones) = countCardinalityExpressions(f1)

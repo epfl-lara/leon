@@ -444,7 +444,8 @@ object GuessOrdering {
     // { MIN( .... ) or MAX( ... ) or IntVar } { <= or === } { MIN( .... ) or MAX( ... ) or IntVar }
     def addConstraint(form: Formula) = {
 
-      //println("Got formula = " + form)
+//       println("Inferred : " + form)
+      z3.impose(form)
 
       val tempSymbolToNodeMap = new MutableMap[IntVar, Node]()
       for (v <- intvars(form)) {

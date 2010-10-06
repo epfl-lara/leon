@@ -3,6 +3,7 @@ package orderedsets
 import purescala.Reporter
 import purescala.Extensions.Solver
 import Reconstruction.Model
+import z3.scala.Z3Model
 
 import RPrettyPrinter.rpp
 
@@ -63,6 +64,8 @@ class Main(reporter: Reporter) extends Solver(reporter) {
     try {
       // Term rewriting and NNF/DNF transformation
       for (conjunction <- NormalForms(formula)) {
+//         println
+//         println("Conjunction : " + conjunction)
         z3.push
         try {
           // Guess orderings, create equivalence classes
@@ -78,6 +81,12 @@ class Main(reporter: Reporter) extends Solver(reporter) {
       false
     } catch {
       // Found a model (counter-example)
+      case Z3SatException(model) =>
+        reporter.info("Counter-example found :")
+        reporter.info(model.toString)
+        // Return SAT
+        if (!ExprToASTConverter.formulaRelaxed) true
+        else throw (new IncompleteException("OrdBAPA: Relaxed formula was found satisfiable."))
       case SatException(Model(ints, sets)) =>
         reporter.info("Counter-example found :")
         for ((name, value) <- ints)
@@ -96,8 +105,10 @@ class Main(reporter: Reporter) extends Solver(reporter) {
 }
 
 // Thrown when a model was found after guessing
+case class Z3SatException(model: Z3Model) extends Exception("A model was found")
 case class SatException(model: Model) extends Exception("A model was found")
 
+  
 // Thrown when a contradiction was derived during guessing
 case class UnsatException(msg: String) extends Exception(msg)
 
