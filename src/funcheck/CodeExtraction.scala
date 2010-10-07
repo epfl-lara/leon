@@ -155,7 +155,16 @@ trait CodeExtraction extends Extractors {
         _ match {
           case ExMainFunctionDef() => ;
           case dd @ ExFunctionDef(n,p,t,b) => {
-            defsToDefs += (dd.symbol -> extractFunSig(n, p, t))
+            val mods = dd.mods
+            val funDef = extractFunSig(n, p, t)
+            if(mods.isPrivate) funDef.addAnnotation("private")
+            for(a <- dd.symbol.annotations) {
+              a.atp.safeToString match {
+                case "funcheck.Annotations.induct" => funDef.addAnnotation("induct")
+                case _ => ;
+              }
+            }
+            defsToDefs += (dd.symbol -> funDef)
           }
           case _ => ;
         }

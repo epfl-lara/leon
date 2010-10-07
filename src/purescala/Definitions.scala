@@ -232,6 +232,14 @@ object Definitions {
     def hasImplementation : Boolean = body.isDefined
     def hasPrecondition : Boolean = precondition.isDefined
     def hasPostcondition : Boolean = postcondition.isDefined
-  }
 
+    private var annots: Set[String] = Set.empty[String]
+    def addAnnotation(as: String*) : FunDef = {
+      annots = annots ++ as
+      this
+    }
+    def annotations : Set[String] = annots
+
+    def isPrivate : Boolean = annots.contains("private")
+  }
 }

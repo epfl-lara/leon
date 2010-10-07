@@ -1,4 +1,5 @@
 import scala.collection.immutable.Set
+import funcheck.Annotations._
 
 object ListWithSize {
     sealed abstract class List
@@ -34,9 +35,10 @@ object ListWithSize {
       case Cons(x,xs) => Cons(x, append(xs, l2))
     })
 
+    @induct
     def propAppend1(l : List) : Boolean = {
       append(l, Nil()) == l
-    }
+    } ensuring(_ == true)
 
     def propAppend2(l : List) : Boolean = (l match {
       case Nil() => propAppend1(l)

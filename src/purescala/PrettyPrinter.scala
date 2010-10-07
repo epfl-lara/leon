@@ -268,8 +268,13 @@ object PrettyPrinter {
         nsb
       }
 
-      case FunDef(id, rt, args, body, pre, post) => {
+      case fd @ FunDef(id, rt, args, body, pre, post) => {
         var nsb = sb
+
+        for(a <- fd.annotations) {
+          ind(nsb, lvl)
+          nsb.append("@" + a + "\n")
+        }
 
         pre.foreach(prec => {
           ind(nsb, lvl)
