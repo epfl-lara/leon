@@ -9,7 +9,7 @@ import TypeTrees._
 
 import z3plugins.bapa.{BAPATheory, BAPATheoryEqc, BAPATheoryBubbles}
 
-class Z3Solver(reporter: Reporter) extends Solver(reporter) {
+class Z3Solver(reporter: Reporter) extends Solver(reporter) with Z3ModelReconstruction {
   import Settings.useBAPA
   val description = "Z3 Solver"
   override val shortDescription = "Z3"
@@ -23,7 +23,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) {
   // this is fixed
   private val z3cfg = new Z3Config(
     "MODEL" -> true,
-    "SOFT_TIMEOUT" -> 180000, // this one doesn't work apparently
+    "SOFT_TIMEOUT" -> 100,
     "TYPE_CHECK" -> true,
     "WELL_SORTED_CHECK" -> true
     )

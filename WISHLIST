@@ -5,6 +5,7 @@ PS: rewrite pattern-matching translator to use if-then-else
 PS: generate VCs for preconditions
 PS: generate VCs for pattern-matching
 PS: support multiple top-level objects, and use 'private' accessor to indicate what's part of the interface
+PS: support tuples (including natively in Z3)
 
 
 Wishes granted so far
