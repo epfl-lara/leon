@@ -29,6 +29,11 @@ object Extensions {
     def analyse(program: Program) : Unit
   }
 
+  abstract class Tactic(reporter: Reporter) extends Extension(reporter) {
+    def generatePostconditions(function: FunDef) : Seq[Expr]
+    def generatePreconditions(function: FunDef) : Seq[Expr]
+  }
+
   // The rest of the code is for dynamically loading extensions
 
   private var allLoaded : Seq[Extension] = Nil
