@@ -17,6 +17,14 @@ class Analysis(val program: Program) {
   val analysisExtensions: Seq[Analyser] = loadedAnalysisExtensions
   val solverExtensions: Seq[Solver] = loadedSolverExtensions
 
+  val trivialSolver = new Solver(reporter) {
+    val description = "Trivial"
+    override val shortDescription = "trivial"
+    def solve(e: Expr) = throw new Exception("trivial solver should not be called.")
+  }
+
+  val defaultTactic = new DefaultTactic(reporter)
+
   // Calling this method will run all analyses on the program passed at
   // construction time. If at least one solver is loaded, verification
   // conditions are generated and passed to all solvers. Otherwise, only the
@@ -35,7 +43,8 @@ class Analysis(val program: Program) {
 
   def checkVerificationConditions : Unit = {
     // just for the summary:
-    var verifiedVCs: List[(String,String,String,String,String)] = Nil
+    var verificationConditionInfos: List[VerificationCondition] = Nil
+
     var analysedFunctions: MutableSet[String] = MutableSet.empty
 
     solverExtensions.foreach(_.setProgram(program))
@@ -44,11 +53,18 @@ class Analysis(val program: Program) {
       analysedFunctions += funDef.id.name
       if(funDef.body.isDefined) {
         val vc = postconditionVC(funDef)
+        val vcInfo = new VerificationCondition(vc, funDef, VCKind.Postcondition, defaultTactic)
+        verificationConditionInfos = vcInfo :: verificationConditionInfos
+
         if(vc == BooleanLiteral(false)) {
-          verifiedVCs = (funDef.id.toString, "postcondition", "invalid", "trivial", "--") :: verifiedVCs
+          vcInfo.value = Some(false)
+          vcInfo.solvedWith = Some(trivialSolver)
+          vcInfo.time = Some(0L)
         } else if(vc == BooleanLiteral(true)) {
           if(funDef.hasPostcondition) {
-            verifiedVCs = (funDef.id.toString, "postcondition", "valid", "tautology", "--") :: verifiedVCs
+          vcInfo.value = Some(true)
+          vcInfo.solvedWith = Some(trivialSolver)
+          vcInfo.time = Some(0L)
           }
         } else {
           reporter.info("Verification condition (post) for ==== " + funDef.id + " ====")
@@ -57,11 +73,6 @@ class Analysis(val program: Program) {
           } else {
             reporter.info("(not showing unrolled VCs)")
           }
-          // reporter.info("Negated:")
-          // reporter.info(negate(vc))
-          // reporter.info("Negated, expanded:")
-          // val exp = expandLets(negate(vc))
-          // reporter.info(exp)
 
           // try all solvers until one returns a meaningful answer
           var superseeded : Set[String] = Set.empty[String]
@@ -82,12 +93,20 @@ class Analysis(val program: Program) {
                 case None => false
                 case Some(true) => {
                   reporter.info("==== VALID ====")
-                  verifiedVCs = (funDef.id.toString, "postcondition", "valid", se.shortDescription, dt + "s.") :: verifiedVCs
+
+                  vcInfo.value = Some(true)
+                  vcInfo.solvedWith = Some(se)
+                  vcInfo.time = Some(dt)
+
                   true
                 }
                 case Some(false) => {
                   reporter.error("==== INVALID ====")
-                  verifiedVCs = (funDef.id.toString, "postcondition", "invalid", se.shortDescription, dt + "s.") :: verifiedVCs
+
+                  vcInfo.value = Some(false)
+                  vcInfo.solvedWith = Some(se)
+                  vcInfo.time = Some(dt)
+
                   true
                 }
               }
@@ -95,7 +114,6 @@ class Analysis(val program: Program) {
           }) match {
             case None => {
               reporter.warning("No solver could prove or disprove the verification condition.")
-              verifiedVCs = (funDef.id.toString, "postcondition", "unknown", "--", "--") :: verifiedVCs
             }
             case _ => 
           } 
@@ -103,27 +121,18 @@ class Analysis(val program: Program) {
       } else {
         if(funDef.postcondition.isDefined) {
           reporter.warning(funDef, "Could not verify postcondition: function implementation is unknown.")
-          verifiedVCs = (funDef.id.toString, "postcondition", "unknown", "no body", "--") :: verifiedVCs
         }
       }
     } 
 
-    if(verifiedVCs.size > 0) {
-      verifiedVCs = verifiedVCs.reverse
-      val col1wdth  = verifiedVCs.map(_._1).map(_.length).max + 2
-      val col2wdth  = verifiedVCs.map(_._2).map(_.length).max + 2
-      val col3wdth  = verifiedVCs.map(_._3).map(_.length).max + 2
-      val col4wdth  = verifiedVCs.map(_._4).map(_.length).max + 2
-      val col5wdth  = verifiedVCs.map(_._5).map(_.length).max
-      def mk1line(line: (String,String,String,String,String)) : String = {
-        line._1 + (" " * (col1wdth - line._1.length)) +
-        line._2 + (" " * (col2wdth - line._2.length)) +
-        line._3 + (" " * (col3wdth - line._3.length)) +
-        line._4 + (" " * (col4wdth - line._4.length)) +
-        line._5
-      }
-      val dashes : String = "=" * (col1wdth + col2wdth + col3wdth + col4wdth + col5wdth)
-      reporter.info("Summary:\n" + dashes + "\n" + verifiedVCs.sortWith(_._1 < _._1).map(mk1line(_)).mkString("\n") + "\n" + dashes)
+    if(verificationConditionInfos.size > 0) {
+      verificationConditionInfos = verificationConditionInfos.reverse
+      val summaryString = (
+        VerificationCondition.infoHeader +
+        verificationConditionInfos.map(_.infoLine).mkString("\n", "\n", "\n") +
+        VerificationCondition.infoFooter
+      )
+      reporter.info(summaryString)
     } else {
       reporter.info("No verification conditions were generated.")
     }

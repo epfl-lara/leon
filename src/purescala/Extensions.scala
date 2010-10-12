@@ -32,6 +32,8 @@ object Extensions {
   abstract class Tactic(reporter: Reporter) extends Extension(reporter) {
     def generatePostconditions(function: FunDef) : Seq[Expr]
     def generatePreconditions(function: FunDef) : Seq[Expr]
+    def generatePatternMatchingExhaustivenessChecks(function: FunDef) : Seq[Expr]
+    def generateMiscCorrectnessConditions(function: FunDef) : Seq[Expr]
   }
 
   // The rest of the code is for dynamically loading extensions
