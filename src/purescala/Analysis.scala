@@ -24,6 +24,9 @@ class Analysis(val program: Program) {
   }
 
   val defaultTactic = new DefaultTactic(reporter)
+  defaultTactic.setProgram(program)
+  val inductionTactic = new InductionTactic(reporter)
+  inductionTactic.setProgram(program)
 
   // Calling this method will run all analyses on the program passed at
   // construction time. If at least one solver is loaded, verification
@@ -32,13 +35,40 @@ class Analysis(val program: Program) {
   def analyse : Unit = {
     if(solverExtensions.size > 0) {
       reporter.info("Running verification condition generation...")
-      checkVerificationConditions
-    } 
+      // checkVerificationConditions
+
+      val list = generateVerificationConditions
+      list.foreach(e => println(e.infoLine))
+    } else {
+      reporter.warning("No solver specified. Cannot test verification conditions.")
+    }
 
     analysisExtensions.foreach(ae => {
       reporter.info("Running analysis from extension: " + ae.description)
       ae.analyse(program)
     })
+  }
+
+  def generateVerificationConditions : List[VerificationCondition] = {
+    var allVCs: Seq[VerificationCondition] = Seq.empty
+
+    for(funDef <- program.definedFunctions.toList.sortWith((fd1, fd2) => fd1.id.name < fd2.id.name) if (Settings.functionsToAnalyse.isEmpty || Settings.functionsToAnalyse.contains(funDef.id.name))) {
+      val tactic: Tactic =
+        if(funDef.annotations.contains("induct")) {
+          inductionTactic
+        } else {
+          defaultTactic
+        }
+
+      if(funDef.body.isDefined) {
+        allVCs ++= tactic.generatePreconditions(funDef)
+        allVCs ++= tactic.generatePostconditions(funDef)
+        allVCs ++= tactic.generatePatternMatchingExhaustivenessChecks(funDef)
+        allVCs ++= tactic.generateMiscCorrectnessConditions(funDef)
+      }
+    }
+
+    allVCs.toList
   }
 
   def checkVerificationConditions : Unit = {
@@ -52,8 +82,10 @@ class Analysis(val program: Program) {
     for(funDef <- program.definedFunctions.toList.sortWith((fd1,fd2) => fd1.id.name < fd2.id.name)) if (Settings.functionsToAnalyse.isEmpty || Settings.functionsToAnalyse.contains(funDef.id.name)) {
       analysedFunctions += funDef.id.name
       if(funDef.body.isDefined) {
-        val vc = postconditionVC(funDef)
-        val vcInfo = new VerificationCondition(vc, funDef, VCKind.Postcondition, defaultTactic)
+        val vcInfo = defaultTactic.generatePostconditions(funDef).head
+        val vc = vcInfo.condition
+        // val vc = postconditionVC(funDef)
+        // val vcInfo = new VerificationCondition(vc, funDef, VCKind.Postcondition, defaultTactic)
         verificationConditionInfos = vcInfo :: verificationConditionInfos
 
         if(vc == BooleanLiteral(false)) {
