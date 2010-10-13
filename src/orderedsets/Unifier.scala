@@ -107,7 +107,7 @@ object ADTUnifier extends Unifier[Variable, CaseClassDef] {
     def expr2term(expr: Expr): Term = expr match {
       case v@Variable(id) => Var(v)
       case CaseClass(ccdef, args) => Fun(ccdef, args map expr2term)
-      case CaseClassSelector(ex, sel) =>
+      case CaseClassSelector(_, ex, sel) =>
         val CaseClassType(ccdef) = ex.getType
         val args = ccdef.fields map freshVar("Sel")
         equalities += expr2term(ex) -> Fun(ccdef, args)
@@ -162,7 +162,7 @@ object ADTUnifier extends Unifier[Variable, CaseClassDef] {
       println("Inequalities were checked to hold\n")
     
     println("--- Output of the unifier (Substitution table) ---")
-    val map1 = map.filterKeys{_.getType != NoType}
+    val map1 = map.filterKeys{_.getType != Untyped}
     for ((x, t) <- map1.toList sortWith byName)
       println("  " + x + "  =  " + pp(t))
     if (map1.isEmpty) println("  (empty table)")

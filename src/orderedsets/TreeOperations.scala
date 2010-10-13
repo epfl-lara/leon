@@ -88,9 +88,9 @@ object TreeOperations {
     case c@CaseClass(cd, _args) =>
       rewrite_*(_args, args =>
         context(CaseClass(cd, args) setType c.getType))
-    case c@CaseClassSelector(_cc, sel) =>
+    case c@CaseClassSelector(ccd, _cc, sel) =>
       rewrite(_cc, cc =>
-        context(CaseClassSelector(cc, sel) setType c.getType))
+        context(CaseClassSelector(ccd, cc, sel) setType c.getType))
     case f@FiniteSet(_elems) =>
       rewrite_*(_elems, elems =>
         context(FiniteSet(elems) setType f.getType))

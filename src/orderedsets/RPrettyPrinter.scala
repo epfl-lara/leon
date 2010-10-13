@@ -82,7 +82,7 @@ object RPrettyPrinter {
     case BooleanLiteral(v) => text(v toString)
     case StringLiteral(s) => "\"" :: s :: "\""
     case CaseClass(ct, args) => ct.id :: ppVarary(args, ",")
-    case CaseClassSelector(cc, id) => pp(cc) :: "." :: id
+    case CaseClassSelector(_, cc, id) => pp(cc) :: "." :: id
     case FunctionInvocation(fd, args) => fd.id :: ppVarary(args, ",")
 
     case Plus(l, r) => ppBinary(l, r, "+")

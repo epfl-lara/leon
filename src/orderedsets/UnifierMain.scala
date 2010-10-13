@@ -174,11 +174,11 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
     val bad = new ArrayBuffer[Expr]() // Formulas of unknown logic
     // TODO: Allow literals in unifier ?
     def isGood(expr: Expr) = expr match {
-      case Variable(_) | CaseClass(_, _) | CaseClassSelector(_, _) => true
+      case Variable(_) | CaseClass(_, _) | CaseClassSelector(_, _, _) => true
       case _ => false
     }
     def isBad(expr: Expr) = expr match {
-      case CaseClass(_, _) | CaseClassSelector(_, _) => false
+      case CaseClass(_, _) | CaseClassSelector(_, _, _) => false
       case _ => true
     }
     def purifyGood(expr: Expr) = if (isGood(expr)) None else {

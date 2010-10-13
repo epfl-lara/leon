@@ -12,13 +12,20 @@ object Trees {
     override def toString: String = PrettyPrinter(this)
   }
 
-  sealed trait Terminal
+  sealed trait Terminal {
+    self: Expr =>
+  }
+
+  /* This describes computational errors (unmatched case, taking min of an
+   * empty set, division by zero, etc.). It should always be typed according to
+   * the expected type. */
+  case class Error(description: String) extends Expr with Terminal
 
   /* Like vals */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
     binder.markAsLetBinder
     val et = body.getType
-    if(et != NoType)
+    if(et != Untyped)
       setType(et)
   }
 
@@ -85,10 +92,15 @@ object Trees {
 
   /* Propositional logic */
   object And {
-    def apply(exprs: Seq[Expr]) : Expr = exprs.size match {
-      case 0 => BooleanLiteral(true)
-      case 1 => exprs.head
-      case _ => new And(exprs)
+    def apply(exprs: Seq[Expr]) : Expr = {
+      val newExprs = exprs.filter(_ != BooleanLiteral(true))
+      if(newExprs.contains(BooleanLiteral(false))) {
+        BooleanLiteral(false)
+      } else newExprs.size match {
+        case 0 => BooleanLiteral(true)
+        case 1 => newExprs.head
+        case _ => new And(newExprs)
+      }
     }
 
     def apply(l: Expr, r: Expr): Expr = (l,r) match {
@@ -107,10 +119,15 @@ object Trees {
   }
 
   object Or {
-    def apply(exprs: Seq[Expr]) : Expr = exprs.size match {
-      case 0 => BooleanLiteral(false)
-      case 1 => exprs.head
-      case _ => new Or(exprs)
+    def apply(exprs: Seq[Expr]) : Expr = {
+      val newExprs = exprs.filter(_ != BooleanLiteral(false))
+      if(newExprs.contains(BooleanLiteral(true))) {
+        BooleanLiteral(true)
+      } else newExprs.size match {
+        case 0 => BooleanLiteral(false)
+        case 1 => newExprs.head
+        case _ => new Or(newExprs)
+      }
     }
 
     def apply(l: Expr, r: Expr): Expr = (l,r) match {
@@ -219,8 +236,11 @@ object Trees {
   case class CaseClass(classDef: CaseClassDef, args: Seq[Expr]) extends Expr with FixedType {
     val fixedType = CaseClassType(classDef)
   }
-  case class CaseClassSelector(caseClass: Expr, selector: Identifier) extends Expr with FixedType {
-    val fixedType = caseClass.getType.asInstanceOf[CaseClassType].classDef.fields.find(_.id == selector).get.getType
+  case class CaseClassInstanceOf(classDef: CaseClassDef, expr: Expr) extends Expr with FixedType {
+    val fixedType = BooleanType
+  }
+  case class CaseClassSelector(classDef: CaseClassDef, caseClass: Expr, selector: Identifier) extends Expr with FixedType {
+    val fixedType = classDef.fields.find(_.id == selector).get.getType
   }
 
   /* Arithmetic */
@@ -315,7 +335,8 @@ object Trees {
       case Cdr(t) => Some((t,Cdr))
       case SetMin(s) => Some((s,SetMin))
       case SetMax(s) => Some((s,SetMax))
-      case CaseClassSelector(e, sel) => Some((e, CaseClassSelector(_, sel)))
+      case CaseClassSelector(cd, e, sel) => Some((e, CaseClassSelector(cd, _, sel)))
+      case CaseClassInstanceOf(cd, e) => Some((e, CaseClassInstanceOf(cd, _)))
       case _ => None
     }
   }
@@ -388,10 +409,15 @@ object Trees {
     searchAndReplaceDFS(substs.get)(expr)
   }
 
+  // Can't just be overloading because of type erasure :'(
+  def replaceFromIDs(substs: Map[Identifier,Expr], expr: Expr) : Expr = {
+    replace(substs.map(p => (Variable(p._1) -> p._2)), expr)
+  }
+
   def searchAndReplace(subst: Expr=>Option[Expr], recursive: Boolean=true)(expr: Expr) : Expr = {
     def rec(ex: Expr, skip: Expr = null) : Expr = (if (ex == skip) None else subst(ex)) match {
       case Some(newExpr) => {
-        if(newExpr.getType == NoType) {
+        if(newExpr.getType == Untyped) {
           Settings.reporter.error("REPLACING IN EXPRESSION WITH AN UNTYPED TREE ! " + ex + " --to--> " + newExpr)
         }
         if(ex == newExpr)
@@ -473,7 +499,7 @@ object Trees {
       case None => ex
       case Some(newEx) => {
         somethingChanged = true
-        if(newEx.getType == NoType) {
+        if(newEx.getType == Untyped) {
           Settings.reporter.warning("REPLACING WITH AN UNTYPED EXPRESSION !")
         }
         newEx
@@ -916,4 +942,68 @@ object Trees {
     })
   }
 
+  /** Rewrites all pattern-matching expressions into if-then-else expressions,
+   * with additional error conditions. Does not introduce additional variables.
+   * */
+  def matchToIfThenElse(expr: Expr) : Expr = {
+    def mapForPattern(in: Expr, pattern: Pattern) : Map[Identifier,Expr] = pattern match {
+      case WildcardPattern(None) => Map.empty
+      case WildcardPattern(Some(id)) => Map(id -> in)
+      case InstanceOfPattern(None, _) => Map.empty
+      case InstanceOfPattern(Some(id), _) => Map(id -> in)
+      case CaseClassPattern(b, ccd, subps) => {
+        assert(ccd.fields.size == subps.size)
+        val pairs = ccd.fields.map(_.id).toList zip subps.toList
+        val subMaps = pairs.map(p => mapForPattern(CaseClassSelector(ccd, in, p._1), p._2))
+        val together = subMaps.foldLeft(Map.empty[Identifier,Expr])(_ ++ _)
+        b match {
+          case Some(id) => Map(id -> in) ++ together
+          case None => together
+        }
+      }
+    }
+
+    def conditionForPattern(in: Expr, pattern: Pattern) : Expr = pattern match {
+      case WildcardPattern(_) => BooleanLiteral(true)
+      case InstanceOfPattern(_,_) => scala.Predef.error("InstanceOfPattern not yet supported.")
+      case CaseClassPattern(_, ccd, subps) => {
+        assert(ccd.fields.size == subps.size)
+        val pairs = ccd.fields.map(_.id).toList zip subps.toList
+        val subTests = pairs.map(p => conditionForPattern(CaseClassSelector(ccd, in, p._1), p._2))
+        val together = And(subTests)
+        And(CaseClassInstanceOf(ccd, in), together)
+      }
+    }
+
+    def rewritePM(e: Expr) : Option[Expr] = e match {
+      case m @ MatchExpr(scrut, cases) => {
+        println("Rewriting the following PM: " + e)
+
+        val condsAndRhs = for(cse <- cases) yield {
+          // println("For this case: " + cse)
+          // println("Map: " + mapForPattern(scrut, cse.pattern))
+          // println("Cond: " + conditionForPattern(scrut, cse.pattern))
+          val map = mapForPattern(scrut, cse.pattern)
+          val patCond = conditionForPattern(scrut, cse.pattern)
+          val realCond = cse.theGuard match {
+            case Some(g) => And(patCond, replaceFromIDs(map, g))
+            case None => patCond
+          }
+          val newRhs = replaceFromIDs(map, cse.rhs)
+          (realCond, newRhs)
+        } 
+
+        val bigIte = condsAndRhs.foldRight[Expr](Error("non-exhaustive match").setType(m.getType))((p1, ex) => {
+          IfExpr(p1._1, p1._2, ex)
+        })
+        println(condsAndRhs)
+        println(bigIte)
+
+        Some(e)
+      }
+      case _ => None
+    }
+    
+    searchAndReplaceDFS(rewritePM)(expr)
+  }
 }

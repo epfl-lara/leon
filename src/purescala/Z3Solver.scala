@@ -407,7 +407,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) with Z3ModelReconstr
         val constructor = adtConstructors(cd)
         constructor(args.map(rec(_)): _*)
       }
-      case c@CaseClassSelector(cc, sel) => {
+      case c@CaseClassSelector(_, cc, sel) => {
         val selector = adtFieldSelectors(sel)
         selector(rec(cc))
       }

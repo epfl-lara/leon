@@ -538,7 +538,7 @@ trait CodeExtraction extends Extractors {
           case Some(vd) => vd.id
         }
 
-        CaseClassSelector(selector, fieldID).setType(fieldID.getType)
+        CaseClassSelector(selDef, selector, fieldID).setType(fieldID.getType)
       }
   
       // default behaviour is to complain :)

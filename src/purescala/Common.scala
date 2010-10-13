@@ -3,7 +3,7 @@ package purescala
 object Common {
   import TypeTrees.Typed
 
-  // the type is left blank (NoType) for Identifiers that are not variables
+  // the type is left blank (Untyped) for Identifiers that are not variables
   class Identifier private[Common](val name: String, val id: Int, alwaysShowUniqueID: Boolean = false) extends Typed {
     override def equals(other: Any): Boolean = {
       if(other == null || !other.isInstanceOf[Identifier])

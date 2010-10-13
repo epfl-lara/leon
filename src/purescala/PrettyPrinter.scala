@@ -80,13 +80,19 @@ object PrettyPrinter {
     case IntLiteral(v) => sb.append(v)
     case BooleanLiteral(v) => sb.append(v)
     case StringLiteral(s) => sb.append("\"" + s + "\"")
-    case CaseClass(ct, args) => {
+    case CaseClass(cd, args) => {
       var nsb = sb
-      nsb.append(ct.id)
+      nsb.append(cd.id)
       nsb = ppNary(nsb, args, "(", ", ", ")", lvl)
       nsb
     }
-    case CaseClassSelector(cc, id) => pp(cc, sb, lvl).append("." + id)
+    case CaseClassInstanceOf(cd, e) => {
+      var nsb = sb
+      nsb = pp(e, nsb, lvl)
+      nsb.append(".isInstanceOf[" + cd.id + "]")
+      nsb
+    }
+    case CaseClassSelector(_, cc, id) => pp(cc, sb, lvl).append("." + id)
     case FunctionInvocation(fd, args) => {
       var nsb = sb
       nsb.append(fd.id)
@@ -186,13 +192,21 @@ object PrettyPrinter {
     case ResultVariable() => sb.append("#res")
     case Not(expr) => ppUnary(sb, expr, "\u00AC(", ")", lvl)               // \neg
 
+    case e @ Error(desc) => {
+      var nsb = sb
+      nsb.append("error(\"" + desc + "\")[")
+      nsb = pp(e.getType, nsb, lvl)
+      nsb.append("]")
+      nsb
+    }
+
     case _ => sb.append("Expr?")
   }
 
   // TYPE TREES
   // all type trees are printed in-line
   private def pp(tpe: TypeTree, sb: StringBuffer, lvl: Int): StringBuffer = tpe match {
-    case NoType => sb.append("???")
+    case Untyped => sb.append("???")
     case Int32Type => sb.append("Int")
     case BooleanType => sb.append("Boolean")
     case SetType(bt) => pp(bt, sb.append("Set["), lvl).append("]")

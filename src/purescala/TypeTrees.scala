@@ -11,7 +11,7 @@ object TypeTrees {
     private var _type: Option[TypeTree] = None
 
     def getType: TypeTree = _type match {
-      case None => NoType
+      case None => Untyped
       case Some(t) => t
     }
 
@@ -67,6 +67,11 @@ object TypeTrees {
     }
 
     case (o1, o2) if (o1 == o2) => o1
+    case (o1,NoType) => o1
+    case (NoType,o2) => o2
+    case (o1,AnyType) => AnyType
+    case (AnyType,o2) => AnyType
+
     case _ => scala.Predef.error("Asking for lub of unrelated types: " + t1 + " and " + t2)
   }
 
@@ -76,8 +81,9 @@ object TypeTrees {
   case object InfiniteSize extends TypeSize
 
   def domainSize(typeTree: TypeTree) : TypeSize = typeTree match {
-    case NoType => FiniteSize(0)
+    case Untyped => FiniteSize(0)
     case AnyType => InfiniteSize
+    case NoType => FiniteSize(0)
     case BooleanType => FiniteSize(2)
     case Int32Type => InfiniteSize
     case ListType(_) => InfiniteSize
@@ -105,9 +111,9 @@ object TypeTrees {
     case c: ClassType => InfiniteSize
   }
 
-  case object NoType extends TypeTree
-
+  case object Untyped extends TypeTree
   case object AnyType extends TypeTree
+  case object NoType extends TypeTree // This is the type of errors (ie. subtype of anything)
   case object BooleanType extends TypeTree
   case object Int32Type extends TypeTree
 
