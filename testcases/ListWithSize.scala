@@ -17,6 +17,10 @@ object ListWithSize {
       case Cons(x, xs) => Set(x) ++ content(xs)
     }
 
+    def sizeAndContent(l: List) : Boolean = {
+      size(l) == 0 || content(l) != Set.empty[Int]
+    } ensuring(_ == true)
+
     // proved with unrolling=1
     def funnyCons(x: Int, l: List) : List = (l match {
         case Nil() => Cons(x, Nil())

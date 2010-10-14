@@ -93,6 +93,13 @@ object BinarySearchTree {
     }
   } ensuring (contents(_) == contents(tree) ++ Set(value))
 
+  def cleanInsert(tree: Tree, value: Int) : Tree = (tree match {
+    case Leaf() => Node(Leaf(), value, Leaf())
+    case Node(l, v, r) if v < value => Node(l, v, insert(r, value))
+    case Node(l, v, r) if v > value => Node(insert(l, value), v, r)
+    case n @ Node(l, v, r) if v == value => n
+  }) ensuring(contents(_) == contents(tree) ++ Set(value))
+
   def insertSorted(tree: Tree, value: Int): Node = {
     require(isSorted(tree).sorted)
     tree match {

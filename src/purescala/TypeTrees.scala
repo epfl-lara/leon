@@ -35,6 +35,17 @@ object TypeTrees {
     override def toString: String = PrettyPrinter(this)
   }
 
+  // Sort of a quick hack...
+  def bestRealType(t: TypeTree) : TypeTree = t match {
+    case c: ClassType if c.classDef.isInstanceOf[CaseClassDef] => {
+      c.classDef.parent match {
+        case None => scala.Predef.error("Asking for real type of a case class without abstract parent")
+        case Some(p) => AbstractClassType(p)
+      }
+    }
+    case other => other
+  }
+
   def leastUpperBound(t1: TypeTree, t2: TypeTree): TypeTree = (t1,t2) match {
     case (c1: ClassType, c2: ClassType) => {
       import scala.collection.immutable.Set

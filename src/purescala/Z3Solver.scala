@@ -360,13 +360,21 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) with Z3ModelReconstr
 
     var z3Vars: Map[String, Z3AST] = initialMap
 
-    def rec(ex: Expr): Z3AST = ex match {
+    def rec(ex: Expr): Z3AST = { 
+      println("Stacking up call for:")
+      println(ex)
+      val recResult = (ex match {
       case Let(i, e, b) => {
         val re = rec(e)
         z3Vars = z3Vars + (i.uniqueName -> re)
         val rb = rec(b)
         z3Vars = z3Vars - i.uniqueName
         rb
+      }
+      case e @ Error(_) => {
+        val tpe = e.getType
+        val newAST = z3.mkFreshConst("errorValue", typeToSort(tpe))
+        newAST
       }
       case v@Variable(id) => z3Vars.get(id.uniqueName) match {
         case Some(ast) => ast
@@ -375,6 +383,9 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) with Z3ModelReconstr
             scala.Predef.error("Error in formula being translated to Z3: identifier " + id + " seems to have escaped its let-definition")
           }
           val newAST = z3.mkFreshConst(id.name, typeToSort(v.getType))
+          println("*** new ID ***")
+          println(newAST)
+          println(typeToSort(v.getType))
           z3Vars = z3Vars + (id.uniqueName -> newAST)
           newAST
         }
@@ -408,8 +419,14 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) with Z3ModelReconstr
         constructor(args.map(rec(_)): _*)
       }
       case c@CaseClassSelector(_, cc, sel) => {
+        println("### NOW COMES A SELECTOR ! ###")
         val selector = adtFieldSelectors(sel)
+        println(selector)
         selector(rec(cc))
+      }
+      case c@CaseClassInstanceOf(ccd, e) => {
+        val tester = adtTesters(ccd)
+        tester(rec(e))
       }
       case f@FunctionInvocation(fd, args) if functionDefToDef.isDefinedAt(fd) => {
         abstractedFormula = true
@@ -464,6 +481,12 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) with Z3ModelReconstr
         reporter.warning("Can't handle this in translation to Z3: " + ex)
         throw new CantTranslateException
       }
+    })
+    println("Encoding of:")
+    println(ex)
+    println("...was encoded as:")
+    println(recResult)
+    recResult
     }
 
     try {

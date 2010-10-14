@@ -501,6 +501,7 @@ object Trees {
         somethingChanged = true
         if(newEx.getType == Untyped) {
           Settings.reporter.warning("REPLACING WITH AN UNTYPED EXPRESSION !")
+          Settings.reporter.warning("Here's the new expression: " + newEx)
         }
         newEx
       }
@@ -980,9 +981,6 @@ object Trees {
         println("Rewriting the following PM: " + e)
 
         val condsAndRhs = for(cse <- cases) yield {
-          // println("For this case: " + cse)
-          // println("Map: " + mapForPattern(scrut, cse.pattern))
-          // println("Cond: " + conditionForPattern(scrut, cse.pattern))
           val map = mapForPattern(scrut, cse.pattern)
           val patCond = conditionForPattern(scrut, cse.pattern)
           val realCond = cse.theGuard match {
@@ -993,13 +991,11 @@ object Trees {
           (realCond, newRhs)
         } 
 
-        val bigIte = condsAndRhs.foldRight[Expr](Error("non-exhaustive match").setType(m.getType))((p1, ex) => {
-          IfExpr(p1._1, p1._2, ex)
+        val bigIte = condsAndRhs.foldRight[Expr](Error("non-exhaustive match").setType(bestRealType(m.getType)))((p1, ex) => {
+          IfExpr(p1._1, p1._2, ex).setType(m.getType)
         })
-        println(condsAndRhs)
-        println(bigIte)
-
-        Some(e)
+        //println(condsAndRhs)
+        Some(bigIte)
       }
       case _ => None
     }
