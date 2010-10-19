@@ -52,7 +52,7 @@ object VCs {
       && (recListContent == hMinusMaxContent ++ Set(hContent.max))
     )
      ((recListContent == hContent)
-   && (hContent.max > hMinusMaxContent.max))
+   && (hMinusMaxContent == Set.empty[Int] || hContent.max > hMinusMaxContent.max))
   } ensuring(_ == true)
 
   def heapSortNoRepeat2_V(accContent: Set[Int], hContent: Set[Int], hMinusMaxContent: Set[Int], recListContent: Set[Int]) = {
