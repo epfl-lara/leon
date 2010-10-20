@@ -361,8 +361,8 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) with Z3ModelReconstr
     var z3Vars: Map[String, Z3AST] = initialMap
 
     def rec(ex: Expr): Z3AST = { 
-      println("Stacking up call for:")
-      println(ex)
+      //println("Stacking up call for:")
+      //println(ex)
       val recResult = (ex match {
       case Let(i, e, b) => {
         val re = rec(e)
@@ -383,9 +383,6 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) with Z3ModelReconstr
             scala.Predef.error("Error in formula being translated to Z3: identifier " + id + " seems to have escaped its let-definition")
           }
           val newAST = z3.mkFreshConst(id.name, typeToSort(v.getType))
-          println("*** new ID ***")
-          println(newAST)
-          println(typeToSort(v.getType))
           z3Vars = z3Vars + (id.uniqueName -> newAST)
           newAST
         }
@@ -419,9 +416,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) with Z3ModelReconstr
         constructor(args.map(rec(_)): _*)
       }
       case c@CaseClassSelector(_, cc, sel) => {
-        println("### NOW COMES A SELECTOR ! ###")
         val selector = adtFieldSelectors(sel)
-        println(selector)
         selector(rec(cc))
       }
       case c@CaseClassInstanceOf(ccd, e) => {
@@ -482,10 +477,10 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) with Z3ModelReconstr
         throw new CantTranslateException
       }
     })
-    println("Encoding of:")
-    println(ex)
-    println("...was encoded as:")
-    println(recResult)
+    // println("Encoding of:")
+    // println(ex)
+    // println("...was encoded as:")
+    // println(recResult)
     recResult
     }
 

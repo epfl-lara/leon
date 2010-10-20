@@ -32,13 +32,13 @@ class VerificationCondition(val condition: Expr, val funDef: FunDef, val kind: V
   private def timeStr = time.map(t => "%-3.3f".format(t)).getOrElse("")
 
   def infoLine : String = {
-    "║ %-15s %-10s %-8s %-10s %-10s %7s ║" format (funDef.id.toString, kind, status, tacticStr, solverStr, timeStr)
+    "║ %-20s %-10s %-8s %-10s %-7s %7s ║" format (funDef.id.toString, kind, status, tacticStr, solverStr, timeStr)
   }
 }
 
 object VerificationCondition {
-  val infoFooter : String = "╚" + ("═" * 67) + "╝"
-  val infoHeader : String = "╔══ Summary " + ("═" * 56) + "╗"
+  val infoFooter : String = "╚" + ("═" * 69) + "╝"
+  val infoHeader : String = "╔══ Summary " + ("═" * 58) + "╗"
 }
 
 object VCKind extends Enumeration {
