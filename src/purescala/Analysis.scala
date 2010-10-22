@@ -152,7 +152,7 @@ object Analysis {
     val FunctionInvocation(fd, args) = f
     val newLetIDs = fd.args.map(a => FreshIdentifier("arg_" + a.id.name, true).setType(a.tpe)).toList
     val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip newLetIDs.map(Variable(_))) : _*)
-    val newBody = replace(substMap, freshenLocals(fd.body.get))
+    val newBody = replace(substMap, freshenLocals(matchToIfThenElse(fd.body.get)))
     val newFunctionCall = FunctionInvocation(fd, newLetIDs.map(Variable(_))).setType(f.getType)
     val callID = FreshIdentifier("call_" + fd.id.name, true).setType(newBody.getType)
     val callTree = Let(callID, (newLetIDs zip args).foldRight(newBody)((iap, e) => Let(iap._1, iap._2, e)), Variable(callID))
@@ -164,7 +164,7 @@ object Analysis {
     val FunctionInvocation(fd, args) = f
     val newLetIDs = fd.args.map(a => FreshIdentifier("arg_" + a.id.name, true).setType(a.tpe)).toList
     val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip newLetIDs.map(Variable(_))) : _*)
-    val newBody = replace(substMap, freshenLocals(fd.body.get))
+    val newBody = replace(substMap, freshenLocals(matchToIfThenElse(fd.body.get)))
     simplifyLets((newLetIDs zip args).foldRight(newBody)((iap, e) => Let(iap._1, iap._2, e)))
   }
 

@@ -10,5 +10,5 @@ import TypeTrees._
 trait Z3ModelReconstruction {
   self: Z3Solver =>
 
-
+  
 }

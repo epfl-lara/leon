@@ -943,10 +943,21 @@ object Trees {
     })
   }
 
+  private var matchConverterCache = new scala.collection.mutable.HashMap[Expr,Expr]()
   /** Rewrites all pattern-matching expressions into if-then-else expressions,
    * with additional error conditions. Does not introduce additional variables.
-   * */
+   * We use a cache because we can. */
   def matchToIfThenElse(expr: Expr) : Expr = {
+    if(matchConverterCache.isDefinedAt(expr)) {
+      matchConverterCache(expr)
+    } else {
+      val converted = convertMatchToIfThenElse(expr)
+      matchConverterCache(expr) = converted
+      converted
+    }
+  }
+
+  private def convertMatchToIfThenElse(expr: Expr) : Expr = {
     def mapForPattern(in: Expr, pattern: Pattern) : Map[Identifier,Expr] = pattern match {
       case WildcardPattern(None) => Map.empty
       case WildcardPattern(Some(id)) => Map(id -> in)
