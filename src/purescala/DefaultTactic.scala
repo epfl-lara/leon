@@ -23,18 +23,18 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
       assert(functionDefinition.body.isDefined)
       val prec = functionDefinition.precondition
       val post = functionDefinition.postcondition
-      val body = functionDefinition.body.get
+      val body = matchToIfThenElse(functionDefinition.body.get)
 
       if(post.isEmpty) {
         Seq.empty
       } else {
         val theExpr = { 
           val resFresh = FreshIdentifier("result", true).setType(body.getType)
-          val bodyAndPost = Let(resFresh, body, replace(Map(ResultVariable() -> Variable(resFresh)), post.get))
+          val bodyAndPost = Let(resFresh, body, replace(Map(ResultVariable() -> Variable(resFresh)), matchToIfThenElse(post.get)))
           val withPrec = if(prec.isEmpty) {
             bodyAndPost
           } else {
-            Implies(prec.get, bodyAndPost)
+            Implies(matchToIfThenElse(prec.get), bodyAndPost)
           }
 
           import Analysis._
@@ -69,19 +69,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
             reporter.info("Contract'ed, expanded:")
             reporter.info(expandLets(expr2))
           }
-          reporter.info(" - converting pattern-matching...")
-          val expr3 = if(Settings.useNewPatternMatchingTranslator) {
-            matchToIfThenElse(expr2)
-          } else {
-            rewriteSimplePatternMatching(expr2)
-          }
-          if(Settings.experimental) {
-            reporter.info("Pattern'ed:")
-            reporter.info(expr3)
-            reporter.info("Pattern'ed, expanded:")
-            reporter.info(expandLets(expr3))
-          }
-          expr3
+          expr2
         }
         Seq(new VerificationCondition(theExpr, functionDefinition, VCKind.Postcondition, this))
       }
