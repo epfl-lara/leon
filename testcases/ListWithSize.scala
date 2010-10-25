@@ -44,16 +44,11 @@ object ListWithSize {
       case Cons(x,xs) => Cons(x, append(xs, l2))
     })
 
-    @induct
+//    @induct
     def propAppend1(l : List) : Boolean = {
       append(l, Nil()) == l
     } ensuring(_ == true)
-
-    @induct
-    def allListsAreEmpty(l : List) : Boolean = {
-      allListsAreEmpty(l) && (l == Nil())
-    } ensuring (_ == true)
-
+    // should generate something like:
     def propAppend2(l : List) : Boolean = (l match {
       case Nil() => propAppend1(l)
       case Cons(x,xs) => (!propAppend1(xs) || propAppend1(l))
@@ -62,6 +57,10 @@ object ListWithSize {
     def propAppend3(l : List) : Boolean = {
       !propAppend1(l) || propAppend2(l)
     } ensuring (_ == true)
+
+//    def twoLists(l1 : List) : Boolean = {
+//      Forall((l2 : List) => size(append(l1,l2)) = size(l1) + size(l2))
+//    }
 
 /*
     def induct(l : List, prop : List => Boolean) = {
