@@ -21,6 +21,11 @@ object ListWithSize {
       size(l) == 0 || content(l) != Set.empty[Int]
     } ensuring(_ == true)
 
+    def drunk(l : List) : List = (l match {
+      case Nil() => Nil()
+      case Cons(x,l1) => Cons(x,Cons(x,drunk(l1)))
+    }) ensuring (size(_) == 2 * size(l))
+
     // proved with unrolling=1
     def funnyCons(x: Int, l: List) : List = (l match {
         case Nil() => Cons(x, Nil())
