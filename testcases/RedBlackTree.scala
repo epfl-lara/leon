@@ -15,13 +15,20 @@ object RedBlackTree {
     case Node(_, l, v, r) => content(l) ++ Set(v) ++ content(r)
   }
 
+  def size(t : Tree) : Int = t match {
+    case Empty() => 0
+    case Node(_, l, v, r) => size(l) + 1 + size(r)
+  }
+
   def ins(x : Int, t: Tree): Tree = (t match {
     case Empty() => Node(Red(),Empty(),x,Empty())
     case Node(c,a,y,b) =>
       if      (x < y)  balance(c, ins(x, a), y, b)
       else if (x == y) Node(c,a,y,b)
       else             balance(c,a,y,ins(x, b))
-  }) ensuring (content(_) == content(t) ++ Set(x))
+  }) ensuring (res => 
+          content(res) == content(t) ++ Set(x) &&
+          size(t) <= size(res) && size(res) < size(t) + 2)
 
   def add(x: Int, t: Tree): Tree = {
     makeBlack(ins(x, t))

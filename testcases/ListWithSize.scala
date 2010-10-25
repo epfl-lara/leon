@@ -44,6 +44,11 @@ object ListWithSize {
       append(l, Nil()) == l
     } ensuring(_ == true)
 
+    @induct
+    def allListsAreEmpty(l : List) : Boolean = {
+      allListsAreEmpty(l) && (l == Nil())
+    } ensuring (_ == true)
+
     def propAppend2(l : List) : Boolean = (l match {
       case Nil() => propAppend1(l)
       case Cons(x,xs) => (!propAppend1(xs) || propAppend1(l))
