@@ -227,6 +227,10 @@ trait CodeExtraction extends Extractors {
           realBody = body2
           ensCont = Some(c1)
         }
+        case ExHoldsExpression(body2) => {
+          realBody = body2
+          ensCont = Some(ResultVariable().setType(BooleanType))
+        }
         case _ => ;
       }
 

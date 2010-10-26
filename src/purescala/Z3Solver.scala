@@ -165,16 +165,14 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) with Z3ModelReconstr
       functionDefToDef = functionDefToDef + (funDef -> z3.mkFreshFuncDecl(funDef.id.name, sortSeq, typeToSort(funDef.returnType)))
     }
 
-    // universally quantifies all functions !
+    // Attempts to universally quantify all functions !
     if (!Settings.noForallAxioms) {
-      for (funDef <- program.definedFunctions) if (funDef.hasImplementation && program.isRecursive(funDef) && funDef.args.size > 0) {
+      for (funDef <- program.definedFunctions) if (funDef.hasImplementation /* && program.isRecursive(funDef) */ && funDef.args.size > 0) {
         // println("Generating forall axioms for " + funDef.id.name)
         funDef.body.get match {
           case SimplePatternMatching(scrutinee, _, infos) if (
-                  // funDef.args.size == 1 && funDef.args(0).toVariable == scrutinee
                   funDef.args.size >= 1 && funDef.args.map(_.toVariable).contains(scrutinee)
                   ) => {
-            // println("...has simple PM structure.")
             infos.foreach(i => if (!contains(i._4, _.isInstanceOf[MatchExpr])) {
               val argsAsVars: Seq[Option[Variable]] = funDef.args.map(a => {
                 val v = a.toVariable
@@ -195,7 +193,8 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) with Z3ModelReconstr
                   }
                 }
               }
-              val (ccd, pid, subids, rhs) = i
+              val (ccd, pid, subids, dirtyRHS) = i
+              val cleanRHS = matchToIfThenElse(dirtyRHS)
               val argSorts: Seq[Z3Sort] = subids.map(id => typeToSort(id.getType))
               val boundVars = argSorts.zip((c + 1) until (c + 1 + argSorts.size)).map(p => z3.mkBound(p._2, p._1))
               val matcher: Z3AST = adtConstructors(ccd)(boundVars: _*)
@@ -211,7 +210,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) with Z3ModelReconstr
                   case Some(v) => v
                 }))
 
-              val toConvert = Equals(fOfT, rhs)
+              val toConvert = Equals(fOfT, cleanRHS)
               //println(toConvert)
               val initialMap: Map[String, Z3AST] =
               Map((funDef.args.map(_.id) zip otherFunBounds).map(_ match {

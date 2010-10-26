@@ -60,6 +60,7 @@ object ExprComp {
 	case NStack(v1,vs1) => vs1 match {
 	  case EStack() => Fail()
 	  case NStack(v2,vs2) => Fail() // should be: run(rest, NStack(evalOp(v1,op,v2),vs2))
+	  //case NStack(v2,vs2) => run(rest, NStack(evalOp(v1,op,v2),vs2))
 	}
       }
     }

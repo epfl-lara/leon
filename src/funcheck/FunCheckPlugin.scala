@@ -27,7 +27,6 @@ class FunCheckPlugin(val global: Global) extends Plugin {
     "  -P:funcheck:axioms             Generate simple forall axioms for recursive functions when possible" + "\n" + 
     "  -P:funcheck:tolerant           Silently extracts non-pure function bodies as ''unknown''" + "\n" +
     "  -P:funcheck:nobapa             Disable BAPA Z3 extension" + "\n" +
-    "  -P:funcheck:newPM              Use the new pattern-matching translator" + "\n" +
     "  -P:funcheck:quiet              No info and warning messages from the extensions" + "\n" +
     "  -P:funcheck:XP                 Enable weird transformations and other bug-producing features"
   )
@@ -45,7 +44,7 @@ class FunCheckPlugin(val global: Global) extends Plugin {
         case "nodefaults" =>                     purescala.Settings.runDefaultExtensions = false
         case "axioms"     =>                     purescala.Settings.noForallAxioms = false
         case "nobapa"     =>                     purescala.Settings.useBAPA = false
-        case "newPM"      =>                     purescala.Settings.useNewPatternMatchingTranslator = true
+        case "newPM"      =>                     { println("''newPM'' is no longer a command-line option, because the new translation is now on by default."); System.exit(0) }
         case "XP"         =>                     purescala.Settings.experimental = true
         case s if s.startsWith("unrolling=") =>  purescala.Settings.unrollingLevel = try { s.substring("unrolling=".length, s.length).toInt } catch { case _ => 0 }
         case s if s.startsWith("functions=") =>  purescala.Settings.functionsToAnalyse = Set(splitList(s.substring("functions=".length, s.length)): _*)
