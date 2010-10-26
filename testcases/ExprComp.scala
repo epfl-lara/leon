@@ -1,7 +1,8 @@
 object ExprComp {
 
   // Values
-  case class Value(v : Int)
+  sealed abstract class Whatever
+  case class Value(v : Int) extends Whatever
 
   // Operations
   sealed abstract class BinOp
@@ -76,6 +77,13 @@ object ExprComp {
 
   def property(e : Expr, acc : Program, vs : ValueStack) : Boolean = {
     run(compile(e, acc), vs) == Ok(NStack(eval(e), vs))
+  } // ensuring (res => res)
+
+  def property0() : Boolean = {
+    val e = Binary(Constant(Value(3)), Plus(), Constant(Value(5)))
+    val vs = EStack()
+    val acc = EProgram()
+    run(compile(e, acc), vs) == Ok(NStack(eval(e), vs))
   } ensuring (res => res)
 
   def main(args : Array[String]) = {
@@ -84,6 +92,6 @@ object ExprComp {
     val acc = EProgram()
     println(run(compile(e, acc), vs))
     println(Ok(NStack(eval(e), vs)))
-    println(property(e,acc,vs))
+    assert(property(e,acc,vs))
   }
 }
