@@ -9,7 +9,9 @@ import TypeTrees._
 
 import z3plugins.bapa.{BAPATheory, BAPATheoryEqc, BAPATheoryBubbles}
 
-class Z3Solver(reporter: Reporter) extends Solver(reporter) with Z3ModelReconstruction {
+import scala.collection.mutable.{HashMap => MutableHashMap}
+
+class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReconstruction {
   import Settings.useBAPA
   val description = "Z3 Solver"
   override val shortDescription = "Z3"
@@ -291,6 +293,8 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) with Z3ModelReconstr
     restartZ3
     abstractedFormula = false
 
+    lazy val varsInVC = variablesOf(vc) 
+
     if (neverInitialized) {
       reporter.error("Z3 Solver was not initialized with a PureScala Program.")
       None
@@ -312,16 +316,20 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) with Z3ModelReconstr
               reporter.error("There's a bug!")
               if(Settings.experimental) {
                 reporter.error(m)
-              } else {
-                if (useBAPA) reporter.error(bapa.toBapaModel(m))
+                printExtractedModel(m, varsInVC)
+                if(useBAPA) {
+                  reporter.error(bapa.toBapaModel(m))
+                }
               }
               Some(false)
             } else {
               reporter.info("Could or could not be a bug (formula was relaxed).")
               if(Settings.experimental) {
                 reporter.info(m)
-              } else {
-                if (useBAPA) reporter.error(bapa.toBapaModel(m))
+                printExtractedModel(m, varsInVC)
+                if(useBAPA) {
+                  reporter.error(bapa.toBapaModel(m))
+                }
               }
               if(reportUnknownAsSat) {
                 Some(false)
@@ -352,12 +360,17 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) with Z3ModelReconstr
     result
   }
 
+  val id2idMap : MutableHashMap[String,Z3AST] = MutableHashMap.empty
   private def toZ3Formula(z3: Z3Context, expr: Expr, initialMap: Map[String, Z3AST] = Map.empty): Option[Z3AST] = {
     class CantTranslateException extends Exception
 
     val varsInformula: Set[Identifier] = variablesOf(expr)
 
     var z3Vars: Map[String, Z3AST] = initialMap
+
+    for((k, v) <- initialMap) {
+      id2idMap(k) = v
+    }
 
     def rec(ex: Expr): Z3AST = { 
       //println("Stacking up call for:")
@@ -383,6 +396,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) with Z3ModelReconstr
           }
           val newAST = z3.mkFreshConst(id.name, typeToSort(v.getType))
           z3Vars = z3Vars + (id.uniqueName -> newAST)
+          id2idMap(id.uniqueName) = newAST
           newAST
         }
       }
