@@ -8,11 +8,14 @@ import Trees._
 import TypeTrees._
 
 import z3plugins.bapa.{BAPATheory, BAPATheoryEqc, BAPATheoryBubbles}
+import z3plugins.instantiator.Instantiator
 
 import scala.collection.mutable.{HashMap => MutableHashMap}
 
 class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReconstruction {
   import Settings.useBAPA
+  import Settings.useInstantiator
+
   val description = "Z3 Solver"
   override val shortDescription = "Z3"
 
@@ -31,20 +34,16 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
     )
   toggleWarningMessages(true)
 
-  private var z3: Z3Context = null
+  protected[purescala] var z3: Z3Context = null
+  protected[purescala] var program: Program = null
   private var bapa: BAPATheoryType = null
-  private var program: Program = null
+  private var instantiator: Instantiator = null
   private var neverInitialized = true
 
   private val IntSetType = SetType(Int32Type)
 
   override def setProgram(prog: Program): Unit = {
     program = prog
-    // commented out: Z3 is now restarted for each VC... Could be slow if we
-    // have axioms, but we'll make sure we don't count that in the timing..
-    // The main advantage is that Z3 is not overwhelmed with old axioms (in
-    // BAPA theory)
-    // restartZ3
   }
 
   private def restartZ3: Unit = {
@@ -56,6 +55,8 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
     z3 = new Z3Context(z3cfg)
     // z3.traceToStdout
     if (useBAPA) bapa = new BAPATheoryType(z3)
+    if (useInstantiator) instantiator = new Instantiator(this)
+
     counter = 0
     prepareSorts
     prepareFunctions
@@ -159,16 +160,29 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
     // ...and now everything should be in there...
   }
 
-  private var functionDefToDef: Map[FunDef, Z3FuncDecl] = Map.empty
+  def functionDefToDef(funDef: FunDef) : Z3FuncDecl = {
+    if(useInstantiator) {
+      instantiator.functionDefToDef(funDef)
+    } else {
+      functionMap.getOrElse(funDef, scala.Predef.error("No Z3 definition found for function symbol " + funDef.id.name + ". This is clearly an error (Instantiator is off)."))
+    }
+  }
+  private var functionMap: Map[FunDef, Z3FuncDecl] = Map.empty
 
   def prepareFunctions: Unit = {
     for (funDef <- program.definedFunctions) {
       val sortSeq = funDef.args.map(vd => typeToSort(vd.tpe))
-      functionDefToDef = functionDefToDef + (funDef -> z3.mkFreshFuncDecl(funDef.id.name, sortSeq, typeToSort(funDef.returnType)))
+      val returnSort = typeToSort(funDef.returnType)
+
+      if(useInstantiator) {
+        instantiator.registerFunction(funDef, sortSeq, returnSort)
+      } else {
+        functionMap = functionMap + (funDef -> z3.mkFreshFuncDecl(funDef.id.name, sortSeq, returnSort))
+      }
     }
 
     // Attempts to universally quantify all functions !
-    if (!Settings.noForallAxioms) {
+    if (!Settings.noForallAxioms && !Settings.useInstantiator) {
       for (funDef <- program.definedFunctions) if (funDef.hasImplementation /* && program.isRecursive(funDef) */ && funDef.args.size > 0) {
         // println("Generating forall axioms for " + funDef.id.name)
         funDef.body.get match {
@@ -436,8 +450,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
         val tester = adtTesters(ccd)
         tester(rec(e))
       }
-      case f@FunctionInvocation(fd, args) if functionDefToDef.isDefinedAt(fd) => {
-        abstractedFormula = true
+      case f@FunctionInvocation(fd, args) => {
         z3.mkApp(functionDefToDef(fd), args.map(rec(_)): _*)
       }
       case e@EmptySet(_) => if (useBAPA && e.getType == IntSetType) {

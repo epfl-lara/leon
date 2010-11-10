@@ -1,3 +1,4 @@
+import funcheck.Utils._
 
 object Test {
   sealed abstract class List
@@ -22,5 +23,5 @@ object Test {
 
   def sameSorted(list: List) : Boolean = {
     isSorted(list) == isSorted2(list)
-  } ensuring(r=>r)
+  } holds
 }

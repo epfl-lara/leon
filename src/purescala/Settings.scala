@@ -12,5 +12,7 @@ object Settings {
   var runDefaultExtensions: Boolean = true
   var noForallAxioms: Boolean = true
   var unrollingLevel: Int = 0
+  var zeroInlining : Boolean = false
   var useBAPA: Boolean = true
+  var useInstantiator: Boolean = false
 }
