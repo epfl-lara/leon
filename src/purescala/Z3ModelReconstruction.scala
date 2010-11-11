@@ -13,13 +13,16 @@ trait Z3ModelReconstruction {
   def modelValue(model: Z3Model, id: Identifier, tpe: TypeTree = null) : Option[Expr] = {
     val expectedType = if(tpe == null) id.getType else tpe
     
-    if(!id2idMap.isDefinedAt(id.uniqueName)) None else {
-      val z3ID : Z3AST = id2idMap(id.uniqueName)
+    if(!exprToZ3Id.isDefinedAt(id.toVariable)) None else {
+      val z3ID : Z3AST = exprToZ3Id(id.toVariable)
 
       expectedType match {
         case BooleanType => model.evalAsBool(z3ID).map(BooleanLiteral(_))
         case Int32Type => model.evalAsInt(z3ID).map(IntLiteral(_))
-        case _ => None
+        case other => model.eval(z3ID) match {
+          case None => None
+          case Some(t) => softFromZ3Formula(t)
+        }
       }
     }
   }

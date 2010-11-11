@@ -1,6 +1,7 @@
 package purescala
 
 object Common {
+  import Trees.Variable
   import TypeTrees.Typed
 
   // the type is left blank (Untyped) for Identifiers that are not variables
@@ -26,6 +27,8 @@ object Common {
     }
 
     def uniqueName : String = name + id
+
+    def toVariable : Variable = Variable(this)
 
     private var _islb: Boolean = false
     def markAsLetBinder : Identifier = { _islb = true; this }

@@ -79,9 +79,14 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
   private var setCardFuns: Map[TypeTree, Z3FuncDecl] = Map.empty
   private var adtSorts: Map[ClassTypeDef, Z3Sort] = Map.empty
   private var fallbackSorts: Map[TypeTree, Z3Sort] = Map.empty
+
   private var adtTesters: Map[CaseClassDef, Z3FuncDecl] = Map.empty
   private var adtConstructors: Map[CaseClassDef, Z3FuncDecl] = Map.empty
   private var adtFieldSelectors: Map[Identifier, Z3FuncDecl] = Map.empty
+
+  private var reverseADTTesters: Map[Z3FuncDecl, CaseClassDef] = Map.empty
+  private var reverseADTConstructors: Map[Z3FuncDecl, CaseClassDef] = Map.empty
+  private var reverseADTFieldSelectors: Map[Z3FuncDecl, (CaseClassDef,Identifier)] = Map.empty
 
   case class UntranslatableTypeException(msg: String) extends Exception(msg)
   private def prepareSorts: Unit = {
@@ -142,6 +147,9 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
     adtTesters = Map.empty
     adtConstructors = Map.empty
     adtFieldSelectors = Map.empty
+    reverseADTTesters = Map.empty
+    reverseADTConstructors = Map.empty
+    reverseADTFieldSelectors = Map.empty
 
     for ((z3Inf, (root, childrenList)) <- (resultingZ3Info zip rootsAndChildren)) {
       adtSorts += (root -> z3Inf._1)
@@ -154,20 +162,42 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
         assert(child.fields.size == fieldFuns.size)
         for ((fid, selFun) <- (child.fields.map(_.id) zip fieldFuns)) {
           adtFieldSelectors += (fid -> selFun)
+          reverseADTFieldSelectors += (selFun -> (child, fid))
         }
       }
     }
+
+    reverseADTTesters = adtTesters.map(_.swap)
+    reverseADTConstructors = adtConstructors.map(_.swap)
     // ...and now everything should be in there...
   }
 
-  def functionDefToDef(funDef: FunDef) : Z3FuncDecl = {
+  def isKnownDef(funDef: FunDef) : Boolean = if(useInstantiator) {
+    instantiator.isKnownDef(funDef)
+  } else {
+    functionMap.isDefinedAt(funDef)
+  }
+  def functionDefToDecl(funDef: FunDef) : Z3FuncDecl = {
     if(useInstantiator) {
-      instantiator.functionDefToDef(funDef)
+      instantiator.functionDefToDecl(funDef)
     } else {
-      functionMap.getOrElse(funDef, scala.Predef.error("No Z3 definition found for function symbol " + funDef.id.name + ". This is clearly an error (Instantiator is off)."))
+      functionMap.getOrElse(funDef, scala.Predef.error("No Z3 definition found for function symbol " + funDef.id.name + ". (Instantiator is off)."))
+    }
+  }
+  def isKnownDecl(decl: Z3FuncDecl) : Boolean = if(useInstantiator) {
+    instantiator.isKnownDecl(decl)
+  } else {
+    reverseFunctionMap.isDefinedAt(decl)
+  }
+  def functionDeclToDef(decl: Z3FuncDecl) : FunDef = {
+    if(useInstantiator) {
+      instantiator.functionDeclToDef(decl)
+    } else {
+      reverseFunctionMap.getOrElse(decl, scala.Predef.error("No FunDef corresponds to Z3 definition " + decl + ". (Instantiator is off)."))
     }
   }
   private var functionMap: Map[FunDef, Z3FuncDecl] = Map.empty
+  private var reverseFunctionMap: Map[Z3FuncDecl, FunDef] = Map.empty
 
   def prepareFunctions: Unit = {
     for (funDef <- program.definedFunctions) {
@@ -177,7 +207,9 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
       if(useInstantiator) {
         instantiator.registerFunction(funDef, sortSeq, returnSort)
       } else {
-        functionMap = functionMap + (funDef -> z3.mkFreshFuncDecl(funDef.id.name, sortSeq, returnSort))
+        val z3Decl = z3.mkFreshFuncDecl(funDef.id.name, sortSeq, returnSort)
+        functionMap = functionMap + (funDef -> z3Decl)
+        reverseFunctionMap = reverseFunctionMap + (z3Decl -> funDef)
       }
     }
 
@@ -214,7 +246,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
               val argSorts: Seq[Z3Sort] = subids.map(id => typeToSort(id.getType))
               val boundVars = argSorts.zip((c + 1) until (c + 1 + argSorts.size)).map(p => z3.mkBound(p._2, p._1))
               val matcher: Z3AST = adtConstructors(ccd)(boundVars: _*)
-              val pattern: Z3Pattern = z3.mkPattern(functionDefToDef(funDef)(
+              val pattern: Z3Pattern = z3.mkPattern(functionDefToDecl(funDef)(
                 otherFunBounds.map(_ match {
                   case None => matcher
                   case Some(b) => b
@@ -228,13 +260,12 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
 
               val toConvert = Equals(fOfT, cleanRHS)
               //println(toConvert)
-              val initialMap: Map[String, Z3AST] =
-              Map((funDef.args.map(_.id) zip otherFunBounds).map(_ match {
-                case (i, Some(b)) => (i.uniqueName -> b)
-                case (i, None) => (i.uniqueName -> matcher)
-              }): _*) ++
-                      Map((subids.map(_.uniqueName) zip boundVars): _*) +
-                      (pid.uniqueName -> matcher)
+              val initialMap: Map[Identifier,Z3AST] =
+                Map((funDef.args.map(_.id) zip otherFunBounds).map(_ match {
+                  case (i, Some(b)) => (i -> b)
+                  case (i, None) => (i -> matcher)
+                }): _*) ++
+                  Map((subids zip boundVars): _*) + (pid -> matcher)
 
               toZ3Formula(z3, toConvert, initialMap) match {
                 case Some(axiomTree) => {
@@ -374,16 +405,27 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
     result
   }
 
-  val id2idMap : MutableHashMap[String,Z3AST] = MutableHashMap.empty
-  private def toZ3Formula(z3: Z3Context, expr: Expr, initialMap: Map[String, Z3AST] = Map.empty): Option[Z3AST] = {
+
+  protected[purescala] var exprToZ3Id : Map[Expr,Z3AST] = Map.empty
+  protected[purescala] var z3IdToExpr : Map[Z3AST,Expr] = Map.empty
+  protected[purescala] def toZ3Formula(z3: Z3Context, expr: Expr, initialMap: Map[Identifier,Z3AST] = Map.empty): Option[Z3AST] = {
     class CantTranslateException extends Exception
 
     val varsInformula: Set[Identifier] = variablesOf(expr)
 
-    var z3Vars: Map[String, Z3AST] = initialMap
+    var z3Vars: Map[Identifier,Z3AST] = if(!initialMap.isEmpty) {
+      initialMap
+    } else {
+      // FIXME TODO pleeeeeeeease make this cleaner. Ie. decide what set of
+      // variable has to remain in a map etc.
+      exprToZ3Id.filter(p => p._1.isInstanceOf[Variable]).map(p => (p._1.asInstanceOf[Variable].id -> p._2))
+    }
+    // exprToZ3Id = Map.empty
+    // z3IdToExpr = Map.empty
 
     for((k, v) <- initialMap) {
-      id2idMap(k) = v
+      exprToZ3Id += (k.toVariable -> v)
+      z3IdToExpr += (v -> k.toVariable)
     }
 
     def rec(ex: Expr): Z3AST = { 
@@ -392,25 +434,28 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
       val recResult = (ex match {
       case Let(i, e, b) => {
         val re = rec(e)
-        z3Vars = z3Vars + (i.uniqueName -> re)
+        z3Vars = z3Vars + (i -> re)
         val rb = rec(b)
-        z3Vars = z3Vars - i.uniqueName
+        z3Vars = z3Vars - i
         rb
       }
       case e @ Error(_) => {
         val tpe = e.getType
         val newAST = z3.mkFreshConst("errorValue", typeToSort(tpe))
+        exprToZ3Id += (e -> newAST)
+        z3IdToExpr += (newAST -> e)
         newAST
       }
-      case v@Variable(id) => z3Vars.get(id.uniqueName) match {
+      case v@Variable(id) => z3Vars.get(id) match {
         case Some(ast) => ast
         case None => {
           if (id.isLetBinder) {
             scala.Predef.error("Error in formula being translated to Z3: identifier " + id + " seems to have escaped its let-definition")
           }
           val newAST = z3.mkFreshConst(id.name, typeToSort(v.getType))
-          z3Vars = z3Vars + (id.uniqueName -> newAST)
-          id2idMap(id.uniqueName) = newAST
+          z3Vars = z3Vars + (id -> newAST)
+          exprToZ3Id += (v -> newAST)
+          z3IdToExpr += (newAST -> v)
           newAST
         }
       }
@@ -451,7 +496,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
         tester(rec(e))
       }
       case f@FunctionInvocation(fd, args) => {
-        z3.mkApp(functionDefToDef(fd), args.map(rec(_)): _*)
+        z3.mkApp(functionDefToDecl(fd), args.map(rec(_)): _*)
       }
       case e@EmptySet(_) => if (useBAPA && e.getType == IntSetType) {
         bapa.mkEmptySet
@@ -514,10 +559,51 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
       val res = Some(rec(expr))
       // val usedInZ3Form = z3Vars.keys.toSet
       // println("Variables in formula:   " + varsInformula.map(_.uniqueName))
-      // println("Variables passed to Z3: " + usedInZ3Form)
+      // println("Variables passed to Z3: " + usedInZ3Form.map(_.uniqueName))
       res
     } catch {
       case e: CantTranslateException => None
+    }
+  }
+
+  protected[purescala] def fromZ3Formula(tree : Z3AST) : Expr = {
+    class CantTranslateException(t: Z3AST) extends Exception("Can't translate from Z3 tree: " + t)
+
+    def rec(t: Z3AST) : Expr = z3.getASTKind(t) match {
+      case Z3AppAST(_, args) if args.size == 0 && z3IdToExpr.isDefinedAt(t) => {
+        z3IdToExpr(t)
+      }
+      case Z3AppAST(decl, args) if isKnownDecl(decl) => {
+        val fd = functionDeclToDef(decl)
+        assert(fd.args.size == args.size)
+        FunctionInvocation(fd, args.map(rec(_)))
+      }
+      case Z3AppAST(decl, args) if args.size == 1 && reverseADTTesters.isDefinedAt(decl) => {
+        CaseClassInstanceOf(reverseADTTesters(decl), rec(args(0)))
+      }
+      case Z3AppAST(decl, args) if args.size == 1 && reverseADTFieldSelectors.isDefinedAt(decl) => {
+        val (ccd, fid) = reverseADTFieldSelectors(decl)
+        CaseClassSelector(ccd, rec(args(0)), fid)
+      }
+      case Z3AppAST(decl, args) if reverseADTConstructors.isDefinedAt(decl) => {
+        val ccd = reverseADTConstructors(decl)
+        assert(args.size == ccd.fields.size)
+        CaseClass(ccd, args.map(rec(_)))
+      }
+      case Z3NumeralAST(Some(v)) => IntLiteral(v)
+      case other @ _ => {
+        println("Don't know what this is " + other) 
+        throw new CantTranslateException(t)
+      }
+    }
+
+    rec(tree)
+  }
+  protected[purescala] def softFromZ3Formula(tree : Z3AST) : Option[Expr] = {
+    try {
+      Some(fromZ3Formula(tree))
+    } catch {
+      case _ => None
     }
   }
 }
