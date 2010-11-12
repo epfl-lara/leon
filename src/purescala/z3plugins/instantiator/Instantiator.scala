@@ -6,6 +6,7 @@ import purescala.Common._
 import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.Definitions._
+import purescala.Settings
 
 import purescala.Z3Solver
 
@@ -37,6 +38,10 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
     reverseFunctionMap = reverseFunctionMap + (z3Decl -> funDef)
   }
 
+  def dumpFunctionMap : Unit = {
+    println("REVERSE FUNCTION MAP:")
+    println(reverseFunctionMap.toSeq.mkString("\n"))
+  }
   def isKnownDef(funDef: FunDef) : Boolean = functionMap.isDefinedAt(funDef)
   def functionDefToDecl(funDef: FunDef) : Z3FuncDecl = {
     functionMap.getOrElse(funDef, scala.Predef.error("No Z3 definition found for function symbol "+ funDef.id.name + " in Instantiator."))
@@ -54,6 +59,7 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
 
   }
 
+  private var bodyInlined : Int = 0
   override def newRelevant(ast: Z3AST) : Unit = {
     val aps = fromZ3Formula(ast)
     val fis = functionCallsOf(aps)
@@ -72,6 +78,17 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
         val newBody = replace(substMap, post)
         println("I'm going to add this : " + newBody)
         val newAxiom = toZ3Formula(z3, newBody).get
+        println("As Z3: " + newAxiom)
+        assertAxiom(newAxiom)
+      }
+
+      if(bodyInlined < Settings.unrollingLevel && fd.hasBody) {
+        bodyInlined += 1
+        val body = matchToIfThenElse(fd.body.get)
+        val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*)
+        val newBody = replace(substMap, body)
+        println("I'm going to add this : " + newBody)
+        val newAxiom = z3.mkEq(toZ3Formula(z3, fi).get, toZ3Formula(z3, newBody).get)
         println("As Z3: " + newAxiom)
         assertAxiom(newAxiom)
       }

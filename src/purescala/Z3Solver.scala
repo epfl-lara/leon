@@ -593,6 +593,15 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
       case Z3NumeralAST(Some(v)) => IntLiteral(v)
       case other @ _ => {
         println("Don't know what this is " + other) 
+        if(useInstantiator) {
+          instantiator.dumpFunctionMap
+        } else {
+          println("REVERSE FUNCTION MAP:")
+          println(reverseFunctionMap.toSeq.mkString("\n"))
+        }
+        println("REVERSE CONS MAP:")
+        println(reverseADTConstructors.toSeq.mkString("\n"))
+        System.exit(-1)
         throw new CantTranslateException(t)
       }
     }

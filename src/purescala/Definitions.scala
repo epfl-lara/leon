@@ -230,6 +230,7 @@ object Definitions {
     var postcondition: Option[Expr] = None
 
     def hasImplementation : Boolean = body.isDefined
+    def hasBody = hasImplementation
     def hasPrecondition : Boolean = precondition.isDefined
     def hasPostcondition : Boolean = postcondition.isDefined
 
