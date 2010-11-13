@@ -29,17 +29,28 @@ object TreeMap {
   }
 
   def balance(x: Int, d: Int, l: TreeMap, r: TreeMap): TreeMap = {
+    require((r match {
+      case Empty() => false
+      case Node(_, _, rl, _, _) =>
+        rl match {
+          case Empty() => false
+        }
+    }) && (l match {
+      case Empty() => false
+      case Node(_, _, _, lr, _) =>
+        lr match {
+          case Empty() => false
+        }
+    }))
     val hl = height(l)
     val hr = height(r)
     if (hr > hl + 2) {
       r match {
-        case Empty() => error("invalid arg")
         case Node(rv, rd, rl, rr, h) =>
           if (height(rr) >= height(rl)) {
             create(rv, rd, create(x, d, l, rl), rr)
           } else {
             rl match {
-              case Empty() => error("invalid arg")
               case Node(rlv, rld, rll, rlr, h) =>
                 create(rlv, rld, create(x, d, l, rll), create(rv, rd, rlr, rr))
             }
@@ -47,13 +58,11 @@ object TreeMap {
       }
     } else if (hl > hr + 2) {
       l match {
-        case Empty() => error("invalid arg")
         case Node(lv, ld, ll, lr, h) =>
           if (height(ll) >= height(lr)) {
             create(lv, ld, ll, create(x, d, lr, r))
           } else {
             lr match {
-              case Empty() => error("invalid arg")
               case Node(lrv, lrd, lrl, lrr, h) =>
                 create(lrv, lrd, create(lv, ld, ll, lrl), create(x, d, lrr, r))
             }
