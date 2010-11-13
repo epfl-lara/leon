@@ -29,7 +29,7 @@ object TreeMap {
   def nodeHeightsAreCorrect(tm: TreeMap) : Boolean = (tm match {
     case Empty() => true
     case n @ Node(_, _, l, r, h) => h == realHeight(n) && nodeHeightsAreCorrect(l) && nodeHeightsAreCorrect(r)
-  }) 
+  }) ensuring(res => !res || (height(tm) == realHeight(tm)) )
 
   // measures "real height"
   def realHeight(tm: TreeMap) : Int = (tm match {
@@ -57,7 +57,7 @@ object TreeMap {
     val hl = height(l)
     val hr = height(r)
     Node(k, d, l, r, if (hl >= hr) hl + 1 else hr + 1)
-  } ensuring(isBalanced(_))
+  } ensuring(setOf(_) == Set(k) ++ setOf(l) ++ setOf(r)) //ensuring(isBalanced(_))
 
   def balance(x: Int, d: Int, l: TreeMap, r: TreeMap): TreeMap = {
     require(
@@ -100,7 +100,7 @@ object TreeMap {
       }
     } else
       Node(x, d, l, r, if(hl >= hr) hl + 1 else hr + 1)
-  } ensuring(isBalanced(_))
+  } ensuring(setOf(_) == Set(x) ++ setOf(l) ++ setOf(r)) //ensuring(isBalanced(_))
 
   def add(x: Int, data: Int, tm: TreeMap): TreeMap = tm match {
     case Empty() => Node(x, data, Empty(), Empty(), 1)
@@ -182,8 +182,7 @@ object TreeMap {
 
   def isBalanced(t: TreeMap): Boolean = t match {
     case Empty() => true
-    case Node(_, _, l, r, _) =>
-      height(l) - height(r) < 2 && height(r) - height(l) < 2 && isBalanced(l) && isBalanced(r)
+    case Node(_, _, l, r, _) => (height(l) - height(r) <= 2 && height(r) - height(l) <= 2) && isBalanced(l) && isBalanced(r)
   }
 
   /** list conversion **/
