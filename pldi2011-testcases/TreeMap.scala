@@ -1,4 +1,5 @@
 import scala.collection.immutable.Set
+import funcheck.Utils._
 
 object TreeMap {
   sealed abstract class TreeMap
@@ -12,10 +13,39 @@ object TreeMap {
   case class Cons(head: Int, tail: IntList) extends IntList
   case class Nil() extends IntList
 
-  def height(tm: TreeMap): Int = tm match {
+  def main(args : Array[String]) : Unit = {
+    val l =  Node(11, 12, Empty(), Node(13, 14, Node(36, 37, Empty(), Empty(), 38), Empty(), 5920), 5922)
+    val r = Node(7, 8, Node(9, 10, Node(41, 42, Empty(), Empty(), 43), Empty(), 7719), Node(26, 27, Empty(), Empty(), 4680), 5921)
+
+    val d = 4
+    val x = 3
+
+    println(balance(x, d, l, r))
+  }
+
+  def mmax(i: Int, j: Int) : Int = if(i >= j) i else j
+
+  // checks that the height field is set properly.
+  def nodeHeightsAreCorrect(tm: TreeMap) : Boolean = (tm match {
+    case Empty() => true
+    case n @ Node(_, _, l, r, h) => h == realHeight(n) && nodeHeightsAreCorrect(l) && nodeHeightsAreCorrect(r)
+  }) 
+
+  // measures "real height"
+  def realHeight(tm: TreeMap) : Int = (tm match {
+    case Empty() => 0
+    case Node(_, _, l, r, _) => mmax(realHeight(l), realHeight(r)) + 1
+  }) ensuring(_ >= 0)
+
+  def height(tm: TreeMap): Int = (tm match {
     case Empty() => 0
     case Node(_,_,_,_,h) => h
-  }
+  })
+
+  def invariant0(tm : TreeMap) : Boolean = {
+    require(nodeHeightsAreCorrect(tm))
+    height(tm) == realHeight(tm)
+  } holds
 
   def setOf(tm: TreeMap): Set[Int] = tm match {
     case Empty() => Set.empty
@@ -23,25 +53,27 @@ object TreeMap {
   }
 
   def create(k: Int, d: Int, l: TreeMap, r: TreeMap): TreeMap = {
+    require(nodeHeightsAreCorrect(l) && nodeHeightsAreCorrect(r))
     val hl = height(l)
     val hr = height(r)
     Node(k, d, l, r, if (hl >= hr) hl + 1 else hr + 1)
-  }
+  } ensuring(isBalanced(_))
 
   def balance(x: Int, d: Int, l: TreeMap, r: TreeMap): TreeMap = {
-    require((r match {
-      case Empty() => false
-      case Node(_, _, rl, _, _) =>
-        rl match {
-          case Empty() => false
-        }
-    }) && (l match {
-      case Empty() => false
-      case Node(_, _, _, lr, _) =>
-        lr match {
-          case Empty() => false
-        }
-    }))
+    require(
+      nodeHeightsAreCorrect(l) && nodeHeightsAreCorrect(r) &&
+      (r match {
+        case Empty() => false
+        case Node(_, _, Empty(), _, _) => false
+        case _ => true
+      }) &&
+      (l match {
+        case Empty() => false
+        case Node(_, _, _, Empty(), _) => false
+        case _ => true
+      })
+    )
+
     val hl = height(l)
     val hr = height(r)
     if (hr > hl + 2) {
@@ -51,8 +83,7 @@ object TreeMap {
             create(rv, rd, create(x, d, l, rl), rr)
           } else {
             rl match {
-              case Node(rlv, rld, rll, rlr, h) =>
-                create(rlv, rld, create(x, d, l, rll), create(rv, rd, rlr, rr))
+              case Node(rlv, rld, rll, rlr, h) => create(rlv, rld, create(x, d, l, rll), create(rv, rd, rlr, rr))
             }
           }
       }
@@ -63,8 +94,7 @@ object TreeMap {
             create(lv, ld, ll, create(x, d, lr, r))
           } else {
             lr match {
-              case Node(lrv, lrd, lrl, lrr, h) =>
-                create(lrv, lrd, create(lv, ld, ll, lrl), create(x, d, lrr, r))
+              case Node(lrv, lrd, lrl, lrr, h) => create(lrv, lrd, create(lv, ld, ll, lrl), create(x, d, lrr, r))
             }
           }
       }
