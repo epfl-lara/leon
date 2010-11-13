@@ -1,4 +1,5 @@
 import scala.collection.immutable.Set
+import funcheck.Utils._
 
 object LambdaEval { 
   sealed abstract class Expr
@@ -63,8 +64,18 @@ object LambdaEval {
   }
 
   // Evaluator
-  def eval(store: List, expr: Expr): StoreExprPair = {
-    require(freeVars(expr) subsetOf storeElems(store))
+  def eval(store: List, expr: Expr): StoreExprPairAbs = {
+    require(
+        freeVars(expr).subsetOf(storeElems(store))
+     && (expr match {
+          case App(l, _) => eval(store, l) match {
+            case StoreExprPair(_, Lam(_,_)) => true
+            case _ => false
+          }
+          case _ => true
+        })
+    )
+
     expr match {
       case Const(i) => StoreExprPair(store, Const(i))
       case Var(x) => StoreExprPair(store, find(x, store))
@@ -118,5 +129,7 @@ object LambdaEval {
     case StoreExprPair(_, resExpr) => ok(resExpr)
   }) */
 
-  
+  def property0() : Boolean = {
+    okPair(eval(Cons(BindingPair(358, Const(349)), Nil()), Const(1)))
+  } holds
 }
