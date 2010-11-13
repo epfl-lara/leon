@@ -17,8 +17,8 @@ trait Z3ModelReconstruction {
       val z3ID : Z3AST = exprToZ3Id(id.toVariable)
 
       expectedType match {
-        case BooleanType => model.evalAsBool(z3ID).map(BooleanLiteral(_))
-        case Int32Type => model.evalAsInt(z3ID).map(IntLiteral(_))
+        case BooleanType => model.evalAs[Boolean](z3ID).map(BooleanLiteral(_))
+        case Int32Type => model.evalAs[Int](z3ID).map(IntLiteral(_))
         case other => model.eval(z3ID) match {
           case None => None
           case Some(t) => softFromZ3Formula(t)

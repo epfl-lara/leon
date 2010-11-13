@@ -10,20 +10,22 @@ import purescala.Settings
 
 import purescala.Z3Solver
 
+import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
+
 class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instantiator") {
   import z3Solver.{z3,program,typeToSort,fromZ3Formula,toZ3Formula}
 
   setCallbacks(
 //    reduceApp = true,
-//    finalCheck = true,
-//    push = true,
-//    pop = true,
+    finalCheck = true,
+    push = true,
+    pop = true,
     newApp = true,
     newAssignment = true,
     newRelevant = true,
 //    newEq = true,
 //    newDiseq = true,
-//    reset = true,
+    reset = true,
     restart = true
   )
 
@@ -51,35 +53,39 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
     reverseFunctionMap.getOrElse(decl, scala.Predef.error("No FunDef found for Z3 definition " + decl + " in Instantiator."))
   }
 
-  override def newAssignment(ast: Z3AST, polarity: Boolean) : Unit = {
+  // The logic starts here.
+  private var stillToAssert : Set[(Int,Expr)] = Set.empty
+
+  override def newAssignment(ast: Z3AST, polarity: Boolean) : Unit = safeBlockToAssertAxioms {
 
   }
 
   override def newApp(ast: Z3AST) : Unit = {
+    examineAndUnroll(ast)
+  }
 
+  override def newRelevant(ast: Z3AST) : Unit = {
+    examineAndUnroll(ast)
   }
 
   private var bodyInlined : Int = 0
-  override def newRelevant(ast: Z3AST) : Unit = {
+  def examineAndUnroll(ast: Z3AST) : Unit = if(bodyInlined < Settings.unrollingLevel) {
     val aps = fromZ3Formula(ast)
     val fis = functionCallsOf(aps)
     println("As Purescala: " + aps)
     for(fi <- fis) {
       val FunctionInvocation(fd, args) = fi
       println("interesting function call : " + fi)
-      if(fd.hasPostcondition) {
+      if(bodyInlined < Settings.unrollingLevel && fd.hasPostcondition) {
+        bodyInlined += 1
         val post = matchToIfThenElse(fd.postcondition.get)
-        // FIXME TODO we could use let identifiers here to speed things up a little bit...
-        //  val resFresh = FreshIdentifier("resForPostOf" + fd.id.uniqueName, true).setType(fi.getType)
-        //  val newLetIDs = fd.args.map(a => FreshIdentifier("argForPostOf" + fd.id.uniqueName, true).setType(a.tpe)).toList
-        //  val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip newLetIDs.map(Variable(_))) : _*) + (ResultVariable() -> Variable(resFresh))
+        val isSafe = functionCallsOf(post).isEmpty
+
         val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*) + (ResultVariable() -> fi)
         // println(substMap)
         val newBody = replace(substMap, post)
         println("I'm going to add this : " + newBody)
-        val newAxiom = toZ3Formula(z3, newBody).get
-        println("As Z3: " + newAxiom)
-        assertAxiom(newAxiom)
+        assertIfSafeOrDelay(newBody)//, isSafe)
       }
 
       if(bodyInlined < Settings.unrollingLevel && fd.hasBody) {
@@ -87,13 +93,133 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
         val body = matchToIfThenElse(fd.body.get)
         val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*)
         val newBody = replace(substMap, body)
-        println("I'm going to add this : " + newBody)
-        val newAxiom = z3.mkEq(toZ3Formula(z3, fi).get, toZ3Formula(z3, newBody).get)
-        println("As Z3: " + newAxiom)
-        assertAxiom(newAxiom)
+        val theEquality = Equals(fi, newBody)
+        println("I'm going to add this : " + theEquality)
+        assertIfSafeOrDelay(theEquality)
       }
     }
   }
 
-  override def restart : Unit = { }
+  override def finalCheck : Boolean = safeBlockToAssertAxioms {
+    if(stillToAssert.isEmpty) {
+      true
+    } else {
+      for((lvl,ast) <- stillToAssert) {
+        assertAxiomASAP(ast, lvl)
+        // assertPermanently(ast)
+      }
+      stillToAssert = Set.empty
+      true
+    }
+  }
+
+  // This is concerned with how many new function calls the assertion is going
+  // to introduce.
+  private def assertIfSafeOrDelay(ast: Expr, isSafe: Boolean = false) : Unit = {
+    stillToAssert += ((pushLevel, ast))
+  }
+
+  // Assert as soon as possible and keep asserting as long as level is >= lvl.
+  private def assertAxiomASAP(expr: Expr, lvl: Int) : Unit = assertAxiomASAP(toZ3Formula(z3, expr).get, lvl)
+  private def assertAxiomASAP(ast: Z3AST, lvl: Int) : Unit = {
+    if(canAssertAxiom) {
+      assertAxiomNow(ast)
+      if(lvl < pushLevel) {
+        // Remember to reassert when we backtrack.
+        if(pushLevel > 0) {
+          rememberToReassertAt(pushLevel - 1, lvl, ast)
+        }
+      }
+    } else {
+      toAssertASAP = toAssertASAP + ((lvl, ast))
+    }
+  }
+
+  private def assertAxiomFrom(ast: Z3AST, level: Int) : Unit = {
+    toAssertASAP = toAssertASAP + ((level, ast))
+  }
+
+//  private def assertPermanently(expr: Expr) : Unit = {
+//    val asZ3 = toZ3Formula(z3, expr).get
+//
+//    if(canAssertAxiom) {
+//      assertAxiomNow(asZ3)
+//    } else {
+//      toAssertASAP = toAssertASAP + ((0, asZ3))
+//    }
+//  }
+
+  private def assertAxiomNow(ast: Z3AST) : Unit = {
+    if(!canAssertAxiom)
+      println("WARNING ! ASSERTING AXIOM WHEN NOT SAFE !")
+
+    println("Now asserting : " + ast)
+    assertAxiom(ast)
+  }
+
+  override def push : Unit = {
+    pushLevel += 1
+  }
+
+  override def pop : Unit = {
+    pushLevel -= 1
+
+    if(toReassertAt.isDefinedAt(pushLevel)) {
+      for((lvl,ax) <- toReassertAt(pushLevel)) {
+        assertAxiomFrom(ax, lvl)
+      }
+      toReassertAt(pushLevel).clear
+    }
+
+    assert(pushLevel >= 0)
+  }
+
+  override def restart : Unit = {
+    pushLevel = 0
+  }
+
+  override def reset : Unit = reinit
+
+  // Below is all the machinery to be able to assert axioms in safe states.
+
+  private var pushLevel : Int = _
+  private var canAssertAxiom : Boolean = _
+  private var toAssertASAP : Set[(Int,Z3AST)] = _
+  private val toReassertAt : MutableMap[Int,MutableSet[(Int,Z3AST)]] = MutableMap.empty
+
+  private def rememberToReassertAt(lvl: Int, axLvl: Int, ax: Z3AST) : Unit = {
+    if(toReassertAt.isDefinedAt(lvl)) {
+      toReassertAt(lvl) += ((axLvl, ax))
+    } else {
+      toReassertAt(lvl) = MutableSet((axLvl, ax))
+    }
+  }
+
+  reinit
+  private def reinit : Unit = {
+    pushLevel = 0
+    canAssertAxiom = false
+    toAssertASAP = Set.empty
+    stillToAssert = Set.empty
+  }
+
+  private def safeBlockToAssertAxioms[A](block: => A): A = {
+    canAssertAxiom = true
+
+    if (toAssertASAP.nonEmpty) {
+      for ((lvl, ax) <- toAssertASAP) {
+        if(lvl <= pushLevel) {
+          assertAxiomNow(ax)
+          if(lvl < pushLevel && pushLevel > 0) {
+            rememberToReassertAt(pushLevel - 1, lvl, ax)
+          }
+        }
+      }
+      toAssertASAP = Set.empty
+    }
+    
+    val result = block
+    canAssertAxiom = false
+    result
+  }
 }

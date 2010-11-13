@@ -570,38 +570,80 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
     class CantTranslateException(t: Z3AST) extends Exception("Can't translate from Z3 tree: " + t)
 
     def rec(t: Z3AST) : Expr = z3.getASTKind(t) match {
-      case Z3AppAST(_, args) if args.size == 0 && z3IdToExpr.isDefinedAt(t) => {
-        z3IdToExpr(t)
+      case Z3AppAST(decl, args) => {
+        val argsSize = args.size
+        if(argsSize == 0 && z3IdToExpr.isDefinedAt(t)) {
+          z3IdToExpr(t)
+        } else if(isKnownDecl(decl)) {
+          val fd = functionDeclToDef(decl)
+          assert(fd.args.size == argsSize)
+          FunctionInvocation(fd, args.map(rec(_)))
+        } else if(argsSize == 1 && reverseADTTesters.isDefinedAt(decl)) {
+          CaseClassInstanceOf(reverseADTTesters(decl), rec(args(0)))
+        } else if(argsSize == 1 && reverseADTFieldSelectors.isDefinedAt(decl)) {
+          val (ccd, fid) = reverseADTFieldSelectors(decl)
+          CaseClassSelector(ccd, rec(args(0)), fid)
+        } else if(reverseADTConstructors.isDefinedAt(decl)) {
+          val ccd = reverseADTConstructors(decl)
+          assert(argsSize == ccd.fields.size)
+          CaseClass(ccd, args.map(rec(_)))
+        } else {
+          import Z3DeclKind._
+          val rargs = args.map(rec(_))
+          z3.getDeclKind(decl) match {
+            case OpTrue => BooleanLiteral(true)
+            case OpFalse => BooleanLiteral(false)
+            case OpEq => Equals(rargs(0), rargs(1))
+            case OpITE => {
+              assert(argsSize == 3)
+              val r0 = rargs(0)
+              val r1 = rargs(1)
+              val r2 = rargs(2)
+              IfExpr(r0, r1, r2).setType(leastUpperBound(r1.getType, r2.getType))
+            }
+            case OpAnd => And(rargs)
+            case OpOr => Or(rargs)
+            case OpIff => Iff(rargs(0), rargs(1))
+            case OpXor => Not(Iff(rargs(0), rargs(1)))
+            case OpNot => Not(rargs(0))
+            case OpImplies => Implies(rargs(0), rargs(1))
+            case OpLE => LessEquals(rargs(0), rargs(1))
+            case OpGE => GreaterEquals(rargs(0), rargs(1))
+            case OpLT => LessThan(rargs(0), rargs(1))
+            case OpGT => GreaterThan(rargs(0), rargs(1))
+            case OpAdd => {
+              assert(argsSize == 2)
+              Plus(rargs(0), rargs(1))
+            }
+            case OpSub => {
+              assert(argsSize == 2)
+              Minus(rargs(0), rargs(1))
+            }
+            case OpUMinus => UMinus(rargs(0))
+            case OpMul => {
+              assert(argsSize == 2)
+              Times(rargs(0), rargs(1))
+            }
+            case other => {
+              System.err.println("Don't know what to do with this declKind : " + other)
+              throw new CantTranslateException(t)
+            }
+          }
+        }
       }
-      case Z3AppAST(decl, args) if isKnownDecl(decl) => {
-        val fd = functionDeclToDef(decl)
-        assert(fd.args.size == args.size)
-        FunctionInvocation(fd, args.map(rec(_)))
-      }
-      case Z3AppAST(decl, args) if args.size == 1 && reverseADTTesters.isDefinedAt(decl) => {
-        CaseClassInstanceOf(reverseADTTesters(decl), rec(args(0)))
-      }
-      case Z3AppAST(decl, args) if args.size == 1 && reverseADTFieldSelectors.isDefinedAt(decl) => {
-        val (ccd, fid) = reverseADTFieldSelectors(decl)
-        CaseClassSelector(ccd, rec(args(0)), fid)
-      }
-      case Z3AppAST(decl, args) if reverseADTConstructors.isDefinedAt(decl) => {
-        val ccd = reverseADTConstructors(decl)
-        assert(args.size == ccd.fields.size)
-        CaseClass(ccd, args.map(rec(_)))
-      }
+
       case Z3NumeralAST(Some(v)) => IntLiteral(v)
       case other @ _ => {
-        println("Don't know what this is " + other) 
+        System.err.println("Don't know what this is " + other) 
         if(useInstantiator) {
           instantiator.dumpFunctionMap
         } else {
-          println("REVERSE FUNCTION MAP:")
-          println(reverseFunctionMap.toSeq.mkString("\n"))
+          System.err.println("REVERSE FUNCTION MAP:")
+          System.err.println(reverseFunctionMap.toSeq.mkString("\n"))
         }
-        println("REVERSE CONS MAP:")
-        println(reverseADTConstructors.toSeq.mkString("\n"))
-        System.exit(-1)
+        System.err.println("REVERSE CONS MAP:")
+        System.err.println(reverseADTConstructors.toSeq.mkString("\n"))
+        // System.exit(-1)
         throw new CantTranslateException(t)
       }
     }

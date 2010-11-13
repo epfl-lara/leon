@@ -26,9 +26,10 @@ object RedBlackTree {
       if      (x < y)  balance(c, ins(x, a), y, b)
       else if (x == y) Node(c,a,y,b)
       else             balance(c,a,y,ins(x, b))
-  }) ensuring (res => 
-          content(res) == content(t) ++ Set(x) &&
-          size(t) <= size(res) && size(res) < size(t) + 2)
+  }) ensuring (res => (
+             content(res) == content(t) ++ Set(x) 
+//          && size(t) <= size(res) && size(res) < size(t) + 2)
+              ))
 
   def add(x: Int, t: Tree): Tree = {
     makeBlack(ins(x, t))
