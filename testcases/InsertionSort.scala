@@ -18,15 +18,18 @@ object InsertionSort {
     }
   }    
 
-  def sortedIns(e: Int, l: List): List = (l match {
-    case Nil() => Cons(e,Nil())
-    case Cons(x,xs) => if (x < e) Cons(x,sortedIns(e, xs))  else Cons(e, l)
-  }) ensuring(res => contents(res) == contents(l) ++ Set(e))
+  def sortedIns(e: Int, l: List): List = {
+    require(isSorted(l))
+    l match {
+      case Nil() => Cons(e,Nil())
+      case Cons(x,xs) => if (x <= e) Cons(x,sortedIns(e, xs)) else Cons(e, l)
+    } 
+  } ensuring(res => contents(res) == contents(l) ++ Set(e) && isSorted(res))
 
   def sort(l: List): List = (l match {
     case Nil() => Nil()
     case Cons(x,xs) => sortedIns(x, sort(xs))
-  }) ensuring(res => contents(res) == contents(l))// && isSorted(res))
+  }) ensuring(res => contents(res) == contents(l) && isSorted(res))
 
   def main(args: Array[String]): Unit = {
     val ls: List = Cons(5, Cons(2, Cons(4, Cons(5, Cons(1, Cons(8,Nil()))))))

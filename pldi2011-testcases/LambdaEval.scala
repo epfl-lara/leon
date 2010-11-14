@@ -13,19 +13,15 @@ object LambdaEval {
   case class Snd(e: Expr) extends Expr
 
   // Checks whether the expression is a value
-  def ok(expr: Expr): Boolean = expr match {
+  def isValue(expr: Expr): Boolean = expr match {
     case Const(_) => true
     case Lam(_,_) => true
-    case Pair(e1, e2) => ok(e1) && ok(e2)
+    case Pair(e1, e2) => isValue(e1) && isValue(e2)
     case Var(_) => false
     case Plus(_,_) => false
     case App(_,_) => false
     case Fst(_) => false
     case Snd(_) => false
-  }
-
-  def okPair(p: StoreExprPairAbs): Boolean = p match {
-    case StoreExprPair(_, res) => ok(res)
   }
 
   sealed abstract class List
@@ -54,26 +50,53 @@ object LambdaEval {
     case Snd(e) => freeVars(e)
   }
 
+  def storeHasValues(store: List): Boolean = store match {
+    case Nil() => true
+    case Cons(BindingPair(k, v), ss) => isValue(v) && storeHasValues(ss)
+  }
+
   // Find first element in list that has first component 'x' and return its
   // second component, analogous to List.assoc in OCaml
   def find(x: Int, l: List): Expr = {
-    require(storeElems(l).contains(x))
+    require(
+      storeElems(l).contains(x) &&
+      storeHasValues(l)
+    )
     l match {
       case Cons(BindingPair(k,v), is) => if (k == x) v else find(x, is)
     }
+  } ensuring(res => isValue(res))
+
+  def wellFormed(store: List, expr: Expr): Boolean = expr match {
+    case App(l, _) => eval(store, l) match {
+      case StoreExprPair(_, Lam(_,_)) => true
+      case _ => false
+    }
+    case Fst(e) => eval(store, e) match {
+      case StoreExprPair(_,Pair(e1, e2)) => true
+      case _ => false
+    }
+    case Snd(e) => eval(store, e) match {
+      case StoreExprPair(_,Pair(e1, e2)) => true
+      case _ => false
+    }
+    case Plus(e1, e2) => wellFormed(store, e1) && wellFormed(store, e2) && (eval(store, e1) match {
+      case StoreExprPair(_,Const(i1)) =>
+        eval(store, e2) match {
+          case StoreExprPair(_,Const(i2)) => true
+          case _ => false
+        }
+      case _ => false
+    })
+    case _ => true
   }
 
   // Evaluator
   def eval(store: List, expr: Expr): StoreExprPairAbs = {
     require(
-        freeVars(expr).subsetOf(storeElems(store))
-     && (expr match {
-          case App(l, _) => eval(store, l) match {
-            case StoreExprPair(_, Lam(_,_)) => true
-            case _ => false
-          }
-          case _ => true
-        })
+        freeVars(expr).subsetOf(storeElems(store)) &&
+        wellFormed(store, expr) &&
+        storeHasValues(store)
     )
 
     expr match {
@@ -97,11 +120,6 @@ object LambdaEval {
         val e = eval(store, e1) match {
           case StoreExprPair(_, Lam(_, resE)) => resE
         }
-        /*
-        val StoreExprPair(store1, Lam(x, e)) = eval(store, e1) match {
-          case StoreExprPair(resS, Lam(resX, resE)) => StoreExprPair(resS, Lam(resX, resE))
-        }
-        */
         val v2 = eval(store, e2) match {
           case StoreExprPair(_, v) => v
         }
@@ -124,12 +142,13 @@ object LambdaEval {
           case StoreExprPair(_, Pair(_, v2)) => StoreExprPair(store, v2)
         }
     }
-  } ensuring(res => okPair(res))
-  /*ensuring(res => res match {
-    case StoreExprPair(_, resExpr) => ok(resExpr)
-  }) */
+  } ensuring(res => res match {
+    case StoreExprPair(s, e) => storeHasValues(s) && isValue(e)
+  })
 
   def property0() : Boolean = {
-    okPair(eval(Cons(BindingPair(358, Const(349)), Nil()), Const(1)))
+    eval(Cons(BindingPair(358, Const(349)), Nil()), Const(1)) match {
+      case StoreExprPair(s, e) => isValue(e)
+    }
   } holds
 }
