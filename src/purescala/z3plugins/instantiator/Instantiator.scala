@@ -9,11 +9,14 @@ import purescala.Definitions._
 import purescala.Settings
 
 import purescala.Z3Solver
+import purescala.PartialEvaluator
 
 import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
 
 class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instantiator") {
   import z3Solver.{z3,program,typeToSort,fromZ3Formula,toZ3Formula}
+
+  val partialEvaluator = new PartialEvaluator(program)
 
   setCallbacks(
 //    reduceApp = true,
@@ -29,7 +32,7 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
     restart = true
   )
 
-  showCallbacks(true)
+  //showCallbacks(true)
 
   private var functionMap : Map[FunDef,Z3FuncDecl] = Map.empty
   private var reverseFunctionMap : Map[Z3FuncDecl,FunDef] = Map.empty
@@ -57,7 +60,7 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
   private var stillToAssert : Set[(Int,Expr)] = Set.empty
 
   override def newAssignment(ast: Z3AST, polarity: Boolean) : Unit = safeBlockToAssertAxioms {
-
+    examineAndUnroll(ast)
   }
 
   override def newApp(ast: Z3AST) : Unit = {
@@ -65,26 +68,31 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
   }
 
   override def newRelevant(ast: Z3AST) : Unit = {
-    examineAndUnroll(ast)
+    //examineAndUnroll(ast)
   }
 
   private var bodyInlined : Int = 0
   def examineAndUnroll(ast: Z3AST) : Unit = if(bodyInlined < Settings.unrollingLevel) {
     val aps = fromZ3Formula(ast)
-    val fis = functionCallsOf(aps)
-    println("As Purescala: " + aps)
+    //val fis = functionCallsOf(aps)
+
+    val fis : Set[FunctionInvocation] = aps match {
+      case f @ FunctionInvocation(_,_) => Set(f)
+      case _ => Set.empty
+    }
+
+    //println("As Purescala: " + aps)
     for(fi <- fis) {
       val FunctionInvocation(fd, args) = fi
-      println("interesting function call : " + fi)
+      //println("interesting function call : " + fi)
       if(bodyInlined < Settings.unrollingLevel && fd.hasPostcondition) {
         bodyInlined += 1
         val post = matchToIfThenElse(fd.postcondition.get)
-        val isSafe = functionCallsOf(post).isEmpty
 
         val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*) + (ResultVariable() -> fi)
         // println(substMap)
-        val newBody = replace(substMap, post)
-        println("I'm going to add this : " + newBody)
+        val newBody = partialEvaluator(replace(substMap, post))
+        //println("I'm going to add this : " + newBody)
         assertIfSafeOrDelay(newBody)//, isSafe)
       }
 
@@ -93,8 +101,8 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
         val body = matchToIfThenElse(fd.body.get)
         val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*)
         val newBody = replace(substMap, body)
-        val theEquality = Equals(fi, newBody)
-        println("I'm going to add this : " + theEquality)
+        val theEquality = Equals(fi, partialEvaluator(newBody))
+        //println("I'm going to add this : " + theEquality)
         assertIfSafeOrDelay(theEquality)
       }
     }
@@ -106,7 +114,7 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
     } else {
       for((lvl,ast) <- stillToAssert) {
         assertAxiomASAP(ast, lvl)
-        // assertPermanently(ast)
+        //assertPermanently(ast)
       }
       stillToAssert = Set.empty
       true
@@ -124,6 +132,7 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
   private def assertAxiomASAP(ast: Z3AST, lvl: Int) : Unit = {
     if(canAssertAxiom) {
       assertAxiomNow(ast)
+      //println("(supposed to be available from level " + lvl + ")")
       if(lvl < pushLevel) {
         // Remember to reassert when we backtrack.
         if(pushLevel > 0) {
@@ -139,30 +148,32 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
     toAssertASAP = toAssertASAP + ((level, ast))
   }
 
-//  private def assertPermanently(expr: Expr) : Unit = {
-//    val asZ3 = toZ3Formula(z3, expr).get
-//
-//    if(canAssertAxiom) {
-//      assertAxiomNow(asZ3)
-//    } else {
-//      toAssertASAP = toAssertASAP + ((0, asZ3))
-//    }
-//  }
+  // private def assertPermanently(expr: Expr) : Unit = {
+  //   val asZ3 = toZ3Formula(z3, expr).get
+
+  //   if(canAssertAxiom) {
+  //     assertAxiomNow(asZ3)
+  //   } else {
+  //     toAssertASAP = toAssertASAP + ((0, asZ3))
+  //   }
+  // }
 
   private def assertAxiomNow(ast: Z3AST) : Unit = {
     if(!canAssertAxiom)
       println("WARNING ! ASSERTING AXIOM WHEN NOT SAFE !")
 
-    println("Now asserting : " + ast)
+    //println("Now asserting : " + ast)
     assertAxiom(ast)
   }
 
   override def push : Unit = {
     pushLevel += 1
+    //println("Now at level " + pushLevel)
   }
 
   override def pop : Unit = {
     pushLevel -= 1
+    //println("Now at level " + pushLevel)
 
     if(toReassertAt.isDefinedAt(pushLevel)) {
       for((lvl,ax) <- toReassertAt(pushLevel)) {
@@ -210,6 +221,7 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
       for ((lvl, ax) <- toAssertASAP) {
         if(lvl <= pushLevel) {
           assertAxiomNow(ax)
+          //println("(supposed to be available from level " + lvl + ")")
           if(lvl < pushLevel && pushLevel > 0) {
             rememberToReassertAt(pushLevel - 1, lvl, ax)
           }

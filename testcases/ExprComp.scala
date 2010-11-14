@@ -1,3 +1,5 @@
+import funcheck.Utils._
+
 object ExprComp {
 
   // Values
@@ -90,7 +92,7 @@ object ExprComp {
     val vs = EStack()
     val acc = EProgram()
     run(compile(e, acc), vs) == Ok(NStack(eval(e), vs))
-  } ensuring (res => res)
+  } holds
 
   def main(args : Array[String]) = {
     val e = Binary(Constant(Value(100)), Times(), Binary(Constant(Value(3)), Plus(), Constant(Value(5))))
