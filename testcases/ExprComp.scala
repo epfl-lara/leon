@@ -76,16 +76,19 @@ object ExprComp {
   def run0(p : Program) = run(p, EStack())
 
   // Compiling expressions to programs
-  def compile(e : Expr, acc : Program) : Program = e match {
+
+  def compile(e : Expr, acc : Program) : Program  = (e match {
     case Constant(v) => NProgram(PushVal(v), acc)
     case Binary(e1,op,e2) => NProgram(ApplyBinOp(op),compile(e2,compile(e1,acc)))
-  }
+  }) // ensuring (res => (run(res, EStack()) == Ok(NStack(eval(e), EStack()))))
+    // should be forall vs. ... vs ... instead of EStack() above.
 
   def compile0(e : Expr) : Program = compile(e, EProgram())
 
+/*
   def property(e : Expr, acc : Program, vs : ValueStack) : Boolean = {
     run(compile(e, acc), vs) == Ok(NStack(eval(e), vs))
-  } // ensuring (res => res)
+  } holds
 
   def property0() : Boolean = {
     val e = Binary(Constant(Value(3)), Plus(), Constant(Value(5)))
@@ -103,4 +106,5 @@ object ExprComp {
     println(Ok(NStack(eval(e), vs)))
     assert(property(e,acc,vs))
   }
+*/
 }
