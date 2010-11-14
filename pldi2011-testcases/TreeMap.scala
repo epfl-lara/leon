@@ -76,12 +76,18 @@ object TreeMap {
   }
 
   def create(k: Int, d: Int, l: TreeMap, r: TreeMap): TreeMap = {
-    require(nodeHeightsAreCorrect(l) && nodeHeightsAreCorrect(r) && isBalanced(l) && isBalanced(r) &&
-      height(l) - height(r) <= 2 && height(r) - height(l) <= 2)
+    require(
+      nodeHeightsAreCorrect(l) && nodeHeightsAreCorrect(r) && isBalanced(l) && isBalanced(r) &&
+      height(l) - height(r) <= 2 && height(r) - height(l) <= 2 &&
+      isBST(l) && isBST(r) // and max l < min r
+    )
     val hl = height(l)
     val hr = height(r)
     Node(k, d, l, r, mmax(hl, hr) + 1)
-  } ensuring(res => setOf(res) == Set(k) ++ setOf(l) ++ setOf(r) && isBalanced(res))
+  } ensuring(
+    res => setOf(res) == Set(k) ++ setOf(l) ++ setOf(r) && 
+    isBalanced(res) && isBST(res)
+  )
 
   def balance(x: Int, d: Int, l: TreeMap, r: TreeMap): TreeMap = {
     require(
@@ -125,7 +131,7 @@ object TreeMap {
       }
     } else
       Node(x, d, l, r, if(hl >= hr) hl + 1 else hr + 1)
-  } ensuring(isBalanced(_))
+  } ensuring(res => isBalanced(res)) // && setOf(res) == Set[Int](x) ++ setOf(l) ++ setOf(r))
 
   def add(x: Int, data: Int, tm: TreeMap): TreeMap = {
     require(isBalanced(tm) && nodeHeightsAreCorrect(tm))
@@ -139,9 +145,9 @@ object TreeMap {
         else
           balance(v, d, l, add(x, data, r))
     }
-  } ensuring(isBalanced(_))
+  } ensuring(res => isBalanced(res)) // && setOf(res) == Set(x) ++ setOf(tm))
 
-  def removeMinBinding(t: TreeMap): Triple = {
+  def removeMinBinding(t: TreeMap): Tuple = {
     require(isBalanced(t) && (t match {
       case Empty() => false
       case _ => true
@@ -151,11 +157,15 @@ object TreeMap {
         l match {
           case Empty() => Triple(x, d, r)
           case Node(_,_,ll, lr, h2) =>
-            val triple = removeMinBinding(l)
-            Triple(triple.key, triple.datum, balance(x, d, triple.tree, r))
+            removeMinBinding(l) match {
+              case Triple(key, datum, tree) =>
+                Triple(key, datum, balance(x, d, tree, r))
+            }
         }
     }
-  } ensuring(res => isBalanced(res.tree))
+  } ensuring(res => res match {
+    case Triple(resKey, _, resTree) => isBalanced(resTree) // && (setOf(resTree) == setOf(t) -- Set(resKey)) && setOf(resTree) ++ Set(resKey) == setOf(t)
+  })
 
   // m is not used here!
   def merge(m: Int, t1: TreeMap, t2: TreeMap): TreeMap = {
@@ -166,11 +176,12 @@ object TreeMap {
         t2 match {
           case Empty() => t1
           case Node(r, _, rl, rr, h2) =>
-            val triple = removeMinBinding(t2)
-            balance(triple.key, triple.datum, t1, triple.tree)
+            removeMinBinding(t2) match {
+              case Triple(key, datum, tree) => balance(key, datum, t1, tree)
+            }
         }
     }
-  } ensuring(isBalanced(_))
+  } ensuring(res => isBalanced(res)) // && setOf(res) == setOf(t1) ++ setOf(t2))
 
   def remove(x: Int, t: TreeMap): TreeMap = {
     require(isBalanced(t))
@@ -184,7 +195,7 @@ object TreeMap {
         else
           balance(v, d, l, remove(x, r))
     }
-  } ensuring(isBalanced(_))
+  } ensuring(res => isBalanced(res)) // && (setOf(res) == setOf(t) -- Set(x)))
 
   def find(t: TreeMap, x: Int): Int = {
     require(t match {
@@ -216,10 +227,10 @@ object TreeMap {
       v < k && iter2(l, v) && iter2(r, v)
   }
 
-  def checkBST(t: TreeMap): Boolean = t match {
+  def isBST(t: TreeMap): Boolean = t match {
     case Empty() => true
     case Node(v, _, l, r, _) =>
-      iter1(l, v) && iter2(r, v) && checkBST(l) && checkBST(r)
+      iter1(l, v) && iter2(r, v) && isBST(l) && isBST(r)
   }
 
   // We have a variant of AVL trees where the heights of the subtrees differ at
