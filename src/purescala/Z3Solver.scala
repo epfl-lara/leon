@@ -599,7 +599,17 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
               val r0 = rargs(0)
               val r1 = rargs(1)
               val r2 = rargs(2)
-              IfExpr(r0, r1, r2).setType(leastUpperBound(r1.getType, r2.getType))
+              try {
+                IfExpr(r0, r1, r2).setType(leastUpperBound(r1.getType, r2.getType))
+              } catch {
+                case e => {
+                  println("I was asking for lub because of this.")
+                  println(t)
+                  println("which was translated as")
+                  println(IfExpr(r0,r1,r2))
+                  throw e
+                }
+              }
             }
             case OpAnd => And(rargs)
             case OpOr => Or(rargs)

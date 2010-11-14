@@ -57,7 +57,7 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
   }
 
   // The logic starts here.
-  private var stillToAssert : Set[(Int,Expr)] = Set.empty
+  private var stillToAssert : List[(Int,Expr)] = Nil
 
   override def newAssignment(ast: Z3AST, polarity: Boolean) : Unit = safeBlockToAssertAxioms {
     examineAndUnroll(ast)
@@ -68,7 +68,7 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
   }
 
   override def newRelevant(ast: Z3AST) : Unit = {
-    //examineAndUnroll(ast)
+    examineAndUnroll(ast)
   }
 
   private var bodyInlined : Int = 0
@@ -112,11 +112,11 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
     if(stillToAssert.isEmpty) {
       true
     } else {
-      for((lvl,ast) <- stillToAssert) {
+      for((lvl,ast) <- stillToAssert.reverse) {
         assertAxiomASAP(ast, lvl)
         //assertPermanently(ast)
       }
-      stillToAssert = Set.empty
+      stillToAssert = Nil
       true
     }
   }
@@ -124,7 +124,7 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
   // This is concerned with how many new function calls the assertion is going
   // to introduce.
   private def assertIfSafeOrDelay(ast: Expr, isSafe: Boolean = false) : Unit = {
-    stillToAssert += ((pushLevel, ast))
+    stillToAssert = ((pushLevel, ast)) :: stillToAssert
   }
 
   // Assert as soon as possible and keep asserting as long as level is >= lvl.
@@ -211,7 +211,7 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
     pushLevel = 0
     canAssertAxiom = false
     toAssertASAP = Set.empty
-    stillToAssert = Set.empty
+    stillToAssert = Nil
   }
 
   private def safeBlockToAssertAxioms[A](block: => A): A = {
