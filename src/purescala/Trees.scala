@@ -956,6 +956,24 @@ object Trees {
     })
   }
 
+  def explicitPreconditions(expr: Expr) : Expr = {
+    def rewriteFunctionCall(e: Expr) : Option[Expr] = e match {
+      case fi @ FunctionInvocation(fd, args) if(fd.hasPrecondition) => {
+        val fTpe = fi.getType
+        val prec = matchToIfThenElse(fd.precondition.get)
+        val newLetIDs = fd.args.map(a => FreshIdentifier("precarg_" + a.id.name, true).setType(a.tpe))
+        val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip newLetIDs.map(Variable(_))) : _*)
+        val newPrec = replace(substMap, prec)
+        val newThen = FunctionInvocation(fd, newLetIDs.map(_.toVariable)).setType(fTpe)
+        val ifExpr: Expr = IfExpr(newPrec, newThen, Error("precondition violated").setType(fTpe)).setType(fTpe)
+        Some((newLetIDs zip args).foldRight(ifExpr)((iap,e) => Let(iap._1, iap._2, e)))
+      }
+      case _ => None
+    }
+
+    searchAndReplaceDFS(rewriteFunctionCall)(expr)
+  }
+
   private var matchConverterCache = new scala.collection.mutable.HashMap[Expr,Expr]()
   /** Rewrites all pattern-matching expressions into if-then-else expressions,
    * with additional error conditions. Does not introduce additional variables.

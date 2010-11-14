@@ -64,7 +64,7 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
   }
 
   override def newApp(ast: Z3AST) : Unit = {
-    examineAndUnroll(ast)
+    // examineAndUnroll(ast)
   }
 
   override def newRelevant(ast: Z3AST) : Unit = {
@@ -72,13 +72,15 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
   }
 
   private var bodyInlined : Int = 0
-  def examineAndUnroll(ast: Z3AST) : Unit = if(bodyInlined < Settings.unrollingLevel) {
+  def examineAndUnroll(ast: Z3AST, allFunctions: Boolean = false) : Unit = if(bodyInlined < Settings.unrollingLevel) {
     val aps = fromZ3Formula(ast)
-    //val fis = functionCallsOf(aps)
-
-    val fis : Set[FunctionInvocation] = aps match {
-      case f @ FunctionInvocation(_,_) => Set(f)
-      case _ => Set.empty
+    val fis : Set[FunctionInvocation] = if(allFunctions) {
+      functionCallsOf(aps)
+    } else {
+      aps match {
+        case f @ FunctionInvocation(_,_) => Set(f)
+        case _ => Set.empty
+      }
     }
 
     //println("As Purescala: " + aps)

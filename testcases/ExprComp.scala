@@ -16,6 +16,11 @@ object ExprComp {
   case class Constant(v : Value) extends Expr
   case class Binary(exp1 : Expr, op : BinOp, exp2 : Expr) extends Expr
 
+  def exprSize(e: Expr) : Int = (e match {
+    case Constant(_) => 1
+    case Binary(e1, _, e2) => 1 + exprSize(e1) + exprSize(e2)
+  }) ensuring(_ >= 1)
+
   def evalOp(v1 : Value, op : BinOp, v2 : Value) : Value = op match {
     case Plus() => Value(v1.v + v2.v)
     case Times() => Value(v1.v * v2.v)
@@ -40,11 +45,21 @@ object ExprComp {
   case class EProgram() extends Program
   case class NProgram(first : Instruction, rest : Program) extends Program
 
+  def progSize(p: Program) : Int = (p match {
+    case EProgram() => 0
+    case NProgram(_, r) => 1 + progSize(r)
+  }) ensuring(_ >= 0)
+
   // Value stack
 
   sealed abstract class ValueStack
   case class EStack() extends ValueStack
   case class NStack(v : Value, rest : ValueStack) extends ValueStack
+
+  def stackSize(vs: ValueStack) : Int = (vs match {
+    case EStack() => 0
+    case NStack(_, r) => 1 + stackSize(r)
+  }) ensuring(_ >= 0)
 
   // Outcomes of running the program
 
@@ -87,16 +102,18 @@ object ExprComp {
 
 /*
   def property(e : Expr, acc : Program, vs : ValueStack) : Boolean = {
+    require(exprSize(e) <= 1 && progSize(acc) <= 1 && stackSize(vs) <= 1)
     run(compile(e, acc), vs) == Ok(NStack(eval(e), vs))
   } holds
 
+*/
   def property0() : Boolean = {
     val e = Binary(Constant(Value(3)), Plus(), Constant(Value(5)))
     val vs = EStack()
     val acc = EProgram()
     run(compile(e, acc), vs) == Ok(NStack(eval(e), vs))
   } holds
-
+/*
   def main(args : Array[String]) = {
     val e = Binary(Constant(Value(100)), Times(), Binary(Constant(Value(3)), Plus(), Constant(Value(5))))
     val vs = EStack()
@@ -106,5 +123,6 @@ object ExprComp {
     println(Ok(NStack(eval(e), vs)))
     assert(property(e,acc,vs))
   }
-*/
+  */
+
 }

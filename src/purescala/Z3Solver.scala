@@ -57,6 +57,8 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
     if (useBAPA) bapa = new BAPATheoryType(z3)
     if (useInstantiator) instantiator = new Instantiator(this)
 
+    exprToZ3Id = Map.empty
+    z3IdToExpr = Map.empty
     counter = 0
     prepareSorts
     prepareFunctions
@@ -573,7 +575,9 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
       case Z3AppAST(decl, args) => {
         val argsSize = args.size
         if(argsSize == 0 && z3IdToExpr.isDefinedAt(t)) {
-          z3IdToExpr(t)
+          val toRet = z3IdToExpr(t)
+          // println("Map says I should replace " + t + " by " + toRet)
+          toRet
         } else if(isKnownDecl(decl)) {
           val fd = functionDeclToDef(decl)
           assert(fd.args.size == argsSize)

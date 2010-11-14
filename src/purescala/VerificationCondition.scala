@@ -38,7 +38,9 @@ class VerificationCondition(val condition: Expr, val funDef: FunDef, val kind: V
 
 object VerificationCondition {
   val infoFooter : String = "╚" + ("═" * 69) + "╝"
-  val infoHeader : String = "╔══ Summary " + ("═" * 58) + "╗"
+  val infoHeader : String = ". ┌─────────┐\n" +
+                            "╔═╡ Summary ╞" + ("═" * 57) + "╗\n" +
+                            "║ └─────────┘" + (" " * 57) + "║"
 }
 
 object VCKind extends Enumeration {

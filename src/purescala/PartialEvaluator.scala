@@ -8,12 +8,12 @@ import TypeTrees._
 class PartialEvaluator(val program: Program) {
   val reporter = Settings.reporter
 
-  def apply0(expression:Expr) : Expr = expression
+  def apply(expression:Expr) : Expr = expression
   // Simplifies by partially evaluating.
   // Of course, I still have to decide what 'simplified' means.
-  def apply(expression: Expr) : Expr = {
+  def apply0(expression: Expr) : Expr = {
     def rec(expr: Expr, letMap: Map[Identifier,Expr]) : Expr = {
-//      println("****** rec called on " + expr + " *********")
+      println("****** rec called on " + expr + " *********")
       (expr match {
       case i @ IfExpr(cond, then, elze) => {
         val simpCond = rec(cond, letMap)
