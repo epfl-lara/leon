@@ -958,7 +958,7 @@ object Trees {
 
   def explicitPreconditions(expr: Expr) : Expr = {
     def rewriteFunctionCall(e: Expr) : Option[Expr] = e match {
-      case fi @ FunctionInvocation(fd, args) if(fd.hasPrecondition) => {
+      case fi @ FunctionInvocation(fd, args) if(fd.hasPrecondition && fd.precondition.get != BooleanLiteral(true)) => {
         val fTpe = fi.getType
         val prec = matchToIfThenElse(fd.precondition.get)
         val newLetIDs = fd.args.map(a => FreshIdentifier("precarg_" + a.id.name, true).setType(a.tpe))
@@ -1043,5 +1043,24 @@ object Trees {
     }
     
     searchAndReplaceDFS(rewritePM)(expr)
+  }
+
+  // prec: expression does not contain match expressions
+  def measureADTChildrenDepth(expression: Expr) : Int = {
+    import scala.math.max
+
+    def rec(ex: Expr, lm: Map[Identifier,Int]) : Int = ex match {
+      case Let(i,e,b) => rec(b,lm + (i -> rec(e,lm)))
+      case Variable(id) => lm.getOrElse(id, 0)
+      case CaseClassSelector(_, e, _) => rec(e,lm) + 1
+      case NAryOperator(args, _) => if(args.isEmpty) 0 else args.map(rec(_,lm)).max
+      case BinaryOperator(e1,e2,_) => max(rec(e1,lm), rec(e2,lm))
+      case UnaryOperator(e,_) => rec(e,lm)
+      case IfExpr(c,t,e) => max(max(rec(c,lm),rec(t,lm)),rec(e,lm))
+      case t: Terminal => 0
+      case _ => scala.Predef.error("Not handled in measureChildrenDepth : " + ex)
+    }
+    
+    rec(expression,Map.empty)
   }
 }

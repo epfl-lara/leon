@@ -110,7 +110,11 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
     }
 
     def generatePreconditions(function: FunDef) : Seq[VerificationCondition] = {
-      errorConditions(function).filter(_.kind == VCKind.Precondition)
+      val toRet = errorConditions(function).filter(_.kind == VCKind.Precondition)
+
+      println("PRECONDITIONS FOR " + function.id.name)
+      println(toRet.map(_.condition).toList.mkString("\n"))
+      toRet
     }
 
     def generatePatternMatchingExhaustivenessChecks(function: FunDef) : Seq[VerificationCondition] = {

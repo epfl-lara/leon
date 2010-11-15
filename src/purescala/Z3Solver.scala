@@ -350,10 +350,6 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
     val result = toZ3Formula(z3, toConvert) match {
       case None => None // means it could not be translated
       case Some(z3f) => {
-        if(Settings.experimental) {
-          reporter.info("Z3 Formula:")
-          reporter.info(z3f)
-        }
         //z3.push
         z3.assertCnstr(z3f)
         //z3.print
