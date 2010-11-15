@@ -6,22 +6,22 @@ object TreeMap {
   case class Empty() extends TreeMap
   case class Node(key: Int, datum: Int, left: TreeMap, right: TreeMap, height: Int) extends TreeMap
 
-  sealed abstract class Tuple
-  case class Triple(key: Int, datum: Int, tree: TreeMap) extends Tuple
+  sealed abstract class RemoveMinTripleAbs
+  case class RemoveMinTriple(key: Int, datum: Int, tree: TreeMap) extends RemoveMinTripleAbs
 
   sealed abstract class IntList
   case class Cons(head: Int, tail: IntList) extends IntList
   case class Nil() extends IntList
 
-  def main(args : Array[String]) : Unit = {
-    val l =  Node(11, 12, Empty(), Node(13, 14, Node(36, 37, Empty(), Empty(), 38), Empty(), 5920), 5922)
-    val r = Node(7, 8, Node(9, 10, Node(41, 42, Empty(), Empty(), 43), Empty(), 7719), Node(26, 27, Empty(), Empty(), 4680), 5921)
+  sealed abstract class IntOpt
+  case class Some(value: Int) extends IntOpt
+  case class None() extends IntOpt
 
-    val d = 4
-    val x = 3
+  sealed abstract class TripleAbs
+  case class Triple(lmax: IntOpt, isSorted: Boolean, rmin: IntOpt) extends TripleAbs
 
-    println(balance(x, d, l, r))
-  }
+  sealed abstract class TriplePairAbs
+  case class TriplePair(left: TripleAbs, right: TripleAbs) extends TriplePairAbs
 
   def mmax(i: Int, j: Int) : Int = if(i >= j) i else j
 
@@ -47,28 +47,32 @@ object TreeMap {
     require(nodeHeightsAreCorrect(tm))
     height(tm) == realHeight(tm)
   } holds
-
-  def invariant1(tm: TreeMap): Boolean = {
-    require((tm match {
-      case Empty() => true
-      case Node(_,_,l,r,_) => nodeHeightsAreCorrect(l) && nodeHeightsAreCorrect(r)
-    }) && nodeHeightsAreCorrect(tm))
-    tm match {
-      case Empty() => true
-      case Node(_,_,l,r,h) => h == mmax(height(l), height(r)) + 1
-    }
-  } // holds
-
-  def invariant2(tm: TreeMap): Boolean = {
-    require(nodeHeightsAreCorrect(tm))
-    tm match {
-      case Empty() => true
-      case Node(_,_,l,r,_) => 
-        val h = height(tm)
-        h > height(l) && h > height(r) // && invariant2(l) && invariant2(r)
-    }
-  } // holds
   */
+
+  def isBST(tree: TreeMap) : Boolean = isBST0(tree) match {
+    case Triple(_, v, _) => v
+  }
+
+  def isBST0(tree: TreeMap) : TripleAbs = tree match {
+    case Empty() => Triple(None(), true, None())
+
+    case Node(v, _, l, r, _) => TriplePair(isBST0(l), isBST0(r)) match {
+      case TriplePair(Triple(None(),t1,None()),Triple(None(),t2,None()))
+        if(t1 && t2) =>
+          Triple(Some(v),true,Some(v))
+      case TriplePair(Triple(Some(minL),t1,Some(maxL)),Triple(None(),t2,None()))
+        if(t1 && t2 && minL <= maxL && maxL < v) =>
+          Triple(Some(minL),true,Some(v))
+      case TriplePair(Triple(None(),t1,None()),Triple(Some(minR),t2,Some(maxR)))
+        if(t1 && t2 && minR <= maxR && v < minR) =>
+          Triple(Some(v),true,Some(maxR))
+      case TriplePair(Triple(Some(minL),t1,Some(maxL)),Triple(Some(minR),t2,Some(maxR)))
+        if(t1 && t2 && minL <= maxL && minR <= maxR && maxL < v && v < minR) =>
+          Triple(Some(minL),true,Some(maxR))
+
+      case _ => Triple(None(),false,None())
+    }
+  }
 
   def setOf(tm: TreeMap): Set[Int] = tm match {
     case Empty() => Set.empty
@@ -79,7 +83,13 @@ object TreeMap {
     require(
       nodeHeightsAreCorrect(l) && nodeHeightsAreCorrect(r) && isBalanced(l) && isBalanced(r) &&
       height(l) - height(r) <= 2 && height(r) - height(l) <= 2 &&
-      isBST(l) && isBST(r) // and max l < min r
+      isBST(l) && isBST(r) &&
+      (TriplePair(isBST0(l),isBST0(r)) match {
+        case TriplePair(Triple(_,_,Some(lmax)), Triple(Some(rmin),_,_)) => lmax < k && k < rmin
+        case TriplePair(Triple(_,_,_),Triple(Some(rmin),_,_)) => k < rmin
+        case TriplePair(Triple(_,_,Some(lmax)),Triple(_,_,_)) => lmax < k
+        case _ => true
+      })
     )
     val hl = height(l)
     val hr = height(r)
@@ -147,7 +157,7 @@ object TreeMap {
     }
   } ensuring(res => isBalanced(res)) // && setOf(res) == Set(x) ++ setOf(tm))
 
-  def removeMinBinding(t: TreeMap): Tuple = {
+  def removeMinBinding(t: TreeMap): RemoveMinTripleAbs = {
     require(isBalanced(t) && (t match {
       case Empty() => false
       case _ => true
@@ -155,16 +165,16 @@ object TreeMap {
     t match {
       case Node(x, d, l, r, h) =>
         l match {
-          case Empty() => Triple(x, d, r)
+          case Empty() => RemoveMinTriple(x, d, r)
           case Node(_,_,ll, lr, h2) =>
             removeMinBinding(l) match {
-              case Triple(key, datum, tree) =>
-                Triple(key, datum, balance(x, d, tree, r))
+              case RemoveMinTriple(key, datum, tree) =>
+                RemoveMinTriple(key, datum, balance(x, d, tree, r))
             }
         }
     }
   } ensuring(res => res match {
-    case Triple(resKey, _, resTree) => isBalanced(resTree) // && (setOf(resTree) == setOf(t) -- Set(resKey)) && setOf(resTree) ++ Set(resKey) == setOf(t)
+    case RemoveMinTriple(resKey, _, resTree) => isBalanced(resTree) // && (setOf(resTree) == setOf(t) -- Set(resKey)) && setOf(resTree) ++ Set(resKey) == setOf(t)
   })
 
   // m is not used here!
@@ -177,7 +187,7 @@ object TreeMap {
           case Empty() => t1
           case Node(r, _, rl, rr, h2) =>
             removeMinBinding(t2) match {
-              case Triple(key, datum, tree) => balance(key, datum, t1, tree)
+              case RemoveMinTriple(key, datum, tree) => balance(key, datum, t1, tree)
             }
         }
     }
@@ -227,10 +237,10 @@ object TreeMap {
       v < k && iter2(l, v) && iter2(r, v)
   }
 
-  def isBST(t: TreeMap): Boolean = t match {
+  def isBSTold(t: TreeMap): Boolean = t match {
     case Empty() => true
     case Node(v, _, l, r, _) =>
-      iter1(l, v) && iter2(r, v) && isBST(l) && isBST(r)
+      iter1(l, v) && iter2(r, v) && isBSTold(l) && isBSTold(r)
   }
 
   // We have a variant of AVL trees where the heights of the subtrees differ at
