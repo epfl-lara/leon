@@ -44,30 +44,29 @@ object ListWithSize {
       case Cons(x,xs) => Cons(x, append(xs, l2))
     })
 
-//    @induct
-    def propAppend1(l : List) : Boolean = {
-      append(l, Nil()) == l
-    } ensuring(_ == true)
-    // should generate something like:
-    def propAppend2(l : List) : Boolean = (l match {
-      case Nil() => propAppend1(l)
-      case Cons(x,xs) => (!propAppend1(xs) || propAppend1(l))
-    }) ensuring (_ == true)
+    def nilAppend(l : List) : Boolean = (l match {
+      case Nil() => true
+      case Cons(x,xs) => nilAppend(xs)
+    }) ensuring(_ => append(Nil(), l) == l)
 
-    def propAppend3(l : List) : Boolean = {
-      !propAppend1(l) || propAppend2(l)
-    } ensuring (_ == true)
+    def appendFold(x : Int, xs : List, ys : List) : Boolean = {
+      true
+    } ensuring (_ => Cons(x,append(xs, ys)) == append(Cons(x,xs), ys))
 
-//    def twoLists(l1 : List) : Boolean = {
-//      Forall((l2 : List) => size(append(l1,l2)) = size(l1) + size(l2))
-//    }
+  // did not work for Viktor / 16 Nov 2010
+    def appendAssoc(xs : List, ys : List, zs : List) : Boolean = (xs match {
+      case Nil() => (nilAppend(append(ys,zs)) && nilAppend(ys))
+      case Cons(x,xs1) => (appendAssoc(xs1, ys, zs) &&
+                           appendFold(x, ys,zs) &&
+			   appendFold(x, append(xs,ys), zs) &&
+			   appendFold(x, xs,ys))
+    }) ensuring (_ => append(xs, append(ys, zs)) == append(append(xs,ys), zs))
 
-/*
-    def induct(l : List, prop : List => Boolean) = {
-      case Nil() => prop(l)
-      case Cons(x,xs) => (!prop(xs) || prop(l))
-    }
-*/
+  // did not work for Viktor / 16 Nov 2010
+    def twoLists(l1 : List, l2 : List) : Boolean = (l1 match {
+      case Nil() => nilAppend(l2)
+      case Cons(x,xs) => twoLists(xs, l2)
+    }) ensuring(_ => size(append(l1,l2)) == size(l1) + size(l2))
 
     // proved with unrolling=4
     def concat(l1: List, l2: List) : List = concat0(l1, l2, Nil()) 
