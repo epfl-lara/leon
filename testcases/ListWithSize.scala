@@ -47,26 +47,22 @@ object ListWithSize {
     def nilAppend(l : List) : Boolean = (l match {
       case Nil() => true
       case Cons(x,xs) => nilAppend(xs)
-    }) ensuring(_ => append(Nil(), l) == l)
+    }) ensuring(res => res && append(l, Nil()) == l)
 
+    // unclear if we needed this--it was meant to force folding
     def appendFold(x : Int, xs : List, ys : List) : Boolean = {
       true
-    } ensuring (_ => Cons(x,append(xs, ys)) == append(Cons(x,xs), ys))
+    } ensuring (res => res && Cons(x,append(xs, ys)) == append(Cons(x,xs), ys))
 
-  // did not work for Viktor / 16 Nov 2010
     def appendAssoc(xs : List, ys : List, zs : List) : Boolean = (xs match {
       case Nil() => (nilAppend(append(ys,zs)) && nilAppend(ys))
-      case Cons(x,xs1) => (appendAssoc(xs1, ys, zs) &&
-                           appendFold(x, ys,zs) &&
-			   appendFold(x, append(xs,ys), zs) &&
-			   appendFold(x, xs,ys))
-    }) ensuring (_ => append(xs, append(ys, zs)) == append(append(xs,ys), zs))
+      case Cons(x,xs1) => appendAssoc(xs1, ys, zs)
+    }) ensuring (res => res && append(xs, append(ys, zs)) == append(append(xs,ys), zs))
 
-  // did not work for Viktor / 16 Nov 2010
-    def twoLists(l1 : List, l2 : List) : Boolean = (l1 match {
+    def sizeAppend(l1 : List, l2 : List) : Boolean = (l1 match {
       case Nil() => nilAppend(l2)
-      case Cons(x,xs) => twoLists(xs, l2)
-    }) ensuring(_ => size(append(l1,l2)) == size(l1) + size(l2))
+      case Cons(x,xs) => sizeAppend(xs, l2)
+    }) ensuring(res => res && size(append(l1,l2)) == size(l1) + size(l2))
 
     // proved with unrolling=4
     def concat(l1: List, l2: List) : List = concat0(l1, l2, Nil()) 
