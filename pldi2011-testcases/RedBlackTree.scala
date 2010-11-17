@@ -1,6 +1,4 @@
 import scala.collection.immutable.Set
-//import scala.collection.immutable.Multiset
-
 object RedBlackTree { 
   sealed abstract class Color
   case class Red() extends Color
@@ -26,10 +24,13 @@ object RedBlackTree {
       if      (x < y)  balance(c, ins(x, a), y, b)
       else if (x == y) Node(c,a,y,b)
       else             balance(c,a,y,ins(x, b))
-  }) ensuring (res => (
-             content(res) == content(t) ++ Set(x) 
-//          && size(t) <= size(res) && size(res) < size(t) + 2)
-              ))
+  }) ensuring (res => content(res) == content(t) ++ Set(x) 
+                   && size(t) <= size(res) && size(res) <= size(t) + 1)
+
+  def makeBlack(n: Tree): Tree = n match {
+    case Node(Red(),l,v,r) => Node(Black(),l,v,r)
+    case _ => n
+  }
 
   def add(x: Int, t: Tree): Tree = {
     makeBlack(ins(x, t))
@@ -46,9 +47,4 @@ object RedBlackTree {
       Node(Red(),Node(Black(),a,xV,b),yV,Node(Black(),c,zV,d))
     case Node(c,a,xV,b) => Node(c,a,xV,b)
   }) ensuring (res => content(res) == content(Node(c,a,x,b)))
-
-  def makeBlack(n: Tree): Tree = n match {
-    case Node(Red(),l,v,r) => Node(Black(),l,v,r)
-    case _ => n
-  }
 }
