@@ -19,7 +19,7 @@ object Trees {
   /* This describes computational errors (unmatched case, taking min of an
    * empty set, division by zero, etc.). It should always be typed according to
    * the expected type. */
-  case class Error(description: String) extends Expr with Terminal
+  case class Error(description: String) extends Expr with Terminal with ScalacPositional
 
   /* Like vals */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
@@ -30,7 +30,7 @@ object Trees {
   }
 
   /* Control flow */
-  case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr with FixedType {
+  case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr with FixedType with ScalacPositional {
     val fixedType = funDef.returnType
   }
   case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr 
@@ -50,7 +50,7 @@ object Trees {
     def unapply(me: MatchExpr) : Option[(Expr,Seq[MatchCase])] = if (me == null) None else Some((me.scrutinee, me.cases))
   }
 
-  class MatchExpr(val scrutinee: Expr, val cases: Seq[MatchCase]) extends Expr {
+  class MatchExpr(val scrutinee: Expr, val cases: Seq[MatchCase]) extends Expr with ScalacPositional {
     def scrutineeClassType: ClassType = scrutinee.getType.asInstanceOf[ClassType]
   }
 
@@ -377,7 +377,7 @@ object Trees {
 
   object NAryOperator {
     def unapply(expr: Expr) : Option[(Seq[Expr],(Seq[Expr])=>Expr)] = expr match {
-      case FunctionInvocation(fd, args) => Some((args, FunctionInvocation(fd, _)))
+      case fi @ FunctionInvocation(fd, args) => Some((args, (as => FunctionInvocation(fd, as).setPosInfo(fi))))
       case CaseClass(cd, args) => Some((args, CaseClass(cd, _)))
       case And(args) => Some((args, And.apply))
       case Or(args) => Some((args, Or.apply))
@@ -474,7 +474,7 @@ object Trees {
           else
             i
         }
-        case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut), cses.map(inCase(_))).setType(m.getType)
+        case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut), cses.map(inCase(_))).setType(m.getType).setPosInfo(m)
         case t if t.isInstanceOf[Terminal] => t
         case unhandled => scala.Predef.error("Non-terminal case should be handled in searchAndReplace: " + unhandled)
       }
@@ -565,7 +565,7 @@ object Trees {
         val rscrut = rec(scrut)
         val (newCses,changes) = cses.map(inCase(_)).unzip
         applySubst(if(rscrut != scrut || changes.exists(res=>res)) {
-          MatchExpr(rscrut, newCses).setType(m.getType)
+          MatchExpr(rscrut, newCses).setType(m.getType).setPosInfo(m)
         } else {
           m
         })
@@ -619,7 +619,7 @@ object Trees {
     }
 
     def applyToTree(e : Expr) : Option[Expr] = e match {
-      case m @ MatchExpr(s, cses) => Some(MatchExpr(s, cses.map(freshenCase(_))).setType(m.getType))
+      case m @ MatchExpr(s, cses) => Some(MatchExpr(s, cses.map(freshenCase(_))).setType(m.getType).setPosInfo(m))
       case l @ Let(i,e,b) => {
         val newID = FreshIdentifier(i.name, true).setType(i.getType)
         Some(Let(newID, e, replace(Map(Variable(i) -> Variable(newID)), b)))
@@ -792,7 +792,7 @@ object Trees {
       case v @ Variable(id) if s.isDefinedAt(id) => rec(s(id), s)
       case l @ Let(i,e,b) => rec(b, s + (i -> rec(e, s)))
       case i @ IfExpr(t1,t2,t3) => IfExpr(rec(t1, s),rec(t2, s),rec(t3, s)).setType(i.getType)
-      case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut, s), cses.map(inCase(_, s))).setType(m.getType)
+      case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut, s), cses.map(inCase(_, s))).setType(m.getType).setPosInfo(m)
       case n @ NAryOperator(args, recons) => {
         var change = false
         val rargs = args.map(a => {
@@ -956,23 +956,23 @@ object Trees {
     })
   }
 
-  def explicitPreconditions(expr: Expr) : Expr = {
-    def rewriteFunctionCall(e: Expr) : Option[Expr] = e match {
-      case fi @ FunctionInvocation(fd, args) if(fd.hasPrecondition && fd.precondition.get != BooleanLiteral(true)) => {
-        val fTpe = fi.getType
-        val prec = matchToIfThenElse(fd.precondition.get)
-        val newLetIDs = fd.args.map(a => FreshIdentifier("precarg_" + a.id.name, true).setType(a.tpe))
-        val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip newLetIDs.map(Variable(_))) : _*)
-        val newPrec = replace(substMap, prec)
-        val newThen = FunctionInvocation(fd, newLetIDs.map(_.toVariable)).setType(fTpe)
-        val ifExpr: Expr = IfExpr(newPrec, newThen, Error("precondition violated").setType(fTpe)).setType(fTpe)
-        Some((newLetIDs zip args).foldRight(ifExpr)((iap,e) => Let(iap._1, iap._2, e)))
-      }
-      case _ => None
-    }
-
-    searchAndReplaceDFS(rewriteFunctionCall)(expr)
-  }
+//  def explicitPreconditions(expr: Expr) : Expr = {
+//    def rewriteFunctionCall(e: Expr) : Option[Expr] = e match {
+//      case fi @ FunctionInvocation(fd, args) if(fd.hasPrecondition && fd.precondition.get != BooleanLiteral(true)) => {
+//        val fTpe = fi.getType
+//        val prec = matchToIfThenElse(fd.precondition.get)
+//        val newLetIDs = fd.args.map(a => FreshIdentifier("precarg_" + a.id.name, true).setType(a.tpe))
+//        val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip newLetIDs.map(Variable(_))) : _*)
+//        val newPrec = replace(substMap, prec)
+//        val newThen = FunctionInvocation(fd, newLetIDs.map(_.toVariable)).setType(fTpe).setPosInfo(fi)
+//        val ifExpr: Expr = IfExpr(newPrec, newThen, Error("precondition violated").setType(fTpe).setPosInfo(fi)).setType(fTpe)
+//        Some((newLetIDs zip args).foldRight(ifExpr)((iap,e) => Let(iap._1, iap._2, e)))
+//      }
+//      case _ => None
+//    }
+//
+//    searchAndReplaceDFS(rewriteFunctionCall)(expr)
+//  }
 
   private var matchConverterCache = new scala.collection.mutable.HashMap[Expr,Expr]()
   /** Rewrites all pattern-matching expressions into if-then-else expressions,
@@ -1020,7 +1020,7 @@ object Trees {
 
     def rewritePM(e: Expr) : Option[Expr] = e match {
       case m @ MatchExpr(scrut, cases) => {
-        println("Rewriting the following PM: " + e)
+        // println("Rewriting the following PM: " + e)
 
         val condsAndRhs = for(cse <- cases) yield {
           val map = mapForPattern(scrut, cse.pattern)
@@ -1033,8 +1033,12 @@ object Trees {
           (realCond, newRhs)
         } 
 
-        val bigIte = condsAndRhs.foldRight[Expr](Error("non-exhaustive match").setType(bestRealType(m.getType)))((p1, ex) => {
-          IfExpr(p1._1, p1._2, ex).setType(m.getType)
+        val bigIte = condsAndRhs.foldRight[Expr](Error("non-exhaustive match").setType(bestRealType(m.getType)).setPosInfo(m))((p1, ex) => {
+          if(p1._1 == BooleanLiteral(true)) {
+            p1._2
+          } else {
+            IfExpr(p1._1, p1._2, ex).setType(m.getType)
+          }
         })
         //println(condsAndRhs)
         Some(bigIte)

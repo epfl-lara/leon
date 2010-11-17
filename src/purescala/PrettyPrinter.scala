@@ -146,7 +146,7 @@ object PrettyPrinter {
       nsb
     }
 
-    case MatchExpr(s, csc) => {
+    case mex @ MatchExpr(s, csc) => {
       def ppc(sb: StringBuffer, p: Pattern): StringBuffer = p match {
         //case InstanceOfPattern(None,     ctd) =>
         //case InstanceOfPattern(Some(id), ctd) =>
@@ -171,7 +171,11 @@ object PrettyPrinter {
 
       var nsb = sb
       nsb == pp(s, nsb, lvl)
-      nsb.append(" match {\n")
+      // if(mex.posInfo != "") {
+      //   nsb.append(" match@(" + mex.posInfo + ") {\n")
+      // } else {
+        nsb.append(" match {\n")
+      // }
 
       csc.foreach(cs => {
         ind(nsb, lvl+1)

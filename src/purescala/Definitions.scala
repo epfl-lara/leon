@@ -224,7 +224,7 @@ object Definitions {
       }
     }
   }
-  class FunDef(val id: Identifier, val returnType: TypeTree, val args: VarDecls) extends Definition {
+  class FunDef(val id: Identifier, val returnType: TypeTree, val args: VarDecls) extends Definition with ScalacPositional {
     var body: Option[Expr] = None
     var precondition: Option[Expr] = None
     var postcondition: Option[Expr] = None

@@ -262,7 +262,7 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
     canAssertAxiom = true
 
     if (toAssertASAP.nonEmpty) {
-      println("In a safe block. " + toAssertASAP.size + " axioms to add.")
+      // println("In a safe block. " + toAssertASAP.size + " axioms to add.")
       for ((lvl, ax) <- toAssertASAP) {
         if(lvl <= pushLevel) {
           assertAxiomNow(ax)

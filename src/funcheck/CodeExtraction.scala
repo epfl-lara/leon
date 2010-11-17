@@ -156,7 +156,7 @@ trait CodeExtraction extends Extractors {
           case ExMainFunctionDef() => ;
           case dd @ ExFunctionDef(n,p,t,b) => {
             val mods = dd.mods
-            val funDef = extractFunSig(n, p, t)
+            val funDef = extractFunSig(n, p, t).setPosInfo(dd.pos.line, dd.pos.column)
             if(mods.isPrivate) funDef.addAnnotation("private")
             for(a <- dd.symbol.annotations) {
               a.atp.safeToString match {
@@ -503,20 +503,20 @@ trait CodeExtraction extends Extractors {
         val r3 = rec(t3)
         IfExpr(r1, r2, r3).setType(leastUpperBound(r2.getType, r3.getType))
       }
-      case ExLocalCall(sy,nm,ar) => {
+      case lc @ ExLocalCall(sy,nm,ar) => {
         if(defsToDefs.keysIterator.find(_ == sy).isEmpty) {
           if(!silent)
             unit.error(tr.pos, "Invoking an invalid function.")
           throw ImpureCodeEncounteredException(tr)
         }
         val fd = defsToDefs(sy)
-        FunctionInvocation(fd, ar.map(rec(_))).setType(fd.returnType)
+        FunctionInvocation(fd, ar.map(rec(_))).setType(fd.returnType).setPosInfo(lc.pos.line,lc.pos.column) 
       }
-      case ExPatternMatching(sel, cses) => {
+      case pm @ ExPatternMatching(sel, cses) => {
         val rs = rec(sel)
         val rc = cses.map(rewriteCaseDef(_))
         val rt: purescala.TypeTrees.TypeTree = rc.map(_.rhs.getType).reduceLeft(leastUpperBound(_,_))
-        MatchExpr(rs, rc).setType(rt)
+        MatchExpr(rs, rc).setType(rt).setPosInfo(pm.pos.line,pm.pos.column)
       }
 
       // this one should stay after all others, cause it also catches UMinus
@@ -581,5 +581,9 @@ trait CodeExtraction extends Extractors {
     }
 
     rec(tree)
+  }
+
+  def mkPosString(pos: scala.tools.nsc.util.Position) : String = {
+    pos.line + "," + pos.column
   }
 }

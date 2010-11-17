@@ -1,11 +1,12 @@
 package purescala
 
-import purescala.Extensions._
-import purescala.Trees._
-import purescala.Definitions._
+import Extensions._
+import Trees._
+import Definitions._
+import Common._
 
 /** This is just to hold some history information. */
-class VerificationCondition(val condition: Expr, val funDef: FunDef, val kind: VCKind.Value, val tactic: Tactic, val info: String = "") {
+class VerificationCondition(val condition: Expr, val funDef: FunDef, val kind: VCKind.Value, val tactic: Tactic, val info: String = "") extends ScalacPositional {
   // None = still unknown
   // Some(true) = valid
   // Some(false) = valid
@@ -32,15 +33,15 @@ class VerificationCondition(val condition: Expr, val funDef: FunDef, val kind: V
   private def timeStr = time.map(t => "%-3.3f".format(t)).getOrElse("")
 
   def infoLine : String = {
-    "║ %-20s %-10s %-8s %-10s %-7s %7s ║" format (funDef.id.toString, kind, status, tacticStr, solverStr, timeStr)
+    "║ %-25s %-9s %9s %-8s %-10s %-7s %7s ║" format (funDef.id.toString, kind, posInfo, status, tacticStr, solverStr, timeStr)
   }
 }
 
 object VerificationCondition {
-  val infoFooter : String = "╚" + ("═" * 69) + "╝"
+  val infoFooter : String = "╚" + ("═" * 83) + "╝"
   val infoHeader : String = ". ┌─────────┐\n" +
-                            "╔═╡ Summary ╞" + ("═" * 57) + "╗\n" +
-                            "║ └─────────┘" + (" " * 57) + "║"
+                            "╔═╡ Summary ╞" + ("═" * 71) + "╗\n" +
+                            "║ └─────────┘" + (" " * 71) + "║"
 }
 
 object VCKind extends Enumeration {

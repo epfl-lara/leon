@@ -49,7 +49,7 @@ class Analysis(val program: Program) {
     var allVCs: Seq[VerificationCondition] = Seq.empty
     val analysedFunctions: MutableSet[String] = MutableSet.empty
 
-    for(funDef <- program.definedFunctions.toList.sortWith((fd1, fd2) => fd1.id.name < fd2.id.name) if (Settings.functionsToAnalyse.isEmpty || Settings.functionsToAnalyse.contains(funDef.id.name))) {
+    for(funDef <- program.definedFunctions.toList.sortWith((fd1, fd2) => fd1 < fd2) if (Settings.functionsToAnalyse.isEmpty || Settings.functionsToAnalyse.contains(funDef.id.name))) {
       analysedFunctions += funDef.id.name
 
       val tactic: Tactic =
@@ -59,11 +59,13 @@ class Analysis(val program: Program) {
           defaultTactic
         }
 
+      def vcSort(vc1: VerificationCondition, vc2: VerificationCondition) : Boolean = (vc1 < vc2)
+
       if(funDef.body.isDefined) {
-        allVCs ++= tactic.generatePreconditions(funDef)
-        allVCs ++= tactic.generatePostconditions(funDef)
-        allVCs ++= tactic.generatePatternMatchingExhaustivenessChecks(funDef)
-        allVCs ++= tactic.generateMiscCorrectnessConditions(funDef)
+        allVCs ++= tactic.generatePreconditions(funDef).sortWith(vcSort)
+        allVCs ++= tactic.generatePatternMatchingExhaustivenessChecks(funDef).sortWith(vcSort)
+        allVCs ++= tactic.generatePostconditions(funDef).sortWith(vcSort)
+        allVCs ++= tactic.generateMiscCorrectnessConditions(funDef).sortWith(vcSort)
       }
     }
 
@@ -79,12 +81,13 @@ class Analysis(val program: Program) {
       val funDef = vcInfo.funDef
       val vc = vcInfo.condition
 
-      reporter.info("Verification condition (post) for ==== " + funDef.id + " ====")
-      if(true || Settings.unrollingLevel == 0) {
-        reporter.info(simplifyLets(vc))
-      } else {
-        reporter.info("(not showing unrolled VCs)")
-      }
+      reporter.info("Now considering '" + vcInfo.kind + "' VC for " + funDef.id + "...")
+      // reporter.info("Verification condition (post) for ==== " + funDef.id + " ====")
+      // if(Settings.unrollingLevel == 0) {
+      //   reporter.info(simplifyLets(vc))
+      // } else {
+      //   reporter.info("(not showing unrolled VCs)")
+      // }
 
       // try all solvers until one returns a meaningful answer
       var superseeded : Set[String] = Set.empty[String]

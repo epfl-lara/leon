@@ -81,44 +81,77 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
       }
     }
   
-    private val errConds : MutableMap[FunDef,Seq[VerificationCondition]] = MutableMap.empty
-    private def errorConditions(function: FunDef) : Seq[VerificationCondition] = {
-      if(errConds.isDefinedAt(function)) {
-        errConds(function)
-      } else {
-        val conds = if(function.hasBody) {
-          val bodyToUse = if(function.hasPrecondition) {
-            IfExpr(function.precondition.get, function.body.get, Error("XXX").setType(function.returnType)).setType(function.returnType)
-          } else {
-            function.body.get
-          }
-          val withExplicit = expandLets(explicitPreconditions(matchToIfThenElse(bodyToUse)))
-  
-          val allPathConds = collectWithPathCondition((_ match { case Error(_) => true ; case _ => false }), withExplicit)
-  
-          allPathConds.filter(_._2 != Error("XXX")).map(pc => pc._2 match {
-            case Error("precondition violated") => new VerificationCondition(Not(And(pc._1)), function, VCKind.Precondition, this)
-            case Error("non-exhaustive match") => new VerificationCondition(Not(And(pc._1)), function, VCKind.ExhaustiveMatch, this)
-            case _ => scala.Predef.error("Don't know what to do with this path condition target: " + pc._2)
-          }).toSeq
-        } else {
-          Seq.empty
-        }
-        errConds(function) = conds
-        conds
-      }
-    }
-
     def generatePreconditions(function: FunDef) : Seq[VerificationCondition] = {
-      val toRet = errorConditions(function).filter(_.kind == VCKind.Precondition)
+      val toRet = if(function.hasBody) {
+        val cleanBody = matchToIfThenElse(function.body.get)
 
-      println("PRECONDITIONS FOR " + function.id.name)
-      println(toRet.map(_.condition).toList.mkString("\n"))
+        val allPathConds = collectWithPathCondition((t => t match {
+          case FunctionInvocation(fd, _) if(fd.hasPrecondition) => true
+          case _ => false
+        }), cleanBody)
+
+        def withPrecIfDefined(path: Seq[Expr], shouldHold: Expr) : Expr = if(function.hasPrecondition) {
+          Not(And(And(matchToIfThenElse(function.precondition.get) +: path), Not(shouldHold)))
+        } else {
+          Not(And(And(path), Not(shouldHold)))
+        }
+
+        allPathConds.map(pc => {
+          val path : Seq[Expr] = pc._1
+          val fi = pc._2.asInstanceOf[FunctionInvocation]
+          val FunctionInvocation(fd, args) = fi
+          val prec : Expr = freshenLocals(matchToIfThenElse(fd.precondition.get))
+          val newLetIDs = fd.args.map(a => FreshIdentifier("arg_" + a.id.name, true).setType(a.tpe))
+          val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip newLetIDs.map(Variable(_))) : _*)
+          val newBody : Expr = replace(substMap, prec)
+          val newCall : Expr = (newLetIDs zip args).foldRight(newBody)((iap, e) => Let(iap._1, iap._2, e))
+
+          new VerificationCondition(
+            withPrecIfDefined(path, newCall),
+            function,
+            VCKind.Precondition,
+            this).setPosInfo(fi)
+        }).toSeq
+      } else {
+        Seq.empty
+      }
+
+      // println("PRECS VCs FOR " + function.id.name)
+      // println(toRet.toList.map(vc => vc.posInfo + " -- " + vc.condition).mkString("\n\n"))
+
       toRet
     }
 
     def generatePatternMatchingExhaustivenessChecks(function: FunDef) : Seq[VerificationCondition] = {
-      errorConditions(function).filter(_.kind == VCKind.ExhaustiveMatch)
+      val toRet = if(function.hasBody) {
+        val cleanBody = matchToIfThenElse(function.body.get)
+
+        val allPathConds = collectWithPathCondition((t => t match {
+          case Error("non-exhaustive match") => true
+          case _ => false
+        }), cleanBody)
+  
+        def withPrecIfDefined(conds: Seq[Expr]) : Expr = if(function.hasPrecondition) {
+          Not(And(matchToIfThenElse(function.precondition.get), And(conds)))
+        } else {
+          Not(And(conds))
+        }
+
+        allPathConds.map(pc => 
+          new VerificationCondition(
+            withPrecIfDefined(pc._1),
+            function,
+            VCKind.ExhaustiveMatch,
+            this).setPosInfo(pc._2.asInstanceOf[Error])
+        ).toSeq
+      } else {
+        Seq.empty
+      }
+
+      // println("MATCHING VCs FOR " + function.id.name)
+      // println(toRet.toList.map(vc => vc.posInfo + " -- " + vc.condition).mkString("\n\n"))
+
+      toRet
     }
 
     def generateMiscCorrectnessConditions(function: FunDef) : Seq[VerificationCondition] = {
@@ -135,6 +168,10 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
         }
 
         expr match {
+          case Let(i,e,b) => {
+            rec(e, path)
+            rec(b, Equals(Variable(i), e) :: path)
+          }
           case IfExpr(cond, then, elze) => {
             rec(cond, path)
             rec(then, cond :: path)

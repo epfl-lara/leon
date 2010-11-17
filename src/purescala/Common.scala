@@ -47,4 +47,33 @@ object Common {
   object FreshIdentifier {
     def apply(name: String, alwaysShowUniqueID: Boolean = false) : Identifier = new Identifier(name, UniqueCounter.next, alwaysShowUniqueID)
   }
+
+  trait ScalacPositional {
+    self =>
+
+    private var prow: Int = -1078
+    private var pcol: Int = -1078
+
+    def setPosInfo(row: Int, col: Int) : self.type = {
+      prow = row
+      pcol = col
+      this
+    }
+
+    def setPosInfo(from: ScalacPositional) : self.type = { 
+      val (or,oc) = from.posIntInfo
+      prow = or
+      pcol = oc
+      this
+    }
+
+    def posIntInfo : (Int,Int) = (prow,pcol)
+
+    def posInfo : String = if(prow != -1078) "(" + prow + "," + pcol + ")" else ""
+
+    def <(other: ScalacPositional) : Boolean = {
+      val (orow,ocol) = other.posIntInfo
+      prow < orow || (prow == orow && pcol < ocol)
+    }
+  }
 }
