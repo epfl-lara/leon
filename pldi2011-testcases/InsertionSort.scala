@@ -53,31 +53,8 @@ object InsertionSort {
     case Cons(x, Cons(y, ys)) => x <= y && isSorted(Cons(y, ys))
   }   
 
-//  def sortedInsInduct0(e: Int, l: List) : List = {
-//    require(l == Nil())
-//    l match {
-//      case Nil() => Cons(e,Nil())
-//      case Cons(x,xs) => if (x <= e) Cons(x,sortedIns(e, xs)) else Cons(e, l)
-//    } 
-//  } ensuring(res => isSorted(res))
-//
-//  def sortedInsInduct1(e: Int, l: List) : List = {
-//    require(
-//      isSorted(l) &&
-//      (l match {
-//        case Nil() => false
-//        case Cons(x,xs) => isSorted(sortedIns(e,xs))
-//       })
-//     )
-//
-//    l match {
-//      case Nil() => Cons(e,Nil())
-//      case Cons(x,xs) => if (x <= e) Cons(x,sortedIns(e, xs)) else Cons(e, l)
-//    } 
-//  } ensuring(res => isSorted(res))
-
   def sortedIns(e: Int, l: List): List = {
-    require(isSorted(l) && size(l) <= 5)
+    require(isSorted(l))
     l match {
       case Nil() => Cons(e,Nil())
       case Cons(x,xs) => if (x <= e) Cons(x,sortedIns(e, xs)) else Cons(e, l)
