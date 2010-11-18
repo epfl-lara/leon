@@ -59,12 +59,16 @@ object ListWithSize {
     } ensuring (res => res && Cons(x,append(xs, ys)) == append(Cons(x,xs), ys))
 
     def appendAssoc(xs : List, ys : List, zs : List) : Boolean = (xs match {
-      case Nil() => (nilAppend(append(ys,zs)) && nilAppend(ys))
+      case Nil() => (nilAppendInductive(append(ys,zs)) && nilAppendInductive(ys))
       case Cons(x,xs1) => appendAssoc(xs1, ys, zs)
     }) ensuring (res => res && append(xs, append(ys, zs)) == append(append(xs,ys), zs))
 
+    @induct
+    def appendAssocInductive(xs : List, ys : List, zs : List) : Boolean =
+      (append(append(xs, ys), zs) == append(xs, append(ys, zs))) holds
+
     def sizeAppend(l1 : List, l2 : List) : Boolean = (l1 match {
-      case Nil() => nilAppend(l2)
+      case Nil() => nilAppendInductive(l2)
       case Cons(x,xs) => sizeAppend(xs, l2)
     }) ensuring(res => res && size(append(l1,l2)) == size(l1) + size(l2))
 

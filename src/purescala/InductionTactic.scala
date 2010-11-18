@@ -21,6 +21,18 @@ class InductionTactic(reporter: Reporter) extends DefaultTactic(reporter) {
     })
   } 
 
+  private def firstAbsClassDef(args: VarDecls) : Option[(AbstractClassDef, VarDecl)] = {
+    val filtered = args.filter(arg =>
+      arg.getType match {
+        case AbstractClassType(_) => true
+        case _ => false
+      })
+    if (filtered.size == 0) None else (filtered.head.getType match {
+      case AbstractClassType(classDef) => Some((classDef, filtered.head))
+      case _ => scala.Predef.error("This should not happen.")
+    })
+  } 
+
   private def selectorsOfParentType(parentType: ClassType, ccd: CaseClassDef, expr: Expr) : Seq[Expr] = {
     val childrenOfSameType = ccd.fields.filter(field => field.getType == parentType)
     for (field <- childrenOfSameType) yield {
@@ -31,12 +43,11 @@ class InductionTactic(reporter: Reporter) extends DefaultTactic(reporter) {
   override def generatePostconditions(funDef: FunDef) : Seq[VerificationCondition] = {
     assert(funDef.body.isDefined)
     val defaultPost = super.generatePostconditions(funDef)
-    singleAbsClassDef(funDef.args) match {
-      case Some(classDef) =>
+    firstAbsClassDef(funDef.args) match {
+      case Some((classDef, arg)) =>
         val prec = funDef.precondition
         val post = funDef.postcondition
         val body = matchToIfThenElse(funDef.body.get)
-        val arg = funDef.args.head
         val argAsVar = arg.toVariable
 
         if (post.isEmpty) {
