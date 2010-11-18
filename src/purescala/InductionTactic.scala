@@ -60,17 +60,19 @@ class InductionTactic(reporter: Reporter) extends DefaultTactic(reporter) {
               // if no subtrees of parent type, assert property for base case
               val resFresh = FreshIdentifier("result", true).setType(body.getType)
               val bodyAndPostForArg = Let(resFresh, body, replace(Map(ResultVariable() -> Variable(resFresh)), matchToIfThenElse(post.get)))
+              val withPrec = if (prec.isEmpty) bodyAndPostForArg else Implies(matchToIfThenElse(prec.get), bodyAndPostForArg)
 
               val conditionForChild = 
                 if (selectors.size == 0) 
-                  bodyAndPostForArg
+                  withPrec
                 else {
                   val inductiveHypothesis = (for (sel <- selectors) yield {
                     val resFresh = FreshIdentifier("result", true).setType(body.getType)
                     val bodyAndPost = Let(resFresh, replace(Map(argAsVar -> sel), body), replace(Map(ResultVariable() -> Variable(resFresh), argAsVar -> sel), matchToIfThenElse(post.get))) 
-                    bodyAndPost
+                    val withPrec = if (prec.isEmpty) bodyAndPost else Implies(replace(Map(argAsVar -> sel), matchToIfThenElse(prec.get)), bodyAndPost)
+                    withPrec
                   })
-                  Implies(And(inductiveHypothesis), bodyAndPostForArg)
+                  Implies(And(inductiveHypothesis), withPrec)
                 }
               Implies(CaseClassInstanceOf(ccd, argAsVar), conditionForChild)
             case _ => error("Abstract class has non-case class subtype.")
