@@ -1,5 +1,6 @@
 import scala.collection.immutable.Set
 import funcheck.Utils._
+import funcheck.Annotations._
 
 object AssociativeList { 
   sealed abstract class KeyValuePairAbs
@@ -18,10 +19,10 @@ object AssociativeList {
     case Cons(KeyValuePair(k,_), xs) => Set(k) ++ domain(xs)
   }
 
-  def content(l: List): Set[KeyValuePairAbs] = l match {
-    case Nil() => Set.empty[KeyValuePairAbs]
-    case Cons(KeyValuePair(k, v), xs) => Set(KeyValuePair(k, v)) ++ content(xs)
-  }
+  // def content(l: List): Set[KeyValuePairAbs] = l match {
+  //   case Nil() => Set.empty[KeyValuePairAbs]
+  //   case Cons(KeyValuePair(k, v), xs) => Set(KeyValuePair(k, v)) ++ content(xs)
+  // }
 
   def noDuplicates(l: List): Boolean = l match {
     case Nil() => true
@@ -42,33 +43,23 @@ object AssociativeList {
     case KeyValuePair(k, v) => domain(res) == domain(l) ++ Set[Int](k)
   })
 
-  def induct0(l: List, p: KeyValuePairAbs, e: Int): Boolean = (l match {
-    case Nil() => true
-    case Cons(x, xs) => induct0(xs, p, e)
-  }) ensuring(res => res && (p match {
-    case KeyValuePair(k, v) => if (e == k) find(updateElem(l, p), e) == Some(v) else find(updateElem(l, p), e) == find(l, e)
-  }))
-
-  /*def induct1(l1: List, l2: List, e: Int): Boolean = {
-    require(noDuplicates(l1) && noDuplicates(l2))
-    l2 match {
-      case Nil() => true
-      case Cons(x, xs) => induct1(l1, xs, e)
+  @induct
+  def updateElemProp1(l: List, e: KeyValuePairAbs, k: Int) : Boolean = {
+    e match {
+      case KeyValuePair(key, value) =>
+        find(updateElem(l, e), k) == (if (k == key) Some(key) else find(l, k))
     }
-  } ensuring(res => res && (find(l2, e) match {
-    case Some(v) => find(update(l1, l2), e) == Some(v)
-    case None() => find(update(l1, l2), e) == find(l1, e)
-  }))*/
+  } holds
 
-  def inductNil(l: List, e: Int): Boolean = {
-    require(noDuplicates(l))
-    l match {
-      case Nil() => true
-      case Cons(x, xs) => inductNil(xs, e)
+  def updateElemProp1(l: List, e: KeyValuePairAbs, k: Int) : Boolean = {
+    e match {
+      case KeyValuePair(key, value) =>
+        find(updateElem(l, e), k) == (if (k == key) Some(key) else find(l, k))
     }
-  } ensuring(res => res && (find(update(Nil(), l), e) == find(l, e)))
+  } holds
 
-  def prop0(e: Int): Boolean = (find(update(Nil(), Nil()), e) == find(Nil(), e)) holds
+
+  // def prop0(e: Int): Boolean = (find(update(Nil(), Nil()), e) == find(Nil(), e)) holds
 
   def find(l: List, e: Int): OptInt = l match {
     case Nil() => None()
