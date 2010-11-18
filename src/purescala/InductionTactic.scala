@@ -74,12 +74,12 @@ class InductionTactic(reporter: Reporter) extends DefaultTactic(reporter) {
                   })
                   Implies(And(inductiveHypothesis), withPrec)
                 }
-              Implies(CaseClassInstanceOf(ccd, argAsVar), conditionForChild)
+              new VerificationCondition(Implies(CaseClassInstanceOf(ccd, argAsVar), conditionForChild), funDef, VCKind.Postcondition, this)
             case _ => error("Abstract class has non-case class subtype.")
           }))
-          println("Induction tactic yields the following vc:")
-          println(And(conditionsForEachChild))
-          Seq(new VerificationCondition(And(conditionsForEachChild), funDef, VCKind.Postcondition, this))
+          println("Induction tactic yields the following VCs:")
+          println(conditionsForEachChild.map(vc => vc.condition).mkString("\n"))
+          conditionsForEachChild
         }
       case None =>
         reporter.warning("Induction tactic currently supports exactly one argument of abstract class type")
