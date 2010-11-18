@@ -72,6 +72,10 @@ object ListWithSize {
       case Cons(x,xs) => sizeAppend(xs, l2)
     }) ensuring(res => res && size(append(l1,l2)) == size(l1) + size(l2))
 
+    @induct
+    def sizeAppendInductive(l1 : List, l2 : List) : Boolean =
+      (size(append(l1, l2)) == size(l1) + size(l2)) holds
+
     // proved with unrolling=4
     def concat(l1: List, l2: List) : List = concat0(l1, l2, Nil()) 
      // ensuring(content(_) == content(l1) ++ content(l2))
