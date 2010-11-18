@@ -82,9 +82,9 @@ class Analysis(val program: Program) {
       val vc = vcInfo.condition
 
       reporter.info("Now considering '" + vcInfo.kind + "' VC for " + funDef.id + "...")
-      // reporter.info("Verification condition (post) for ==== " + funDef.id + " ====")
+      reporter.info("Verification condition (" + vcInfo.kind + ") for ==== " + funDef.id + " ====")
       // if(Settings.unrollingLevel == 0) {
-      //   reporter.info(simplifyLets(vc))
+      reporter.info(simplifyLets(vc))
       // } else {
       //   reporter.info("(not showing unrolled VCs)")
       // }

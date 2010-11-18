@@ -77,7 +77,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
             expr2
           }
         }
-        Seq(new VerificationCondition(theExpr, functionDefinition, VCKind.Postcondition, this))
+        Seq(new VerificationCondition(theExpr, functionDefinition, VCKind.Postcondition, this.asInstanceOf[DefaultTactic]))
       }
     }
   
@@ -110,7 +110,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
             withPrecIfDefined(path, newCall),
             function,
             VCKind.Precondition,
-            this).setPosInfo(fi)
+            this.asInstanceOf[DefaultTactic]).setPosInfo(fi)
         }).toSeq
       } else {
         Seq.empty
@@ -142,7 +142,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
             withPrecIfDefined(pc._1),
             function,
             VCKind.ExhaustiveMatch,
-            this).setPosInfo(pc._2.asInstanceOf[Error])
+            this.asInstanceOf[DefaultTactic]).setPosInfo(pc._2.asInstanceOf[Error])
         ).toSeq
       } else {
         Seq.empty

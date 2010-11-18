@@ -726,6 +726,14 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
               assert(argsSize == 2)
               Times(rargs(0), rargs(1))
             }
+            case OpDiv => {
+              assert(argsSize == 2)
+              Division(rargs(0), rargs(1))
+            }
+            case OpIDiv => {
+              assert(argsSize == 2)
+              Division(rargs(0), rargs(1))
+            }
             case other => {
               System.err.println("Don't know what to do with this declKind : " + other)
               throw new CantTranslateException(t)
