@@ -201,6 +201,24 @@ object Definitions {
       this
     }
     def parent = parent_
+
+    def selectorID2Index(id: Identifier) : Int = {
+      var i : Int = 0
+      var found = false
+      val fs = fields.size
+      while(!found && i < fs) {
+        if(fields(i).id == id) {
+          found = true
+        } else {
+          i += 1
+        }
+      }
+
+      if(found)
+        i
+      else
+        scala.Predef.error("Asking for index of field that does not belong to the case class.")
+    }
   }
 
   /** "Regular" classes */

@@ -1,3 +1,8 @@
+/*
+
+This file is rubbish, I'm sticking with Z3Solver.scala...
+
+
 package purescala
 
 import z3.scala._
@@ -15,3 +20,5 @@ class IterativeZ3Solver(reporter: Reporter) extends Z3Solver(reporter) {
     Some(false)
   }
 }
+
+*/

@@ -336,7 +336,13 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
 
   def solve(vc: Expr) = decide(vc, true)
 
-  def decide(vc: Expr, forValidity: Boolean): Option[Boolean] = {
+  def decide(vc: Expr, fv: Boolean) : Option[Boolean] = if(Settings.useInstantiator) {
+    decideIterative(vc, fv)
+  } else {
+    decideStandard(vc, fv)
+  }
+
+  def decideStandard(vc: Expr, forValidity: Boolean): Option[Boolean] = {
     restartZ3
     abstractedFormula = false
 
@@ -403,6 +409,91 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
     result
   }
 
+  def decideIterative(vc: Expr, forValidity: Boolean) : Option[Boolean] = {
+    restartZ3
+    assert(instantiator != null)
+    assert(!useBAPA)
+
+    lazy val varsInVC = variablesOf(vc) 
+
+    if (neverInitialized) {
+      reporter.error("Z3 Solver was not initialized with a PureScala Program.")
+      None
+    }
+    val toConvert = if (forValidity) negate(vc) else vc
+    val toCheckAgainstModels = toConvert
+
+    val result = toZ3Formula(z3, toConvert) match {
+      case None => None // means it could not be translated
+      case Some(z3f) => {
+        z3.assertCnstr(z3f)
+
+        // THE LOOP STARTS HERE.
+        var foundDefinitiveSolution : Boolean = false
+        var finalResult : Option[Boolean] = None
+
+        while(!foundDefinitiveSolution && instantiator.possibleContinuation) {
+          instantiator.increaseSearchDepth()
+          z3.checkAndGetModel() match {
+            case (Some(true), m) => {
+              import Evaluator._
+
+              // WE HAVE TO CHECK THE COUNTER-EXAMPLE.
+              println("A candidate counter-example was found... Examining...")
+              val asMap = modelToMap(m, varsInVC)
+
+              lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
+
+              //println("(I'm going to pretend this never happened...)")
+
+              val evalResult = eval(asMap, toCheckAgainstModels)
+
+              
+              evalResult match {
+                case OK(BooleanLiteral(true)) => {
+                  reporter.error("Counter-example found and confirmed:")
+                  reporter.error(modelAsString)
+                  foundDefinitiveSolution = true
+                  finalResult = Some(false)
+                }
+                case InfiniteComputation() => {
+                  reporter.info("Model seems to lead to divergent computation.")
+                  reporter.error(modelAsString)
+                  foundDefinitiveSolution = true
+                  finalResult = None
+                }
+                case RuntimeError(msg) => {
+                  reporter.info("Model leads to runtime error: " + msg)
+                  foundDefinitiveSolution = true
+                  finalResult = Some(false)
+                }
+                case t @ TypeError(_,_) => {
+                  scala.Predef.error("Type error in model evaluation.\n" + t.msg)
+                }
+                case _ => {
+                  // false positive. keep searching
+                }
+              }
+            }
+
+            case (Some(false), _) => {
+              // This means a definitive proof of unsatisfiability has been found.
+              foundDefinitiveSolution = true
+              finalResult = Some(true)
+            }
+
+            case (None, m) => {
+              reporter.warning("Iterative Z3 gave up because: " + z3.getSearchFailure.message)
+              foundDefinitiveSolution = true
+              finalResult = None
+            }
+          }
+        }
+        finalResult
+      }
+    }
+    result
+  }
 
   protected[purescala] var exprToZ3Id : Map[Expr,Z3AST] = Map.empty
   protected[purescala] var z3IdToExpr : Map[Z3AST,Expr] = Map.empty

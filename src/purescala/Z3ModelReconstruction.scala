@@ -27,6 +27,17 @@ trait Z3ModelReconstruction {
     }
   }
 
+  def modelToMap(model: Z3Model, ids: Iterable[Identifier]) : Map[Identifier,Expr] = {
+    var asMap = Map.empty[Identifier,Expr]
+    for(id <- ids) {
+      modelValue(model, id) match {
+        case None => ; // can't do much here
+        case Some(ex) => asMap = asMap + ((id -> ex))
+      }
+    }
+    asMap
+  }
+
   def printExtractedModel(model: Z3Model, ids : Iterable[Identifier]) : Unit = {
     reporter.info("Tentative extracted model")
     reporter.info("*************************")

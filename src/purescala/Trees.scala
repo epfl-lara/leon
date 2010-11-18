@@ -92,22 +92,14 @@ object Trees {
 
   /* Propositional logic */
   object And {
-    def apply(exprs: Seq[Expr]) : Expr = {
-      val newExprs = exprs.filter(_ != BooleanLiteral(true))
-      if(newExprs.contains(BooleanLiteral(false))) {
-        BooleanLiteral(false)
-      } else newExprs.size match {
-        case 0 => BooleanLiteral(true)
-        case 1 => newExprs.head
-        case _ => new And(newExprs)
-      }
+    def apply(l: Expr, r: Expr) : Expr = (l,r) match {
+      case (BooleanLiteral(true),_) => r
+      case (_,BooleanLiteral(true)) => l
+      case _ => new And(Seq(l,r))
     }
-
-    def apply(l: Expr, r: Expr): Expr = (l,r) match {
-      case (And(exs1), And(exs2)) => And(exs1 ++ exs2)
-      case (And(exs1), ex2) => And(exs1 :+ ex2)
-      case (ex1, And(exs2)) => And(exs2 :+ ex1)
-      case (ex1, ex2) => And(List(ex1, ex2))
+    def apply(exprs: Seq[Expr]) : Expr = {
+      val simpler = exprs.filter(_ != BooleanLiteral(true))
+      if(simpler.isEmpty) BooleanLiteral(true) else simpler.reduceRight(And(_,_))
     }
 
     def unapply(and: And) : Option[Seq[Expr]] = 
@@ -119,22 +111,14 @@ object Trees {
   }
 
   object Or {
-    def apply(exprs: Seq[Expr]) : Expr = {
-      val newExprs = exprs.filter(_ != BooleanLiteral(false))
-      if(newExprs.contains(BooleanLiteral(true))) {
-        BooleanLiteral(true)
-      } else newExprs.size match {
-        case 0 => BooleanLiteral(false)
-        case 1 => newExprs.head
-        case _ => new Or(newExprs)
-      }
+    def apply(l: Expr, r: Expr) : Expr = (l,r) match {
+      case (BooleanLiteral(false),_) => r
+      case (_,BooleanLiteral(false)) => l
+      case _ => new Or(Seq(l,r))
     }
-
-    def apply(l: Expr, r: Expr): Expr = (l,r) match {
-      case (Or(exs1), Or(exs2)) => Or(exs1 ++ exs2)
-      case (Or(exs1), ex2) => Or(exs1 :+ ex2)
-      case (ex1, Or(exs2)) => Or(exs2 :+ ex1)
-      case (ex1, ex2) => Or(List(ex1, ex2))
+    def apply(exprs: Seq[Expr]) : Expr = {
+      val simpler = exprs.filter(_ != BooleanLiteral(false))
+      if(simpler.isEmpty) BooleanLiteral(false) else simpler.reduceRight(Or(_,_))
     }
 
     def unapply(or: Or) : Option[Seq[Expr]] = 
@@ -273,8 +257,8 @@ object Trees {
   }
 
   /* Option expressions */
-  case class OptionSome(value: Expr) extends Expr 
-  case class OptionNone(baseType: TypeTree) extends Expr with Terminal
+  // case class OptionSome(value: Expr) extends Expr 
+  // case class OptionNone(baseType: TypeTree) extends Expr with Terminal
 
   /* Set expressions */
   case class EmptySet(baseType: TypeTree) extends Expr with Terminal

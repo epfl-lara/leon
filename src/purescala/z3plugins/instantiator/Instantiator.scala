@@ -134,8 +134,7 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
 
   override def finalCheck : Boolean = safeBlockToAssertAxioms {
     if(!queue.isEmpty) {
-      val smallest = queue.head.depth
-      while(!queue.isEmpty) { // && queue.head.depth == smallest) {
+      while(!queue.isEmpty && queue.head.depth <= deepestAuthorized) {
         val highest : Unrolling = queue.dequeue()
         val toConvertAndAssert = if(highest.isContract) {
           highest.body
@@ -248,6 +247,10 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
       toReassertAt(lvl) = MutableSet((axLvl, ax))
     }
   }
+
+  private var deepestAuthorized : Int = -1
+  def possibleContinuation : Boolean = !queue.isEmpty || deepestAuthorized <= 0
+  def increaseSearchDepth() : Unit = { deepestAuthorized += 1; bodyInlined = 0 }
 
   reinit
   private def reinit : Unit = {

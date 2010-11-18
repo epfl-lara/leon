@@ -85,11 +85,7 @@ object Extensions {
     }
     // these extensions are always loaded, unless specified otherwise
     val defaultExtensions: Seq[Extension] = if(Settings.runDefaultExtensions) {
-      if(false && Settings.useInstantiator) {
-        (new IterativeZ3Solver(extensionsReporter)) :: Nil
-      } else {
-        (new Z3Solver(extensionsReporter)) :: Nil
-      }
+      (new Z3Solver(extensionsReporter)) :: Nil
     } else {
       Nil
     }
