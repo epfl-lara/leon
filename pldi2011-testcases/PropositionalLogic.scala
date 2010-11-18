@@ -2,7 +2,7 @@ import scala.collection.immutable.Set
 import funcheck.Utils._
 import funcheck.Annotations._
 
-object ImplicationElimination { 
+object PropositionalLogic { 
 
   sealed abstract class Formula
   case class And(lhs: Formula, rhs: Formula) extends Formula
