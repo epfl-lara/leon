@@ -1,4 +1,5 @@
 import funcheck.Utils._
+import funcheck.Annotations._
 
 object ExprComp {
 
@@ -113,6 +114,16 @@ object ExprComp {
     val acc = EProgram()
     run(compile(e, acc), vs) == Ok(NStack(eval(e), vs))
   } holds
+
+  @induct
+  def property1(e: Expr) : Boolean = {
+    val vs = EStack()
+    run(compile(e, EProgram()), vs) == Ok(NStack(eval(e), vs))
+  } holds
+
+//  def property2(e: Expr, vs: ValueStack) : Boolean = {
+//    run(compile(e, EProgram()), vs) == Ok(NStack(eval(e), vs))
+//  } holds
 /*
   def main(args : Array[String]) = {
     val e = Binary(Constant(Value(100)), Times(), Binary(Constant(Value(3)), Plus(), Constant(Value(5))))
