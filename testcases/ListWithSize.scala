@@ -1,5 +1,6 @@
 import scala.collection.immutable.Set
 import funcheck.Annotations._
+import funcheck.Utils._
 
 object ListWithSize {
     sealed abstract class List
@@ -48,6 +49,9 @@ object ListWithSize {
       case Nil() => true
       case Cons(x,xs) => nilAppend(xs)
     }) ensuring(res => res && append(l, Nil()) == l)
+
+    @induct
+    def nilAppendInductive(l : List) : Boolean = (append(l, Nil()) == l) holds
 
     // unclear if we needed this--it was meant to force folding
     def appendFold(x : Int, xs : List, ys : List) : Boolean = {
