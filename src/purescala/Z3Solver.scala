@@ -439,7 +439,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
               import Evaluator._
 
               // WE HAVE TO CHECK THE COUNTER-EXAMPLE.
-              println("A candidate counter-example was found... Examining...")
+              reporter.info("  - A candidate counter-example was found... Examining...")
               val asMap = modelToMap(m, varsInVC)
 
               lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
@@ -464,6 +464,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
                 }
                 case RuntimeError(msg) => {
                   reporter.info("Model leads to runtime error: " + msg)
+                  reporter.error(modelAsString)
                   foundDefinitiveSolution = true
                   finalResult = Some(false)
                 }
@@ -471,7 +472,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
                   scala.Predef.error("Type error in model evaluation.\n" + t.msg)
                 }
                 case _ => {
-                  // false positive. keep searching
+                  reporter.info("    -> candidate model discarded.")
                 }
               }
             }
