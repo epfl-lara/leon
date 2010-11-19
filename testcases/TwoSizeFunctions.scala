@@ -20,12 +20,15 @@ object TwoSizeFunctions {
     }
   } ensuring(res => res == size1(l) + acc)
 
+  def sizesAreEquiv(l : List) : Boolean = 
+    (size1(l) == size2(l)) holds
+
+/*
   def sizesAreEquiv1(l: List) : Boolean = {
     require(size1(l) < 25) // remove and it can't find it.
     size1(l) == size2(l)
   } holds
 
-/*
   @induct
   def sizesAreEquiv(l: List, k : Int) : Boolean = {
     require (k >= 0)
