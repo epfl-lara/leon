@@ -223,7 +223,7 @@ nnfIsStable               postcond.           valid    induction  Z3        0.07
     nnf(f) == f
   } holds
 
-  /* It is sufficient to consider negations for only literals in pattern
+  /* It is sufficient to consider negations of only literals in pattern
    * matching */
   def freeVars(f: Formula): Set[Int] = {
   require(isNNF(f))
