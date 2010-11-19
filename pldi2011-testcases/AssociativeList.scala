@@ -19,10 +19,10 @@ object AssociativeList {
     case Cons(KeyValuePair(k,_), xs) => Set(k) ++ domain(xs)
   }
 
-  // def content(l: List): Set[KeyValuePairAbs] = l match {
-  //   case Nil() => Set.empty[KeyValuePairAbs]
-  //   case Cons(KeyValuePair(k, v), xs) => Set(KeyValuePair(k, v)) ++ content(xs)
-  // }
+  def find(l: List, e: Int): OptInt = l match {
+    case Nil() => None()
+    case Cons(KeyValuePair(k, v), xs) => if (k == e) Some(v) else find(xs, e)
+  }
 
   def noDuplicates(l: List): Boolean = l match {
     case Nil() => true
@@ -44,27 +44,12 @@ object AssociativeList {
   })
 
   @induct
-  def updateElemProp1(l: List, e: KeyValuePairAbs, k: Int) : Boolean = {
-    e match {
-      case KeyValuePair(key, value) =>
-        find(updateElem(l, e), k) == (if (k == key) Some(key) else find(l, k))
-    }
-  } holds
-
-  def updateElemProp1(l: List, e: KeyValuePairAbs, k: Int) : Boolean = {
-    e match {
-      case KeyValuePair(key, value) =>
-        find(updateElem(l, e), k) == (if (k == key) Some(key) else find(l, k))
-    }
-  } holds
-
+  def updateElemProp1(l: List, e: KeyValuePairAbs, k: Int) : Boolean = (e match {
+    case KeyValuePair(key, value) =>
+      find(updateElem(l, e), k) == (if (k == key) Some(value) else find(l, k))
+  }) holds
 
   // def prop0(e: Int): Boolean = (find(update(Nil(), Nil()), e) == find(Nil(), e)) holds
-
-  def find(l: List, e: Int): OptInt = l match {
-    case Nil() => None()
-    case Cons(KeyValuePair(k, v), xs) => if (k == e) Some(v) else find(xs, e)
-  }
 
   def main(args: Array[String]): Unit = {
     val l = Cons(KeyValuePair(6, 1), Cons(KeyValuePair(5, 4), Cons(KeyValuePair(3, 2), Nil())))

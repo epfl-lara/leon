@@ -1,0 +1,139 @@
+testcases/ListWithSize.scala
+
+verifies: associativity of append, size
+
+size                      match.      (11,34) valid               Z3        0.266
+size                      postcond.           valid               Z3        0.031
+content                   match.      (16,41) valid               Z3        0.002
+sizeAndContent            postcond.           valid               Z3        0.007
+drunk                     match.      (25,37) valid               Z3        0.002
+drunk                     postcond.           valid               Z3        0.406
+funnyCons                 match.      (31,48) valid               Z3        0.005
+funnyCons                 postcond.           valid               Z3        0.154
+reverse0                  match.      (38,50) valid               Z3        0.004
+append                    match.      (43,51) valid               Z3        0.002
+nilAppend                 postcond.           valid    induction  Z3        0.004
+nilAppend                 postcond.           valid    induction  Z3        0.003
+appendFold                postcond.           valid               Z3        0.006
+appendAssoc               postcond.           valid    induction  Z3        0.005
+appendAssoc               postcond.           valid    induction  Z3        0.006
+sizeAppend                postcond.           valid    induction  Z3        0.006
+sizeAppend                postcond.           valid    induction  Z3        0.011
+concat0                   match.      (67,60) valid               Z3        0.002
+concat0                   match.      (68,24) valid               Z3        0.002
+property1                 postcond.           unknown                            
+
+  @induct
+  def nilAppend(l : List) : Boolean = (append(l, Nil()) == l) holds
+
+  @induct
+  def appendAssoc(xs : List, ys : List, zs : List) : Boolean =
+    (append(append(xs, ys), zs) == append(xs, append(ys, zs))) holds
+
+  @induct
+  def sizeAppend(l1 : List, l2 : List) : Boolean =
+   (size(append(l1, l2)) == size(l1) + size(l2)) holds
+
+==============================
+
+AssociativeList.scala
+
+verifies: update of elements, content
+
+domain                    match.      (17,37) valid               Z3        0.258
+find                      match.      (22,41) valid               Z3        0.003
+noDuplicates              match.      (27,42) valid               Z3        0.003
+update                    match.      (32,46) valid               Z3        0.003
+update                    postcond.           valid               Z3        0.083
+updateElem                match.      (37,58) valid               Z3        0.006
+updateElem                match.      (39,44) valid               Z3        0.005
+updateElem                postcond.           valid               Z3        0.132
+updateElemProp1           match.      (47,75) valid    induction  Z3        0.005
+updateElemProp1           postcond.           valid    induction  Z3        0.040
+updateElemProp1           postcond.           valid    induction  Z3        0.022
+
+  def update(l1: List, l2: List): List = (l2 match {
+    case Nil() => l1
+    case Cons(x, xs) => update(updateElem(l1, x), xs)
+  }) ensuring(domain(_) == domain(l1) ++ domain(l2))
+
+  def updateElem(l: List, e: KeyValuePairAbs): List = (l match {
+    case Nil() => Cons(e, Nil())
+    case Cons(KeyValuePair(k, v), xs) => e match {
+      case KeyValuePair(ek, ev) => if (ek == k) updateElem(xs, e) else Cons(KeyValuePair(k, v), updateElem(xs, e))
+    }
+  }) ensuring(res => e match {
+    case KeyValuePair(k, v) => domain(res) == domain(l) ++ Set[Int](k)
+  })
+
+  @induct
+  def updateElemProp1(l: List, e: KeyValuePairAbs, k: Int) : Boolean = (e match {
+    case KeyValuePair(key, value) =>
+      find(updateElem(l, e), k) == (if (k == key) Some(value) else find(l, k))
+  }) holds
+
+==============================
+
+InsertionSort.scala
+
+verifies: content, sortedness
+
+size                      match.      (13,33) valid               Z3        0.254
+size                      postcond.           valid               Z3        0.031
+contents                  match.      (18,39) valid               Z3        0.002
+min                       match.      (23,34) valid               Z3        0.002
+min                       match.      (25,33) valid               Z3        0.003
+minProp0                  match.      (31,41) valid               Z3        0.003
+minProp0                  match.      (33,36) valid               Z3        0.003
+minProp0                  postcond.           valid               Z3        0.009
+minProp1                  match.       (41,7) valid               Z3        0.004
+minProp1                  match.      (43,38) valid               Z3        0.004
+minProp1                  postcond.           valid               Z3        0.338
+isSorted                  match.      (50,38) valid               Z3        0.004
+sortedIns                 precond.    (60,54) valid               Z3        0.011
+sortedIns                 match.       (58,7) valid               Z3        0.004
+sortedIns                 postcond.           valid               Z3        0.055
+sort                      precond.    (66,33) valid               Z3        0.009
+sort                      match.      (64,32) valid               Z3        0.003
+sort                      postcond.           valid               Z3        0.051
+
+  def sortedIns(e: Int, l: List): List = {
+    require(isSorted(l))
+    l match {
+      case Nil() => Cons(e,Nil())
+      case Cons(x,xs) => if (x <= e) Cons(x,sortedIns(e, xs)) else Cons(e, l)
+    } 
+  } ensuring(res => contents(res) == contents(l) ++ Set(e) && isSorted(res))
+
+  def sort(l: List): List = (l match {
+    case Nil() => Nil()
+    case Cons(x,xs) => sortedIns(x, sort(xs))
+  }) ensuring(res => contents(res) == contents(l) && isSorted(res))
+
+==============================
+
+RedBlackTree.scala
+
+verifies: content, "red nodes have black children"
+
+content                   match.      (13,39) valid               Z3        0.269
+size                      match.      (18,31) valid               Z3        0.002
+redNodesHaveBlackChildren match.      (30,56) valid               Z3        0.002
+redDescHaveBlackChildren  match.      (36,55) valid               Z3        0.002
+ins                       precond.    (46,33) valid               Z3        0.539
+ins                       precond.    (46,40) valid               Z3        0.010
+ins                       precond.    (48,33) valid               Z3        0.338
+ins                       precond.    (48,43) valid               Z3        0.007
+ins                       match.       (43,7) valid               Z3        0.002
+ins                       postcond.           valid               Z3        1.801
+makeBlack                 postcond.           valid               Z3        0.035
+add                       precond.    (65,14) valid               Z3        0.014
+add                       precond.    (65,18) valid               Z3        0.003
+add                       postcond.           valid               Z3        0.029
+balance                   match.      (94,19) valid               Z3        0.028
+balance                   postcond.           valid               Z3        0.999
+
+  def add(x: Int, t: Tree): Tree = {
+    require(redNodesHaveBlackChildren(t))
+    makeBlack(ins(x, t))
+  } ensuring (res => content(res) == content(t) ++ Set(x) && redNodesHaveBlackChildren(res))
