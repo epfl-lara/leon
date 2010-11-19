@@ -163,13 +163,13 @@ balance                   postcond.           valid               Z3        0.99
 PropositionalLogic.scala
 
 verifies: 
-  - match exhaustiveness for NNF formulas
+  - match exhaustiveness for formulas in NNF 
   - stability of NNF
 confirms:
   - NNF and implication-elimination do not commute
      Counter-example found and confirmed:
      f -> Implies(Implies(Literal(65), Literal(64)), Or(Literal(76), Literal(75)))
-  - simplifying breaks NNF form
+  - simplifying breaks NNF
      Counter-example found and confirmed:
      f -> Implies(Implies(Literal(31), Literal(30)), And(Literal(35), Literal(34)))
 
@@ -209,14 +209,14 @@ nnfIsStable               postcond.           valid    induction  Z3        0.07
     nnf(simplify(f)) == simplify(nnf(f))
   } holds
 
-  /* Wrong assumption that 'simplify' preserves NNF form */
+  /* Wrong assumption that 'simplify' preserves NNF */
   @induct
   def simplifyBreaksNNF(f: Formula) : Boolean = {
     require(isNNF(f))
     isNNF(simplify(f))
   } holds
 
-  /* NNF transformation is idempotent */
+  /* A formula in NNF is not modified by the NNF transformation */
   @induct
   def nnfIsStable(f: Formula) : Boolean = {
     require(isNNF(f))
