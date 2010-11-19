@@ -18,11 +18,18 @@ object TwoSizeFunctions {
       case Nil() => acc
       case Cons(_, xs) => size2acc(xs, acc+1)
     }
-  } ensuring(_ >= 0)
+  } ensuring(res => res == size1(l) + acc)
 
-  @induct
-  def sizesAreEquiv(l: List) : Boolean = {
+  def sizesAreEquiv1(l: List) : Boolean = {
     require(size1(l) < 25) // remove and it can't find it.
     size1(l) == size2(l)
   } holds
+
+/*
+  @induct
+  def sizesAreEquiv(l: List, k : Int) : Boolean = {
+    require (k >= 0)
+    size1(l) + k == size2acc(l, k)
+  } holds
+*/
 }
