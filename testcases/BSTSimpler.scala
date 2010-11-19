@@ -60,16 +60,15 @@ object BSTSimpler {
         Node(l, v, r)
       })
     }
-//  } ensuring (contents(_) == contents(tree) ++ Set(value))
-  } ensuring(isBST(_))
+  } ensuring(res => isBST(res) && content(res) == content(tree) ++ Set(value))
 
   def createRoot(v: Int): Node = {
     Node(Leaf(), v, Leaf())
-  } ensuring (contents(_) == Set(v))
+  } ensuring (content(_) == Set(v))
 
-  def contents(tree: Tree): Set[Int] = tree match {
+  def content(tree: Tree): Set[Int] = tree match {
     case Leaf() => Set.empty[Int]
-    case Node(l, v, r) => contents(l) ++ Set(v) ++ contents(r)
+    case Node(l, v, r) => content(l) ++ Set(v) ++ content(r)
   }
 }
 
