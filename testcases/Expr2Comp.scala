@@ -69,10 +69,18 @@ object ExprComp {
 
   // Compiling expressions to programs
 
-  def compile(e : Expr, acc : Program) : Program  = (e match {
+  def compile(e : Expr, acc : Program) : Program  = e match {
     case Constant(v) => NProgram(PushVal(v), acc)
     case Binary(e1,op,e2) => compile(e1,compile(e2,NProgram(ApplyBinOp(op),acc)))
-  }) ensuring (res => (run(res, Nil()) == eval(e)))
+  }
+
+/*
+) ensuring (res => {
+    val rv = run(res, Nil())
+    val ev = run(acc, Cons(eval(e),Nil()))
+    if (rv != ev) { println(" e = " + e + "\n res = " + res + ",\n rv = " + rv + ",\n ev = " + ev); false } else true
+  })
+*/
 
   def compile0(e : Expr) : Program = compile(e, EProgram())
 
@@ -89,20 +97,17 @@ object ExprComp {
     run(compile(e, acc), vs) == Ok(NStack(eval(e), vs))
   } holds
 
-  @induct
-  def property1(e: Expr) : Boolean = {
-    val vs = EStack()
-    run(compile(e, EProgram()), vs) == Ok(NStack(eval(e), vs))
-  } holds
 */
 
-  // takes too long
+  @induct
+  def property(e: Expr, acc : Program, vs : List) : Boolean = {
+    run(compile(e, acc), vs) == run(acc, Cons(eval(e), vs))
+  } holds
+
   def propertyBounded(e: Expr) : Boolean = {
     require(exprSize(e) <= 3)
     run(compile(e, EProgram()), Nil()) == eval(e)
   } holds
-
-  
 
   def main(args : Array[String]) = {
     val e1 = Binary(Constant(100), Times(), Binary(Constant(3), Plus(), Constant(5)))
@@ -110,10 +115,10 @@ object ExprComp {
     val e = Binary(Binary(Binary(Binary(Constant(75), Plus(), Constant(69)), Times(), Binary(Constant(73), Plus(), Constant(71))), Times(), Binary(Binary(Constant(70), Plus(), Constant(77)), Times(), Binary(Constant(68), Plus(), Constant(66)))), Plus(), Binary(Constant(1), Plus(), Binary(Constant(0), Times(), Binary(Constant(65), Plus(), Constant(72)))))
     val acc = EProgram()
     val vs = Cons(42,Nil())
-    println(eval(e))
-    println(compile(e,acc))
-    println(run(compile(e, acc), vs))
-    //println(Ok(NStack(eval(e), vs)))
-    //assert(property(e,acc,vs))
+    val ev = eval(e)
+    val code = compile(e,acc)
+    val cv = run(code, vs)
+    println(ev)
+    println(cv)
   }
 }
