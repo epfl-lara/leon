@@ -52,9 +52,9 @@ update                    postcond.           valid               Z3        0.08
 updateElem                match.      (37,58) valid               Z3        0.006
 updateElem                match.      (39,44) valid               Z3        0.005
 updateElem                postcond.           valid               Z3        0.132
-readOverWrite           match.      (47,75) valid    induction  Z3        0.005
-readOverWrite           postcond.           valid    induction  Z3        0.040
-readOverWrite           postcond.           valid    induction  Z3        0.022
+readOverWrite             match.      (47,75) valid    induction  Z3        0.005
+readOverWrite             postcond.           valid    induction  Z3        0.040
+readOverWrite             postcond.           valid    induction  Z3        0.022
 
   /* Updating list 'l1' with all mappings from list 'l2' yields a list with the
    * union of key sets */
@@ -84,43 +84,49 @@ readOverWrite           postcond.           valid    induction  Z3        0.022
 
 InsertionSort.scala
 
-verifies: content, sortedness
+verifies: content, size, sortedness
 
-size                      match.      (13,33) valid               Z3        0.254
-size                      postcond.           valid               Z3        0.031
-contents                  match.      (18,39) valid               Z3        0.002
-min                       match.      (23,34) valid               Z3        0.002
-min                       match.      (25,33) valid               Z3        0.003
-minProp0                  match.      (31,41) valid               Z3        0.003
-minProp0                  match.      (33,36) valid               Z3        0.003
+size                      match.      (14,33) valid               Z3        0.294
+size                      postcond.           valid               Z3        0.030
+contents                  match.      (19,39) valid               Z3        0.002
+min                       match.      (24,34) valid               Z3        0.002
+min                       match.      (26,33) valid               Z3        0.003
+minProp0                  match.      (32,41) valid               Z3        0.002
+minProp0                  match.      (34,36) valid               Z3        0.003
 minProp0                  postcond.           valid               Z3        0.009
-minProp1                  match.       (41,7) valid               Z3        0.004
-minProp1                  match.      (43,38) valid               Z3        0.004
-minProp1                  postcond.           valid               Z3        0.338
-isSorted                  match.      (50,38) valid               Z3        0.004
-sortedIns                 precond.    (60,54) valid               Z3        0.011
-sortedIns                 match.       (58,7) valid               Z3        0.004
-sortedIns                 postcond.           valid               Z3        0.055
-sort                      precond.    (66,33) valid               Z3        0.009
-sort                      match.      (64,32) valid               Z3        0.003
-sort                      postcond.           valid               Z3        0.051
+minProp1                  match.       (42,7) valid               Z3        0.004
+minProp1                  match.      (44,38) valid               Z3        0.004
+minProp1                  postcond.           valid               Z3        0.330
+isSorted                  match.      (51,38) valid               Z3        0.005
+sortedIns                 precond.    (61,54) valid               Z3        0.012
+sortedIns                 match.       (59,7) valid               Z3        0.004
+sortedIns                 postcond.           valid               Z3        0.147
+sort                      precond.    (70,33) valid               Z3        0.010
+sort                      match.      (68,32) valid               Z3        0.002
+sort                      postcond.           valid               Z3        0.038
 
   /* Inserting element 'e' into a sorted list 'l' produces a sorted list with
-   * the expected content */
+   * the expected content and size */
   def sortedIns(e: Int, l: List): List = {
     require(isSorted(l))
     l match {
       case Nil() => Cons(e,Nil())
       case Cons(x,xs) => if (x <= e) Cons(x,sortedIns(e, xs)) else Cons(e, l)
     } 
-  } ensuring(res => contents(res) == contents(l) ++ Set(e) && isSorted(res))
+  } ensuring(res => contents(res) == contents(l) ++ Set(e) 
+                    && isSorted(res)
+                    && size(res) == size(l) + 1
+            )
 
-  /* Insertion sort yields a sorted list with the same content as the input
+  /* Insertion sort yields a sorted list of same size and content as the input
    * list */
   def sort(l: List): List = (l match {
     case Nil() => Nil()
     case Cons(x,xs) => sortedIns(x, sort(xs))
-  }) ensuring(res => contents(res) == contents(l) && isSorted(res))
+  }) ensuring(res => contents(res) == contents(l) 
+                     && isSorted(res)
+                     && size(res) == size(l)
+             )
 
 ==============================
 
