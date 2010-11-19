@@ -49,7 +49,7 @@ object BSTSimpler {
   def emptySet(): Tree = Leaf()
 
   def insert(tree: Tree, value: Int): Node = {
-    require(size(tree) <= 1 && isBST(tree))
+    require(isBST(tree))
     tree match {
       case Leaf() => Node(Leaf(), value, Leaf())
       case Node(l, v, r) => (if (v < value) {
@@ -61,6 +61,22 @@ object BSTSimpler {
       })
     }
   } ensuring(res => isBST(res) && content(res) == content(tree) ++ Set(value))
+
+/*
+  def remove(tree : Tree, value : Int) : Tree = {
+    require(size(tree) <= 1 && isBST(tree))
+    tree match {
+      case Leaf() => Node(Leaf(), value, Leaf())
+      case Node(l, v, r) => (if (v < value) {
+        Node(l, v, insert(r, value))
+      } else if (v > value) {
+        Node(insert(l, value), v, r)
+      } else {
+        Node(l, v, r)
+      })
+    }
+  }
+*/
 
   def createRoot(v: Int): Node = {
     Node(Leaf(), v, Leaf())
