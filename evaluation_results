@@ -235,3 +235,6 @@ nnfIsStable               postcond.           valid    induction  Z3        0.07
       case Literal(i) => Set[Int](i)
     }
   }
+
+  /* The precondition for the call to 'freeVars' is respected */
+  def fv(f : Formula) = { freeVars(nnf(f)) }
