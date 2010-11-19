@@ -59,28 +59,12 @@ object ExprComp {
       case Nil() => -1
       case Cons(top,_) => top
     }
-    case NProgram(PushVal(v),rest) => run(rest, Cons(v,rest))
-    case NProgram(ApplyBinOp(op),rest) => 
-
-run( Cons(evalOp(v1,op,v2),vs)
-
- vRest match {
-	      case EStack() => Fail(vRest, i)
-	      case NStack(v1,vs1) => vs1 match {
-		case EStack() => Fail(vRest, i)
-		case NStack(v2,vs2) => Ok(NStack(,vs2))
-	      }
-	    }
-	  }
-
-      val oRest = run(rest, vs)
-      oRest match {
-	case Fail(_,_) => oRest
-	case Ok(vRest) =>
-      }
+    case NProgram(PushVal(v),rest) => run(rest, Cons(v,vs))
+    case NProgram(ApplyBinOp(op),rest) => vs match {
+      case Cons(v1, Cons(v2, vs1)) => run(rest, Cons(evalOp(v1, op, v2),vs1))
+      case _ => -1
+    }
   }
-  def run0(p : Program) = run(p, EStack())
-*/
 
   // Compiling expressions to programs
 
@@ -112,16 +96,18 @@ run( Cons(evalOp(v1,op,v2),vs)
   } holds
 */
 
-//  def property2(e: Expr, vs: IntStack) : Boolean = {
-//    run(compile(e, EProgram()), vs) == Ok(NStack(eval(e), vs))
-//  } holds
+  def property(e: Expr) : Boolean = {
+    require(exprSize(e) <= 5)
+    run(compile(e, EProgram()), Nil()) == eval(e)
+  } holds
 
   def main(args : Array[String]) = {
     val e = Binary(Constant(100), Times(), Binary(Constant(3), Plus(), Constant(5)))
     val acc = EProgram()
+    val vs = Cons(42,Nil())
     println(compile(e,acc))
     println(eval(e))
-    //println(run(compile(e, acc), vs))
+    println(run(compile(e, acc), vs))
     //println(Ok(NStack(eval(e), vs)))
     //assert(property(e,acc,vs))
   }
