@@ -1,4 +1,5 @@
 import scala.collection.immutable.Set
+import funcheck.Annotations._
 import funcheck.Utils._
 
 object LambdaEval { 
@@ -55,11 +56,16 @@ object LambdaEval {
     case Cons(BindingPair(k, v), ss) => isValue(v) && storeHasValues(ss)
   }
 
+  def contains(store: List, key: Int): Boolean = store match {
+    case Nil() => false
+    case Cons(BindingPair(k, v), xs) => k == key || contains(xs, key)
+  }
+
   // Find first element in list that has first component 'x' and return its
   // second component, analogous to List.assoc in OCaml
   def find(x: Int, l: List): Expr = {
     require(
-      storeElems(l).contains(x) &&
+      contains(l, x) &&
       storeHasValues(l)
     )
     l match {
@@ -68,18 +74,7 @@ object LambdaEval {
   } ensuring(res => isValue(res))
 
   def wellFormed(store: List, expr: Expr): Boolean = expr match {
-    case App(l, _) => eval(store, l) match {
-      case StoreExprPair(_, Lam(_,_)) => true
-      case _ => false
-    }
-    case Fst(e) => eval(store, e) match {
-      case StoreExprPair(_,Pair(e1, e2)) => true
-      case _ => false
-    }
-    case Snd(e) => eval(store, e) match {
-      case StoreExprPair(_,Pair(e1, e2)) => true
-      case _ => false
-    }
+    case Const(_) => true
     case Plus(e1, e2) => wellFormed(store, e1) && wellFormed(store, e2) && (eval(store, e1) match {
       case StoreExprPair(_,Const(i1)) =>
         eval(store, e2) match {
@@ -88,13 +83,26 @@ object LambdaEval {
         }
       case _ => false
     })
-    case _ => true
+    case Lam(x, body) => wellFormed(Cons(BindingPair(x, Const(0)), store), body)
+    case Pair(e1, e2) => wellFormed(store, e1) && wellFormed(store, e2)
+    case Var(x) => contains(store, x)
+    case App(l, r) => wellFormed(store, l) && wellFormed(store, r) && (eval(store, l) match {
+      case StoreExprPair(_, Lam(_,_)) => true
+      case _ => false
+    })
+    case Fst(e) => wellFormed(store, e) && (eval(store, e) match {
+      case StoreExprPair(_,Pair(e1, e2)) => true
+      case _ => false
+    })
+    case Snd(e) => wellFormed(store, e) && (eval(store, e) match {
+      case StoreExprPair(_,Pair(e1, e2)) => true
+      case _ => false
+    })
   }
 
   // Evaluator
   def eval(store: List, expr: Expr): StoreExprPairAbs = {
     require(
-        freeVars(expr).subsetOf(storeElems(store)) &&
         wellFormed(store, expr) &&
         storeHasValues(store)
     )

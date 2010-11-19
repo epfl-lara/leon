@@ -2,26 +2,36 @@ testcases/ListWithSize.scala
 
 verifies: associativity of append, size
 
-size                      match.      (11,34) valid               Z3        0.266
-size                      postcond.           valid               Z3        0.031
-content                   match.      (16,41) valid               Z3        0.002
-sizeAndContent            postcond.           valid               Z3        0.007
-drunk                     match.      (25,37) valid               Z3        0.002
-drunk                     postcond.           valid               Z3        0.406
-funnyCons                 match.      (31,48) valid               Z3        0.005
-funnyCons                 postcond.           valid               Z3        0.154
-reverse0                  match.      (38,50) valid               Z3        0.004
-append                    match.      (43,51) valid               Z3        0.002
-nilAppend                 postcond.           valid    induction  Z3        0.004
+size                      match.      (11,34) valid               Z3        0.383
+size                      postcond.           valid               Z3        0.036
+size2                     precond.    (16,40) valid               Z3        0.003
+size2acc                  precond.    (21,36) valid               Z3        0.005
+size2acc                  match.       (19,8) valid               Z3        0.003
+size2acc                  postcond.           valid               Z3        0.026
+sizesAreEquiv             postcond.           valid               Z3        0.010
+content                   match.      (30,41) valid               Z3        0.004
+sizeAndContent            postcond.           valid               Z3        0.009
+drunk                     match.      (39,37) valid               Z3        0.002
+drunk                     postcond.           valid               Z3        0.671
+funnyCons                 match.      (45,48) valid               Z3        0.007
+funnyCons                 postcond.           valid               Z3        0.263
+reverse                   postcond.           valid               Z3        0.010
+reverse0                  match.      (52,51) valid               Z3        0.002
+reverse0                  postcond.           valid               Z3        0.023
+append                    match.      (57,51) valid               Z3        0.002
+nilAppend                 postcond.           valid    induction  Z3        0.003
 nilAppend                 postcond.           valid    induction  Z3        0.003
 appendFold                postcond.           valid               Z3        0.006
 appendAssoc               postcond.           valid    induction  Z3        0.005
-appendAssoc               postcond.           valid    induction  Z3        0.006
+appendAssoc               postcond.           valid    induction  Z3        0.007
 sizeAppend                postcond.           valid    induction  Z3        0.006
-sizeAppend                postcond.           valid    induction  Z3        0.011
-concat0                   match.      (67,60) valid               Z3        0.002
-concat0                   match.      (68,24) valid               Z3        0.002
-property1                 postcond.           unknown                            
+sizeAppend                postcond.           valid    induction  Z3        0.012
+concat                    postcond.           valid    induction  Z3        0.010
+concat                    postcond.           valid    induction  Z3        0.012
+concat0                   match.      (84,60) valid    induction  Z3        0.002
+concat0                   match.      (85,24) valid    induction  Z3        0.002
+concat0                   postcond.           valid    induction  Z3        0.054
+concat0                   postcond.           valid    induction  Z3        0.085
 
   /* Appending a list 'l' to an empty list yields 'l' */
   @induct
