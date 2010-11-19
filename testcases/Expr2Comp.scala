@@ -62,7 +62,8 @@ object ExprComp {
     case NProgram(PushVal(v),rest) => run(rest, Cons(v,vs))
     case NProgram(ApplyBinOp(op),rest) => vs match {
       case Cons(v1, Cons(v2, vs1)) => run(rest, Cons(evalOp(v1, op, v2),vs1))
-      case _ => -1
+      case Cons(_,Nil()) => -1
+      case Nil() => -1
     }
   }
 
@@ -71,8 +72,7 @@ object ExprComp {
   def compile(e : Expr, acc : Program) : Program  = (e match {
     case Constant(v) => NProgram(PushVal(v), acc)
     case Binary(e1,op,e2) => compile(e1,compile(e2,NProgram(ApplyBinOp(op),acc)))
-  }) // ensuring (res => (run(res, EStack()) == Ok(NStack(eval(e), EStack()))))
-    // should be forall vs. ... vs ... instead of EStack() above.
+  }) ensuring (res => (run(res, Nil()) == eval(e)))
 
   def compile0(e : Expr) : Program = compile(e, EProgram())
 
@@ -96,13 +96,18 @@ object ExprComp {
   } holds
 */
 
-  def property(e: Expr) : Boolean = {
-    require(exprSize(e) <= 5)
+  // takes too long
+  def propertyBounded(e: Expr) : Boolean = {
+    require(exprSize(e) <= 3)
     run(compile(e, EProgram()), Nil()) == eval(e)
   } holds
 
+  
+
   def main(args : Array[String]) = {
-    val e = Binary(Constant(100), Times(), Binary(Constant(3), Plus(), Constant(5)))
+    val e1 = Binary(Constant(100), Times(), Binary(Constant(3), Plus(), Constant(5)))
+    // thanks to funcheck:
+    //val e = Binary(Binary(Binary(Binary(Constant(75), Plus(), Constant(69)), Times(), Binary(Constant(73), Plus(), Constant(71))), Times(), Binary(Binary(Constant(70), Plus(), Constant(77)), Times(), Binary(Constant(68), Plus(), Constant(66)))), Plus(), Binary(Constant(1), Plus(), Binary(Constant(0), Times(), Binary(Constant(65), Plus(), Constant(72)))))
     val acc = EProgram()
     val vs = Cons(42,Nil())
     println(compile(e,acc))
