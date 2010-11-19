@@ -44,7 +44,7 @@ object AssociativeList {
   })
 
   @induct
-  def updateElemProp1(l: List, e: KeyValuePairAbs, k: Int) : Boolean = (e match {
+  def readOverWrite(l: List, e: KeyValuePairAbs, k: Int) : Boolean = (e match {
     case KeyValuePair(key, value) =>
       find(updateElem(l, e), k) == (if (k == key) Some(value) else find(l, k))
   }) holds

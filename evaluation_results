@@ -23,13 +23,17 @@ concat0                   match.      (67,60) valid               Z3        0.00
 concat0                   match.      (68,24) valid               Z3        0.002
 property1                 postcond.           unknown                            
 
+  /* Appending a list 'l' to an empty list yields 'l' */
   @induct
   def nilAppend(l : List) : Boolean = (append(l, Nil()) == l) holds
 
+  /* append is associative */
   @induct
   def appendAssoc(xs : List, ys : List, zs : List) : Boolean =
     (append(append(xs, ys), zs) == append(xs, append(ys, zs))) holds
 
+  /* The size of the result of appending two lists is the sum of the sizes of
+   * the lists */
   @induct
   def sizeAppend(l1 : List, l2 : List) : Boolean =
    (size(append(l1, l2)) == size(l1) + size(l2)) holds
@@ -38,7 +42,7 @@ property1                 postcond.           unknown
 
 AssociativeList.scala
 
-verifies: update of elements, content
+verifies: read-over-write, key set
 
 domain                    match.      (17,37) valid               Z3        0.258
 find                      match.      (22,41) valid               Z3        0.003
@@ -48,15 +52,18 @@ update                    postcond.           valid               Z3        0.08
 updateElem                match.      (37,58) valid               Z3        0.006
 updateElem                match.      (39,44) valid               Z3        0.005
 updateElem                postcond.           valid               Z3        0.132
-updateElemProp1           match.      (47,75) valid    induction  Z3        0.005
-updateElemProp1           postcond.           valid    induction  Z3        0.040
-updateElemProp1           postcond.           valid    induction  Z3        0.022
+readOverWrite           match.      (47,75) valid    induction  Z3        0.005
+readOverWrite           postcond.           valid    induction  Z3        0.040
+readOverWrite           postcond.           valid    induction  Z3        0.022
 
+  /* Updating list 'l1' with all mappings from list 'l2' yields a list with the
+   * union of key sets */
   def update(l1: List, l2: List): List = (l2 match {
     case Nil() => l1
     case Cons(x, xs) => update(updateElem(l1, x), xs)
   }) ensuring(domain(_) == domain(l1) ++ domain(l2))
 
+  /* Updating list 'l' with mapping 'e' yields a list with the expected key set */
   def updateElem(l: List, e: KeyValuePairAbs): List = (l match {
     case Nil() => Cons(e, Nil())
     case Cons(KeyValuePair(k, v), xs) => e match {
@@ -66,8 +73,9 @@ updateElemProp1           postcond.           valid    induction  Z3        0.02
     case KeyValuePair(k, v) => domain(res) == domain(l) ++ Set[Int](k)
   })
 
+  /* Finding with a key that has been updated gives the most recently updated value */
   @induct
-  def updateElemProp1(l: List, e: KeyValuePairAbs, k: Int) : Boolean = (e match {
+  def readOverWrite(l: List, e: KeyValuePairAbs, k: Int) : Boolean = (e match {
     case KeyValuePair(key, value) =>
       find(updateElem(l, e), k) == (if (k == key) Some(value) else find(l, k))
   }) holds
@@ -97,6 +105,8 @@ sort                      precond.    (66,33) valid               Z3        0.00
 sort                      match.      (64,32) valid               Z3        0.003
 sort                      postcond.           valid               Z3        0.051
 
+  /* Inserting element 'e' into a sorted list 'l' produces a sorted list with
+   * the expected content */
   def sortedIns(e: Int, l: List): List = {
     require(isSorted(l))
     l match {
@@ -105,6 +115,8 @@ sort                      postcond.           valid               Z3        0.05
     } 
   } ensuring(res => contents(res) == contents(l) ++ Set(e) && isSorted(res))
 
+  /* Insertion sort yields a sorted list with the same content as the input
+   * list */
   def sort(l: List): List = (l match {
     case Nil() => Nil()
     case Cons(x,xs) => sortedIns(x, sort(xs))
@@ -133,6 +145,8 @@ add                       postcond.           valid               Z3        0.02
 balance                   match.      (94,19) valid               Z3        0.028
 balance                   postcond.           valid               Z3        0.999
 
+  /* Adding value 'x' to tree 't' in which no red node has a red child produces
+   * a tree which conserves the same property and has the expected content */
   def add(x: Int, t: Tree): Tree = {
     require(redNodesHaveBlackChildren(t))
     makeBlack(ins(x, t))
@@ -183,23 +197,28 @@ nnfIsStable               postcond.           valid    induction  Z3        0.07
 nnfIsStable               postcond.           valid    induction  Z3        0.053
 nnfIsStable               postcond.           valid    induction  Z3        0.073
 
+  /* Wrong assumption that 'nnf' and 'simplify' commute */
   @induct
   def wrongCommutative(f: Formula) : Boolean = {
     nnf(simplify(f)) == simplify(nnf(f))
   } holds
 
+  /* Wrong assumption that 'simplify' preserves NNF form */
   @induct
   def simplifyBreaksNNF(f: Formula) : Boolean = {
     require(isNNF(f))
     isNNF(simplify(f))
   } holds
 
+  /* NNF transformation is idempotent */
   @induct
   def nnfIsStable(f: Formula) : Boolean = {
     require(isNNF(f))
     nnf(f) == f
   } holds
 
+  /* It is sufficient to consider negations for only literals in pattern
+   * matching */
   def freeVars(f: Formula): Set[Int] = {
   require(isNNF(f))
     f match {
