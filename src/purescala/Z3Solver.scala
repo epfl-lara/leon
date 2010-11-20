@@ -439,10 +439,11 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
               import Evaluator._
 
               // WE HAVE TO CHECK THE COUNTER-EXAMPLE.
-              reporter.info("  - A candidate counter-example was found... Examining...")
               val asMap = modelToMap(m, varsInVC)
-
               lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
+              reporter.info("  - A candidate counter-example was found... Examining...")
+              //reporter.error(modelAsString)
+
 
               //println("(I'm going to pretend this never happened...)")
 

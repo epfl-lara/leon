@@ -122,9 +122,12 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
         val body = matchToIfThenElse(fd.body.get)
         val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*)
         val newBody = partialEvaluator(replace(substMap, body))
-        val theEquality = Equals(fi, newBody)
+        // val theEquality = Equals(fi, newBody)
 
         val unrolling = new Unrolling(fi, newBody, false, pushLevel)
+        //println("Now enqueuing, for function " + fd.id.name + ", with depth:  " + unrolling.depth)
+        //println(newBody)
+
         queue += unrolling
 
         //assertIfSafeOrDelay(theEquality)
@@ -141,6 +144,8 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
         } else {
           Equals(highest.invocation, highest.body)
         }
+        // println("Now will be asserting :")
+        // println(toConvertAndAssert)
         assertAxiomASAP(toZ3Formula(z3, toConvertAndAssert).get, 0)
       }
     }

@@ -118,6 +118,10 @@ object Evaluator {
           case (BooleanLiteral(b1),BooleanLiteral(b2)) => BooleanLiteral(!b1 || b2)
           case (le,re) => throw TypeErrorEx(TypeError(le, BooleanType))
         }
+        case Iff(le,re) => (rec(ctx,le),rec(ctx,re)) match {
+          case (BooleanLiteral(b1),BooleanLiteral(b2)) => b1 == b2
+          case _ => throw TypeErrorEx(TypeError(le, BooleanType))
+        }
         case Equals(le,re) => {
           val lv = rec(ctx,le)
           val rv = rec(ctx,re)
