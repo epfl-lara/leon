@@ -442,7 +442,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
               val asMap = modelToMap(m, varsInVC)
               lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
               reporter.info("  - A candidate counter-example was found... Examining...")
-              //reporter.error(modelAsString)
+              //reporter.info(modelAsString)
 
 
               //println("(I'm going to pretend this never happened...)")
