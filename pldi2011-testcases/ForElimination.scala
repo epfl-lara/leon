@@ -37,7 +37,7 @@ object ForElimination {
     case Nil() => true
     case Cons(x, xs) => forLoopsWellFormed(x) && forLoopsWellFormedList(xs)
   }
-
+ 
   def forLoopsWellFormed(stat: Statement): Boolean = (stat match {
     case Block(body) => forLoopsWellFormedList(body)
     case IfThenElse(_, then, elze) => forLoopsWellFormed(then) && forLoopsWellFormed(elze)
@@ -46,31 +46,59 @@ object ForElimination {
     case _ => true
   })
 
+  def eliminateWhileLoopsList(l: List): List = {
+    l match {
+      case Nil() => Nil()
+      case Cons(x, xs) => Cons(eliminateWhileLoops(x), eliminateWhileLoopsList(xs))
+    }
+  } ensuring(isWhileFreeList(_))
+
+  def eliminateWhileLoops(stat: Statement): Statement = (stat match {
+    case Block(body) => Block(eliminateWhileLoopsList(body))
+    case IfThenElse(expr, then, elze) => IfThenElse(expr, eliminateWhileLoops(then), eliminateWhileLoops(elze))
+    case While(expr, body) => For(Skip(), expr, Skip(), eliminateWhileLoops(body))
+    case For(init, expr, step, body) => For(eliminateWhileLoops(init), expr, eliminateWhileLoops(step), eliminateWhileLoops(body))
+    case other => other
+  }) ensuring(isWhileFree(_))
+
   def eliminateForLoopsList(l: List): List = {
-    require(forLoopsWellFormedList(l))
+    // require(forLoopsWellFormedList(l))
     l match {
       case Nil() => Nil()
       case Cons(x, xs) => Cons(eliminateForLoops(x), eliminateForLoopsList(xs))
     }
   } ensuring(isForFreeList(_))
-
+ 
   @induct
   def eliminateForLoops(stat: Statement): Statement = {
-    require(forLoopsWellFormed(stat))
+    // require(forLoopsWellFormed(stat))
     stat match {
       case Block(body) => Block(eliminateForLoopsList(body))
       case IfThenElse(expr, then, elze) => IfThenElse(expr, eliminateForLoops(then), eliminateForLoops(elze))
       case While(expr, body) => While(expr, eliminateForLoops(body))
-      case For(init, expr, step, body) => Block(Cons(init, Cons(While(expr, Block(Cons(eliminateForLoops(body), Cons(step, Nil())))), Nil())))
+      case For(init, expr, step, body) => Block(Cons(eliminateForLoops(init), Cons(While(expr, Block(Cons(eliminateForLoops(body), Cons(eliminateForLoops(step), Nil())))), Nil())))
       case other => other
     }
   } ensuring(isForFree(_))
+
+  def isWhileFreeList(l: List): Boolean = l match {
+    case Nil() => true
+    case Cons(x, xs) => isWhileFree(x) && isWhileFreeList(xs)
+  }
+
+  def isWhileFree(stat: Statement): Boolean = stat match {
+    case Block(body) => isWhileFreeList(body)
+    case IfThenElse(_, then, elze) => isWhileFree(then) && isWhileFree(elze)
+    case While(_, body) => false
+    case For(init,_,step,body) => isWhileFree(init) && isWhileFree(step) && isWhileFree(body)
+    case _ => true
+  }
 
   def isForFreeList(l: List): Boolean = l match {
     case Nil() => true
     case Cons(x, xs) => isForFree(x) && isForFreeList(xs)
   }
-
+ 
   def isForFree(stat: Statement): Boolean = stat match {
     case Block(body) => isForFreeList(body)
     case IfThenElse(_, then, elze) => isForFree(then) && isForFree(elze)
@@ -78,17 +106,17 @@ object ForElimination {
     case For(_,_,_,_) => false
     case _ => true
   }
-
+ 
   @induct
   def forFreeEntailsWellFormed(stat: Statement): Boolean = {
     require(isForFree(stat))
     forLoopsWellFormed(stat)
-  } holds
+  } // holds
 
   @induct
   def eliminationIsStable(stat: Statement): Boolean = {
-    require(isForFree(stat))
-    eliminateForLoops(stat) == stat
+    require(isWhileFree(stat))
+    eliminateWhileLoops(stat) == stat
   } holds
 
 }
