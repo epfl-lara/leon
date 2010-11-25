@@ -67,6 +67,19 @@ object InsertionSort {
                     && size(res) == size(l) + 1
             )
 
+  /* Inserting element 'e' into a sorted list 'l' produces a sorted list with
+   * the expected content and size */
+  def buggySortedIns(e: Int, l: List): List = {
+    // require(isSorted(l))
+    l match {
+      case Nil() => Cons(e,Nil())
+      case Cons(x,xs) => if (x <= e) Cons(x,buggySortedIns(e, xs)) else Cons(e, l)
+    } 
+  } ensuring(res => contents(res) == contents(l) ++ Set(e) 
+                    && isSorted(res)
+                    && size(res) == size(l) + 1
+            )
+
   /* Insertion sort yields a sorted list of same size and content as the input
    * list */
   def sort(l: List): List = (l match {

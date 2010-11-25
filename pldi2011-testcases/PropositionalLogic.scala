@@ -48,18 +48,18 @@ object PropositionalLogic {
     case Literal(_) => true
   }
 
-  def freeVars(f: Formula): Set[Int] = {
+  def vars(f: Formula): Set[Int] = {
   require(isNNF(f))
     f match {
-      case And(lhs, rhs) => freeVars(lhs) ++ freeVars(rhs)
-      case Or(lhs, rhs) => freeVars(lhs) ++ freeVars(rhs)
-      case Implies(lhs, rhs) => freeVars(lhs) ++ freeVars(rhs)
+      case And(lhs, rhs) => vars(lhs) ++ vars(rhs)
+      case Or(lhs, rhs) => vars(lhs) ++ vars(rhs)
+      case Implies(lhs, rhs) => vars(lhs) ++ vars(rhs)
       case Not(Literal(i)) => Set[Int](i)
       case Literal(i) => Set[Int](i)
     }
   }
 
-  def fv(f : Formula) = { freeVars(nnf(f)) }
+  def fv(f : Formula) = { vars(nnf(f)) }
 
   @induct
   def wrongCommutative(f: Formula) : Boolean = {

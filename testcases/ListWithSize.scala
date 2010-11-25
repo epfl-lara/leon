@@ -7,11 +7,36 @@ object ListWithSize {
     case class Cons(head: Int, tail: List) extends List
     case class Nil() extends List
 
+    sealed abstract class IntPairList
+    case class IPCons(head: IntPair, tail: IntPairList) extends IntPairList
+    case class IPNil() extends IntPairList
+
+    sealed abstract class IntPair
+    case class IP(fst: Int, snd: Int) extends IntPair
+
     // proved with unrolling=0
     def size(l: List) : Int = (l match {
         case Nil() => 0
         case Cons(_, t) => 1 + size(t)
     }) ensuring(_ >= 0)
+
+    def iplSize(l: IntPairList) : Int = (l match {
+      case IPNil() => 0
+      case IPCons(_, xs) => 1 + iplSize(xs)
+    }) ensuring(_ >= 0)
+
+    def zip(l1: List, l2: List) : IntPairList = {
+      // try to comment this and see how pattern-matching becomes
+      // non-exhaustive and post-condition fails
+      require(size(l1) == size(l2))
+
+      l1 match {
+        case Nil() => IPNil()
+        case Cons(x, xs) => l2 match {
+          case Cons(y, ys) => IPCons(IP(x, y), zip(xs, ys))
+        }
+      }
+    } ensuring(iplSize(_) == size(l1))
 
     def sizeTailRec(l: List) : Int = sizeTailRecAcc(l, 0)
     def sizeTailRecAcc(l: List, acc: Int) : Int = {
@@ -34,7 +59,7 @@ object ListWithSize {
     def sizeAndContent(l: List) : Boolean = {
       size(l) == 0 || content(l) != Set.empty[Int]
     } holds
-
+    
     def drunk(l : List) : List = (l match {
       case Nil() => Nil()
       case Cons(x,l1) => Cons(x,Cons(x,drunk(l1)))
@@ -52,30 +77,6 @@ object ListWithSize {
       case Nil() => l2
       case Cons(x, xs) => reverse0(xs, Cons(x, l2))
     }) ensuring(content(_) == content(l1) ++ content(l2))
-
-
-
-    /*** revAppend cannot use appendAssoc ***/
-    /*
-    @induct
-    def revSimple(l: List) : List = (l match {
-      case Nil() => Nil()
-      case Cons(x, xs) => append(revSimple(xs), Cons(x, Nil()))
-    }) ensuring(content(_) == content(l))
-
-    @induct
-    def revAppend(l1: List, l2: List) : Boolean = {
-      require(l1 match {
-        case Nil() => true
-        case Cons(x, xs) => appendAssoc(revSimple(l2), revSimple(xs), Cons(x, Nil()))
-      })
-      revSimple(append(l1, l2)) ==  append(revSimple(l2), revSimple(l1))
-    } holds
-
-    @induct
-    def reverseTwice(l: List): Boolean =
-      (revSimple(revSimple(l)) == l) holds */
-    /***************************************/
 
     def append(l1 : List, l2 : List) : List = (l1 match {
       case Nil() => l2
