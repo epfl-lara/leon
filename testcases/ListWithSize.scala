@@ -18,7 +18,7 @@ object ListWithSize {
     def size(l: List) : Int = (l match {
         case Nil() => 0
         case Cons(_, t) => 1 + size(t)
-    }) ensuring(_ >= 0)
+    }) ensuring(res => res >= 0)
 
     def iplSize(l: IntPairList) : Int = (l match {
       case IPNil() => 0

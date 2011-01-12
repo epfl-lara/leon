@@ -8,13 +8,13 @@ import Trees._
 import TypeTrees._
 
 import z3plugins.bapa.{BAPATheory, BAPATheoryEqc, BAPATheoryBubbles}
-import z3plugins.instantiator.Instantiator
+import z3plugins.instantiator.{AbstractInstantiator,Instantiator,FairInstantiator}
 
 import scala.collection.mutable.{HashMap => MutableHashMap}
 
 class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReconstruction {
   import Settings.useBAPA
-  import Settings.useInstantiator
+  import Settings.{useInstantiator,useFairInstantiator,useAnyInstantiator}
 
   val description = "Z3 Solver"
   override val shortDescription = "Z3"
@@ -37,7 +37,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
   protected[purescala] var z3: Z3Context = null
   protected[purescala] var program: Program = null
   private var bapa: BAPATheoryType = null
-  private var instantiator: Instantiator = null
+  private var instantiator: AbstractInstantiator = null
   private var neverInitialized = true
 
   private val IntSetType = SetType(Int32Type)
@@ -55,7 +55,8 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
     z3 = new Z3Context(z3cfg)
     // z3.traceToStdout
     if (useBAPA) bapa = new BAPATheoryType(z3)
-    if (useInstantiator) instantiator = new Instantiator(this)
+    if (useInstantiator) instantiator = new Instantiator(this) else
+    if (useFairInstantiator) instantiator = new FairInstantiator(this)
 
     exprToZ3Id = Map.empty
     z3IdToExpr = Map.empty

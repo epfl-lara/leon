@@ -14,7 +14,7 @@ import purescala.PartialEvaluator
 import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
 import scala.collection.mutable.PriorityQueue
 
-class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instantiator") {
+class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instantiator") with AbstractInstantiator {
   import z3Solver.{z3,program,typeToSort,fromZ3Formula,toZ3Formula}
 
   val partialEvaluator = new PartialEvaluator(program)

@@ -15,4 +15,6 @@ object Settings {
   var zeroInlining : Boolean = false
   var useBAPA: Boolean = true
   var useInstantiator: Boolean = false
+  var useFairInstantiator: Boolean = false
+  def useAnyInstantiator : Boolean = useInstantiator || useFairInstantiator
 }

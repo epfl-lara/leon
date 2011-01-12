@@ -29,7 +29,8 @@ class FunCheckPlugin(val global: Global) extends Plugin {
     "  -P:funcheck:nobapa             Disable BAPA Z3 extension" + "\n" +
     "  -P:funcheck:quiet              No info and warning messages from the extensions" + "\n" +
     "  -P:funcheck:XP                 Enable weird transformations and other bug-producing features" + "\n" +
-    "  -P:funcheck:PLDI               PLDI 2011 settings. Subject to change. Same warning as for XP."
+    "  -P:funcheck:PLDI               PLDI 2011 settings. Now frozen. Not completely functional. See CAV." + "\n" +
+    "  -P:funcheck:CAV                CAV 2011 settings. In progress."
   )
 
   /** Processes the command-line options. */
@@ -47,7 +48,8 @@ class FunCheckPlugin(val global: Global) extends Plugin {
         case "nobapa"     =>                     purescala.Settings.useBAPA = false
         case "newPM"      =>                     { println("''newPM'' is no longer a command-line option, because the new translation is now on by default."); System.exit(0) }
         case "XP"         =>                     purescala.Settings.experimental = true
-        case "PLDI"       =>                     { purescala.Settings.experimental = true; purescala.Settings.useInstantiator = true; purescala.Settings.useBAPA = false; purescala.Settings.zeroInlining = true }
+        case "PLDI"       =>                     { purescala.Settings.experimental = true; purescala.Settings.useInstantiator = true; purescala.Settings.useFairInstantiator = false; purescala.Settings.useBAPA = false; purescala.Settings.zeroInlining = true }
+        case "CAV"       =>                      { purescala.Settings.experimental = true; purescala.Settings.useInstantiator = false; purescala.Settings.useFairInstantiator = true; purescala.Settings.useBAPA = false; purescala.Settings.zeroInlining = true }
         case s if s.startsWith("unrolling=") =>  purescala.Settings.unrollingLevel = try { s.substring("unrolling=".length, s.length).toInt } catch { case _ => 0 }
         case s if s.startsWith("functions=") =>  purescala.Settings.functionsToAnalyse = Set(splitList(s.substring("functions=".length, s.length)): _*)
         case s if s.startsWith("extensions=") => purescala.Settings.extensionNames = splitList(s.substring("extensions=".length, s.length))
