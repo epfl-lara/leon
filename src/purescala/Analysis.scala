@@ -30,7 +30,7 @@ class Analysis(val program: Program) {
   // conditions are generated and passed to all solvers. Otherwise, only the
   // Analysis extensions are run on the program.
   def analyse : Unit = {
-    if(solverExtensions.size > 0) {
+    if(solverExtensions.size > 1) {
       reporter.info("Running verification condition generation...")
 
       val list = generateVerificationConditions
