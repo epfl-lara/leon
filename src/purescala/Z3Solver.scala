@@ -175,25 +175,25 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
     // ...and now everything should be in there...
   }
 
-  def isKnownDef(funDef: FunDef) : Boolean = if(useInstantiator) {
+  def isKnownDef(funDef: FunDef) : Boolean = if(useAnyInstantiator) {
     instantiator.isKnownDef(funDef)
   } else {
     functionMap.isDefinedAt(funDef)
   }
   def functionDefToDecl(funDef: FunDef) : Z3FuncDecl = {
-    if(useInstantiator) {
+    if(useAnyInstantiator) {
       instantiator.functionDefToDecl(funDef)
     } else {
       functionMap.getOrElse(funDef, scala.Predef.error("No Z3 definition found for function symbol " + funDef.id.name + ". (Instantiator is off)."))
     }
   }
-  def isKnownDecl(decl: Z3FuncDecl) : Boolean = if(useInstantiator) {
+  def isKnownDecl(decl: Z3FuncDecl) : Boolean = if(useAnyInstantiator) {
     instantiator.isKnownDecl(decl)
   } else {
     reverseFunctionMap.isDefinedAt(decl)
   }
   def functionDeclToDef(decl: Z3FuncDecl) : FunDef = {
-    if(useInstantiator) {
+    if(useAnyInstantiator) {
       instantiator.functionDeclToDef(decl)
     } else {
       reverseFunctionMap.getOrElse(decl, scala.Predef.error("No FunDef corresponds to Z3 definition " + decl + ". (Instantiator is off)."))
@@ -207,7 +207,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
       val sortSeq = funDef.args.map(vd => typeToSort(vd.tpe))
       val returnSort = typeToSort(funDef.returnType)
 
-      if(useInstantiator) {
+      if(useAnyInstantiator) {
         instantiator.registerFunction(funDef, sortSeq, returnSort)
       } else {
         val z3Decl = z3.mkFreshFuncDecl(funDef.id.name, sortSeq, returnSort)
@@ -217,7 +217,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
     }
 
     // Attempts to universally quantify all functions !
-    if (!Settings.noForallAxioms && !Settings.useInstantiator) {
+    if (!Settings.noForallAxioms && !Settings.useAnyInstantiator) {
       for (funDef <- program.definedFunctions) if (funDef.hasImplementation /* && program.isRecursive(funDef) */ && funDef.args.size > 0) {
         // println("Generating forall axioms for " + funDef.id.name)
         funDef.body.get match {
@@ -337,7 +337,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
 
   def solve(vc: Expr) = decide(vc, true)
 
-  def decide(vc: Expr, fv: Boolean) : Option[Boolean] = if(Settings.useInstantiator) {
+  def decide(vc: Expr, fv: Boolean) : Option[Boolean] = if(Settings.useAnyInstantiator) {
     decideIterative(vc, fv)
   } else {
     decideStandard(vc, fv)
@@ -747,7 +747,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
       case Z3NumeralAST(Some(v)) => IntLiteral(v)
       case other @ _ => {
         System.err.println("Don't know what this is " + other) 
-        if(useInstantiator) {
+        if(useAnyInstantiator) {
           instantiator.dumpFunctionMap
         } else {
           System.err.println("REVERSE FUNCTION MAP:")
