@@ -100,10 +100,18 @@ class FairInstantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Fa
         case _ => Set.empty
       }
     }
-
-    //println("As Purescala: " + aps)
+    
+    println("Examining : " + ast)
+    println("As Purescala: " + aps)
     for(fi <- fis) {
       val FunctionInvocation(fd, args) = fi
+
+      if(!program.isRecursive(fd)) {
+        println("We have a non-recursive function, we could just inline it !")
+        println(fi)
+        println("...I'm just saying.")
+      }
+
       if(bodyInlined < Settings.unrollingLevel && fd.hasPostcondition) {
         bodyInlined += 1
         val post = matchToIfThenElse(fd.postcondition.get)
@@ -145,7 +153,7 @@ class FairInstantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Fa
           Equals(highest.invocation, highest.body)
         }
         // println("Now will be asserting :")
-        // println(toConvertAndAssert)
+        println(Console.RED + toConvertAndAssert + Console.RESET)
         assertAxiomASAP(toZ3Formula(z3, toConvertAndAssert).get, 0)
       }
     }
@@ -165,14 +173,6 @@ class FairInstantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Fa
 */
   }
 
-  // This is concerned with how many new function calls the assertion is going
-  // to introduce.
-  // private def assertIfSafeOrDelay(ast: Expr, isSafe: Boolean = false) : Unit = {
-  //   println("I'm going to assert this at the next final check :")
-  //   println(ast)
-  //   println("BTW, I think you should know the depth of this thing is : " + measureADTChildrenDepth(ast))
-  //   stillToAssert = ((pushLevel, ast)) :: stillToAssert
-  // }
 
   // Assert as soon as possible and keep asserting as long as level is >= lvl.
   private def assertAxiomASAP(expr: Expr, lvl: Int) : Unit = assertAxiomASAP(toZ3Formula(z3, expr).get, lvl)
@@ -296,8 +296,12 @@ class FairInstantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Fa
 
   private class Unrolling(val invocation: FunctionInvocation, val body: Expr, val isContract: Boolean, val fromLevel: Int) {
     // the maximal depth of selector calls in arguments of the invocation
-    val depth : Int = measureADTChildrenDepth(invocation)
-//    println("unrolling built. It has depth " + depth)
+    val depth : Int = if(!program.isRecursive(invocation.funDef)) {
+      0
+    } else {
+      measureADTChildrenDepth(invocation)
+    }
+    println("unrolling built. It has depth " + depth + "\n" + invocation)
   }
   private object Unrolling {
     def unapply(u: Unrolling) : Option[(FunctionInvocation,Expr)] = if(u != null) {
