@@ -14,6 +14,8 @@ object Settings {
   var unrollingLevel: Int = 0
   var zeroInlining : Boolean = false
   var useBAPA: Boolean = true
+  var impureTestcases: Boolean = false
+  var nbTestcases: Int = 1
   var useInstantiator: Boolean = false
   var useFairInstantiator: Boolean = false
   def useAnyInstantiator : Boolean = useInstantiator || useFairInstantiator

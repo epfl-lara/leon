@@ -10,6 +10,9 @@ import TypeTrees._
 trait Z3ModelReconstruction {
   self: Z3Solver =>
 
+  private val AUTOCOMPLETEMODELS : Boolean = true
+  private val SIMPLESTCOMPLETION : Boolean = false // if true, use 0, Nil(), etc., else random
+
   def modelValue(model: Z3Model, id: Identifier, tpe: TypeTree = null) : Option[Expr] = {
     val expectedType = if(tpe == null) id.getType else tpe
     
@@ -32,7 +35,22 @@ trait Z3ModelReconstruction {
     for(id <- ids) {
       modelValue(model, id) match {
         case None => ; // can't do much here
-        case Some(ex) => asMap = asMap + ((id -> ex))
+        case Some(ex) =>
+          if (AUTOCOMPLETEMODELS) {
+            ex match {
+              case v @ Variable(exprId) if exprId == id =>
+                if (SIMPLESTCOMPLETION) {
+                  asMap = asMap + ((id -> simplestValue(id.toVariable)))
+                  reporter.info("Completing variable '" + id + "' to simplest value")
+                } else {
+                  asMap = asMap + ((id -> randomValue(id.toVariable)))
+                  reporter.info("Completing variable '" + id + "' to random value")
+                }
+              case _ => asMap = asMap + ((id -> ex))
+            }
+          } else {
+            asMap = asMap + ((id -> ex))
+          }
       }
     }
     asMap

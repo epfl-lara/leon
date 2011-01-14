@@ -27,6 +27,8 @@ class FunCheckPlugin(val global: Global) extends Plugin {
     "  -P:funcheck:axioms             Generate simple forall axioms for recursive functions when possible" + "\n" + 
     "  -P:funcheck:tolerant           Silently extracts non-pure function bodies as ''unknown''" + "\n" +
     "  -P:funcheck:nobapa             Disable BAPA Z3 extension" + "\n" +
+    "  -P:funcheck:impure             Generate testcases only for impure functions" + "\n" +
+    "  -P:funcheck:testcases=[1,2]    Number of testcases to generate per function" + "\n" +
     "  -P:funcheck:quiet              No info and warning messages from the extensions" + "\n" +
     "  -P:funcheck:XP                 Enable weird transformations and other bug-producing features" + "\n" +
     "  -P:funcheck:PLDI               PLDI 2011 settings. Now frozen. Not completely functional. See CAV." + "\n" +
@@ -46,6 +48,7 @@ class FunCheckPlugin(val global: Global) extends Plugin {
         case "nodefaults" =>                     purescala.Settings.runDefaultExtensions = false
         case "axioms"     =>                     purescala.Settings.noForallAxioms = false
         case "nobapa"     =>                     purescala.Settings.useBAPA = false
+        case "impure"     =>                     purescala.Settings.impureTestcases = true
         case "newPM"      =>                     { println("''newPM'' is no longer a command-line option, because the new translation is now on by default."); System.exit(0) }
         case "XP"         =>                     purescala.Settings.experimental = true
         case "PLDI"       =>                     { purescala.Settings.experimental = true; purescala.Settings.useInstantiator = true; purescala.Settings.useFairInstantiator = false; purescala.Settings.useBAPA = false; purescala.Settings.zeroInlining = true }
@@ -53,6 +56,7 @@ class FunCheckPlugin(val global: Global) extends Plugin {
         case s if s.startsWith("unrolling=") =>  purescala.Settings.unrollingLevel = try { s.substring("unrolling=".length, s.length).toInt } catch { case _ => 0 }
         case s if s.startsWith("functions=") =>  purescala.Settings.functionsToAnalyse = Set(splitList(s.substring("functions=".length, s.length)): _*)
         case s if s.startsWith("extensions=") => purescala.Settings.extensionNames = splitList(s.substring("extensions=".length, s.length))
+        case s if s.startsWith("testcases=") =>  purescala.Settings.nbTestcases = try { s.substring("testcases=".length, s.length).toInt } catch { case _ => 1 }
         case _ => error("Invalid option: " + option)
       }
     }

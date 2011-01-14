@@ -411,6 +411,10 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
   }
 
   def decideIterative(vc: Expr, forValidity: Boolean) : Option[Boolean] = {
+    decideIterativeWithModel(vc, forValidity)._1
+  }
+
+  def decideIterativeWithModel(vc: Expr, forValidity: Boolean) : (Option[Boolean], Map[Identifier, Expr]) = {
     restartZ3
     assert(instantiator != null)
     assert(!useBAPA)
@@ -424,14 +428,14 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
     val toConvert = if (forValidity) negate(vc) else vc
     val toCheckAgainstModels = toConvert
 
-    val result = toZ3Formula(z3, toConvert) match {
-      case None => None // means it could not be translated
+    val result : (Option[Boolean], Map[Identifier, Expr]) = toZ3Formula(z3, toConvert) match {
+      case None => (None, Map.empty) // means it could not be translated
       case Some(z3f) => {
         z3.assertCnstr(z3f)
 
         // THE LOOP STARTS HERE.
         var foundDefinitiveSolution : Boolean = false
-        var finalResult : Option[Boolean] = None
+        var finalResult : (Option[Boolean], Map[Identifier, Expr]) = (None, Map.empty)
 
         while(!foundDefinitiveSolution && instantiator.possibleContinuation) {
           instantiator.increaseSearchDepth()
@@ -456,19 +460,19 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
                   reporter.error("Counter-example found and confirmed:")
                   reporter.error(modelAsString)
                   foundDefinitiveSolution = true
-                  finalResult = Some(false)
+                  finalResult = (Some(false), asMap)
                 }
                 case InfiniteComputation() => {
                   reporter.info("Model seems to lead to divergent computation.")
                   reporter.error(modelAsString)
                   foundDefinitiveSolution = true
-                  finalResult = None
+                  finalResult = (None, asMap)
                 }
                 case RuntimeError(msg) => {
                   reporter.info("Model leads to runtime error: " + msg)
                   reporter.error(modelAsString)
                   foundDefinitiveSolution = true
-                  finalResult = Some(false)
+                  finalResult = (Some(false), asMap)
                 }
                 case t @ TypeError(_,_) => {
                   scala.Predef.error("Type error in model evaluation.\n" + t.msg)
@@ -482,13 +486,13 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
             case (Some(false), _) => {
               // This means a definitive proof of unsatisfiability has been found.
               foundDefinitiveSolution = true
-              finalResult = Some(true)
+              finalResult = (Some(true), Map.empty)
             }
 
             case (None, m) => {
               reporter.warning("Iterative Z3 gave up because: " + z3.getSearchFailure.message)
               foundDefinitiveSolution = true
-              finalResult = None
+              finalResult = (None, modelToMap(m, varsInVC))
             }
           }
         }

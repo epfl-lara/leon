@@ -1051,4 +1051,48 @@ object Trees {
     
     rec(expression,Map.empty)
   }
+
+  private val random = new scala.util.Random()
+
+  def randomValue(v: Variable) : Expr = randomValue(v.getType)
+  def simplestValue(v: Variable) : Expr = simplestValue(v.getType)
+
+  private def randomValue(tpe: TypeTree) : Expr = tpe match {
+    case Int32Type => IntLiteral(random.nextInt(42))
+    case BooleanType => BooleanLiteral(random.nextBoolean())
+    case AbstractClassType(acd) =>
+      val children = acd.knownChildren
+      randomValue(classDefToClassType(children(random.nextInt(children.size))))
+    case CaseClassType(cd) =>
+      val fields = cd.fields
+      CaseClass(cd, fields.map(f => randomValue(f.getType)))
+    case _ => throw new Exception("I can't choose random value for type " + tpe)
+  }
+
+  private def simplestValue(tpe: TypeTree) : Expr = tpe match {
+    case Int32Type => IntLiteral(0)
+    case BooleanType => BooleanLiteral(false)
+    case AbstractClassType(acd) => {
+      val children = acd.knownChildren
+      val simplerChildren = children.filter{
+        case ccd @ CaseClassDef(id, Some(parent), fields) =>
+          !fields.exists(vd => vd.getType match {
+            case AbstractClassType(fieldAcd) => acd == fieldAcd
+            case CaseClassType(fieldCcd) => ccd == fieldCcd
+            case _ => false
+          })
+        case _ => false
+      }
+      def orderByNumberOfFields(fst: ClassTypeDef, snd: ClassTypeDef) : Boolean = (fst, snd) match {
+        case (CaseClassDef(_, _, flds1), CaseClassDef(_, _, flds2)) => flds1.size <= flds2.size
+        case _ => true
+      }
+      val orderedChildren = simplerChildren.sortWith(orderByNumberOfFields)
+      simplestValue(classDefToClassType(orderedChildren.head))
+    }
+    case CaseClassType(ccd) =>
+      val fields = ccd.fields
+      CaseClass(ccd, fields.map(f => simplestValue(f.getType)))
+    case _ => throw new Exception("I can't choose simplest value for type " + tpe)
+  }
 }
