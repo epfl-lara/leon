@@ -8,10 +8,12 @@ import Trees._
 import TypeTrees._
 
 trait Z3ModelReconstruction {
-  self: Z3Solver =>
+  self: AbstractZ3Solver =>
 
-  private val AUTOCOMPLETEMODELS : Boolean = true
-  private val SIMPLESTCOMPLETION : Boolean = false // if true, use 0, Nil(), etc., else random
+  // exprToZ3Id, softFromZ3Formula, reporter
+
+  private final val AUTOCOMPLETEMODELS : Boolean = true
+  private final val SIMPLESTCOMPLETION : Boolean = false // if true, use 0, Nil(), etc., else random
 
   def modelValue(model: Z3Model, id: Identifier, tpe: TypeTree = null) : Option[Expr] = {
     val expectedType = if(tpe == null) id.getType else tpe

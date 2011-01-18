@@ -520,7 +520,7 @@ trait Bubbles {
         }
         var failure = false
         for (i <- 0 until bubble.numVennRegions) {
-          z3model.evalAsInt(bubble.vennRegions(i).ast) match {
+          z3model.evalAs[Int](bubble.vennRegions(i).ast) match {
             case Some(size) =>
               if (size > 0) {
                 val ids = indexToIDset(i)
@@ -529,7 +529,7 @@ trait Bubbles {
             case None =>
               failure = true
               if (errorVennRegion == null) {
-                errorVennRegion = "evalAsInt on venn region failed ! " + bubble.vennRegions(i).ast
+                errorVennRegion = "evalAs[Int] on venn region failed ! " + bubble.vennRegions(i).ast
               }
           }
         }
@@ -632,7 +632,7 @@ trait Bubbles {
     def evalAsBapaInt(ast: Z3AST) = z3.getASTKind(ast) match {
       case Z3AppAST(decl, args) if decl == mkCard =>
         val ast2 = treeToZ3(BubbleBapaToPaTranslator(z3ToTree(ast)))
-        z3model.evalAsInt(ast2)
+        z3model.evalAs[Int](ast2)
       case _ => None
     }
     // DEBUG: print stuff
@@ -657,7 +657,7 @@ trait Bubbles {
       for ((setID, content) <- recons) {
         z3.getASTKind(mkSym(setID).ast) match {
           case Z3AppAST(decl, args) if decl == mkSingleton =>
-            val evaluated = z3model.evalAsInt(args(0))
+            val evaluated = z3model.evalAs[Int](args(0))
             (if (evaluated.isEmpty) evalAsBapaInt(args(0)) else evaluated) match {
               case Some(rElem) =>
                 require(recons(setID).size == 1)
@@ -673,7 +673,7 @@ trait Bubbles {
 //                   for ((i,j) <- map)  println(i+ " -> " + j)
                 }
               case None =>
-                println("WARNING : evalAsInt on singleton element failed ! " + mkSym(setID).ast )
+                println("WARNING : evalAs[Int] on singleton element failed ! " + mkSym(setID).ast )
 //                 for (ast <- getEqClassMembers(args(0))) println("> " + ast)
             }
           case _ =>

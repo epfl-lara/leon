@@ -1,3 +1,10 @@
+/********************************************************************
+
+   WARNING : THIS VERSION IS NOT USED (AND CERTAINLY NOT MAINTAINED).
+   SEE BAPATheoryBubbles INSTEAD !
+
+   ******************************************************************/
+
 package purescala.z3plugins.bapa
 
 import scala.collection.mutable.{Stack, ArrayBuffer, Set => MutableSet, Map => MutableMap}

@@ -12,7 +12,7 @@ import z3plugins.instantiator.{AbstractInstantiator,Instantiator,FairInstantiato
 
 import scala.collection.mutable.{HashMap => MutableHashMap}
 
-class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReconstruction {
+class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3Solver with Z3ModelReconstruction {
   import Settings.useBAPA
   import Settings.{useInstantiator,useFairInstantiator,useAnyInstantiator}
 
@@ -765,12 +765,5 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with Z3ModelReco
     }
 
     rec(tree)
-  }
-  protected[purescala] def softFromZ3Formula(tree : Z3AST) : Option[Expr] = {
-    try {
-      Some(fromZ3Formula(tree))
-    } catch {
-      case _ => None
-    }
   }
 }

@@ -1,3 +1,10 @@
+/********************************************************************
+
+   WARNING : THIS VERSION IS NOT USED (AND CERTAINLY NOT MAINTAINED).
+   SEE BAPATheoryBubbles INSTEAD !
+
+   ******************************************************************/
+
 package purescala.z3plugins.bapa
 
 import scala.collection.mutable.Stack
@@ -7,7 +14,7 @@ import z3.scala._
 import AST._
 import NormalForms.{simplify, rewriteSetRel, setVariables, purify}
 
-class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with VennRegions with InclusionGraphs {
+class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with VennRegions { //with InclusionGraphs {
 
   /* Register callbacks */
 
@@ -65,7 +72,7 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
   /* Theory stack */
 
   private val universeStack = new Stack[Universe]
-  private val inclusionStack = new Stack[InclusionGraph]
+  // private val inclusionStack = new Stack[InclusionGraph]
 
   def assertAxiomFromVennRegions(ast: Z3AST) {
     // println("Asserting: " + ast)
@@ -109,9 +116,9 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
   override def reset {
     axiomsToAssert.clear
     universeStack.clear
-    inclusionStack.clear
+    // inclusionStack.clear
     universeStack push new EmptyUniverse(mkDomainSize)
-    inclusionStack push EmptyInclusionGraph()
+    // inclusionStack push EmptyInclusionGraph()
   }
   reset
 
@@ -125,25 +132,25 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
     pushLevel = pushLevel + 1
     //assertAllRemaining
     universeStack push universeStack.head
-    inclusionStack push inclusionStack.head
+    // inclusionStack push inclusionStack.head
   }
 
   override def pop {
     pushLevel = pushLevel - 1
     //assertAllRemaining
     universeStack.pop
-    inclusionStack.pop
+    // inclusionStack.pop
   }
 
   override def newAssignment(ast: Z3AST, polarity: Boolean) {
     assertAllRemaining
 
-    if (polarity) {
-      z3.getASTKind(ast) match {
-        case Z3AppAST(decl, args) if decl == mkSubsetEq => inclusionStack.push(inclusionStack.pop.newSubsetEq(args(0), args(1)))
-        case _ =>;
-      }
-    }
+    // if (polarity) {
+    //   z3.getASTKind(ast) match {
+    //     case Z3AppAST(decl, args) if decl == mkSubsetEq => inclusionStack.push(inclusionStack.pop.newSubsetEq(args(0), args(1)))
+    //     case _ =>;
+    //   }
+    // }
 
     val assumption = if (polarity) ast else z3.mkNot(ast)
     val bapaTree = if (polarity) z3ToTree(ast) else !z3ToTree(ast)
@@ -158,7 +165,7 @@ class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with Venn
     assertAllRemaining
 
     if (z3.getSort(ast1) == mkSetSort) {
-      inclusionStack.push(inclusionStack.pop.newEq(ast1, ast2))
+      // inclusionStack.push(inclusionStack.pop.newEq(ast1, ast2))
       // TODO: if either ast1 or ast2 is a variable => don't add it/remove it from the stack and remember congruence class
       //       println("*** new Eq : " + ast1 + "  ==  " + ast2)
 
