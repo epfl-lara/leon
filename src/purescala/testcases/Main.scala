@@ -36,13 +36,14 @@ class Main(reporter : Reporter) extends Analyser(reporter) {
       var constraints: Expr = BooleanLiteral(true)
       val prec = matchToIfThenElse(funDef.precondition.getOrElse(BooleanLiteral(true)))
       var inputList: List[Seq[Expr]] = Nil
-      for (i <- 1 to Settings.nbTestcases) {
+      var noMoreModels = false
+      for (i <- 1 to Settings.nbTestcases if !noMoreModels) {
         // reporter.info("Current constraints: " + constraints)
         val argMap = solver.decideIterativeWithBounds(And(prec, constraints), false)
         argMap match {
-          case (Some(true), _) => None
+          case (Some(true), _) => noMoreModels = true
           case (_ , map) =>
-            reporter.info("Solver returned the following assignment: " + map)
+            // reporter.info("Solver returned the following assignment: " + map)
             val testInput = (for (arg <- funDef.args) yield {
               map.get(arg.id) match {
                 case Some(value) => value
@@ -56,6 +57,9 @@ class Main(reporter : Reporter) extends Analyser(reporter) {
             constraints = And(constraints, negate(newConstraints))
         }
       }
+
+      if (inputList.size < Settings.nbTestcases)
+        reporter.error("Could only generate " + inputList.size + " testcases while " + Settings.nbTestcases + " were requested")
 
       inputList.reverse
     }
@@ -94,17 +98,21 @@ class Main(reporter : Reporter) extends Analyser(reporter) {
 
     val funcInputPairs: Seq[(Identifier, Seq[Seq[Expr]])] = (for (funDef <- program.definedFunctions.toList.sortWith((fd1, fd2) => fd1 < fd2) if (!funDef.isPrivate && (Settings.functionsToAnalyse.isEmpty || Settings.functionsToAnalyse.contains(funDef.id.name)) && (!Settings.impureTestcases || !funDef.hasBody))) yield {
       reporter.info("Considering function definition: " + funDef.id)
-      funDef.precondition match {
-        case Some(p) => reporter.info("The precondition is: " + p)
-        case None =>    reporter.info("Function has no precondition")
-      }
+      // funDef.precondition match {
+      //   case Some(p) => reporter.info("The precondition is: " + p)
+      //   case None =>    reporter.info("Function has no precondition")
+      // }
 
       val testInput = generateTestInput(funDef)
-      reporter.info("Generated test input is: " + testInput)
+      // reporter.info("Generated test input is: " + testInput)
       (funDef.id, testInput)
     })
 
-    writeToFile("Test" + program.mainObject.id.toString + ".scala", testObject(funcInputPairs))
+    val outputFolderName = "generated-testcases"
+    val outputFileName = outputFolderName + "/" + "Test" + program.mainObject.id.toString + ".scala"
+    new java.io.File(outputFolderName).mkdir()
+    writeToFile(outputFileName, testObject(funcInputPairs))
+    reporter.info("Output written into file: " + outputFileName)
     
     reporter.info("Done.")
   }
