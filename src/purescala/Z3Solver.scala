@@ -534,12 +534,15 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
                   reporter.info("    -> candidate model discarded.")
                 }
               }
+            
+              m.delete
             }
 
             case (None, m) => {
               reporter.warning("Iterative Z3 gave up because: " + z3.getSearchFailure.message)
               foundDefinitiveSolution = true
               finalResult = (None, modelToMap(m, varsInVC))
+              m.delete
             }
           }
         }

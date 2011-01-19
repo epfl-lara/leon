@@ -34,7 +34,7 @@ class Main(reporter : Reporter) extends Analyser(reporter) {
 
     def generateTestInput(funDef: FunDef) : Seq[Seq[Expr]] = {
       var constraints: Expr = BooleanLiteral(true)
-      val prec = funDef.precondition.getOrElse(BooleanLiteral(true))
+      val prec = matchToIfThenElse(funDef.precondition.getOrElse(BooleanLiteral(true)))
       var inputList: List[Seq[Expr]] = Nil
       for (i <- 1 to Settings.nbTestcases) {
         // reporter.info("Current constraints: " + constraints)
@@ -92,7 +92,7 @@ class Main(reporter : Reporter) extends Analyser(reporter) {
       toReturn
     }
 
-    val funcInputPairs: Seq[(Identifier, Seq[Seq[Expr]])] = (for (funDef <- program.definedFunctions.toList.sortWith((fd1, fd2) => fd1 < fd2) if (!funDef.isPrivate && (!Settings.impureTestcases || !funDef.hasBody))) yield {
+    val funcInputPairs: Seq[(Identifier, Seq[Seq[Expr]])] = (for (funDef <- program.definedFunctions.toList.sortWith((fd1, fd2) => fd1 < fd2) if (!funDef.isPrivate && (Settings.functionsToAnalyse.isEmpty || Settings.functionsToAnalyse.contains(funDef.id.name)) && (!Settings.impureTestcases || !funDef.hasBody))) yield {
       reporter.info("Considering function definition: " + funDef.id)
       funDef.precondition match {
         case Some(p) => reporter.info("The precondition is: " + p)
