@@ -23,7 +23,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   //   type BAPATheoryType = BAPATheoryEqc
   type BAPATheoryType = BAPATheoryBubbles
 
-  private val reportUnknownAsSat = false
+  private val reportUnknownAsSat = true
 
   // this is fixed
   private val z3cfg = new Z3Config(
@@ -173,6 +173,47 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     reverseADTTesters = adtTesters.map(_.swap)
     reverseADTConstructors = adtConstructors.map(_.swap)
     // ...and now everything should be in there...
+  }
+
+  private def boundValues : Unit = {
+    val upperBound: Z3AST = z3.mkInt(3, z3.mkIntSort)
+    val lowerBound: Z3AST = z3.mkInt(0, z3.mkIntSort)
+
+    def isUnbounded(field: VarDecl) : Boolean = field.getType match {
+      case Int32Type => true
+      case _ => false
+    }
+
+    def boundConstraint(boundVar: Z3AST) : Z3AST = {
+      lowerBound <= boundVar && boundVar <= upperBound
+    }
+
+    // for all recursive type roots
+    //   for all child ccd of a root
+    //     if ccd contains unbounded types
+    //       create bound vars (mkBound) for each field
+    //       create pattern that says (valueBounds(ccd(f1, ..)))
+    //       create axiom tree that says "values of unbounded types are within bounds"
+    //       assert axiom for the tree above
+
+    val roots = program.classHierarchyRoots
+    for (root <- roots) {
+      val children: List[CaseClassDef] = (root match {
+        case c: CaseClassDef => List(c)
+        case a: AbstractClassDef => a.knownChildren.filter(_.isInstanceOf[CaseClassDef]).map(_.asInstanceOf[CaseClassDef]).toList
+      })
+      for (child <- children) child match {
+        case CaseClassDef(id, parent, fields) =>
+          val unboundedFields = fields.filter(isUnbounded(_))
+          if (!unboundedFields.isEmpty) {
+            val boundVars = fields.zipWithIndex.map{case (f, i) => z3.mkBound(i, typeToSort(f.getType))}
+            val pattern = z3.mkPattern(adtConstructors(child)(boundVars: _*))
+            val constraint = (fields zip boundVars).filter((p: (VarDecl, Z3AST)) => isUnbounded(p._1)).map((p: (VarDecl, Z3AST)) => boundConstraint(p._2)).foldLeft(z3.mkTrue)((a, b) => a && b)
+            val axiom = z3.mkForAll(0, List(pattern), fields.zipWithIndex.map{case (f, i) => (z3.mkIntSymbol(i), typeToSort(f.getType))}, constraint)
+            z3.assertCnstr(axiom)
+          }
+      }
+    }
   }
 
   def isKnownDef(funDef: FunDef) : Boolean = if(useAnyInstantiator) {
@@ -411,11 +452,17 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   }
 
   def decideIterative(vc: Expr, forValidity: Boolean) : Option[Boolean] = {
+    restartZ3
     decideIterativeWithModel(vc, forValidity)._1
   }
 
-  def decideIterativeWithModel(vc: Expr, forValidity: Boolean) : (Option[Boolean], Map[Identifier, Expr]) = {
+  def decideIterativeWithBounds(vc: Expr, forValidity: Boolean) : (Option[Boolean], Map[Identifier, Expr]) = {
     restartZ3
+    boundValues
+    decideIterativeWithModel(vc, forValidity)
+  }
+
+  def decideIterativeWithModel(vc: Expr, forValidity: Boolean) : (Option[Boolean], Map[Identifier, Expr]) = {
     assert(instantiator != null)
     assert(!useBAPA)
 
@@ -440,7 +487,13 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         while(!foundDefinitiveSolution && instantiator.possibleContinuation) {
           instantiator.increaseSearchDepth()
           z3.checkAndGetModel() match {
-            case (Some(true), m) => {
+            case (Some(false), _) => {
+              // This means a definitive proof of unsatisfiability has been found.
+              foundDefinitiveSolution = true
+              finalResult = (Some(true), Map.empty)
+            }
+
+            case (outcome, m) if (reportUnknownAsSat || outcome == Some(true)) => {
               import Evaluator._
 
               // WE HAVE TO CHECK THE COUNTER-EXAMPLE.
@@ -481,12 +534,6 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
                   reporter.info("    -> candidate model discarded.")
                 }
               }
-            }
-
-            case (Some(false), _) => {
-              // This means a definitive proof of unsatisfiability has been found.
-              foundDefinitiveSolution = true
-              finalResult = (Some(true), Map.empty)
             }
 
             case (None, m) => {

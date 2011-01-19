@@ -38,7 +38,7 @@ class Main(reporter : Reporter) extends Analyser(reporter) {
       var inputList: List[Seq[Expr]] = Nil
       for (i <- 1 to Settings.nbTestcases) {
         // reporter.info("Current constraints: " + constraints)
-        val argMap = solver.decideIterativeWithModel(And(prec, constraints), false)
+        val argMap = solver.decideIterativeWithBounds(And(prec, constraints), false)
         argMap match {
           case (Some(true), _) => None
           case (_ , map) =>
