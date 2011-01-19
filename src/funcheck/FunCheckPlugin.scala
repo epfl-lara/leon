@@ -29,6 +29,7 @@ class FunCheckPlugin(val global: Global) extends Plugin {
     "  -P:funcheck:nobapa             Disable BAPA Z3 extension" + "\n" +
     "  -P:funcheck:impure             Generate testcases only for impure functions" + "\n" +
     "  -P:funcheck:testcases=[1,2]    Number of testcases to generate per function" + "\n" +
+    "  -P:funcheck:testbounds=l:u     Lower and upper bounds for integers in recursive datatypes" + "\n" +
     "  -P:funcheck:quiet              No info and warning messages from the extensions" + "\n" +
     "  -P:funcheck:XP                 Enable weird transformations and other bug-producing features" + "\n" +
     "  -P:funcheck:PLDI               PLDI 2011 settings. Now frozen. Not completely functional. See CAV." + "\n" +
@@ -56,6 +57,7 @@ class FunCheckPlugin(val global: Global) extends Plugin {
         case s if s.startsWith("unrolling=") =>  purescala.Settings.unrollingLevel = try { s.substring("unrolling=".length, s.length).toInt } catch { case _ => 0 }
         case s if s.startsWith("functions=") =>  purescala.Settings.functionsToAnalyse = Set(splitList(s.substring("functions=".length, s.length)): _*)
         case s if s.startsWith("extensions=") => purescala.Settings.extensionNames = splitList(s.substring("extensions=".length, s.length))
+        case s if s.startsWith("testbounds=") => purescala.Settings.testBounds = try { val l = splitList(s.substring("testBounds=".length, s.length)).map(_.toInt); if (l.size != 2) (0, 3) else (l(0), l(1)) } catch { case _ => (0, 3) }
         case s if s.startsWith("testcases=") =>  purescala.Settings.nbTestcases = try { s.substring("testcases=".length, s.length).toInt } catch { case _ => 1 }
         case _ => error("Invalid option: " + option)
       }

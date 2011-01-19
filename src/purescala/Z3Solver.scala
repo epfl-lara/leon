@@ -176,8 +176,8 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   }
 
   private def boundValues : Unit = {
-    val upperBound: Z3AST = z3.mkInt(3, z3.mkIntSort)
-    val lowerBound: Z3AST = z3.mkInt(0, z3.mkIntSort)
+    val lowerBound: Z3AST = z3.mkInt(Settings.testBounds._1, z3.mkIntSort)
+    val upperBound: Z3AST = z3.mkInt(Settings.testBounds._2, z3.mkIntSort)
 
     def isUnbounded(field: VarDecl) : Boolean = field.getType match {
       case Int32Type => true

@@ -16,6 +16,7 @@ object Settings {
   var useBAPA: Boolean = true
   var impureTestcases: Boolean = false
   var nbTestcases: Int = 1
+  var testBounds: (Int, Int) = (0, 3)
   var useInstantiator: Boolean = false
   var useFairInstantiator: Boolean = false
   def useAnyInstantiator : Boolean = useInstantiator || useFairInstantiator
