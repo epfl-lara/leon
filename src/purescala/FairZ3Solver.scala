@@ -7,7 +7,8 @@ import Extensions._
 import Trees._
 import TypeTrees._
 
-import scala.collection.mutable.{HashMap => MutableHashMap}
+import scala.collection.mutable.{Map => MutableMap}
+import scala.collection.mutable.{Set => MutableSet}
 
 class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3Solver with Z3ModelReconstruction {
   assert(Settings.useFairInstantiator)
@@ -224,85 +225,343 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
   def decideWithModel(vc: Expr, forValidity: Boolean): (Option[Boolean], Map[Identifier,Expr]) = {
     restartZ3
 
+    val unrollingBank = new UnrollingBank
+
     lazy val varsInVC = variablesOf(vc) 
 
     if (neverInitialized) {
       reporter.error("Z3 Solver was not initialized with a PureScala Program.")
       None
     }
-    val toConvert = if (forValidity) negate(vc) else vc
-    val toCheckAgainstModels = toConvert
 
-    val result : (Option[Boolean],Map[Identifier,Expr]) = toZ3Formula(z3, toConvert) match {
-      case None => (None, Map.empty) // means it could not be translated
-      case Some((z3f, clauses)) => {
-        z3.assertCnstr(z3f)
-        println(z3f)
-        for(clause <- clauses) {
-          z3.assertCnstr(clause)
-          println(clause)
+    val toCheckAgainstModels = expandLets(if (forValidity) negate(vc) else vc)
+
+    reporter.info(" - Initial unrolling...")
+    val (basis, clauses, guards) = unrollingBank.closeUnrollings(toCheckAgainstModels)
+    // println("Here is what we want to check against models : " + toCheckAgainstModels)
+    // println("New basis: " + e)
+    // println("Bunch of clauses:\n" + se.map(_.toString).mkString("\n"))
+    // println("Bunch of blocking bools: " + sib.map(_.toString).mkString(", "))
+    var foundDefinitiveAnswer : Boolean = false
+    var definitiveAnswer : Option[Boolean] = None
+    var definitiveModel : Map[Identifier,Expr] = Map.empty
+
+    // println("Basis : " + basis)
+    z3.assertCnstr(toZ3Formula(z3, basis).get)
+    // println(toZ3Formula(z3, basis).get)
+    // for(clause <- clauses) {
+    //   println("we're getting a new clause " + clause)
+    //   z3.assertCnstr(toZ3Formula(z3, clause).get)
+    // }
+    z3.assertCnstr(toZ3Formula(z3, And(clauses)).get)
+
+    var blockingSet : Set[Expr] = Set(guards.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
+
+    while(!foundDefinitiveAnswer) {
+      val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.map(toZ3Formula(z3, _).get).toSeq
+      // println("Blocking set : " + blockingSet)
+
+      z3.push
+      if(!blockingSetAsZ3.isEmpty)
+        z3.assertCnstr(z3.mkAnd(blockingSetAsZ3 : _*))
+
+      //z3.checkAssumptions(blockingSetAsZ3 : _*) match {
+      reporter.info(" - Running Z3 search...")
+      z3.checkAndGetModel() match {
+        // case (None, m, _) => { // UNKNOWN
+        case (None, m) => { // UNKNOWN
+          reporter.warning("Z3 doesn't know because: " + z3.getSearchFailure.message)
+          foundDefinitiveAnswer = true
+          definitiveAnswer = None
+          definitiveModel = Map.empty
+          m.delete
         }
+        //case (Some(true), m, _) => { // SAT
+        case (Some(true), m) => { // SAT
+          import Evaluator._
 
-        var foundDefinitiveSolution = false
+          val asMap = modelToMap(m, varsInVC)
+          lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
+          reporter.info("A candidate counter-example was found. It should be valid, but let's check anyway.")
+          reporter.info(modelAsString)
+          val evalResult = eval(asMap, toCheckAgainstModels)
 
-        val actualResult : (Option[Boolean],Map[Identifier,Expr]) = (z3.checkAndGetModel() match {
-          case (Some(true), m) => {
-            import Evaluator._
-
-            // WE HAVE TO CHECK THE COUNTER-EXAMPLE.
-            val asMap = modelToMap(m, varsInVC)
-            lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
-            reporter.info("  - A candidate counter-example was found... Examining...")
-            reporter.info(modelAsString)
-
-            val evalResult = eval(asMap, toCheckAgainstModels)
-            
-            evalResult match {
-              case OK(BooleanLiteral(true)) => {
-                reporter.error("Counter-example found and confirmed:")
-                reporter.error(modelAsString)
-                foundDefinitiveSolution = true
-                (Some(false), asMap)
-              }
-              case OK(BooleanLiteral(false)) => {
-                reporter.info("Not a valid counter-example. Must.. keep.. going..")
-                (None, asMap)
-              }
-              case InfiniteComputation() => {
-                reporter.info("Model seems to lead to divergent computation.")
-                reporter.error(modelAsString)
-                foundDefinitiveSolution = true
-                (None, asMap)
-              }
-              case RuntimeError(msg) => {
-                reporter.info("Model leads to runtime error: " + msg)
-                reporter.error(modelAsString)
-                foundDefinitiveSolution = true
-                (Some(false), asMap)
-              }
-              case t @ TypeError(_,_) => {
-                scala.Predef.error("Type error in model evaluation.\n" + t.msg)
-              }
-              case _ => {
-                scala.Predef.error("Why am I here?")
-              }
+          evalResult match {
+            case OK(BooleanLiteral(true)) => {
+              reporter.error("Counter-example found and confirmed:")
+              reporter.error(modelAsString)
+              foundDefinitiveAnswer = true
+              definitiveAnswer = Some(false)
+              definitiveModel = asMap
+            }
+            case other => {
+              //println(z3)
+              reporter.error("Something went wrong. The model should have been valid, yet we got this: " + other)
+              reporter.error(m)
+              foundDefinitiveAnswer = true
+              definitiveAnswer = None
+              definitiveModel = asMap
             }
           }
-          case (Some(false), _) => (Some(true), Map.empty)
-          case (None, m) => {
-            reporter.warning("Z3 doesn't know because: " + z3.getSearchFailure.message)
-            (None, Map.empty)
+          m.delete
+        }
+        // case (Some(false), m, core) if core.isEmpty => {
+        //   reporter.info("Empty core, definitively valid.")
+        //   m.delete
+        //   foundDefinitiveAnswer = true
+        //   definitiveAnswer = Some(true)
+        //   definitiveModel = Map.empty
+        // }
+        case (Some(false), m) if blockingSet.isEmpty => {
+          foundDefinitiveAnswer = true
+          definitiveAnswer = Some(true)
+          definitiveModel = Map.empty
+        }
+        // case (Some(false), m, core) => {
+        case (Some(false), m) => {
+          m.delete
+          val USEUNSATCORE = false
+
+          z3.pop(1)
+          val (result2,m2) = z3.checkAndGetModel()
+          m2.delete
+          if (result2 == Some(false)) {
+            foundDefinitiveAnswer = true
+            definitiveAnswer = Some(true)
+            definitiveModel = Map.empty
+          } else {
+            reporter.info("We need to keep going.")
+
+            val toRelease : Set[Expr] = if(USEUNSATCORE) {
+              blockingSet//core.map(fromZ3Formula(_)).toSet
+            } else {
+              blockingSet
+            }
+
+            // println("Release set : " + toRelease)
+
+            blockingSet = blockingSet -- toRelease
+
+            val toReleaseAsPairs : Set[(Identifier,Boolean)] = toRelease.map(b => b match {
+              case Variable(id) => (id, true)
+              case Not(Variable(id)) => (id, false)
+              case _ => scala.Predef.error("Impossible value in release set: " + b)
+            })
+
+            reporter.info(" - more unrollings")
+            for((id,polarity) <- toReleaseAsPairs) {
+              val (newClauses,newBlockers) = unrollingBank.unlock(id, !polarity)
+              // for(clause <- newClauses) {
+              //   println("we're getting a new clause " + clause)
+              //   z3.assertCnstr(toZ3Formula(z3, clause).get)
+              // }
+
+              z3.assertCnstr(toZ3Formula(z3, And(newClauses)).get)
+              blockingSet = blockingSet ++ Set(newBlockers.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
+            }
+
+            // scala.Predef.error("...but not quite now.")
           }
-        })
-        actualResult
+        }
       }
     }
-    result
+
+    (definitiveAnswer, definitiveModel)
+
+    //var toUnroll : Set[FunctionInvocation] = Set.empty
+    //var everythingEverUnrolled : Set[FunctionInvocation] = Set.empty
+    //var blockingClause : List[Expr] = Nil
+    //val (basis, cls, bools) = clausifyITE(toCheckAgainstModels)
+    //var clauses = cls
+
+    //toUnroll = toUnroll ++ topLevelFunctionCallsOf(basis)
+
+    //println("The basis, with function calls " + topLevelFunctionCallsOf(basis))
+    //println(basis)
+    //println("The clauses")
+    //for (clause <- clauses) {
+    //  println(clause)
+
+    //  clause match {
+    //    case Iff(Variable(switch), cond) => {
+    //      toUnroll = toUnroll ++ topLevelFunctionCallsOf(cond)
+    //    }
+    //    case Implies(v @ Variable(switch), then) => {
+    //      if(!topLevelFunctionCallsOf(then).isEmpty) {
+    //        blockingClause = Not(v) :: blockingClause
+    //      }          
+    //    }
+    //    case Implies(Not(v @ Variable(switch)), elze) => {
+    //      if(!topLevelFunctionCallsOf(elze).isEmpty) {
+    //        blockingClause = v :: blockingClause
+    //      }
+    //    }
+    //    case _ => scala.Predef.error("Something wrong happened. Who added this clause? " + clause)
+    //  }
+    //}
+
+    //// I'm conjecturing that this loop terminates :D
+    //while(!toUnroll.isEmpty) {
+    //  println("Still to unroll now:")
+    //  println(toUnroll)
+    //  val copy = toUnroll
+    //  toUnroll = Set.empty
+
+    //  for(tu <- copy) {
+    //    val unrolled = unroll(tu) // this is a list of formulas
+    //    for(formula <- unrolled) {
+    //      val (basis2, clauses2, _) = clausifyITE(formula)
+    //      println(tu + " unrolled gives us " + basis2 + "\n" + clauses2.map(_.toString).mkString("\n"))
+    //      toUnroll = toUnroll ++ topLevelFunctionCallsOf(basis2)
+    //      clauses = basis2 :: (clauses2 ::: clauses)
+    //      for (clause <- clauses2) {
+    //        clause match {
+    //          case Iff(Variable(switch), cond) => {
+    //            toUnroll = toUnroll ++ topLevelFunctionCallsOf(cond)
+    //          }
+    //          case Implies(v @ Variable(switch), then) => {
+    //            if(!topLevelFunctionCallsOf(then).isEmpty) {
+    //              blockingClause = Not(v) :: blockingClause
+    //            }          
+    //          }
+    //          case Implies(Not(v @ Variable(switch)), elze) => {
+    //            if(!topLevelFunctionCallsOf(elze).isEmpty) {
+    //              blockingClause = v :: blockingClause
+    //            }
+    //          }
+    //          case _ => scala.Predef.error("Something wrong happened. Who added this clause? " + clause)
+    //        }
+    //      }
+    //    }
+    //  }
+    //  everythingEverUnrolled = everythingEverUnrolled ++ copy
+    //  toUnroll = toUnroll -- everythingEverUnrolled
+    //}
+    //println("The booleans.")
+    //println(bools)
+
+    //println("The blocking clause.")
+    //println(And(blockingClause))
+
+
+    //val toConvert = And(basis, And(clauses))
+
+    //val result : (Option[Boolean],Map[Identifier,Expr]) = toZ3Formula(z3, toConvert) match {
+    //  case None => (None, Map.empty) // means it could not be translated
+    //  case Some(z3f) => {
+    //    z3.assertCnstr(z3f)
+    //    //println(z3f)
+
+    //    //z3.assertCnstr(toZ3Formula(z3, And(blockingClause)).get)
+
+    //    var foundDefinitiveSolution = false
+
+    //    val blockingClauseAsZ3 : Seq[Z3AST] = blockingClause.map(toZ3Formula(z3, _).get)
+
+    //    val actualResult : (Option[Boolean],Map[Identifier,Expr]) = (z3.checkAssumptions(blockingClauseAsZ3 : _*) match {
+    //      case (Some(true), m, _) => {
+    //        import Evaluator._
+
+    //        // WE HAVE TO CHECK THE COUNTER-EXAMPLE.
+    //        val asMap = modelToMap(m, varsInVC)
+    //        lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
+    //        reporter.info("  - A candidate counter-example was found... Examining...")
+    //        reporter.info(modelAsString)
+
+    //        val evalResult = eval(asMap, toCheckAgainstModels)
+    //        
+    //        evalResult match {
+    //          case OK(BooleanLiteral(true)) => {
+    //            reporter.error("Counter-example found and confirmed:")
+    //            reporter.error(modelAsString)
+    //            foundDefinitiveSolution = true
+    //            (Some(false), asMap)
+    //          }
+    //          case OK(BooleanLiteral(false)) => {
+    //            reporter.info("Not a valid counter-example. Must.. keep.. going..")
+    //            (None, asMap)
+    //          }
+    //          case InfiniteComputation() => {
+    //            reporter.info("Model seems to lead to divergent computation.")
+    //            reporter.error(modelAsString)
+    //            foundDefinitiveSolution = true
+    //            (None, asMap)
+    //          }
+    //          case RuntimeError(msg) => {
+    //            reporter.info("Model leads to runtime error: " + msg)
+    //            reporter.error(modelAsString)
+    //            foundDefinitiveSolution = true
+    //            (Some(false), asMap)
+    //          }
+    //          case t @ TypeError(_,_) => {
+    //            scala.Predef.error("Type error in model evaluation.\n" + t.msg)
+    //          }
+    //          case _ => {
+    //            scala.Predef.error("Why am I here?")
+    //          }
+    //        }
+    //      }
+    //      case (Some(false), _, core) => {
+    //        reporter.info("Here is the core : " + core.map(_.toString).mkString(", "))
+    //        (Some(true), Map.empty)
+    //      }
+    //      case (None, m, _) => {
+    //        reporter.warning("Z3 doesn't know because: " + z3.getSearchFailure.message)
+    //        (None, Map.empty)
+    //      }
+    //    })
+    //    actualResult
+    //  }
+    //}
+    //result
+  }
+
+  // Returns between 0 and 2 tautologies with respect to the interpretation of
+  // the function and its postcondition.
+  private def unroll(functionInvocation: FunctionInvocation) : List[Expr] = {
+    val FunctionInvocation(fd, args) = functionInvocation
+    val postExpr = if(fd.hasPostcondition) {
+      val post = expandLets(matchToIfThenElse(fd.postcondition.get))
+      val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*) + (ResultVariable() -> functionInvocation)
+      val newBody = /*partialEvaluator(*/replace(substMap, post)/*)*/
+      List(newBody)
+    } else Nil
+  
+    val bodyExpr = if(fd.hasBody) {
+      val body = expandLets(matchToIfThenElse(fd.body.get))
+      val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*)
+      val newBody = /*partialEvaluator(*/replace(substMap, body)/*)*/
+      List(Equals(functionInvocation, newBody))
+    } else Nil
+
+    postExpr ::: bodyExpr
+  }
+
+  private def clausifyITE(formula : Expr) : (Expr, List[Expr], Set[Identifier]) = {
+    var newClauses : List[Expr] = Nil
+    var newBools : Set[Identifier] = Set.empty
+
+    def clausify(ex : Expr) : Option[Expr] = ex match {
+      case ie @ IfExpr(cond, then, elze) => {
+        val switch = FreshIdentifier("path", true).setType(BooleanType).toVariable
+        val placeHolder = FreshIdentifier("iteval", true).setType(ie.getType).toVariable
+        newClauses = Iff(switch, cond) :: newClauses
+        newClauses = Implies(switch, Equals(placeHolder, then)) :: newClauses
+        newClauses = Implies(Not(switch), Equals(placeHolder, elze)) :: newClauses
+        newBools = newBools + switch.id
+        Some(placeHolder)
+      }
+      case _ => None
+    }
+
+    val cleanedUp = searchAndReplaceDFS(clausify)(formula)
+
+    (cleanedUp, newClauses.reverse, newBools)
   }
 
   protected[purescala] var exprToZ3Id : Map[Expr,Z3AST] = Map.empty
   protected[purescala] var z3IdToExpr : Map[Z3AST,Expr] = Map.empty
-  protected[purescala] def toZ3Formula(z3: Z3Context, expr: Expr, initialMap: Map[Identifier,Z3AST] = Map.empty, extraClauses : List[Z3AST] = Nil) : Option[(Z3AST, List[Z3AST])] = {
+  protected[purescala] def toZ3Formula(z3: Z3Context, expr: Expr, initialMap: Map[Identifier,Z3AST] = Map.empty) : Option[Z3AST] = {
     class CantTranslateException extends Exception
 
     val varsInformula: Set[Identifier] = variablesOf(expr)
@@ -321,8 +580,6 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
       exprToZ3Id += (k.toVariable -> v)
       z3IdToExpr += (v -> k.toVariable)
     }
-
-    var accumulatedClauses : List[Z3AST] = extraClauses
 
     def rec(ex: Expr): Z3AST = { 
       //println("Stacking up call for:")
@@ -346,26 +603,26 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
           case Some(ast) => ast
           case None => {
             if (id.isLetBinder) {
-              //scala.Predef.error("Error in formula being translated to Z3: identifier " + id + " seems to have escaped its let-definition")
+              scala.Predef.error("Error in formula being translated to Z3: identifier " + id + " seems to have escaped its let-definition")
             }
-            val newAST = z3.mkFreshConst(id.name, typeToSort(v.getType))
+            val newAST = z3.mkFreshConst(id.uniqueName/*name*/, typeToSort(v.getType))
             z3Vars = z3Vars + (id -> newAST)
             exprToZ3Id += (v -> newAST)
             z3IdToExpr += (newAST -> v)
             newAST
           }
         }
-        case ite @ IfExpr(c, t, e) => {
-          val switch = z3.mkFreshConst("path", z3.mkBoolSort)
-          val placeHolder = z3.mkFreshConst("ite", typeToSort(ite.getType))
-          val clause1 = z3.mkIff(switch, rec(c))
-          val clause2 = z3.mkImplies(switch, z3.mkEq(placeHolder, rec(t)))
-          val clause3 = z3.mkImplies(z3.mkNot(switch), z3.mkEq(placeHolder, rec(e)))
+        // case ite @ IfExpr(c, t, e) => {
+        //   val switch = z3.mkFreshConst("path", z3.mkBoolSort)
+        //   val placeHolder = z3.mkFreshConst("ite", typeToSort(ite.getType))
+        //   val clause1 = z3.mkIff(switch, rec(c))
+        //   val clause2 = z3.mkImplies(switch, z3.mkEq(placeHolder, rec(t)))
+        //   val clause3 = z3.mkImplies(z3.mkNot(switch), z3.mkEq(placeHolder, rec(e)))
 
-          accumulatedClauses = clause3 :: clause2 :: clause1 :: accumulatedClauses
+        //   accumulatedClauses = clause3 :: clause2 :: clause1 :: accumulatedClauses
 
-          placeHolder
-        }
+        //   placeHolder
+        // }
         case And(exs) => z3.mkAnd(exs.map(rec(_)): _*)
         case Or(exs) => z3.mkOr(exs.map(rec(_)): _*)
         case Implies(l, r) => z3.mkImplies(rec(l), rec(r))
@@ -425,19 +682,11 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
           throw new CantTranslateException
         }
       })
-      // println("Encoding of:")
-      // println(ex)
-      // println("...was encoded as:")
-      // println(recResult)
       recResult
     }
 
     try {
-      val res = Some((rec(expr), accumulatedClauses.reverse))
-      // val usedInZ3Form = z3Vars.keys.toSet
-      // println("Variables in formula:   " + varsInformula.map(_.uniqueName))
-      // println("Variables passed to Z3: " + usedInZ3Form.map(_.uniqueName))
-
+      val res = Some(rec(expr))
       res
     } catch {
       case e: CantTranslateException => None
@@ -537,12 +786,122 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         System.err.println(reverseFunctionMap.toSeq.mkString("\n"))
         System.err.println("REVERSE CONS MAP:")
         System.err.println(reverseADTConstructors.toSeq.mkString("\n"))
-        // System.exit(-1)
         throw new CantTranslateException(t)
       }
     }
 
     rec(tree)
+  }
+
+  // This remembers everything that was unrolled, which literal is blocking which calls, etc.
+  class UnrollingBank {
+    private val everythingEverUnrolled : MutableSet[FunctionInvocation] = MutableSet.empty
+
+    // stores the invocations that boolean literals are guarding.
+    private val blocked : MutableMap[(Identifier,Boolean),Set[FunctionInvocation]] = MutableMap.empty
+
+    def wasUnrolledBefore(functionInvocation : FunctionInvocation) : Boolean = {
+      everythingEverUnrolled(functionInvocation)
+    }
+
+    private def registerAsUnrolled(functionInvocation : FunctionInvocation) : Unit = {
+      everythingEverUnrolled += functionInvocation
+    }
+
+    def closeUnrollings(formula : Expr) : (Expr, Seq[Expr], Seq[(Identifier,Boolean)]) = {
+      var (basis, clauses, _) = clausifyITE(formula)
+
+      var unrolledNow : Set[FunctionInvocation] = Set.empty
+      var stillToUnroll : Set[FunctionInvocation] = Set.empty
+      var treatedClauses : List[Expr] = Nil
+      var blockers : List[(Identifier,Boolean)] = Nil
+
+      stillToUnroll = stillToUnroll ++ topLevelFunctionCallsOf(basis)
+      do {
+        // We go through each clause and figure out what must be enrolled and
+        // what must be blocked. We register everything.
+        for(clause <- clauses) {
+          clause match {
+            case Iff(Variable(_), cond) => {
+              stillToUnroll = stillToUnroll ++ topLevelFunctionCallsOf(cond)
+            }
+            // TODO : sort out the functions that are not recursive and unroll
+            // them in any case
+            case Implies(v @ Variable(id), then) => {
+              val calls = topLevelFunctionCallsOf(then)
+              if(!calls.isEmpty) {
+                assert(!blocked.isDefinedAt((id,true)))
+                blocked((id,true)) = calls
+                blockers = (id,true) :: blockers
+              }
+            }
+            case Implies(Not(v @ Variable(id)), elze) => {
+              val calls = topLevelFunctionCallsOf(elze)
+              if(!calls.isEmpty) {
+                assert(!blocked.isDefinedAt((id,false)))
+                blocked((id,false)) = calls
+                blockers = (id,false) :: blockers
+              }
+            }
+            case _ => scala.Predef.error("Who added this as a clause? " + clause)
+          }
+          treatedClauses = clause :: treatedClauses
+        }
+
+        clauses = Nil
+
+        while(!stillToUnroll.isEmpty) {
+          val copy = stillToUnroll
+          stillToUnroll = Set.empty
+
+          for(stu <- (copy -- unrolledNow) if !wasUnrolledBefore(stu)) {
+            val unrolled : Seq[Expr] = unroll(stu) // that's between 0 and two formulas
+            registerAsUnrolled(stu)
+            unrolledNow = unrolledNow + stu
+            
+            for(formula <- unrolled) {
+              val (basis2, clauses2, _) = clausifyITE(formula)
+              stillToUnroll = stillToUnroll ++ topLevelFunctionCallsOf(basis2)
+              clauses = clauses2 ::: clauses
+              treatedClauses = basis2 :: treatedClauses
+            }
+          }
+        }
+        
+      } while(!clauses.isEmpty)
+
+      (basis, treatedClauses.reverse, blockers.reverse)
+    }
+
+    // if polarity == true, means that we used to have !id in the blocking set,
+    // and that now it's gone. As a result, we need to unroll everything that
+    // id is guarding. Similarly for polarity == false
+    def unlock(id: Identifier, polarity: Boolean) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
+      if(!blocked.isDefinedAt((id,polarity))) {
+        (Seq.empty,Seq.empty)
+      } else {
+        var newBlockers : Set[(Identifier,Boolean)] = Set.empty
+        var newClauses : List[Expr] = Nil
+
+        val blockedSet = blocked((id,polarity))
+
+        for(functionInvocation <- blockedSet) {
+          val (_, clauses, blockers) = closeUnrollings(functionInvocation)
+          newClauses = newClauses ++ clauses
+          newBlockers = newBlockers ++ blockers
+        }
+
+        (newClauses, newBlockers.toSeq)
+      }
+    }
+
+    private var invocations : List[FunctionInvocation] = Nil
+
+    def addInvocation(blocker: Identifier, polarity: Boolean, invocation: FunctionInvocation) : Unit = {
+      invocations = invocation :: invocations
+    }
+
+
   }
 }
 

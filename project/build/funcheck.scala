@@ -48,7 +48,7 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
       fw.write(plugin.jarPath.absolutePath)
       fw.write("\"" + nl + nl)
       fw.write("LD_LIBRARY_PATH=" + ("." / "lib-bin").absolutePath + " \\" + nl)
-      fw.write("java \\" + nl)
+      fw.write("java -Xmx1024M \\" + nl)
 
       // This is a hack :(
       val libStr = (buildLibraryJar.absolutePath).toString
