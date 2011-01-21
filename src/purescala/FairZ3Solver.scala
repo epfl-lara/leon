@@ -327,19 +327,52 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
               definitiveAnswer = Some(false)
               definitiveModel = cleanModel
             } else {
-              reporter.info("We need to keep going.")
+              reporter.info("- We need to keep going.")
 
-              val toRelease : Set[Expr] = if(USEUNSATCORE) {
-                blockingSet//core.map(fromZ3Formula(_)).toSet
-              } else {
-                blockingSet
+              val toRelease : Set[Expr] = blockingSet
+
+              var fixedForEver : Set[Expr] = Set.empty
+
+              if(Settings.pruneBranches) {
+                for(ex <- blockingSet) ex match {
+                  case Not(Variable(b)) => {
+                    z3.push
+                    z3.assertCnstr(toZ3Formula(z3, Variable(b)).get)
+                    z3.check match {
+                      case Some(false) => {
+                        //println("We had ~" + b + " in the blocking set. We now know it should stay there forever.")
+                        z3.pop(1)
+                        z3.assertCnstr(toZ3Formula(z3, Not(Variable(b))).get)
+                        fixedForEver = fixedForEver + ex
+                      }
+                      case _ => z3.pop(1)
+                    }
+                  }
+                  case Variable(b) => {
+                    z3.push
+                    z3.assertCnstr(toZ3Formula(z3, Not(Variable(b))).get)
+                    z3.check match {
+                      case Some(false) => {
+                        //println("We had " + b + " in the blocking set. We now know it should stay there forever.")
+                        z3.pop(1)
+                        z3.assertCnstr(toZ3Formula(z3, Variable(b)).get)
+                        fixedForEver = fixedForEver + ex
+                      }
+                      case _ => z3.pop(1)
+                    }
+                  }
+                  case _ => scala.Predef.error("Should not have happened.")
+                }
+                if(fixedForEver.size > 0) {
+                  reporter.info("- Pruned out " + fixedForEver.size + " branches.")
+                }
               }
 
               // println("Release set : " + toRelease)
 
               blockingSet = blockingSet -- toRelease
 
-              val toReleaseAsPairs : Set[(Identifier,Boolean)] = toRelease.map(b => b match {
+              val toReleaseAsPairs : Set[(Identifier,Boolean)] = (toRelease -- fixedForEver).map(b => b match {
                 case Variable(id) => (id, true)
                 case Not(Variable(id)) => (id, false)
                 case _ => scala.Predef.error("Impossible value in release set: " + b)
@@ -353,7 +386,10 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
                 //   z3.assertCnstr(toZ3Formula(z3, clause).get)
                 // }
 
-                z3.assertCnstr(toZ3Formula(z3, And(newClauses)).get)
+                for(ncl <- newClauses) {
+                  z3.assertCnstr(toZ3Formula(z3, ncl).get)
+                }
+                //z3.assertCnstr(toZ3Formula(z3, And(newClauses)).get)
                 blockingSet = blockingSet ++ Set(newBlockers.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
               }
             }
@@ -377,17 +413,17 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
 
     evalResult match {
       case OK(BooleanLiteral(true)) => {
-        reporter.info("Model validated:")
+        reporter.info("- Model validated:")
         reporter.info(modelAsString)
         (true, asMap)
       }
       case RuntimeError(msg) => {
-        reporter.info("Model leads to runtime error: " + msg)
+        reporter.info("- Model leads to runtime error: " + msg)
         reporter.error(modelAsString)
         (true, asMap)
       }
       case OK(BooleanLiteral(false)) => {
-        reporter.info("Invalid model.")
+        reporter.info("- Invalid model.")
         (false, Map.empty)
       }
       case other => {
