@@ -33,6 +33,8 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     program = prog
   }
 
+  var partialEvaluator : PartialEvaluator = null
+
   private def restartZ3: Unit = {
     if (neverInitialized) {
       neverInitialized = false
@@ -40,6 +42,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
       z3.delete
     }
     z3 = new Z3Context(z3cfg)
+    partialEvaluator = new PartialEvaluator(program)
     // z3.traceToStdout
 
     exprToZ3Id = Map.empty
@@ -278,32 +281,19 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         }
         //case (Some(true), m, _) => { // SAT
         case (Some(true), m) => { // SAT
-          import Evaluator._
+          val (trueModel, model) = validateAndDeleteModel(m, toCheckAgainstModels, varsInVC)
 
-          val asMap = modelToMap(m, varsInVC)
-          lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
-          reporter.info("A candidate counter-example was found. It should be valid, but let's check anyway.")
-          reporter.info(modelAsString)
-          val evalResult = eval(asMap, toCheckAgainstModels)
-
-          evalResult match {
-            case OK(BooleanLiteral(true)) => {
-              reporter.error("Counter-example found and confirmed:")
-              reporter.error(modelAsString)
-              foundDefinitiveAnswer = true
-              definitiveAnswer = Some(false)
-              definitiveModel = asMap
-            }
-            case other => {
-              //println(z3)
-              reporter.error("Something went wrong. The model should have been valid, yet we got this: " + other)
-              reporter.error(m)
-              foundDefinitiveAnswer = true
-              definitiveAnswer = None
-              definitiveModel = asMap
-            }
+          if (trueModel) {
+            foundDefinitiveAnswer = true
+            definitiveAnswer = Some(false)
+            definitiveModel = model
+          } else {
+            reporter.error("Something went wrong. The model should have been valid, yet we got this : ")
+            reporter.error(model)
+            foundDefinitiveAnswer = true
+            definitiveAnswer = None
+            definitiveModel = model
           }
-          m.delete
         }
         // case (Some(false), m, core) if core.isEmpty => {
         //   reporter.info("Empty core, definitively valid.")
@@ -324,42 +314,49 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
 
           z3.pop(1)
           val (result2,m2) = z3.checkAndGetModel()
-          m2.delete
+
           if (result2 == Some(false)) {
             foundDefinitiveAnswer = true
             definitiveAnswer = Some(true)
             definitiveModel = Map.empty
           } else {
-            reporter.info("We need to keep going.")
-
-            val toRelease : Set[Expr] = if(USEUNSATCORE) {
-              blockingSet//core.map(fromZ3Formula(_)).toSet
+            // we might have been lucky :D
+            val (wereWeLucky, cleanModel) = validateAndDeleteModel(m2, toCheckAgainstModels, varsInVC)
+            if(wereWeLucky) {
+              foundDefinitiveAnswer = true
+              definitiveAnswer = Some(false)
+              definitiveModel = cleanModel
             } else {
-              blockingSet
+              reporter.info("We need to keep going.")
+
+              val toRelease : Set[Expr] = if(USEUNSATCORE) {
+                blockingSet//core.map(fromZ3Formula(_)).toSet
+              } else {
+                blockingSet
+              }
+
+              // println("Release set : " + toRelease)
+
+              blockingSet = blockingSet -- toRelease
+
+              val toReleaseAsPairs : Set[(Identifier,Boolean)] = toRelease.map(b => b match {
+                case Variable(id) => (id, true)
+                case Not(Variable(id)) => (id, false)
+                case _ => scala.Predef.error("Impossible value in release set: " + b)
+              })
+
+              reporter.info(" - more unrollings")
+              for((id,polarity) <- toReleaseAsPairs) {
+                val (newClauses,newBlockers) = unrollingBank.unlock(id, !polarity)
+                // for(clause <- newClauses) {
+                //   println("we're getting a new clause " + clause)
+                //   z3.assertCnstr(toZ3Formula(z3, clause).get)
+                // }
+
+                z3.assertCnstr(toZ3Formula(z3, And(newClauses)).get)
+                blockingSet = blockingSet ++ Set(newBlockers.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
+              }
             }
-
-            // println("Release set : " + toRelease)
-
-            blockingSet = blockingSet -- toRelease
-
-            val toReleaseAsPairs : Set[(Identifier,Boolean)] = toRelease.map(b => b match {
-              case Variable(id) => (id, true)
-              case Not(Variable(id)) => (id, false)
-              case _ => scala.Predef.error("Impossible value in release set: " + b)
-            })
-
-            reporter.info(" - more unrollings")
-            for((id,polarity) <- toReleaseAsPairs) {
-              val (newClauses,newBlockers) = unrollingBank.unlock(id, !polarity)
-              // for(clause <- newClauses) {
-              //   println("we're getting a new clause " + clause)
-              //   z3.assertCnstr(toZ3Formula(z3, clause).get)
-              // }
-
-              z3.assertCnstr(toZ3Formula(z3, And(newClauses)).get)
-              blockingSet = blockingSet ++ Set(newBlockers.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
-            }
-
             // scala.Predef.error("...but not quite now.")
           }
         }
@@ -367,153 +364,37 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     }
 
     (definitiveAnswer, definitiveModel)
+  }
 
-    //var toUnroll : Set[FunctionInvocation] = Set.empty
-    //var everythingEverUnrolled : Set[FunctionInvocation] = Set.empty
-    //var blockingClause : List[Expr] = Nil
-    //val (basis, cls, bools) = clausifyITE(toCheckAgainstModels)
-    //var clauses = cls
+  private def validateAndDeleteModel(model: Z3Model, formula: Expr, variables: Set[Identifier]) : (Boolean, Map[Identifier,Expr]) = {
+    import Evaluator._
 
-    //toUnroll = toUnroll ++ topLevelFunctionCallsOf(basis)
+    val asMap = modelToMap(model, variables)
+    model.delete
 
-    //println("The basis, with function calls " + topLevelFunctionCallsOf(basis))
-    //println(basis)
-    //println("The clauses")
-    //for (clause <- clauses) {
-    //  println(clause)
+    lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
+    val evalResult = eval(asMap, formula)
 
-    //  clause match {
-    //    case Iff(Variable(switch), cond) => {
-    //      toUnroll = toUnroll ++ topLevelFunctionCallsOf(cond)
-    //    }
-    //    case Implies(v @ Variable(switch), then) => {
-    //      if(!topLevelFunctionCallsOf(then).isEmpty) {
-    //        blockingClause = Not(v) :: blockingClause
-    //      }          
-    //    }
-    //    case Implies(Not(v @ Variable(switch)), elze) => {
-    //      if(!topLevelFunctionCallsOf(elze).isEmpty) {
-    //        blockingClause = v :: blockingClause
-    //      }
-    //    }
-    //    case _ => scala.Predef.error("Something wrong happened. Who added this clause? " + clause)
-    //  }
-    //}
-
-    //// I'm conjecturing that this loop terminates :D
-    //while(!toUnroll.isEmpty) {
-    //  println("Still to unroll now:")
-    //  println(toUnroll)
-    //  val copy = toUnroll
-    //  toUnroll = Set.empty
-
-    //  for(tu <- copy) {
-    //    val unrolled = unroll(tu) // this is a list of formulas
-    //    for(formula <- unrolled) {
-    //      val (basis2, clauses2, _) = clausifyITE(formula)
-    //      println(tu + " unrolled gives us " + basis2 + "\n" + clauses2.map(_.toString).mkString("\n"))
-    //      toUnroll = toUnroll ++ topLevelFunctionCallsOf(basis2)
-    //      clauses = basis2 :: (clauses2 ::: clauses)
-    //      for (clause <- clauses2) {
-    //        clause match {
-    //          case Iff(Variable(switch), cond) => {
-    //            toUnroll = toUnroll ++ topLevelFunctionCallsOf(cond)
-    //          }
-    //          case Implies(v @ Variable(switch), then) => {
-    //            if(!topLevelFunctionCallsOf(then).isEmpty) {
-    //              blockingClause = Not(v) :: blockingClause
-    //            }          
-    //          }
-    //          case Implies(Not(v @ Variable(switch)), elze) => {
-    //            if(!topLevelFunctionCallsOf(elze).isEmpty) {
-    //              blockingClause = v :: blockingClause
-    //            }
-    //          }
-    //          case _ => scala.Predef.error("Something wrong happened. Who added this clause? " + clause)
-    //        }
-    //      }
-    //    }
-    //  }
-    //  everythingEverUnrolled = everythingEverUnrolled ++ copy
-    //  toUnroll = toUnroll -- everythingEverUnrolled
-    //}
-    //println("The booleans.")
-    //println(bools)
-
-    //println("The blocking clause.")
-    //println(And(blockingClause))
-
-
-    //val toConvert = And(basis, And(clauses))
-
-    //val result : (Option[Boolean],Map[Identifier,Expr]) = toZ3Formula(z3, toConvert) match {
-    //  case None => (None, Map.empty) // means it could not be translated
-    //  case Some(z3f) => {
-    //    z3.assertCnstr(z3f)
-    //    //println(z3f)
-
-    //    //z3.assertCnstr(toZ3Formula(z3, And(blockingClause)).get)
-
-    //    var foundDefinitiveSolution = false
-
-    //    val blockingClauseAsZ3 : Seq[Z3AST] = blockingClause.map(toZ3Formula(z3, _).get)
-
-    //    val actualResult : (Option[Boolean],Map[Identifier,Expr]) = (z3.checkAssumptions(blockingClauseAsZ3 : _*) match {
-    //      case (Some(true), m, _) => {
-    //        import Evaluator._
-
-    //        // WE HAVE TO CHECK THE COUNTER-EXAMPLE.
-    //        val asMap = modelToMap(m, varsInVC)
-    //        lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
-    //        reporter.info("  - A candidate counter-example was found... Examining...")
-    //        reporter.info(modelAsString)
-
-    //        val evalResult = eval(asMap, toCheckAgainstModels)
-    //        
-    //        evalResult match {
-    //          case OK(BooleanLiteral(true)) => {
-    //            reporter.error("Counter-example found and confirmed:")
-    //            reporter.error(modelAsString)
-    //            foundDefinitiveSolution = true
-    //            (Some(false), asMap)
-    //          }
-    //          case OK(BooleanLiteral(false)) => {
-    //            reporter.info("Not a valid counter-example. Must.. keep.. going..")
-    //            (None, asMap)
-    //          }
-    //          case InfiniteComputation() => {
-    //            reporter.info("Model seems to lead to divergent computation.")
-    //            reporter.error(modelAsString)
-    //            foundDefinitiveSolution = true
-    //            (None, asMap)
-    //          }
-    //          case RuntimeError(msg) => {
-    //            reporter.info("Model leads to runtime error: " + msg)
-    //            reporter.error(modelAsString)
-    //            foundDefinitiveSolution = true
-    //            (Some(false), asMap)
-    //          }
-    //          case t @ TypeError(_,_) => {
-    //            scala.Predef.error("Type error in model evaluation.\n" + t.msg)
-    //          }
-    //          case _ => {
-    //            scala.Predef.error("Why am I here?")
-    //          }
-    //        }
-    //      }
-    //      case (Some(false), _, core) => {
-    //        reporter.info("Here is the core : " + core.map(_.toString).mkString(", "))
-    //        (Some(true), Map.empty)
-    //      }
-    //      case (None, m, _) => {
-    //        reporter.warning("Z3 doesn't know because: " + z3.getSearchFailure.message)
-    //        (None, Map.empty)
-    //      }
-    //    })
-    //    actualResult
-    //  }
-    //}
-    //result
+    evalResult match {
+      case OK(BooleanLiteral(true)) => {
+        reporter.info("Model validated:")
+        reporter.info(modelAsString)
+        (true, asMap)
+      }
+      case RuntimeError(msg) => {
+        reporter.info("Model leads to runtime error: " + msg)
+        reporter.error(modelAsString)
+        (true, asMap)
+      }
+      case OK(BooleanLiteral(false)) => {
+        reporter.info("Invalid model.")
+        (false, Map.empty)
+      }
+      case other => {
+        reporter.error("Something went wrong. While evaluating the model, we got this: " + other)
+        (false, Map.empty)
+      }
+    }
   }
 
   // Returns between 0 and 2 tautologies with respect to the interpretation of
@@ -523,14 +404,16 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     val postExpr = if(fd.hasPostcondition) {
       val post = expandLets(matchToIfThenElse(fd.postcondition.get))
       val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*) + (ResultVariable() -> functionInvocation)
-      val newBody = /*partialEvaluator(*/replace(substMap, post)/*)*/
+      //val newBody = partialEvaluator(replace(substMap, post))
+      val newBody = replace(substMap, post)
       List(newBody)
     } else Nil
   
     val bodyExpr = if(fd.hasBody) {
       val body = expandLets(matchToIfThenElse(fd.body.get))
       val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*)
-      val newBody = /*partialEvaluator(*/replace(substMap, body)/*)*/
+      //val newBody = partialEvaluator(replace(substMap, body))
+      val newBody = replace(substMap, body)
       List(Equals(functionInvocation, newBody))
     } else Nil
 
@@ -855,6 +738,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
           stillToUnroll = Set.empty
 
           for(stu <- (copy -- unrolledNow) if !wasUnrolledBefore(stu)) {
+            // println("unrolling " + stu)
             val unrolled : Seq[Expr] = unroll(stu) // that's between 0 and two formulas
             registerAsUnrolled(stu)
             unrolledNow = unrolledNow + stu
