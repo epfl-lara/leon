@@ -14,10 +14,16 @@ object RedBlackTree {
   case class Node(color: Color, left: Tree, value: Int, right: Tree) extends Tree
 
   def hasRedBlackNodes(t: Tree) : Boolean = t match {
-    case Empty() => true
+    case Empty()             => true
     case Node(Black(),l,_,r) => hasRedBlackNodes(l) && hasRedBlackNodes(r)
     case Node(Red(),l,_,r)   => hasRedBlackNodes(l) && hasRedBlackNodes(r)
-    case _ => false
+    case _                   => false
+  }
+
+  def hasRedBlackDesc(t: Tree) : Boolean = t match {
+    case Node(_,l,_,r)      => hasRedBlackNodes(l) && hasRedBlackNodes(r)
+    case Empty()            => true
+    case DoubleBlackEmpty() => true
   }
 
   def content(t: Tree) : Set[Int] = t match {
@@ -37,6 +43,11 @@ object RedBlackTree {
     case Empty() => true
     case Node(Black(),_,_,_) => true
     case _ => false
+  }
+
+  def isNode(t: Tree) : Boolean = t match {
+    case Node(_,_,_,_) => true
+    case _             => false
   }
 
   def redNodesHaveBlackChildren(t: Tree) : Boolean = {
@@ -152,76 +163,102 @@ object RedBlackTree {
   } ensuring (res => content(res) == content(Node(c,a,x,b)) /*&& redDescHaveBlackChildren(res)*/)
 
   /* Deletion */
-  def incColor(c: Color) : Color = c match {
-    // Could add precondition for not incrementing BB */
-    case Black()         => DoubleBlack()
-    case Red()           => Black()
-    case NegativeBlack() => Red()
-    case DoubleBlack() => throw new Exception("Incrementing double black color")
-  }
+  def incColor(c: Color) : Color = {
+    require(c != DoubleBlack())
+    c match {
+      case Black()         => DoubleBlack()
+      case Red()           => Black()
+      case NegativeBlack() => Red()
+      // case DoubleBlack() => throw new Exception("Incrementing double black color")
+    }
+  } ensuring(_ != NegativeBlack())
 
-  def incColor(t: Tree) : Tree = t match {
-    case Node(c, l, k, r) => Node(incColor(c), l, k, r)
-    case Empty()          => DoubleBlackEmpty()
-    case _ => throw new Exception("Incrementing double black leaf")
-  }
+  def incColor(t: Tree) : Tree = {
+    require(!isDoubleBlack(t))
+    t match {
+      case Node(c, l, k, r) => Node(incColor(c), l, k, r)
+      case Empty()          => DoubleBlackEmpty()
+      // case _ => throw new Exception("Incrementing double black leaf")
+    }
+  } ensuring(!isNegativeBlack(_))
 
-  def decColor(c: Color) : Color = c match {
-    case DoubleBlack() => Black()
-    case Black()       => Red()
-    case Red()         => NegativeBlack()
-    case NegativeBlack() => throw new Exception("Decrementing negative black color")
-  }
+  def decColor(c: Color) : Color = {
+    require(c != NegativeBlack())
+    c match {
+      case DoubleBlack() => Black()
+      case Black()       => Red()
+      case Red()         => NegativeBlack()
+      // case NegativeBlack() => throw new Exception("Decrementing negative black color")
+    }
+  } ensuring(_ != DoubleBlack())
 
-  def decColor(t: Tree) : Tree = t match {
-    case Node(c, l, k, r)   => Node(decColor(c), l, k, r)
-    case DoubleBlackEmpty() => Empty()
-    case _ => throw new Exception("Decrementing black leaf")
-  }
+  def decColor(t: Tree) : Tree = {
+    require(!isNegativeBlack(t) && t != Empty())
+    t match {
+      case Node(c, l, k, r)   => Node(decColor(c), l, k, r)
+      case DoubleBlackEmpty() => Empty()
+      // case _ => throw new Exception("Decrementing black leaf")
+    }
+  } ensuring(!isDoubleBlack(_))
 
   def del(node: Tree, key: Int) : Tree = {
+    require(redNodesHaveBlackChildren(node) && hasRedBlackNodes(node))
     node match {
       case Node(c, l, k, r) =>
-        if      (key < k) bubble(c, del(l, key), k, r)
-        else if (key == k)  remove(node)
-        else              bubble(c, l, k, del(r, key))
+        if      (key < k)  bubble(c, del(l, key), k, r)
+        else if (key == k) remove(node)
+        else               bubble(c, l, k, del(r, key))
       case _ => node
+    }
+  } ensuring(res => redNodesHaveBlackChildren(res) && hasRedBlackNodes(res))
+
+  def max(t: Tree) : Int = {
+    require(isNode(t))
+    t match {
+      case Node(c, l, k, r @ Node(cr, lr, kr, rr)) => max(r)
+      case Node(c, l, k, r)                        => k
+      // case _ => throw new Exception("Searching for max in a leaf")
     }
   }
 
-  def max(t: Tree) : Int = t match {
-    case Node(c, l, k, r @ Node(cr, lr, kr, rr)) => max(r)
-    case Node(c, l, k, r)                        => k
-    case _ => throw new Exception("Searching for max in a leaf")
-  }
-
   // note: there are unnecessary cases in Racket code file
-  def remove(node: Tree) : Tree = node match {
-    // Leaves are easy to kill:
-    case Node(Red(), Empty(), k, Empty())   => Empty()
-    case Node(Black(), Empty(), k, Empty()) => DoubleBlackEmpty()
+  def remove(node: Tree) : Tree = {
+    require(redNodesHaveBlackChildren(node) && hasRedBlackNodes(node))
+    node match {
+      // Leaves are easy to kill:
+      case Node(Red(), Empty(), k, Empty())   => Empty()
+      case Node(Black(), Empty(), k, Empty()) => DoubleBlackEmpty()
 
-    // Killing a node with one child:
-    case Node(Black(), Node(Red(), l, k, r), _, Empty()) => Node(Black(), l, k, r)
-    case Node(Black(), Empty(), _, Node(Red(), l, k, r)) => Node(Black(), l, k, r)
+      // Killing a node with one child:
+      case Node(Black(), Node(Red(), l, k, r), _, Empty()) => Node(Black(), l, k, r)
+      case Node(Black(), Empty(), _, Node(Red(), l, k, r)) => Node(Black(), l, k, r)
 
-    // Killing a node with two sub-trees:
-    case Node(c, l @ Node(_, _, _, _), _, r @ Node(_, _, _, _)) =>
-      val maxV = max(l)
-      val newL = removeMax(l)
-      bubble(c, newL, maxV, r)
-    case _ => throw new Exception("Removing an unexpected tree")
-  }
+      // Killing a node with two sub-trees:
+      case Node(c, l @ Node(_, _, _, _), _, r @ Node(_, _, _, _)) =>
+        val maxV = max(l)
+        val newL = removeMax(l)
+        bubble(c, newL, maxV, r)
+      case _ => throw new Exception("Removing an unexpected tree")
+    }
+  } ensuring(res => hasRedBlackDesc(res))
 
-  def removeMax(node: Tree) : Tree = node match {
-    case Node(_, l, _, Empty()) => remove(node)
-    case Node(c, l, k, r)       => bubble(c, l, k, removeMax(r))
-    case _ => throw new Exception("Removing max from a leaf")
-  }
+  def removeMax(node: Tree) : Tree = {
+    require(redNodesHaveBlackChildren(node) && isNode(node) && hasRedBlackNodes(node))
+    node match {
+      case Node(_, l, _, Empty()) => remove(node)
+      case Node(c, l, k, r)       => bubble(c, l, k, removeMax(r))
+      // case _ => throw new Exception("Removing max from a leaf")
+    }
+  } ensuring(res => redNodesHaveBlackChildren(res))
 
   def isDoubleBlack(t: Tree) : Boolean = t match {
     case DoubleBlackEmpty() => true
     case Node(DoubleBlack(), _, _, _) => true
+    case _ => false
+  }
+
+  def isNegativeBlack(t: Tree) : Boolean = t match {
+    case Node(NegativeBlack(), _, _, _) => true
     case _ => false
   }
 
