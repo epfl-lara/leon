@@ -38,6 +38,7 @@ object RedBlackTree {
     case Node(_,l,_,r) => redNodesHaveBlackChildren(l) && redNodesHaveBlackChildren(r)
   }
 
+  // <<insert element x into the tree t>>
   def ins(x: Int, t: Tree): Tree = {
     require(redNodesHaveBlackChildren(t))
     t match {
