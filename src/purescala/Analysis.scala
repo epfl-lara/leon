@@ -142,6 +142,54 @@ class Analysis(val program: Program) {
         VerificationCondition.infoFooter
       )
       reporter.info(summaryString)
+
+      // Printing summary for the evaluation section of paper:
+      {
+        def writeToFile(filename: String, content: String) : Unit = {
+          try {
+            val fw = new java.io.FileWriter(filename)
+            fw.write(content)
+            fw.close
+          } catch {
+            case e => reporter.error("There was an error while generating the test file" + filename)
+          }
+        }
+
+        var toWrite: String = ""
+        val functionVCs = vcs groupBy (_.funDef)
+        val vcsByPostcond = functionVCs groupBy 
+          (_._2 exists ((vc: VerificationCondition) => vc.kind == VCKind.Postcondition))
+        def functionInfoLine(id: String, funVCs: Traversable[VerificationCondition]) = {
+          val vcsByKind  = funVCs groupBy (_.kind)
+          val nbPrecond  = vcsByKind.get(VCKind.Precondition).getOrElse(Nil).size
+          val nbMatch    = vcsByKind.get(VCKind.ExhaustiveMatch).getOrElse(Nil).size
+          val totalTime  = 
+            (funVCs.foldLeft(0.0)((a, b) => a + b.time.getOrElse(0.0)))
+          val validStr   = "ok"
+          val invalidStr = "err"
+          val status = if (funVCs.forall(_.status == "valid")) validStr else invalidStr
+
+          val toRet =
+            "%-25s %-3s %-3s %-9s %-3.2f" format (id, nbPrecond, nbMatch, status, totalTime)
+          toRet
+        }
+        for ((withPostcond, functionsByPostcond) <- vcsByPostcond) {
+          if (withPostcond)
+            toWrite += "with postcondition:\n"
+          else
+            toWrite += "without postcondition:\n"
+          for ((funDef, funVCs) <- functionsByPostcond.toList.sortWith((p1, p2) => p1._1 < p2._1)) {
+            toWrite += functionInfoLine(funDef.id.toString, funVCs) + "\n"
+          }
+        }
+
+        val fileName = program.mainObject.id.toString + "-evaluation.txt"
+        val folderName   = "summary"
+
+        new java.io.File(folderName).mkdir()
+
+        writeToFile(folderName + "/" + fileName, toWrite)
+      }
     } else {
       reporter.info("No verification conditions were analyzed.")
     }
