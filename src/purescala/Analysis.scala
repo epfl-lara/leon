@@ -171,7 +171,7 @@ class Analysis(val program: Program) {
           val timeStr = if (totalTime < 0.01) "< 0.01" else ("%-3.2f" format totalTime)
 
           val toRet =
-            "%-25s %-3s %-3s %-9s %-5s" format (id, nbPrecond, nbMatch, status, timeStr)
+            "%-25s %-3s %-3s %-9s %6s" format (id, nbPrecond, nbMatch, status, timeStr)
           toRet
         }
         for ((withPostcond, functionsByPostcond) <- vcsByPostcond) {

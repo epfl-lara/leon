@@ -1,0 +1,24 @@
+#!/bin/bash
+
+pldi="pldi2011-testcases"
+for f in "AssociativeList" "InsertionSort" "RedBlackTree" "PropositionalLogic"
+do
+  ./funcheck CAV ${pldi}/${f}.scala
+done
+for f in "ListWithSize"
+do
+  ./funcheck CAV testcases/${f}.scala
+done
+
+mv summary summary-CAV
+
+for f in "AssociativeList" "InsertionSort" "RedBlackTree" "PropositionalLogic"
+do
+  ./funcheck PLDI unrolling=${1} ${pldi}/${f}.scala
+done
+for f in "ListWithSize"
+do
+  ./funcheck PLDI unrolling=${1} testcases/${f}.scala
+done
+
+mv summary summary-PLDI
