@@ -168,9 +168,10 @@ class Analysis(val program: Program) {
           val validStr   = "ok"
           val invalidStr = "err"
           val status = if (funVCs.forall(_.status == "valid")) validStr else invalidStr
+          val timeStr = if (totalTime < 0.01) "< 0.01" else ("%-3.2f" format totalTime)
 
           val toRet =
-            "%-25s %-3s %-3s %-9s %-3.2f" format (id, nbPrecond, nbMatch, status, totalTime)
+            "%-25s %-3s %-3s %-9s %-5s" format (id, nbPrecond, nbMatch, status, timeStr)
           toRet
         }
         for ((withPostcond, functionsByPostcond) <- vcsByPostcond) {
