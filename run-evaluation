@@ -1,24 +1,24 @@
 #!/bin/bash
 
+ts=`date +%F-%R`
 pldi="pldi2011-testcases"
-for f in "AssociativeList" "InsertionSort" "RedBlackTree" "PropositionalLogic"
+files=( ${pldi}"/AssociativeList.scala" ${pldi}/"InsertionSort.scala" ${pldi}"/RedBlackTree.scala" ${pldi}"/PropositionalLogic.scala" "testcases/ListWithSize.scala")
+if [ "$#" -lt "1" ]
+then
+  echo "Please provide an unrolling value"
+  exit 1
+fi
+
+for f in ${files[@]}
 do
-  ./funcheck CAV ${pldi}/${f}.scala
-done
-for f in "ListWithSize"
-do
-  ./funcheck CAV testcases/${f}.scala
+  ./funcheck CAV $f
 done
 
-mv summary summary-CAV
+mv summary summary-CAV-${ts}
 
-for f in "AssociativeList" "InsertionSort" "RedBlackTree" "PropositionalLogic"
+for f in ${files[@]}
 do
-  ./funcheck PLDI unrolling=${1} ${pldi}/${f}.scala
-done
-for f in "ListWithSize"
-do
-  ./funcheck PLDI unrolling=${1} testcases/${f}.scala
+  ./funcheck PLDI unrolling=${1} $f
 done
 
-mv summary summary-PLDI
+mv summary summary-PLDI-${ts}
