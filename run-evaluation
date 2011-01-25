@@ -3,11 +3,14 @@
 ts=`date +%F-%R`
 pldi="pldi2011-testcases"
 files=( ${pldi}"/AssociativeList.scala" ${pldi}/"InsertionSort.scala" ${pldi}"/RedBlackTree.scala" ${pldi}"/PropositionalLogic.scala" "testcases/ListWithSize.scala")
+#files=( ${pldi}"/RedBlackTree.scala" )
 if [ "$#" -lt "1" ]
 then
   echo "Please provide an unrolling value"
   exit 1
 fi
+
+rm -rf summary
 
 for f in ${files[@]}
 do
@@ -15,6 +18,13 @@ do
 done
 
 mv summary summary-CAV-${ts}
+
+for f in ${files[@]}
+do
+  ./funcheck CAV prune $f
+done
+
+mv summary summary-CAV-prune-${ts}
 
 for f in ${files[@]}
 do

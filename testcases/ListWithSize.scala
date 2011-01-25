@@ -97,12 +97,12 @@ object ListWithSize {
 
     def revAuxBroken(l1 : List, e : Int, l2 : List) : Boolean = {
       (append(reverse(l1), Cons(e,l2)) == reverse0(l1, l2))
-    } holds
+    } // holds
 
     @induct
     def reverse0exposed(l1 : List, l2 : List) : Boolean = {
       (reverse0(l1, l2) == append(reverse(l1), l2))
-    } holds
+    } // holds
 
     @induct
     def sizeAppend(l1 : List, l2 : List) : Boolean =
