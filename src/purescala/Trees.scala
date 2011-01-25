@@ -834,6 +834,8 @@ object Trees {
   }
 
   object SimplePatternMatching {
+    def isSimple(me: MatchExpr) : Boolean = unapply(me).isDefined
+
     // (scrutinee, classtype, list((caseclassdef, variable, list(variable), rhs)))
     def unapply(e: MatchExpr) : Option[(Expr,ClassType,Seq[(CaseClassDef,Identifier,Seq[Identifier],Expr)])] = {
       val MatchExpr(scrutinee, cases) = e
@@ -953,36 +955,20 @@ object Trees {
     })
   }
 
-//  def explicitPreconditions(expr: Expr) : Expr = {
-//    def rewriteFunctionCall(e: Expr) : Option[Expr] = e match {
-//      case fi @ FunctionInvocation(fd, args) if(fd.hasPrecondition && fd.precondition.get != BooleanLiteral(true)) => {
-//        val fTpe = fi.getType
-//        val prec = matchToIfThenElse(fd.precondition.get)
-//        val newLetIDs = fd.args.map(a => FreshIdentifier("precarg_" + a.id.name, true).setType(a.tpe))
-//        val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip newLetIDs.map(Variable(_))) : _*)
-//        val newPrec = replace(substMap, prec)
-//        val newThen = FunctionInvocation(fd, newLetIDs.map(_.toVariable)).setType(fTpe).setPosInfo(fi)
-//        val ifExpr: Expr = IfExpr(newPrec, newThen, Error("precondition violated").setType(fTpe).setPosInfo(fi)).setType(fTpe)
-//        Some((newLetIDs zip args).foldRight(ifExpr)((iap,e) => Let(iap._1, iap._2, e)))
-//      }
-//      case _ => None
-//    }
-//
-//    searchAndReplaceDFS(rewriteFunctionCall)(expr)
-//  }
-
   private var matchConverterCache = new scala.collection.mutable.HashMap[Expr,Expr]()
   /** Rewrites all pattern-matching expressions into if-then-else expressions,
    * with additional error conditions. Does not introduce additional variables.
    * We use a cache because we can. */
   def matchToIfThenElse(expr: Expr) : Expr = {
-    if(matchConverterCache.isDefinedAt(expr)) {
+    val toRet = if(matchConverterCache.isDefinedAt(expr)) {
       matchConverterCache(expr)
     } else {
       val converted = convertMatchToIfThenElse(expr)
       matchConverterCache(expr) = converted
       converted
     }
+
+    toRet
   }
 
   private def convertMatchToIfThenElse(expr: Expr) : Expr = {
@@ -1030,14 +1016,23 @@ object Trees {
           (realCond, newRhs)
         } 
 
-        val bigIte = condsAndRhs.foldRight[Expr](Error("non-exhaustive match").setType(bestRealType(m.getType)).setPosInfo(m))((p1, ex) => {
+        val optCondsAndRhs = if(SimplePatternMatching.isSimple(m)) {
+          // this is a hackish optimization: because we know all cases are covered, we replace the last condition by true (and that drops the check)
+          val lastExpr = condsAndRhs.last._2
+
+          condsAndRhs.dropRight(1) ++ Seq((BooleanLiteral(true),lastExpr))
+        } else {
+          condsAndRhs
+        }
+
+        val bigIte = optCondsAndRhs.foldRight[Expr](Error("non-exhaustive match").setType(bestRealType(m.getType)).setPosInfo(m))((p1, ex) => {
           if(p1._1 == BooleanLiteral(true)) {
             p1._2
           } else {
             IfExpr(p1._1, p1._2, ex).setType(m.getType)
           }
         })
-        //println(condsAndRhs)
+
         Some(bigIte)
       }
       case _ => None

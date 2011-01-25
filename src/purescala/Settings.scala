@@ -19,6 +19,7 @@ object Settings {
   var testBounds: (Int, Int) = (0, 3)
   var useInstantiator: Boolean = false
   var useFairInstantiator: Boolean = false
+  var useCores : Boolean = false
   var pruneBranches : Boolean = false
   def useAnyInstantiator : Boolean = useInstantiator || useFairInstantiator
 }

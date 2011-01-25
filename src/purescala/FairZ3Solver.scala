@@ -43,7 +43,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     }
     z3 = new Z3Context(z3cfg)
     partialEvaluator = new PartialEvaluator(program)
-    // z3.traceToStdout
+    //z3.traceToStdout
 
     exprToZ3Id = Map.empty
     z3IdToExpr = Map.empty
@@ -260,18 +260,32 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
 
     var blockingSet : Set[Expr] = Set(guards.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
 
+    var iterationsLeft : Int = if(Settings.unrollingLevel > 0) Settings.unrollingLevel else 16121984
+
     while(!foundDefinitiveAnswer) {
+      iterationsLeft -= 1
+
       val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.map(toZ3Formula(z3, _).get).toSeq
       // println("Blocking set : " + blockingSet)
 
-      z3.push
-      if(!blockingSetAsZ3.isEmpty)
-        z3.assertCnstr(z3.mkAnd(blockingSetAsZ3 : _*))
+      if(Settings.useCores) {
+        // NOOP
+      } else {
+        z3.push
+        if(!blockingSetAsZ3.isEmpty)
+          z3.assertCnstr(z3.mkAnd(blockingSetAsZ3 : _*))
+      }
 
-      //z3.checkAssumptions(blockingSetAsZ3 : _*) match {
+      val (answer, model, core) : (Option[Boolean], Z3Model, Seq[Z3AST]) = if(Settings.useCores) {
+        println(blockingSetAsZ3)
+        z3.checkAssumptions(blockingSetAsZ3 : _*)
+      } else {
+        val (a, m) = z3.checkAndGetModel()
+        (a, m, Seq.empty[Z3AST])
+      }
+
       reporter.info(" - Running Z3 search...")
-      z3.checkAndGetModel() match {
-        // case (None, m, _) => { // UNKNOWN
+      (answer, model) match {
         case (None, m) => { // UNKNOWN
           reporter.warning("Z3 doesn't know because: " + z3.getSearchFailure.message)
           foundDefinitiveAnswer = true
@@ -279,7 +293,6 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
           definitiveModel = Map.empty
           m.delete
         }
-        //case (Some(true), m, _) => { // SAT
         case (Some(true), m) => { // SAT
           val (trueModel, model) = validateAndDeleteModel(m, toCheckAgainstModels, varsInVC)
 
@@ -295,107 +308,126 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
             definitiveModel = model
           }
         }
-        // case (Some(false), m, core) if core.isEmpty => {
-        //   reporter.info("Empty core, definitively valid.")
-        //   m.delete
-        //   foundDefinitiveAnswer = true
-        //   definitiveAnswer = Some(true)
-        //   definitiveModel = Map.empty
-        // }
-        case (Some(false), m) if blockingSet.isEmpty => {
+        case (Some(false), m) if Settings.useCores && core.isEmpty => {
+          reporter.info("Empty core, definitively valid.")
+          m.delete
           foundDefinitiveAnswer = true
           definitiveAnswer = Some(true)
           definitiveModel = Map.empty
         }
-        // case (Some(false), m, core) => {
+        case (Some(false), m) if !Settings.useCores && blockingSet.isEmpty => {
+          foundDefinitiveAnswer = true
+          definitiveAnswer = Some(true)
+          definitiveModel = Map.empty
+        }
+        // This branch is both for with and without unsat cores. The
+        // distinction is made inside.
         case (Some(false), m) => {
-          m.delete
-          val USEUNSATCORE = false
+          //m.delete
 
-          z3.pop(1)
-          val (result2,m2) = z3.checkAndGetModel()
+          if(!Settings.useCores) {
+            z3.pop(1)
+            
+            val (result2,m2) = z3.checkAndGetModel()
 
-          if (result2 == Some(false)) {
-            foundDefinitiveAnswer = true
-            definitiveAnswer = Some(true)
-            definitiveModel = Map.empty
-          } else {
-            // we might have been lucky :D
-            val (wereWeLucky, cleanModel) = validateAndDeleteModel(m2, toCheckAgainstModels, varsInVC)
-            if(wereWeLucky) {
+            if (result2 == Some(false)) {
               foundDefinitiveAnswer = true
-              definitiveAnswer = Some(false)
-              definitiveModel = cleanModel
+              definitiveAnswer = Some(true)
+              definitiveModel = Map.empty
             } else {
-              reporter.info("- We need to keep going.")
+              // we might have been lucky :D
+              val (wereWeLucky, cleanModel) = validateAndDeleteModel(m2, toCheckAgainstModels, varsInVC)
+              if(wereWeLucky) {
+                foundDefinitiveAnswer = true
+                definitiveAnswer = Some(false)
+                definitiveModel = cleanModel
+              } 
+            }
+          }
+            
+          if(!foundDefinitiveAnswer) { 
+            reporter.info("- We need to keep going.")
 
-              val toRelease : Set[Expr] = blockingSet
+            val toRelease : Set[Expr] = if(Settings.useCores) {
+              core.map(ast => fromZ3Formula(ast) match {
+                case n @ Not(Variable(_)) => n
+                case v @ Variable(_) => v
+                case _ => scala.Predef.error("Impossible element extracted from core: " + ast)
+              }).toSet
+            } else {
+              blockingSet
+            }
 
-              var fixedForEver : Set[Expr] = Set.empty
+            var fixedForEver : Set[Expr] = Set.empty
 
-              if(Settings.pruneBranches) {
-                for(ex <- blockingSet) ex match {
-                  case Not(Variable(b)) => {
-                    z3.push
-                    z3.assertCnstr(toZ3Formula(z3, Variable(b)).get)
-                    z3.check match {
-                      case Some(false) => {
-                        //println("We had ~" + b + " in the blocking set. We now know it should stay there forever.")
-                        z3.pop(1)
-                        z3.assertCnstr(toZ3Formula(z3, Not(Variable(b))).get)
-                        fixedForEver = fixedForEver + ex
-                      }
-                      case _ => z3.pop(1)
+            if(Settings.pruneBranches) {
+              for(ex <- blockingSet) ex match {
+                case Not(Variable(b)) => {
+                  z3.push
+                  z3.assertCnstr(toZ3Formula(z3, Variable(b)).get)
+                  z3.check match {
+                    case Some(false) => {
+                      //println("We had ~" + b + " in the blocking set. We now know it should stay there forever.")
+                      z3.pop(1)
+                      z3.assertCnstr(toZ3Formula(z3, Not(Variable(b))).get)
+                      fixedForEver = fixedForEver + ex
                     }
+                    case _ => z3.pop(1)
                   }
-                  case Variable(b) => {
-                    z3.push
-                    z3.assertCnstr(toZ3Formula(z3, Not(Variable(b))).get)
-                    z3.check match {
-                      case Some(false) => {
-                        //println("We had " + b + " in the blocking set. We now know it should stay there forever.")
-                        z3.pop(1)
-                        z3.assertCnstr(toZ3Formula(z3, Variable(b)).get)
-                        fixedForEver = fixedForEver + ex
-                      }
-                      case _ => z3.pop(1)
+                }
+                case Variable(b) => {
+                  z3.push
+                  z3.assertCnstr(toZ3Formula(z3, Not(Variable(b))).get)
+                  z3.check match {
+                    case Some(false) => {
+                      //println("We had " + b + " in the blocking set. We now know it should stay there forever.")
+                      z3.pop(1)
+                      z3.assertCnstr(toZ3Formula(z3, Variable(b)).get)
+                      fixedForEver = fixedForEver + ex
                     }
+                    case _ => z3.pop(1)
                   }
-                  case _ => scala.Predef.error("Should not have happened.")
                 }
-                if(fixedForEver.size > 0) {
-                  reporter.info("- Pruned out " + fixedForEver.size + " branches.")
-                }
+                case _ => scala.Predef.error("Should not have happened.")
               }
-
-              // println("Release set : " + toRelease)
-
-              blockingSet = blockingSet -- toRelease
-
-              val toReleaseAsPairs : Set[(Identifier,Boolean)] = (toRelease -- fixedForEver).map(b => b match {
-                case Variable(id) => (id, true)
-                case Not(Variable(id)) => (id, false)
-                case _ => scala.Predef.error("Impossible value in release set: " + b)
-              })
-
-              reporter.info(" - more unrollings")
-              for((id,polarity) <- toReleaseAsPairs) {
-                val (newClauses,newBlockers) = unrollingBank.unlock(id, !polarity)
-                // for(clause <- newClauses) {
-                //   println("we're getting a new clause " + clause)
-                //   z3.assertCnstr(toZ3Formula(z3, clause).get)
-                // }
-
-                for(ncl <- newClauses) {
-                  z3.assertCnstr(toZ3Formula(z3, ncl).get)
-                }
-                //z3.assertCnstr(toZ3Formula(z3, And(newClauses)).get)
-                blockingSet = blockingSet ++ Set(newBlockers.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
+              if(fixedForEver.size > 0) {
+                reporter.info("- Pruned out " + fixedForEver.size + " branches.")
               }
             }
-            // scala.Predef.error("...but not quite now.")
+
+            // println("Release set : " + toRelease)
+
+            blockingSet = blockingSet -- toRelease
+
+            val toReleaseAsPairs : Set[(Identifier,Boolean)] = (toRelease -- fixedForEver).map(b => b match {
+              case Variable(id) => (id, true)
+              case Not(Variable(id)) => (id, false)
+              case _ => scala.Predef.error("Impossible value in release set: " + b)
+            })
+
+            reporter.info(" - more unrollings")
+            for((id,polarity) <- toReleaseAsPairs) {
+              val (newClauses,newBlockers) = unrollingBank.unlock(id, !polarity)
+              // for(clause <- newClauses) {
+              //   println("we're getting a new clause " + clause)
+              //   z3.assertCnstr(toZ3Formula(z3, clause).get)
+              // }
+
+              for(ncl <- newClauses) {
+                z3.assertCnstr(toZ3Formula(z3, ncl).get)
+              }
+              //z3.assertCnstr(toZ3Formula(z3, And(newClauses)).get)
+              blockingSet = blockingSet ++ Set(newBlockers.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
+            }
           }
         }
+      }
+
+      if(iterationsLeft <= 0) {
+        foundDefinitiveAnswer = true
+        definitiveAnswer = None
+        definitiveModel = Map.empty
+        reporter.error("Max. number of iterations reached.")
       }
     }
 
