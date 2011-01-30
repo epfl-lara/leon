@@ -667,6 +667,21 @@ object Trees {
     treeCatamorphism(convert, combine, compute, expr)
   }
 
+  def allNonRecursiveFunctionCallsOf(expr: Expr, program: Program) : Set[FunctionInvocation] = {
+    def convert(t: Expr) : Set[FunctionInvocation] = t match {
+      case f @ FunctionInvocation(fd, _) if program.isRecursive(fd) => Set(f)
+      case _ => Set.empty
+    }
+    
+    def combine(s1: Set[FunctionInvocation], s2: Set[FunctionInvocation]) = s1 ++ s2
+
+    def compute(t: Expr, s: Set[FunctionInvocation]) = t match {
+      case f @ FunctionInvocation(fd,_) if program.isRecursive(fd) => Set(f) ++ s
+      case _ => s
+    }
+    treeCatamorphism(convert, combine, compute, expr)
+  }
+
   def functionCallsOf(expr: Expr) : Set[FunctionInvocation] = {
     def convert(t: Expr) : Set[FunctionInvocation] = t match {
       case f @ FunctionInvocation(_, _) => Set(f)

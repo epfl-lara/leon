@@ -465,32 +465,11 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     }
   }
 
-  // Returns between 0 and 2 tautologies with respect to the interpretation of
-  // the function and its postcondition.
-  private def unroll(functionInvocation: FunctionInvocation) : List[Expr] = {
-    val FunctionInvocation(fd, args) = functionInvocation
-    val postExpr = if(fd.hasPostcondition) {
-      val post = expandLets(matchToIfThenElse(fd.postcondition.get))
-      val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*) + (ResultVariable() -> functionInvocation)
-      //val newBody = partialEvaluator(replace(substMap, post))
-      val newBody = replace(substMap, post)
-      List(newBody)
-    } else Nil
-  
-    val bodyExpr = if(fd.hasBody) {
-      val body = expandLets(matchToIfThenElse(fd.body.get))
-      val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*)
-      //val newBody = partialEvaluator(replace(substMap, body))
-      val newBody = replace(substMap, body)
-      List(Equals(functionInvocation, newBody))
-    } else Nil
 
-    postExpr ::: bodyExpr
-  }
-
-  private def clausifyITE(formula : Expr) : (Expr, List[Expr], Set[Identifier]) = {
+  // the last return value is a map binding ite values to boolean switches
+  private def clausifyITE(formula : Expr) : (Expr, List[Expr], Map[Identifier,Identifier]) = {
     var newClauses : List[Expr] = Nil
-    var newBools : Set[Identifier] = Set.empty
+    var ite2Bools : Map[Identifier,Identifier] = Map.empty
 
     def clausify(ex : Expr) : Option[Expr] = ex match {
       case ie @ IfExpr(cond, then, elze) => {
@@ -499,7 +478,8 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         newClauses = Iff(switch, cond) :: newClauses
         newClauses = Implies(switch, Equals(placeHolder, then)) :: newClauses
         newClauses = Implies(Not(switch), Equals(placeHolder, elze)) :: newClauses
-        newBools = newBools + switch.id
+        // newBools = newBools + switch.id
+        ite2Bools = ite2Bools + (placeHolder.id -> switch.id)
         Some(placeHolder)
       }
       case _ => None
@@ -507,7 +487,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
 
     val cleanedUp = searchAndReplaceDFS(clausify)(formula)
 
-    (cleanedUp, newClauses.reverse, newBools)
+    (cleanedUp, newClauses.reverse, ite2Bools)
   }
 
   protected[purescala] var exprToZ3Id : Map[Expr,Z3AST] = Map.empty
@@ -744,7 +724,8 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     rec(tree)
   }
 
-  // This remembers everything that was unrolled, which literal is blocking which calls, etc.
+  // This remembers everything that was unrolled, which literal is blocking
+  // which calls, etc.
   class UnrollingBank {
     private val everythingEverUnrolled : MutableSet[FunctionInvocation] = MutableSet.empty
 
@@ -759,8 +740,13 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
       everythingEverUnrolled += functionInvocation
     }
 
+    def closeUnrollings2(formula : Expr) : (Expr, Seq[Expr], Seq[(Identifier,Boolean)]) = {
+
+      scala.Predef.error("wtf")
+    }
+
     def closeUnrollings(formula : Expr) : (Expr, Seq[Expr], Seq[(Identifier,Boolean)]) = {
-      var (basis, clauses, _) = clausifyITE(formula)
+      var (basis, clauses, ite2Bools) = clausifyITE(formula)
 
       var unrolledNow : Set[FunctionInvocation] = Set.empty
       var stillToUnroll : Set[FunctionInvocation] = Set.empty
@@ -825,6 +811,58 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
       (basis, treatedClauses.reverse, blockers.reverse)
     }
 
+    // takes in a conjunction and returns a new conjunction, where all
+    // non-recursive function calls are "defined" and "contracted"
+    def expandAllNonRecursive(exprs: List[Expr]) : List[Expr] = {
+      val todo : MutableSet[FunctionInvocation] = MutableSet.empty
+      val todo2 : MutableSet[FunctionInvocation] = MutableSet.empty
+      var resulting : List[Expr] = Nil
+
+      for(expr <- exprs) {
+        todo ++= allNonRecursiveFunctionCallsOf(expr, program)
+        resulting = expr :: resulting
+      }
+
+      while(!todo.isEmpty) {
+        todo2.clear
+        for(fi <- todo) if(!wasUnrolledBefore(fi)) {
+          registerAsUnrolled(fi)
+          val ur = unroll(fi)
+          resulting = ur ::: resulting
+          for(u <- ur) {
+            todo2 ++= allNonRecursiveFunctionCallsOf(u, program)
+          }
+        }
+        todo.clear
+        todo ++= todo2
+      }
+
+      resulting
+    }
+
+    // Returns between 0 and 2 tautologies with respect to the interpretation of
+    // the function and its postcondition.
+    private def unroll(functionInvocation: FunctionInvocation) : List[Expr] = {
+      val FunctionInvocation(fd, args) = functionInvocation
+      val postExpr = if(fd.hasPostcondition) {
+        val post = expandLets(matchToIfThenElse(fd.postcondition.get))
+        val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*) + (ResultVariable() -> functionInvocation)
+        //val newBody = partialEvaluator(replace(substMap, post))
+        val newBody = replace(substMap, post)
+        List(newBody)
+      } else Nil
+    
+      val bodyExpr = if(fd.hasBody) {
+        val body = expandLets(matchToIfThenElse(fd.body.get))
+        val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*)
+        //val newBody = partialEvaluator(replace(substMap, body))
+        val newBody = replace(substMap, body)
+        List(Equals(functionInvocation, newBody))
+      } else Nil
+
+      postExpr ::: bodyExpr
+    }
+
     // if polarity == true, means that we used to have !id in the blocking set,
     // and that now it's gone. As a result, we need to unroll everything that
     // id is guarding. Similarly for polarity == false
@@ -838,6 +876,9 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         val blockedSet = blocked((id,polarity))
 
         for(functionInvocation <- blockedSet) {
+          // TODO this is probably where the unrolling of the recursive call
+          // should actually occur, rather than delegating that to
+          // closeUnrollings.
           val (_, clauses, blockers) = closeUnrollings(functionInvocation)
           newClauses = newClauses ++ clauses
           newBlockers = newBlockers ++ blockers
