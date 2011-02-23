@@ -41,6 +41,12 @@ object IntSynth {
       mySquare(5,q1,q2,q3)==25)
   } holds
 
+  def mySquareSketched(x : Int) : Int = {
+    require (x >= 0)
+    if (x <= 1) x
+    else 4 * x + mySquareSketched(x - 2) - 4
+  } ensuring(res => specSqr(x, res))
+
   //def gotThis(x : Int) = mySquare(x, 0, 4, -4)
   //println(gotThis(10)) --> 100
 }
