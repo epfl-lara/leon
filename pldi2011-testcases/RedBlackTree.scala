@@ -11,6 +11,10 @@ object RedBlackTree {
   case class Empty() extends Tree
   case class Node(color: Color, left: Tree, value: Int, right: Tree) extends Tree
 
+  sealed abstract class OptionInt
+  case class Some(v : Int) extends OptionInt
+  case class None() extends OptionInt
+
   def content(t: Tree) : Set[Int] = t match {
     case Empty() => Set.empty
     case Node(_, l, v, r) => content(l) ++ Set(v) ++ content(r)
@@ -50,9 +54,29 @@ object RedBlackTree {
     case Node(Red(), l, _, _) => blackHeight(l)
   }
 
+  def orderedKeys(t : Tree) : Boolean = orderedKeys(t, None(), None())
+
+  def orderedKeys(t : Tree, min : OptionInt, max : OptionInt) : Boolean = t match {
+    case Empty() => true
+    case Node(c,a,v,b) =>
+      val minOK = 
+        min match {
+          case Some(minVal) =>
+            v > minVal
+          case None() => true
+        }
+      val maxOK =
+        max match {
+          case Some(maxVal) =>
+            v < maxVal
+          case None() => true
+        }
+      minOK && maxOK && orderedKeys(a, min, Some(v)) && orderedKeys(b, Some(v), max)
+  }
+
   // <<insert element x into the tree t>>
   def ins(x: Int, t: Tree): Tree = {
-    require(redNodesHaveBlackChildren(t) && blackBalanced(t))
+    require(redNodesHaveBlackChildren(t) && blackBalanced(t) && orderedKeys(t))
     t match {
       case Empty() => Node(Red(),Empty(),x,Empty())
       case Node(c,a,y,b) =>
@@ -64,20 +88,21 @@ object RedBlackTree {
                    && size(t) <= size(res) && size(res) <= size(t) + 1
                    && redDescHaveBlackChildren(res)
                    && blackBalanced(res)
+                   && orderedKeys(res)
                    )
 
   def makeBlack(n: Tree): Tree = {
-    require(redDescHaveBlackChildren(n) && blackBalanced(n))
+    require(redDescHaveBlackChildren(n) && blackBalanced(n) && orderedKeys(n))
     n match {
       case Node(Red(),l,v,r) => Node(Black(),l,v,r)
       case _ => n
     }
-  } ensuring(res => redNodesHaveBlackChildren(res) && blackBalanced(res))
+  } ensuring(res => redNodesHaveBlackChildren(res) && blackBalanced(res) && orderedKeys(res))
 
   def add(x: Int, t: Tree): Tree = {
-    require(redNodesHaveBlackChildren(t) && blackBalanced(t))
+    require(redNodesHaveBlackChildren(t) && blackBalanced(t) && orderedKeys(t))
     makeBlack(ins(x, t))
-  } ensuring (res => content(res) == content(t) ++ Set(x) && redNodesHaveBlackChildren(res) && blackBalanced(res))
+  } ensuring (res => content(res) == content(t) ++ Set(x) && redNodesHaveBlackChildren(res) && blackBalanced(res) && orderedKeys(res))
   
 //  def buggyAdd(x: Int, t: Tree): Tree = {
 //    require(redNodesHaveBlackChildren(t))
@@ -86,6 +111,7 @@ object RedBlackTree {
 //  } ensuring (res => content(res) == content(t) ++ Set(x) && redNodesHaveBlackChildren(res))
   
   def balance(c: Color, a: Tree, x: Int, b: Tree): Tree = {
+    require(orderedKeys(a, None(), Some(x)) && orderedKeys(b, Some(x), None()))
     // require(
     //   Node(c,a,x,b) match {
     //     case Node(Black(),Node(Red(),Node(Red(),a,_,b),_,c),_,d) =>
@@ -122,7 +148,7 @@ object RedBlackTree {
         Node(Red(),Node(Black(),a,xV,b),yV,Node(Black(),c,zV,d))
       case Node(c,a,xV,b) => Node(c,a,xV,b)
     }
-  } ensuring (res => content(res) == content(Node(c,a,x,b)) )// && redDescHaveBlackChildren(res))
+  } ensuring (res => content(res) == content(Node(c,a,x,b)) && orderedKeys(res))// && redDescHaveBlackChildren(res))
 
   // def buggyBalance(c: Color, a: Tree, x: Int, b: Tree): Tree = {
   //   Node(c,a,x,b) match {
@@ -137,5 +163,5 @@ object RedBlackTree {
   //   }
   // } ensuring (res => content(res) == content(Node(c,a,x,b)) ) // && redDescHaveBlackChildren(res))
 
-  def generateRB(t : Tree) : Boolean = (blackHeight(t) != 4 || !blackBalanced(t)) holds
+  def generateRB(t : Tree) : Boolean = (blackHeight(t) != 3 || !blackBalanced(t) || !orderedKeys(t)) holds
 }
