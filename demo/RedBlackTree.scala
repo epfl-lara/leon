@@ -1,5 +1,6 @@
 import scala.collection.immutable.Set
 import funcheck.Annotations._
+import funcheck.Utils._
 
 object RedBlackTree { 
   sealed abstract class Color
@@ -9,6 +10,10 @@ object RedBlackTree {
   sealed abstract class Tree
   case class Empty() extends Tree
   case class Node(color: Color, left: Tree, value: Int, right: Tree) extends Tree
+
+  sealed abstract class OptionInt
+  case class Some(v : Int) extends OptionInt
+  case class None() extends OptionInt
 
   def content(t: Tree) : Set[Int] = t match {
     case Empty() => Set.empty
@@ -38,8 +43,20 @@ object RedBlackTree {
     case Node(_,l,_,r) => redNodesHaveBlackChildren(l) && redNodesHaveBlackChildren(r)
   }
 
+  def blackBalanced(t : Tree) : Boolean = t match {
+    case Node(_,l,_,r) => blackBalanced(l) && blackBalanced(r) && blackHeight(l) == blackHeight(r)
+    case Empty() => true
+  }
+
+  def blackHeight(t : Tree) : Int = t match {
+    case Empty() => 1
+    case Node(Black(), l, _, _) => blackHeight(l) + 1
+    case Node(Red(), l, _, _) => blackHeight(l)
+  }
+
+  // <<insert element x into the tree t>>
   def ins(x: Int, t: Tree): Tree = {
-    require(redNodesHaveBlackChildren(t))
+    require(redNodesHaveBlackChildren(t) && blackBalanced(t))
     t match {
       case Empty() => Node(Red(),Empty(),x,Empty())
       case Node(c,a,y,b) =>
@@ -50,25 +67,25 @@ object RedBlackTree {
   } ensuring (res => content(res) == content(t) ++ Set(x) 
                    && size(t) <= size(res) && size(res) <= size(t) + 1
                    && redDescHaveBlackChildren(res)
+                   && blackBalanced(res)
                    )
 
   def makeBlack(n: Tree): Tree = {
-    require(redDescHaveBlackChildren(n))
+    require(redDescHaveBlackChildren(n) && blackBalanced(n))
     n match {
       case Node(Red(),l,v,r) => Node(Black(),l,v,r)
       case _ => n
     }
-  } ensuring(redNodesHaveBlackChildren(_))
+  } ensuring(res => redNodesHaveBlackChildren(res) && blackBalanced(res))
 
   def add(x: Int, t: Tree): Tree = {
-    require(redNodesHaveBlackChildren(t))
+    require(redNodesHaveBlackChildren(t) && blackBalanced(t))
     makeBlack(ins(x, t))
-  } ensuring (res => content(res) == content(t) ++ Set(x) && redNodesHaveBlackChildren(res))
+  } ensuring (res => content(res) == content(t) ++ Set(x) && redNodesHaveBlackChildren(res) && blackBalanced(res))
   
   def buggyAdd(x: Int, t: Tree): Tree = {
     require(redNodesHaveBlackChildren(t))
-    //makeBlack(ins(x, t))
-    ins(x, t)
+    makeBlack(ins(x, t))
   } ensuring (res => content(res) == content(t) ++ Set(x) && redNodesHaveBlackChildren(res))
   
   def balance(c: Color, a: Tree, x: Int, b: Tree): Tree = {
@@ -83,5 +100,5 @@ object RedBlackTree {
         Node(Red(),Node(Black(),a,xV,b),yV,Node(Black(),c,zV,d))
       case Node(c,a,xV,b) => Node(c,a,xV,b)
     }
-  } ensuring (res => content(res) == content(Node(c,a,x,b)) )//&& redDescHaveBlackChildren(res))
+  } ensuring (res => content(res) == content(Node(c,a,x,b)))// && redDescHaveBlackChildren(res))
 }
