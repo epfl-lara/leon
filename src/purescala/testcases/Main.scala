@@ -19,7 +19,11 @@ class Main(reporter : Reporter) extends Analyser(reporter) {
 
     reporter.info("Running testcase generation...")
 
-    val solver = new purescala.Z3Solver(reporter)
+    val solver = if(Settings.useFairInstantiator) {
+      new purescala.FairZ3Solver(reporter)
+    } else {
+      new purescala.Z3Solver(reporter)
+    }
     solver.setProgram(program)
     
     def writeToFile(filename: String, content: String) : Unit = {
@@ -39,7 +43,7 @@ class Main(reporter : Reporter) extends Analyser(reporter) {
       var noMoreModels = false
       for (i <- 1 to Settings.nbTestcases if !noMoreModels) {
         // reporter.info("Current constraints: " + constraints)
-        val argMap = solver.decideIterativeWithBounds(And(prec, constraints), false)
+        val argMap = solver.solveWithBounds(And(prec, constraints), false)
         argMap match {
           case (Some(true), _) => noMoreModels = true
           case (_ , map) =>

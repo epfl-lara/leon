@@ -13,6 +13,8 @@ import scala.collection.mutable.{Set => MutableSet}
 class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3Solver with Z3ModelReconstruction {
   assert(Settings.useFairInstantiator)
 
+  private final val UNKNOWNASSAT : Boolean = true
+
   val description = "Fair Z3 Solver"
   override val shortDescription = "Z3-f"
 
@@ -70,9 +72,9 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
   private var adtSorts: Map[ClassTypeDef, Z3Sort] = Map.empty
   private var fallbackSorts: Map[TypeTree, Z3Sort] = Map.empty
 
-  private var adtTesters: Map[CaseClassDef, Z3FuncDecl] = Map.empty
-  private var adtConstructors: Map[CaseClassDef, Z3FuncDecl] = Map.empty
-  private var adtFieldSelectors: Map[Identifier, Z3FuncDecl] = Map.empty
+  protected[purescala] var adtTesters: Map[CaseClassDef, Z3FuncDecl] = Map.empty
+  protected[purescala] var adtConstructors: Map[CaseClassDef, Z3FuncDecl] = Map.empty
+  protected[purescala] var adtFieldSelectors: Map[Identifier, Z3FuncDecl] = Map.empty
 
   private var reverseADTTesters: Map[Z3FuncDecl, CaseClassDef] = Map.empty
   private var reverseADTConstructors: Map[Z3FuncDecl, CaseClassDef] = Map.empty
@@ -224,10 +226,19 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
 
   def solve(vc: Expr) = decide(vc, true)
 
-  def decide(vc: Expr, forValidity: Boolean):Option[Boolean] = decideWithModel(vc, forValidity)._1
-  def decideWithModel(vc: Expr, forValidity: Boolean): (Option[Boolean], Map[Identifier,Expr]) = {
+  def solveWithBounds(vc: Expr, fv: Boolean) : (Option[Boolean], Map[Identifier,Expr]) = {
     restartZ3
+    boundValues
+    println(z3.check)
+    decideWithModel(vc, fv)
+  }
 
+  def decide(vc: Expr, forValidity: Boolean):Option[Boolean] = {
+    restartZ3
+    decideWithModel(vc, forValidity)._1
+  }
+
+  def decideWithModel(vc: Expr, forValidity: Boolean): (Option[Boolean], Map[Identifier,Expr]) = {
     val unrollingBank = new UnrollingBank
 
     lazy val varsInVC = variablesOf(vc) 
@@ -276,6 +287,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
           z3.assertCnstr(z3.mkAnd(blockingSetAsZ3 : _*))
       }
 
+      reporter.info(" - Running Z3 search...")
       val (answer, model, core) : (Option[Boolean], Z3Model, Seq[Z3AST]) = if(Settings.useCores) {
         println(blockingSetAsZ3)
         z3.checkAssumptions(blockingSetAsZ3 : _*)
@@ -284,8 +296,12 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         (a, m, Seq.empty[Z3AST])
       }
 
-      reporter.info(" - Running Z3 search...")
-      (answer, model) match {
+      val reinterpretedAnswer = if(!UNKNOWNASSAT) answer else (answer match {
+        case None | Some(true) => Some(true)
+        case Some(false) => Some(false)
+      })
+
+      (reinterpretedAnswer, model) match {
         case (None, m) => { // UNKNOWN
           reporter.warning("Z3 doesn't know because: " + z3.getSearchFailure.message)
           foundDefinitiveAnswer = true
@@ -428,6 +444,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         definitiveAnswer = None
         definitiveModel = Map.empty
         reporter.error("Max. number of iterations reached.")
+        println("Max. number of iterations reached.")
       }
     }
 

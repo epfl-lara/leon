@@ -83,9 +83,9 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   private var adtSorts: Map[ClassTypeDef, Z3Sort] = Map.empty
   private var fallbackSorts: Map[TypeTree, Z3Sort] = Map.empty
 
-  private var adtTesters: Map[CaseClassDef, Z3FuncDecl] = Map.empty
-  private var adtConstructors: Map[CaseClassDef, Z3FuncDecl] = Map.empty
-  private var adtFieldSelectors: Map[Identifier, Z3FuncDecl] = Map.empty
+  protected[purescala] var adtTesters: Map[CaseClassDef, Z3FuncDecl] = Map.empty
+  protected[purescala] var adtConstructors: Map[CaseClassDef, Z3FuncDecl] = Map.empty
+  protected[purescala] var adtFieldSelectors: Map[Identifier, Z3FuncDecl] = Map.empty
 
   private var reverseADTTesters: Map[Z3FuncDecl, CaseClassDef] = Map.empty
   private var reverseADTConstructors: Map[Z3FuncDecl, CaseClassDef] = Map.empty
@@ -175,46 +175,6 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     // ...and now everything should be in there...
   }
 
-  private def boundValues : Unit = {
-    val lowerBound: Z3AST = z3.mkInt(Settings.testBounds._1, z3.mkIntSort)
-    val upperBound: Z3AST = z3.mkInt(Settings.testBounds._2, z3.mkIntSort)
-
-    def isUnbounded(field: VarDecl) : Boolean = field.getType match {
-      case Int32Type => true
-      case _ => false
-    }
-
-    def boundConstraint(boundVar: Z3AST) : Z3AST = {
-      lowerBound <= boundVar && boundVar <= upperBound
-    }
-
-    // for all recursive type roots
-    //   for all child ccd of a root
-    //     if ccd contains unbounded types
-    //       create bound vars (mkBound) for each field
-    //       create pattern that says (valueBounds(ccd(f1, ..)))
-    //       create axiom tree that says "values of unbounded types are within bounds"
-    //       assert axiom for the tree above
-
-    val roots = program.classHierarchyRoots
-    for (root <- roots) {
-      val children: List[CaseClassDef] = (root match {
-        case c: CaseClassDef => List(c)
-        case a: AbstractClassDef => a.knownChildren.filter(_.isInstanceOf[CaseClassDef]).map(_.asInstanceOf[CaseClassDef]).toList
-      })
-      for (child <- children) child match {
-        case CaseClassDef(id, parent, fields) =>
-          val unboundedFields = fields.filter(isUnbounded(_))
-          if (!unboundedFields.isEmpty) {
-            val boundVars = fields.zipWithIndex.map{case (f, i) => z3.mkBound(i, typeToSort(f.getType))}
-            val pattern = z3.mkPattern(adtConstructors(child)(boundVars: _*))
-            val constraint = (fields zip boundVars).filter((p: (VarDecl, Z3AST)) => isUnbounded(p._1)).map((p: (VarDecl, Z3AST)) => boundConstraint(p._2)).foldLeft(z3.mkTrue)((a, b) => a && b)
-            val axiom = z3.mkForAll(0, List(pattern), fields.zipWithIndex.map{case (f, i) => (z3.mkIntSymbol(i), typeToSort(f.getType))}, constraint)
-            z3.assertCnstr(axiom)
-          }
-      }
-    }
-  }
 
   def isKnownDef(funDef: FunDef) : Boolean = if(useAnyInstantiator) {
     instantiator.isKnownDef(funDef)
@@ -455,6 +415,8 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     restartZ3
     decideIterativeWithModel(vc, forValidity)._1
   }
+
+  def solveWithBounds(vc: Expr, fv: Boolean) : (Option[Boolean], Map[Identifier,Expr]) = decideIterativeWithBounds(vc, fv)
 
   def decideIterativeWithBounds(vc: Expr, forValidity: Boolean) : (Option[Boolean], Map[Identifier, Expr]) = {
     restartZ3
