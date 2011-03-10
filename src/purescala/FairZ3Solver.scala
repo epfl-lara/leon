@@ -13,7 +13,7 @@ import scala.collection.mutable.{Set => MutableSet}
 class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3Solver with Z3ModelReconstruction {
   assert(Settings.useFairInstantiator)
 
-  private final val UNKNOWNASSAT : Boolean = true
+  private final val UNKNOWNASSAT : Boolean = false
 
   val description = "Fair Z3 Solver"
   override val shortDescription = "Z3-f"
@@ -21,6 +21,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
   // this is fixed
   private val z3cfg = new Z3Config(
     "MODEL" -> true,
+    "MBQI" -> false,
     "SOFT_TIMEOUT" -> 100,
     "TYPE_CHECK" -> true,
     "WELL_SORTED_CHECK" -> true
@@ -229,7 +230,6 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
   def solveWithBounds(vc: Expr, fv: Boolean) : (Option[Boolean], Map[Identifier,Expr]) = {
     restartZ3
     boundValues
-    println(z3.check)
     decideWithModel(vc, fv)
   }
 
@@ -444,7 +444,6 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         definitiveAnswer = None
         definitiveModel = Map.empty
         reporter.error("Max. number of iterations reached.")
-        println("Max. number of iterations reached.")
       }
     }
 

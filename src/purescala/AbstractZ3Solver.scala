@@ -72,7 +72,7 @@ trait AbstractZ3Solver {
             //val constraint = (fields zip boundVars).filter((p: (VarDecl, Z3AST)) => isUnbounded(p._1)).map((p: (VarDecl, Z3AST)) => boundConstraint(p._2)).foldLeft(z3.mkTrue)((a, b) => a && b)
             val constraint = (fields zip boundVars).filter((p: (VarDecl, Z3AST)) => isUnbounded(p._1)).map((p: (VarDecl, Z3AST)) => boundConstraint(adtFieldSelectors(p._1.id)(term))).foldLeft(z3.mkTrue)((a, b) => a && b)
             val axiom = z3.mkForAll(0, List(pattern), fields.zipWithIndex.map{case (f, i) => (z3.mkIntSymbol(i), typeToSort(f.getType))}, constraint)
-            println("Asserting: " + axiom)
+            //println("Asserting: " + axiom)
             z3.assertCnstr(axiom)
           }
       }

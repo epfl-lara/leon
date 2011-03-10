@@ -10,16 +10,16 @@ object AssociativeList {
   case class Cons(head: KeyValuePairAbs, tail: List) extends List
   case class Nil() extends List
 
-  sealed abstract class OptInt
-  case class Some(i: Int) extends OptInt
-  case class None() extends OptInt
+  sealed abstract class OptionInt
+  case class Some(i: Int) extends OptionInt
+  case class None() extends OptionInt
 
   def domain(l: List): Set[Int] = l match {
     case Nil() => Set.empty[Int]
     case Cons(KeyValuePair(k,_), xs) => Set(k) ++ domain(xs)
   }
 
-  def find(l: List, e: Int): OptInt = l match {
+  def find(l: List, e: Int): OptionInt = l match {
     case Nil() => None()
     case Cons(KeyValuePair(k, v), xs) => if (k == e) Some(v) else find(xs, e)
   }
@@ -44,17 +44,7 @@ object AssociativeList {
   })
 
   @induct
-  def readOverWrite(l: List, e: KeyValuePairAbs, k: Int) : Boolean = (e match {
-    case KeyValuePair(key, value) =>
-      find(updateElem(l, e), k) == (if (k == key) Some(value) else find(l, k))
-  }) holds
-
-  // def prop0(e: Int): Boolean = (find(update(Nil(), Nil()), e) == find(Nil(), e)) holds
-
-  def main(args: Array[String]): Unit = {
-    val l = Cons(KeyValuePair(6, 1), Cons(KeyValuePair(5, 4), Cons(KeyValuePair(3, 2), Nil())))
-    val e = 0
-    println(find(update(Nil(), l), e))
-    println(find(l, e))
-  }
+  def readOverWrite(l: List, k1: Int, k2: Int, e: Int) : Boolean = {
+    find(updateElem(l, KeyValuePair(k2,e)), k1) == (if (k1 == k2) Some(e) else find(l, k1))
+  } holds
 }

@@ -67,8 +67,7 @@ object RedBlackTree {
   } ensuring (res => content(res) == content(t) ++ Set(x) 
                    && size(t) <= size(res) && size(res) <= size(t) + 1
                    && redDescHaveBlackChildren(res)
-                   && blackBalanced(res)
-                   )
+                   && blackBalanced(res))
 
   def makeBlack(n: Tree): Tree = {
     require(redDescHaveBlackChildren(n) && blackBalanced(n))
