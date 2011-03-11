@@ -68,26 +68,36 @@ object ExprComp {
   case class Ok(v : ValueStack) extends Outcome
   case class Fail(v : ValueStack, i : Instruction) extends Outcome
 
+
   // Running programs on a given initial stack
   def run(p : Program, vs : ValueStack) : Outcome = p match {
     case EProgram() => Ok(vs)
     case NProgram(i,rest) => 
       val oRest = run(rest, vs)
       oRest match {
-	case Fail(_,_) => oRest
-	case Ok(vRest) =>
-	  i match {
-	    case PushVal(v) => Ok(NStack(v,vRest))
-	    case ApplyBinOp(op) => vRest match {
-	      case EStack() => Fail(vRest, i)
-	      case NStack(v1,vs1) => vs1 match {
-		case EStack() => Fail(vRest, i)
-		case NStack(v2,vs2) => Ok(NStack(evalOp(v1,op,v2),vs2))
-	      }
-	    }
-	  }
+				case Fail(_,_) => oRest
+				case Ok(vRest) =>
+				  i match {
+				    case PushVal(v) => Ok(NStack(v,vRest))
+				    case ApplyBinOp(op) => vRest match {
+	      				case EStack() => Fail(vRest, i)
+	      				case NStack(v1,vs1) => vs1 match {
+									case EStack() => Fail(vRest, i)
+									case NStack(v2,vs2) => Ok(NStack(evalOp(v1,op,v2),vs2))
+					      }
+	    			}
+	  			}
       }
+
   }
+
+
+// --- this does not work; do not know why
+  def property_trivial() : Boolean = {
+		run(EProgram() , EStack() ) == Ok(EStack())
+  } holds
+
+
 
   def run0(p : Program) = run(p, EStack())
 
@@ -108,12 +118,31 @@ object ExprComp {
   } holds
 
 */
+
+
+
+/// --- here it goes bad
   def property0() : Boolean = {
     val e = Binary(Constant(Value(3)), Plus(), Constant(Value(5)))
     val vs = EStack()
     val acc = EProgram()
     run(compile(e, acc), vs) == Ok(NStack(eval(e), vs))
   } holds
+
+
+//this induction should work (at least on paper it goes ok)
+  @induct
+  def property_general(e: Expr, prog:Program) : Boolean = {
+    val vs = EStack()
+    val result = run(prog, vs)
+    result match{
+			case Ok(vv) => run(compile(e, prog), vs) == Ok(NStack(eval(e), vv))
+			case _ => true
+    }
+  } holds
+
+
+
 
   @induct
   def property1(e: Expr) : Boolean = {
