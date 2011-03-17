@@ -4,7 +4,12 @@ Do Add here what you would love FunCheck to be able to do
 PS: support multiple top-level objects
 PS: support tuples (including natively in Z3)
 PS: implement @induct tactic, completely, not just for one arg
-PS: instantiate/unroll function bodies in a fair way, to guarantee termination
+PS: construct models for sets properly (also in interpreter)
+PS: support maps natively
+
+PS: use different levels of summaries (eg. just contract, part of contract
+that's public, then finally body) in unrollings, trying to minimize the
+branching at first
 
 Wishes granted so far
 ---------------------
@@ -16,3 +21,4 @@ PS: generate VCs for preconditions
 PS: generate VCs for pattern-matching
 PS: use 'private' accessor to indicate what's part of the interface
 PS: use a theory plugin to instantiate/unroll function bodies
+PS: instantiate/unroll function bodies in a fair way, to guarantee termination
