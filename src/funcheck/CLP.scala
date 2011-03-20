@@ -1,6 +1,6 @@
 package funcheck
 
-object CLP {
+object CP {
   final class NotImplementedException extends Exception
 
   def choose[A](pred : A => Boolean) : A = {
