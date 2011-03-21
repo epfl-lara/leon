@@ -5,7 +5,7 @@ object Common {
   import TypeTrees.Typed
 
   // the type is left blank (Untyped) for Identifiers that are not variables
-  class Identifier private[Common](val name: String, val id: Int, alwaysShowUniqueID: Boolean = false) extends Typed {
+  @serializable class Identifier private[Common](val name: String, val id: Int, alwaysShowUniqueID: Boolean = false) extends Typed {
     override def equals(other: Any): Boolean = {
       if(other == null || !other.isInstanceOf[Identifier])
         false

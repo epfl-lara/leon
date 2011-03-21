@@ -147,7 +147,7 @@ object Definitions {
       if(acd == null) None else Some((acd.id, acd.parent))
     }
   }
-  class AbstractClassDef(val id: Identifier, prnt: Option[AbstractClassDef] = None) extends ClassTypeDef {
+  @serializable class AbstractClassDef(val id: Identifier, prnt: Option[AbstractClassDef] = None) extends ClassTypeDef {
     private var parent_ = prnt
     var fields: VarDecls = Nil
     val isAbstract = true
@@ -187,7 +187,7 @@ object Definitions {
     }
   }
 
-  class CaseClassDef(val id: Identifier, prnt: Option[AbstractClassDef] = None) extends ClassTypeDef with ExtractorTypeDef {
+  @serializable class CaseClassDef(val id: Identifier, prnt: Option[AbstractClassDef] = None) extends ClassTypeDef with ExtractorTypeDef {
     private var parent_ = prnt
     var fields: VarDecls = Nil
     val isAbstract = false
@@ -242,7 +242,7 @@ object Definitions {
       }
     }
   }
-  class FunDef(val id: Identifier, val returnType: TypeTree, val args: VarDecls) extends Definition with ScalacPositional {
+  @serializable class FunDef(val id: Identifier, val returnType: TypeTree, val args: VarDecls) extends Definition with ScalacPositional {
     var body: Option[Expr] = None
     var precondition: Option[Expr] = None
     var postcondition: Option[Expr] = None

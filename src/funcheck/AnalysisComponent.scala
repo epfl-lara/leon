@@ -18,13 +18,6 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin)
   /** this is initialized when the Funcheck phase starts*/
   var fresh: scala.tools.nsc.util.FreshNameCreator = null 
   
-  protected def stopIfErrors: Unit = {
-    if(reporter.hasErrors) {
-      println("There were errors.")
-      exit(0)
-    }
-  }
-
   def newPhase(prev: Phase) = new AnalysisPhase(prev)
 
   class AnalysisPhase(prev: Phase) extends StdPhase(prev) {

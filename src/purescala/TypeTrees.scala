@@ -31,7 +31,7 @@ object TypeTrees {
   }
     
 
-  sealed abstract class TypeTree {
+  @serializable sealed abstract class TypeTree {
     override def toString: String = PrettyPrinter(this)
   }
 
@@ -135,7 +135,7 @@ object TypeTrees {
   case class MapType(from: TypeTree, to: TypeTree) extends TypeTree
   case class OptionType(base: TypeTree) extends TypeTree
 
-  sealed abstract class ClassType extends TypeTree {
+  @serializable sealed abstract class ClassType extends TypeTree {
     val classDef: ClassTypeDef
     val id: Identifier = classDef.id
   }

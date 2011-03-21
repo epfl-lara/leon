@@ -9,7 +9,7 @@ import purescala.TypeTrees._
 import purescala.Common._
 
 trait CodeExtraction extends Extractors {
-  self: AnalysisComponent =>
+  // self: AnalysisComponent =>
 
   import global._
   import global.definitions._
@@ -25,6 +25,13 @@ trait CodeExtraction extends Extractors {
     scala.collection.mutable.Map.empty[Symbol,ClassTypeDef]
   private val defsToDefs: scala.collection.mutable.Map[Symbol,FunDef] =
     scala.collection.mutable.Map.empty[Symbol,FunDef]
+  
+  protected def stopIfErrors: Unit = {
+    if(reporter.hasErrors) {
+      println("There were errors.")
+      exit(0)
+    }
+  }
 
   def extractCode(unit: CompilationUnit): Program = { 
     import scala.collection.mutable.HashMap

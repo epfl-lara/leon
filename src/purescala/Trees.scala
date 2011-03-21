@@ -50,7 +50,7 @@ object Trees {
     def unapply(me: MatchExpr) : Option[(Expr,Seq[MatchCase])] = if (me == null) None else Some((me.scrutinee, me.cases))
   }
 
-  class MatchExpr(val scrutinee: Expr, val cases: Seq[MatchCase]) extends Expr with ScalacPositional {
+  @serializable class MatchExpr(val scrutinee: Expr, val cases: Seq[MatchCase]) extends Expr with ScalacPositional {
     def scrutineeClassType: ClassType = scrutinee.getType.asInstanceOf[ClassType]
   }
 
@@ -106,7 +106,7 @@ object Trees {
       if(and == null) None else Some(and.exprs)
   }
 
-  class And(val exprs: Seq[Expr]) extends Expr with FixedType {
+  @serializable class And(val exprs: Seq[Expr]) extends Expr with FixedType {
     val fixedType = BooleanType
   }
 
@@ -125,7 +125,7 @@ object Trees {
       if(or == null) None else Some(or.exprs)
   }
 
-  class Or(val exprs: Seq[Expr]) extends Expr with FixedType {
+  @serializable class Or(val exprs: Seq[Expr]) extends Expr with FixedType {
     val fixedType = BooleanType
   }
 
@@ -143,7 +143,7 @@ object Trees {
     }
   }
 
-  class Iff(val left: Expr, val right: Expr) extends Expr with FixedType {
+  @serializable class Iff(val left: Expr, val right: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }
 
@@ -160,7 +160,7 @@ object Trees {
       if(imp == null) None else Some(imp.left, imp.right)
   }
 
-  class Implies(val left: Expr, val right: Expr) extends Expr with FixedType {
+  @serializable class Implies(val left: Expr, val right: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }
 
@@ -192,7 +192,7 @@ object Trees {
     }
   }
 
-  class Equals(val left: Expr, val right: Expr) extends Expr with FixedType {
+  @serializable class Equals(val left: Expr, val right: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }
   
