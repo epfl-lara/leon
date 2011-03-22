@@ -1,5 +1,7 @@
 Do Add here what you would love FunCheck to be able to do
 ------------------------------------------------------
+VK: support maps Map[A,B] for ground types A,B (no polymorphism)
+VK: add bitvectors, including multiplication of int32 variables
 
 PS: support multiple top-level objects
 PS: support tuples (including natively in Z3)
