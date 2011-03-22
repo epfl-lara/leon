@@ -31,7 +31,7 @@ class CPComponent(val global: Global, val pluginInstance: FunCheckPlugin)
       val fileName = writeProgram(prog)
       println("Program extracted and written into: " + fileName)
 
-      transformCalls(unit)
+      transformCalls(unit, prog)
       println("Finished transformation")
 
       /*
