@@ -238,6 +238,11 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     decideWithModel(vc, forValidity)._1
   }
 
+  def restartAndDecideWithModel(vc: Expr, forValidity: Boolean): (Option[Boolean], Map[Identifier,Expr]) = {
+    restartZ3
+    decideWithModel(vc, forValidity)
+  }
+
   def decideWithModel(vc: Expr, forValidity: Boolean): (Option[Boolean], Map[Identifier,Expr]) = {
     val unrollingBank = new UnrollingBank
 

@@ -17,10 +17,10 @@ trait CallTransformation
   private lazy val cpDefinitionsModule = definitions.getModule("funcheck.CP")
 
 
-  def transformCalls(unit: CompilationUnit, prog: Program, filename: String) : Unit =
-    unit.body = new CallTransformer(unit, prog, filename).transform(unit.body)
+  def transformCalls(unit: CompilationUnit, prog: Program, programFilename: String) : Unit =
+    unit.body = new CallTransformer(unit, prog, programFilename).transform(unit.body)
   
-  class CallTransformer(unit: CompilationUnit, prog: Program, filename: String) extends TypingTransformer(unit) {
+  class CallTransformer(unit: CompilationUnit, prog: Program, programFilename: String) extends TypingTransformer(unit) {
     override def transform(tree: Tree) : Tree = {
       tree match {
         case a @ Apply(TypeApply(Select(s: Select, n), _), rhs @ List(predicate: Function)) if (cpDefinitionsModule == s.symbol && n.toString == "choose") => {
@@ -38,9 +38,11 @@ trait CallTransformation
           fd.body match {
             case None => println("Could not extract choose predicate: " + funBody); super.transform(tree)
             case Some(b) =>
-              val (programGet, progSym) = codeGen.generateProgramGet(filename)
-              val solverInvocation = codeGen.generateSolverInvocation(b, progSym)
-              val code = Block(programGet :: Nil, solverInvocation)
+              val exprFilename = writeExpr(b)
+              val (programGet, progSym) = codeGen.generateProgramGet(programFilename)
+              val (exprGet, exprSym) = codeGen.generateExprGet(exprFilename)
+              val solverInvocation = codeGen.generateSolverInvocation(b, progSym, exprSym)
+              val code = Block(programGet :: exprGet :: Nil, solverInvocation)
 
               typer.typed(atOwner(currentOwner) {
                 code
