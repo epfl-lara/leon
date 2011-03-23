@@ -11,7 +11,7 @@ import scala.collection.mutable.{Map => MutableMap}
 import scala.collection.mutable.{Set => MutableSet}
 
 class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3Solver with Z3ModelReconstruction {
-  assert(Settings.useFairInstantiator)
+  // assert(Settings.useFairInstantiator)
 
   private final val UNKNOWNASSAT : Boolean = false
 

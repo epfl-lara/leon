@@ -38,9 +38,9 @@ trait CallTransformation
           fd.body match {
             case None => println("Could not extract choose predicate: " + funBody); super.transform(tree)
             case Some(b) =>
-              val (readProgram, progSym) = codeGen.generateProgramRead(filename)
+              val (programGet, progSym) = codeGen.generateProgramGet(filename)
               val solverInvocation = codeGen.generateSolverInvocation(b, progSym)
-              val code = Block(readProgram :: Nil, solverInvocation)
+              val code = Block(programGet :: Nil, solverInvocation)
 
               typer.typed(atOwner(currentOwner) {
                 code

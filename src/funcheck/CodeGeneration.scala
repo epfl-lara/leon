@@ -7,7 +7,7 @@ trait CodeGeneration {
   import global._
 
   private lazy val serializationModule = definitions.getClass("funcheck.Serialization")
-  private lazy val readProgramFunction = definitions.getMember(serializationModule, "readProgram")
+  private lazy val getProgramFunction = definitions.getMember(serializationModule, "getProgram")
   private lazy val purescalaPackage = definitions.getModule("purescala")
   private lazy val definitionsModule = definitions.getModule("purescala.Definitions")
   private lazy val programClass = definitions.getClass("purescala.Definitions.Program")
@@ -18,26 +18,21 @@ trait CodeGeneration {
   private lazy val defaultReporter = definitions.getClass("purescala.DefaultReporter")
 
   class CodeGenerator(unit: CompilationUnit, owner: Symbol) {
-    /*
-    def exprToTree(expr: Expr) : Tree = expr match {
-      case Variable(id) => 
-    }
-    */
 
-    def generateProgramRead(filename: String) : (Tree, Symbol) = {
+    def generateProgramGet(filename: String) : (Tree, Symbol) = {
       val progSymbol = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "prog")).setInfo(programClass.tpe)
-      val readStatement =
+      val getStatement =
         ValDef(
           progSymbol,
           Apply(
             Select(
               Ident(serializationModule),
-              readProgramFunction
+              getProgramFunction
             ),
             List(Literal(Constant(filename)))
           )
         )
-      (readStatement, progSymbol)
+      (getStatement, progSymbol)
     }
 
     def generateSolverInvocation(formula: Expr, progSymbol: Symbol) : Tree = {
