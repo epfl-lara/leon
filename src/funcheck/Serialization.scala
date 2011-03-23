@@ -37,3 +37,5 @@ trait Serialization {
     recovered
   }
 }
+
+object Serialization extends Serialization

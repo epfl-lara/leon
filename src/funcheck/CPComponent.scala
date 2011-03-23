@@ -28,15 +28,15 @@ class CPComponent(val global: Global, val pluginInstance: FunCheckPlugin)
       fresh = unit.fresh
 
       val prog: purescala.Definitions.Program = extractCode(unit)
-      val fileName = writeProgram(prog)
-      println("Program extracted and written into: " + fileName)
+      val filename = writeProgram(prog)
+      println("Program extracted and written into: " + filename)
 
-      transformCalls(unit, prog)
+      transformCalls(unit, prog, filename)
       println("Finished transformation")
 
       /*
       try {
-        val recovered = readProgram(fileName)
+        val recovered = readProgram(filename)
         println
         println("Recovered: " + recovered)
       } catch {
