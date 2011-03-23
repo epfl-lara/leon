@@ -40,7 +40,7 @@ trait CodeGeneration {
       (readStatement, progSymbol)
     }
 
-    def generateSolverInvocation(formula: Expr) : Tree = {
+    def generateSolverInvocation(formula: Expr, progSymbol: Symbol) : Tree = {
       val solverSymbol = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "solver")).setInfo(fairZ3SolverClass.tpe)
       val solverDeclaration = 
         ValDef(
@@ -63,7 +63,7 @@ trait CodeGeneration {
             Ident(solverSymbol),
             setProgramFunction
           ),
-          List(/* read program into a var and plug its symbol here */)
+          List(Ident(progSymbol))
         )
 
       val invocation =
@@ -72,7 +72,7 @@ trait CodeGeneration {
             Ident(solverSymbol),
             decideWithModelFunction
           ),
-          List(/* convert pred into scala AST and plug it here */)
+          List(/* convert pred into scala AST of funcheck expression and plug it here */)
         )
 
       Block(

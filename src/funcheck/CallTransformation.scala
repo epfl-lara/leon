@@ -32,19 +32,20 @@ trait CallTransformation
 
           println("Here is the extracted FunDef:") 
           println(fd)
+          
+          val codeGen = new CodeGenerator(unit, currentOwner)
 
-          /*
-          typer.typed(atOwner(currentOwner) {
-            code
-          })
-          */
-          super.transform(tree)
+          fd.body match {
+            case None => println("Could not extract choose predicate: " + funBody); super.transform(tree)
+            case Some(b) =>
+              val (readProgram, progSym) = codeGen.generateProgramRead(filename)
+              val solverInvocation = codeGen.generateSolverInvocation(b, progSym)
+              val code = Block(readProgram :: Nil, solverInvocation)
 
-          /*
-          val solver = new FairZ3Solver(new DefaultReporter)
-          solver.setProgram(prog)
-          println(solver.decide(fd.body.get, false))
-          */
+              typer.typed(atOwner(currentOwner) {
+                code
+              })
+          }
         }
 
         case _ => super.transform(tree)
