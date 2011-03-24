@@ -16,7 +16,7 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
 
   lazy val extensionJars : List[Path] = multisetsLib.jarPath :: multisets.jarPath :: orderedsets.jarPath :: setconstraints.jarPath :: Nil
 
-  val scriptPath: Path = "." / "scalac-funcheck"
+  val scriptPath: Path = "." / "funcheck"
 
   lazy val all = task { None } dependsOn(generateScript) describedAs("Compile everything and produce a script file.")
 
@@ -49,14 +49,15 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
       fw.write(purescala.jarPath.absolutePath)
       fw.write("\"" + nl + nl)
       fw.write("LD_LIBRARY_PATH=" + ("." / "lib-bin").absolutePath + " \\" + nl)
-      fw.write("java -Xmx1024M \\" + nl)
+      fw.write("scala -classpath ${FUNCHECKCLASSPATH}:${SCALACCLASSPATH}" + " \\" + nl)
+      fw.write("funcheck.Main -cp " + plugin.jarPath.absolutePath + " $@" + nl)
+      // fw.write("java -Xmx1024M \\" + nl)
+      // // This is a hack :(
+      // val libStr = (buildLibraryJar.absolutePath).toString
+      // fw.write("    -Dscala.home=" + libStr.substring(0, libStr.length-21) + " \\" + nl)
 
-      // This is a hack :(
-      val libStr = (buildLibraryJar.absolutePath).toString
-      fw.write("    -Dscala.home=" + libStr.substring(0, libStr.length-21) + " \\" + nl)
-
-      fw.write("    -classpath ${FUNCHECKCLASSPATH} \\" + nl)
-      fw.write("  scala.tools.nsc.Main -Xplugin:" + plugin.jarPath.absolutePath + " -classpath ${SCALACCLASSPATH} $@" + nl)
+      // fw.write("    -classpath ${FUNCHECKCLASSPATH} \\" + nl)
+      // fw.write("  scala.tools.nsc.Main -Xplugin:" + plugin.jarPath.absolutePath + " -classpath ${SCALACCLASSPATH} $@" + nl)
       fw.close
       f.setExecutable(true)
       None

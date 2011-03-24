@@ -68,4 +68,6 @@ class FunCheckPlugin(val global: Global) extends Plugin {
     }
   }
 
-  val components = List[PluginComponent](new AnalysisComponent(global, this))}
+  val components = List[PluginComponent](new AnalysisComponent(global, this))
+  val descriptions = List[String]("funcheck analyses")
+}
