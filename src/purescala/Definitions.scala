@@ -5,24 +5,35 @@ object Definitions {
   import Trees._
   import TypeTrees._
 
-  sealed abstract class Definition {
+  @serializable sealed abstract class Definition {
     val id: Identifier
     override def toString: String = PrettyPrinter(this)
+    override def hashCode : Int = id.hashCode
+    override def equals(that : Any) : Boolean = that match {
+      case t : Definition => t.id == this.id
+      case _ => false
+    }
   }
 
   /** A VarDecl declares a new identifier to be of a certain type. */
-  case class VarDecl(id: Identifier, tpe: TypeTree) extends Typed {
+  @serializable case class VarDecl(id: Identifier, tpe: TypeTree) extends Typed {
     override def getType = tpe
     override def setType(tt: TypeTree) = scala.Predef.error("Can't set type of VarDecl.")
+
+    override def hashCode : Int = id.hashCode
+    override def equals(that : Any) : Boolean = that match {
+      case t : VarDecl => t.id == this.id
+      case _ => false
+    }
 
     def toVariable : Variable = Variable(id).setType(tpe)
   }
 
-  type VarDecls = Seq[VarDecl]
+  @serializable type VarDecls = Seq[VarDecl]
 
   /** A wrapper for a program. For now a program is simply a single object. The
    * name is meaningless and we just use the package name as id. */
-  case class Program(id: Identifier, mainObject: ObjectDef) extends Definition {
+  @serializable case class Program(id: Identifier, mainObject: ObjectDef) extends Definition {
     def definedFunctions = mainObject.definedFunctions
     def definedClasses = mainObject.definedClasses
     def classHierarchyRoots = mainObject.classHierarchyRoots
@@ -40,7 +51,7 @@ object Definitions {
 
   /** Objects work as containers for class definitions, functions (def's) and
    * val's. */
-  case class ObjectDef(id: Identifier, defs : Seq[Definition], invariants: Seq[Expr]) extends Definition {
+  @serializable case class ObjectDef(id: Identifier, defs : Seq[Definition], invariants: Seq[Expr]) extends Definition {
     lazy val definedFunctions : Seq[FunDef] = defs.filter(_.isInstanceOf[FunDef]).map(_.asInstanceOf[FunDef])
 
     lazy val definedClasses : Seq[ClassTypeDef] = defs.filter(_.isInstanceOf[ClassTypeDef]).map(_.asInstanceOf[ClassTypeDef])
@@ -127,7 +138,7 @@ object Definitions {
 
   /** Useful because case classes and classes are somewhat unified in some
    * patterns (of pattern-matching, that is) */
-  sealed trait ClassTypeDef extends Definition {
+  @serializable sealed trait ClassTypeDef extends Definition {
     self =>
 
     val id: Identifier
@@ -135,11 +146,12 @@ object Definitions {
     def setParent(parent: AbstractClassDef) : self.type
     def hasParent: Boolean = parent.isDefined
     val isAbstract: Boolean
+
   }
 
   /** Will be used at some point as a common ground for case classes (which
    * implicitely define extractors) and explicitely defined unapply methods. */
-  sealed trait ExtractorTypeDef
+  @serializable sealed trait ExtractorTypeDef
 
   /** Abstract classes. */
   object AbstractClassDef {
@@ -228,7 +240,7 @@ object Definitions {
   //}
   
   /** Values */
-  case class ValDef(varDecl: VarDecl, value: Expr) extends Definition {
+  @serializable case class ValDef(varDecl: VarDecl, value: Expr) extends Definition {
     val id: Identifier = varDecl.id
   }
 
@@ -251,7 +263,7 @@ object Definitions {
     def hasBody = hasImplementation
     def hasPrecondition : Boolean = precondition.isDefined
     def hasPostcondition : Boolean = postcondition.isDefined
-
+    
     private var annots: Set[String] = Set.empty[String]
     def addAnnotation(as: String*) : FunDef = {
       annots = annots ++ as

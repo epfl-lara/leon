@@ -48,7 +48,7 @@ object Common {
     def apply(name: String, alwaysShowUniqueID: Boolean = false) : Identifier = new Identifier(name, UniqueCounter.next, alwaysShowUniqueID)
   }
 
-  trait ScalacPositional {
+  @serializable trait ScalacPositional {
     self =>
 
     private var prow: Int = -1078

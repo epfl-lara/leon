@@ -8,21 +8,21 @@ object Trees {
 
   /* EXPRESSIONS */
 
-  sealed abstract class Expr extends Typed {
+  @serializable sealed abstract class Expr extends Typed {
     override def toString: String = PrettyPrinter(this)
   }
 
-  sealed trait Terminal {
+  @serializable sealed trait Terminal {
     self: Expr =>
   }
 
   /* This describes computational errors (unmatched case, taking min of an
    * empty set, division by zero, etc.). It should always be typed according to
    * the expected type. */
-  case class Error(description: String) extends Expr with Terminal with ScalacPositional
+  @serializable case class Error(description: String) extends Expr with Terminal with ScalacPositional
 
   /* Like vals */
-  case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
+  @serializable case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
     binder.markAsLetBinder
     val et = body.getType
     if(et != Untyped)
@@ -30,10 +30,10 @@ object Trees {
   }
 
   /* Control flow */
-  case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr with FixedType with ScalacPositional {
+  @serializable case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr with FixedType with ScalacPositional {
     val fixedType = funDef.returnType
   }
-  case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr 
+  @serializable case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr 
 
   object MatchExpr {
     def apply(scrutinee: Expr, cases: Seq[MatchCase]) : MatchExpr = {
@@ -54,7 +54,7 @@ object Trees {
     def scrutineeClassType: ClassType = scrutinee.getType.asInstanceOf[ClassType]
   }
 
-  sealed abstract class MatchCase {
+  @serializable sealed abstract class MatchCase {
     val pattern: Pattern
     val rhs: Expr
     val theGuard: Option[Expr]
@@ -62,29 +62,29 @@ object Trees {
     def expressions: Seq[Expr]
   }
 
-  case class SimpleCase(pattern: Pattern, rhs: Expr) extends MatchCase {
+  @serializable case class SimpleCase(pattern: Pattern, rhs: Expr) extends MatchCase {
     val theGuard = None
     def expressions = List(rhs)
   }
-  case class GuardedCase(pattern: Pattern, guard: Expr, rhs: Expr) extends MatchCase {
+  @serializable case class GuardedCase(pattern: Pattern, guard: Expr, rhs: Expr) extends MatchCase {
     val theGuard = Some(guard)
     def expressions = List(guard, rhs)
   }
 
-  sealed abstract class Pattern {
+  @serializable sealed abstract class Pattern {
     val subPatterns: Seq[Pattern]
     val binder: Option[Identifier]
 
     private def subBinders = subPatterns.map(_.binders).foldLeft[Set[Identifier]](Set.empty)(_ ++ _)
     def binders: Set[Identifier] = subBinders ++ (if(binder.isDefined) Set(binder.get) else Set.empty)
   }
-  case class InstanceOfPattern(binder: Option[Identifier], classTypeDef: ClassTypeDef) extends Pattern { // c: Class
+  @serializable case class InstanceOfPattern(binder: Option[Identifier], classTypeDef: ClassTypeDef) extends Pattern { // c: Class
     val subPatterns = Seq.empty
   }
-  case class WildcardPattern(binder: Option[Identifier]) extends Pattern { // c @ _
+  @serializable case class WildcardPattern(binder: Option[Identifier]) extends Pattern { // c @ _
     val subPatterns = Seq.empty
   } 
-  case class CaseClassPattern(binder: Option[Identifier], caseClassDef: CaseClassDef, subPatterns: Seq[Pattern]) extends Pattern
+  @serializable case class CaseClassPattern(binder: Option[Identifier], caseClassDef: CaseClassDef, subPatterns: Seq[Pattern]) extends Pattern
   // case class ExtractorPattern(binder: Option[Identifier], 
   //   		      extractor : ExtractorTypeDef, 
   //   		      subPatterns: Seq[Pattern]) extends Pattern // c @ Extractor(...,...)
@@ -164,7 +164,7 @@ object Trees {
     val fixedType = BooleanType
   }
 
-  case class Not(expr: Expr) extends Expr with FixedType {
+  @serializable case class Not(expr: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }
 
@@ -196,63 +196,63 @@ object Trees {
     val fixedType = BooleanType
   }
   
-  case class Variable(id: Identifier) extends Expr with Terminal {
+  @serializable case class Variable(id: Identifier) extends Expr with Terminal {
     override def getType = id.getType
     override def setType(tt: TypeTree) = { id.setType(tt); this }
   }
 
   // represents the result in post-conditions
-  case class ResultVariable() extends Expr with Terminal
+  @serializable case class ResultVariable() extends Expr with Terminal
 
   /* Literals */
-  sealed abstract class Literal[T] extends Expr with Terminal {
+  @serializable sealed abstract class Literal[T] extends Expr with Terminal {
     val value: T
   }
 
-  case class IntLiteral(value: Int) extends Literal[Int] with FixedType {
+  @serializable case class IntLiteral(value: Int) extends Literal[Int] with FixedType {
     val fixedType = Int32Type
   }
-  case class BooleanLiteral(value: Boolean) extends Literal[Boolean] with FixedType {
+  @serializable case class BooleanLiteral(value: Boolean) extends Literal[Boolean] with FixedType {
     val fixedType = BooleanType
   }
-  case class StringLiteral(value: String) extends Literal[String]
+  @serializable case class StringLiteral(value: String) extends Literal[String]
 
-  case class CaseClass(classDef: CaseClassDef, args: Seq[Expr]) extends Expr with FixedType {
+  @serializable case class CaseClass(classDef: CaseClassDef, args: Seq[Expr]) extends Expr with FixedType {
     val fixedType = CaseClassType(classDef)
   }
-  case class CaseClassInstanceOf(classDef: CaseClassDef, expr: Expr) extends Expr with FixedType {
+  @serializable case class CaseClassInstanceOf(classDef: CaseClassDef, expr: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }
-  case class CaseClassSelector(classDef: CaseClassDef, caseClass: Expr, selector: Identifier) extends Expr with FixedType {
+  @serializable case class CaseClassSelector(classDef: CaseClassDef, caseClass: Expr, selector: Identifier) extends Expr with FixedType {
     val fixedType = classDef.fields.find(_.id == selector).get.getType
   }
 
   /* Arithmetic */
-  case class Plus(lhs: Expr, rhs: Expr) extends Expr with FixedType {
+  @serializable case class Plus(lhs: Expr, rhs: Expr) extends Expr with FixedType {
     val fixedType = Int32Type
   }
-  case class Minus(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+  @serializable case class Minus(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     val fixedType = Int32Type
   }
-  case class UMinus(expr: Expr) extends Expr with FixedType { 
+  @serializable case class UMinus(expr: Expr) extends Expr with FixedType { 
     val fixedType = Int32Type
   }
-  case class Times(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+  @serializable case class Times(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     val fixedType = Int32Type
   }
-  case class Division(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+  @serializable case class Division(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     val fixedType = Int32Type
   }
-  case class LessThan(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+  @serializable case class LessThan(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     val fixedType = BooleanType
   }
-  case class GreaterThan(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+  @serializable case class GreaterThan(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     val fixedType = BooleanType
   }
-  case class LessEquals(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+  @serializable case class LessEquals(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     val fixedType = BooleanType
   }
-  case class GreaterEquals(lhs: Expr, rhs: Expr) extends Expr with FixedType {
+  @serializable case class GreaterEquals(lhs: Expr, rhs: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }
 
@@ -261,53 +261,53 @@ object Trees {
   // case class OptionNone(baseType: TypeTree) extends Expr with Terminal
 
   /* Set expressions */
-  case class EmptySet(baseType: TypeTree) extends Expr with Terminal
-  case class FiniteSet(elements: Seq[Expr]) extends Expr 
-  case class ElementOfSet(element: Expr, set: Expr) extends Expr with FixedType {
+  @serializable case class EmptySet(baseType: TypeTree) extends Expr with Terminal
+  @serializable case class FiniteSet(elements: Seq[Expr]) extends Expr 
+  @serializable case class ElementOfSet(element: Expr, set: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }
-  case class SetCardinality(set: Expr) extends Expr with FixedType {
+  @serializable case class SetCardinality(set: Expr) extends Expr with FixedType {
     val fixedType = Int32Type
   }
-  case class SubsetOf(set1: Expr, set2: Expr) extends Expr with FixedType {
+  @serializable case class SubsetOf(set1: Expr, set2: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }
-  case class SetIntersection(set1: Expr, set2: Expr) extends Expr 
-  case class SetUnion(set1: Expr, set2: Expr) extends Expr 
-  case class SetDifference(set1: Expr, set2: Expr) extends Expr 
-  case class SetMin(set: Expr) extends Expr
-  case class SetMax(set: Expr) extends Expr
+  @serializable case class SetIntersection(set1: Expr, set2: Expr) extends Expr 
+  @serializable case class SetUnion(set1: Expr, set2: Expr) extends Expr 
+  @serializable case class SetDifference(set1: Expr, set2: Expr) extends Expr 
+  @serializable case class SetMin(set: Expr) extends Expr
+  @serializable case class SetMax(set: Expr) extends Expr
 
   /* Multiset expressions */
-  case class EmptyMultiset(baseType: TypeTree) extends Expr with Terminal
-  case class FiniteMultiset(elements: Seq[Expr]) extends Expr 
-  case class Multiplicity(element: Expr, multiset: Expr) extends Expr 
-  case class MultisetCardinality(multiset: Expr) extends Expr with FixedType {
+  @serializable case class EmptyMultiset(baseType: TypeTree) extends Expr with Terminal
+  @serializable case class FiniteMultiset(elements: Seq[Expr]) extends Expr 
+  @serializable case class Multiplicity(element: Expr, multiset: Expr) extends Expr 
+  @serializable case class MultisetCardinality(multiset: Expr) extends Expr with FixedType {
     val fixedType = Int32Type
   }
-  case class SubmultisetOf(multiset1: Expr, multiset2: Expr) extends Expr 
-  case class MultisetIntersection(multiset1: Expr, multiset2: Expr) extends Expr 
-  case class MultisetUnion(multiset1: Expr, multiset2: Expr) extends Expr 
-  case class MultisetPlus(multiset1: Expr, multiset2: Expr) extends Expr // disjoint union
-  case class MultisetDifference(multiset1: Expr, multiset2: Expr) extends Expr 
-  case class MultisetToSet(multiset: Expr) extends Expr
+  @serializable case class SubmultisetOf(multiset1: Expr, multiset2: Expr) extends Expr 
+  @serializable case class MultisetIntersection(multiset1: Expr, multiset2: Expr) extends Expr 
+  @serializable case class MultisetUnion(multiset1: Expr, multiset2: Expr) extends Expr 
+  @serializable case class MultisetPlus(multiset1: Expr, multiset2: Expr) extends Expr // disjoint union
+  @serializable case class MultisetDifference(multiset1: Expr, multiset2: Expr) extends Expr 
+  @serializable case class MultisetToSet(multiset: Expr) extends Expr
 
   /* Map operations. */
-  case class EmptyMap(fromType: TypeTree, toType: TypeTree) extends Expr with Terminal
-  case class SingletonMap(from: Expr, to: Expr) extends Expr 
-  case class FiniteMap(singletons: Seq[SingletonMap]) extends Expr 
+  @serializable case class EmptyMap(fromType: TypeTree, toType: TypeTree) extends Expr with Terminal
+  @serializable case class SingletonMap(from: Expr, to: Expr) extends Expr 
+  @serializable case class FiniteMap(singletons: Seq[SingletonMap]) extends Expr 
 
-  case class MapGet(map: Expr, key: Expr) extends Expr 
-  case class MapUnion(map1: Expr, map2: Expr) extends Expr 
-  case class MapDifference(map: Expr, keys: Expr) extends Expr 
+  @serializable case class MapGet(map: Expr, key: Expr) extends Expr 
+  @serializable case class MapUnion(map1: Expr, map2: Expr) extends Expr 
+  @serializable case class MapDifference(map: Expr, keys: Expr) extends Expr 
 
   /* List operations */
-  case class NilList(baseType: TypeTree) extends Expr with Terminal
-  case class Cons(head: Expr, tail: Expr) extends Expr 
-  case class Car(list: Expr) extends Expr 
-  case class Cdr(list: Expr) extends Expr 
-  case class Concat(list1: Expr, list2: Expr) extends Expr 
-  case class ListAt(list: Expr, index: Expr) extends Expr 
+  @serializable case class NilList(baseType: TypeTree) extends Expr with Terminal
+  @serializable case class Cons(head: Expr, tail: Expr) extends Expr 
+  @serializable case class Car(list: Expr) extends Expr 
+  @serializable case class Cdr(list: Expr) extends Expr 
+  @serializable case class Concat(list1: Expr, list2: Expr) extends Expr 
+  @serializable case class ListAt(list: Expr, index: Expr) extends Expr 
 
   object UnaryOperator {
     def unapply(expr: Expr) : Option[(Expr,(Expr)=>Expr)] = expr match {
@@ -732,8 +732,8 @@ object Trees {
 
   // Pulls out all let constructs to the top level, and makes sure they're
   // properly ordered.
-  private type DefPair  = (Identifier,Expr)
-  private type DefPairs = List[DefPair]
+  @serializable private type DefPair  = (Identifier,Expr)
+  @serializable private type DefPairs = List[DefPair]
   private def allLetDefinitions(expr: Expr) : DefPairs = treeCatamorphism[DefPairs](
     (e: Expr) => Nil,
     (s1: DefPairs, s2: DefPairs) => s1 ::: s2,
