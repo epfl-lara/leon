@@ -29,24 +29,24 @@ object InsertionSort {
     }
   }
 
-  def minProp0(l : List) : Boolean = (l match {
-    case Nil() => true
-    case c @ Cons(x, xs) => min(c) match {
-      case None() => false
-      case Some(m) => x >= m
-    }
-  }) holds
+  // def minProp0(l : List) : Boolean = (l match {
+  //   case Nil() => true
+  //   case c @ Cons(x, xs) => min(c) match {
+  //     case None() => false
+  //     case Some(m) => x >= m
+  //   }
+  // }) holds
 
-  def minProp1(l : List) : Boolean = {
-    require(isSorted(l) && size(l) <= 5)
-    l match {
-      case Nil() => true
-      case c @ Cons(x, xs) => min(c) match {
-        case None() => false
-        case Some(m) => x == m
-      }
-    }
-  } holds
+  // def minProp1(l : List) : Boolean = {
+  //   require(isSorted(l) && size(l) <= 5)
+  //   l match {
+  //     case Nil() => true
+  //     case c @ Cons(x, xs) => min(c) match {
+  //       case None() => false
+  //       case Some(m) => x == m
+  //     }
+  //   }
+  // } holds
 
   def isSorted(l: List): Boolean = l match {
     case Nil() => true
@@ -70,7 +70,7 @@ object InsertionSort {
   /* Inserting element 'e' into a sorted list 'l' produces a sorted list with
    * the expected content and size */
   def buggySortedIns(e: Int, l: List): List = {
-    // require(isSorted(l))
+    require(isSorted(l))
     l match {
       case Nil() => Cons(e,Nil())
       case Cons(x,xs) => if (x <= e) Cons(x,buggySortedIns(e, xs)) else Cons(e, l)
