@@ -9,6 +9,7 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
 
   lazy val purescala      = project(".", "PureScala Definitions", new PureScalaProject(_))
   lazy val plugin         = project(".", "FunCheck Plugin", new PluginProject(_), purescala, multisetsLib)
+  // lazy val cp             = project(".", "Constraint programming plugin", new CPProject(_), purescala, multisetsLib, plugin)
   lazy val multisetsLib   = project(".", "Multiset Placeholder Library", new MultisetsLibProject(_))
   lazy val multisets      = project(".", "Multiset Solver", new MultisetsProject(_), plugin, purescala, multisetsLib)
   lazy val orderedsets    = project(".", "Ordered Sets Solver", new OrderedSetsProject(_), plugin, purescala)
@@ -17,6 +18,7 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
   lazy val extensionJars : List[Path] = multisetsLib.jarPath :: multisets.jarPath :: orderedsets.jarPath :: setconstraints.jarPath :: Nil
 
   val scriptPath: Path = "." / "funcheck"
+  val cpScriptPath: Path = "." / "scalac-cp"
 
   lazy val all = task { None } dependsOn(generateScript) describedAs("Compile everything and produce a script file.")
 

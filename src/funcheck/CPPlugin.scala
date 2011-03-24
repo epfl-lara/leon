@@ -5,7 +5,7 @@ import scala.tools.nsc.{Global,Phase}
 import scala.tools.nsc.plugins.{Plugin,PluginComponent}
 
 /** This class is the entry point for the plugin. */
-class CPPlugin(val global: Global) extends AbstractPlugin {
+class CPPlugin(val global: Global) extends PluginBase {
   import global._
 
   val name = "constraint-programming"
