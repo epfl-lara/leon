@@ -9,8 +9,8 @@ object Naturals {
 
     def plus(x : Nat, y : Nat) : Nat = {
       x match {
-	case Zero() => y
-	case Succ(x1) => Succ(plus(x1, y))
+				case Zero() => y
+				case Succ(x1) => Succ(plus(x1, y))
       }
     }
 
@@ -28,21 +28,24 @@ object Naturals {
       plus(x, plus(y,z)) == plus(plus(x, y), z)
     } holds
 
-  // causes stack overflow with: ./funcheck CAV functions=oneCommut1 testcases/Naturals.scala
-    def oneCommut1(x : Nat, y : Nat) : Boolean = {
-      plus(x, Succ(y)) == Succ(plus(x,y))
+    @induct
+    def zeroCommutes(x : Nat) : Boolean = {
+      plus(Zero(), x) ==  plus(x, Zero()) 
     } holds
 
     @induct
     def oneCommut(x : Nat, y : Nat) : Boolean = {
-      plus(x, Succ(y)) == Succ(plus(x,y))
+      Succ(plus(x,y)) ==  plus(x, Succ(y))
     } holds
 
     @induct
-    def zeroCommutes(x : Nat) : Boolean = {
-      plus(x, Zero()) == plus(Zero(), x)
+    def inductionStep1(x : Nat, y : Nat) : Boolean = {
+      plus(Succ(y),x) == Succ(plus(y,x))
     } holds
 
+
+		//we need simplification !
+		//(x.isInstanceOf[Zero] ==> (plus(x, y) == plus(y, x)))  this base case does not work even if it is above!!
     // we do not know why this inductive proof fails
     @induct
     def commut(x : Nat, y : Nat) : Boolean = {
