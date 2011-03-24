@@ -32,16 +32,16 @@ trait CallTransformation
 
           println("Here is the extracted FunDef:") 
           println(fd)
-          
+
           val codeGen = new CodeGenerator(unit, currentOwner)
 
           fd.body match {
             case None => println("Could not extract choose predicate: " + funBody); super.transform(tree)
             case Some(b) =>
               val exprFilename = writeExpr(b)
-              val (programGet, progSym) = codeGen.generateProgramGet(programFilename)
-              val (exprGet, exprSym) = codeGen.generateExprGet(exprFilename)
-              val solverInvocation = codeGen.generateSolverInvocation(b, progSym, exprSym)
+              val (programGet, progSym) = codeGen.getProgram(programFilename)
+              val (exprGet, exprSym) = codeGen.getExpr(exprFilename)
+              val solverInvocation = codeGen.invokeSolver(b, progSym, exprSym)
               val code = Block(programGet :: exprGet :: Nil, solverInvocation)
 
               typer.typed(atOwner(currentOwner) {

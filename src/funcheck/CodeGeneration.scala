@@ -28,7 +28,7 @@ trait CodeGeneration {
 
   class CodeGenerator(unit : CompilationUnit, owner : Symbol) {
 
-    def generateProgramGet(filename : String) : (Tree, Symbol) = {
+    def getProgram(filename : String) : (Tree, Symbol) = {
       val progSymbol = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "prog")).setInfo(programClass.tpe)
       val getStatement =
         ValDef(
@@ -47,7 +47,7 @@ trait CodeGeneration {
       (getStatement, progSymbol)
     }
 
-    def generateExprGet(filename : String) : (Tree, Symbol) = {
+    def getExpr(filename : String) : (Tree, Symbol) = {
       val exprSymbol = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "expr")).setInfo(exprClass.tpe)
       val getStatement =
         ValDef(
@@ -66,7 +66,7 @@ trait CodeGeneration {
       (getStatement, exprSymbol)
     }
 
-    def generateSolverInvocation(formula : Expr, progSymbol : Symbol, exprSymbol : Symbol) : Tree = {
+    def invokeSolver(formula : Expr, progSymbol : Symbol, exprSymbol : Symbol) : Tree = {
       val solverSymbol = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "solver")).setInfo(fairZ3SolverClass.tpe)
       val solverDeclaration = 
         ValDef(
@@ -102,9 +102,9 @@ trait CodeGeneration {
         )
 
       Block(
-            solverDeclaration :: setProgram :: invocation :: Nil,
-            Literal(Constant(0))
-          )
+        solverDeclaration :: setProgram :: invocation :: Nil,
+        Literal(Constant(0))
+      )
     }
   }
 }

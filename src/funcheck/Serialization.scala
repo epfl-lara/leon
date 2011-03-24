@@ -72,6 +72,4 @@ trait Serialization {
   }
 }
 
-object Serialization extends Serialization {
-  
-}
+object Serialization extends Serialization
