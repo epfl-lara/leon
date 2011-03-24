@@ -5,7 +5,7 @@ import scala.tools.nsc.{Global,Phase}
 import scala.tools.nsc.plugins.{Plugin,PluginComponent}
 
 /** This class is the entry point for the plugin. */
-class FunCheckPlugin(val global: Global) extends Plugin {
+class FunCheckPlugin(val global: Global) extends AbstractPlugin {
   import global._
 
   val name = "funcheck"
@@ -13,7 +13,6 @@ class FunCheckPlugin(val global: Global) extends Plugin {
 
   var stopAfterAnalysis: Boolean = true
   var stopAfterExtraction: Boolean = false
-  var silentlyTolerateNonPureBodies: Boolean = false
 
   /** The help message displaying the options for that plugin. */
   override val optionsHelp: Option[String] = Some(

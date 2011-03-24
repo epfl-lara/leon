@@ -5,7 +5,7 @@ import scala.tools.nsc._
 /** Contains extractors to pull-out interesting parts of the Scala ASTs. */
 trait Extractors {
   val global: Global
-  val pluginInstance: FunCheckPlugin
+  val pluginInstance: AbstractPlugin
 
   import global._
   import global.definitions._

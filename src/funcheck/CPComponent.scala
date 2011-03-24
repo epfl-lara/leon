@@ -3,7 +3,7 @@ package funcheck
 import scala.tools.nsc._
 import scala.tools.nsc.plugins._
 
-class CPComponent(val global: Global, val pluginInstance: FunCheckPlugin)
+class CPComponent(val global: Global, val pluginInstance: CPPlugin)
   extends PluginComponent
   with CodeExtraction
   with Serialization
