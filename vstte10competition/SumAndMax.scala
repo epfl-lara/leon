@@ -1,4 +1,3 @@
-import scala.collection.immutable.Set
 import funcheck.Utils._
 import funcheck.Annotations._
 
