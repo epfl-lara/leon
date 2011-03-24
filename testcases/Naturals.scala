@@ -33,6 +33,10 @@ object Naturals {
       plus(Zero(), x) ==  plus(x, Zero()) 
     } holds
 
+
+// induction is made on first parameter
+//induction on x works here!
+//induction on y = stack overflow
     @induct
     def oneCommut(x : Nat, y : Nat) : Boolean = {
       Succ(plus(x,y)) ==  plus(x, Succ(y))
