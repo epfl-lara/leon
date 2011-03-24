@@ -46,9 +46,9 @@ object AmortizedQueue {
       Queue(concat(front, reverse(rear)), Nil())
   } ensuring(isAmortized(_))
 
-  def enqueue(queue : AbsQueue, elem : Int) : AbsQueue = queue match {
+  def enqueue(queue : AbsQueue, elem : Int) : AbsQueue = (queue match {
     case Queue(front, rear) => amortizedQueue(front, Cons(elem, rear))
-  }
+  }) ensuring(isAmortized(_))
 
   def tail(queue : AbsQueue) : AbsQueue = {
     require(isAmortized(queue) && !isEmpty(queue))
@@ -85,5 +85,4 @@ object AmortizedQueue {
     } else
       true
   } holds
-
 }
