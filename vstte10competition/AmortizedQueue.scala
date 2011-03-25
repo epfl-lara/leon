@@ -92,10 +92,9 @@ object AmortizedQueue {
   @induct
   def propTail(rear : List, front : List, list : List, elem : Int) : Boolean = {
     require(!isEmpty(Queue(front, rear)) && isAmortized(Queue(front, rear)))
-    val queue = Queue(front, rear)
-    if (asList(queue) == list) {
+    if (asList(Queue(front, rear)) == list) {
       list match {
-        case Cons(_, xs) => asList(tail(queue)) == xs
+        case Cons(_, xs) => asList(tail(Queue(front, rear))) == xs
       }
     } else
       true
