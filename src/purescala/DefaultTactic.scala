@@ -33,6 +33,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
         val theExpr = { 
           val resFresh = FreshIdentifier("result", true).setType(body.getType)
           val bodyAndPost = Let(resFresh, body, replace(Map(ResultVariable() -> Variable(resFresh)), matchToIfThenElse(post.get)))
+
           val withPrec = if(prec.isEmpty) {
             bodyAndPost
           } else {
@@ -83,7 +84,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
   
     def generatePreconditions(function: FunDef) : Seq[VerificationCondition] = {
       val toRet = if(function.hasBody) {
-        val cleanBody = matchToIfThenElse(function.body.get)
+        val cleanBody = expandLets(matchToIfThenElse(function.body.get))
 
         val allPathConds = collectWithPathCondition((t => t match {
           case FunctionInvocation(fd, _) if(fd.hasPrecondition) => true

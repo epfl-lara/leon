@@ -217,6 +217,11 @@ object Evaluator {
           }
           case (le,re) => throw TypeErrorEx(TypeError(le, s1.getType))
         }
+        case ElementOfSet(el,s) => (rec(ctx,el), rec(ctx,s)) match {
+          case (_, EmptySet(_)) => BooleanLiteral(false)
+          case (e, f @ FiniteSet(els)) => BooleanLiteral(els.contains(e))
+          case (l,r) => throw TypeErrorEx(TypeError(r, SetType(l.getType)))
+        }
 
         case f @ FiniteSet(els) => FiniteSet(els.map(rec(ctx,_)).distinct).setType(f.getType)
         case e @ EmptySet(_) => e
