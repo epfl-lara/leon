@@ -45,7 +45,7 @@ trait AbstractZ3Solver {
     }
 
     def boundConstraint(boundVar: Z3AST) : Z3AST = {
-      lowerBound <= boundVar && boundVar <= upperBound
+      z3.mkAnd(z3.mkLE(lowerBound, boundVar), z3.mkLE(boundVar, upperBound))
     }
 
     // for all recursive type roots
@@ -70,7 +70,7 @@ trait AbstractZ3Solver {
             val term = adtConstructors(child)(boundVars : _*)
             val pattern = z3.mkPattern(term)
             //val constraint = (fields zip boundVars).filter((p: (VarDecl, Z3AST)) => isUnbounded(p._1)).map((p: (VarDecl, Z3AST)) => boundConstraint(p._2)).foldLeft(z3.mkTrue)((a, b) => a && b)
-            val constraint = (fields zip boundVars).filter((p: (VarDecl, Z3AST)) => isUnbounded(p._1)).map((p: (VarDecl, Z3AST)) => boundConstraint(adtFieldSelectors(p._1.id)(term))).foldLeft(z3.mkTrue)((a, b) => a && b)
+            val constraint = (fields zip boundVars).filter((p: (VarDecl, Z3AST)) => isUnbounded(p._1)).map((p: (VarDecl, Z3AST)) => boundConstraint(adtFieldSelectors(p._1.id)(term))).foldLeft(z3.mkTrue)((a, b) => z3.mkAnd(a, b))
             val axiom = z3.mkForAll(0, List(pattern), fields.zipWithIndex.map{case (f, i) => (z3.mkIntSymbol(i), typeToSort(f.getType))}, constraint)
             //println("Asserting: " + axiom)
             z3.assertCnstr(axiom)
