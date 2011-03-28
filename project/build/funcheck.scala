@@ -104,7 +104,7 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
       fw.write("    -Dscala.home=" + libStr.substring(0, libStr.length-21) + " \\" + nl)
 
       fw.write("    -classpath ${FUNCHECKCLASSPATH} \\" + nl)
-      fw.write("  scala.tools.nsc.Main -Xplugin:" + cpPlugin.jarPath.absolutePath + " -classpath ${SCALACCLASSPATH} $@" + nl)
+      fw.write("  scala.tools.nsc.Main -Xplugin:" + cpPlugin.jarPath.absolutePath + " -classpath ${SCALACCLASSPATH} -d out $@" + nl)
       fw.close
       f.setExecutable(true)
       None
