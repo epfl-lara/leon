@@ -1,4 +1,4 @@
-package funcheck
+package cp
 
 import scala.tools.nsc.transform.TypingTransformers
 import purescala.FairZ3Solver
@@ -13,8 +13,8 @@ trait CallTransformation
   self: CPComponent =>
   import global._
 
-  private lazy val funcheckPackage = definitions.getModule("funcheck")
-  private lazy val cpDefinitionsModule = definitions.getModule("funcheck.CP")
+  private lazy val cpPackage = definitions.getModule("cp")
+  private lazy val cpDefinitionsModule = definitions.getModule("cp.CP")
 
 
   def transformCalls(unit: CompilationUnit, prog: Program, programFilename: String) : Unit =

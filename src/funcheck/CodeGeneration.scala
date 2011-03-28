@@ -1,4 +1,4 @@
-package funcheck
+package cp
 
 import purescala.Trees._
 
@@ -6,9 +6,9 @@ trait CodeGeneration {
   self: CallTransformation =>
   import global._
 
-  private lazy val funcheckPackage = definitions.getModule("funcheck")
+  private lazy val cpPackage = definitions.getModule("cp")
 
-  private lazy val serializationModule = definitions.getModule("funcheck.Serialization")
+  private lazy val serializationModule = definitions.getModule("cp.Serialization")
   private lazy val getProgramFunction = definitions.getMember(serializationModule, "getProgram")
   private lazy val getExprFunction = definitions.getMember(serializationModule, "getExpr")
 
@@ -36,7 +36,7 @@ trait CodeGeneration {
           Apply(
             Select(
               Select(
-                Ident(funcheckPackage),
+                Ident(cpPackage),
                 serializationModule
               ) ,
               getProgramFunction
@@ -55,7 +55,7 @@ trait CodeGeneration {
           Apply(
             Select(
               Select(
-                Ident(funcheckPackage),
+                Ident(cpPackage),
                 serializationModule
               ),
               getExprFunction

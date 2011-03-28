@@ -1,4 +1,4 @@
-package funcheck
+package cp
 
 object CP {
   final class NotImplementedException extends Exception

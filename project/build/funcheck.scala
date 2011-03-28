@@ -9,7 +9,7 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
 
   lazy val purescala      = project(".", "PureScala Definitions", new PureScalaProject(_))
   lazy val plugin         = project(".", "FunCheck Plugin", new PluginProject(_), purescala, multisetsLib)
-  // lazy val cp             = project(".", "Constraint programming plugin", new CPProject(_), purescala, multisetsLib, plugin)
+  lazy val cpPlugin       = project(".", "Constraint programming plugin", new CPPluginProject(_), purescala, multisetsLib, plugin)
   lazy val multisetsLib   = project(".", "Multiset Placeholder Library", new MultisetsLibProject(_))
   lazy val multisets      = project(".", "Multiset Solver", new MultisetsProject(_), plugin, purescala, multisetsLib)
   lazy val orderedsets    = project(".", "Ordered Sets Solver", new OrderedSetsProject(_), plugin, purescala)
@@ -18,7 +18,7 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
   lazy val extensionJars : List[Path] = multisetsLib.jarPath :: multisets.jarPath :: orderedsets.jarPath :: setconstraints.jarPath :: Nil
 
   val scriptPath: Path = "." / "funcheck"
-  val cpScriptPath: Path = "." / "scalac-cp"
+  val cpScriptPath: Path = "." / "cp"
 
   lazy val all = task { None } dependsOn(generateScript) describedAs("Compile everything and produce a script file.")
 
@@ -68,10 +68,62 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
     }
   }) dependsOn(plugin.`package`) describedAs("Produce the runner script.")
 
+  lazy val generateCpScript = genCPScript
+  def genCPScript = fileTask(cpScriptPath ::Nil)({
+    log.info("Generating runner script")
+    try {
+      val nl = System.getProperty("line.separator")
+      val f = cpScriptPath.asFile
+      val fw = new java.io.FileWriter(f)
+      fw.write("#!/bin/bash" + nl)
+      fw.write("FUNCHECKCLASSPATH=\"")
+      fw.write(buildLibraryJar.absolutePath + ":")
+      fw.write(buildCompilerJar.absolutePath + ":")
+      fw.write(purescala.jarPath.absolutePath + ":")
+      fw.write(plugin.jarPath.absolutePath + ":")
+      fw.write(("lib" / "z3.jar").absolutePath)
+      fw.write("\"" + nl + nl)
+      fw.write("for f in " + extensionJars.map(_.absolutePath).map(n => "\"" + n + "\"").mkString(" ") + "; do" + nl)
+      fw.write("  if [ -e ${f} ]" + nl)
+      fw.write("  then" + nl)
+      fw.write("    FUNCHECKCLASSPATH=${FUNCHECKCLASSPATH}:${f}" + nl)
+      fw.write("  fi" + nl)
+      fw.write("done" + nl + nl)
+      fw.write("SCALACCLASSPATH=\"")
+      fw.write(multisetsLib.jarPath.absolutePath + ":")
+      fw.write(plugin.jarPath.absolutePath + ":")
+      fw.write(purescala.jarPath.absolutePath + ":")
+      fw.write(cpPlugin.jarPath.absolutePath)
+      fw.write("\"" + nl + nl)
+      fw.write("LD_LIBRARY_PATH=" + ("." / "lib-bin").absolutePath + " \\" + nl)
+      // fw.write("scala -classpath ${FUNCHECKCLASSPATH}:${SCALACCLASSPATH}" + " \\" + nl)
+      // fw.write("funcheck.Main -cp " + plugin.jarPath.absolutePath + " $@" + nl)
+      fw.write("java -Xmx1024M \\" + nl)
+      // This is a hack :(
+      val libStr = (buildLibraryJar.absolutePath).toString
+      fw.write("    -Dscala.home=" + libStr.substring(0, libStr.length-21) + " \\" + nl)
+
+      fw.write("    -classpath ${FUNCHECKCLASSPATH} \\" + nl)
+      fw.write("  scala.tools.nsc.Main -Xplugin:" + cpPlugin.jarPath.absolutePath + " -classpath ${SCALACCLASSPATH} $@" + nl)
+      fw.close
+      f.setExecutable(true)
+      None
+    } catch {
+      case e => Some("There was an error while generating the CP script file: " + e.getLocalizedMessage)
+    }
+  }) dependsOn(cpPlugin.`package`) describedAs("Produce the CP runner script.")
+
   lazy val cleanScript = clnScript
   def clnScript = task {
     log.info("Deleting runner script")
     scriptPath.asFile.delete
+    None
+  }
+
+  lazy val cleanCpScript = clnCPScript
+  def clnCPScript = task {
+    log.info("Deleting CP runner script")
+    cpScriptPath.asFile.delete
     None
   }
 
@@ -90,6 +142,12 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
     override def mainScalaSourcePath = "src" / "funcheck"
     override def unmanagedClasspath = super.unmanagedClasspath +++ purescala.jarPath +++ multisetsLib.jarPath
     override def mainResourcesPath   = "resources" / "funcheck"
+  }
+  class CPPluginProject(info: ProjectInfo) extends PersonalizedProject(info) {
+    override def outputPath = "bin" / "cp"
+    override def mainScalaSourcePath = "src" / "cp"
+    override def unmanagedClasspath = super.unmanagedClasspath +++ purescala.jarPath +++ multisetsLib.jarPath +++ plugin.jarPath
+    override def mainResourcesPath   = "resources" / "cp"
   }
   class MultisetsLibProject(info: ProjectInfo) extends PersonalizedProject(info) {
     override def outputPath = "bin" / "multisets-lib"

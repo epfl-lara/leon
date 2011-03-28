@@ -1,8 +1,9 @@
-package funcheck
+package cp
 
 import scala.tools.nsc
 import scala.tools.nsc.{Global,Phase}
 import scala.tools.nsc.plugins.{Plugin,PluginComponent}
+import funcheck.PluginBase
 
 /** This class is the entry point for the plugin. */
 class CPPlugin(val global: Global) extends PluginBase {

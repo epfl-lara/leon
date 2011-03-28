@@ -1,4 +1,4 @@
-package funcheck
+package cp
 
 trait Serialization {
   import java.io.{FileInputStream,FileOutputStream,ObjectInputStream,ObjectOutputStream,File}

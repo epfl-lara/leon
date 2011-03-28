@@ -1,7 +1,8 @@
-package funcheck
+package cp
 
 import scala.tools.nsc._
 import scala.tools.nsc.plugins._
+import funcheck.CodeExtraction
 
 class CPComponent(val global: Global, val pluginInstance: CPPlugin)
   extends PluginComponent
@@ -27,6 +28,7 @@ class CPComponent(val global: Global, val pluginInstance: CPPlugin)
       //global ref to freshName creator
       fresh = unit.fresh
 
+      println("Starting CP phase")
       val prog: purescala.Definitions.Program = extractCode(unit)
       val filename = writeProgram(prog)
       println("Program extracted and written into: " + filename)
