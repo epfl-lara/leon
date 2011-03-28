@@ -20,9 +20,9 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
   val scriptPath: Path = "." / "funcheck"
   val cpScriptPath: Path = "." / "cp"
 
-  lazy val all = task { None } dependsOn(generateScript) describedAs("Compile everything and produce a script file.")
+  lazy val all = task { None } dependsOn(generateScript, generateCpScript) describedAs("Compile everything and produce a script file.")
 
-  override def cleanAction = super.cleanAction dependsOn(cleanScript)
+  override def cleanAction = super.cleanAction dependsOn(cleanScript, cleanCpScript)
 
   lazy val generateScript = genScript
   def genScript = fileTask(scriptPath ::Nil)({
