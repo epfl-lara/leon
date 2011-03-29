@@ -22,4 +22,5 @@ object Settings {
   var useCores : Boolean = false
   var pruneBranches : Boolean = false
   def useAnyInstantiator : Boolean = useInstantiator || useFairInstantiator
+  var solverTimeout : Option[Int] = None
 }

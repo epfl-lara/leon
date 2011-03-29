@@ -61,13 +61,13 @@ object Injection {
   //   list
   // } ensuring(res => isPermutation(res, n))
 
-  def f(list : List, n : Int) = f0(list, n, n-1, Nil())
-  def f0(list : List, n : Int, c : Int, acc : List) : List = {
-    require(isPermutation(list, n) && c <= n)
+  def f(list : List) = f0(list, size(list)-1, Nil())
+  def f0(list : List, c : Int, acc : List) : List = {
+    require(isPermutation(list, size(list)) && c <= size(list))
     if(c < 0) {
       acc
     } else {
-      f0(list, n, c-1, Cons(indexOf(c, list), acc))
+      f0(list, c-1, Cons(indexOf(c, list), acc))
     }
   } ensuring(res => content(acc) -- completeSet(n) == Set.empty)
 

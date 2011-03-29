@@ -245,6 +245,27 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
   }
 
   def decideWithModel(vc: Expr, forValidity: Boolean): (Option[Boolean], Map[Identifier,Expr]) = {
+    var forceStop : Boolean = false
+
+    def stopCallback() : Unit = {
+      reporter.error(" - Timeout reached.")
+      forceStop = true
+      z3.softCheckCancel
+    }
+
+    val timer : Option[Timer] = Settings.solverTimeout.map(t => new Timer(stopCallback, t))
+    timer.foreach(_.start())
+
+    var foundDefinitiveAnswer : Boolean = false
+    var definitiveAnswer : Option[Boolean] = None
+    var definitiveModel : Map[Identifier,Expr] = Map.empty
+    def foundAnswer(answer : Option[Boolean], model : Map[Identifier,Expr] = Map.empty) : Unit = {
+      foundDefinitiveAnswer = true
+      definitiveAnswer = answer
+      definitiveModel = model
+      timer.foreach(t => t.halt)
+    }
+
     val unrollingBank = new UnrollingBank
 
     lazy val varsInVC = variablesOf(vc) 
@@ -262,9 +283,6 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     // println("New basis: " + e)
     // println("Bunch of clauses:\n" + se.map(_.toString).mkString("\n"))
     // println("Bunch of blocking bools: " + sib.map(_.toString).mkString(", "))
-    var foundDefinitiveAnswer : Boolean = false
-    var definitiveAnswer : Option[Boolean] = None
-    var definitiveModel : Map[Identifier,Expr] = Map.empty
 
     // println("Basis : " + basis)
     z3.assertCnstr(toZ3Formula(z3, basis).get)
@@ -279,7 +297,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
 
     var iterationsLeft : Int = if(Settings.unrollingLevel > 0) Settings.unrollingLevel else 16121984
 
-    while(!foundDefinitiveAnswer) {
+    while(!foundDefinitiveAnswer && !forceStop) {
       iterationsLeft -= 1
 
       val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.map(toZ3Formula(z3, _).get).toSeq
@@ -310,37 +328,27 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
       (reinterpretedAnswer, model) match {
         case (None, m) => { // UNKNOWN
           reporter.warning("Z3 doesn't know because: " + z3.getSearchFailure.message)
-          foundDefinitiveAnswer = true
-          definitiveAnswer = None
-          definitiveModel = Map.empty
+          foundAnswer(None)
           m.delete
         }
         case (Some(true), m) => { // SAT
           val (trueModel, model) = validateAndDeleteModel(m, toCheckAgainstModels, varsInVC)
 
           if (trueModel) {
-            foundDefinitiveAnswer = true
-            definitiveAnswer = Some(false)
-            definitiveModel = model
+            foundAnswer(Some(false), model)
           } else {
             reporter.error("Something went wrong. The model should have been valid, yet we got this : ")
             reporter.error(model)
-            foundDefinitiveAnswer = true
-            definitiveAnswer = None
-            definitiveModel = model
+            foundAnswer(None, model)
           }
         }
         case (Some(false), m) if Settings.useCores && core.isEmpty => {
           reporter.info("Empty core, definitively valid.")
           m.delete
-          foundDefinitiveAnswer = true
-          definitiveAnswer = Some(true)
-          definitiveModel = Map.empty
+          foundAnswer(Some(true))
         }
         case (Some(false), m) if !Settings.useCores && blockingSet.isEmpty => {
-          foundDefinitiveAnswer = true
-          definitiveAnswer = Some(true)
-          definitiveModel = Map.empty
+          foundAnswer(Some(true))
         }
         // This branch is both for with and without unsat cores. The
         // distinction is made inside.
@@ -353,18 +361,18 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
             val (result2,m2) = z3.checkAndGetModel()
 
             if (result2 == Some(false)) {
-              foundDefinitiveAnswer = true
-              definitiveAnswer = Some(true)
-              definitiveModel = Map.empty
+              foundAnswer(Some(true))
             } else {
               // we might have been lucky :D
               val (wereWeLucky, cleanModel) = validateAndDeleteModel(m2, toCheckAgainstModels, varsInVC)
               if(wereWeLucky) {
-                foundDefinitiveAnswer = true
-                definitiveAnswer = Some(false)
-                definitiveModel = cleanModel
+                foundAnswer(Some(false), cleanModel)
               } 
             }
+          }
+
+          if(forceStop) {
+            foundAnswer(None)
           }
             
           if(!foundDefinitiveAnswer) { 
@@ -446,14 +454,17 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
       }
 
       if(iterationsLeft <= 0) {
-        foundDefinitiveAnswer = true
-        definitiveAnswer = None
-        definitiveModel = Map.empty
-        reporter.error("Max. number of iterations reached.")
+        reporter.error(" - Max. number of iterations reached.")
+        foundAnswer(None)
       }
     }
 
-    (definitiveAnswer, definitiveModel)
+    if(forceStop) {
+      (None, Map.empty)
+    } else {
+      assert(foundDefinitiveAnswer)
+      (definitiveAnswer, definitiveModel)
+    }
   }
 
   private def validateAndDeleteModel(model: Z3Model, formula: Expr, variables: Set[Identifier]) : (Boolean, Map[Identifier,Expr]) = {
