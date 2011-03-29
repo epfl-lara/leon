@@ -247,6 +247,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
   def decideWithModel(vc: Expr, forValidity: Boolean): (Option[Boolean], Map[Identifier,Expr]) = {
     var forceStop : Boolean = false
 
+    var foundDefinitiveAnswer : Boolean = false
     def stopCallback() : Unit = {
       if(!foundDefinitiveAnswer) {
         reporter.error(" - Timeout reached.")
@@ -258,7 +259,6 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     val timer : Option[Timer] = Settings.solverTimeout.map(t => new Timer(stopCallback, t))
     timer.foreach(_.start())
 
-    var foundDefinitiveAnswer : Boolean = false
     var definitiveAnswer : Option[Boolean] = None
     var definitiveModel : Map[Identifier,Expr] = Map.empty
     def foundAnswer(answer : Option[Boolean], model : Map[Identifier,Expr] = Map.empty) : Unit = {
