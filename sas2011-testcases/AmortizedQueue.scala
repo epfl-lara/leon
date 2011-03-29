@@ -76,7 +76,7 @@ object AmortizedQueue {
       asList(enqueue(queue, elem)) == concat(list, Cons(elem, Nil()))
     } else
       true
-  } // holds
+  } holds
 
   @induct
   def propFront(queue : AbsQueue, list : List, elem : Int) : Boolean = {

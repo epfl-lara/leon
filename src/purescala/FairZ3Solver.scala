@@ -248,9 +248,11 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     var forceStop : Boolean = false
 
     def stopCallback() : Unit = {
-      reporter.error(" - Timeout reached.")
-      forceStop = true
-      z3.softCheckCancel
+      if(!foundDefinitiveAnswer) {
+        reporter.error(" - Timeout reached.")
+        forceStop = true
+        z3.softCheckCancel
+      }
     }
 
     val timer : Option[Timer] = Settings.solverTimeout.map(t => new Timer(stopCallback, t))
