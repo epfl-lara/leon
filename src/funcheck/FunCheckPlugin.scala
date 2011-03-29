@@ -3,9 +3,10 @@ package funcheck
 import scala.tools.nsc
 import scala.tools.nsc.{Global,Phase}
 import scala.tools.nsc.plugins.{Plugin,PluginComponent}
+import purescala.Definitions.Program
 
 /** This class is the entry point for the plugin. */
-class FunCheckPlugin(val global: Global) extends PluginBase {
+class FunCheckPlugin(val global: Global, val actionAfterExtraction : Option[Program=>Unit] = None) extends PluginBase {
   import global._
 
   val name = "funcheck"
@@ -30,7 +31,6 @@ class FunCheckPlugin(val global: Global) extends PluginBase {
     "  -P:funcheck:testcases=[1,2]    Number of testcases to generate per function" + "\n" +
     "  -P:funcheck:testbounds=l:u     Lower and upper bounds for integers in recursive datatypes" + "\n" +
     "  -P:funcheck:timeout=N          Sets a timeout of N seconds (FairZ3 only)" + "\n" +
-    "  -P:funcheck:quiet              No info and warning messages from the extensions" + "\n" +
     "  -P:funcheck:XP                 Enable weird transformations and other bug-producing features" + "\n" +
     "  -P:funcheck:PLDI               PLDI 2011 settings. Now frozen. Not completely functional. See CAV." + "\n" +
     "  -P:funcheck:CAV                CAV 2011 settings. In progress." + "\n" +
@@ -47,7 +47,6 @@ class FunCheckPlugin(val global: Global) extends PluginBase {
         case "uniqid"     =>                     purescala.Settings.showIDs = true
         case "parse"      =>                     stopAfterExtraction = true
         case "tolerant"   =>                     silentlyTolerateNonPureBodies = true
-        case "quiet"      =>                     purescala.Settings.quietExtensions = true
         case "nodefaults" =>                     purescala.Settings.runDefaultExtensions = false
         case "axioms"     =>                     purescala.Settings.noForallAxioms = false
         case "nobapa"     =>                     purescala.Settings.useBAPA = false

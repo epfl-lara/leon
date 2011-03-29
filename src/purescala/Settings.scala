@@ -4,11 +4,9 @@ package purescala
 object Settings {
   var experimental : Boolean = false
   var showIDs: Boolean = false
-  var quietExtensions: Boolean = false
   var functionsToAnalyse: Set[String] = Set.empty
   var extensionNames: Seq[String] = Nil
-  var reporter: Reporter = new DefaultReporter
-  var quietReporter: Reporter = new QuietReporter
+  lazy val reporter: Reporter = new DefaultReporter
   var runDefaultExtensions: Boolean = true
   var noForallAxioms: Boolean = true
   var unrollingLevel: Int = 0

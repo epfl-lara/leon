@@ -1,14 +1,13 @@
 package funcheck
 
 import scala.tools.nsc.{Global,Settings,SubComponent,CompilerCommand}
-import scala.tools.nsc.reporters.{ConsoleReporter,Reporter}
+
+import purescala.Definitions.Program
 
 /** This class is a compiler that will be used for running
 *  the plugin in standalone mode. Courtesy of D. Zufferey. */
-class PluginRunner(settings : Settings, reporter : Reporter) extends Global(settings, reporter) {
-  def this(settings : Settings) = this(settings, new ConsoleReporter(settings))
-
-    val funcheckPlugin = new FunCheckPlugin(this)
+class PluginRunner(settings : Settings, reportingFunction : String => Unit, actionOnProgram : Option[Program=>Unit]) extends Global(settings, new SimpleReporter(settings, reportingFunction)) {
+    val funcheckPlugin = new FunCheckPlugin(this, actionOnProgram)
 
     protected def addToPhasesSet(sub : SubComponent, descr : String) : Unit = {
     phasesSet += sub
@@ -33,12 +32,24 @@ class PluginRunner(settings : Settings, reporter : Reporter) extends Global(sett
 }
 
 object Main {
+  import purescala.{Reporter,DefaultReporter,Definitions,Analysis}
+  import Definitions.Program
+
   def main(args: Array[String]): Unit = {
-    val settings = new Settings
-    runWithSettings(args, settings)
+    main(args, new DefaultReporter)
   }
 
-  private def runWithSettings(args : Array[String], settings : Settings) : Unit = {
+  def main(args: Array[String], reporter: Reporter) : Unit = {
+    val settings = new Settings
+    runWithSettings(args, settings, s => reporter.info(s), Some(p => defaultAction(p, reporter)))
+  }
+
+  private def defaultAction(program: Program, reporter: Reporter) : Unit = {
+    val analysis = new Analysis(program, reporter)
+    analysis.analyse
+  }
+
+  private def runWithSettings(args : Array[String], settings : Settings, printerFunction : String=>Unit, actionOnProgram : Option[Program=>Unit] = None) : Unit = {
     val (funcheckOptions, nonfuncheckOptions) = args.toList.partition(_.startsWith("--"))
     val command = new CompilerCommand(nonfuncheckOptions, settings) {
       override val cmdName = "funcheck"
@@ -48,8 +59,10 @@ object Main {
       if(settings.version.value) {
         println(command.cmdName + " beta.")
       } else {
-        val runner = new PluginRunner(settings)
+        val runner = new PluginRunner(settings, printerFunction, actionOnProgram)
         runner.funcheckPlugin.processOptions(funcheckOptions.map(_.substring(2)), Console.err.println(_))
+        runner.funcheckPlugin.stopAfterExtraction = false
+        runner.funcheckPlugin.stopAfterAnalysis = false
         val run = new runner.Run
         run.compile(command.files)
       }

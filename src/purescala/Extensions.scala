@@ -44,13 +44,7 @@ object Extensions {
   private var solverExtensions : Seq[Solver] = Nil
 
   // Returns the list of the newly loaded.
-  def loadAll : Seq[Extension] = {
-    val extensionsReporter =
-      if(Settings.quietExtensions) {
-        Settings.quietReporter
-      } else {
-        Settings.reporter
-      }
+  def loadAll(extensionsReporter : Reporter = Settings.reporter) : Seq[Extension] = {
     val allNames: Seq[String] = Settings.extensionNames
     val loaded = (if(!allNames.isEmpty) {
       val classLoader = Extensions.getClass.getClassLoader
@@ -85,11 +79,13 @@ object Extensions {
     }
     // these extensions are always loaded, unless specified otherwise
     val defaultExtensions: Seq[Extension] = if(Settings.runDefaultExtensions) {
-      if(Settings.useFairInstantiator) {
-        (new FairZ3Solver(extensionsReporter) :: Nil)
+      //(new TestExtension(extensionsReporter)) :: 
+      (if(Settings.useFairInstantiator) {
+        (new FairZ3Solver(extensionsReporter))
       } else {
-        (new Z3Solver(extensionsReporter)) :: Nil
-      }
+        (new Z3Solver(extensionsReporter))
+      }) ::
+      Nil
     } else {
       Nil
     }

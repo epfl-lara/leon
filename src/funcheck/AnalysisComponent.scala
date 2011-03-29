@@ -32,16 +32,22 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin)
         println("Extraction complete. Now terminating the compiler process.")
         exit(0)
       } else {
-        println("Extracted program for " + unit + ". Re-run with -P:funcheck:parse to see the output.")
+        if(!pluginInstance.actionAfterExtraction.isDefined) {
+          println("Extracted program for " + unit + ". Re-run with -P:funcheck:parse to see the output.")
+        }
         //println(prog)
       }
 
-      println("Starting analysis.")
-      val analysis = new purescala.Analysis(prog)
-      analysis.analyse
-      if(pluginInstance.stopAfterAnalysis) {
-        println("Analysis complete. Now terminating the compiler process.")
-        exit(0)
+      if(!pluginInstance.actionAfterExtraction.isDefined) {
+        println("Starting analysis.")
+        val analysis = new purescala.Analysis(prog)
+        analysis.analyse
+        if(pluginInstance.stopAfterAnalysis) {
+          println("Analysis complete. Now terminating the compiler process.")
+          exit(0)
+        }
+      } else {
+        pluginInstance.actionAfterExtraction.get(prog)
       }
     }
   }

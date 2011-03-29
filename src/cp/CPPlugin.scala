@@ -30,7 +30,6 @@ class CPPlugin(val global: Global) extends PluginBase {
     "  -P:funcheck:impure             Generate testcases only for impure functions" + "\n" +
     "  -P:funcheck:testcases=[1,2]    Number of testcases to generate per function" + "\n" +
     "  -P:funcheck:testbounds=l:u     Lower and upper bounds for integers in recursive datatypes" + "\n" +
-    "  -P:funcheck:quiet              No info and warning messages from the extensions" + "\n" +
     "  -P:funcheck:XP                 Enable weird transformations and other bug-producing features" + "\n" +
     "  -P:funcheck:PLDI               PLDI 2011 settings. Now frozen. Not completely functional. See CAV." + "\n" +
     "  -P:funcheck:CAV                CAV 2011 settings. In progress." + "\n" +
@@ -47,7 +46,6 @@ class CPPlugin(val global: Global) extends PluginBase {
         case "uniqid"     =>                     purescala.Settings.showIDs = true
         case "parse"      =>                     stopAfterExtraction = true
         case "tolerant"   =>                     silentlyTolerateNonPureBodies = true
-        case "quiet"      =>                     purescala.Settings.quietExtensions = true
         case "nodefaults" =>                     purescala.Settings.runDefaultExtensions = false
         case "axioms"     =>                     purescala.Settings.noForallAxioms = false
         case "nobapa"     =>                     purescala.Settings.useBAPA = false

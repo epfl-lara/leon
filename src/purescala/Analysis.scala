@@ -7,12 +7,8 @@ import TypeTrees._
 import Extensions._
 import scala.collection.mutable.{Set => MutableSet}
 
-class Analysis(val program: Program) {
-  // we always use the global reporter for this class
-  val reporter = Settings.reporter
-  // ...but not always for the extensions
-
-  Extensions.loadAll
+class Analysis(val program: Program, val reporter: Reporter = Settings.reporter) {
+  Extensions.loadAll(reporter)
 
   val analysisExtensions: Seq[Analyser] = loadedAnalysisExtensions
 
@@ -308,32 +304,4 @@ object Analysis {
     val result = searchAndReplaceDFS(applyToCall)(expression)
     liftLets(Implies(And(trueThings.reverse), result))
   }
-
-  // Rewrites pattern matching expressions where the cases simply correspond to
-  // the list of constructors
-  // def rewriteSimplePatternMatching(expression: Expr) : Expr = {
-  //   var extras : List[Expr] = Nil
-
-  //   def rewritePM(e: Expr) : Option[Expr] = e match {
-  //     // case NotSoSimplePatternMatching(_) => None
-  //     case SimplePatternMatching(scrutinee, classType, casesInfo) => {
-  //       val newVar = Variable(FreshIdentifier("pm", true)).setType(e.getType)
-  //       val scrutAsLetID = FreshIdentifier("scrut", true).setType(scrutinee.getType)
-  //       val lle : List[(Variable,List[Expr])] = casesInfo.map(cseInfo => {
-  //         val (ccd, newPID, argIDs, rhs) = cseInfo
-  //         val newPVar = Variable(newPID)
-  //         val argVars = argIDs.map(Variable(_))
-  //         (newPVar, List(Equals(newPVar, CaseClass(ccd, argVars)), Implies(Equals(Variable(scrutAsLetID), newPVar), Equals(newVar, rhs))))
-  //       }).toList
-  //       val (newPVars, newExtras) = lle.unzip
-  //       extras = Let(scrutAsLetID, scrutinee, And(Or(newPVars.map(Equals(Variable(scrutAsLetID), _))), And(newExtras.flatten))) :: extras 
-  //       Some(newVar)
-  //     }
-  //     case m @ MatchExpr(s,_) => Settings.reporter.error("Untranslatable PM expression on type " + s.getType + " : " + m); None
-  //     case _ => None
-  //   }
-
-  //   val newExpr = searchAndReplaceDFS(rewritePM)(expression)
-  //   liftLets(Implies(And(extras), newExpr))
-  // }
 }
