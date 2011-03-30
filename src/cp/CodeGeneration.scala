@@ -5,6 +5,9 @@ import purescala.Trees._
 trait CodeGeneration {
   self: CallTransformation =>
   import global._
+  import CODE._
+
+  private lazy val exceptionClass = definitions.getClass("java.lang.Exception")
 
   private lazy val cpPackage = definitions.getModule("cp")
 
@@ -19,6 +22,7 @@ trait CodeGeneration {
 
   private lazy val treesModule = definitions.getModule("purescala.Trees")
   private lazy val exprClass = definitions.getClass("purescala.Trees.Expr")
+  private lazy val intLiteralClass = definitions.getClass("purescala.Trees.IntLiteral")
 
   private lazy val fairZ3SolverClass = definitions.getClass("purescala.FairZ3Solver")
   private lazy val restartAndDecideWithModel = definitions.getMember(fairZ3SolverClass, "restartAndDecideWithModel")
@@ -29,82 +33,41 @@ trait CodeGeneration {
   class CodeGenerator(unit : CompilationUnit, owner : Symbol) {
 
     def getProgram(filename : String) : (Tree, Symbol) = {
-      val progSymbol = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "prog")).setInfo(programClass.tpe)
-      val getStatement =
-        ValDef(
-          progSymbol,
-          Apply(
-            Select(
-              Select(
-                Ident(cpPackage),
-                serializationModule
-              ) ,
-              getProgramFunction
-            ),
-            List(Literal(Constant(filename)))
-          )
-        )
-      (getStatement, progSymbol)
+      val progSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "prog")).setInfo(programClass.tpe)
+      val getStatement = VAL(progSym) === ((cpPackage DOT serializationModule DOT getProgramFunction) APPLY LIT(filename))
+      (getStatement, progSym)
     }
 
     def getExpr(filename : String) : (Tree, Symbol) = {
-      val exprSymbol = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "expr")).setInfo(exprClass.tpe)
-      val getStatement =
-        ValDef(
-          exprSymbol,
-          Apply(
-            Select(
-              Select(
-                Ident(cpPackage),
-                serializationModule
-              ),
-              getExprFunction
-            ),
-            List(Literal(Constant(filename)))
-          )
-        )
-      (getStatement, exprSymbol)
+      val exprSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "expr")).setInfo(exprClass.tpe)
+      val getStatement = VAL(exprSym) === ((cpPackage DOT serializationModule DOT getExprFunction) APPLY LIT(filename))
+      (getStatement, exprSym)
     }
 
-    def invokeSolver(formula : Expr, progSymbol : Symbol, exprSymbol : Symbol) : Tree = {
-      val solverSymbol = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "solver")).setInfo(fairZ3SolverClass.tpe)
-      val solverDeclaration = 
-        ValDef(
-          solverSymbol,
-          New(
-            Ident(fairZ3SolverClass),
-            List(
-              List(
-                New(
-                  Ident(defaultReporter),
-                  List(Nil)
-                )
-              )
-            )
-          )
-        )
-      val setProgram =
-        Apply(
-          Select(
-            Ident(solverSymbol),
-            setProgramFunction
-          ),
-          List(Ident(progSymbol))
-        )
+    def invokeSolver(progSym : Symbol, exprSym : Symbol) : Tree = {
+      val solverSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "solver")).setInfo(fairZ3SolverClass.tpe)
+      val solverDeclaration = VAL(solverSym) === NEW(ID(fairZ3SolverClass), NEW(ID(defaultReporter)))
+      val setProgram = (solverSym DOT setProgramFunction) APPLY ID(progSym)
+      val invocation = (solverSym DOT restartAndDecideWithModel) APPLY (ID(exprSym), LIT(false))
 
-      val invocation =
-        Apply(
-          Select(
-            Ident(solverSymbol),
-            restartAndDecideWithModel
-          ),
-          List(Ident(exprSymbol), Literal(Constant(false)))
-        )
+      BLOCK(solverDeclaration, setProgram, invocation, LIT(0))
+    }
 
-      Block(
-        solverDeclaration :: setProgram :: invocation :: Nil,
-        Literal(Constant(0))
+    def exprToScala : (Symbol, Tree) = {
+      val scrutSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "scrut")).setInfo(exprClass.tpe)
+      val intSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "value")).setInfo(definitions.IntClass.tpe)
+
+      val matchExpr = ID(scrutSym) MATCH (
+        CASE(ID(intLiteralClass) APPLY (intSym BIND WILD())) ==> ID(intSym) ,
+        DEFAULT                                              ==> THROW(exceptionClass, LIT("Cannot convert FunCheck expression to Scala term"))
       )
+      val methodSym = owner.newMethod(NoPosition, unit.fresh.newName(NoPosition, "exprToScala")).setInfo(MethodType(Nil, definitions.IntClass.tpe))
+      // (methodSym, DEF(methodSym) === matchExpr)
+      (methodSym, DEF(methodSym) === LIT(0))
+    }
+
+    def invokeExprToScala(methodSym : Symbol) : Tree = {
+      methodSym APPLY ()
     }
   }
 }
