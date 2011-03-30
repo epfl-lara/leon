@@ -9,15 +9,15 @@ abstract class Reporter {
   def info(msg: Any) : Unit 
   def fatalError(msg: Any) : Nothing
 
-  def error(definition: Definition, msg: Any) : Unit
-  def warning(definition: Definition, msg: Any) : Unit
-  def info(definition: Definition, msg: Any) : Unit 
-  def fatalError(definition: Definition, msg: Any) : Nothing
+  def error(definition: Definition, msg: Any) : Unit = error(msg)
+  def warning(definition: Definition, msg: Any) : Unit = warning(msg)
+  def info(definition: Definition, msg: Any) : Unit = info(msg)
+  def fatalError(definition: Definition, msg: Any) : Nothing = fatalError(msg)
 
-  def error(expr: Expr, msg: Any) : Unit
-  def warning(expr: Expr, msg: Any) : Unit
-  def info(expr: Expr, msg: Any) : Unit
-  def fatalError(expr: Expr, msg: Any) : Nothing
+  def error(expr: Expr, msg: Any) : Unit = error(msg)
+  def warning(expr: Expr, msg: Any) : Unit = warning(msg)
+  def info(expr: Expr, msg: Any) : Unit = info(msg)
+  def fatalError(expr: Expr, msg: Any) : Nothing = fatalError(msg)
 }
 
 class DefaultReporter extends Reporter {
@@ -44,21 +44,17 @@ class DefaultReporter extends Reporter {
   def warning(msg: Any) = output(reline(warningPfx, msg.toString))
   def info(msg: Any) = output(reline(infoPfx, msg.toString))
   def fatalError(msg: Any) = { output(reline(fatalPfx, msg.toString)); exit(0) }
-  def error(definition: Definition, msg: Any) = output(reline(errorPfx, PrettyPrinter(definition) + "\n" + msg.toString))
-  def warning(definition: Definition, msg: Any) = output(reline(warningPfx, PrettyPrinter(definition) + "\n" + msg.toString))
-  def info(definition: Definition, msg: Any) = output(reline(infoPfx, PrettyPrinter(definition) + "\n" + msg.toString))
-  def fatalError(definition: Definition, msg: Any) = { output(reline(fatalPfx, PrettyPrinter(definition) + "\n" + msg.toString)); exit(0) }
-  def error(expr: Expr, msg: Any) = output(reline(errorPfx, PrettyPrinter(expr) + "\n" + msg.toString)) 
-  def warning(expr: Expr, msg: Any) = output(reline(warningPfx, PrettyPrinter(expr) + "\n" + msg.toString))
-  def info(expr: Expr, msg: Any) = output(reline(infoPfx, PrettyPrinter(expr) + "\n" + msg.toString))
-  def fatalError(expr: Expr, msg: Any) = { output(reline(fatalPfx, PrettyPrinter(expr) + "\n" + msg.toString)); exit(0) }
+  override def error(definition: Definition, msg: Any) = output(reline(errorPfx, PrettyPrinter(definition) + "\n" + msg.toString))
+  override def warning(definition: Definition, msg: Any) = output(reline(warningPfx, PrettyPrinter(definition) + "\n" + msg.toString))
+  override def info(definition: Definition, msg: Any) = output(reline(infoPfx, PrettyPrinter(definition) + "\n" + msg.toString))
+  override def fatalError(definition: Definition, msg: Any) = { output(reline(fatalPfx, PrettyPrinter(definition) + "\n" + msg.toString)); exit(0) }
+  override def error(expr: Expr, msg: Any) = output(reline(errorPfx, PrettyPrinter(expr) + "\n" + msg.toString)) 
+  override def warning(expr: Expr, msg: Any) = output(reline(warningPfx, PrettyPrinter(expr) + "\n" + msg.toString))
+  override def info(expr: Expr, msg: Any) = output(reline(infoPfx, PrettyPrinter(expr) + "\n" + msg.toString))
+  override def fatalError(expr: Expr, msg: Any) = { output(reline(fatalPfx, PrettyPrinter(expr) + "\n" + msg.toString)); exit(0) }
 }
 
 class QuietReporter extends DefaultReporter {
   override def warning(msg: Any) = {}
   override def info(msg: Any) = {}
-  override def warning(definition: Definition, msg: Any) = {}
-  override def info(definition: Definition, msg: Any) = {}
-  override def warning(expr: Expr, msg: Any) = {}
-  override def info(expr: Expr, msg: Any) = {}
 }
