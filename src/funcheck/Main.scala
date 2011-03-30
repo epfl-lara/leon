@@ -4,42 +4,28 @@ import scala.tools.nsc.{Global,Settings,SubComponent,CompilerCommand}
 
 import purescala.Definitions.Program
 
-/** This class is a compiler that will be used for running
-*  the plugin in standalone mode. Courtesy of D. Zufferey. */
-class PluginRunner(settings : Settings, reportingFunction : String => Unit, actionOnProgram : Option[Program=>Unit]) extends Global(settings, new SimpleReporter(settings, reportingFunction)) {
-    val funcheckPlugin = new FunCheckPlugin(this, actionOnProgram)
-
-    protected def addToPhasesSet(sub : SubComponent, descr : String) : Unit = {
-    phasesSet += sub
-  }
-
-  /** The phases to be run. */
-  override protected def computeInternalPhases() : Unit = {
-    val phs = List(
-      syntaxAnalyzer          -> "parse source into ASTs, perform simple desugaring",
-      analyzer.namerFactory   -> "resolve names, attach symbols to named trees",
-      analyzer.packageObjects -> "load package objects",
-      analyzer.typerFactory   -> "the meat and potatoes: type the trees",
-      superAccessors          -> "add super accessors in traits and nested classes",
-      pickler                 -> "serialize symbol tables",
-      refchecks               -> "reference and override checking, translate nested objects"
-    ) ::: {
-      val zipped = funcheckPlugin.components zip funcheckPlugin.descriptions
-      zipped
-    }
-    phs foreach (addToPhasesSet _).tupled
-  }
-}
-
 object Main {
   import purescala.{Reporter,DefaultReporter,Definitions,Analysis}
   import Definitions.Program
 
-  def main(args: Array[String]): Unit = {
-    main(args, new DefaultReporter)
+  def main(args : Array[String]) : Unit = run(args)
+
+  def runFromString(program : String, args : Array[String], reporter : Reporter = new DefaultReporter) : Unit = {
+    import java.io.{BufferedWriter,File,FileWriter,IOException}
+
+    try {
+      val file : File = File.createTempFile("leon", ".scala")
+      file.deleteOnExit
+      val out = new BufferedWriter(new FileWriter(file))
+      out.write(program)
+      out.close
+      run(file.getPath.toString +: args, reporter)
+    } catch {
+      case e : IOException => reporter.error(e.getMessage)
+    }
   }
 
-  def main(args: Array[String], reporter: Reporter) : Unit = {
+  def run(args: Array[String], reporter: Reporter = new DefaultReporter) : Unit = {
     val settings = new Settings
     runWithSettings(args, settings, s => reporter.info(s), Some(p => defaultAction(p, reporter)))
   }
@@ -67,5 +53,32 @@ object Main {
         run.compile(command.files)
       }
     }
+  }
+}
+
+/** This class is a compiler that will be used for running the plugin in
+ * standalone mode. Original version courtesy of D. Zufferey. */
+class PluginRunner(settings : Settings, reportingFunction : String => Unit, actionOnProgram : Option[Program=>Unit]) extends Global(settings, new SimpleReporter(settings, reportingFunction)) {
+    val funcheckPlugin = new FunCheckPlugin(this, actionOnProgram)
+
+    protected def addToPhasesSet(sub : SubComponent, descr : String) : Unit = {
+    phasesSet += sub
+  }
+
+  /** The phases to be run. */
+  override protected def computeInternalPhases() : Unit = {
+    val phs = List(
+      syntaxAnalyzer          -> "parse source into ASTs, perform simple desugaring",
+      analyzer.namerFactory   -> "resolve names, attach symbols to named trees",
+      analyzer.packageObjects -> "load package objects",
+      analyzer.typerFactory   -> "the meat and potatoes: type the trees",
+      superAccessors          -> "add super accessors in traits and nested classes",
+      pickler                 -> "serialize symbol tables",
+      refchecks               -> "reference and override checking, translate nested objects"
+    ) ::: {
+      val zipped = funcheckPlugin.components zip funcheckPlugin.descriptions
+      zipped
+    }
+    phs foreach (addToPhasesSet _).tupled
   }
 }
