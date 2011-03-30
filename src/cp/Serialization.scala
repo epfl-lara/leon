@@ -5,12 +5,14 @@ trait Serialization {
   import purescala.Definitions._
   import purescala.Trees._
 
+  private val filePrefix = "serialized"
   private val fileSuffix = ""
   private val dirName = "serialized"
   private val directory = new java.io.File(dirName)
 
   private var cachedProgram : Option[Program] = None
   private val exprMap = new scala.collection.mutable.HashMap[String,Expr]()
+  private val outputVarListMap = new scala.collection.mutable.HashMap[String,List[String]]()
 
   def programFileName(prog : Program) : String = {
     prog.mainObject.id.toString + fileSuffix
@@ -25,7 +27,17 @@ trait Serialization {
     fos.close()
 
     file.getAbsolutePath()
+
   }
+
+  def writeObject(obj : Any) : String = {
+    directory.mkdir()
+
+    val file = java.io.File.createTempFile(filePrefix, fileSuffix, directory)
+    
+    writeObject(file, obj)
+  }
+
   def writeProgram(prog : Program) : String = {
     directory.mkdir()
 
@@ -33,14 +45,6 @@ trait Serialization {
     file.delete()
 
     writeObject(file, prog)
-  }
-
-  def writeExpr(pred : Expr) : String = {
-    directory.mkdir()
-
-    val file = java.io.File.createTempFile("expr", fileSuffix, directory)
-    
-    writeObject(file, pred)
   }
 
   private def readObject[A](filename : String) : A = {
@@ -61,14 +65,23 @@ trait Serialization {
     readObject[Expr](filename)
   }
 
+  private def readOutputVarList(filename : String) : List[String] = {
+    readObject[List[String]](filename)
+  }
+
   def getProgram(filename : String) : Program = cachedProgram match {
     case None => val r = readProgram(filename); cachedProgram = Some(r); r
     case Some(cp) => cp
   }
 
   def getExpr(filename : String) : Expr = exprMap.get(filename) match {
-    case Some(p) => p
-    case None => val p = readExpr(filename); exprMap += (filename -> p); p
+    case Some(e) => e
+    case None => val e = readExpr(filename); exprMap += (filename -> e); e
+  }
+
+  def getOutputVarList(filename : String) : List[String] = outputVarListMap.get(filename) match {
+    case Some(l) => l
+    case None => val l = readOutputVarList(filename); outputVarListMap += (filename -> l); l
   }
 }
 

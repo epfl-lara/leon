@@ -1,12 +1,14 @@
 package cp
 
 import purescala.Trees._
+import purescala.Definitions._
 
 trait CodeGeneration {
   self: CallTransformation =>
   import global._
   import CODE._
 
+  private lazy val scalaPackage = definitions.ScalaPackage
   private lazy val exceptionClass = definitions.getClass("java.lang.Exception")
 
   private lazy val cpPackage = definitions.getModule("cp")
@@ -14,6 +16,7 @@ trait CodeGeneration {
   private lazy val serializationModule = definitions.getModule("cp.Serialization")
   private lazy val getProgramFunction = definitions.getMember(serializationModule, "getProgram")
   private lazy val getExprFunction = definitions.getMember(serializationModule, "getExpr")
+  private lazy val getOutputVarListFunction = definitions.getMember(serializationModule, "getOutputVarList")
 
   private lazy val purescalaPackage = definitions.getModule("purescala")
 
@@ -22,8 +25,9 @@ trait CodeGeneration {
 
   private lazy val treesModule = definitions.getModule("purescala.Trees")
   private lazy val exprClass = definitions.getClass("purescala.Trees.Expr")
-  private lazy val intLiteralClass = definitions.getClass("purescala.Trees.IntLiteral")
   private lazy val intLiteralModule = definitions.getModule("purescala.Trees.IntLiteral")
+  private lazy val booleanLiteralModule = definitions.getModule("purescala.Trees.BooleanLiteral")
+  private lazy val caseClassModule = definitions.getModule("purescala.Trees.CaseClass")
 
   private lazy val fairZ3SolverClass = definitions.getClass("purescala.FairZ3Solver")
   private lazy val restartAndDecideWithModel = definitions.getMember(fairZ3SolverClass, "restartAndDecideWithModel")
@@ -45,6 +49,12 @@ trait CodeGeneration {
       (getStatement, exprSym)
     }
 
+    def getOutputVarList(filename : String) : (Tree, Symbol) = {
+      val listSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "ovl")).setInfo(typeRef(NoPrefix, definitions.ListClass, List(definitions.StringClass.tpe)))
+      val getStatement = VAL(listSym) === ((cpPackage DOT serializationModule DOT getOutputVarListFunction) APPLY LIT(filename))
+      (getStatement, listSym)
+    }
+
     def invokeSolver(progSym : Symbol, exprSym : Symbol) : Tree = {
       val solverSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "solver")).setInfo(fairZ3SolverClass.tpe)
       val solverDeclaration = VAL(solverSym) === NEW(ID(fairZ3SolverClass), NEW(ID(defaultReporter)))
@@ -54,16 +64,20 @@ trait CodeGeneration {
       BLOCK(solverDeclaration, setProgram, invocation, LIT(0))
     }
 
-    def exprToScala(owner : Symbol) : (Symbol, Tree) = {
+    def exprToScala(owner : Symbol, prog : Program) : (Symbol, Tree) = {
       val methodSym = owner.newMethod(NoPosition, unit.fresh.newName(NoPosition, "exprToScala"))
       methodSym.setInfo(MethodType(methodSym.newSyntheticValueParams(List(definitions.AnyClass.tpe)), definitions.AnyClass.tpe))
       owner.info.decls.enter(methodSym)
 
       val intSym = methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "value")).setInfo(definitions.IntClass.tpe)
+      val booleanSym = methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "value")).setInfo(definitions.BooleanClass.tpe)
+
+      val definedCaseClasses : Seq[CaseClassDef] = prog.definedClasses.filter(_.isInstanceOf[CaseClassDef]).map(_.asInstanceOf[CaseClassDef])
 
       val matchExpr = (methodSym ARG 0) MATCH (
-        CASE((intLiteralModule) APPLY (intSym BIND WILD())) ==> ID(intSym) ,
-        DEFAULT                                             ==> THROW(exceptionClass, LIT("Cannot convert FunCheck expression to Scala term"))
+        CASE((intLiteralModule) APPLY (intSym BIND WILD()))         ==> ID(intSym) ,
+        CASE((booleanLiteralModule) APPLY (booleanSym BIND WILD())) ==> ID(booleanSym) ,
+        DEFAULT                                                     ==> THROW(exceptionClass, LIT("Cannot convert FunCheck expression to Scala term"))
       )
 
       (methodSym, DEF(methodSym) === matchExpr)

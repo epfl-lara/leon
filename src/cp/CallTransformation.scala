@@ -4,6 +4,7 @@ import scala.tools.nsc.transform.TypingTransformers
 import scala.tools.nsc.ast.TreeDSL
 import purescala.FairZ3Solver
 import purescala.DefaultReporter
+import purescala.Common.Identifier
 import purescala.Definitions._
 import purescala.Trees._
 
@@ -27,14 +28,24 @@ trait CallTransformation
     var exprToScalaSym : Symbol = null
     var exprToScalaCode : Tree = null
 
+    def outputAssignmentList(outputVars: List[String], model: Map[Identifier, Expr]) : List[Any] = {
+      val modelWithStrings = model.map{ case (k, v) => (k.name, v) }
+      outputVars.map(ov => (modelWithStrings.get(ov) match {
+        case Some(value) => value
+        case None => scala.Predef.error("Did not find assignment for variable '" + ov + "'")
+      }))
+    }
+
     override def transform(tree: Tree) : Tree = {
       tree match {
         case a @ Apply(TypeApply(Select(s: Select, n), _), rhs @ List(predicate: Function)) if (cpDefinitionsModule == s.symbol && n.toString == "choose") => {
-          println("I'm inside a choose call!")
-
           val Function(funValDefs, funBody) = predicate
 
           val fd = extractPredicate(unit, funValDefs, funBody)
+
+          val outputVarList = funValDefs.map(_.name.toString)
+          println("Here is the output variable list: " + outputVarList.mkString(", "))
+          val outputVarListFilename = writeObject(outputVarList)
 
           println("Here is the extracted FunDef:") 
           println(fd)
@@ -43,13 +54,14 @@ trait CallTransformation
           fd.body match {
             case None => println("Could not extract choose predicate: " + funBody); super.transform(tree)
             case Some(b) =>
-              val exprFilename = writeExpr(b)
+              val exprFilename = writeObject(b)
               val (programGet, progSym) = codeGen.getProgram(programFilename)
               val (exprGet, exprSym) = codeGen.getExpr(exprFilename)
+              val (outputVarListGet, outputVarListSym) = codeGen.getOutputVarList(outputVarListFilename)
               val solverInvocation = codeGen.invokeSolver(progSym, exprSym)
               val exprToScalaInvocation = codeGen.invokeExprToScala(exprToScalaSym)
-              // val code = BLOCK(programGet, exprGet, solverInvocation)
-              val code = BLOCK(programGet, exprGet, solverInvocation, exprToScalaInvocation)
+
+              val code = BLOCK(programGet, exprGet, outputVarListGet, solverInvocation, exprToScalaInvocation)
 
               typer.typed(atOwner(currentOwner) {
                 code
@@ -58,10 +70,9 @@ trait CallTransformation
         }
 
         case cd @ ClassDef(mods, name, tparams, impl) if (cd.symbol.isModuleClass && tparams.isEmpty && !cd.symbol.isSynthetic) => {
-          println("I'm inside the object " + name.toString + " !")
-
           val codeGen = new CodeGenerator(unit, currentOwner)
-          val (e2sSym, e2sCode) = codeGen.exprToScala(cd.symbol)
+
+          val (e2sSym, e2sCode) = codeGen.exprToScala(cd.symbol, prog)
           exprToScalaSym = e2sSym
           exprToScalaCode = e2sCode
           atOwner(tree.symbol) {
@@ -72,10 +83,6 @@ trait CallTransformation
                                     transformValDef(self), typer.typed(atOwner(currentOwner) {exprToScalaCode}) :: transformStats(body, tree.symbol))
                               }) 
           }
-        }
-
-        case dd @ DefDef(mods, name, _, _, _, _) => {
-          super.transform(tree)
         }
 
         case _ => super.transform(tree)
