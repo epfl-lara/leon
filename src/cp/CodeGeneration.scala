@@ -23,6 +23,7 @@ trait CodeGeneration {
   private lazy val treesModule = definitions.getModule("purescala.Trees")
   private lazy val exprClass = definitions.getClass("purescala.Trees.Expr")
   private lazy val intLiteralClass = definitions.getClass("purescala.Trees.IntLiteral")
+  private lazy val intLiteralModule = definitions.getModule("purescala.Trees.IntLiteral")
 
   private lazy val fairZ3SolverClass = definitions.getClass("purescala.FairZ3Solver")
   private lazy val restartAndDecideWithModel = definitions.getMember(fairZ3SolverClass, "restartAndDecideWithModel")
@@ -53,17 +54,19 @@ trait CodeGeneration {
       BLOCK(solverDeclaration, setProgram, invocation, LIT(0))
     }
 
-    def exprToScala : (Symbol, Tree) = {
-      val scrutSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "scrut")).setInfo(exprClass.tpe)
-      val intSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "value")).setInfo(definitions.IntClass.tpe)
+    def exprToScala(owner : Symbol) : (Symbol, Tree) = {
+      val methodSym = owner.newMethod(NoPosition, unit.fresh.newName(NoPosition, "exprToScala"))
+      methodSym.setInfo(MethodType(methodSym.newSyntheticValueParams(List(definitions.AnyClass.tpe)), definitions.AnyClass.tpe))
+      owner.info.decls.enter(methodSym)
 
-      val matchExpr = ID(scrutSym) MATCH (
-        CASE(ID(intLiteralClass) APPLY (intSym BIND WILD())) ==> ID(intSym) ,
-        DEFAULT                                              ==> THROW(exceptionClass, LIT("Cannot convert FunCheck expression to Scala term"))
+      val intSym = methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "value")).setInfo(definitions.IntClass.tpe)
+
+      val matchExpr = (methodSym ARG 0) MATCH (
+        CASE((intLiteralModule) APPLY (intSym BIND WILD())) ==> ID(intSym) ,
+        DEFAULT                                             ==> THROW(exceptionClass, LIT("Cannot convert FunCheck expression to Scala term"))
       )
-      val methodSym = owner.newMethod(NoPosition, unit.fresh.newName(NoPosition, "exprToScala")).setInfo(MethodType(Nil, definitions.IntClass.tpe))
-      // (methodSym, DEF(methodSym) === matchExpr)
-      (methodSym, DEF(methodSym) === LIT(0))
+
+      (methodSym, DEF(methodSym) === matchExpr)
     }
 
     def invokeExprToScala(methodSym : Symbol) : Tree = {

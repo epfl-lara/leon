@@ -24,8 +24,8 @@ trait CallTransformation
     unit.body = new CallTransformer(unit, prog, programFilename).transform(unit.body)
   
   class CallTransformer(unit: CompilationUnit, prog: Program, programFilename: String) extends TypingTransformer(unit) {
-    val codeGen = new CodeGenerator(unit, currentOwner)
-    val (exprToScalaSym, exprToScalaCode) = codeGen.exprToScala
+    var exprToScalaSym : Symbol = null
+    var exprToScalaCode : Tree = null
 
     override def transform(tree: Tree) : Tree = {
       tree match {
@@ -38,6 +38,7 @@ trait CallTransformation
 
           println("Here is the extracted FunDef:") 
           println(fd)
+          val codeGen = new CodeGenerator(unit, currentOwner)
 
           fd.body match {
             case None => println("Could not extract choose predicate: " + funBody); super.transform(tree)
@@ -47,7 +48,8 @@ trait CallTransformation
               val (exprGet, exprSym) = codeGen.getExpr(exprFilename)
               val solverInvocation = codeGen.invokeSolver(progSym, exprSym)
               val exprToScalaInvocation = codeGen.invokeExprToScala(exprToScalaSym)
-              val code = BLOCK(programGet, exprGet, solverInvocation) //, exprToScalaInvocation)
+              // val code = BLOCK(programGet, exprGet, solverInvocation)
+              val code = BLOCK(programGet, exprGet, solverInvocation, exprToScalaInvocation)
 
               typer.typed(atOwner(currentOwner) {
                 code
@@ -58,6 +60,10 @@ trait CallTransformation
         case cd @ ClassDef(mods, name, tparams, impl) if (cd.symbol.isModuleClass && tparams.isEmpty && !cd.symbol.isSynthetic) => {
           println("I'm inside the object " + name.toString + " !")
 
+          val codeGen = new CodeGenerator(unit, currentOwner)
+          val (e2sSym, e2sCode) = codeGen.exprToScala(cd.symbol)
+          exprToScalaSym = e2sSym
+          exprToScalaCode = e2sCode
           atOwner(tree.symbol) {
             treeCopy.ClassDef(tree, transformModifiers(mods), name,
                               transformTypeDefs(tparams), impl match {
