@@ -27,16 +27,22 @@ case object Clear
 // A funcheck/purescala compliant reporter that sends the
 // strings to an actor rather than printing them.
 class ActorReporter(dest : CodeProcessor) extends Reporter {
-  private val BUFSZ : Int = 3
+  private val BUFSZ : Int = 10
   private val buffer : Array[String] = new Array[String](BUFSZ)
   private var id : Int = 0
 
   def output(msg : Any) : Unit = {
-    buffer(id) = msg.toString
-    id += 1
-    if(id == BUFSZ) {
-      send()
-      id = 0
+    val str = msg.toString
+    val trimmed = str.trim
+    val exclude = trimmed.startsWith("-") || trimmed.startsWith("Trying")
+
+    if(!exclude) {
+      buffer(id) = str
+      id += 1
+      if(id == BUFSZ) {
+        send()
+        id = 0
+      }
     }
   }
 
@@ -91,23 +97,24 @@ object QueryHandler extends LiftActor {
 class CodeProcessor extends CometActor {
   override def defaultPrefix = Full("codeprocessor")
   private var msgs : List[String] = Nil
-  private var msgXML : NodeSeq = Text("Waiting.")
 
   override def lowPriority : PartialFunction[Any,Unit] = {
     case Clear => {
       msgs = Nil
-      msgXML = Text("Waiting.")
-      reRender()
+      partialUpdate(
+        SetValById("consolebox", "Cleared.")
+      )
     }
 
     case Message(msg) => {
-      msgs = msgs ::: msg.split('\n').toList
-      msgXML = msgs.flatMap(m => Seq(Text(m), <br/>))
-      reRender()
+      msgs = msg :: msgs
+      partialUpdate(
+        SetValById("consolebox", msgs.reverse.mkString("\n"))
+      )
     }
   }
 
-  def render = bind("consolelines" -> msgXML)
+  def render = <span></span>
 
   override def fixedRender = bind("inputbox" ->
       <lift:form>
@@ -116,7 +123,12 @@ class CodeProcessor extends CometActor {
               QueryHandler ! Query(this, s)
             }, "id" -> "codebox")
         }
-        <input type="submit" onClick="editor.save();" id="clicker" value="Groar !" />
+        {
+          SHtml.submit("Verify !", () => {}, "id" -> "clicker", "onClick" -> "editor.save();")
+        }
+        {
+          SHtml.textarea("Console.\n", s => {}, "id" -> "consolebox", "onChange" -> "document.getElementById('consolebox').scrollTop=document.getElementById('consolebox').scrollHeight;")
+        }
       </lift:form>
-    , "consolelines" -> msgXML)
+    )
 }

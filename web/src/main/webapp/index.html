@@ -16,24 +16,7 @@
 
     <lift:comet type="CodeProcessor">
     <div class="contentbox" id="leonmain">
-        <br />
         <codeprocessor:inputbox></codeprocessor:inputbox>
-        <!--
-        <form>
-        <textarea id="codebox">
-object Main {
-  sealed abstract class List
-  case class Cons(head : Int, tail : List) extends List
-  case class Nil() extends List
-
-  def size(lst : List) : Int = (lst match {
-    case Cons(_, xs) => 1 + size(xs)
-    case Nil() => 0
-  }) ensuring(_ >= 0)
-}
-        </textarea>
-        <input type="submit" id="clicker" value="Roar!" />
-        </form> -->
         <script type="text/javascript">
 // <![CDATA[
 var editor = new CodeMirror.fromTextArea("codebox", {
@@ -45,14 +28,8 @@ stylesheet: "codemirror/scalacolors.css"
 });
 // ]]>
         </script>
-    </div>
-
-    <div class="contentbox" id="console">
-        <div id="consoletext">
-            I am the console.</br>
-            <lift:snippet type="Z3Snippet:versionString"></lift:snippet></br>
-            <codeprocessor:consolelines>Additional console lines</codeprocessor:consolelines>
-        </div>
+<!-- Server is running <lift:snippet type="Z3Snippet:versionString"></lift:snippet>
+<codeprocessor:consolelines>Additional console lines</codeprocessor:consolelines> -->
     </div>
     </lift:comet>
 

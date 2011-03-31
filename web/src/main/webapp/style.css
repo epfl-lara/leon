@@ -1,3 +1,7 @@
+html {
+    height: 100%;
+}
+
 body {
     font-family: Arial, Helvetica, Sans-serif;
     margin: 0px;
@@ -6,6 +10,7 @@ body {
     background-color: #FFFFFF;
     background-repeat: no-repeat;
     background-position: 25px 15px;
+    height: 100%;
 }
 
 h2 {
@@ -39,33 +44,24 @@ div.contentbox {
     position: relative;
     left: 320px;
     width: 700px;
-}
-
-div#title {
-    top: 10px;
-    text-align: right;
     padding: 0px;
     margin: 0px;
 }
 
+div#title {
+    height: 80px;
+    min-height: 80px;
+    max-height: 80px;
+    background-image: url('images/leonlogo.png');
+    background-repeat: no-repeat;
+    background-position: right bottom;
+}
+
 div#leonmain {
-    position: absolute;
-    top: 60px;
 }
 
 div#console {
-    position: absolute;
-    top: 550px;
-    display: inline;
-}
-
-div#logo {
-    position: absolute;
-    top: 15px;
-    left: 25px;
-    width: 290px;
-    height: 400px;
-    background-image: url('images/lionbkg.png');
+    background-color: #EEEEEE;
 }
 
 div#contact {
@@ -75,21 +71,20 @@ div#contact {
     width: 290px;
 }
 
+div#allcontent {
+    height: 100%;
+    min-height: 100%;
+}
+
 div#poweredby {
-    position: absolute;
+    position: fixed;
     left: 0px;
+    bottom: 0px;
     width: 1020px;
+    height: 50px;
     text-align: center;
     display: table-cell;
-}
-
-div#ghost {
-    height: 650px;
-    z-index: -1000;
-}
-
-.middiv {
-    vertical-align: middle;
+    background-color: #FFFFFF;
 }
 
 .smallnote {
@@ -119,33 +114,10 @@ li {
 }
 
 #clicker {
-    margin-top: 5px 0px;
+    margin: 5px 0px;
     background-color: transparent;
     border: 1px solid #666666;
     width: 100%;
-}
-
-div#consoletext {
-    background-color: #EEEEEE;
-    width: 100%;
-    font-family: "Lucida Console", monospace;
-    font-size: 10px;
-}
-
-table.consoletable {
-    width: 32%;
-    margin: 0px;
-    padding: 0px;
-}
-
-tr.consolerow {
-    border: none;
-    border-bottom: 1px dashed #000;
-}
-
-td.contacttype {
-    text-align:right;
-    vertical-align: top;
 }
 
 td.date {
@@ -157,4 +129,21 @@ textarea#codebox {
     background-color: pink;
     width: 700px;
     height: 450px;
+}
+
+textarea#consolebox {
+    font-family: "Lucida Console", monospace;                                                     
+    font-size: 11px;                                                                              
+    width: 700px;                                                                                 
+    height: 250px;
+    border: none;                                                                                 
+    background-color: #EEEEEE;
+    padding: 0px;
+    margin: 0px; 
+    resize: vertical;
+}
+
+.consoletext {
+    font-family: "Lucida Console", monospace;                                                     
+    font-size: 11px;
 }
