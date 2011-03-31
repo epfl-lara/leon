@@ -12,8 +12,8 @@ class Main(reporter : Reporter) extends Analyser(reporter) {
   override val shortDescription = "isabelle"
 
   def analyse(program : Program) : Unit = {
-    println(program)
-    println("Done with Isabelle translation.")
+    reporter.info(program)
+    reporter.info("Done with Isabelle translation.")
   }
 
 }
