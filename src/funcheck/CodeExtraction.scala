@@ -31,8 +31,7 @@ trait CodeExtraction extends Extractors {
   
   protected def stopIfErrors: Unit = {
     if(reporter.hasErrors) {
-      println("There were errors.")
-      exit(0)
+      throw new Exception("There were errors.")
     }
   }
 
