@@ -48,10 +48,8 @@ object InsertionSort {
                     && size(res) == size(l) + 1
             )
 
-  /* Inserting element 'e' into a sorted list 'l' produces a sorted list with
-   * the expected content and size */
+  /* A counterexample is found when we forget to specify the precondition */
   def buggySortedIns(e: Int, l: List): List = {
-    //require(isSorted(l))
     l match {
       case Nil() => Cons(e,Nil())
       case Cons(x,xs) => if (x <= e) Cons(x,buggySortedIns(e, xs)) else Cons(e, l)
