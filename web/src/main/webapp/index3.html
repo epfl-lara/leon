@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta content="text/html; charset=UTF-8" http-equiv="content-type" />
+        <title>Home</title>
+    </head>
+    <body class="lift:content_id=main">
+        <div id="main" class="lift:surround?with=default;at=content">
+            <div class="lift:comet?type=Editor">
+                <div class="column span-6 last" id="editorRightPanel">
+                    <ul>
+                        <li>line</li>
+                    </ul>
+                </div>
+            </div>
+           <script type="text/javascript">
+var editor = new CodeMirror.fromTextArea("code_box", {
+    height: "350px",
+    parserfile: ["tokenizescala.js", "parsescala.js"],
+    path: "static/codemirror/",
+    stylesheet: "static/codemirror/scalacolors.css"
+});
+           </script>
+         </div>
+    </body>
+</html>
+

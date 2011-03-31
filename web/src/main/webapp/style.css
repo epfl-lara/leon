@@ -1,0 +1,160 @@
+body {
+    font-family: Arial, Helvetica, Sans-serif;
+    margin: 0px;
+    padding: 0px;
+    background-image: url('images/lionbkg.png');
+    background-color: #FFFFFF;
+    background-repeat: no-repeat;
+    background-position: 25px 15px;
+}
+
+h2 {
+    margin-top: 20px;
+    margin-bottom: 0px;
+}
+
+h3 {
+    margin-top: 0px;
+    margin-bottom: 0px;
+    font-weight: normal;
+}
+
+p, li {
+    text-align: justify;
+}
+
+a {
+    color: #1133CC;
+}
+
+a:link, a:visited {
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+div.contentbox {
+    position: relative;
+    left: 320px;
+    width: 700px;
+}
+
+div#title {
+    top: 10px;
+    text-align: right;
+    padding: 0px;
+    margin: 0px;
+}
+
+div#leonmain {
+    position: absolute;
+    top: 60px;
+}
+
+div#console {
+    position: absolute;
+    top: 550px;
+    display: inline;
+}
+
+div#logo {
+    position: absolute;
+    top: 15px;
+    left: 25px;
+    width: 290px;
+    height: 400px;
+    background-image: url('images/lionbkg.png');
+}
+
+div#contact {
+    position: absolute;
+    top: 410px; 
+    left: 25px;
+    width: 290px;
+}
+
+div#poweredby {
+    position: absolute;
+    left: 0px;
+    width: 1020px;
+    text-align: center;
+    display: table-cell;
+}
+
+div#ghost {
+    height: 650px;
+    z-index: -1000;
+}
+
+.middiv {
+    vertical-align: middle;
+}
+
+.smallnote {
+    font-size: 10px;
+}
+
+img {
+    border-style: none;
+    border-width: 0px;
+    margin: 0px;
+}
+
+hr {
+    border: none 0;
+    border-top: 1px dashed #000;
+    height: 1px;
+    margin-top: 0px;
+    margin-bottom: 10px;
+}
+
+ul {
+    list-style-type: square;
+}
+
+li {
+    margin-bottom: 5px;
+}
+
+#clicker {
+    margin-top: 5px 0px;
+    background-color: transparent;
+    border: 1px solid #666666;
+    width: 100%;
+}
+
+div#consoletext {
+    background-color: #EEEEEE;
+    width: 100%;
+    font-family: "Lucida Console", monospace;
+    font-size: 10px;
+}
+
+table.consoletable {
+    width: 32%;
+    margin: 0px;
+    padding: 0px;
+}
+
+tr.consolerow {
+    border: none;
+    border-bottom: 1px dashed #000;
+}
+
+td.contacttype {
+    text-align:right;
+    vertical-align: top;
+}
+
+td.date {
+    text-align:right;
+}
+
+textarea#codebox {
+    border-style: none;
+    background-color: pink;
+    width: 700px;
+    height: 450px;
+}

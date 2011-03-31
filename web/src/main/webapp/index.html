@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<lift:surround with="funcheck" at="content">
+    <head_merge>
+        <title>LeonOnline</title>
+        <script type="text/javascript" src="codemirror/codemirror.js" id="codemirror"></script>
+        <style>
+                .CodeMirror-wrapping {
+                    border: 1px dashed #000;
+                    background-image: url('images/lionbkgtr.png');
+                    background-color: #FFFFFF;
+                    background-repeat: no-repeat;
+                    background-position: -295px -65px;
+                }
+        </style>
+    </head_merge>
+
+    <lift:comet type="CodeProcessor">
+    <div class="contentbox" id="leonmain">
+        <br />
+        <codeprocessor:inputbox></codeprocessor:inputbox>
+        <!--
+        <form>
+        <textarea id="codebox">
+object Main {
+  sealed abstract class List
+  case class Cons(head : Int, tail : List) extends List
+  case class Nil() extends List
+
+  def size(lst : List) : Int = (lst match {
+    case Cons(_, xs) => 1 + size(xs)
+    case Nil() => 0
+  }) ensuring(_ >= 0)
+}
+        </textarea>
+        <input type="submit" id="clicker" value="Roar!" />
+        </form> -->
+        <script type="text/javascript">
+// <![CDATA[
+var editor = new CodeMirror.fromTextArea("codebox", {
+width: "697px",
+height: "450px",
+parserfile: ["tokenizescala.js", "parsescala.js"],
+path: "codemirror/",
+stylesheet: "codemirror/scalacolors.css"
+});
+// ]]>
+        </script>
+    </div>
+
+    <div class="contentbox" id="console">
+        <div id="consoletext">
+            I am the console.</br>
+            <lift:snippet type="Z3Snippet:versionString"></lift:snippet></br>
+            <codeprocessor:consolelines>Additional console lines</codeprocessor:consolelines>
+        </div>
+    </div>
+    </lift:comet>
+
+</lift:surround>
