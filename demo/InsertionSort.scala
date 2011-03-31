@@ -70,7 +70,7 @@ object InsertionSort {
   /* Inserting element 'e' into a sorted list 'l' produces a sorted list with
    * the expected content and size */
   def buggySortedIns(e: Int, l: List): List = {
-    require(isSorted(l))
+    // require(isSorted(l))
     l match {
       case Nil() => Cons(e,Nil())
       case Cons(x,xs) => if (x <= e) Cons(x,buggySortedIns(e, xs)) else Cons(e, l)
