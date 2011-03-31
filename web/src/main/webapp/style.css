@@ -87,6 +87,10 @@ div#poweredby {
     background-color: #FFFFFF;
 }
 
+div#beforefooter {
+    margin-bottom: 50px;
+}
+
 .smallnote {
     font-size: 10px;
 }
