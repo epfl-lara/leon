@@ -10,7 +10,7 @@ object Main {
 
   def main(args : Array[String]) : Unit = run(args)
 
-  def runFromString(program : String, args : Array[String], reporter : Reporter = new DefaultReporter) : Unit = {
+  def runFromString(program : String, args : Array[String], reporter : Reporter = new DefaultReporter, classPath : Option[Seq[String]] = None) : Unit = {
     import java.io.{BufferedWriter,File,FileWriter,IOException}
 
     try {
@@ -19,14 +19,15 @@ object Main {
       val out = new BufferedWriter(new FileWriter(file))
       out.write(program)
       out.close
-      run(file.getPath.toString +: args, reporter)
+      run(file.getPath.toString +: args, reporter, classPath)
     } catch {
       case e : IOException => reporter.error(e.getMessage)
     }
   }
 
-  def run(args: Array[String], reporter: Reporter = new DefaultReporter) : Unit = {
+  def run(args: Array[String], reporter: Reporter = new DefaultReporter, classPath : Option[Seq[String]] = None) : Unit = {
     val settings = new Settings
+    classPath.foreach(s => settings.classpath.tryToSet(s.toList))
     runWithSettings(args, settings, s => reporter.info(s), Some(p => defaultAction(p, reporter)))
   }
 
