@@ -69,7 +69,8 @@ object QueryHandler extends LiftActor {
   private val cpdir = "/localhome/liftweb/leonscalaccp/"
   private val classpath = List(
     cpdir + "scala-library.jar" + ":" +
-    cpdir + "funcheck.jar"
+    cpdir + "funcheck.jar" + ":" +
+    cpdir + "multisets-lib.jar"
   )
   private val funcheckOptions : Array[String] = Array(
     "--CAV",
