@@ -48,6 +48,21 @@ object PropositionalLogic {
     case Literal(_) => true
   }
 
+  def evalLit(id : Int) : Boolean = (id == 42) // could be any function
+  def eval(f: Formula) : Boolean = f match {
+    case And(lhs, rhs) => eval(lhs) && eval(rhs)
+    case Or(lhs, rhs) => eval(lhs) || eval(rhs)
+    case Implies(lhs, rhs) => !eval(lhs) || eval(rhs)
+    case Not(f) => !eval(f)
+    case Literal(id) => evalLit(id)
+  }
+  
+  @induct
+  def simplifySemantics(f: Formula) : Boolean = {
+    eval(f) == eval(simplify(f))
+  } holds
+
+  // Note that matching is exhaustive due to precondition.
   def vars(f: Formula): Set[Int] = {
     require(isNNF(f))
     f match {

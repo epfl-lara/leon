@@ -69,6 +69,15 @@ object InsertionSort {
                      && size(res) == size(l)
              )
 
+  /* Merges one (unsorted) list into another, sorted, list. */
+  def mergeInto(l1 : List, l2 : List) : List = {
+    require(isSorted(l2))
+    l1 match {
+      case Nil() => l2
+      case Cons(x, xs) => mergeInto(xs, sortedIns(x, l2))
+    }
+  } ensuring(res => contents(res) == contents(l1) ++ contents(l2) && isSorted(res))
+
   def main(args: Array[String]): Unit = {
     val ls: List = Cons(5, Cons(2, Cons(4, Cons(5, Cons(1, Cons(8,Nil()))))))
 
