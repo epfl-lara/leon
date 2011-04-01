@@ -43,7 +43,7 @@ trait CallTransformation
 
           println("Here is the extracted FunDef:") 
           println(fd)
-          val codeGen = new CodeGenerator(unit, currentOwner)
+          val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
 
           fd.body match {
             case None => println("Could not extract choose predicate: " + funBody); super.transform(tree)
@@ -86,7 +86,7 @@ trait CallTransformation
         }
 
         case cd @ ClassDef(mods, name, tparams, impl) if (cd.symbol.isModuleClass && tparams.isEmpty && !cd.symbol.isSynthetic) => {
-          val codeGen = new CodeGenerator(unit, currentOwner)
+          val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
 
           val ((e2sSym, e2sCode), (e2sCastSym,e2sCastCode)) = codeGen.exprToScalaMethods(cd.symbol, prog)
           exprToScalaSym      = e2sSym

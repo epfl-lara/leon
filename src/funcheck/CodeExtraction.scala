@@ -26,7 +26,7 @@ trait CodeExtraction extends Extractors {
   private val defsToDefs: scala.collection.mutable.Map[Symbol,FunDef] =
     scala.collection.mutable.Map.empty[Symbol,FunDef]
 
-  private val reverseClassesToClasses: scala.collection.mutable.Map[ClassTypeDef,Symbol] =
+  val reverseClassesToClasses: scala.collection.mutable.Map[ClassTypeDef,Symbol] =
     scala.collection.mutable.Map.empty[ClassTypeDef,Symbol]
   
   protected def stopIfErrors: Unit = {
@@ -303,19 +303,6 @@ trait CodeExtraction extends Extractors {
     fd.body = bodyAttempt
     fd
   }
-
-  /*
-  def groundExprToScala(expr : Expr) : Tree = {
-    val converted = expr match {
-      case IntLiteral(v) => Literal(Constant(v))
-      case BooleanLiteral(v) => Literal(Constant(v))
-      case StringLiteral(v) => Literal(Constant(v))
-      case CaseClass(cd,args) => New(Ident(reverseClassesToClasses(cd)), List(args.map(groundExprToScala(_)).toList))
-      case _ => scala.Predef.error("Cannot convert to Scala : " + expr)
-    }
-    converted
-  }
-  */
 
   /** An exception thrown when non-purescala compatible code is encountered. */
   sealed case class ImpureCodeEncounteredException(tree: Tree) extends Exception
