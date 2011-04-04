@@ -39,10 +39,10 @@ trait CallTransformation
           val fd = extractPredicate(unit, funValDefs, funBody)
 
           val outputVarList = funValDefs.map(_.name.toString)
-          println("Here is the output variable list: " + outputVarList.mkString(", "))
+          println("Output variables: " + outputVarList.mkString(", "))
           val outputVarListFilename = writeObject(outputVarList)
 
-          println("Here is the extracted FunDef:") 
+          println("Extracted function definition:") 
           println(fd)
           val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
 
@@ -58,9 +58,9 @@ trait CallTransformation
               val (outputVarListAssignment, outputVarListSym) = codeGen.assignOutputVarList(outputVarListFilename)
 
               // compute input variables and assert equalities
-              val inputVars = variablesOf(b).filter{ v => !outputVarList.contains(v.name) }
-              println("here are the input vars: " + inputVars)
-              val inputVarListFilename = writeObject((inputVars map (iv => Variable(iv))).toList)
+              val inputVars = variablesOf(b).filter{ v => !outputVarList.contains(v.name) }.toList
+              println("Input variables: " + inputVars.mkString(", "))
+              val inputVarListFilename = writeObject(inputVars map (iv => Variable(iv)))
               val equalities : List[Tree] = (for (iv <- inputVars) yield {
                 codeGen.inputEquality(inputVarListFilename, iv, scalaToExprSym)
               }).toList
