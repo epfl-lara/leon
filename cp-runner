@@ -1,0 +1,4 @@
+#!/bin/bash
+
+LD_LIBRARY_PATH=lib-bin \
+scala -classpath bin/purescala/purescala-definitions_2.8.1-1.0.jar:bin/funcheck/funcheck-plugin_2.8.1-1.0.jar:lib/z3.jar:bin/cp/constraint-programming-plugin_2.8.1-1.0.jar:out ${1}
