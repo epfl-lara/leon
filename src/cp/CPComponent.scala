@@ -38,7 +38,7 @@ class CPComponent(val global: Global, val pluginInstance: CPPlugin)
       }
       // new ForeachTreeTraverser(plop).traverse(unit.body)
 
-      val prog: purescala.Definitions.Program = extractCode(unit)
+      val prog: purescala.Definitions.Program = extractCode(unit, true)
       val filename = writeProgram(prog)
       println("Program extracted and written into: " + filename)
 

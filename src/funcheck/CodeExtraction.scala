@@ -19,13 +19,15 @@ trait CodeExtraction extends Extractors {
   private lazy val setTraitSym = definitions.getClass("scala.collection.immutable.Set")
   private lazy val multisetTraitSym = definitions.getClass("scala.collection.immutable.Multiset")
 
-  private val varSubsts: scala.collection.mutable.Map[Symbol,Function0[Expr]] =
+  val varSubsts: scala.collection.mutable.Map[Symbol,Function0[Expr]] =
     scala.collection.mutable.Map.empty[Symbol,Function0[Expr]]
-  private val classesToClasses: scala.collection.mutable.Map[Symbol,ClassTypeDef] =
+  val classesToClasses: scala.collection.mutable.Map[Symbol,ClassTypeDef] =
     scala.collection.mutable.Map.empty[Symbol,ClassTypeDef]
   private val defsToDefs: scala.collection.mutable.Map[Symbol,FunDef] =
     scala.collection.mutable.Map.empty[Symbol,FunDef]
 
+  val reverseVarSubsts: scala.collection.mutable.Map[Expr,Symbol] =
+    scala.collection.mutable.Map.empty[Expr,Symbol]
   val reverseClassesToClasses: scala.collection.mutable.Map[ClassTypeDef,Symbol] =
     scala.collection.mutable.Map.empty[ClassTypeDef,Symbol]
   
@@ -35,7 +37,7 @@ trait CodeExtraction extends Extractors {
     }
   }
 
-  def extractCode(unit: CompilationUnit): Program = { 
+  def extractCode(unit: CompilationUnit, skipNonPureInstructions: Boolean): Program = { 
     import scala.collection.mutable.HashMap
 
     def s2ps(tree: Tree): Expr = toPureScala(unit)(tree) match {
@@ -252,7 +254,7 @@ trait CodeExtraction extends Extractors {
       }
       
       val bodyAttempt = try {
-        Some(scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies)(realBody))
+        Some(scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies, skipNonPureInstructions)(realBody))
       } catch {
         case e: ImpureCodeEncounteredException => None
       }
@@ -270,6 +272,7 @@ trait CodeExtraction extends Extractors {
 
     // Reverse map for Scala class symbols
     reverseClassesToClasses ++= classesToClasses.map{ case (a, b) => (b, a) }
+    reverseVarSubsts ++= varSubsts.map{ case (a, b) => (b(), a) }
 
     val programName: Identifier = unit.body match {
       case PackageDef(name, _) => FreshIdentifier(name.toString)
@@ -281,14 +284,12 @@ trait CodeExtraction extends Extractors {
   }
 
   def extractPredicate(unit: CompilationUnit, params: Seq[ValDef], body: Tree) : FunDef = {
-    def s2ps(tree: Tree): Expr = toPureScala(unit)(tree) match {
-      case Some(ex) => ex
-      case None => stopIfErrors; scala.Predef.error("unreachable error.")
-    }
-
-    def st2ps(tree: Type): purescala.TypeTrees.TypeTree = toPureScalaType(unit)(tree) match {
-      case Some(tt) => tt
-      case None => stopIfErrors; scala.Predef.error("unreachable error.")
+    def st2ps(tree: Type): purescala.TypeTrees.TypeTree = {
+      try {
+        scalaType2PureScala(unit, true)(tree)
+      } catch {
+        case ImpureCodeEncounteredException(_) => stopIfErrors; scala.Predef.error("unreachable error.")
+      }
     }
 
     val newParams = params.map(p => {
@@ -299,7 +300,7 @@ trait CodeExtraction extends Extractors {
     })
     val fd = new FunDef(FreshIdentifier("predicate"), BooleanType, newParams)
     
-    val bodyAttempt = toPureScala(unit)(body)
+    val bodyAttempt = try { Some(scala2PureScala(unit, true, false)(body)) } catch { case ImpureCodeEncounteredException(_) => None }
     fd.body = bodyAttempt
     fd
   }
@@ -310,7 +311,7 @@ trait CodeExtraction extends Extractors {
   /** Attempts to convert a scalac AST to a pure scala AST. */
   def toPureScala(unit: CompilationUnit)(tree: Tree): Option[Expr] = {
     try {
-      Some(scala2PureScala(unit, false)(tree))
+      Some(scala2PureScala(unit, false, false)(tree))
     } catch {
       case ImpureCodeEncounteredException(_) => None
     }
@@ -327,7 +328,7 @@ trait CodeExtraction extends Extractors {
   /** Forces conversion from scalac AST to purescala AST, throws an Exception
    * if impossible. If not in 'silent mode', non-pure AST nodes are reported as
    * errors. */
-  private def scala2PureScala(unit: CompilationUnit, silent: Boolean)(tree: Tree): Expr = {
+  private def scala2PureScala(unit: CompilationUnit, silent: Boolean, skipNonPureInstructions: Boolean)(tree: Tree): Expr = {
     def rewriteCaseDef(cd: CaseDef): MatchCase = {
       def pat2pat(p: Tree): Pattern = p match {
         case Ident(nme.WILDCARD) => WildcardPattern(None)
@@ -581,6 +582,10 @@ trait CodeExtraction extends Extractors {
         CaseClassSelector(selDef, selector, fieldID).setType(fieldID.getType)
       }
   
+      case ExSkipTree(rest) if skipNonPureInstructions => {
+        rec(rest)
+      }
+
       // default behaviour is to complain :)
       case _ => {
         if(!silent) {

@@ -47,6 +47,7 @@ object Definitions {
     def transitiveCallees(f1: FunDef) = mainObject.transitiveCallees(f1)
     def isRecursive(f1: FunDef) = mainObject.isRecursive(f1)
     def isCatamorphism(f1: FunDef) = mainObject.isCatamorphism(f1)
+    def caseClassDef(name: String) = mainObject.caseClassDef(name)
   }
 
   /** Objects work as containers for class definitions, functions (def's) and
@@ -55,6 +56,9 @@ object Definitions {
     lazy val definedFunctions : Seq[FunDef] = defs.filter(_.isInstanceOf[FunDef]).map(_.asInstanceOf[FunDef])
 
     lazy val definedClasses : Seq[ClassTypeDef] = defs.filter(_.isInstanceOf[ClassTypeDef]).map(_.asInstanceOf[ClassTypeDef])
+
+    def caseClassDef(caseClassName : String) : CaseClassDef =
+    definedClasses.find(ctd => ctd.id.name == caseClassName).getOrElse(scala.Predef.error("Asking for non-existent case class def: " + caseClassName)).asInstanceOf[CaseClassDef]
 
     lazy val classHierarchyRoots : Seq[ClassTypeDef] = defs.filter(_.isInstanceOf[ClassTypeDef]).map(_.asInstanceOf[ClassTypeDef]).filter(!_.hasParent)
 

@@ -13,6 +13,7 @@ trait Serialization {
   private var cachedProgram : Option[Program] = None
   private val exprMap = new scala.collection.mutable.HashMap[String,Expr]()
   private val outputVarListMap = new scala.collection.mutable.HashMap[String,List[String]]()
+  private val inputVarListMap  = new scala.collection.mutable.HashMap[String,List[Variable]]()
 
   def programFileName(prog : Program) : String = {
     prog.mainObject.id.toString + fileSuffix
@@ -57,31 +58,24 @@ trait Serialization {
     recovered
   }
 
-  private def readProgram(filename : String) : Program = {
-    readObject[Program](filename)
-  }
-
-  private def readExpr(filename : String) : Expr = {
-    readObject[Expr](filename)
-  }
-
-  private def readOutputVarList(filename : String) : List[String] = {
-    readObject[List[String]](filename)
-  }
-
   def getProgram(filename : String) : Program = cachedProgram match {
-    case None => val r = readProgram(filename); cachedProgram = Some(r); r
+    case None => val r = readObject[Program](filename); cachedProgram = Some(r); r
     case Some(cp) => cp
   }
 
   def getExpr(filename : String) : Expr = exprMap.get(filename) match {
     case Some(e) => e
-    case None => val e = readExpr(filename); exprMap += (filename -> e); e
+    case None => val e = readObject[Expr](filename); exprMap += (filename -> e); e
   }
 
   def getOutputVarList(filename : String) : List[String] = outputVarListMap.get(filename) match {
     case Some(l) => l
-    case None => val l = readOutputVarList(filename); outputVarListMap += (filename -> l); l
+    case None => val l = readObject[List[String]](filename); outputVarListMap += (filename -> l); l
+  }
+
+  def getInputVarList(filename : String) : List[Variable] = inputVarListMap.get(filename) match {
+    case Some(l) => l
+    case None => val l = readObject[List[Variable]](filename); inputVarListMap += (filename -> l); l
   }
 }
 

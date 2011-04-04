@@ -15,6 +15,8 @@ class CPPlugin(val global: Global) extends PluginBase {
   var stopAfterAnalysis: Boolean = true
   var stopAfterExtraction: Boolean = false
 
+  silentlyTolerateNonPureBodies = true
+
   /** The help message displaying the options for that plugin. */
   override val optionsHelp: Option[String] = Some(
     "  -P:funcheck:uniqid             When pretty-printing funcheck trees, show identifiers IDs" + "\n" +

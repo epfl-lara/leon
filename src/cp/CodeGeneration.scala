@@ -3,6 +3,7 @@ package cp
 import purescala.Trees._
 import purescala.TypeTrees.classDefToClassType
 import purescala.Definitions._
+import purescala.Common.Identifier
 
 trait CodeGeneration {
   self: CPComponent =>
@@ -14,7 +15,8 @@ trait CodeGeneration {
   private lazy val exceptionClass = definitions.getClass("java.lang.Exception")
 
   private lazy val listMapFunction = definitions.getMember(definitions.ListClass, "map")
-  private lazy val listApplyFunction = definitions.getMember(definitions.ListClass, "apply")
+  private lazy val listClassApplyFunction = definitions.getMember(definitions.ListClass, "apply")
+  private lazy val listModuleApplyFunction = definitions.getMember(definitions.ListModule, "apply")
 
   private lazy val mapClass = definitions.getClass("scala.collection.immutable.Map")
 
@@ -24,18 +26,21 @@ trait CodeGeneration {
   private lazy val outputAssignmentsFunction = definitions.getMember(callTransformationModule, "outputAssignments")
   private lazy val modelFunction             = definitions.getMember(callTransformationModule, "model")
   private lazy val modelValueFunction        = definitions.getMember(callTransformationModule, "modelValue")
+  private lazy val inputVarFunction          = definitions.getMember(callTransformationModule, "inputVar")
 
   private lazy val serializationModule      = definitions.getModule("cp.Serialization")
   private lazy val getProgramFunction       = definitions.getMember(serializationModule, "getProgram")
   private lazy val getExprFunction          = definitions.getMember(serializationModule, "getExpr")
   private lazy val getOutputVarListFunction = definitions.getMember(serializationModule, "getOutputVarList")
+  private lazy val getInputVarListFunction  = definitions.getMember(serializationModule, "getInputVarList")
 
   private lazy val purescalaPackage = definitions.getModule("purescala")
 
-  private lazy val definitionsModule = definitions.getModule("purescala.Definitions")
-  private lazy val programClass      = definitions.getClass("purescala.Definitions.Program")
-  private lazy val caseClassDefClass = definitions.getClass("purescala.Definitions.CaseClassDef")
-  private lazy val idField           = definitions.getMember(caseClassDefClass, "id")
+  private lazy val definitionsModule    = definitions.getModule("purescala.Definitions")
+  private lazy val programClass         = definitions.getClass("purescala.Definitions.Program")
+  private lazy val caseClassDefFunction = definitions.getMember(programClass, "caseClassDef")
+  private lazy val caseClassDefClass    = definitions.getClass("purescala.Definitions.CaseClassDef")
+  private lazy val idField              = definitions.getMember(caseClassDefClass, "id")
 
   private lazy val commonModule    = definitions.getModule("purescala.Common")
   private lazy val identifierClass = definitions.getClass("purescala.Common.Identifier")
@@ -44,8 +49,13 @@ trait CodeGeneration {
   private lazy val treesModule          = definitions.getModule("purescala.Trees")
   private lazy val exprClass            = definitions.getClass("purescala.Trees.Expr")
   private lazy val intLiteralModule     = definitions.getModule("purescala.Trees.IntLiteral")
+  private lazy val intLiteralClass      = definitions.getClass("purescala.Trees.IntLiteral")
   private lazy val booleanLiteralModule = definitions.getModule("purescala.Trees.BooleanLiteral")
+  private lazy val booleanLiteralClass  = definitions.getClass("purescala.Trees.BooleanLiteral")
   private lazy val caseClassModule      = definitions.getModule("purescala.Trees.CaseClass")
+  private lazy val caseClassClass       = definitions.getClass("purescala.Trees.CaseClass")
+  private lazy val andClass             = definitions.getClass("purescala.Trees.And")
+  private lazy val equalsClass          = definitions.getClass("purescala.Trees.Equals")
 
   private lazy val fairZ3SolverClass         = definitions.getClass("purescala.FairZ3Solver")
   private lazy val restartAndDecideWithModel = definitions.getMember(fairZ3SolverClass, "restartAndDecideWithModel")
@@ -133,7 +143,6 @@ trait CodeGeneration {
       val intSym        = methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "value")).setInfo(definitions.IntClass.tpe)
       val booleanSym    = methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "value")).setInfo(definitions.BooleanClass.tpe)
 
-      // ATTENTION the info might need module instead of class..
       val ccdBinderSym  = methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "ccd")).setInfo(caseClassDefClass.tpe)
       val argsBinderSym = methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "args")).setInfo(typeRef(NoPrefix, definitions.SeqClass, List(exprClass.tpe)))
 
@@ -152,20 +161,14 @@ trait CodeGeneration {
                     case c : purescala.TypeTrees.ClassType => reverseClassesToClasses(c.classDef)
                     case _ => scala.Predef.error("Cannot generate method using type : " + tpe)
                   }
-                  println("args binder sym and its type:")
-                  println(argsBinderSym)
-                  println(argsBinderSym.tpe)
-                  println("here is the list apply fun")
-                  println(listApplyFunction)
-                  println(listApplyFunction.tpe)
                   Apply(
                     TypeApply(
                       Ident(castMethodSym), 
                       List(TypeTree(typeArg.tpe))
                     ), 
                     List(
-                       // ugly hack to make typer happy :(
-                       ((argsBinderSym DOT listApplyFunction) APPLY LIT(idx)) AS (exprClass.tpe)
+                       // cast hack to make typer happy :(
+                       ((argsBinderSym DOT listClassApplyFunction) APPLY LIT(idx)) AS (exprClass.tpe)
                     )
                   )
               }).toList
@@ -176,7 +179,7 @@ trait CodeGeneration {
         CASE((intLiteralModule) APPLY (intSym BIND WILD()))         ==> ID(intSym) ,
         CASE((booleanLiteralModule) APPLY (booleanSym BIND WILD())) ==> ID(booleanSym)) :::
         caseClassMatchCases :::
-        List(DEFAULT                                                     ==> THROW(exceptionClass, LIT("Cannot convert FunCheck expression to Scala term"))) : _*
+        List(DEFAULT                                                ==> THROW(exceptionClass, LIT("Cannot convert FunCheck expression to Scala term"))) : _*
       )
 
       // the following is for the casting method
@@ -185,24 +188,76 @@ trait CodeGeneration {
       ((methodSym, DEF(methodSym) === matchExpr), (castMethodSym, DEF(castMethodSym) === castBody))
     }
 
-    /* Declare a new list variable and generate the code for assigning the
-     * result of applying the function on the input list */
-     // TODO type of map function cannot be resolved.
-    def invokeMap(mapFunSym : Symbol, listSym : Symbol) : (Tree, Symbol) = {
-      val newListSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "nl")).setInfo(typeRef(NoPrefix, definitions.ListClass, List(definitions.AnyClass.tpe)))
-      val assignment = VAL(newListSym) === ((listSym DOT listMapFunction) APPLY ID(listSym))
-      // val assignment = VAL(newListSym) === (listSym DOT (TypeApply(ID(listMapFunction), List(TypeTree(definitions.AnyClass.tpe)))) APPLY ID(listSym))
-      (assignment, newListSym)
+    /* Generate the method for converting ground Scala terms into funcheck
+     * expressions */
+    def scalaToExprMethod(owner : Symbol, prog : Program, programFilename : String) : (Tree, Symbol) = {
+      val methodSym = owner.newMethod(NoPosition, unit.fresh.newName(NoPosition, "scalaToExpr"))
+      methodSym setInfo (MethodType(methodSym newSyntheticValueParams (List(definitions.AnyClass.tpe)), exprClass.tpe))
+      owner.info.decls.enter(methodSym)
+
+      val intSym        = methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "value")).setInfo(definitions.IntClass.tpe)
+      val booleanSym    = methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "value")).setInfo(definitions.BooleanClass.tpe)
+
+      val definedCaseClasses : Seq[CaseClassDef] = prog.definedClasses.filter(_.isInstanceOf[CaseClassDef]).map(_.asInstanceOf[CaseClassDef])
+      val dccSyms = definedCaseClasses map (reverseClassesToClasses(_))
+
+      val caseClassMatchCases = ((definedCaseClasses zip dccSyms) map {
+        case (ccd, scalaSym) =>
+          /*
+          val binderSyms = (ccd.fields.map {
+            case VarDecl(id, tpe) =>
+              methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, id.name)).setInfo(definitions.AnyClass.tpe)
+          }).toList
+          */
+
+          val scalaBinderSym = methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "cc")).setInfo(scalaSym.tpe)
+
+          val memberSyms = (ccd.fields.map {
+            case VarDecl(id, tpe) =>
+              scalaSym.info.member(id.name)
+          }).toList
+
+          // CASE(scalaSym APPLY (binderSyms map (_ BIND WILD()))) ==>
+          CASE(scalaBinderSym BIND Typed(WILD(), TypeTree(scalaSym.tpe))) ==>
+            New(
+              TypeTree(caseClassClass.tpe),
+              List(
+                List(
+                  (((cpPackage DOT serializationModule DOT getProgramFunction) APPLY LIT(programFilename)) DOT caseClassDefFunction) APPLY LIT(scalaSym.nameString),
+                  listModuleApplyFunction APPLY (memberSyms map {
+                    case ms => methodSym APPLY (scalaBinderSym DOT ms)
+                  })
+                )
+              )
+            )
+      }).toList
+
+      val matchExpr = (methodSym ARG 0) MATCH ( List(
+        CASE(intSym     BIND Typed(WILD(), TypeTree(definitions.IntClass.tpe)))     ==> NEW(ID(intLiteralClass), ID(intSym)) ,
+        CASE(booleanSym BIND Typed(WILD(), TypeTree(definitions.BooleanClass.tpe))) ==> NEW(ID(booleanLiteralClass), ID(booleanSym))) :::
+        caseClassMatchCases :::
+        List(DEFAULT                                                                ==> THROW(exceptionClass, LIT("Cannot convert Scala term to FunCheck expression"))) : _*
+      )
+
+      (DEF(methodSym) === matchExpr, methodSym)
     }
 
-    def invokeOutputAssignments(outputVarListSym : Symbol, modelSym : Symbol) : (Tree, Symbol) = {
-      val assignmentListSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "as")).setInfo(typeRef(NoPrefix, definitions.ListClass, List(definitions.AnyClass.tpe)))
-      val assignment = VAL(assignmentListSym) === (outputAssignmentsFunction APPLY (ID(outputVarListSym), ID(modelSym)))
-      (assignment, assignmentListSym)
+    def inputEquality(inputVarListFilename : String, varId : Identifier, scalaToExprSym : Symbol) : Tree = {
+      NEW(
+        ID(equalsClass),
+          // retrieve input variable list and get corresponding variable
+        (cpPackage DOT callTransformationModule DOT inputVarFunction) APPLY
+          ((cpPackage DOT serializationModule DOT getInputVarListFunction) APPLY LIT(inputVarListFilename), LIT(varId.name)),
+        // invoke s2e on var symbol
+        scalaToExprSym APPLY ID(reverseVarSubsts(Variable(varId)))
+      )
     }
 
-    def invokeMethod(methodSym : Symbol, argSyms : Symbol*) : Tree = {
-      methodSym APPLY (argSyms map (ID(_))).toList
+    def assignAndExpr(exprs : Tree*) : (Tree, Symbol) = {
+      val andSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "andExpr")).setInfo(exprClass.tpe)
+      val statement = VAL(andSym) === NEW(ID(andClass), listModuleApplyFunction APPLY (exprs.toList))
+      (statement, andSym)
     }
+
   }
 }

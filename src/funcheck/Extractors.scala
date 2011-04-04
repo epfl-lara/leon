@@ -76,6 +76,18 @@ trait Extractors {
       }
     }
 
+    object ExSkipTree {
+      /** Skips the first tree in a block */
+      def unapply(tree: Block): Option[Tree] = tree match {
+        case Block(t :: ts, expr) =>
+          if (ts.isEmpty)
+            Some(expr)
+          else
+            Some(Block(ts, expr))
+        case _ => None
+      }
+    }
+
     object ExObjectDef {
       /** Matches an object with no type parameters, and regardless of its
        * visibility. Does not match on the automatically generated companion

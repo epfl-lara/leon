@@ -28,7 +28,8 @@ trait CallTransformation
     var exprToScalaCode : Tree = null
     var exprToScalaCastSym : Symbol = null
     var exprToScalaCastCode : Tree = null
-
+    var scalaToExprSym : Symbol = null
+    var scalaToExprCode : Tree = null
 
     override def transform(tree: Tree) : Tree = {
       tree match {
@@ -56,8 +57,18 @@ trait CallTransformation
               val (exprAssignment, exprSym)                   = codeGen.assignExpr(exprFilename)
               val (outputVarListAssignment, outputVarListSym) = codeGen.assignOutputVarList(outputVarListFilename)
 
+              // compute input variables and assert equalities
+              val inputVars = variablesOf(b).filter{ v => !outputVarList.contains(v.name) }
+              println("here are the input vars: " + inputVars)
+              val inputVarListFilename = writeObject((inputVars map (iv => Variable(iv))).toList)
+              val equalities : List[Tree] = (for (iv <- inputVars) yield {
+                codeGen.inputEquality(inputVarListFilename, iv, scalaToExprSym)
+              }).toList
+
+              val (andExprAssignment, andExprSym) = codeGen.assignAndExpr((ID(exprSym) :: equalities) : _*)
+
               // invoke solver and get ordered list of assignments
-              val (solverInvocation, outcomeTupleSym)         = codeGen.invokeSolver(progSym, exprSym)
+              val (solverInvocation, outcomeTupleSym)         = codeGen.invokeSolver(progSym, andExprSym)
               val (modelAssignment, modelSym)                 = codeGen.assignModel(outcomeTupleSym)
 
               // TODO generate all correct e2s invocations
@@ -77,7 +88,7 @@ trait CallTransformation
                 New(tupleTypeTree,List(returnExpressions map (Ident(_))))
               }
 
-              val code = BLOCK(List(programAssignment, exprAssignment, outputVarListAssignment) ::: solverInvocation ::: List(modelAssignment) ::: valueAssignments ::: List(returnExpr) : _*)
+              val code = BLOCK(List(programAssignment, exprAssignment, outputVarListAssignment, andExprAssignment) ::: solverInvocation ::: List(modelAssignment) ::: valueAssignments ::: List(returnExpr) : _*)
 
               typer.typed(atOwner(currentOwner) {
                 code
@@ -89,18 +100,24 @@ trait CallTransformation
           val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
 
           val ((e2sSym, e2sCode), (e2sCastSym,e2sCastCode)) = codeGen.exprToScalaMethods(cd.symbol, prog)
+          val (s2eCode, s2eSym) = codeGen.scalaToExprMethod(cd.symbol, prog, programFilename)
           exprToScalaSym      = e2sSym
           exprToScalaCode     = e2sCode
           exprToScalaCastSym  = e2sCastSym
           exprToScalaCastCode = e2sCastCode
+          scalaToExprSym      = s2eSym
+          scalaToExprCode     = s2eCode
 
           atOwner(tree.symbol) {
             treeCopy.ClassDef(tree, transformModifiers(mods), name,
                               transformTypeDefs(tparams), impl match {
                                 case Template(parents, self, body) =>
                                   treeCopy.Template(impl, transformTrees(parents),
-                                    transformValDef(self), typer.typed(atOwner(currentOwner) {exprToScalaCode}) ::
-                                      typer.typed(atOwner(currentOwner) {exprToScalaCastCode}) :: transformStats(body, tree.symbol))
+                                    transformValDef(self), 
+                                      typer.typed(atOwner(currentOwner) {exprToScalaCode}) ::
+                                      typer.typed(atOwner(currentOwner) {exprToScalaCastCode}) :: 
+                                      typer.typed(atOwner(currentOwner) {scalaToExprCode}) :: 
+                                      transformStats(body, tree.symbol))
                               }) 
           }
         }
@@ -109,7 +126,6 @@ trait CallTransformation
       }
     }
   }
-
 }
 
 object CallTransformation {
@@ -137,5 +153,8 @@ object CallTransformation {
   def outcome(outcomeTuple : (Option[Boolean], Map[Identifier, Expr])) : Option[Boolean] = {
     outcomeTuple._1
   }
+
+  def inputVar(inputVarList : List[Variable], varName : String) : Variable =
+    inputVarList.find(_.id.name == varName).getOrElse(scala.Predef.error("Could not find input variable '" + varName + "' in list " + inputVarList))
 
 }

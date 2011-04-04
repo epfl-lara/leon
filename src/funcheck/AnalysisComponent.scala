@@ -25,7 +25,7 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin)
       //global ref to freshName creator
       fresh = unit.fresh
 
-      val prog: purescala.Definitions.Program = extractCode(unit)
+      val prog: purescala.Definitions.Program = extractCode(unit, false)
       if(pluginInstance.stopAfterExtraction) {
         println("Extracted program for " + unit + ": ")
         println(prog)
