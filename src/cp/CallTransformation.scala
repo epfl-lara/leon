@@ -20,16 +20,13 @@ trait CallTransformation
   private lazy val cpPackage = definitions.getModule("cp")
   private lazy val cpDefinitionsModule = definitions.getModule("cp.CP")
 
-  def transformCalls(unit: CompilationUnit, prog: Program, programFilename: String) : Unit =
-    unit.body = new CallTransformer(unit, prog, programFilename).transform(unit.body)
+  def transformCalls(unit: CompilationUnit, prog: Program, serializedProgString : String, serializedProgId : Int) : Unit =
+    unit.body = new CallTransformer(unit, prog, serializedProgString, serializedProgId).transform(unit.body)
   
-  class CallTransformer(unit: CompilationUnit, prog: Program, programFilename: String) extends TypingTransformer(unit) {
+  class CallTransformer(unit: CompilationUnit, prog: Program, serializedProgString: String, serializedProgId : Int) extends TypingTransformer(unit) {
     var exprToScalaSym : Symbol = null
-    var exprToScalaCode : Tree = null
     var exprToScalaCastSym : Symbol = null
-    var exprToScalaCastCode : Tree = null
     var scalaToExprSym : Symbol = null
-    var scalaToExprCode : Tree = null
 
     override def transform(tree: Tree) : Tree = {
       tree match {
@@ -40,7 +37,6 @@ trait CallTransformation
 
           val outputVarList = funValDefs.map(_.name.toString)
           println("Output variables: " + outputVarList.mkString(", "))
-          val outputVarListFilename = writeObject(outputVarList)
 
           println("Extracted function definition:") 
           println(fd)
@@ -50,20 +46,18 @@ trait CallTransformation
             case None => println("Could not extract choose predicate: " + funBody); super.transform(tree)
             case Some(b) =>
               // write expression into a file
-              val exprFilename = writeObject(b)
+              val (exprString, exprId) = serialize(b)
 
-              // retrieve program, expression, and list of output variables
-              val (programAssignment, progSym)                = codeGen.assignProgram(programFilename)
-              val (exprAssignment, exprSym)                   = codeGen.assignExpr(exprFilename)
-
-              val skipCounter                                 = codeGen.skipCounter(progSym)
+              // retrieve program, expression
+              val (progAssignment, progSym)                   = codeGen.assignProgram(serializedProgString, serializedProgId)
+              val (exprAssignment, exprSym)                   = codeGen.assignExpr(exprString, exprId)
 
               // compute input variables and assert equalities
               val inputVars = variablesOf(b).filter{ v => !outputVarList.contains(v.name) }.toList
               println("Input variables: " + inputVars.mkString(", "))
-              val inputVarListFilename = writeObject(inputVars map (iv => Variable(iv)))
+              val (inputVarListString, inputVarListId) = serialize(inputVars map (iv => Variable(iv)))
               val equalities : List[Tree] = (for (iv <- inputVars) yield {
-                codeGen.inputEquality(inputVarListFilename, iv, scalaToExprSym)
+                codeGen.inputEquality(inputVarListString, inputVarListId, iv, scalaToExprSym)
               }).toList
 
               val (andExprAssignment, andExprSym) = codeGen.assignAndExpr((ID(exprSym) :: equalities) : _*)
@@ -89,7 +83,7 @@ trait CallTransformation
                 New(tupleTypeTree,List(returnExpressions map (Ident(_))))
               }
 
-              val code = BLOCK(List(programAssignment, exprAssignment, skipCounter, andExprAssignment) ::: solverInvocation ::: List(modelAssignment) ::: valueAssignments ::: List(returnExpr) : _*)
+              val code = BLOCK(List(progAssignment, exprAssignment, andExprAssignment) ::: solverInvocation ::: List(modelAssignment) ::: valueAssignments ::: List(returnExpr) : _*)
 
               typer.typed(atOwner(currentOwner) {
                 code
@@ -100,14 +94,14 @@ trait CallTransformation
         case cd @ ClassDef(mods, name, tparams, impl) if (cd.symbol.isModuleClass && tparams.isEmpty && !cd.symbol.isSynthetic) => {
           val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
 
-          val ((e2sSym, e2sCode), (e2sCastSym,e2sCastCode)) = codeGen.exprToScalaMethods(cd.symbol, prog)
-          val (s2eCode, s2eSym) = codeGen.scalaToExprMethod(cd.symbol, prog, programFilename)
+          val ((e2sSym, exprToScalaCode), (e2sCastSym,exprToScalaCastCode)) = codeGen.exprToScalaMethods(cd.symbol, prog)
           exprToScalaSym      = e2sSym
-          exprToScalaCode     = e2sCode
           exprToScalaCastSym  = e2sCastSym
-          exprToScalaCastCode = e2sCastCode
+
+          val (scalaToExprCode, s2eSym)                                     = codeGen.scalaToExprMethod(cd.symbol, prog, serializedProgString, serializedProgId)
           scalaToExprSym      = s2eSym
-          scalaToExprCode     = s2eCode
+
+          val skipCounter                                                   = codeGen.skipCounter(codeGen.getProgram(serializedProgString, serializedProgId))
 
           atOwner(tree.symbol) {
             treeCopy.ClassDef(tree, transformModifiers(mods), name,
@@ -118,6 +112,7 @@ trait CallTransformation
                                       typer.typed(atOwner(currentOwner) {exprToScalaCode}) ::
                                       typer.typed(atOwner(currentOwner) {exprToScalaCastCode}) :: 
                                       typer.typed(atOwner(currentOwner) {scalaToExprCode}) :: 
+                                      typer.typed(atOwner(currentOwner) {skipCounter}) ::
                                       transformStats(body, tree.symbol))
                               }) 
           }

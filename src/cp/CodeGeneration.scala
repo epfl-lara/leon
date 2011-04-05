@@ -34,7 +34,6 @@ trait CodeGeneration {
   private lazy val serializationModule      = definitions.getModule("cp.Serialization")
   private lazy val getProgramFunction       = definitions.getMember(serializationModule, "getProgram")
   private lazy val getExprFunction          = definitions.getMember(serializationModule, "getExpr")
-  private lazy val getOutputVarListFunction = definitions.getMember(serializationModule, "getOutputVarList")
   private lazy val getInputVarListFunction  = definitions.getMember(serializationModule, "getInputVarList")
 
   private lazy val purescalaPackage = definitions.getModule("purescala")
@@ -68,28 +67,24 @@ trait CodeGeneration {
 
   class CodeGenerator(unit : CompilationUnit, owner : Symbol, defaultPos : Position) {
 
+    def getProgram(progString : String, progId : Int) : Tree = {
+      ((cpPackage DOT serializationModule DOT getProgramFunction) APPLY (LIT(progString), LIT(progId)))
+    }
+
     /* Assign the program read from file `filename` to a new variable and
      * return the code and the symbol for the variable */
-    def assignProgram(filename : String) : (Tree, Symbol) = {
+    def assignProgram(serializedProgString : String, serializedProgId : Int) : (Tree, Symbol) = {
       val progSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "prog")).setInfo(programClass.tpe)
-      val getStatement = VAL(progSym) === ((cpPackage DOT serializationModule DOT getProgramFunction) APPLY LIT(filename))
+      val getStatement = VAL(progSym) === getProgram(serializedProgString, serializedProgId)
       (getStatement, progSym)
     }
 
     /* Assign the expression read from file `filename` to a new variable and
      * return the code and the symbol for the variable */
-    def assignExpr(filename : String) : (Tree, Symbol) = {
+    def assignExpr(exprString : String, exprId : Int) : (Tree, Symbol) = {
       val exprSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "expr")).setInfo(exprClass.tpe)
-      val getStatement = VAL(exprSym) === ((cpPackage DOT serializationModule DOT getExprFunction) APPLY LIT(filename))
+      val getStatement = VAL(exprSym) === ((cpPackage DOT serializationModule DOT getExprFunction) APPLY (LIT(exprString), LIT(exprId)))
       (getStatement, exprSym)
-    }
-
-    /* Assign the list of variable names read from file `filename` to a new
-     * variable and return the code and the symbol for the variable */
-    def assignOutputVarList(filename : String) : (Tree, Symbol) = {
-      val listSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "ovl")).setInfo(typeRef(NoPrefix, definitions.ListClass, List(definitions.StringClass.tpe)))
-      val getStatement = VAL(listSym) === ((cpPackage DOT serializationModule DOT getOutputVarListFunction) APPLY LIT(filename))
-      (getStatement, listSym)
     }
 
     /* Assign the map of strings to model values to a new variable and return
@@ -193,7 +188,7 @@ trait CodeGeneration {
 
     /* Generate the method for converting ground Scala terms into funcheck
      * expressions */
-    def scalaToExprMethod(owner : Symbol, prog : Program, programFilename : String) : (Tree, Symbol) = {
+    def scalaToExprMethod(owner : Symbol, prog : Program, progString : String, progId : Int) : (Tree, Symbol) = {
       val methodSym = owner.newMethod(NoPosition, unit.fresh.newName(NoPosition, "scalaToExpr"))
       methodSym setInfo (MethodType(methodSym newSyntheticValueParams (List(definitions.AnyClass.tpe)), exprClass.tpe))
       owner.info.decls.enter(methodSym)
@@ -226,7 +221,7 @@ trait CodeGeneration {
               TypeTree(caseClassClass.tpe),
               List(
                 List(
-                  (((cpPackage DOT serializationModule DOT getProgramFunction) APPLY LIT(programFilename)) DOT caseClassDefFunction) APPLY LIT(scalaSym.nameString),
+                  (((cpPackage DOT serializationModule DOT getProgramFunction) APPLY (LIT(progString), LIT(progId))) DOT caseClassDefFunction) APPLY LIT(scalaSym.nameString),
                   (scalaPackage DOT collectionModule DOT immutableModule DOT definitions.ListModule DOT listModuleApplyFunction) APPLY (memberSyms map {
                     case ms => methodSym APPLY (scalaBinderSym DOT ms)
                   })
@@ -245,12 +240,12 @@ trait CodeGeneration {
       (DEF(methodSym) === matchExpr, methodSym)
     }
 
-    def inputEquality(inputVarListFilename : String, varId : Identifier, scalaToExprSym : Symbol) : Tree = {
+    def inputEquality(inputVarListString : String, inputVarListId : Int, varId : Identifier, scalaToExprSym : Symbol) : Tree = {
       NEW(
         ID(equalsClass),
           // retrieve input variable list and get corresponding variable
         (cpPackage DOT callTransformationModule DOT inputVarFunction) APPLY
-          ((cpPackage DOT serializationModule DOT getInputVarListFunction) APPLY LIT(inputVarListFilename), LIT(varId.name)),
+          ((cpPackage DOT serializationModule DOT getInputVarListFunction) APPLY (LIT(inputVarListString), LIT(inputVarListId)), LIT(varId.name)),
         // invoke s2e on var symbol
         scalaToExprSym APPLY ID(reverseVarSubsts(Variable(varId)))
       )
@@ -262,8 +257,15 @@ trait CodeGeneration {
       (statement, andSym)
     }
 
-    def skipCounter(progSym : Symbol) : Tree = {
-      (cpPackage DOT callTransformationModule DOT skipCounterFunction) APPLY ID(progSym)
+    def skipCounter(progTree : Tree) : Tree = {
+      (cpPackage DOT callTransformationModule DOT skipCounterFunction) APPLY progTree
+    }
+
+    def getterMethod(owner : Symbol, fieldSym : Symbol) : (Tree, Symbol) = {
+      val getterSym = fieldSym.newGetter
+      owner.info.decls.enter(getterSym)
+      val rhs = THIS(owner) DOT fieldSym
+      (DEF(getterSym) === rhs, getterSym)
     }
 
   }

@@ -39,10 +39,9 @@ class CPComponent(val global: Global, val pluginInstance: CPPlugin)
       // new ForeachTreeTraverser(plop).traverse(unit.body)
 
       val prog: purescala.Definitions.Program = extractCode(unit, true)
-      val filename = writeObject(prog)
-      println("Program extracted and written into: " + filename)
+      val (progString, progId) = serialize(prog)
 
-      transformCalls(unit, prog, filename)
+      transformCalls(unit, prog, progString, progId)
       println("Finished transformation")
 
       /*

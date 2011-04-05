@@ -1,73 +1,58 @@
 package cp
 
 trait Serialization {
-  import java.io.{FileInputStream,FileOutputStream,ObjectInputStream,ObjectOutputStream,File}
+  import java.io.{ByteArrayInputStream,ByteArrayOutputStream,ObjectInputStream,ObjectOutputStream}
   import purescala.Definitions._
   import purescala.Trees._
 
-  private val filePrefix = "serialized"
-  private val fileSuffix = ""
-  private val dirName = "serialized"
-  private val directory = new java.io.File(dirName)
+  private val cache = new scala.collection.mutable.HashMap[Int,Any]()
+  private val encoding = "Latin1"
 
-  private var cachedProgram : Option[Program] = None
-  private val exprMap = new scala.collection.mutable.HashMap[String,Expr]()
-  private val outputVarListMap = new scala.collection.mutable.HashMap[String,List[String]]()
-  private val inputVarListMap  = new scala.collection.mutable.HashMap[String,List[Variable]]()
+  private object UniqueCounter {
+    private var soFar: Int = -1
 
-  def programFileName(prog : Program) : String = {
-    prog.mainObject.id.toString + fileSuffix
+    def next: Int = {
+      soFar = soFar + 1
+      soFar
+    }
   }
 
-  private def writeObject(file : File, obj : Any) : String = {
-    val fos = new FileOutputStream(file)
-    val oos = new ObjectOutputStream(fos)
+  def serialize(obj : Any) : (String, Int) = {
+    val bos = new ByteArrayOutputStream()
+    val oos = new ObjectOutputStream(bos)
 
     oos.writeObject(obj)
     oos.flush()
-    fos.close()
+    bos.close()
 
-    file.getAbsolutePath()
+    val array = bos.toByteArray
+    val string = new String(array, encoding)
 
+    (string, UniqueCounter.next)
   }
 
-  def writeObject(obj : Any) : String = {
-    directory.mkdir()
+  def deserialize[A](serialized : String, id : Int) : A = cache.get(id) match {
+    case Some(cached) =>
+      cached.asInstanceOf[A]
+    case None =>
+      val bis = new ByteArrayInputStream(serialized.getBytes(encoding))
+      val ois = new ObjectInputStream(bis)
 
-    val file = java.io.File.createTempFile(filePrefix, fileSuffix, directory)
-    
-    writeObject(file, obj)
+      val recovered : A = ois.readObject().asInstanceOf[A]
+      bis.close()
+      
+      cache += (id -> recovered)
+      recovered
   }
 
-  private def readObject[A](filename : String) : A = {
-    val fis = new FileInputStream(filename)
-    val ois = new ObjectInputStream(fis)
+  def getProgram(serialized : String, id : Int) : Program =
+    deserialize[Program](serialized, id)
 
-    val recovered : A = ois.readObject().asInstanceOf[A]
-    fis.close()
+  def getExpr(serialized : String, id : Int) : Expr =
+    deserialize[Expr](serialized, id)
 
-    recovered
-  }
-
-  def getProgram(filename : String) : Program = cachedProgram match {
-    case Some(cp) => cp
-    case None => val r = readObject[Program](filename); cachedProgram = Some(r); r
-  }
-
-  def getExpr(filename : String) : Expr = exprMap.get(filename) match {
-    case Some(e) => e
-    case None => val e = readObject[Expr](filename); exprMap += (filename -> e); e
-  }
-
-  def getOutputVarList(filename : String) : List[String] = outputVarListMap.get(filename) match {
-    case Some(l) => l
-    case None => val l = readObject[List[String]](filename); outputVarListMap += (filename -> l); l
-  }
-
-  def getInputVarList(filename : String) : List[Variable] = inputVarListMap.get(filename) match {
-    case Some(l) => l
-    case None => val l = readObject[List[Variable]](filename); inputVarListMap += (filename -> l); l
-  }
+  def getInputVarList(serialized : String, id : Int) : List[Variable] =
+    deserialize[List[Variable]](serialized, id)
 }
 
 object Serialization extends Serialization
