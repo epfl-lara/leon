@@ -40,16 +40,12 @@ object ChooseCalls {
     case Node(Red(), l, _, _) => blackHeight(l)
   }
 
-  // def ct2(t : Tree) : Boolean = {
-  //   !(blackBalanced(t) && size(t) == 4)
-  // } holds
-
   def chooseTree(height : Int) : Tree = {
-    choose((t: Tree) => blackBalanced(t) && size(t) == 5)
+    choose((t: Tree) => blackBalanced(t) && size(t) == height)
   }
 
   def main(args: Array[String]) : Unit = {
-    val height = 3
+    val height = 5
     println("The chosen tree (of height " + height + ") is : " + chooseTree(height))
   }
 }

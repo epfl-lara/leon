@@ -13,6 +13,7 @@ object Definitions {
       case t : Definition => t.id == this.id
       case _ => false
     }
+    def allIdentifiers : Set[Identifier]
   }
 
   /** A VarDecl declares a new identifier to be of a certain type. */
@@ -48,6 +49,7 @@ object Definitions {
     def isRecursive(f1: FunDef) = mainObject.isRecursive(f1)
     def isCatamorphism(f1: FunDef) = mainObject.isCatamorphism(f1)
     def caseClassDef(name: String) = mainObject.caseClassDef(name)
+    def allIdentifiers : Set[Identifier] = mainObject.allIdentifiers + id
   }
 
   /** Objects work as containers for class definitions, functions (def's) and
@@ -59,6 +61,11 @@ object Definitions {
 
     def caseClassDef(caseClassName : String) : CaseClassDef =
     definedClasses.find(ctd => ctd.id.name == caseClassName).getOrElse(scala.Predef.error("Asking for non-existent case class def: " + caseClassName)).asInstanceOf[CaseClassDef]
+
+    def allIdentifiers : Set[Identifier] = {
+      (defs       map (_.allIdentifiers)).foldLeft(Set[Identifier]())((a, b) => a ++ b) ++ 
+      (invariants map (Trees.allIdentifiers(_))).foldLeft(Set[Identifier]())((a, b) => a ++ b) + id
+    }
 
     lazy val classHierarchyRoots : Seq[ClassTypeDef] = defs.filter(_.isInstanceOf[ClassTypeDef]).map(_.asInstanceOf[ClassTypeDef]).filter(!_.hasParent)
 
@@ -174,6 +181,10 @@ object Definitions {
       children = child :: children
     }
 
+    def allIdentifiers : Set[Identifier] = {
+      fields.map(f => f.id).toSet + id
+    }
+      
     def knownChildren : Seq[ClassTypeDef] = {
       children
     }
@@ -218,6 +229,10 @@ object Definitions {
     }
     def parent = parent_
 
+    def allIdentifiers : Set[Identifier] = {
+      fields.map(f => f.id).toSet
+    }
+
     def selectorID2Index(id: Identifier) : Int = {
       var i : Int = 0
       var found = false
@@ -246,6 +261,7 @@ object Definitions {
   /** Values */
   @serializable case class ValDef(varDecl: VarDecl, value: Expr) extends Definition {
     val id: Identifier = varDecl.id
+    def allIdentifiers : Set[Identifier] = Trees.allIdentifiers(value) + id
   }
 
   /** Functions (= 'methods' of objects) */
@@ -267,6 +283,13 @@ object Definitions {
     def hasBody = hasImplementation
     def hasPrecondition : Boolean = precondition.isDefined
     def hasPostcondition : Boolean = postcondition.isDefined
+
+    def allIdentifiers : Set[Identifier] = {
+      args.map(_.id).toSet ++
+      body.map(Trees.allIdentifiers(_)).getOrElse(Set[Identifier]()) ++
+      precondition.map(Trees.allIdentifiers(_)).getOrElse(Set[Identifier]()) ++
+      postcondition.map(Trees.allIdentifiers(_)).getOrElse(Set[Identifier]()) + id
+    }
     
     private var annots: Set[String] = Set.empty[String]
     def addAnnotation(as: String*) : FunDef = {

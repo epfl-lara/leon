@@ -56,6 +56,8 @@ trait CallTransformation
               val (programAssignment, progSym)                = codeGen.assignProgram(programFilename)
               val (exprAssignment, exprSym)                   = codeGen.assignExpr(exprFilename)
 
+              val skipCounter                                 = codeGen.skipCounter(progSym)
+
               // compute input variables and assert equalities
               val inputVars = variablesOf(b).filter{ v => !outputVarList.contains(v.name) }.toList
               println("Input variables: " + inputVars.mkString(", "))
@@ -87,16 +89,7 @@ trait CallTransformation
                 New(tupleTypeTree,List(returnExpressions map (Ident(_))))
               }
 
-              val code = BLOCK(List(programAssignment, exprAssignment, andExprAssignment) ::: solverInvocation ::: List(modelAssignment) ::: valueAssignments ::: List(returnExpr) : _*)
-
-              /** generated code: */
-              val prog1: purescala.Definitions.Program = cp.Serialization.getProgram(programFilename);
-              val expr1: purescala.Trees.Expr = cp.Serialization.getExpr(exprFilename);
-              val andExpr1: purescala.Trees.Expr = new And(scala.collection.immutable.List.apply[purescala.Trees.Expr](expr1));
-              val solver1: purescala.FairZ3Solver = new FairZ3Solver(new DefaultReporter());
-              solver1.setProgram(prog1);
-              val outcome1: (Option[Boolean], Map[purescala.Common.Identifier,purescala.Trees.Expr]) = solver1.restartAndDecideWithModel(expr1, false);
-              println("the outcome: " + outcome1)
+              val code = BLOCK(List(programAssignment, exprAssignment, skipCounter, andExprAssignment) ::: solverInvocation ::: List(modelAssignment) ::: valueAssignments ::: List(returnExpr) : _*)
 
               typer.typed(atOwner(currentOwner) {
                 code
@@ -164,5 +157,10 @@ object CallTransformation {
 
   def inputVar(inputVarList : List[Variable], varName : String) : Variable = {
     inputVarList.find(_.id.name == varName).getOrElse(scala.Predef.error("Could not find input variable '" + varName + "' in list " + inputVarList))
+  }
+
+  def skipCounter(prog: Program) : Unit = {
+    val maxId = prog.allIdentifiers max Ordering[Int].on[Identifier](_.id)
+    purescala.Common.FreshIdentifier.forceSkip(maxId.id)
   }
 }

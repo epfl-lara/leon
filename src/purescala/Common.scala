@@ -42,9 +42,19 @@ object Common {
       soFar = soFar + 1
       soFar
     }
+
+    def last: Int = {
+      soFar
+    }
   }
 
   object FreshIdentifier {
+    def forceSkip(i : Int) : Unit = {
+      while(UniqueCounter.last < i) {
+        UniqueCounter.next
+      }
+    }
+
     def apply(name: String, alwaysShowUniqueID: Boolean = false) : Identifier = new Identifier(name, UniqueCounter.next, alwaysShowUniqueID)
   }
 

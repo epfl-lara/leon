@@ -60,6 +60,13 @@ object Trees {
     val theGuard: Option[Expr]
     def hasGuard = theGuard.isDefined
     def expressions: Seq[Expr]
+
+    def allIdentifiers : Set[Identifier] = {
+      pattern.allIdentifiers ++ 
+      Trees.allIdentifiers(rhs) ++ 
+      theGuard.map(Trees.allIdentifiers(_)).getOrElse(Set[Identifier]()) ++ 
+      (expressions map (Trees.allIdentifiers(_))).foldLeft(Set[Identifier]())((a, b) => a ++ b)
+    }
   }
 
   @serializable case class SimpleCase(pattern: Pattern, rhs: Expr) extends MatchCase {
@@ -77,6 +84,10 @@ object Trees {
 
     private def subBinders = subPatterns.map(_.binders).foldLeft[Set[Identifier]](Set.empty)(_ ++ _)
     def binders: Set[Identifier] = subBinders ++ (if(binder.isDefined) Set(binder.get) else Set.empty)
+
+    def allIdentifiers : Set[Identifier] = {
+      ((subPatterns map (_.allIdentifiers)).foldLeft(Set[Identifier]())((a, b) => a ++ b))  ++ binders
+    }
   }
   @serializable case class InstanceOfPattern(binder: Option[Identifier], classTypeDef: ClassTypeDef) extends Pattern { // c: Class
     val subPatterns = Seq.empty
@@ -162,6 +173,10 @@ object Trees {
 
   @serializable class Implies(val left: Expr, val right: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
+    // if(left.getType != BooleanType || right.getType != BooleanType) {
+    //   println("culprits: " + left.getType + ", " + right.getType)
+    //   assert(false)
+    // }
   }
 
   @serializable case class Not(expr: Expr) extends Expr with FixedType {
@@ -701,6 +716,19 @@ object Trees {
       (b1: Boolean, b2: Boolean) => b1 || b2,
       (t: Expr, b: Boolean) => b || matcher(t),
       expr)
+  }
+
+  def allIdentifiers(expr: Expr) : Set[Identifier] = expr match {
+    case l @ Let(binder, e, b) => allIdentifiers(e) ++ allIdentifiers(b) + binder
+    case n @ NAryOperator(args, _) =>
+      (args map (Trees.allIdentifiers(_))).foldLeft(Set[Identifier]())((a, b) => a ++ b)
+    case b @ BinaryOperator(a1,a2,_) => allIdentifiers(a1) ++ allIdentifiers(a2)
+    case u @ UnaryOperator(a,_) => allIdentifiers(a)
+    case i @ IfExpr(a1,a2,a3) => allIdentifiers(a1) ++ allIdentifiers(a2) ++ allIdentifiers(a3)
+    case m @ MatchExpr(scrut, cses) =>
+      (cses map (_.allIdentifiers)).foldLeft(Set[Identifier]())((a, b) => a ++ b) ++ allIdentifiers(scrut)
+    case t: Terminal => Set.empty
+    case unhandled => scala.Predef.error("Non-terminal case should be handled in treeCatamorphism: " + unhandled)
   }
 
   /* Simplifies let expressions:

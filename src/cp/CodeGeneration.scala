@@ -29,6 +29,7 @@ trait CodeGeneration {
   private lazy val modelFunction             = definitions.getMember(callTransformationModule, "model")
   private lazy val modelValueFunction        = definitions.getMember(callTransformationModule, "modelValue")
   private lazy val inputVarFunction          = definitions.getMember(callTransformationModule, "inputVar")
+  private lazy val skipCounterFunction       = definitions.getMember(callTransformationModule, "skipCounter")
 
   private lazy val serializationModule      = definitions.getModule("cp.Serialization")
   private lazy val getProgramFunction       = definitions.getMember(serializationModule, "getProgram")
@@ -259,6 +260,10 @@ trait CodeGeneration {
       val andSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "andExpr")).setInfo(exprClass.tpe)
       val statement = VAL(andSym) === NEW(ID(andClass), (scalaPackage DOT collectionModule DOT immutableModule DOT definitions.ListModule DOT listModuleApplyFunction) APPLY (exprs.toList))
       (statement, andSym)
+    }
+
+    def skipCounter(progSym : Symbol) : Tree = {
+      (cpPackage DOT callTransformationModule DOT skipCounterFunction) APPLY ID(progSym)
     }
 
   }
