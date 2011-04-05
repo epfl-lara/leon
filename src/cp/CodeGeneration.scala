@@ -14,6 +14,8 @@ trait CodeGeneration {
 
   private lazy val exceptionClass = definitions.getClass("java.lang.Exception")
 
+  private lazy val collectionModule = definitions.getModule("scala.collection")
+  private lazy val immutableModule =  definitions.getModule("scala.collection.immutable")
   private lazy val listMapFunction = definitions.getMember(definitions.ListClass, "map")
   private lazy val listClassApplyFunction = definitions.getMember(definitions.ListClass, "apply")
   private lazy val listModuleApplyFunction = definitions.getMember(definitions.ListModule, "apply")
@@ -224,7 +226,7 @@ trait CodeGeneration {
               List(
                 List(
                   (((cpPackage DOT serializationModule DOT getProgramFunction) APPLY LIT(programFilename)) DOT caseClassDefFunction) APPLY LIT(scalaSym.nameString),
-                  listModuleApplyFunction APPLY (memberSyms map {
+                  (scalaPackage DOT collectionModule DOT immutableModule DOT definitions.ListModule DOT listModuleApplyFunction) APPLY (memberSyms map {
                     case ms => methodSym APPLY (scalaBinderSym DOT ms)
                   })
                 )
@@ -255,7 +257,7 @@ trait CodeGeneration {
 
     def assignAndExpr(exprs : Tree*) : (Tree, Symbol) = {
       val andSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "andExpr")).setInfo(exprClass.tpe)
-      val statement = VAL(andSym) === NEW(ID(andClass), listModuleApplyFunction APPLY (exprs.toList))
+      val statement = VAL(andSym) === NEW(ID(andClass), (scalaPackage DOT collectionModule DOT immutableModule DOT definitions.ListModule DOT listModuleApplyFunction) APPLY (exprs.toList))
       (statement, andSym)
     }
 

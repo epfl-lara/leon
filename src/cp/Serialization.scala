@@ -39,15 +39,6 @@ trait Serialization {
     writeObject(file, obj)
   }
 
-  def writeProgram(prog : Program) : String = {
-    directory.mkdir()
-
-    val file = new java.io.File(directory, programFileName(prog))
-    file.delete()
-
-    writeObject(file, prog)
-  }
-
   private def readObject[A](filename : String) : A = {
     val fis = new FileInputStream(filename)
     val ois = new ObjectInputStream(fis)
@@ -59,13 +50,13 @@ trait Serialization {
   }
 
   def getProgram(filename : String) : Program = cachedProgram match {
-    case None => val r = readObject[Program](filename); cachedProgram = Some(r); r
-    case Some(cp) => cp
+    case Some(cp) => println("using cached program"); cp
+    case None => println("reading program from file " + filename); val r = readObject[Program](filename); cachedProgram = Some(r); r
   }
 
   def getExpr(filename : String) : Expr = exprMap.get(filename) match {
-    case Some(e) => e
-    case None => val e = readObject[Expr](filename); exprMap += (filename -> e); e
+    case Some(e) => println("using cached expr"); e
+    case None => println("reading expr from file " + filename); val e = readObject[Expr](filename); exprMap += (filename -> e); e
   }
 
   def getOutputVarList(filename : String) : List[String] = outputVarListMap.get(filename) match {
@@ -74,8 +65,8 @@ trait Serialization {
   }
 
   def getInputVarList(filename : String) : List[Variable] = inputVarListMap.get(filename) match {
-    case Some(l) => l
-    case None => val l = readObject[List[Variable]](filename); inputVarListMap += (filename -> l); l
+    case Some(l) => println("using cached input var list"); l
+    case None => println("reading input var list from file " + filename); val l = readObject[List[Variable]](filename); inputVarListMap += (filename -> l); l
   }
 }
 

@@ -55,7 +55,6 @@ trait CallTransformation
               // retrieve program, expression, and list of output variables
               val (programAssignment, progSym)                = codeGen.assignProgram(programFilename)
               val (exprAssignment, exprSym)                   = codeGen.assignExpr(exprFilename)
-              val (outputVarListAssignment, outputVarListSym) = codeGen.assignOutputVarList(outputVarListFilename)
 
               // compute input variables and assert equalities
               val inputVars = variablesOf(b).filter{ v => !outputVarList.contains(v.name) }.toList
@@ -68,7 +67,7 @@ trait CallTransformation
               val (andExprAssignment, andExprSym) = codeGen.assignAndExpr((ID(exprSym) :: equalities) : _*)
 
               // invoke solver and get ordered list of assignments
-              val (solverInvocation, outcomeTupleSym)         = codeGen.invokeSolver(progSym, andExprSym)
+              val (solverInvocation, outcomeTupleSym)         = codeGen.invokeSolver(progSym, if (inputVars.isEmpty) exprSym else andExprSym)
               val (modelAssignment, modelSym)                 = codeGen.assignModel(outcomeTupleSym)
 
               // TODO generate all correct e2s invocations
@@ -88,7 +87,16 @@ trait CallTransformation
                 New(tupleTypeTree,List(returnExpressions map (Ident(_))))
               }
 
-              val code = BLOCK(List(programAssignment, exprAssignment, outputVarListAssignment, andExprAssignment) ::: solverInvocation ::: List(modelAssignment) ::: valueAssignments ::: List(returnExpr) : _*)
+              val code = BLOCK(List(programAssignment, exprAssignment, andExprAssignment) ::: solverInvocation ::: List(modelAssignment) ::: valueAssignments ::: List(returnExpr) : _*)
+
+              /** generated code: */
+              val prog1: purescala.Definitions.Program = cp.Serialization.getProgram(programFilename);
+              val expr1: purescala.Trees.Expr = cp.Serialization.getExpr(exprFilename);
+              val andExpr1: purescala.Trees.Expr = new And(scala.collection.immutable.List.apply[purescala.Trees.Expr](expr1));
+              val solver1: purescala.FairZ3Solver = new FairZ3Solver(new DefaultReporter());
+              solver1.setProgram(prog1);
+              val outcome1: (Option[Boolean], Map[purescala.Common.Identifier,purescala.Trees.Expr]) = solver1.restartAndDecideWithModel(expr1, false);
+              println("the outcome: " + outcome1)
 
               typer.typed(atOwner(currentOwner) {
                 code
@@ -154,7 +162,7 @@ object CallTransformation {
     outcomeTuple._1
   }
 
-  def inputVar(inputVarList : List[Variable], varName : String) : Variable =
+  def inputVar(inputVarList : List[Variable], varName : String) : Variable = {
     inputVarList.find(_.id.name == varName).getOrElse(scala.Predef.error("Could not find input variable '" + varName + "' in list " + inputVarList))
-
+  }
 }
