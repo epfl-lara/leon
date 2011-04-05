@@ -21,14 +21,6 @@ object InsertionSort {
     case Cons(x,xs) => contents(xs) ++ Set(x)
   }
 
-  def min(l : List) : OptInt = l match {
-    case Nil() => None()
-    case Cons(x, xs) => min(xs) match {
-      case None() => Some(x)
-      case Some(x2) => if(x < x2) Some(x) else Some(x2)
-    }
-  }
-
   def isSorted(l: List): Boolean = l match {
     case Nil() => true
     case Cons(x, Nil()) => true
