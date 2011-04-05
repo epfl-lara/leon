@@ -728,7 +728,6 @@ object Trees {
     case m @ MatchExpr(scrut, cses) =>
       (cses map (_.allIdentifiers)).foldLeft(Set[Identifier]())((a, b) => a ++ b) ++ allIdentifiers(scrut)
     case t: Terminal => Set.empty
-    case unhandled => scala.Predef.error("Non-terminal case should be handled in treeCatamorphism: " + unhandled)
   }
 
   /* Simplifies let expressions:
