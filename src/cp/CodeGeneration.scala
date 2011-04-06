@@ -24,11 +24,13 @@ trait CodeGeneration {
 
   private lazy val cpPackage = definitions.getModule("cp")
 
-  private lazy val callTransformationModule  = definitions.getModule("cp.CallTransformation")
-  private lazy val modelFunction             = definitions.getMember(callTransformationModule, "model")
-  private lazy val modelValueFunction        = definitions.getMember(callTransformationModule, "modelValue")
-  private lazy val inputVarFunction          = definitions.getMember(callTransformationModule, "inputVar")
-  private lazy val skipCounterFunction       = definitions.getMember(callTransformationModule, "skipCounter")
+  private lazy val callTransformationModule              = definitions.getModule("cp.CallTransformation")
+  private lazy val modelFunction                         = definitions.getMember(callTransformationModule, "model")
+  private lazy val outcomeFunction                       = definitions.getMember(callTransformationModule, "outcome")
+  private lazy val modelValueFunction                    = definitions.getMember(callTransformationModule, "modelValue")
+  private lazy val inputVarFunction                      = definitions.getMember(callTransformationModule, "inputVar")
+  private lazy val skipCounterFunction                   = definitions.getMember(callTransformationModule, "skipCounter")
+  private lazy val raiseUnsatConstraintExceptionFunction = definitions.getMember(callTransformationModule, "raiseUnsatConstraintException")
 
   private lazy val serializationModule      = definitions.getModule("cp.Serialization")
   private lazy val getProgramFunction       = definitions.getMember(serializationModule, "getProgram")
@@ -93,6 +95,12 @@ trait CodeGeneration {
       val modelSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "model")).setInfo(typeRef(NoPrefix, mapClass, List(identifierClass.tpe, exprClass.tpe)))
       val assignment = VAL(modelSym) === (modelFunction APPLY ID(outcomeTupleSym))
       (assignment, modelSym)
+    }
+
+    def assignOutcome(outcomeTupleSym : Symbol) : (Tree, Symbol) = {
+      val outcomeSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "outcome")).setInfo(typeRef(NoPrefix, definitions.OptionClass, List(definitions.BooleanClass.tpe)))
+      val assignment = VAL(outcomeSym) === (outcomeFunction APPLY ID(outcomeTupleSym))
+      (assignment, outcomeSym)
     }
 
     def assignModelValue(varString : String, varId : Int, modelSym : Symbol) : (Tree, Symbol) = {
@@ -266,6 +274,10 @@ trait CodeGeneration {
       owner.info.decls.enter(getterSym)
       val rhs = THIS(owner) DOT fieldSym
       (DEF(getterSym) === rhs, getterSym)
+    }
+
+    def raiseUnsatConstraintException(outcomeSym : Symbol) : (Tree) = {
+      raiseUnsatConstraintExceptionFunction APPLY ID(outcomeSym)
     }
 
   }

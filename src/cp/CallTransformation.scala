@@ -38,7 +38,6 @@ trait CallTransformation
           val fd = extractPredicate(unit, funValDefs, funBody)
 
           val outputVars     = fd.args.map(_.id).toList
-          val outputVarNames = outputVars.map(_.name)
 
           reporter.info("Considering predicate:") 
           reporter.info(fd)
@@ -58,10 +57,13 @@ trait CallTransformation
               // compute input variables and assert equalities
               val inputVars = variablesOf(b).filter{ v => !outputVars.contains(v) }.toList
 
-              reporter.info("Input variables : " + inputVars.mkString(", "))
-              reporter.info("Output variables: " + outputVarNames.mkString(", "))
+              reporter.info("Input variables  : " + inputVars.mkString(", "))
+              reporter.info("Output variables : " + outputVars.map(_.name).mkString(", "))
 
+              // serialize list of input "Variable"s
               val (inputVarListString, inputVarListId) = serialize(inputVars map (iv => Variable(iv)))
+
+              // serialize each output "Identifier"
               val outputStringIdPairList = outputVars.map(ov => serialize(ov))
 
               val equalities : List[Tree] = (for (iv <- inputVars) yield {
@@ -71,25 +73,32 @@ trait CallTransformation
               val (andExprAssignment, andExprSym) = codeGen.assignAndExpr((ID(exprSym) :: equalities) : _*)
 
               // invoke solver and get ordered list of assignments
-              val (solverInvocation, outcomeTupleSym)         = codeGen.invokeSolver(progSym, if (inputVars.isEmpty) exprSym else andExprSym)
-              val (modelAssignment, modelSym)                 = codeGen.assignModel(outcomeTupleSym)
+              val (solverInvocation, outcomeTupleSym)     = codeGen.invokeSolver(progSym, if (inputVars.isEmpty) exprSym else andExprSym)
+              val (outcomeAssignment, outcomeSym)         = codeGen.assignOutcome(outcomeTupleSym)
+              val (modelAssignment, modelSym)             = codeGen.assignModel(outcomeTupleSym)
+              val unsatConstraintExceptionThrowing        = codeGen.raiseUnsatConstraintException(outcomeSym)
 
               // retrieving interpretations and converting to Scala
               val tripleList = (for (((outputString, outputId), tt) <- (outputStringIdPairList zip typeTreeList)) yield {
-                val (modelValueAssignment, modelValueSym)     = codeGen.assignModelValue(outputString, outputId, modelSym)
-                val (scalaValueAssignment, scalaValueSym)     = codeGen.assignScalaValue(exprToScalaCastSym, tt, modelValueSym)
+                val (modelValueAssignment, modelValueSym) = codeGen.assignModelValue(outputString, outputId, modelSym)
+                val (scalaValueAssignment, scalaValueSym) = codeGen.assignScalaValue(exprToScalaCastSym, tt, modelValueSym)
                 (modelValueAssignment, scalaValueAssignment, scalaValueSym)
               })
 
               val valueAssignments = tripleList.map{ case (mva, sva, _) => List(mva, sva) }.flatten
               val returnExpressions = tripleList.map{ case(_,_,svs) => svs }
 
-              val returnExpr : Tree = if (outputVarNames.size == 1) Ident(returnExpressions.head) else {
+              val returnExpr : Tree = if (outputVars.size == 1) Ident(returnExpressions.head) else {
                 val tupleTypeTree = TypeTree(definitions.tupleType(typeTreeList map (tt => tt.tpe)))
                 New(tupleTypeTree,List(returnExpressions map (Ident(_))))
               }
 
-              val code = BLOCK(List(progAssignment, exprAssignment, andExprAssignment) ::: solverInvocation ::: List(modelAssignment) ::: valueAssignments ::: List(returnExpr) : _*)
+              val code = BLOCK(
+                List(progAssignment, exprAssignment, andExprAssignment) ::: 
+                solverInvocation ::: 
+                List(outcomeAssignment, unsatConstraintExceptionThrowing, modelAssignment) ::: 
+                valueAssignments ::: 
+                List(returnExpr) : _*)
 
               typer.typed(atOwner(currentOwner) {
                 code
@@ -132,6 +141,10 @@ trait CallTransformation
 
 /** A collection of methods that are called on runtime */
 object CallTransformation {
+
+  final class UnsatisfiableConstraintException extends Exception
+  final class UnknownConstraintException extends Exception
+  
   def modelValue(varId: Identifier, model: Map[Identifier, Expr]) : Expr = model.get(varId) match {
     case Some(value) => value
     case None => simplestValue(varId.getType)
@@ -155,5 +168,13 @@ object CallTransformation {
   def skipCounter(prog: Program) : Unit = {
     val maxId = prog.allIdentifiers max Ordering[Int].on[Identifier](_.id)
     purescala.Common.FreshIdentifier.forceSkip(maxId.id)
+  }
+
+  def raiseUnsatConstraintException(outcome : Option[Boolean]) : Unit = {
+    outcome match {
+      case Some(false)  =>
+      case Some(true) => throw new UnsatisfiableConstraintException
+      case None        => throw new UnknownConstraintException
+    }
   }
 }
