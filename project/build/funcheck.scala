@@ -73,6 +73,7 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
     log.info("Generating runner script")
     try {
       val nl = System.getProperty("line.separator")
+      val buildDir = "out"
       val f = cpScriptPath.asFile
       val fw = new java.io.FileWriter(f)
       fw.write("#!/bin/bash" + nl)
@@ -95,6 +96,7 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
       fw.write(purescala.jarPath.absolutePath + ":")
       fw.write(cpPlugin.jarPath.absolutePath)
       fw.write("\"" + nl + nl)
+      fw.write("mkdir -p " + buildDir + nl + nl)
       fw.write("LD_LIBRARY_PATH=" + ("." / "lib-bin").absolutePath + " \\" + nl)
       // fw.write("scala -classpath ${FUNCHECKCLASSPATH}:${SCALACCLASSPATH}" + " \\" + nl)
       // fw.write("funcheck.Main -cp " + plugin.jarPath.absolutePath + " $@" + nl)
@@ -104,7 +106,7 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
       fw.write("    -Dscala.home=" + libStr.substring(0, libStr.length-21) + " \\" + nl)
 
       fw.write("    -classpath ${FUNCHECKCLASSPATH} \\" + nl)
-      fw.write("  scala.tools.nsc.Main -Xplugin:" + cpPlugin.jarPath.absolutePath + " -classpath ${SCALACCLASSPATH} -d out $@" + nl)
+      fw.write("  scala.tools.nsc.Main -Xplugin:" + cpPlugin.jarPath.absolutePath + " -classpath ${SCALACCLASSPATH} -d " + buildDir + " $@" + nl)
       fw.close
       f.setExecutable(true)
       None
