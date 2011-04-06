@@ -1,7 +1,4 @@
-import scala.collection.immutable.Set
-import funcheck.Annotations._
-import funcheck.Utils._
-import cp.CP._
+import cp.Definitions._
 
 object ChooseCalls { 
   sealed abstract class Color

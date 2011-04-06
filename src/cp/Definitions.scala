@@ -1,6 +1,6 @@
 package cp
 
-object CP {
+object Definitions {
   final class NotImplementedException extends Exception
 
   def choose[A](pred : A => Boolean) : A = {

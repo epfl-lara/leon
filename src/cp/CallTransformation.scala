@@ -18,7 +18,9 @@ trait CallTransformation
   import CODE._
 
   private lazy val cpPackage = definitions.getModule("cp")
-  private lazy val cpDefinitionsModule = definitions.getModule("cp.CP")
+  private lazy val cpDefinitionsModule = definitions.getModule("cp.Definitions")
+
+  val reporter = purescala.Settings.reporter
 
   def transformCalls(unit: CompilationUnit, prog: Program, serializedProgString : String, serializedProgId : Int) : Unit =
     unit.body = new CallTransformer(unit, prog, serializedProgString, serializedProgId).transform(unit.body)
@@ -36,16 +38,15 @@ trait CallTransformation
           val fd = extractPredicate(unit, funValDefs, funBody)
 
           val outputVarList = funValDefs.map(_.name.toString)
-          println("Output variables: " + outputVarList.mkString(", "))
+          reporter.info("Considering predicate:") 
+          reporter.info(fd)
 
-          println("Extracted function definition:") 
-          println(fd)
           val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
 
           fd.body match {
-            case None => println("Could not extract choose predicate: " + funBody); super.transform(tree)
+            case None => reporter.error("Could not extract choose predicate: " + funBody); super.transform(tree)
             case Some(b) =>
-              // write expression into a file
+              // serialize expression
               val (exprString, exprId) = serialize(b)
 
               // retrieve program, expression
@@ -54,7 +55,10 @@ trait CallTransformation
 
               // compute input variables and assert equalities
               val inputVars = variablesOf(b).filter{ v => !outputVarList.contains(v.name) }.toList
-              println("Input variables: " + inputVars.mkString(", "))
+
+              reporter.info("Input variables : " + inputVars.mkString(", "))
+              reporter.info("Output variables: " + outputVarList.mkString(", "))
+
               val (inputVarListString, inputVarListId) = serialize(inputVars map (iv => Variable(iv)))
               val equalities : List[Tree] = (for (iv <- inputVars) yield {
                 codeGen.inputEquality(inputVarListString, inputVarListId, iv, scalaToExprSym)
@@ -66,11 +70,9 @@ trait CallTransformation
               val (solverInvocation, outcomeTupleSym)         = codeGen.invokeSolver(progSym, if (inputVars.isEmpty) exprSym else andExprSym)
               val (modelAssignment, modelSym)                 = codeGen.assignModel(outcomeTupleSym)
 
-              // TODO generate all correct e2s invocations
+              // retrieving interpretations and converting to Scala
               val tripleList = (for ((ov, tt) <- (outputVarList zip typeTreeList)) yield {
-                // declare modelValue : Expr
                 val (modelValueAssignment, modelValueSym)     = codeGen.assignModelValue(ov, modelSym)
-                // declare castedValue : type of argument ov
                 val (scalaValueAssignment, scalaValueSym)     = codeGen.assignScalaValue(exprToScalaCastSym, tt, modelValueSym)
                 (modelValueAssignment, scalaValueAssignment, scalaValueSym)
               })
