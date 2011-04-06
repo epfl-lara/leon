@@ -38,7 +38,7 @@ object ChooseCalls {
   }
 
   def chooseTree(height : Int) : Tree = {
-    choose((t: Tree) => blackBalanced(t) && redNodesHaveBlackChildren(t) && isBlack(t) && size(t) == height)
+    choose((anInt: Int, t: Tree) => blackBalanced(t) && redNodesHaveBlackChildren(t) && isBlack(t) && size(t) == height)._2
   }
 
   def main(args: Array[String]) : Unit = {

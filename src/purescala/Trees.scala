@@ -1107,7 +1107,7 @@ object Trees {
   def randomValue(v: Variable) : Expr = randomValue(v.getType)
   def simplestValue(v: Variable) : Expr = simplestValue(v.getType)
 
-  private def randomValue(tpe: TypeTree) : Expr = tpe match {
+  def randomValue(tpe: TypeTree) : Expr = tpe match {
     case Int32Type => IntLiteral(random.nextInt(42))
     case BooleanType => BooleanLiteral(random.nextBoolean())
     case AbstractClassType(acd) =>
@@ -1119,7 +1119,7 @@ object Trees {
     case _ => throw new Exception("I can't choose random value for type " + tpe)
   }
 
-  private def simplestValue(tpe: TypeTree) : Expr = tpe match {
+  def simplestValue(tpe: TypeTree) : Expr = tpe match {
     case Int32Type => IntLiteral(0)
     case BooleanType => BooleanLiteral(false)
     case AbstractClassType(acd) => {

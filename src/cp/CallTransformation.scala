@@ -37,7 +37,9 @@ trait CallTransformation
 
           val fd = extractPredicate(unit, funValDefs, funBody)
 
-          val outputVarList = funValDefs.map(_.name.toString)
+          val outputVars     = fd.args.map(_.id).toList
+          val outputVarNames = outputVars.map(_.name)
+
           reporter.info("Considering predicate:") 
           reporter.info(fd)
 
@@ -54,12 +56,14 @@ trait CallTransformation
               val (exprAssignment, exprSym)                   = codeGen.assignExpr(exprString, exprId)
 
               // compute input variables and assert equalities
-              val inputVars = variablesOf(b).filter{ v => !outputVarList.contains(v.name) }.toList
+              val inputVars = variablesOf(b).filter{ v => !outputVars.contains(v) }.toList
 
               reporter.info("Input variables : " + inputVars.mkString(", "))
-              reporter.info("Output variables: " + outputVarList.mkString(", "))
+              reporter.info("Output variables: " + outputVarNames.mkString(", "))
 
               val (inputVarListString, inputVarListId) = serialize(inputVars map (iv => Variable(iv)))
+              val outputStringIdPairList = outputVars.map(ov => serialize(ov))
+
               val equalities : List[Tree] = (for (iv <- inputVars) yield {
                 codeGen.inputEquality(inputVarListString, inputVarListId, iv, scalaToExprSym)
               }).toList
@@ -71,8 +75,8 @@ trait CallTransformation
               val (modelAssignment, modelSym)                 = codeGen.assignModel(outcomeTupleSym)
 
               // retrieving interpretations and converting to Scala
-              val tripleList = (for ((ov, tt) <- (outputVarList zip typeTreeList)) yield {
-                val (modelValueAssignment, modelValueSym)     = codeGen.assignModelValue(ov, modelSym)
+              val tripleList = (for (((outputString, outputId), tt) <- (outputStringIdPairList zip typeTreeList)) yield {
+                val (modelValueAssignment, modelValueSym)     = codeGen.assignModelValue(outputString, outputId, modelSym)
                 val (scalaValueAssignment, scalaValueSym)     = codeGen.assignScalaValue(exprToScalaCastSym, tt, modelValueSym)
                 (modelValueAssignment, scalaValueAssignment, scalaValueSym)
               })
@@ -80,7 +84,7 @@ trait CallTransformation
               val valueAssignments = tripleList.map{ case (mva, sva, _) => List(mva, sva) }.flatten
               val returnExpressions = tripleList.map{ case(_,_,svs) => svs }
 
-              val returnExpr : Tree = if (outputVarList.size == 1) Ident(returnExpressions.head) else {
+              val returnExpr : Tree = if (outputVarNames.size == 1) Ident(returnExpressions.head) else {
                 val tupleTypeTree = TypeTree(definitions.tupleType(typeTreeList map (tt => tt.tpe)))
                 New(tupleTypeTree,List(returnExpressions map (Ident(_))))
               }
@@ -128,25 +132,16 @@ trait CallTransformation
 
 /** A collection of methods that are called on runtime */
 object CallTransformation {
-  /* Get list of assignments in the order specified by outputVars list */
-  def outputAssignments(outputVars: List[String], model: Map[Identifier, Expr]) : List[Any] = {
-    val modelWithStrings = modelWithStringKeys(model)
-    outputVars.map(ov => (modelWithStrings.get(ov) match {
-      case Some(value) => value
-      case None => scala.Predef.error("Did not find assignment for variable '" + ov + "'")
-    }))
-  }
-
-  def modelValue(variable: String, model: Map[String, Expr]) : Expr = model.get(variable) match {
+  def modelValue(varId: Identifier, model: Map[Identifier, Expr]) : Expr = model.get(varId) match {
     case Some(value) => value
-    case None => scala.Predef.error("Did not find assignment for variable '" + variable + "'")
+    case None => simplestValue(varId.getType)
   }
 
   def modelWithStringKeys(model: Map[Identifier, Expr]) : Map[String, Expr] =
     model.map{ case (k, v) => (k.name, v) }
 
-  def model(outcomeTuple : (Option[Boolean], Map[Identifier, Expr])) : Map[String, Expr] = {
-    modelWithStringKeys(outcomeTuple._2)
+  def model(outcomeTuple : (Option[Boolean], Map[Identifier, Expr])) : Map[Identifier, Expr] = {
+    outcomeTuple._2
   }
 
   def outcome(outcomeTuple : (Option[Boolean], Map[Identifier, Expr])) : Option[Boolean] = {

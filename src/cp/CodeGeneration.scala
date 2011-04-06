@@ -25,7 +25,6 @@ trait CodeGeneration {
   private lazy val cpPackage = definitions.getModule("cp")
 
   private lazy val callTransformationModule  = definitions.getModule("cp.CallTransformation")
-  private lazy val outputAssignmentsFunction = definitions.getMember(callTransformationModule, "outputAssignments")
   private lazy val modelFunction             = definitions.getMember(callTransformationModule, "model")
   private lazy val modelValueFunction        = definitions.getMember(callTransformationModule, "modelValue")
   private lazy val inputVarFunction          = definitions.getMember(callTransformationModule, "inputVar")
@@ -35,6 +34,7 @@ trait CodeGeneration {
   private lazy val getProgramFunction       = definitions.getMember(serializationModule, "getProgram")
   private lazy val getExprFunction          = definitions.getMember(serializationModule, "getExpr")
   private lazy val getInputVarListFunction  = definitions.getMember(serializationModule, "getInputVarList")
+  private lazy val getIdentifierFunction    = definitions.getMember(serializationModule, "getIdentifier")
 
   private lazy val purescalaPackage = definitions.getModule("purescala")
 
@@ -90,14 +90,14 @@ trait CodeGeneration {
     /* Assign the map of strings to model values to a new variable and return
      * the code as well as the new symbol */
     def assignModel(outcomeTupleSym : Symbol) : (Tree, Symbol) = {
-      val modelSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "model")).setInfo(typeRef(NoPrefix, mapClass, List(definitions.StringClass.tpe, exprClass.tpe)))
+      val modelSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "model")).setInfo(typeRef(NoPrefix, mapClass, List(identifierClass.tpe, exprClass.tpe)))
       val assignment = VAL(modelSym) === (modelFunction APPLY ID(outcomeTupleSym))
       (assignment, modelSym)
     }
 
-    def assignModelValue(varName : String, modelSym : Symbol) : (Tree, Symbol) = {
+    def assignModelValue(varString : String, varId : Int, modelSym : Symbol) : (Tree, Symbol) = {
       val valueSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "value")).setInfo(exprClass.tpe)
-      val assignment = VAL(valueSym) === (modelValueFunction APPLY (LIT(varName), ID(modelSym)))
+      val assignment = VAL(valueSym) === (modelValueFunction APPLY ((cpPackage DOT serializationModule DOT getIdentifierFunction APPLY (LIT(varString), LIT(varId))), ID(modelSym)))
       (assignment, valueSym)
     }
 

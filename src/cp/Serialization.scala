@@ -4,6 +4,7 @@ trait Serialization {
   import java.io.{ByteArrayInputStream,ByteArrayOutputStream,ObjectInputStream,ObjectOutputStream}
   import purescala.Definitions._
   import purescala.Trees._
+  import purescala.Common.Identifier
 
   private val cache = new scala.collection.mutable.HashMap[Int,Any]()
   private val encoding = "Latin1"
@@ -53,6 +54,9 @@ trait Serialization {
 
   def getInputVarList(serialized : String, id : Int) : List[Variable] =
     deserialize[List[Variable]](serialized, id)
+
+  def getIdentifier(serialized : String, id : Int) : Identifier =
+    deserialize[Identifier](serialized, id)
 }
 
 object Serialization extends Serialization
