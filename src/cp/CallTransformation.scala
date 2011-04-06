@@ -126,6 +126,7 @@ trait CallTransformation
   }
 }
 
+/** A collection of methods that are called on runtime */
 object CallTransformation {
   /* Get list of assignments in the order specified by outputVars list */
   def outputAssignments(outputVars: List[String], model: Map[Identifier, Expr]) : List[Any] = {

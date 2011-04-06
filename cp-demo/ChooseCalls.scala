@@ -38,11 +38,21 @@ object ChooseCalls {
   }
 
   def chooseTree(height : Int) : Tree = {
-    choose((t: Tree) => blackBalanced(t) && size(t) == height)
+    choose((t: Tree) => blackBalanced(t) && redNodesHaveBlackChildren(t) && isBlack(t) && size(t) == height)
   }
 
   def main(args: Array[String]) : Unit = {
-    val height = 5
-    println("The chosen tree (of height " + height + ") is : " + chooseTree(height))
+
+    /** Printing trees */
+    def indent(s: String) = ("  "+s).split('\n').mkString("\n  ")
+
+    def print(tree: Tree): String = tree match {
+      case Node(c,l,v,r) =>
+        indent(print(r)) + "\n" + (if (c == Black()) "B" else "R") + " " + v.toString + "\n" + indent(print(l))
+      case Empty() => "E"
+    }
+
+    val height = if (args.isEmpty) 3 else args(0).toInt
+    println("The chosen tree (of height " + height + ") is : \n" + print(chooseTree(height)))
   }
 }

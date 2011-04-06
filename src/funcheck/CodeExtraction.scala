@@ -19,17 +19,23 @@ trait CodeExtraction extends Extractors {
   private lazy val setTraitSym = definitions.getClass("scala.collection.immutable.Set")
   private lazy val multisetTraitSym = definitions.getClass("scala.collection.immutable.Multiset")
 
-  val varSubsts: scala.collection.mutable.Map[Symbol,Function0[Expr]] =
+  private val varSubsts: scala.collection.mutable.Map[Symbol,Function0[Expr]] =
     scala.collection.mutable.Map.empty[Symbol,Function0[Expr]]
-  val classesToClasses: scala.collection.mutable.Map[Symbol,ClassTypeDef] =
+  private val classesToClasses: scala.collection.mutable.Map[Symbol,ClassTypeDef] =
     scala.collection.mutable.Map.empty[Symbol,ClassTypeDef]
   private val defsToDefs: scala.collection.mutable.Map[Symbol,FunDef] =
     scala.collection.mutable.Map.empty[Symbol,FunDef]
 
-  val reverseVarSubsts: scala.collection.mutable.Map[Expr,Symbol] =
+  private val reverseVarSubsts_ : scala.collection.mutable.Map[Expr,Symbol] =
     scala.collection.mutable.Map.empty[Expr,Symbol]
-  val reverseClassesToClasses: scala.collection.mutable.Map[ClassTypeDef,Symbol] =
+  private val reverseClassesToClasses_ : scala.collection.mutable.Map[ClassTypeDef,Symbol] =
     scala.collection.mutable.Map.empty[ClassTypeDef,Symbol]
+
+  def reverseVarSubsts: scala.collection.immutable.Map[Expr,Symbol] =
+    scala.collection.immutable.Map() ++ reverseVarSubsts_
+
+  def reverseClassesToClasses: scala.collection.immutable.Map[ClassTypeDef,Symbol] =
+    scala.collection.immutable.Map() ++ reverseClassesToClasses_
   
   protected def stopIfErrors: Unit = {
     if(reporter.hasErrors) {
@@ -271,8 +277,8 @@ trait CodeExtraction extends Extractors {
     stopIfErrors
 
     // Reverse map for Scala class symbols
-    reverseClassesToClasses ++= classesToClasses.map{ case (a, b) => (b, a) }
-    reverseVarSubsts ++= varSubsts.map{ case (a, b) => (b(), a) }
+    reverseClassesToClasses_ ++= classesToClasses.map{ case (a, b) => (b, a) }
+    reverseVarSubsts_ ++= varSubsts.map{ case (a, b) => (b(), a) }
 
     val programName: Identifier = unit.body match {
       case PackageDef(name, _) => FreshIdentifier(name.toString)

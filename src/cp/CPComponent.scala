@@ -45,16 +45,6 @@ class CPComponent(val global: Global, val pluginInstance: CPPlugin)
 
       transformCalls(unit, prog, progString, progId)
       println("Finished transformation")
-
-      /*
-      try {
-        val recovered = readProgram(filename)
-        println
-        println("Recovered: " + recovered)
-      } catch {
-        case e => e.printStackTrace()
-      }
-      */
     }
   }
 }
