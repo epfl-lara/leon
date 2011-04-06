@@ -140,7 +140,8 @@ class Analysis(val program: Program, val reporter: Reporter = Settings.reporter)
       reporter.info(summaryString)
 
       // Printing summary for the evaluation section of paper:
-      {
+      val writeSummary = false
+      if (writeSummary) {
         def writeToFile(filename: String, content: String) : Unit = {
           try {
             val fw = new java.io.FileWriter(filename)
