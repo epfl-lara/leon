@@ -30,16 +30,6 @@ class CPComponent(val global: Global, val pluginInstance: CPPlugin)
 
       println("Starting CP phase")
 
-      /*
-      def plop(tr: Tree) = tr match {
-        case a: Apply =>
-          println(a) 
-          println(a.fun.getClass) 
-        case _ => 
-      }
-      new ForeachTreeTraverser(plop).traverse(unit.body)
-      */
-
       val prog: purescala.Definitions.Program = extractCode(unit, true)
       val (progString, progId) = serialize(prog)
 

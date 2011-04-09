@@ -19,24 +19,22 @@ trait CodeGeneration {
   private lazy val listMapFunction = definitions.getMember(definitions.ListClass, "map")
   private lazy val listClassApplyFunction = definitions.getMember(definitions.ListClass, "apply")
   private lazy val listModuleApplyFunction = definitions.getMember(definitions.ListModule, "apply")
+  private lazy val canBuildFromFunction = definitions.getMember(definitions.ListModule, "canBuildFrom")
 
-  private lazy val mapClass = definitions.getClass("scala.collection.immutable.Map")
+  private lazy val iteratorClass       = definitions.getClass("scala.collection.Iterator")
+  private lazy val iteratorMapFunction = definitions.getMember(iteratorClass, "map")
 
   private lazy val cpPackage = definitions.getModule("cp")
 
   private lazy val callTransformationModule              = definitions.getModule("cp.CallTransformation")
-  private lazy val modelFunction                         = definitions.getMember(callTransformationModule, "model")
-  private lazy val outcomeFunction                       = definitions.getMember(callTransformationModule, "outcome")
-  private lazy val modelValueFunction                    = definitions.getMember(callTransformationModule, "modelValue")
+  private lazy val chooseExecFunction                    = definitions.getMember(callTransformationModule, "chooseExec")
+  private lazy val findAllExecFunction                   = definitions.getMember(callTransformationModule, "findAllExec")
   private lazy val inputVarFunction                      = definitions.getMember(callTransformationModule, "inputVar")
   private lazy val skipCounterFunction                   = definitions.getMember(callTransformationModule, "skipCounter")
-  private lazy val raiseUnsatConstraintExceptionFunction = definitions.getMember(callTransformationModule, "raiseUnsatConstraintException")
 
   private lazy val serializationModule      = definitions.getModule("cp.Serialization")
   private lazy val getProgramFunction       = definitions.getMember(serializationModule, "getProgram")
-  private lazy val getExprFunction          = definitions.getMember(serializationModule, "getExpr")
   private lazy val getInputVarListFunction  = definitions.getMember(serializationModule, "getInputVarList")
-  private lazy val getIdentifierFunction    = definitions.getMember(serializationModule, "getIdentifier")
 
   private lazy val purescalaPackage = definitions.getModule("purescala")
 
@@ -61,70 +59,41 @@ trait CodeGeneration {
   private lazy val andClass             = definitions.getClass("purescala.Trees.And")
   private lazy val equalsClass          = definitions.getClass("purescala.Trees.Equals")
 
-  private lazy val fairZ3SolverClass         = definitions.getClass("purescala.FairZ3Solver")
-  private lazy val restartAndDecideWithModel = definitions.getMember(fairZ3SolverClass, "restartAndDecideWithModel")
-  private lazy val setProgramFunction        = definitions.getMember(fairZ3SolverClass, "setProgram")
-
-  private lazy val defaultReporter = definitions.getClass("purescala.DefaultReporter")
-
   class CodeGenerator(unit : CompilationUnit, owner : Symbol, defaultPos : Position) {
 
-    def getProgram(progString : String, progId : Int) : Tree = {
-      ((cpPackage DOT serializationModule DOT getProgramFunction) APPLY (LIT(progString), LIT(progId)))
+    private def execCode(function : Symbol, progString : String, progId : Int, exprString : String, exprId : Int, 
+        outputVarsString : String, outputVarsId : Int, inputConstraints : Tree) : Tree = {
+      (cpPackage DOT callTransformationModule DOT function) APPLY
+        (LIT(progString), LIT(progId), LIT(exprString), LIT(exprId), LIT(outputVarsString), LIT(outputVarsId), inputConstraints)
     }
 
-    /* Assign the program read from file `filename` to a new variable and
-     * return the code and the symbol for the variable */
-    def assignProgram(serializedProgString : String, serializedProgId : Int) : (Tree, Symbol) = {
-      val progSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "prog")).setInfo(programClass.tpe)
-      val getStatement = VAL(progSym) === getProgram(serializedProgString, serializedProgId)
-      (getStatement, progSym)
+    def chooseExecCode(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Tree) : Tree = {
+      execCode(chooseExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraints)
+    }
+      
+    def findAllExecCode(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Tree) : Tree = {
+      execCode(findAllExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraints)
     }
 
-    /* Assign the expression read from file `filename` to a new variable and
-     * return the code and the symbol for the variable */
-    def assignExpr(exprString : String, exprId : Int) : (Tree, Symbol) = {
-      val exprSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "expr")).setInfo(exprClass.tpe)
-      val getStatement = VAL(exprSym) === ((cpPackage DOT serializationModule DOT getExprFunction) APPLY (LIT(exprString), LIT(exprId)))
-      (getStatement, exprSym)
-    }
+    def exprSeqToScalaMethod(owner : Symbol, exprToScalaCastSym : Symbol, signature : List[Tree]) : (Tree, Symbol) = {
+      val returnType = if (signature.size == 1) signature.head.tpe else definitions.tupleType(signature.map(_.tpe))
 
-    /* Assign the map of strings to model values to a new variable and return
-     * the code as well as the new symbol */
-    def assignModel(outcomeTupleSym : Symbol) : (Tree, Symbol) = {
-      val modelSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "model")).setInfo(typeRef(NoPrefix, mapClass, List(identifierClass.tpe, exprClass.tpe)))
-      val assignment = VAL(modelSym) === (modelFunction APPLY ID(outcomeTupleSym))
-      (assignment, modelSym)
-    }
+      val methodSym = owner.newMethod(NoPosition, unit.fresh.newName(NoPosition, "exprSeqToScala"))
+      methodSym setInfo (MethodType(methodSym newSyntheticValueParams (List(typeRef(NoPrefix, definitions.SeqClass, List(exprClass.tpe)))), returnType))
 
-    def assignOutcome(outcomeTupleSym : Symbol) : (Tree, Symbol) = {
-      val outcomeSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "outcome")).setInfo(typeRef(NoPrefix, definitions.OptionClass, List(definitions.BooleanClass.tpe)))
-      val assignment = VAL(outcomeSym) === (outcomeFunction APPLY ID(outcomeTupleSym))
-      (assignment, outcomeSym)
-    }
+      owner.info.decls.enter(methodSym)
+      val arg = methodSym ARG 0
+      val returnExpressions = (for ((typeTree, idx) <- signature.zipWithIndex) yield {
+        val argExpr = ((arg DOT listClassApplyFunction) APPLY LIT(idx)) AS (exprClass.tpe)
+        Apply(TypeApply(Ident(exprToScalaCastSym), List(typeTree)), List(argExpr))
+      })
 
-    def assignModelValue(varString : String, varId : Int, modelSym : Symbol) : (Tree, Symbol) = {
-      val valueSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "value")).setInfo(exprClass.tpe)
-      val assignment = VAL(valueSym) === (modelValueFunction APPLY ((cpPackage DOT serializationModule DOT getIdentifierFunction APPLY (LIT(varString), LIT(varId))), ID(modelSym)))
-      (assignment, valueSym)
-    }
+      val returnExpr : Tree = if (signature.size == 1) returnExpressions.head else {
+        val tupleTypeTree = TypeTree(returnType)
+        New(tupleTypeTree,List(returnExpressions))
+      }
 
-    def assignScalaValue(exprToScalaCastSym : Symbol, typeTree : Tree, modelValueSym : Symbol) : (Tree, Symbol) = {
-      val scalaValueSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "scalaValue")).setInfo(typeTree.tpe)
-      val assignment = VAL(scalaValueSym) === Apply(TypeApply(Ident(exprToScalaCastSym), List(typeTree)), List(Ident(modelValueSym)))
-      (assignment, scalaValueSym)
-    }
-
-    /* Declare and initializa a new solver, and invoke it with the predicate designated by `exprSym` */
-    def invokeSolver(progSym : Symbol, exprSym : Symbol) : (List[Tree], Symbol) = {
-      val solverSym  = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "solver")).setInfo(fairZ3SolverClass.tpe)
-      val outcomeSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "outcome")).
-        setInfo(definitions.tupleType(List(typeRef(NoPrefix, definitions.OptionClass, List(definitions.BooleanClass.tpe)), typeRef(NoPrefix, mapClass, List(identifierClass.tpe, exprClass.tpe)))))
-      val solverDeclaration = VAL(solverSym) === NEW(ID(fairZ3SolverClass), NEW(ID(defaultReporter)))
-      val setProgram = (solverSym DOT setProgramFunction) APPLY ID(progSym)
-      val invocation = VAL(outcomeSym) === ((solverSym DOT restartAndDecideWithModel) APPLY (ID(exprSym), LIT(false)))
-
-      (List(solverDeclaration, setProgram, invocation), outcomeSym)
+      (DEF(methodSym) === returnExpr, methodSym)
     }
 
     /* Generate the two methods required for converting funcheck expressions to
@@ -259,26 +228,16 @@ trait CodeGeneration {
       )
     }
 
-    def assignAndExpr(exprs : Tree*) : (Tree, Symbol) = {
-      val andSym = owner.newValue(NoPosition, unit.fresh.newName(NoPosition, "andExpr")).setInfo(exprClass.tpe)
-      val statement = VAL(andSym) === NEW(ID(andClass), (scalaPackage DOT collectionModule DOT immutableModule DOT definitions.ListModule DOT listModuleApplyFunction) APPLY (exprs.toList))
-      (statement, andSym)
+    def andExpr(exprs : Seq[Tree]) : Tree = {
+      NEW(ID(andClass), (scalaPackage DOT collectionModule DOT immutableModule DOT definitions.ListModule DOT listModuleApplyFunction) APPLY (exprs.toList))
     }
 
-    def skipCounter(progTree : Tree) : Tree = {
-      (cpPackage DOT callTransformationModule DOT skipCounterFunction) APPLY progTree
+    def trueLiteral : Tree = {
+      NEW(ID(booleanLiteralClass), LIT(true))
     }
 
-    def getterMethod(owner : Symbol, fieldSym : Symbol) : (Tree, Symbol) = {
-      val getterSym = fieldSym.newGetter
-      owner.info.decls.enter(getterSym)
-      val rhs = THIS(owner) DOT fieldSym
-      (DEF(getterSym) === rhs, getterSym)
+    def skipCounter(progString : String, progId : Int) : Tree = {
+      (cpPackage DOT callTransformationModule DOT skipCounterFunction) APPLY (LIT(progString), LIT(progId))
     }
-
-    def raiseUnsatConstraintException(outcomeSym : Symbol) : (Tree) = {
-      raiseUnsatConstraintExceptionFunction APPLY ID(outcomeSym)
-    }
-
   }
 }

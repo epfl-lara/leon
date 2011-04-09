@@ -49,14 +49,8 @@ trait Serialization {
   def getProgram(serialized : String, id : Int) : Program =
     deserialize[Program](serialized, id)
 
-  def getExpr(serialized : String, id : Int) : Expr =
-    deserialize[Expr](serialized, id)
-
   def getInputVarList(serialized : String, id : Int) : List[Variable] =
     deserialize[List[Variable]](serialized, id)
-
-  def getIdentifier(serialized : String, id : Int) : Identifier =
-    deserialize[Identifier](serialized, id)
 }
 
 object Serialization extends Serialization
