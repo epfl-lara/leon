@@ -10,54 +10,54 @@ trait CodeGeneration {
   import global._
   import CODE._
 
-  private lazy val scalaPackage = definitions.ScalaPackage
+  private lazy val scalaPackage             = definitions.ScalaPackage
 
-  private lazy val exceptionClass = definitions.getClass("java.lang.Exception")
+  private lazy val exceptionClass           = definitions.getClass("java.lang.Exception")
 
-  private lazy val collectionModule = definitions.getModule("scala.collection")
-  private lazy val immutableModule =  definitions.getModule("scala.collection.immutable")
-  private lazy val listMapFunction = definitions.getMember(definitions.ListClass, "map")
-  private lazy val listClassApplyFunction = definitions.getMember(definitions.ListClass, "apply")
-  private lazy val listModuleApplyFunction = definitions.getMember(definitions.ListModule, "apply")
-  private lazy val canBuildFromFunction = definitions.getMember(definitions.ListModule, "canBuildFrom")
+  private lazy val collectionModule         = definitions.getModule("scala.collection")
+  private lazy val immutableModule          = definitions.getModule("scala.collection.immutable")
+  private lazy val listMapFunction          = definitions.getMember(definitions.ListClass, "map")
+  private lazy val listClassApplyFunction   = definitions.getMember(definitions.ListClass, "apply")
+  private lazy val listModuleApplyFunction  = definitions.getMember(definitions.ListModule, "apply")
+  private lazy val canBuildFromFunction     = definitions.getMember(definitions.ListModule, "canBuildFrom")
 
-  private lazy val iteratorClass       = definitions.getClass("scala.collection.Iterator")
-  private lazy val iteratorMapFunction = definitions.getMember(iteratorClass, "map")
+  private lazy val iteratorClass            = definitions.getClass("scala.collection.Iterator")
+  private lazy val iteratorMapFunction      = definitions.getMember(iteratorClass, "map")
 
-  private lazy val cpPackage = definitions.getModule("cp")
+  private lazy val cpPackage                = definitions.getModule("cp")
 
-  private lazy val callTransformationModule              = definitions.getModule("cp.CallTransformation")
-  private lazy val chooseExecFunction                    = definitions.getMember(callTransformationModule, "chooseExec")
-  private lazy val findAllExecFunction                   = definitions.getMember(callTransformationModule, "findAllExec")
-  private lazy val inputVarFunction                      = definitions.getMember(callTransformationModule, "inputVar")
-  private lazy val skipCounterFunction                   = definitions.getMember(callTransformationModule, "skipCounter")
+  private lazy val callTransformationModule = definitions.getModule("cp.CallTransformation")
+  private lazy val chooseExecFunction       = definitions.getMember(callTransformationModule, "chooseExec")
+  private lazy val findAllExecFunction      = definitions.getMember(callTransformationModule, "findAllExec")
+  private lazy val inputVarFunction         = definitions.getMember(callTransformationModule, "inputVar")
+  private lazy val skipCounterFunction      = definitions.getMember(callTransformationModule, "skipCounter")
 
   private lazy val serializationModule      = definitions.getModule("cp.Serialization")
   private lazy val getProgramFunction       = definitions.getMember(serializationModule, "getProgram")
   private lazy val getInputVarListFunction  = definitions.getMember(serializationModule, "getInputVarList")
 
-  private lazy val purescalaPackage = definitions.getModule("purescala")
+  private lazy val purescalaPackage         = definitions.getModule("purescala")
 
-  private lazy val definitionsModule    = definitions.getModule("purescala.Definitions")
-  private lazy val programClass         = definitions.getClass("purescala.Definitions.Program")
-  private lazy val caseClassDefFunction = definitions.getMember(programClass, "caseClassDef")
-  private lazy val caseClassDefClass    = definitions.getClass("purescala.Definitions.CaseClassDef")
-  private lazy val idField              = definitions.getMember(caseClassDefClass, "id")
+  private lazy val definitionsModule        = definitions.getModule("purescala.Definitions")
+  private lazy val programClass             = definitions.getClass("purescala.Definitions.Program")
+  private lazy val caseClassDefFunction     = definitions.getMember(programClass, "caseClassDef")
+  private lazy val caseClassDefClass        = definitions.getClass("purescala.Definitions.CaseClassDef")
+  private lazy val idField                  = definitions.getMember(caseClassDefClass, "id")
 
-  private lazy val commonModule    = definitions.getModule("purescala.Common")
-  private lazy val identifierClass = definitions.getClass("purescala.Common.Identifier")
-  private lazy val nameField       = definitions.getMember(identifierClass, "name")
+  private lazy val commonModule             = definitions.getModule("purescala.Common")
+  private lazy val identifierClass          = definitions.getClass("purescala.Common.Identifier")
+  private lazy val nameField                = definitions.getMember(identifierClass, "name")
 
-  private lazy val treesModule          = definitions.getModule("purescala.Trees")
-  private lazy val exprClass            = definitions.getClass("purescala.Trees.Expr")
-  private lazy val intLiteralModule     = definitions.getModule("purescala.Trees.IntLiteral")
-  private lazy val intLiteralClass      = definitions.getClass("purescala.Trees.IntLiteral")
-  private lazy val booleanLiteralModule = definitions.getModule("purescala.Trees.BooleanLiteral")
-  private lazy val booleanLiteralClass  = definitions.getClass("purescala.Trees.BooleanLiteral")
-  private lazy val caseClassModule      = definitions.getModule("purescala.Trees.CaseClass")
-  private lazy val caseClassClass       = definitions.getClass("purescala.Trees.CaseClass")
-  private lazy val andClass             = definitions.getClass("purescala.Trees.And")
-  private lazy val equalsClass          = definitions.getClass("purescala.Trees.Equals")
+  private lazy val treesModule              = definitions.getModule("purescala.Trees")
+  private lazy val exprClass                = definitions.getClass("purescala.Trees.Expr")
+  private lazy val intLiteralModule         = definitions.getModule("purescala.Trees.IntLiteral")
+  private lazy val intLiteralClass          = definitions.getClass("purescala.Trees.IntLiteral")
+  private lazy val booleanLiteralModule     = definitions.getModule("purescala.Trees.BooleanLiteral")
+  private lazy val booleanLiteralClass      = definitions.getClass("purescala.Trees.BooleanLiteral")
+  private lazy val caseClassModule          = definitions.getModule("purescala.Trees.CaseClass")
+  private lazy val caseClassClass           = definitions.getClass("purescala.Trees.CaseClass")
+  private lazy val andClass                 = definitions.getClass("purescala.Trees.And")
+  private lazy val equalsClass              = definitions.getClass("purescala.Trees.Equals")
 
   class CodeGenerator(unit : CompilationUnit, owner : Symbol, defaultPos : Position) {
 
@@ -87,7 +87,7 @@ trait CodeGeneration {
       val argValue = anonFunSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "x")) setInfo seqExprType
 
       val anonFun = Function(
-        List(ValDef(NoMods, argValue.name, TypeTree(argValue.tpe), EmptyTree)),
+        List(ValDef(argValue, EmptyTree)),
         mapFunction APPLY ID(argValue)
       ) setSymbol anonFunSym 
 
