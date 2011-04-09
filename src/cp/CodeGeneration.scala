@@ -75,6 +75,29 @@ trait CodeGeneration {
       execCode(findAllExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraints)
     }
 
+    def mapIterator(mapFunction : Symbol, iterTree : Tree) : Tree = {
+      val returnType = mapFunction.tpe match {
+        case MethodType(_,rt) => rt
+        case unhandled => scala.Predef.error("Unexpected method type : " + unhandled)
+      }
+
+      val seqExprType = typeRef(NoPrefix, definitions.SeqClass, List(exprClass.tpe))
+
+      val anonFunSym = owner.newValue(NoPosition, nme.ANON_FUN_NAME) setInfo (mapFunction.tpe)
+      val argValue = anonFunSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "x")) setInfo seqExprType
+
+      val anonFun = Function(
+        List(ValDef(NoMods, argValue.name, TypeTree(argValue.tpe), EmptyTree)),
+        mapFunction APPLY ID(argValue)
+      ) setSymbol anonFunSym 
+
+      Apply(
+        TypeApply(iterTree DOT iteratorMapFunction, List(TypeTree(returnType))),
+        List(BLOCK(anonFun))
+      )
+        
+    }
+
     def exprSeqToScalaMethod(owner : Symbol, exprToScalaCastSym : Symbol, signature : List[Tree]) : (Tree, Symbol) = {
       val returnType = if (signature.size == 1) signature.head.tpe else definitions.tupleType(signature.map(_.tpe))
 

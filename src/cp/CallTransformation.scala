@@ -133,7 +133,7 @@ trait CallTransformation
               val findAllExecCall = codeGen.findAllExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraintsConjunction)
 
               val code = BLOCK(
-                findAllExecCall
+                codeGen.mapIterator(exprSeqToScalaSyms(typeTreeList), findAllExecCall)
               )
 
               typer.typed(atOwner(currentOwner) {
