@@ -93,8 +93,7 @@ class Main(reporter : Reporter) extends Analyser(reporter) {
 		}
     case StringLiteral(s) => sb.append("\"" + s + "\"")
 
-		//TODOTODOTODOTODOTODOTODOTODO
-    case CaseClass(cd, args) => { /// TODO : datatype variables ; this should be modified seriously!!!! 
+    case CaseClass(cd, args) => { 
       var nsb = sb
       nsb.append("(" + cd.id)
       nsb = ppNary(nsb, args, " ", " ", ")", lvl)
@@ -243,8 +242,8 @@ CaseClassSelector- cc: v2 id: v
     }
 
 		//#res
-    case ResultVariable() => sb.append(current_res) /// TODO : de rescris cumva
-    case Not(expr) => ppUnary(sb, expr, "\\<not>(", ")", lvl)               // \neg
+    case ResultVariable() => sb.append(current_res) 
+    case Not(expr) => ppUnary(sb, expr, "\\<not>(", ")", lvl)  
 
     case e @ Error(desc) => {
       var nsb = sb
@@ -501,6 +500,7 @@ CaseClassSelector- cc: v2 id: v
 
 				//@postconditions viewed as lemmas; preconditions are integrated in the lemma statement
 				//annotations should help to prove the lemma
+			//// TODO : add quantifiers to lemma statement
         post.foreach(postc => {
 					nsb.append("\n")
           ind(nsb, lvl)
