@@ -26,17 +26,6 @@ trait CodeExtraction extends Extractors {
   private val defsToDefs: scala.collection.mutable.Map[Symbol,FunDef] =
     scala.collection.mutable.Map.empty[Symbol,FunDef]
 
-  private val reverseVarSubsts_ : scala.collection.mutable.Map[Expr,Symbol] =
-    scala.collection.mutable.Map.empty[Expr,Symbol]
-  private val reverseClassesToClasses_ : scala.collection.mutable.Map[ClassTypeDef,Symbol] =
-    scala.collection.mutable.Map.empty[ClassTypeDef,Symbol]
-
-  def reverseVarSubsts: scala.collection.immutable.Map[Expr,Symbol] =
-    scala.collection.immutable.Map() ++ reverseVarSubsts_
-
-  def reverseClassesToClasses: scala.collection.immutable.Map[ClassTypeDef,Symbol] =
-    scala.collection.immutable.Map() ++ reverseClassesToClasses_
-  
   def extractCode(unit: CompilationUnit): Program = { 
     import scala.collection.mutable.HashMap
 
@@ -270,10 +259,6 @@ trait CodeExtraction extends Extractors {
 
     stopIfErrors
 
-    // Reverse map for Scala class symbols
-    reverseClassesToClasses_ ++= classesToClasses.map{ case (a, b) => (b, a) }
-    reverseVarSubsts_ ++= varSubsts.map{ case (a, b) => (b(), a) }
-
     val programName: Identifier = unit.body match {
       case PackageDef(name, _) => FreshIdentifier(name.toString)
       case _ => FreshIdentifier("<program>")
@@ -281,28 +266,6 @@ trait CodeExtraction extends Extractors {
 
     //Program(programName, ObjectDef("Object", Nil, Nil))
     Program(programName, topLevelObjDef)
-  }
-
-  def extractPredicate(unit: CompilationUnit, params: Seq[ValDef], body: Tree) : FunDef = {
-    def st2ps(tree: Type): purescala.TypeTrees.TypeTree = {
-      try {
-        scalaType2PureScala(unit, true)(tree)
-      } catch {
-        case ImpureCodeEncounteredException(_) => stopIfErrors; scala.Predef.error("unreachable error.")
-      }
-    }
-
-    val newParams = params.map(p => {
-      val ptpe = st2ps(p.tpt.tpe)
-      val newID = FreshIdentifier(p.name.toString).setType(ptpe)
-      varSubsts(p.symbol) = (() => Variable(newID))
-      VarDecl(newID, ptpe)
-    })
-    val fd = new FunDef(FreshIdentifier("predicate"), BooleanType, newParams)
-    
-    val bodyAttempt = try { Some(scala2PureScala(unit, true)(body)) } catch { case ImpureCodeEncounteredException(_) => None }
-    fd.body = bodyAttempt
-    fd
   }
 
   /** An exception thrown when non-purescala compatible code is encountered. */
