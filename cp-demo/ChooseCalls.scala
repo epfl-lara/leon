@@ -43,9 +43,9 @@ object ChooseCalls {
     case Node(Red(), l, _, _) => blackHeight(l)
   }
 
-  @pure
   def chooseTree(height : Int) : Tree = {
-    choose((anInt: Int, t: Tree) => blackBalanced(t) && redNodesHaveBlackChildren(t) && isBlack(t) && size(t) == height)._2
+    val outer = height
+    choose((anInt: Int, t: Tree) => blackBalanced(t) && redNodesHaveBlackChildren(t) && isBlack(t) && size(t) == outer)._2
   }
 
   def main(args: Array[String]) : Unit = {
