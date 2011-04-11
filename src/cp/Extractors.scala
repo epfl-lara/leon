@@ -1,11 +1,11 @@
-package funcheck
+package cp
 
 import scala.tools.nsc._
 
 /** Contains extractors to pull-out interesting parts of the Scala ASTs. */
 trait Extractors {
   val global: Global
-  val pluginInstance: FunCheckPlugin
+  val pluginInstance: CPPlugin
 
   import global._
   import global.definitions._
@@ -72,6 +72,18 @@ trait Extractors {
             Some((vd.symbol, tpt, rhs, expr))
           else
             Some((vd.symbol, tpt, rhs, Block(rest, expr)))
+        case _ => None
+      }
+    }
+
+    object ExSkipTree {
+      /** Skips the first tree in a block */
+      def unapply(tree: Block): Option[Tree] = tree match {
+        case Block(t :: ts, expr) =>
+          if (ts.isEmpty)
+            Some(expr)
+          else
+            Some(Block(ts, expr))
         case _ => None
       }
     }

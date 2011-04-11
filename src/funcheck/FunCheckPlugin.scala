@@ -6,7 +6,7 @@ import scala.tools.nsc.plugins.{Plugin,PluginComponent}
 import purescala.Definitions.Program
 
 /** This class is the entry point for the plugin. */
-class FunCheckPlugin(val global: Global, val actionAfterExtraction : Option[Program=>Unit] = None) extends PluginBase {
+class FunCheckPlugin(val global: Global, val actionAfterExtraction : Option[Program=>Unit] = None) extends Plugin {
   import global._
 
   val name = "funcheck"
@@ -14,6 +14,7 @@ class FunCheckPlugin(val global: Global, val actionAfterExtraction : Option[Prog
 
   var stopAfterAnalysis: Boolean = true
   var stopAfterExtraction: Boolean = false
+  var silentlyTolerateNonPureBodies: Boolean = false
 
   /** The help message displaying the options for that plugin. */
   override val optionsHelp: Option[String] = Some(

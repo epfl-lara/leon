@@ -18,6 +18,12 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin)
   /** this is initialized when the Funcheck phase starts*/
   var fresh: scala.tools.nsc.util.FreshNameCreator = null 
   
+  protected def stopIfErrors: Unit = {
+    if(reporter.hasErrors) {
+      throw new Exception("There were errors.")
+    }
+  }
+
   def newPhase(prev: Phase) = new AnalysisPhase(prev)
 
   class AnalysisPhase(prev: Phase) extends StdPhase(prev) {
@@ -25,7 +31,7 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin)
       //global ref to freshName creator
       fresh = unit.fresh
 
-      val prog: purescala.Definitions.Program = extractCode(unit, false)
+      val prog: purescala.Definitions.Program = extractCode(unit)
       if(pluginInstance.stopAfterExtraction) {
         println("Extracted program for " + unit + ": ")
         println(prog)

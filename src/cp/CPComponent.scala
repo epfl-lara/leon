@@ -2,7 +2,6 @@ package cp
 
 import scala.tools.nsc._
 import scala.tools.nsc.plugins._
-import funcheck.CodeExtraction
 
 class CPComponent(val global: Global, val pluginInstance: CPPlugin)
   extends PluginComponent

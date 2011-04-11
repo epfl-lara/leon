@@ -3,10 +3,9 @@ package cp
 import scala.tools.nsc
 import scala.tools.nsc.{Global,Phase}
 import scala.tools.nsc.plugins.{Plugin,PluginComponent}
-import funcheck.PluginBase
 
 /** This class is the entry point for the plugin. */
-class CPPlugin(val global: Global) extends PluginBase {
+class CPPlugin(val global: Global) extends Plugin {
   import global._
 
   val name = "constraint-programming"
@@ -15,7 +14,7 @@ class CPPlugin(val global: Global) extends PluginBase {
   var stopAfterAnalysis: Boolean = true
   var stopAfterExtraction: Boolean = false
 
-  silentlyTolerateNonPureBodies = true
+  var silentlyTolerateNonPureBodies = true
 
   /** The help message displaying the options for that plugin. */
   override val optionsHelp: Option[String] = Some(
