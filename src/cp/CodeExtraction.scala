@@ -26,16 +26,11 @@ trait CodeExtraction extends Extractors {
   private val defsToDefs: scala.collection.mutable.Map[Symbol,FunDef] =
     scala.collection.mutable.Map.empty[Symbol,FunDef]
 
-  private val reverseVarSubsts_ : scala.collection.mutable.Map[Expr,Symbol] =
-    scala.collection.mutable.Map.empty[Expr,Symbol]
-  private val reverseClassesToClasses_ : scala.collection.mutable.Map[ClassTypeDef,Symbol] =
-    scala.collection.mutable.Map.empty[ClassTypeDef,Symbol]
-
   def reverseVarSubsts: scala.collection.immutable.Map[Expr,Symbol] =
-    scala.collection.immutable.Map() ++ reverseVarSubsts_
+    varSubsts.toMap.map{ case (a, b) => (b(), a) }
 
   def reverseClassesToClasses: scala.collection.immutable.Map[ClassTypeDef,Symbol] =
-    scala.collection.immutable.Map() ++ reverseClassesToClasses_
+    classesToClasses.toMap.map{ case (a, b) => (b, a) }
   
   def extractCode(unit: CompilationUnit, skipNonPureInstructions: Boolean): Program = { 
     import scala.collection.mutable.HashMap
@@ -95,7 +90,7 @@ trait CodeExtraction extends Extractors {
       // we need the new type definitions before we can do anything...
       tmpl.body.foreach(t =>
         t match {
-          case ExAbstractClass(o2, sym) => {
+          case cd @ ExAbstractClass(o2, sym) if cd.symbol.annotations.exists(_.atp.safeToString == "cp.Annotations.pure") => {
             if(scalaClassNames.contains(o2)) {
               unit.error(t.pos, "A class with the same name already exists.")
             } else {
@@ -103,7 +98,7 @@ trait CodeExtraction extends Extractors {
               scalaClassNames += o2
             }
           }
-          case ExCaseClass(o2, sym, args) => {
+          case cd @ ExCaseClass(o2, sym, args) if cd.symbol.annotations.exists(_.atp.safeToString == "cp.Annotations.pure") => {
             if(scalaClassNames.contains(o2)) {
               unit.error(t.pos, "A class with the same name already exists.")
             } else {
@@ -165,7 +160,7 @@ trait CodeExtraction extends Extractors {
       tmpl.body.foreach(
         _ match {
           case ExMainFunctionDef() => ;
-          case dd @ ExFunctionDef(n,p,t,b) => {
+          case dd @ ExFunctionDef(n,p,t,b) if dd.symbol.annotations.exists(_.atp.safeToString == "cp.Annotations.pure") => {
             val mods = dd.mods
             val funDef = extractFunSig(n, p, t).setPosInfo(dd.pos.line, dd.pos.column)
             if(mods.isPrivate) funDef.addAnnotation("private")
@@ -185,7 +180,7 @@ trait CodeExtraction extends Extractors {
       tmpl.body.foreach(
         _ match {
           case ExMainFunctionDef() => ;
-          case dd @ ExFunctionDef(n,p,t,b) => {
+          case dd @ ExFunctionDef(n,p,t,b) if dd.symbol.annotations.exists(_.atp.safeToString == "cp.Annotations.pure") => {
             val fd = defsToDefs(dd.symbol)
             defsToDefs(dd.symbol) = extractFunDef(fd, b)
           }
@@ -254,7 +249,7 @@ trait CodeExtraction extends Extractors {
       }
       
       val bodyAttempt = try {
-        Some(scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies, skipNonPureInstructions)(realBody))
+        Some(scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies)(realBody))
       } catch {
         case e: ImpureCodeEncounteredException => None
       }
@@ -269,10 +264,6 @@ trait CodeExtraction extends Extractors {
     val topLevelObjDef: ObjectDef = extractTopLevelDef
 
     stopIfErrors
-
-    // Reverse map for Scala class symbols
-    reverseClassesToClasses_ ++= classesToClasses.map{ case (a, b) => (b, a) }
-    reverseVarSubsts_ ++= varSubsts.map{ case (a, b) => (b(), a) }
 
     val programName: Identifier = unit.body match {
       case PackageDef(name, _) => FreshIdentifier(name.toString)
@@ -300,7 +291,7 @@ trait CodeExtraction extends Extractors {
     })
     val fd = new FunDef(FreshIdentifier("predicate"), BooleanType, newParams)
     
-    val bodyAttempt = try { Some(scala2PureScala(unit, true, false)(body)) } catch { case ImpureCodeEncounteredException(_) => None }
+    val bodyAttempt = try { Some(scala2PureScala(unit, true)(body)) } catch { case ImpureCodeEncounteredException(_) => None }
     fd.body = bodyAttempt
     fd
   }
@@ -311,7 +302,7 @@ trait CodeExtraction extends Extractors {
   /** Attempts to convert a scalac AST to a pure scala AST. */
   def toPureScala(unit: CompilationUnit)(tree: Tree): Option[Expr] = {
     try {
-      Some(scala2PureScala(unit, false, false)(tree))
+      Some(scala2PureScala(unit, false)(tree))
     } catch {
       case ImpureCodeEncounteredException(_) => None
     }
@@ -328,7 +319,7 @@ trait CodeExtraction extends Extractors {
   /** Forces conversion from scalac AST to purescala AST, throws an Exception
    * if impossible. If not in 'silent mode', non-pure AST nodes are reported as
    * errors. */
-  private def scala2PureScala(unit: CompilationUnit, silent: Boolean, skipNonPureInstructions: Boolean)(tree: Tree): Expr = {
+  private def scala2PureScala(unit: CompilationUnit, silent: Boolean)(tree: Tree): Expr = {
     def rewriteCaseDef(cd: CaseDef): MatchCase = {
       def pat2pat(p: Tree): Pattern = p match {
         case Ident(nme.WILDCARD) => WildcardPattern(None)
@@ -582,10 +573,6 @@ trait CodeExtraction extends Extractors {
         CaseClassSelector(selDef, selector, fieldID).setType(fieldID.getType)
       }
   
-      case ExSkipTree(rest) if skipNonPureInstructions => {
-        rec(rest)
-      }
-
       // default behaviour is to complain :)
       case _ => {
         if(!silent) {
