@@ -1,5 +1,5 @@
 package cp
 
 object Annotations {
-  class purescala extends StaticAnnotation
+  class pure extends StaticAnnotation
 }

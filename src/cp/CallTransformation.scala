@@ -20,7 +20,7 @@ trait CallTransformation
   private lazy val cpPackage = definitions.getModule("cp")
   private lazy val cpDefinitionsModule = definitions.getModule("cp.Definitions")
 
-  val reporter = purescala.Settings.reporter
+  val purescalaReporter = purescala.Settings.reporter
 
   /** Collect all choose and findAll signatures in program */
   def chooseSignatures(unit: CompilationUnit) : Set[List[Tree]] = {
@@ -52,13 +52,13 @@ trait CallTransformation
           val fd = extractPredicate(unit, funValDefs, funBody)
           val outputVars : Seq[Identifier] = fd.args.map(_.id)
 
-          reporter.info("Considering predicate:") 
-          reporter.info(fd)
+          purescalaReporter.info("Considering predicate:") 
+          purescalaReporter.info(fd)
 
           val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
 
           fd.body match {
-            case None => reporter.error("Could not extract choose predicate: " + funBody); super.transform(tree)
+            case None => purescalaReporter.error("Could not extract choose predicate: " + funBody); super.transform(tree)
             case Some(b) =>
               // serialize expression
               val (exprString, exprId) = serialize(b)
@@ -66,8 +66,8 @@ trait CallTransformation
               // compute input variables
               val inputVars : Seq[Identifier] = variablesOf(b).filter(!outputVars.contains(_)).toSeq
 
-              reporter.info("Input variables  : " + inputVars.mkString(", "))
-              reporter.info("Output variables : " + outputVars.mkString(", "))
+              purescalaReporter.info("Input variables  : " + inputVars.mkString(", "))
+              purescalaReporter.info("Output variables : " + outputVars.mkString(", "))
 
               // serialize list of input "Variable"s
               val (inputVarListString, inputVarListId) = serialize(inputVars map (iv => Variable(iv)))
@@ -100,13 +100,13 @@ trait CallTransformation
           val fd = extractPredicate(unit, funValDefs, funBody)
           val outputVars : Seq[Identifier] = fd.args.map(_.id)
 
-          reporter.info("Considering predicate:") 
-          reporter.info(fd)
+          purescalaReporter.info("Considering predicate:") 
+          purescalaReporter.info(fd)
 
           val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
 
           fd.body match {
-            case None => reporter.error("Could not extract choose predicate: " + funBody); super.transform(tree)
+            case None => purescalaReporter.error("Could not extract choose predicate: " + funBody); super.transform(tree)
             case Some(b) =>
               // serialize expression
               val (exprString, exprId) = serialize(b)
@@ -114,8 +114,8 @@ trait CallTransformation
               // compute input variables
               val inputVars : Seq[Identifier] = variablesOf(b).filter(!outputVars.contains(_)).toSeq
 
-              reporter.info("Input variables  : " + inputVars.mkString(", "))
-              reporter.info("Output variables : " + outputVars.mkString(", "))
+              purescalaReporter.info("Input variables  : " + inputVars.mkString(", "))
+              purescalaReporter.info("Output variables : " + outputVars.mkString(", "))
 
               // serialize list of input "Variable"s
               val (inputVarListString, inputVarListId) = serialize(inputVars map (iv => Variable(iv)))

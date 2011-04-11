@@ -9,7 +9,7 @@ import purescala.TypeTrees._
 import purescala.Common._
 
 trait CodeExtraction extends Extractors {
-  // self: AnalysisComponent =>
+  self: CPComponent =>
 
   import global._
   import global.definitions._
@@ -37,12 +37,6 @@ trait CodeExtraction extends Extractors {
   def reverseClassesToClasses: scala.collection.immutable.Map[ClassTypeDef,Symbol] =
     scala.collection.immutable.Map() ++ reverseClassesToClasses_
   
-  protected def stopIfErrors: Unit = {
-    if(reporter.hasErrors) {
-      throw new Exception("There were errors.")
-    }
-  }
-
   def extractCode(unit: CompilationUnit, skipNonPureInstructions: Boolean): Program = { 
     import scala.collection.mutable.HashMap
 

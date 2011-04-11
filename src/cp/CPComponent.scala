@@ -20,6 +20,12 @@ class CPComponent(val global: Global, val pluginInstance: CPPlugin)
   /** this is initialized when the Funcheck phase starts*/
   var fresh: scala.tools.nsc.util.FreshNameCreator = null 
   
+  protected def stopIfErrors: Unit = {
+    if(reporter.hasErrors) {
+      throw new Exception("There were errors.")
+    }
+  }
+
   def newPhase(prev: Phase) = new CPPhase(prev)
 
   class CPPhase(prev: Phase) extends StdPhase(prev) {
