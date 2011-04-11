@@ -37,6 +37,9 @@ trait CodeExtraction extends Extractors {
 
   def reverseExternalSubsts: scala.collection.immutable.Map[Expr,Tree] =
     externalSubsts.toMap.map{ case (a, b) => (b(), a) }
+
+  def variablesToTrees: scala.collection.immutable.Map[Expr,Tree] =
+    reverseExternalSubsts ++ (reverseVarSubsts.map{ case (a, b) => (a, Ident(b)) })
   
   def extractCode(unit: CompilationUnit, skipNonPureInstructions: Boolean): Program = { 
     import scala.collection.mutable.HashMap
@@ -196,6 +199,7 @@ trait CodeExtraction extends Extractors {
 
       funDefs = defsToDefs.valuesIterator.toList
 
+      /*
       // we check nothing else is polluting the object.
       tmpl.body.foreach(
         _ match {
@@ -209,6 +213,7 @@ trait CodeExtraction extends Extractors {
           case tree => { unit.error(tree.pos, "Don't know what to do with this. Not purescala?"); println(tree) }
         }
       )
+      */
 
       val name: Identifier = FreshIdentifier(nameStr)
       val theDef = new ObjectDef(name, objectDefs.reverse ::: classDefs ::: funDefs, Nil)
@@ -373,14 +378,13 @@ trait CodeExtraction extends Extractors {
       }
       case ExInt32Literal(v) => IntLiteral(v).setType(Int32Type)
       case ExBooleanLiteral(v) => BooleanLiteral(v).setType(BooleanType)
-      case ExIdentifier(sym,tpt) => varSubsts.get(sym) match {
+      case i @ ExIdentifier(sym,tpt) => varSubsts.get(sym) match {
         case Some(fun) => fun()
         case None => {
           if (tolerant) {
             val varTpe = scalaType2PureScala(unit, silent)(sym.tpe)
             val newID = FreshIdentifier(sym.name.toString).setType(varTpe)
-            // externalSubsts(sym) = (() => Variable(newID))
-            varSubsts(sym) = (() => Variable(newID))
+            externalSubsts(i) = (() => Variable(newID))
             Variable(newID)
           } else {
             unit.error(tr.pos, "Unidentified variable.")
@@ -546,13 +550,20 @@ trait CodeExtraction extends Extractors {
         IfExpr(r1, r2, r3).setType(leastUpperBound(r2.getType, r3.getType))
       }
       case lc @ ExLocalCall(sy,nm,ar) => {
-        if(defsToDefs.keysIterator.find(_ == sy).isEmpty) {
+        if(defsToDefs.keysIterator.find(_ == sy).isEmpty && !tolerant) {
           if(!silent)
             unit.error(tr.pos, "Invoking an invalid function.")
           throw ImpureCodeEncounteredException(tr)
+        } else if (defsToDefs.keysIterator.find(_ == sy).isEmpty && tolerant) {
+            val varTpe = scalaType2PureScala(unit, silent)(lc.tpe)
+            val newID = FreshIdentifier(nm).setType(varTpe)
+            externalSubsts(tr) = (() => Variable(newID))
+            println("new mapping : " + tr + " --> " + newID)
+            Variable(newID)
+        } else {
+          val fd = defsToDefs(sy)
+          FunctionInvocation(fd, ar.map(rec(_))).setType(fd.returnType).setPosInfo(lc.pos.line,lc.pos.column) 
         }
-        val fd = defsToDefs(sy)
-        FunctionInvocation(fd, ar.map(rec(_))).setType(fd.returnType).setPosInfo(lc.pos.line,lc.pos.column) 
       }
       case pm @ ExPatternMatching(sel, cses) => {
         val rs = rec(sel)
@@ -589,11 +600,18 @@ trait CodeExtraction extends Extractors {
   
       // default behaviour is to complain :)
       case _ => {
-        if(!silent) {
-          println(tr)
-          reporter.info(tr.pos, "Could not extract as PureScala.", true)
+        if(tolerant) {
+          val varTpe = scalaType2PureScala(unit, silent)(tr.tpe)
+          val newID = FreshIdentifier("fresh").setType(varTpe)
+          externalSubsts(tr) = (() => Variable(newID))
+          Variable(newID)
+        } else {
+          if(!silent) {
+            println(tr)
+            reporter.info(tr.pos, "Could not extract as PureScala.", true)
+          }
+          throw ImpureCodeEncounteredException(tree)
         }
-        throw ImpureCodeEncounteredException(tree)
       }
     }
     rec(tree)

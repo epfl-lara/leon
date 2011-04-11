@@ -246,8 +246,8 @@ trait CodeGeneration {
           // retrieve input variable list and get corresponding variable
         (cpPackage DOT callTransformationModule DOT inputVarFunction) APPLY
           ((cpPackage DOT serializationModule DOT getInputVarListFunction) APPLY (LIT(inputVarListString), LIT(inputVarListId)), LIT(varId.name)),
-        // invoke s2e on var symbol
-        scalaToExprSym APPLY ID(reverseVarSubsts(Variable(varId)))
+        // invoke s2e on corresponding Tree
+        scalaToExprSym APPLY variablesToTrees(Variable(varId))
       )
     }
 

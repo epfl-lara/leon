@@ -43,9 +43,16 @@ object ChooseCalls {
     case Node(Red(), l, _, _) => blackHeight(l)
   }
 
+  private val random = new scala.util.Random()
+  def randomInt() : Int = random.nextInt(10)
+
+  def plus2(i : Int) : Int = i + 2
+
+  def sizePlus2(t : Tree) : Int = size(t) + 2
+
   def chooseTree(height : Int) : Tree = {
     val outer = height
-    choose((anInt: Int, t: Tree) => blackBalanced(t) && redNodesHaveBlackChildren(t) && isBlack(t) && size(t) == outer)._2
+    choose((anInt: Int, t: Tree) => blackBalanced(t) && redNodesHaveBlackChildren(t) && isBlack(t) && size(t) == randomInt())._2
   }
 
   def main(args: Array[String]) : Unit = {
