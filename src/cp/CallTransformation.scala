@@ -3,7 +3,7 @@ package cp
 import scala.tools.nsc.transform.TypingTransformers
 import scala.tools.nsc.ast.TreeDSL
 import purescala.FairZ3Solver
-import purescala.DefaultReporter
+import purescala.QuietReporter
 import purescala.Common.Identifier
 import purescala.Definitions._
 import purescala.Trees._
@@ -189,12 +189,14 @@ object CallTransformation {
   import Definitions.UnsatisfiableConstraintException
   import Definitions.UnknownConstraintException
 
+  def newSolver() = new FairZ3Solver(new QuietReporter())
+
   def chooseExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Expr) : Seq[Expr] = {
     val program    = deserialize[Program](progString, progId)
     val expr       = deserialize[Expr](exprString, exprId)
     val outputVars = deserialize[Seq[Identifier]](outputVarsString, outputVarsId)
 
-    val solver = new FairZ3Solver(new DefaultReporter())
+    val solver = newSolver()
     solver.setProgram(program)
 
     val (outcome, model) = solver.restartAndDecideWithModel(And(expr, inputConstraints), false)
@@ -237,7 +239,7 @@ object CallTransformation {
 
   /** Returns an iterator of interpretations for each identifier in the specified set */
   private def solutionsIterator(program : Program, predicate : Expr, inputEqualities : Expr, outputVariables : Set[Identifier]) : Iterator[Map[Identifier, Expr]] = {
-    val solver = new FairZ3Solver(new DefaultReporter())
+    val solver = newSolver()
     solver.setProgram(program)
 
     new Iterator[Map[Identifier, Expr]] {
