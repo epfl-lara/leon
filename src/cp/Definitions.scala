@@ -1,11 +1,12 @@
 package cp
 
 object Definitions {
+  class spec extends StaticAnnotation
+
   final class NotImplementedException extends Exception
 
   final class UnsatisfiableConstraintException extends Exception
   final class UnknownConstraintException extends Exception
-  
 
   def choose[A](pred : A => Boolean) : A = {
     throw new NotImplementedException()

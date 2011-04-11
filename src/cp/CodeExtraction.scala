@@ -41,7 +41,7 @@ trait CodeExtraction extends Extractors {
   def variablesToTrees: scala.collection.immutable.Map[Expr,Tree] =
     reverseExternalSubsts ++ (reverseVarSubsts.map{ case (a, b) => (a, Ident(b)) })
   
-  def extractCode(unit: CompilationUnit, skipNonPureInstructions: Boolean): Program = { 
+  def extractCode(unit: CompilationUnit): Program = { 
     import scala.collection.mutable.HashMap
 
     def s2ps(tree: Tree): Expr = toPureScala(unit)(tree) match {
@@ -99,7 +99,7 @@ trait CodeExtraction extends Extractors {
       // we need the new type definitions before we can do anything...
       tmpl.body.foreach(t =>
         t match {
-          case cd @ ExAbstractClass(o2, sym) if cd.symbol.annotations.exists(_.atp.safeToString == "cp.Annotations.pure") => {
+          case cd @ ExAbstractClass(o2, sym) if cd.symbol.annotations.exists(_.atp.safeToString == "cp.Definitions.spec") => {
             if(scalaClassNames.contains(o2)) {
               unit.error(t.pos, "A class with the same name already exists.")
             } else {
@@ -107,7 +107,7 @@ trait CodeExtraction extends Extractors {
               scalaClassNames += o2
             }
           }
-          case cd @ ExCaseClass(o2, sym, args) if cd.symbol.annotations.exists(_.atp.safeToString == "cp.Annotations.pure") => {
+          case cd @ ExCaseClass(o2, sym, args) if cd.symbol.annotations.exists(_.atp.safeToString == "cp.Definitions.spec") => {
             if(scalaClassNames.contains(o2)) {
               unit.error(t.pos, "A class with the same name already exists.")
             } else {
@@ -169,7 +169,7 @@ trait CodeExtraction extends Extractors {
       tmpl.body.foreach(
         _ match {
           case ExMainFunctionDef() => ;
-          case dd @ ExFunctionDef(n,p,t,b) if dd.symbol.annotations.exists(_.atp.safeToString == "cp.Annotations.pure") => {
+          case dd @ ExFunctionDef(n,p,t,b) if dd.symbol.annotations.exists(_.atp.safeToString == "cp.Definitions.spec") => {
             val mods = dd.mods
             val funDef = extractFunSig(n, p, t).setPosInfo(dd.pos.line, dd.pos.column)
             if(mods.isPrivate) funDef.addAnnotation("private")
@@ -189,7 +189,7 @@ trait CodeExtraction extends Extractors {
       tmpl.body.foreach(
         _ match {
           case ExMainFunctionDef() => ;
-          case dd @ ExFunctionDef(n,p,t,b) if dd.symbol.annotations.exists(_.atp.safeToString == "cp.Annotations.pure") => {
+          case dd @ ExFunctionDef(n,p,t,b) if dd.symbol.annotations.exists(_.atp.safeToString == "cp.Definitions.spec") => {
             val fd = defsToDefs(dd.symbol)
             defsToDefs(dd.symbol) = extractFunDef(fd, b)
           }
