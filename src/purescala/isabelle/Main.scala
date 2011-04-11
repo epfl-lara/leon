@@ -17,6 +17,10 @@ class Main(reporter : Reporter) extends Analyser(reporter) {
   override val shortDescription = "isabelle"
 	var mapParentTypes = new ListMap[String,String]
 
+	//map for each function keeps the functions that it calls inside it 
+	var functionDependsOn = new ListMap[String, List[String]]
+	var currentFunction = ""
+
 	//current #res:
 	var current_res = "" 
 
@@ -75,7 +79,7 @@ class Main(reporter : Reporter) extends Analyser(reporter) {
   }
 
   private def pp(tree: Expr, sb: StringBuffer, lvl: Int): StringBuffer = tree match {
-    case Variable(id) => sb.append(id)
+    case Variable(id) => sb.append(id + "_var") //add this to avoid isabelle reserved names like "min"
     case Let(b,d,e) => {
         pp(e, pp(d, sb.append("(let " + b + " = "), lvl).append(" in \n" + (" " * lvl)), lvl).append(")")
     }
@@ -117,13 +121,22 @@ CaseClassSelector- cc: v1 id: v
 CaseClassSelector- cc: v2 id: v
 */
     case CaseClassSelector(_, cc, id) => {
-			println("CaseClassSelector- cc: " + cc + " id: " + id )
+			//println("CaseClassSelector- cc: " + cc + " id: " + id )
 			pp(cc, sb, lvl).append("." + id)
 		}
 
-//TODOTODOTODOTODOTODO : does it calls a previous defined function or not ????
+//does it calls a previous defined function or not ?
     case FunctionInvocation(fd, args) => {
       var nsb = sb
+			if(currentFunction.compareTo("") != 0 && currentFunction.compareTo(fd.id.toString)!= 0){
+				var list = Nil : List[String]
+				functionDependsOn.get(currentFunction)	match {
+		     				case None => reporter.error("function not defined: " + currentFunction)
+		     				case Some(l) => list = l
+		    }
+				list = fd.id.toString :: list
+				functionDependsOn.update(currentFunction, list.distinct)				
+			}
       nsb.append("(" + fd.id)
       nsb = ppNary(nsb, args, " ", " ", " ", lvl)
       nsb.append(")")
@@ -180,12 +193,12 @@ CaseClassSelector- cc: v2 id: v
       ind(nsb, lvl+1)
       nsb = pp(t, nsb, lvl+1)
       nsb.append("\n")
-      ind(nsb, lvl)
+      ind(nsb, lvl + 1)
       nsb.append(") else (\n")
       ind(nsb, lvl+1)
       nsb = pp(e, nsb, lvl+1)
       nsb.append("\n")
-      ind(nsb, lvl)
+      ind(nsb, lvl )
       nsb.append("))")
       nsb
     }
@@ -210,13 +223,13 @@ CaseClassSelector- cc: v2 id: v
         }
         case WildcardPattern(None)     => sb.append("_")
         case WildcardPattern(Some(id)) => {
-					sb.append(id)
+					sb.append(id.toString + "_var")
 				}
         case _ => sb.append("Pattern?")
       }
 
       var nsb = sb
-      nsb.append(" (case ")
+      nsb.append("(case ")
       nsb == pp(s, nsb, lvl)
 			nsb.append(" of\n")
 
@@ -224,13 +237,14 @@ CaseClassSelector- cc: v2 id: v
 			var c1 = 0
 
       csc.foreach(cs => {
-        ind(nsb, lvl+1)
+        ind(nsb, lvl+3)
         nsb = ppc(nsb, cs.pattern)
         cs.theGuard.foreach(g => {
           nsb.append(" if ")
           nsb = pp(g, nsb, lvl+1)
         })
-        nsb.append(" \\<Rightarrow> ")
+        nsb.append(" \\<Rightarrow> \n")
+				ind(nsb, lvl + 6)
         nsb = pp(cs.rhs, nsb, lvl+1)
 				if(c1 < len1  - 1)
         	nsb.append(" |")
@@ -267,7 +281,11 @@ CaseClassSelector- cc: v2 id: v
 			println("[not handled] multisettype")
 			pp(bt, sb.append("Multiset["), lvl).append("]")
 		}
-    case c: ClassType => sb.append(c.classDef.id)
+    case c: ClassType => sb.append(mapParentTypes.get(c.classDef.id.toString) match {
+			case None => c.classDef.id
+			case Some(l) => l
+			}
+		)
     case _ => sb.append("Type?")
   }
 
@@ -279,8 +297,12 @@ CaseClassSelector- cc: v2 id: v
       case Program(id, mainObj) => {
         assert(lvl == 0)
         pp(mainObj, sb, lvl)
+
+//				println("function depends on :\n")
+//				println(functionDependsOn)
+  
 				sb.append("end\n")
-      }
+    }
 
       case ObjectDef(id, defs, invs) => {
         var nsb = sb
@@ -362,8 +384,8 @@ CaseClassSelector- cc: v2 id: v
 					map.update(one_type._1 , l)
 				})
 
-				var sortedList = Nil : List[(String, List[List[String]])]
-				def contains(t: (String, List[List[String]]) ,l : List[(String, List[List[String]])]) : Boolean ={
+			//	def contains(t: (String, List[List[String]]) ,l : List[(String, List[List[String]])]) : Boolean ={
+				def contains(t: (String, Any) ,l : List[(String, Any)]) : Boolean ={
 					for(el <- l)
 						if (t._1.compareTo(el._1) == 0 )
 							return true
@@ -371,6 +393,7 @@ CaseClassSelector- cc: v2 id: v
 				}
         
 				/* sort the list of all types such that if one depends on another, then the later is defined first */
+				var sortedList = Nil : List[(String, List[List[String]])]
 				while(sortedList.size < map.size){
 					map foreach((t1) =>
 						if(!contains(t1, sortedList)){
@@ -411,31 +434,67 @@ CaseClassSelector- cc: v2 id: v
         })
         nsb.append("\n")
         
-				//TODOTODOTODOTODOTODOTODOTODO
-       //TODO : set the right order of functions 
+       //the following sets the right order of functions according to dependencies
         //interpret functions
-        var c = 0
-        val sz = defs.size
-				definedFunctions.reverse
+				var functionCode = new ListMap[String, StringBuffer]
 
         definedFunctions.foreach(df => {
-          nsb = pp(df, nsb, lvl)
-          if(c < sz - 1) {
-            nsb.append("\n")
-          }
-          c = c + 1
-					nsb.append("\n")
+					var sbaux = new StringBuffer
+          sbaux = pp(df, sbaux, lvl)
+					sbaux.append("\n\n")
+
+					functionCode.update(df.id.toString, sbaux)
         })
-        nsb
+ 
+// 				var functionCode = new ListMap[String, StringBuffer]
+	//var functionDependsOn = new ListMap[String, List[String]]
+      
+				/* sort the list of all types such that if one depends on another, then the later is defined first */
+				var sortedFunctionList = Nil : List[String]
+				while(sortedFunctionList.size < functionCode.size){
+					functionCode foreach((t1) =>
+						if(!(sortedFunctionList contains t1._1)){
+							var b = true
+							var ll = functionDependsOn.get(t1._1) match {
+								case Some(lll) => lll
+								case None => Nil : List[String]
+							}
+							functionCode foreach( (t2) =>
+								if(!(sortedFunctionList contains t2._1) && t1._1.compareTo(t2._1) != 0){
+		  	  	    	for(str <- ll)
+ 	 		  	  	  		if(str.compareTo(t2._1) == 0)
+    		  	  				b = false
+								}
+							)
+							if(b)
+								sortedFunctionList = sortedFunctionList ::: List(t1._1)
+						}
+					)
+				}
+ 
+	
+				sortedFunctionList foreach ( p =>
+					nsb.append(functionCode.get(p) match {
+						case Some(buf) => buf.toString
+						case None => "fatal error in functions translation"
+					})
+				) 
+
+				nsb
       }
 
 //========================================== FUNCTIONS =====================================================
-			//def evalOp(v1 : Value, op : BinOp, v2 : Value) : Value = 
-			//fun evalOp :: "Value  \<Rightarrow> BinOp \<Rightarrow> Value \<Rightarrow> Value" where
-
+  		/*
+			def evalOp(v1 : Value, op : BinOp, v2 : Value) : Value = .....
+			fun evalOp :: "Value  \<Rightarrow> BinOp \<Rightarrow> Value \<Rightarrow> Value" where
+				"evalOp v1 op v2 = ( ..... )"
+			*/
+ 
       //functions : 
       case fd @ FunDef(id, rt, args, body, pre, post) => {
         var nsb = sb
+				functionDependsOn.update(id.toString, List())
+				currentFunction = id.toString
 
         for(a <- fd.annotations) {
           ind(nsb, lvl)
@@ -457,14 +516,7 @@ CaseClassSelector- cc: v2 id: v
         val sz = args.size
         var c = 0
 
-  		/*
-			def evalOp(v1 : Value, op : BinOp, v2 : Value) : Value = .....
-			fun evalOp :: "Value  \<Rightarrow> BinOp \<Rightarrow> Value \<Rightarrow> Value" where
-				"evalOp v1 op v2 = ( ..... )"
-			*/
-        args.foreach(arg => {
-//          nsb.append(arg.id)
-//          nsb.append(" : ")
+       args.foreach(arg => {
           nsb = pp(arg.tpe, nsb, lvl)
 
           if(c < sz - 1) {
@@ -473,7 +525,8 @@ CaseClassSelector- cc: v2 id: v
           c = c + 1
         })
 
-        nsb.append(" \\<Rightarrow> ")
+				if(args.size > 0)
+	        nsb.append(" \\<Rightarrow> ")
         nsb = pp(rt, nsb, lvl)
         nsb.append("\" where \n")
 
@@ -482,7 +535,7 @@ CaseClassSelector- cc: v2 id: v
         nsb.append(id + " ")
 
         args.foreach(arg => {
-          nsb.append(arg.id)
+          nsb.append(arg.id + "_var")
           nsb.append(" ")
         })
 				
@@ -522,7 +575,7 @@ CaseClassSelector- cc: v2 id: v
 
 					current_res = "(" + id + " "
 	        args.foreach(arg => {
-  	        current_res = current_res + arg.id + " "
+  	        current_res = current_res + arg.id + "_var "
       	  })
 					current_res = current_res + ")"
 
@@ -553,7 +606,7 @@ CaseClassSelector- cc: v2 id: v
 					ind(nsb,lvl)
 					
         })
-			
+				currentFunction = ""
 				nsb
       }
 
@@ -565,7 +618,7 @@ CaseClassSelector- cc: v2 id: v
   def analyse(program : Program) : Unit = {
     val file = new FileOutputStream("isabelle_examples/translation/" + program.mainObject.id +  ".thy")
     val out = new PrintStream(file)
-//    out.println(apply(program))
+    out.println(apply(program))
     reporter.info(apply(program))
     out.close()    
   }
