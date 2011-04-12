@@ -89,5 +89,14 @@ object ChooseCalls {
       y >= 0 minimizing (w + height))
     )
 
+    println(choose((x : Int, y : Int, z : Int) =>
+      z == 4*x + 6*y &&
+      y - x <= 11 &&
+      x + y <= 27 &&
+      2*x + 5*y <= 90 &&
+      x >= 0 &&
+      y >= 0 maximizing z)
+    )
+
   }
 }
