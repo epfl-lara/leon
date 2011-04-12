@@ -26,7 +26,8 @@ trait CallTransformation
   def chooseSignatures(unit: CompilationUnit) : Set[List[Tree]] = {
     val signatures : scala.collection.mutable.Set[List[Tree]] = scala.collection.mutable.Set[List[Tree]]()
     def collectSignatures(tree: Tree) = tree match {
-      case Apply(TypeApply(Select(s: Select, n), typeTreeList), List(predicate: Function)) if (cpDefinitionsModule == s.symbol && (n.toString == "choose" || n.toString == "findAll")) =>
+      case Apply(TypeApply(Select(s: Select, n), typeTreeList), List(predicate: Function)) if (cpDefinitionsModule == s.symbol && 
+          (n.toString == "choose" || n.toString == "find" || n.toString == "findAll")) =>
         signatures += typeTreeList
       case _ => 
     }
@@ -58,7 +59,7 @@ trait CallTransformation
           val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
 
           fd.body match {
-            case None => purescalaReporter.error("Could not extract choose predicate: " + funBody); super.transform(tree)
+            case None => purescalaReporter.error("Could not extract `choose' predicate: " + funBody); super.transform(tree)
             case Some(b) =>
               // serialize expression
               val (exprString, exprId) = serialize(b)
@@ -80,7 +81,7 @@ trait CallTransformation
                 codeGen.inputEquality(inputVarListString, inputVarListId, iv, scalaToExprSym)
               })
 
-              val inputConstraintsConjunction = codeGen.andExpr(inputConstraints)
+              val inputConstraintsConjunction = if (inputVars.isEmpty) codeGen.trueLiteral else codeGen.andExpr(inputConstraints)
 
               val chooseExecCall = codeGen.chooseExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraintsConjunction)
 
@@ -90,6 +91,50 @@ trait CallTransformation
 
               typer.typed(atOwner(currentOwner) {
                 code
+              })
+          }
+        }
+
+        case a @ Apply(TypeApply(Select(s: Select, n), typeTreeList), rhs @ List(predicate: Function)) if (cpDefinitionsModule == s.symbol && n.toString == "find") => {
+          val Function(funValDefs, funBody) = predicate
+
+          val fd = extractPredicate(unit, funValDefs, funBody)
+          val outputVars : Seq[Identifier] = fd.args.map(_.id)
+
+          purescalaReporter.info("Considering predicate:") 
+          purescalaReporter.info(fd)
+
+          val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
+
+          fd.body match {
+            case None => purescalaReporter.error("Could not extract `find' predicate: " + funBody); super.transform(tree)
+            case Some(b) =>
+              // serialize expression
+              val (exprString, exprId) = serialize(b)
+              
+              // compute input variables
+              val inputVars : Seq[Identifier] = variablesOf(b).filter(!outputVars.contains(_)).toSeq
+
+              purescalaReporter.info("Input variables  : " + inputVars.mkString(", "))
+              purescalaReporter.info("Output variables : " + outputVars.mkString(", "))
+
+              // serialize list of input "Variable"s
+              val (inputVarListString, inputVarListId) = serialize(inputVars map (iv => Variable(iv)))
+
+              // serialize outputVars sequence
+              val (outputVarsString, outputVarsId) = serialize(outputVars)
+
+              // input constraints
+              val inputConstraints : Seq[Tree] = (for (iv <- inputVars) yield {
+                codeGen.inputEquality(inputVarListString, inputVarListId, iv, scalaToExprSym)
+              })
+
+              val inputConstraintsConjunction = if (inputVars.isEmpty) codeGen.trueLiteral else codeGen.andExpr(inputConstraints)
+
+              val findExecCall = codeGen.findExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraintsConjunction)
+
+              typer.typed(atOwner(currentOwner) {
+                codeGen.mapOption(exprSeqToScalaSyms(typeTreeList), findExecCall)
               })
           }
         }
@@ -199,7 +244,9 @@ object CallTransformation {
     val solver = newSolver()
     solver.setProgram(program)
 
-    val (outcome, model) = solver.restartAndDecideWithModel(And(expr, inputConstraints), false)
+    val toCheck = expr :: inputConstraints :: Nil
+    println("To check: " + toCheck)
+    val (outcome, model) = solver.restartAndDecideWithModel(And(toCheck), false)
 
     outcome match {
       case Some(false) =>
@@ -208,6 +255,15 @@ object CallTransformation {
         throw new UnsatisfiableConstraintException()
       case None =>
         throw new UnknownConstraintException()
+    }
+  }
+
+  def findExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Expr) : Option[Seq[Expr]] = {
+    try {
+      Some(chooseExec(progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraints))
+    } catch {
+      case e: UnsatisfiableConstraintException  => None
+      case e: UnknownConstraintException        => None
     }
   }
 

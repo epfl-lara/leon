@@ -67,5 +67,18 @@ object ChooseCalls {
 
     val height = if (args.isEmpty) 3 else args(0).toInt
     println("The chosen tree (of height " + height + ") is : \n" + print(chooseTree(height)))
+
+    println("Invoke choose on unsat. constraint: ")
+    try {
+      choose((t : Tree) => size(t) > 5 && size(t) < 4)
+    } catch {
+      case e : UnsatisfiableConstraintException => println("I caught an exception as expected.")
+    }
+
+    println("Invoke `find' on unsat. constraint: " )
+    find((t: Tree) => size(t) > 5 && size(t) < 4) match {
+      case None => println("Result is None, as expected.")
+      case _    => println("Whoops?")
+    }
   }
 }

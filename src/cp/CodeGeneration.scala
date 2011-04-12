@@ -24,10 +24,14 @@ trait CodeGeneration {
   private lazy val iteratorClass            = definitions.getClass("scala.collection.Iterator")
   private lazy val iteratorMapFunction      = definitions.getMember(iteratorClass, "map")
 
+  private lazy val optionClass              = definitions.getClass("scala.Option")
+  private lazy val optionMapFunction        = definitions.getMember(optionClass, "map")
+
   private lazy val cpPackage                = definitions.getModule("cp")
 
   private lazy val callTransformationModule = definitions.getModule("cp.CallTransformation")
   private lazy val chooseExecFunction       = definitions.getMember(callTransformationModule, "chooseExec")
+  private lazy val findExecFunction         = definitions.getMember(callTransformationModule, "findExec")
   private lazy val findAllExecFunction      = definitions.getMember(callTransformationModule, "findAllExec")
   private lazy val inputVarFunction         = definitions.getMember(callTransformationModule, "inputVar")
   private lazy val skipCounterFunction      = definitions.getMember(callTransformationModule, "skipCounter")
@@ -71,6 +75,10 @@ trait CodeGeneration {
       execCode(chooseExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraints)
     }
       
+    def findExecCode(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Tree) : Tree = {
+      execCode(findExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraints)
+    }
+      
     def findAllExecCode(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Tree) : Tree = {
       execCode(findAllExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraints)
     }
@@ -95,7 +103,28 @@ trait CodeGeneration {
         TypeApply(iterTree DOT iteratorMapFunction, List(TypeTree(returnType))),
         List(BLOCK(anonFun))
       )
-        
+    }
+
+    def mapOption(mapFunction : Symbol, optionTree : Tree) : Tree = {
+      val returnType = mapFunction.tpe match {
+        case MethodType(_,rt) => rt
+        case unhandled        => scala.Predef.error("Unexpected method type : " + unhandled)
+      }
+
+      val seqExprType = typeRef(NoPrefix, definitions.SeqClass, List(exprClass.tpe))
+
+      val anonFunSym = owner.newValue(NoPosition, nme.ANON_FUN_NAME) setInfo (mapFunction.tpe)
+      val argValue = anonFunSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "x")) setInfo seqExprType
+
+      val anonFun = Function(
+        List(ValDef(argValue, EmptyTree)),
+        mapFunction APPLY ID(argValue)
+      ) setSymbol anonFunSym 
+
+      Apply(
+        TypeApply(optionTree DOT optionMapFunction, List(TypeTree(returnType))),
+        List(BLOCK(anonFun))
+      )
     }
 
     def exprSeqToScalaMethod(owner : Symbol, exprToScalaCastSym : Symbol, signature : List[Tree]) : (Tree, Symbol) = {
