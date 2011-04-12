@@ -50,7 +50,7 @@ trait CallTransformation
         case a @ Apply(TypeApply(Select(s: Select, n), typeTreeList), rhs @ List(predicate: Function)) if (cpDefinitionsModule == s.symbol && n.toString == "choose") => {
           val Function(funValDefs, funBody) = predicate
 
-          val fd = extractPredicate(unit, funValDefs, funBody)
+          val (fd, minExpr, maxExpr) = extractPredicate(unit, funValDefs, funBody)
           val outputVars : Seq[Identifier] = fd.args.map(_.id)
 
           purescalaReporter.info("Considering predicate:") 
@@ -65,7 +65,13 @@ trait CallTransformation
               val (exprString, exprId) = serialize(b)
               
               // compute input variables
-              val inputVars : Seq[Identifier] = variablesOf(b).filter(!outputVars.contains(_)).toSeq
+              val inputVars : Seq[Identifier] = (variablesOf(b) ++ (minExpr match {
+                case Some(e) => variablesOf(e)
+                case None => Set.empty
+              }) ++ (maxExpr match {
+                case Some(e) => variablesOf(e)
+                case None => Set.empty
+              })).filter(!outputVars.contains(_)).toSeq
 
               purescalaReporter.info("Input variables  : " + inputVars.mkString(", "))
               purescalaReporter.info("Output variables : " + outputVars.mkString(", "))
@@ -83,14 +89,24 @@ trait CallTransformation
 
               val inputConstraintsConjunction = if (inputVars.isEmpty) codeGen.trueLiteral else codeGen.andExpr(inputConstraints)
 
-              val chooseExecCall = codeGen.chooseExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraintsConjunction)
-
-              val code = BLOCK(
-                (exprSeqToScalaSyms(typeTreeList)) APPLY (chooseExecCall)
-              )
+              val exprSeqTree = (minExpr, maxExpr) match {
+                case (None, None) => {
+                  codeGen.chooseExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraintsConjunction)
+                }
+                case (Some(minE), None) => {
+                  val (minExprString, minExprId) = serialize(minE)
+                  codeGen.chooseMinimizingExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, minExprString, minExprId, inputConstraintsConjunction)
+                }
+                case (None, Some(maxE)) => {
+                  val (maxExprString, maxExprId) = serialize(maxE)
+                  codeGen.chooseMaximizingExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, maxExprString, maxExprId, inputConstraintsConjunction)
+                }
+                case _ =>
+                  scala.Predef.error("Unreachable case")
+              }
 
               typer.typed(atOwner(currentOwner) {
-                code
+                exprSeqToScalaSyms(typeTreeList) APPLY exprSeqTree
               })
           }
         }
@@ -98,7 +114,7 @@ trait CallTransformation
         case a @ Apply(TypeApply(Select(s: Select, n), typeTreeList), rhs @ List(predicate: Function)) if (cpDefinitionsModule == s.symbol && n.toString == "find") => {
           val Function(funValDefs, funBody) = predicate
 
-          val fd = extractPredicate(unit, funValDefs, funBody)
+          val (fd, minExpr, maxExpr) = extractPredicate(unit, funValDefs, funBody)
           val outputVars : Seq[Identifier] = fd.args.map(_.id)
 
           purescalaReporter.info("Considering predicate:") 
@@ -113,7 +129,14 @@ trait CallTransformation
               val (exprString, exprId) = serialize(b)
               
               // compute input variables
-              val inputVars : Seq[Identifier] = variablesOf(b).filter(!outputVars.contains(_)).toSeq
+              val inputVars : Seq[Identifier] = (variablesOf(b) ++ (minExpr match {
+                case Some(e) => variablesOf(e)
+                case None => Set.empty
+              }) ++ (maxExpr match {
+                case Some(e) => variablesOf(e)
+                case None => Set.empty
+              })).filter(!outputVars.contains(_)).toSeq
+
 
               purescalaReporter.info("Input variables  : " + inputVars.mkString(", "))
               purescalaReporter.info("Output variables : " + outputVars.mkString(", "))
@@ -133,8 +156,24 @@ trait CallTransformation
 
               val findExecCall = codeGen.findExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraintsConjunction)
 
+              val exprSeqOptionTree = (minExpr, maxExpr) match {
+                case (None, None) => {
+                  codeGen.findExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraintsConjunction)
+                }
+                case (Some(minE), None) => {
+                  val (minExprString, minExprId) = serialize(minE)
+                  codeGen.findMinimizingExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, minExprString, minExprId, inputConstraintsConjunction)
+                }
+                case (None, Some(maxE)) => {
+                  val (maxExprString, maxExprId) = serialize(maxE)
+                  codeGen.findMaximizingExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, maxExprString, maxExprId, inputConstraintsConjunction)
+                }
+                case _ =>
+                  scala.Predef.error("Unreachable case")
+              }
+
               typer.typed(atOwner(currentOwner) {
-                codeGen.mapOption(exprSeqToScalaSyms(typeTreeList), findExecCall)
+                codeGen.mapOption(exprSeqToScalaSyms(typeTreeList), exprSeqOptionTree)
               })
           }
         }
@@ -142,7 +181,12 @@ trait CallTransformation
         case a @ Apply(TypeApply(Select(s: Select, n), typeTreeList), rhs @ List(predicate: Function)) if (cpDefinitionsModule == s.symbol && n.toString == "findAll") => {
           val Function(funValDefs, funBody) = predicate
 
-          val fd = extractPredicate(unit, funValDefs, funBody)
+          val (fd, minExpr, maxExpr) = extractPredicate(unit, funValDefs, funBody)
+
+          if (minExpr.isDefined || maxExpr.isDefined)
+            unit.error(a.pos, "minimizing / maximizing expressions are now allowed for `findAll' predicates")
+          stopIfErrors
+
           val outputVars : Seq[Identifier] = fd.args.map(_.id)
 
           purescalaReporter.info("Considering predicate:") 
@@ -234,7 +278,7 @@ object CallTransformation {
   import Definitions.UnsatisfiableConstraintException
   import Definitions.UnknownConstraintException
 
-  def newSolver() = new FairZ3Solver(new QuietReporter())
+  private def newSolver() = new FairZ3Solver(new QuietReporter())
 
   def chooseExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Expr) : Seq[Expr] = {
     val program    = deserialize[Program](progString, progId)
@@ -245,7 +289,6 @@ object CallTransformation {
     solver.setProgram(program)
 
     val toCheck = expr :: inputConstraints :: Nil
-    println("To check: " + toCheck)
     val (outcome, model) = solver.restartAndDecideWithModel(And(toCheck), false)
 
     outcome match {
@@ -258,9 +301,109 @@ object CallTransformation {
     }
   }
 
+  def chooseMinimizingExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, minExprString : String, minExprId : Int, inputConstraints : Expr) : Seq[Expr] = {
+
+    def stop(lo : Option[Int], hi : Int) : Boolean = lo match {
+      case Some(l) => hi - l <= 2
+      case None => false
+    }
+
+    val program    = deserialize[Program](progString, progId)
+    val expr       = deserialize[Expr](exprString, exprId)
+    val outputVars = deserialize[Seq[Identifier]](outputVarsString, outputVarsId)
+    val minExpr    = deserialize[Expr](minExprString, minExprId)
+    
+    val solver = newSolver()
+    solver.setProgram(program)
+
+    /* invariant : lo is always stricly less than any sat. minExpr assignment,
+     * and there is always a sat. assignment less than hi */
+    def minAux(pivot : Int, lo : Option[Int], hi : Int) : Map[Identifier, Expr] = {
+      // println("Iterating:")
+      // println("  lo     : " + (lo match { case Some(l) => l; case None => "-inf"}))
+      // println("  pivot  : " + pivot)
+      // println("  hi     : " + hi)
+      // println
+      val toCheck = expr :: inputConstraints :: LessEquals(minExpr, IntLiteral(pivot)) :: Nil
+      val (outcome, model) = solver.restartAndDecideWithModel(And(toCheck), false)
+
+      outcome match {
+        case Some(false) =>
+          // there is a satisfying assignment
+          if (stop(lo, hi)) {
+            model
+          } else {
+            lo match {
+              case None =>
+                // lower bound is -inf
+                minAux(
+                  if (pivot >= 0) -1 else pivot * 2,
+                  None,
+                  pivot + 1
+                )
+              case Some(lv) =>
+                minAux(
+                  lv + (pivot + 1 - lv) / 2,
+                  lo,
+                  pivot + 1
+                )
+            }
+          }
+        case _ =>
+          // new lo is pivot
+          minAux(
+            pivot + (hi - pivot) / 2,
+            Some(pivot),
+            hi
+          )
+      }
+    }
+
+    // We declare a variable to hold the value to minimize:
+    val minExprID = purescala.Common.FreshIdentifier("minExpr").setType(purescala.TypeTrees.Int32Type)
+
+    solver.restartAndDecideWithModel(And(expr :: inputConstraints :: Equals(minExpr, Variable(minExprID)) :: Nil), false) match {
+      case (Some(false), model) =>
+        // there is a satisfying assignment
+        val minExprVal = modelValue(minExprID, model) match {
+          case IntLiteral(i) => i
+          case e => scala.Predef.error("Unexpected value for term to minimize : " + e)
+        }
+
+        val optimalModel = minAux(minExprVal - 1, None, minExprVal + 1)
+        outputVars.map(v => modelValue(v, optimalModel))
+      case (Some(true), _) =>
+        throw new UnsatisfiableConstraintException()
+      case _ =>
+        throw new UnknownConstraintException()
+    }
+  }
+
+  def chooseMaximizingExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, maxExprString : String, maxExprId : Int, inputConstraints : Expr) : Seq[Expr] = {
+    throw new Exception("not implemented yet")
+  }
+
   def findExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Expr) : Option[Seq[Expr]] = {
     try {
       Some(chooseExec(progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraints))
+    } catch {
+      case e: UnsatisfiableConstraintException  => None
+      case e: UnknownConstraintException        => None
+    }
+  }
+
+  def findMinimizingExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, minExprString : String, minExprId : Int, inputConstraints : Expr) : Option[Seq[Expr]] = {
+    try {
+      Some(chooseMinimizingExec(progString, progId, exprString, exprId, outputVarsString, outputVarsId, minExprString, minExprId, inputConstraints))
+    } catch {
+      case e: UnsatisfiableConstraintException  => None
+      case e: UnknownConstraintException        => None
+    }
+  }
+
+  def findMaximizingExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, maxExprString : String, maxExprId : Int, inputConstraints : Expr) : Option[Seq[Expr]] = {
+    try {
+      Some(chooseMaximizingExec(progString, progId, exprString, exprId, outputVarsString, outputVarsId, maxExprString, maxExprId, inputConstraints))
     } catch {
       case e: UnsatisfiableConstraintException  => None
       case e: UnknownConstraintException        => None

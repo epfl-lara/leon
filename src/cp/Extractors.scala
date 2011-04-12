@@ -51,6 +51,26 @@ trait Extractors {
       }        
     }
 
+    object ExMinimizingExpression {
+      def unapply(tree: Apply) : Option[(Tree,Tree)] = tree match {
+        case Apply(Select(Apply(Select(Select(cpIdent, definitionsName), any2OptimizableName), realExpr :: Nil), minimizingName), minimizingTerm :: Nil) if (
+          definitionsName.toString == "Definitions" &&
+          any2OptimizableName.toString == "any2Optimizable" &&
+          minimizingName.toString == "minimizing") => Some((realExpr, minimizingTerm))
+        case _ => None
+      }        
+    }
+
+    object ExMaximizingExpression {
+      def unapply(tree: Apply) : Option[(Tree,Tree)] = tree match {
+        case Apply(Select(Apply(Select(Select(cpIdent, definitionsName), any2OptimizableName), realExpr :: Nil), maximizingName), maximizingTerm :: Nil) if (
+          definitionsName.toString == "Definitions" &&
+          any2OptimizableName.toString == "any2Optimizable" &&
+          maximizingName.toString == "maximizing") => Some((realExpr, maximizingTerm))
+        case _ => None
+      }        
+    }
+
     object ExRequiredExpression {
       /** Extracts the 'require' contract from an expression (only if it's the
        * first call in the block). */

@@ -10,58 +10,62 @@ trait CodeGeneration {
   import global._
   import CODE._
 
-  private lazy val scalaPackage             = definitions.ScalaPackage
+  private lazy val scalaPackage                 = definitions.ScalaPackage
 
-  private lazy val exceptionClass           = definitions.getClass("java.lang.Exception")
+  private lazy val exceptionClass               = definitions.getClass("java.lang.Exception")
 
-  private lazy val collectionModule         = definitions.getModule("scala.collection")
-  private lazy val immutableModule          = definitions.getModule("scala.collection.immutable")
-  private lazy val listMapFunction          = definitions.getMember(definitions.ListClass, "map")
-  private lazy val listClassApplyFunction   = definitions.getMember(definitions.ListClass, "apply")
-  private lazy val listModuleApplyFunction  = definitions.getMember(definitions.ListModule, "apply")
-  private lazy val canBuildFromFunction     = definitions.getMember(definitions.ListModule, "canBuildFrom")
+  private lazy val collectionModule             = definitions.getModule("scala.collection")
+  private lazy val immutableModule              = definitions.getModule("scala.collection.immutable")
+  private lazy val listMapFunction              = definitions.getMember(definitions.ListClass, "map")
+  private lazy val listClassApplyFunction       = definitions.getMember(definitions.ListClass, "apply")
+  private lazy val listModuleApplyFunction      = definitions.getMember(definitions.ListModule, "apply")
+  private lazy val canBuildFromFunction         = definitions.getMember(definitions.ListModule, "canBuildFrom")
 
-  private lazy val iteratorClass            = definitions.getClass("scala.collection.Iterator")
-  private lazy val iteratorMapFunction      = definitions.getMember(iteratorClass, "map")
+  private lazy val iteratorClass                = definitions.getClass("scala.collection.Iterator")
+  private lazy val iteratorMapFunction          = definitions.getMember(iteratorClass, "map")
 
-  private lazy val optionClass              = definitions.getClass("scala.Option")
-  private lazy val optionMapFunction        = definitions.getMember(optionClass, "map")
+  private lazy val optionClass                  = definitions.getClass("scala.Option")
+  private lazy val optionMapFunction            = definitions.getMember(optionClass, "map")
 
-  private lazy val cpPackage                = definitions.getModule("cp")
+  private lazy val cpPackage                    = definitions.getModule("cp")
 
-  private lazy val callTransformationModule = definitions.getModule("cp.CallTransformation")
-  private lazy val chooseExecFunction       = definitions.getMember(callTransformationModule, "chooseExec")
-  private lazy val findExecFunction         = definitions.getMember(callTransformationModule, "findExec")
-  private lazy val findAllExecFunction      = definitions.getMember(callTransformationModule, "findAllExec")
-  private lazy val inputVarFunction         = definitions.getMember(callTransformationModule, "inputVar")
-  private lazy val skipCounterFunction      = definitions.getMember(callTransformationModule, "skipCounter")
+  private lazy val callTransformationModule     = definitions.getModule("cp.CallTransformation")
+  private lazy val chooseExecFunction           = definitions.getMember(callTransformationModule, "chooseExec")
+  private lazy val chooseMinimizingExecFunction = definitions.getMember(callTransformationModule, "chooseMinimizingExec")
+  private lazy val chooseMaximizingExecFunction = definitions.getMember(callTransformationModule, "chooseMaximizingExec")
+  private lazy val findMinimizingExecFunction   = definitions.getMember(callTransformationModule, "findMinimizingExec")
+  private lazy val findMaximizingExecFunction   = definitions.getMember(callTransformationModule, "findMaximizingExec")
+  private lazy val findExecFunction             = definitions.getMember(callTransformationModule, "findExec")
+  private lazy val findAllExecFunction          = definitions.getMember(callTransformationModule, "findAllExec")
+  private lazy val inputVarFunction             = definitions.getMember(callTransformationModule, "inputVar")
+  private lazy val skipCounterFunction          = definitions.getMember(callTransformationModule, "skipCounter")
 
-  private lazy val serializationModule      = definitions.getModule("cp.Serialization")
-  private lazy val getProgramFunction       = definitions.getMember(serializationModule, "getProgram")
-  private lazy val getInputVarListFunction  = definitions.getMember(serializationModule, "getInputVarList")
+  private lazy val serializationModule          = definitions.getModule("cp.Serialization")
+  private lazy val getProgramFunction           = definitions.getMember(serializationModule, "getProgram")
+  private lazy val getInputVarListFunction      = definitions.getMember(serializationModule, "getInputVarList")
 
-  private lazy val purescalaPackage         = definitions.getModule("purescala")
+  private lazy val purescalaPackage             = definitions.getModule("purescala")
 
-  private lazy val definitionsModule        = definitions.getModule("purescala.Definitions")
-  private lazy val programClass             = definitions.getClass("purescala.Definitions.Program")
-  private lazy val caseClassDefFunction     = definitions.getMember(programClass, "caseClassDef")
-  private lazy val caseClassDefClass        = definitions.getClass("purescala.Definitions.CaseClassDef")
-  private lazy val idField                  = definitions.getMember(caseClassDefClass, "id")
+  private lazy val definitionsModule            = definitions.getModule("purescala.Definitions")
+  private lazy val programClass                 = definitions.getClass("purescala.Definitions.Program")
+  private lazy val caseClassDefFunction         = definitions.getMember(programClass, "caseClassDef")
+  private lazy val caseClassDefClass            = definitions.getClass("purescala.Definitions.CaseClassDef")
+  private lazy val idField                      = definitions.getMember(caseClassDefClass, "id")
 
-  private lazy val commonModule             = definitions.getModule("purescala.Common")
-  private lazy val identifierClass          = definitions.getClass("purescala.Common.Identifier")
-  private lazy val nameField                = definitions.getMember(identifierClass, "name")
+  private lazy val commonModule                 = definitions.getModule("purescala.Common")
+  private lazy val identifierClass              = definitions.getClass("purescala.Common.Identifier")
+  private lazy val nameField                    = definitions.getMember(identifierClass, "name")
 
-  private lazy val treesModule              = definitions.getModule("purescala.Trees")
-  private lazy val exprClass                = definitions.getClass("purescala.Trees.Expr")
-  private lazy val intLiteralModule         = definitions.getModule("purescala.Trees.IntLiteral")
-  private lazy val intLiteralClass          = definitions.getClass("purescala.Trees.IntLiteral")
-  private lazy val booleanLiteralModule     = definitions.getModule("purescala.Trees.BooleanLiteral")
-  private lazy val booleanLiteralClass      = definitions.getClass("purescala.Trees.BooleanLiteral")
-  private lazy val caseClassModule          = definitions.getModule("purescala.Trees.CaseClass")
-  private lazy val caseClassClass           = definitions.getClass("purescala.Trees.CaseClass")
-  private lazy val andClass                 = definitions.getClass("purescala.Trees.And")
-  private lazy val equalsClass              = definitions.getClass("purescala.Trees.Equals")
+  private lazy val treesModule                  = definitions.getModule("purescala.Trees")
+  private lazy val exprClass                    = definitions.getClass("purescala.Trees.Expr")
+  private lazy val intLiteralModule             = definitions.getModule("purescala.Trees.IntLiteral")
+  private lazy val intLiteralClass              = definitions.getClass("purescala.Trees.IntLiteral")
+  private lazy val booleanLiteralModule         = definitions.getModule("purescala.Trees.BooleanLiteral")
+  private lazy val booleanLiteralClass          = definitions.getClass("purescala.Trees.BooleanLiteral")
+  private lazy val caseClassModule              = definitions.getModule("purescala.Trees.CaseClass")
+  private lazy val caseClassClass               = definitions.getClass("purescala.Trees.CaseClass")
+  private lazy val andClass                     = definitions.getClass("purescala.Trees.And")
+  private lazy val equalsClass                  = definitions.getClass("purescala.Trees.Equals")
 
   class CodeGenerator(unit : CompilationUnit, owner : Symbol, defaultPos : Position) {
 
@@ -71,10 +75,32 @@ trait CodeGeneration {
         (LIT(progString), LIT(progId), LIT(exprString), LIT(exprId), LIT(outputVarsString), LIT(outputVarsId), inputConstraints)
     }
 
+    private def execOptimizingCode(function : Symbol, progString : String, progId : Int, exprString : String, exprId : Int, 
+        outputVarsString : String, outputVarsId : Int, optExprString : String, optExprId : Int, inputConstraints : Tree) : Tree = {
+      (cpPackage DOT callTransformationModule DOT function) APPLY
+        (LIT(progString), LIT(progId), LIT(exprString), LIT(exprId), LIT(outputVarsString), LIT(outputVarsId), LIT(optExprString), LIT(optExprId), inputConstraints)
+    }
+
     def chooseExecCode(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Tree) : Tree = {
       execCode(chooseExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraints)
     }
-      
+
+    def chooseMinimizingExecCode(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, minExprString : String, minExprId : Int, inputConstraints : Tree) : Tree = {
+      execOptimizingCode(chooseMinimizingExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, minExprString, minExprId, inputConstraints)
+    }
+
+    def chooseMaximizingExecCode(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, maxExprString : String, maxExprId : Int, inputConstraints : Tree) : Tree = {
+      execOptimizingCode(chooseMaximizingExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, maxExprString, maxExprId, inputConstraints)
+    }
+
+    def findMinimizingExecCode(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, minExprString : String, minExprId : Int, inputConstraints : Tree) : Tree = {
+      execOptimizingCode(findMinimizingExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, minExprString, minExprId, inputConstraints)
+    }
+
+    def findMaximizingExecCode(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, maxExprString : String, maxExprId : Int, inputConstraints : Tree) : Tree = {
+      execOptimizingCode(findMaximizingExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, maxExprString, maxExprId, inputConstraints)
+    }
+
     def findExecCode(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Tree) : Tree = {
       execCode(findExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraints)
     }

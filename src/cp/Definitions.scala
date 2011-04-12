@@ -8,6 +8,18 @@ object Definitions {
   final class UnsatisfiableConstraintException extends Exception
   final class UnknownConstraintException extends Exception
 
+  sealed class Optimizable(val property : Boolean) {
+    def maximizing(expr : Any) = {
+      property
+    }
+
+    def minimizing(expr : Any) = {
+      property
+    }
+  }
+
+  implicit def any2Optimizable(x : Boolean) : Optimizable = new Optimizable(x)
+
   def choose[A](pred : A => Boolean) : A = {
     throw new NotImplementedException()
   }

@@ -66,7 +66,7 @@ object ChooseCalls {
     }
 
     val height = if (args.isEmpty) 3 else args(0).toInt
-    println("The chosen tree (of height " + height + ") is : \n" + print(chooseTree(height)))
+    println("The chosen tree is : \n" + print(chooseTree(height)))
 
     println("Invoke choose on unsat. constraint: ")
     try {
@@ -80,5 +80,14 @@ object ChooseCalls {
       case None => println("Result is None, as expected.")
       case _    => println("Whoops?")
     }
+
+    println(choose((x : Int, y : Int, w : Int) => 
+      w == 3*x + 2*y && 
+      2*x + y >= 6 && 
+      x + y >= 4 &&
+      x >= 0 &&
+      y >= 0 minimizing (w + height))
+    )
+
   }
 }
