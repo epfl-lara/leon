@@ -314,8 +314,8 @@ trait CodeGeneration {
       NEW(ID(booleanLiteralClass), LIT(true))
     }
 
-    def skipCounter(progString : String, progId : Int) : Tree = {
-      (cpPackage DOT callTransformationModule DOT skipCounterFunction) APPLY (LIT(progString), LIT(progId))
+    def skipCounter(i : Int) : Tree = {
+      (cpPackage DOT callTransformationModule DOT skipCounterFunction) APPLY LIT(i)
     }
   }
 }

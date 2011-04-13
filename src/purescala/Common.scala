@@ -55,6 +55,8 @@ object Common {
       }
     }
 
+    def last: Int = UniqueCounter.last
+
     def apply(name: String, alwaysShowUniqueID: Boolean = false) : Identifier = new Identifier(name, UniqueCounter.next, alwaysShowUniqueID)
   }
 

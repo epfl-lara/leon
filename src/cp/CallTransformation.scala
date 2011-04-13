@@ -36,6 +36,20 @@ trait CallTransformation
     signatures.toSet
   }
 
+  def predicateMap(unit: CompilationUnit) : Map[Position,(FunDef,Option[Expr],Option[Expr])] = {
+    val extracted = scala.collection.mutable.Map[Position,(FunDef,Option[Expr],Option[Expr])]()
+    def extractPredicates(tree: Tree) = tree match {
+      case Apply(TypeApply(Select(s: Select, n), typeTreeList), List(predicate: Function)) if (cpDefinitionsModule == s.symbol && 
+          (n.toString == "choose" || n.toString == "find" || n.toString == "findAll")) =>
+        val Function(funValDefs, funBody) = predicate
+        extracted += (predicate.pos -> extractPredicate(unit, funValDefs, funBody))
+      case _ => 
+    }
+    new ForeachTreeTraverser(extractPredicates).traverse(unit.body)
+
+    extracted.toMap
+  }
+
   def transformCalls(unit: CompilationUnit, prog: Program, progString : String, progId : Int) : Unit =
     unit.body = new CallTransformer(unit, prog, progString, progId).transform(unit.body)
   
@@ -45,12 +59,14 @@ trait CallTransformation
     var scalaToExprSym : Symbol = null
     val exprSeqToScalaSyms : scala.collection.mutable.Map[List[Tree],Symbol] = scala.collection.mutable.Map[List[Tree],Symbol]()
 
+    val extractedPredicates : Map[Position,(FunDef,Option[Expr],Option[Expr])] = predicateMap(unit)
+
     override def transform(tree: Tree) : Tree = {
       tree match {
         case a @ Apply(TypeApply(Select(s: Select, n), typeTreeList), rhs @ List(predicate: Function)) if (cpDefinitionsModule == s.symbol && n.toString == "choose") => {
           val Function(funValDefs, funBody) = predicate
 
-          val (fd, minExpr, maxExpr) = extractPredicate(unit, funValDefs, funBody)
+          val (fd, minExpr, maxExpr) = extractedPredicates(predicate.pos)
           val outputVars : Seq[Identifier] = fd.args.map(_.id)
 
           purescalaReporter.info("Considering predicate:") 
@@ -114,7 +130,7 @@ trait CallTransformation
         case a @ Apply(TypeApply(Select(s: Select, n), typeTreeList), rhs @ List(predicate: Function)) if (cpDefinitionsModule == s.symbol && n.toString == "find") => {
           val Function(funValDefs, funBody) = predicate
 
-          val (fd, minExpr, maxExpr) = extractPredicate(unit, funValDefs, funBody)
+          val (fd, minExpr, maxExpr) = extractedPredicates(predicate.pos)
           val outputVars : Seq[Identifier] = fd.args.map(_.id)
 
           purescalaReporter.info("Considering predicate:") 
@@ -181,7 +197,7 @@ trait CallTransformation
         case a @ Apply(TypeApply(Select(s: Select, n), typeTreeList), rhs @ List(predicate: Function)) if (cpDefinitionsModule == s.symbol && n.toString == "findAll") => {
           val Function(funValDefs, funBody) = predicate
 
-          val (fd, minExpr, maxExpr) = extractPredicate(unit, funValDefs, funBody)
+          val (fd, minExpr, maxExpr) = extractedPredicates(predicate.pos)
 
           if (minExpr.isDefined || maxExpr.isDefined)
             unit.error(a.pos, "minimizing / maximizing expressions are now allowed for `findAll' predicates")
@@ -242,7 +258,7 @@ trait CallTransformation
           val (scalaToExprCode, s2eSym)                                     = codeGen.scalaToExprMethod(cd.symbol, prog, progString, progId)
           scalaToExprSym      = s2eSym
 
-          val skipCounter                                                   = codeGen.skipCounter(progString, progId)
+          val skipCounter                                                   = codeGen.skipCounter(purescala.Common.FreshIdentifier.last)
 
           val exprSeqToScalaCodes : List[Tree] = (for (sig <- chooseSignatures(unit)) yield {
             val (exprSeqToScalaCode, exprSeqToScalaSym) = codeGen.exprSeqToScalaMethod(cd.symbol, exprToScalaCastSym, sig)
@@ -278,8 +294,8 @@ object CallTransformation {
   import Definitions.UnsatisfiableConstraintException
   import Definitions.UnknownConstraintException
 
-  // private def newSolver() = new FairZ3Solver(new QuietReporter())
-  private def newSolver() = new FairZ3Solver(new purescala.DefaultReporter())
+  private def newSolver() = new FairZ3Solver(new QuietReporter())
+  // private def newSolver() = new FairZ3Solver(new purescala.DefaultReporter())
 
   def chooseExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Expr) : Seq[Expr] = {
     val program    = deserialize[Program](progString, progId)
@@ -515,10 +531,8 @@ object CallTransformation {
     case None => simplestValue(varId.getType)
   }
 
-  def skipCounter(progString: String, progId : Int) : Unit = {
-    val prog = deserialize[Program](progString, progId)
-    val maxId = prog.allIdentifiers max Ordering[Int].on[Identifier](_.id)
-    purescala.Common.FreshIdentifier.forceSkip(maxId.id)
+  def skipCounter(i : Int) : Unit = {
+    purescala.Common.FreshIdentifier.forceSkip(i)
   }
 
   def inputVar(inputVarList : List[Variable], varName : String) : Variable = {
