@@ -9,15 +9,12 @@ import purescala.Definitions._
 import purescala.Settings
 
 import purescala.Z3Solver
-import purescala.PartialEvaluator
 
 import scala.collection.mutable.{Map => MutableMap, Set => MutableSet}
 import scala.collection.mutable.PriorityQueue
 
 class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instantiator") with AbstractInstantiator {
   import z3Solver.{z3,program,typeToSort,fromZ3Formula,toZ3Formula}
-
-  val partialEvaluator = new PartialEvaluator(program)
 
   setCallbacks(
 //    reduceApp = true,
@@ -109,7 +106,7 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
         val post = matchToIfThenElse(fd.postcondition.get)
 
         val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*) + (ResultVariable() -> fi)
-        val newBody = partialEvaluator(replace(substMap, post))
+        val newBody = replace(substMap, post)
 
         val unrolling = new Unrolling(fi, newBody, true, pushLevel)
         queue += unrolling
@@ -121,7 +118,7 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
         bodyInlined += 1
         val body = matchToIfThenElse(fd.body.get)
         val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*)
-        val newBody = partialEvaluator(replace(substMap, body))
+        val newBody = replace(substMap, body)
         // val theEquality = Equals(fi, newBody)
 
         val unrolling = new Unrolling(fi, newBody, false, pushLevel)

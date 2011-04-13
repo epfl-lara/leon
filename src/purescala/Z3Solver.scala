@@ -8,7 +8,7 @@ import Trees._
 import TypeTrees._
 
 import z3plugins.bapa.{BAPATheory, BAPATheoryEqc, BAPATheoryBubbles}
-import z3plugins.instantiator.{AbstractInstantiator,Instantiator,FairInstantiator}
+import z3plugins.instantiator.{AbstractInstantiator,Instantiator}
 
 import scala.collection.mutable.{HashMap => MutableHashMap}
 
@@ -57,7 +57,9 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     // z3.traceToStdout
     if (useBAPA) bapa = new BAPATheoryType(z3)
     if (useInstantiator) instantiator = new Instantiator(this) else
-    if (useFairInstantiator) instantiator = new FairInstantiator(this)
+    if (useFairInstantiator) instantiator = {
+      scala.Predef.error("Z3Solver should not be used with FairInst. FairZ3Solver should be used instead.")
+    }
 
     exprToZ3Id = Map.empty
     z3IdToExpr = Map.empty
