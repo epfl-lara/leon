@@ -38,8 +38,14 @@ object FindAllCalls {
   }
 
   @spec def property(t : Tree) : Boolean = {
-    isBlack(t) && blackBalanced(t) && redNodesHaveBlackChildren(t)
+    isBlack(t) && blackBalanced(t) && redNodesHaveBlackChildren(t) && boundValues(t)
   }
+
+  @spec def boundValues(t : Tree) : Boolean = t match {
+    case Empty() => true
+    case Node(_,l,v,r) => 0 <= v && v <= 1 && boundValues(l) && boundValues(r)
+  }
+
 
   def main(args: Array[String]) : Unit = {
 
@@ -52,8 +58,10 @@ object FindAllCalls {
       case Empty() => "E"
     }
 
-    for (tree <- findAll((t : Tree) => property(t) && size(t) == 5)) {
-      println("Here is a tree: ")
+    var counter = 1
+    for (tree <- findAll((t : Tree) => property(t) && size(t) == 3)) {
+      println("Here is the tree " + counter)
+      counter = counter + 1
       println(print(tree))
     }
   }

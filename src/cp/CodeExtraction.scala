@@ -164,7 +164,6 @@ trait CodeExtraction extends Extractors {
       // Let us now collect function signatures
       def collectFunctionSignatures(tree: Tree) = tree match {
         case dd @ ExFunctionDef(n,p,t,b) if dd.symbol.annotations.exists(_.atp.safeToString == "cp.Definitions.spec") => {
-          println("Collecting signature for " + n)
           val mods = dd.mods
           val funDef = extractFunSig(n, p, t).setPosInfo(dd.pos.line, dd.pos.column)
           if(mods.isPrivate) funDef.addAnnotation("private")
@@ -825,7 +824,7 @@ trait CodeExtraction extends Extractors {
             val varTpe = scalaType2PureScala(unit, silent)(lc.tpe)
             val newID = FreshIdentifier(nm).setType(varTpe)
             externalSubsts(tr) = (() => Variable(newID))
-            println("new mapping : " + tr + " --> " + newID)
+            // println("new mapping : " + tr + " --> " + newID)
             Variable(newID)
         } else {
           val fd = defsToDefs(sy)

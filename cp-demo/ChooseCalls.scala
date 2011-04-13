@@ -52,7 +52,7 @@ object ChooseCalls {
 
   def chooseTree(height : Int) : Tree = {
     val outer = height
-    choose((anInt: Int, t: Tree) => Specs.blackBalanced(t) && redNodesHaveBlackChildren(t) && isBlack(t) && size(t) == randomInt())._2
+    choose((anInt: Int, t: Tree) => blackBalanced(t) && redNodesHaveBlackChildren(t) && isBlack(t) && size(t) == randomInt())._2
   }
 
   /** Printing trees */

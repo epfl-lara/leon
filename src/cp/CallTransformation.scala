@@ -278,13 +278,18 @@ object CallTransformation {
   import Definitions.UnsatisfiableConstraintException
   import Definitions.UnknownConstraintException
 
-  private def newSolver() = new FairZ3Solver(new QuietReporter())
+  // private def newSolver() = new FairZ3Solver(new QuietReporter())
+  private def newSolver() = new FairZ3Solver(new purescala.DefaultReporter())
 
   def chooseExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Expr) : Seq[Expr] = {
     val program    = deserialize[Program](progString, progId)
     val expr       = deserialize[Expr](exprString, exprId)
     val outputVars = deserialize[Seq[Identifier]](outputVarsString, outputVarsId)
 
+    chooseExec(program, expr, outputVars, inputConstraints)
+  }
+
+  def chooseExec(program : Program, expr : Expr, outputVars : Seq[Identifier], inputConstraints : Expr) : Seq[Expr] = {
     val solver = newSolver()
     solver.setProgram(program)
 
@@ -302,16 +307,19 @@ object CallTransformation {
   }
 
   def chooseMinimizingExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, minExprString : String, minExprId : Int, inputConstraints : Expr) : Seq[Expr] = {
-
-    def stop(lo : Option[Int], hi : Int) : Boolean = lo match {
-      case Some(l) => hi - l <= 2
-      case None => false
-    }
-
     val program    = deserialize[Program](progString, progId)
     val expr       = deserialize[Expr](exprString, exprId)
     val outputVars = deserialize[Seq[Identifier]](outputVarsString, outputVarsId)
     val minExpr    = deserialize[Expr](minExprString, minExprId)
+
+    chooseMinimizingExec(program, expr, outputVars, minExpr, inputConstraints)
+  }
+
+  def chooseMinimizingExec(program : Program, expr : Expr, outputVars : Seq[Identifier], minExpr : Expr, inputConstraints : Expr) : Seq[Expr] = {
+    def stop(lo : Option[Int], hi : Int) : Boolean = lo match {
+      case Some(l) => hi - l <= 2
+      case None => false
+    }
     
     val solver = newSolver()
     solver.setProgram(program)
@@ -380,17 +388,20 @@ object CallTransformation {
   }
 
   def chooseMaximizingExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, maxExprString : String, maxExprId : Int, inputConstraints : Expr) : Seq[Expr] = {
+    val program    = deserialize[Program](progString, progId)
+    val expr       = deserialize[Expr](exprString, exprId)
+    val outputVars = deserialize[Seq[Identifier]](outputVarsString, outputVarsId)
+    val maxExpr    = deserialize[Expr](maxExprString, maxExprId)
 
+    chooseMaximizingExec(program, expr, outputVars, maxExpr, inputConstraints)
+  }
+   
+  def chooseMaximizingExec(program : Program, expr : Expr, outputVars : Seq[Identifier], maxExpr : Expr, inputConstraints : Expr) : Seq[Expr] = {
     def stop(lo : Int, hi : Option[Int]) : Boolean = hi match {
       case Some(h) => h - lo <= 2
       case None => false
     }
 
-    val program    = deserialize[Program](progString, progId)
-    val expr       = deserialize[Expr](exprString, exprId)
-    val outputVars = deserialize[Seq[Identifier]](outputVarsString, outputVarsId)
-    val maxExpr    = deserialize[Expr](maxExprString, maxExprId)
-    
     val solver = newSolver()
     solver.setProgram(program)
 
@@ -489,6 +500,10 @@ object CallTransformation {
     val expr       = deserialize[Expr](exprString, exprId)
     val outputVars = deserialize[Seq[Identifier]](outputVarsString, outputVarsId)
 
+    findAllExec(program, expr, outputVars, inputConstraints)
+  }
+
+  def findAllExec(program : Program, expr : Expr, outputVars : Seq[Identifier], inputConstraints : Expr) : Iterator[Seq[Expr]] = {
     val modelIterator = solutionsIterator(program, expr, inputConstraints, outputVars.toSet)
     val exprIterator  = modelIterator.map(model => outputVars.map(id => model(id)))
 

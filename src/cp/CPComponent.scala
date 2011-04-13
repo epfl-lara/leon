@@ -36,9 +36,6 @@ class CPComponent(val global: Global, val pluginInstance: CPPlugin)
       println("Starting CP phase")
 
       val prog: purescala.Definitions.Program = extractCode(unit)
-      println("Program : ")
-      println(prog)
-      println
       val (progString, progId) = serialize(prog)
 
       transformCalls(unit, prog, progString, progId)
