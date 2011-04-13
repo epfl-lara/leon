@@ -1,6 +1,6 @@
 import cp.Definitions._
 
-object ChooseCalls { 
+object Specs { 
   @spec sealed abstract class Color
   @spec case class Red() extends Color
   @spec case class Black() extends Color
@@ -41,33 +41,36 @@ object ChooseCalls {
     case Node(Black(), l, _, _) => blackHeight(l) + 1
     case Node(Red(), l, _, _) => blackHeight(l)
   }
+}
+
+object ChooseCalls {
+
+  import Specs._
 
   private val random = new scala.util.Random()
   def randomInt() : Int = random.nextInt(10)
 
-  def plus2(i : Int) : Int = i + 2
-
-  def sizePlus2(t : Tree) : Int = size(t) + 2
-
   def chooseTree(height : Int) : Tree = {
     val outer = height
-    choose((anInt: Int, t: Tree) => blackBalanced(t) && redNodesHaveBlackChildren(t) && isBlack(t) && size(t) == randomInt())._2
+    choose((anInt: Int, t: Tree) => Specs.blackBalanced(t) && redNodesHaveBlackChildren(t) && isBlack(t) && size(t) == randomInt())._2
+  }
+
+  /** Printing trees */
+  def indent(s: String) = ("  "+s).split('\n').mkString("\n  ")
+
+  def print(tree: Tree): String = tree match {
+    case Node(c,l,v,r) =>
+      indent(print(r)) + "\n" + (if (c == Black()) "B" else "R") + " " + v.toString + "\n" + indent(print(l))
+    case Empty() => "E"
   }
 
   def main(args: Array[String]) : Unit = {
 
-    /** Printing trees */
-    def indent(s: String) = ("  "+s).split('\n').mkString("\n  ")
-
-    def print(tree: Tree): String = tree match {
-      case Node(c,l,v,r) =>
-        indent(print(r)) + "\n" + (if (c == Black()) "B" else "R") + " " + v.toString + "\n" + indent(print(l))
-      case Empty() => "E"
-    }
 
     val height = if (args.isEmpty) 3 else args(0).toInt
     println("The chosen tree is : \n" + print(chooseTree(height)))
 
+    /*
     println("Invoke choose on unsat. constraint: ")
     try {
       choose((t : Tree) => size(t) > 5 && size(t) < 4)
@@ -97,6 +100,8 @@ object ChooseCalls {
       x >= 0 &&
       y >= 0 maximizing z)
     )
+   
+    */
 
   }
 }

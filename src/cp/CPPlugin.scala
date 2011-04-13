@@ -14,7 +14,7 @@ class CPPlugin(val global: Global) extends Plugin {
   var stopAfterAnalysis: Boolean = true
   var stopAfterExtraction: Boolean = false
 
-  var silentlyTolerateNonPureBodies = true
+  var silentlyTolerateNonPureBodies = false
 
   /** The help message displaying the options for that plugin. */
   override val optionsHelp: Option[String] = Some(

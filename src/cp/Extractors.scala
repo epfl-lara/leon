@@ -322,6 +322,13 @@ trait Extractors {
       }
     }
 
+    object ExMethodCall {
+      def unapply(tree: Apply): Option[(Symbol,String,List[Tree])] = tree match {
+        case a @ Apply(Select(_, nme), args) => Some((a.symbol, nme.toString, args))
+        case _ => None
+      }
+    }
+
     // used for case classes selectors.
     object ExParameterlessMethodCall {
       def unapply(tree: Select): Option[(Tree,Name)] = tree match {

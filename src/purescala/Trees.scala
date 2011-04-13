@@ -664,6 +664,7 @@ object Trees {
     def combine(s1: Set[Identifier], s2: Set[Identifier]) = s1 ++ s2
     def compute(t: Expr, s: Set[Identifier]) = t match {
       case Let(i,_,_) => s -- Set(i)
+      case MatchExpr(_, cses) => s -- (cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b))
       case _ => s
     }
     treeCatamorphism(convert, combine, compute, expr)
