@@ -37,8 +37,6 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     program = prog
   }
 
-  var partialEvaluator : PartialEvaluator = null
-
   private def restartZ3: Unit = {
     if (neverInitialized) {
       neverInitialized = false
@@ -46,7 +44,6 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
       z3.delete
     }
     z3 = new Z3Context(z3cfg)
-    partialEvaluator = new PartialEvaluator(program)
     //z3.traceToStdout
 
     exprToZ3Id = Map.empty
@@ -882,7 +879,6 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
       val postExpr = if(fd.hasPostcondition) {
         val post = expandLets(matchToIfThenElse(fd.postcondition.get))
         val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*) + (ResultVariable() -> functionInvocation)
-        //val newBody = partialEvaluator(replace(substMap, post))
         val newBody = replace(substMap, post)
         List(newBody)
       } else Nil
@@ -890,7 +886,6 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
       val bodyExpr = if(fd.hasBody) {
         val body = expandLets(matchToIfThenElse(fd.body.get))
         val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*)
-        //val newBody = partialEvaluator(replace(substMap, body))
         val newBody = replace(substMap, body)
         List(Equals(functionInvocation, newBody))
       } else Nil
