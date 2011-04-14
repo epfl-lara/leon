@@ -13,9 +13,18 @@ object FindAllCalls {
   @spec case class Some(v : Int) extends OptionInt
   @spec case class None() extends OptionInt
 
+  @spec def max(a: Int, b: Int) : Int = {
+    if (a >= b) a else b
+  } ensuring (res => res >= a && res >= b)
+
   @spec def size(t: Tree) : Int = (t match {
     case Empty() => 0
     case Node(_, l, v, r) => size(l) + 1 + size(r)
+  }) ensuring (_ >= 0)
+
+  @spec def height(t: Tree) : Int = (t match {
+    case Empty() => 0
+    case Node(_,l,_,r) => max(height(l), height(r)) + 1
   }) ensuring (_ >= 0)
 
   @spec def isBlack(t: Tree) : Boolean = t match {
@@ -71,14 +80,69 @@ object FindAllCalls {
   }
 
   def main(args: Array[String]) : Unit = {
-    val bound = if (args.isEmpty) 3 else args(0).toInt
+    val defaultBound = 3
+    val bound = if (args.isEmpty) defaultBound else args(0).toInt
+    println("Bound is " + bound)
 
-    var counter = 1
+    val set1 = scala.collection.mutable.Set[Tree]()
+    val set2 = scala.collection.mutable.Set[Tree]()
+    val set3 = scala.collection.mutable.Set[Tree]()
+    val set4 = scala.collection.mutable.Set[Tree]()
+    val set5 = scala.collection.mutable.Set[Tree]()
+
+    println("Minimizing size:")
+    Timer.go
     for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound) minimizing size(t))) {
-      println("Here is the tree " + counter)
-      counter = counter + 1
-      println(print(tree))
+      set1 += tree
     }
+    Timer.stop
+    
+    println("Minimizing height:")
+    Timer.go
+    for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound) minimizing height(t))) {
+      set2 += tree
+    }
+    Timer.stop
+
+    println("Minimizing bound:")
+    Timer.go
+    for ((tree, bb) <- findAll((t : Tree, b: Int) => isRedBlackTree(t) && boundValues(t, b) && b >= 0 && b <= bound minimizing b)) {
+      set3 += tree
+    }
+    Timer.stop
+    
+    println("No minimization:")
+    Timer.go
+    for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound))) {
+      set4 += tree
+    }
+    Timer.stop
+
+    println("Fixing size:")
+    Timer.go
+    for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound) && size(t) == bound + 1)) {
+      set5 += tree
+    }
+    Timer.stop
+    
+    println("Solution set size: " + set1.size)
+    if (set1 != set2) {
+      println(set1)
+      println(set2)
+      assert(false)
+    }
+    if (set2 != set3) {
+      println(set2)
+      println(set3)
+      assert(false)
+    }
+    if (set3 != set4) {
+      println(set3)
+      println(set4)
+      assert(false)
+    }
+
+    println("Fixed size solution set size : " + set5.size)
   }
 
   /** Printing trees */
@@ -88,5 +152,19 @@ object FindAllCalls {
     case Node(c,l,v,r) =>
       indent(print(r)) + "\n" + (if (c == Black()) "B" else "R") + " " + v.toString + "\n" + indent(print(l))
     case Empty() => "E"
+  }
+}
+
+object Timer {
+  var start: Long = 0L
+  var end: Long = 0L
+  def go = {
+    start = System.currentTimeMillis
+  }
+  def stop : Double = {
+    end = System.currentTimeMillis
+    val seconds = (end - start) / 1000.0
+    println("  Measured time: " + seconds + " s")
+    seconds
   }
 }
