@@ -170,8 +170,6 @@ trait CallTransformation
 
               val inputConstraintsConjunction = if (inputVars.isEmpty) codeGen.trueLiteral else codeGen.andExpr(inputConstraints)
 
-              val findExecCall = codeGen.findExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraintsConjunction)
-
               val exprSeqOptionTree = (minExpr, maxExpr) match {
                 case (None, None) => {
                   codeGen.findExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraintsConjunction)
@@ -198,11 +196,6 @@ trait CallTransformation
           val Function(funValDefs, funBody) = predicate
 
           val (fd, minExpr, maxExpr) = extractedPredicates(predicate.pos)
-
-          if (minExpr.isDefined || maxExpr.isDefined)
-            unit.error(a.pos, "minimizing / maximizing expressions are now allowed for `findAll' predicates")
-          stopIfErrors
-
           val outputVars : Seq[Identifier] = fd.args.map(_.id)
 
           purescalaReporter.info("Considering predicate:") 
@@ -217,7 +210,13 @@ trait CallTransformation
               val (exprString, exprId) = serialize(b)
               
               // compute input variables
-              val inputVars : Seq[Identifier] = variablesOf(b).filter(!outputVars.contains(_)).toSeq
+              val inputVars : Seq[Identifier] = (variablesOf(b) ++ (minExpr match {
+                case Some(e) => variablesOf(e)
+                case None => Set.empty
+              }) ++ (maxExpr match {
+                case Some(e) => variablesOf(e)
+                case None => Set.empty
+              })).filter(!outputVars.contains(_)).toSeq
 
               purescalaReporter.info("Input variables  : " + inputVars.mkString(", "))
               purescalaReporter.info("Output variables : " + outputVars.mkString(", "))
@@ -235,11 +234,19 @@ trait CallTransformation
 
               val inputConstraintsConjunction = if (inputVars.isEmpty) codeGen.trueLiteral else codeGen.andExpr(inputConstraints)
 
-              val findAllExecCall = codeGen.findAllExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraintsConjunction)
+              val exprSeqIteratorTree = (minExpr, maxExpr) match {
+                case (None, None) =>
+                  codeGen.findAllExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraintsConjunction)
+                case (Some(minE), None) =>
+                  val (minExprString, minExprId) = serialize(minE)
+                  codeGen.findAllMinimizingExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, minExprString, minExprId, inputConstraintsConjunction)
+                case (None, Some(maxE)) =>
+                  throw new Exception("not implemented")
+                case _ => 
+                  scala.Predef.error("This case should be unreachable")
+              }
 
-              val code = BLOCK(
-                codeGen.mapIterator(exprSeqToScalaSyms(typeTreeList), findAllExecCall)
-              )
+              val code = codeGen.mapIterator(exprSeqToScalaSyms(typeTreeList), exprSeqIteratorTree)
 
               typer.typed(atOwner(currentOwner) {
                 code
@@ -305,7 +312,7 @@ object CallTransformation {
     chooseExec(program, expr, outputVars, inputConstraints)
   }
 
-  def chooseExec(program : Program, expr : Expr, outputVars : Seq[Identifier], inputConstraints : Expr) : Seq[Expr] = {
+  private def chooseExec(program : Program, expr : Expr, outputVars : Seq[Identifier], inputConstraints : Expr) : Seq[Expr] = {
     val solver = newSolver()
     solver.setProgram(program)
 
@@ -331,7 +338,11 @@ object CallTransformation {
     chooseMinimizingExec(program, expr, outputVars, minExpr, inputConstraints)
   }
 
-  def chooseMinimizingExec(program : Program, expr : Expr, outputVars : Seq[Identifier], minExpr : Expr, inputConstraints : Expr) : Seq[Expr] = {
+  private def chooseMinimizingExec(program : Program, expr : Expr, outputVars : Seq[Identifier], minExpr : Expr, inputConstraints : Expr) : Seq[Expr] = {
+    chooseMinimizingModelAndValue(program, expr, outputVars, minExpr, inputConstraints)._1
+  }
+
+  private def chooseMinimizingModelAndValue(program : Program, expr : Expr, outputVars : Seq[Identifier], minExpr : Expr, inputConstraints : Expr) : (Seq[Expr], Int) = {
     def stop(lo : Option[Int], hi : Int) : Boolean = lo match {
       case Some(l) => hi - l <= 2
       case None => false
@@ -342,7 +353,7 @@ object CallTransformation {
 
     /* invariant : lo is always stricly less than any sat. minExpr assignment,
      * and there is always a sat. assignment less than hi */
-    def minAux(pivot : Int, lo : Option[Int], hi : Int) : Map[Identifier, Expr] = {
+    def minAux(pivot : Int, lo : Option[Int], hi : Int) : (Map[Identifier, Expr], Int) = {
       // println("Iterating:")
       // println("  lo     : " + (lo match { case Some(l) => l; case None => "-inf"}))
       // println("  pivot  : " + pivot)
@@ -355,7 +366,7 @@ object CallTransformation {
         case Some(false) =>
           // there is a satisfying assignment
           if (stop(lo, hi)) {
-            model
+            (model, pivot)
           } else {
             lo match {
               case None =>
@@ -394,8 +405,8 @@ object CallTransformation {
           case e => scala.Predef.error("Unexpected value for term to minimize : " + e)
         }
 
-        val optimalModel = minAux(minExprVal - 1, None, minExprVal + 1)
-        outputVars.map(v => modelValue(v, optimalModel))
+        val (optimalModel, optimalValue) = minAux(minExprVal - 1, None, minExprVal + 1)
+        (outputVars.map(v => modelValue(v, optimalModel)), optimalValue)
       case (Some(true), _) =>
         throw new UnsatisfiableConstraintException()
       case _ =>
@@ -412,7 +423,7 @@ object CallTransformation {
     chooseMaximizingExec(program, expr, outputVars, maxExpr, inputConstraints)
   }
    
-  def chooseMaximizingExec(program : Program, expr : Expr, outputVars : Seq[Identifier], maxExpr : Expr, inputConstraints : Expr) : Seq[Expr] = {
+  private def chooseMaximizingExec(program : Program, expr : Expr, outputVars : Seq[Identifier], maxExpr : Expr, inputConstraints : Expr) : Seq[Expr] = {
     def stop(lo : Int, hi : Option[Int]) : Boolean = hi match {
       case Some(h) => h - lo <= 2
       case None => false
@@ -519,11 +530,40 @@ object CallTransformation {
     findAllExec(program, expr, outputVars, inputConstraints)
   }
 
-  def findAllExec(program : Program, expr : Expr, outputVars : Seq[Identifier], inputConstraints : Expr) : Iterator[Seq[Expr]] = {
+  private def findAllExec(program : Program, expr : Expr, outputVars : Seq[Identifier], inputConstraints : Expr) : Iterator[Seq[Expr]] = {
     val modelIterator = solutionsIterator(program, expr, inputConstraints, outputVars.toSet)
     val exprIterator  = modelIterator.map(model => outputVars.map(id => model(id)))
 
     exprIterator
+  }
+
+  def findAllMinimizingExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, minExprString : String, minExprId : Int, inputConstraints : Expr) : Iterator[Seq[Expr]] = {
+    val program    = deserialize[Program](progString, progId)
+    val expr       = deserialize[Expr](exprString, exprId)
+    val outputVars = deserialize[Seq[Identifier]](outputVarsString, outputVarsId)
+    val minExpr    = deserialize[Expr](minExprString, minExprId)
+
+    findAllMinimizingExec(program, expr, outputVars, minExpr, None, inputConstraints)
+  }
+
+  private def findAllMinimizingExec(program : Program, expr : Expr, outputVars : Seq[Identifier], minExpr : Expr, minExprBound : Option[Int], inputConstraints : Expr) : Iterator[Seq[Expr]] = {
+    try {
+      val toCheck = minExprBound match {
+        case None => expr
+        case Some(b) => And(expr, GreaterThan(minExpr, IntLiteral(b)))
+      }
+      println("Now calling findAllMinimizing with " + toCheck)
+      val minValue = chooseMinimizingModelAndValue(program, toCheck, outputVars, minExpr, inputConstraints)._2
+
+      val minValConstraint    = And(expr, Equals(minExpr, IntLiteral(minValue)))
+      val minValModelIterator = solutionsIterator(program, minValConstraint, inputConstraints, outputVars.toSet)
+      val minValExprIterator  = minValModelIterator.map(model => outputVars.map(id => model(id)))
+
+      minValExprIterator ++ findAllMinimizingExec(program, expr, outputVars, minExpr, Some(minValue), inputConstraints)
+    } catch {
+      case e: UnsatisfiableConstraintException  => Iterator[Seq[Expr]]()
+      case e: UnknownConstraintException        => Iterator[Seq[Expr]]()
+    }
   }
 
   private def modelValue(varId: Identifier, model: Map[Identifier, Expr]) : Expr = model.get(varId) match {

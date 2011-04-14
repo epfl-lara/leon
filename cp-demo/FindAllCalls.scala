@@ -74,7 +74,7 @@ object FindAllCalls {
     val bound = if (args.isEmpty) 3 else args(0).toInt
 
     var counter = 1
-    for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound))) {
+    for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound) minimizing size(t))) {
       println("Here is the tree " + counter)
       counter = counter + 1
       println(print(tree))
