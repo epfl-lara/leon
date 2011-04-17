@@ -1,0 +1,23 @@
+Ganea Octavian
+
+- translation from LEON to Isabelle
+
+- does NOT work:
+	1) proofs of the lemmas : it just tries induction on the first argument (if it has one) and then auto
+	2) some obscure operations on sets: multisets, min , max 
+	3) if on a case branch of a match: for example :
+			TriplePair(isBST0(l), isBST0(r)) match {
+	      case TriplePair(Triple(None(),t1,None()),Triple(None(),t2,None()))  if(t1 && t2) => Triple(Some(v),true,Some(v))
+				case _ => true
+			}
+	4) mutally recursive functions
+
+- what works : everything else : 
+		1) keywords of the variables names
+		2) mutually recursive datatypes 
+		3) binders in match cases
+		4) field selector
+		5) constant functions (arrity 0)
+		6) preconditions and postconditions translated as lemmas
+		7) usage of sets and other predefined datatypes
+		etc
