@@ -7,7 +7,7 @@ import purescala.Extensions._
 import purescala.Settings._
 import purescala.Common.Identifier
 import purescala.TypeTrees._
-
+   
 import java.lang.StringBuffer
 import java.io._
 import scala.collection.mutable.ListMap
@@ -23,6 +23,10 @@ class Main(reporter : Reporter) extends Analyser(reporter) {
 
 	//current #res:
 	var current_res = "" 
+
+	//list of binders : for expressions like x match { case binder@expr => E[binder] }
+	var bindersMap = new ListMap[MatchCase, (Identifier, String)]
+
 
   def apply(tree: Expr): String = {
     val retSB = pp(tree, new StringBuffer, 0)
@@ -79,9 +83,23 @@ class Main(reporter : Reporter) extends Analyser(reporter) {
   }
 
   private def pp(tree: Expr, sb: StringBuffer, lvl: Int): StringBuffer = tree match {
-    case Variable(id) => sb.append(id + "_var") //add this to avoid isabelle reserved names like "min"
+    case Variable(id) => {
+				//we need to replace binders by their actual expressions
+				var found = false
+				bindersMap.foreach( t =>
+					if(t._2._1.toString.compareTo(id.toString) == 0){
+						found = true
+						sb.append(t._2._2) 
+					}
+				)
+				if(!found)
+					sb.append("var_" + id + "_var") //add this to avoid isabelle reserved names like "min"
+				sb
+		}
     case Let(b,d,e) => {
-        pp(e, pp(d, sb.append("(let " + b + " = "), lvl).append(" in \n" + (" " * lvl)), lvl).append(")")
+				var nsb = pp(d, sb.append("(let var_" + b + "_var = "), lvl).append(" in \n")
+				ind(nsb , lvl + 2)			
+        pp(e,nsb, lvl + 2).append(")")
     }
     case And(exprs) => ppNary(sb, exprs, "(", " \\<and> ", ")", lvl)   
     case Or(exprs) => ppNary(sb, exprs, "(", " \\<or> ", ")", lvl)  
@@ -111,18 +129,10 @@ class Main(reporter : Reporter) extends Analyser(reporter) {
       nsb
     }
 
-		//TODOTODOTODOTODOTODOTODOTODO
-		//TODO : from here
-/*
-case class : Ok args:List(EStack())
-case class : EStack args:List()
-case class : Value args:List((v1.v + v2.v))
-CaseClassSelector- cc: v1 id: v
-CaseClassSelector- cc: v2 id: v
-*/
-    case CaseClassSelector(_, cc, id) => {
-			//println("CaseClassSelector- cc: " + cc + " id: " + id )
-			pp(cc, sb, lvl).append("." + id)
+    case CaseClassSelector(ccdef, cc, id) => {
+			sb.append("(" + ccdef.id + "__" + id + " ")
+			pp(cc,sb,0)
+			sb.append(")")
 		}
 
 //does it calls a previous defined function or not ?
@@ -204,26 +214,28 @@ CaseClassSelector- cc: v2 id: v
     }
 
     case mex @ MatchExpr(s, csc) => {
-      def ppc(sb: StringBuffer, p: Pattern): StringBuffer = p match {
-        //case InstanceOfPattern(None,     ctd) =>
-        //case InstanceOfPattern(Some(id), ctd) =>
-        case CaseClassPattern(bndr, ccd, subps) => {
-          var nsb = sb
-          bndr.foreach(b => reporter.error("[not handled] binders in match cases with @"))
-          nsb.append("(").append(ccd.id).append(" ")
+      def ppc(sb: StringBuffer, p: Pattern, matchcase : MatchCase): StringBuffer = p match {
+        
+				case CaseClassPattern(bndr, ccd, subps) => {
+          var buf = new StringBuffer
+          buf.append("(").append(ccd.id).append(" ")
           var c = 0
           val sz = subps.size
           subps.foreach(sp => {
-            nsb = ppc(nsb, sp)
+            buf = ppc(buf, sp, matchcase)
             if(c < sz - 1)
-              nsb.append(" ")
+              buf.append(" ")
             c = c + 1
           })
-          nsb.append(")")
+          buf.append(")")
+					
+          bndr.foreach(b => bindersMap.update(matchcase, (b, buf.toString)))
+
+					sb.append(buf.toString)
         }
         case WildcardPattern(None)     => sb.append("_")
         case WildcardPattern(Some(id)) => {
-					sb.append(id.toString + "_var")
+					sb.append("var_" + id.toString + "_var")
 				}
         case _ => sb.append("Pattern?")
       }
@@ -237,19 +249,25 @@ CaseClassSelector- cc: v2 id: v
 			var c1 = 0
 
       csc.foreach(cs => {
-        ind(nsb, lvl+3)
-        nsb = ppc(nsb, cs.pattern)
+        ind(nsb, lvl+2)
+        nsb = ppc(nsb, cs.pattern , cs)
+
+       nsb.append(" \\<Rightarrow> \n")
+				ind(nsb, lvl + 4)
+
         cs.theGuard.foreach(g => {
-          nsb.append(" if ")
-          nsb = pp(g, nsb, lvl+1)
+//          nsb.append(" if ")
+//          nsb = pp(g, nsb, lvl+1)
+						reporter.error("match case has IF condition - not handled!")
         })
-        nsb.append(" \\<Rightarrow> \n")
-				ind(nsb, lvl + 6)
-        nsb = pp(cs.rhs, nsb, lvl+1)
+ 
+        nsb = pp(cs.rhs, nsb, lvl+ 4)
 				if(c1 < len1  - 1)
         	nsb.append(" |")
 				nsb.append("\n")
 				c1 = c1 + 1
+
+				bindersMap = bindersMap - cs
       })
       ind(nsb, lvl).append(" )\n")
       nsb
@@ -416,11 +434,13 @@ CaseClassSelector- cc: v2 id: v
 						nsb.append(el + " ")
 				}
 
+				var type_decl = "datatype "
         sortedList.foreach(p => {
         	p match {
         		case (parenttype, list) => {
-        			var numberTabs = ("datatype " + parenttype + " ").size
-		        	nsb.append("datatype " + parenttype + " = ")
+        			var numberTabs = (type_decl + parenttype + " ").size
+		        	nsb.append(type_decl + parenttype + " = ")
+							type_decl = "and "
 							preetyPrint(list.head, nsb)
 		        	nsb.append("\n")
 		        	for (el <- list.tail){
@@ -433,7 +453,45 @@ CaseClassSelector- cc: v2 id: v
         	}
         })
         nsb.append("\n")
-        
+
+//================================= functions for field access: ==========================================
+/* case class Acc(checking : Int, savings : Int) extends AccLike ----> 
+	fun Acc__checking :: "AccLike \<Rightarrow> Int" where
+		"Acc__checking var = 
+				(case var of (Acc var_checking_var var_savings_var)  \Rightarrow var_checking_var)"
+*/
+        definedClasses.foreach(dc => {
+          dc match{
+		      case AbstractClassDef(id2, parent) => 
+		       //suppose parent is not a typed class (e.g "List int")
+		      case CaseClassDef(id2, parent, varDecls) => {
+		        parent match{
+		     		case None => reporter.error("case class without parent")
+		     		case Some(AbstractClassDef(idparent, ll)) => {
+				        varDecls.foreach(vd => {
+		     					var subtype = new StringBuffer
+				        	pp(vd.tpe, subtype , 0) // type of parameter
+									
+          				ind(nsb, lvl)
+									nsb.append("fun " + id2 + "__" + vd.id + " :: \"" + idparent + " \\<Rightarrow> "+ subtype.toString + "\"")
+									nsb.append(" where\n")
+									ind(nsb,lvl + 2)
+									nsb.append("\"" + id2 + "__" + vd.id + " var = \n")									
+									ind(nsb, lvl + 4)
+									nsb.append("(case var of (" + id2 )
+									for(j <- varDecls)
+										nsb.append(" var_" + j.id + "_var")
+									nsb.append(") \\<Rightarrow> var_" + vd.id + "_var)\"\n\n")
+
+				        })
+		     		}
+						case Some(_) => reporter.error("case class has parent another case class - n/a")
+		     	}
+		      }	  		        	  
+          }  
+        })      
+ 
+ 				//=========================== FUNCTIONS ================       
        //the following sets the right order of functions according to dependencies
         //interpret functions
 				var functionCode = new ListMap[String, StringBuffer]
@@ -446,7 +504,7 @@ CaseClassSelector- cc: v2 id: v
 					functionCode.update(df.id.toString, sbaux)
         })
  
-// 				var functionCode = new ListMap[String, StringBuffer]
+	//var functionCode = new ListMap[String, StringBuffer]
 	//var functionDependsOn = new ListMap[String, List[String]]
       
 				/* sort the list of all types such that if one depends on another, then the later is defined first */
@@ -509,7 +567,10 @@ CaseClassSelector- cc: v2 id: v
         })
 
         ind(nsb, lvl)
-        nsb.append("fun ")
+				if(args.size > 0)
+	        nsb.append("fun ")
+				else
+					nsb.append("definition ")
         nsb.append(id)
         nsb.append(" :: \"")
 
@@ -535,7 +596,7 @@ CaseClassSelector- cc: v2 id: v
         nsb.append(id + " ")
 
         args.foreach(arg => {
-          nsb.append(arg.id + "_var")
+          nsb.append("var_" + arg.id + "_var")
           nsb.append(" ")
         })
 				
@@ -575,7 +636,7 @@ CaseClassSelector- cc: v2 id: v
 
 					current_res = "(" + id + " "
 	        args.foreach(arg => {
-  	        current_res = current_res + arg.id + "_var "
+  	        current_res = current_res + "var_" + arg.id + "_var "
       	  })
 					current_res = current_res + ")"
 
@@ -583,7 +644,7 @@ CaseClassSelector- cc: v2 id: v
           nsb.append("\"\n")
 					ind(nsb, lvl)
 
-					body.get match {		
+	/*				body.get match {		
 				    case mex @ MatchExpr(s, csc) => {
 							var strbuf = new StringBuffer
 							pp(s, strbuf ,0)
@@ -599,7 +660,12 @@ CaseClassSelector- cc: v2 id: v
  							nsb.append("apply(induct_tac " + args.head.id + ")\n") 
 							ind(nsb,lvl)
 						}
-
+*/
+					if(args.size > 0){
+ 							nsb.append("apply(induct_tac var_" + args.head.id + "_var)\n") 
+							ind(nsb,lvl)
+					}
+											
 					nsb.append("apply(auto)\n") 
 					ind(nsb,lvl)
 					nsb.append("done\n") 
