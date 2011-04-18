@@ -1,3 +1,16 @@
+18.04.2011:
+
+- Things we discussed:
+  - use matchToIfThenElse to handle pattern-matching with guards
+  - use SimplePatternMatching extractor to handle "simple" pattern-matching to
+    avoid case expressions when it's at the top-level
+  - compute strongly-connected components for function graphs and recursive
+    data-types
+  - try to run Nitpick on lemmas with bugs.
+
+
+--------------------------------------------------
+
 Ganea Octavian
 
 - translation from LEON to Isabelle
