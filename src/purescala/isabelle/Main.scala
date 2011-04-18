@@ -213,6 +213,18 @@ class Main(reporter : Reporter) extends Analyser(reporter) {
       nsb
     }
 
+    case SimplePatternMatching(e, ct, patterns) => {
+      // e is the expression being matched
+      // ct is the ClassType of the expression
+      
+      for((ccd, id, ids, ex) <- patterns) {
+        // describes a pattern of the form: id @ CCD(ids) => ex
+        ...
+      }
+
+      throw Exception("unsupported")
+    }
+
     case mex @ MatchExpr(s, csc) => {
       def ppc(sb: StringBuffer, p: Pattern, matchcase : MatchCase): StringBuffer = p match {
         
