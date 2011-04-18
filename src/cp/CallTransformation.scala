@@ -552,7 +552,7 @@ object CallTransformation {
         case None => expr
         case Some(b) => And(expr, GreaterThan(minExpr, IntLiteral(b)))
       }
-      println("Now calling findAllMinimizing with " + toCheck)
+      // purescala.Settings.reporter.info("Now calling findAllMinimizing with " + toCheck)
       val minValue = chooseMinimizingModelAndValue(program, toCheck, outputVars, minExpr, inputConstraints)._2
 
       val minValConstraint    = And(expr, Equals(minExpr, IntLiteral(minValue)))

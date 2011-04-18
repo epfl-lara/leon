@@ -177,6 +177,8 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
   private var reverseFunctionMap: Map[Z3FuncDecl, FunDef] = Map.empty
 
   def prepareFunctions: Unit = {
+    functionMap = Map.empty
+    reverseFunctionMap = Map.empty
     for (funDef <- program.definedFunctions) {
       val sortSeq = funDef.args.map(vd => typeToSort(vd.tpe))
       val returnSort = typeToSort(funDef.returnType)

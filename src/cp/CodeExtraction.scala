@@ -650,7 +650,7 @@ trait CodeExtraction extends Extractors {
           if (tolerant) {
             val varTpe = scalaType2PureScala(unit, silent)(sym.tpe)
             val newID = FreshIdentifier(sym.name.toString).setType(varTpe)
-            externalSubsts(i) = (() => Variable(newID))
+            varSubsts(sym) = (() => Variable(newID))
             Variable(newID)
           } else {
             unit.error(tr.pos, "Unidentified variable.")
