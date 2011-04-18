@@ -79,16 +79,13 @@ object FindAllCalls {
     isBlack(t) && blackBalanced(t) && redNodesHaveBlackChildren(t) && orderedKeys(t)
   }
 
-  def main(args: Array[String]) : Unit = {
-    val defaultBound = 3
-    val bound = if (args.isEmpty) defaultBound else args(0).toInt
+  def enumerateAllUpTo(bound : Int) : Unit = {
     println("Bound is " + bound)
 
     val set1 = scala.collection.mutable.Set[Tree]()
     val set2 = scala.collection.mutable.Set[Tree]()
     val set3 = scala.collection.mutable.Set[Tree]()
     val set4 = scala.collection.mutable.Set[Tree]()
-    val set5 = scala.collection.mutable.Set[Tree]()
 
     println("Minimizing size:")
     Timer.go
@@ -118,18 +115,27 @@ object FindAllCalls {
     }
     Timer.stop
 
-    println("Fixing size:")
-    Timer.go
-    for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound) && size(t) == bound + 1)) {
-      set5 += tree
-    }
-    Timer.stop
-    
     println("Solution set size: " + set1.size)
     assert(set1 == set2)
     assert(set1 == set3)
     assert(set1 == set4)
-    println("Fixed-size solution set size : " + set5.size)
+  }
+
+  def main(args: Array[String]) : Unit = {
+    val defaultBound = 3
+    val bound = if (args.isEmpty) defaultBound else args(0).toInt
+
+    // enumerateAllUpTo(bound)
+
+    val solutionSet = scala.collection.mutable.Set[Tree]()
+    println("Fixing size of trees to " + (bound + 1))
+    Timer.go
+    for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound) && size(t) == bound + 1)) {
+      solutionSet += tree
+    }
+    Timer.stop
+    
+    println("Fixed-size solution set size : " + solutionSet.size)
   }
 
   /** Printing trees */
