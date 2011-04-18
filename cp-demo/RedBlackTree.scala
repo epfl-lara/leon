@@ -1,6 +1,6 @@
 import cp.Definitions._
 
-object FindAllCalls { 
+object RedBlackTree { 
   @spec sealed abstract class Color
   @spec case class Red() extends Color
   @spec case class Black() extends Color
