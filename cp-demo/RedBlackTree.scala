@@ -76,7 +76,7 @@ object RedBlackTree {
   }
 
   @spec def isRedBlackTree(t : Tree) : Boolean = {
-    isBlack(t) && blackBalanced(t) && redNodesHaveBlackChildren(t) && orderedKeys(t)
+    blackBalanced(t) && redNodesHaveBlackChildren(t) && orderedKeys(t) // && isBlack(t)
   }
 
   def enumerateAllUpTo(bound : Int) : Unit = {
@@ -135,6 +135,8 @@ object RedBlackTree {
     }
     Timer.stop
     
+    // for (tree <- solutionSet)
+    //   println(print(tree) + "\n#####\n")
     println("Fixed-size solution set size : " + solutionSet.size)
   }
 

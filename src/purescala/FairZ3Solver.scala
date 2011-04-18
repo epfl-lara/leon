@@ -33,11 +33,16 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
   protected[purescala] var program: Program = null
   private var neverInitialized = true
 
+  private var unrollingBank: UnrollingBank = null
+  private var blockingSet: Set[Expr] = Set.empty
+  private var toCheckAgainstModels: Expr = BooleanLiteral(true)
+  private var varsInVC: Set[Identifier] = Set.empty
+
   override def setProgram(prog: Program): Unit = {
     program = prog
   }
 
-  private def restartZ3: Unit = {
+  def restartZ3: Unit = {
     if (neverInitialized) {
       neverInitialized = false
     } else {
@@ -51,6 +56,11 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     counter = 0
     prepareSorts
     prepareFunctions
+
+    unrollingBank = new UnrollingBank
+    blockingSet = Set.empty
+    toCheckAgainstModels = BooleanLiteral(true)
+    varsInVC = Set.empty
   }
 
   private var counter = 0
@@ -267,19 +277,18 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
       timer.foreach(t => t.halt)
     }
 
-    val unrollingBank = new UnrollingBank
-
-    lazy val varsInVC = variablesOf(vc) 
-
     if (neverInitialized) {
       reporter.error("Z3 Solver was not initialized with a PureScala Program.")
       None
     }
 
-    val toCheckAgainstModels = expandLets(if (forValidity) negate(vc) else vc)
+    val expandedVC = expandLets(if (forValidity) negate(vc) else vc)
+    toCheckAgainstModels = And(toCheckAgainstModels,expandedVC)
+
+    varsInVC ++= variablesOf(expandedVC)
 
     reporter.info(" - Initial unrolling...")
-    val (basis, clauses, guards) = unrollingBank.closeUnrollings(toCheckAgainstModels)
+    val (basis, clauses, guards) = unrollingBank.closeUnrollings(expandedVC)
     // println("Here is what we want to check against models : " + toCheckAgainstModels)
     // println("New basis: " + e)
     // println("Bunch of clauses:\n" + se.map(_.toString).mkString("\n"))
@@ -294,7 +303,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     // }
     z3.assertCnstr(toZ3Formula(z3, And(clauses)).get)
 
-    var blockingSet : Set[Expr] = Set(guards.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
+    blockingSet ++= Set(guards.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
 
     var iterationsLeft : Int = if(Settings.unrollingLevel > 0) Settings.unrollingLevel else 16121984
 
@@ -331,6 +340,10 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
           reporter.warning("Z3 doesn't know because: " + z3.getSearchFailure.message)
           foundAnswer(None)
           m.delete
+
+          if(!Settings.useCores) {
+            z3.pop(1)
+          }
         }
         case (Some(true), m) => { // SAT
           val (trueModel, model) = validateAndDeleteModel(m, toCheckAgainstModels, varsInVC)
@@ -342,6 +355,10 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
             reporter.error(model)
             foundAnswer(None, model)
           }
+
+          if(!Settings.useCores) {
+            z3.pop(1)
+          }
         }
         case (Some(false), m) if Settings.useCores && core.isEmpty => {
           reporter.info("Empty core, definitively valid.")
@@ -350,6 +367,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         }
         case (Some(false), m) if !Settings.useCores && blockingSet.isEmpty => {
           foundAnswer(Some(true))
+          z3.pop(1)
         }
         // This branch is both for with and without unsat cores. The
         // distinction is made inside.

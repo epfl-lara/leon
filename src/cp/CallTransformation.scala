@@ -3,7 +3,7 @@ package cp
 import scala.tools.nsc.transform.TypingTransformers
 import scala.tools.nsc.ast.TreeDSL
 import purescala.FairZ3Solver
-import purescala.QuietReporter
+import purescala.{DefaultReporter,QuietReporter}
 import purescala.Common.Identifier
 import purescala.Definitions._
 import purescala.Trees._
@@ -302,6 +302,7 @@ object CallTransformation {
   import Definitions.UnknownConstraintException
 
   private def newReporter() = new QuietReporter()
+  // private def newReporter() = new DefaultReporter()
   private def newSolver() = new FairZ3Solver(newReporter())
 
   def chooseExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Expr) : Seq[Expr] = {
@@ -583,6 +584,7 @@ object CallTransformation {
   private def solutionsIterator(program : Program, predicate : Expr, inputEqualities : Expr, outputVariables : Set[Identifier]) : Iterator[Map[Identifier, Expr]] = {
     val solver = newSolver()
     solver.setProgram(program)
+    solver.restartZ3
 
     new Iterator[Map[Identifier, Expr]] {
 
@@ -592,11 +594,12 @@ object CallTransformation {
       // We add after finding each model the negation of the previous one
       var addedNegations: Expr = BooleanLiteral(true)
 
+      var toCheck: Expr = And(inputEqualities, predicate)
+
       override def hasNext : Boolean = nextModel match {
         case None => 
           // Check whether there are any more models
-          val toCheck = inputEqualities :: predicate :: addedNegations :: Nil
-          val (outcome, model) = solver.restartAndDecideWithModel(And(toCheck), false)
+          val (outcome, model) = solver.decideWithModel(toCheck, false)
           val toReturn = (outcome match {
             case Some(false) =>
               // there is a solution, we need to complete model for nonmentioned variables
@@ -611,7 +614,7 @@ object CallTransformation {
               }
               nextModel = Some(Some(completeModel))
               val newModelEqualities = And(outputVariables.map(ov => Equals(Variable(ov), completeModel(ov))).toList)
-              addedNegations = And(addedNegations, negate(newModelEqualities))
+              toCheck = negate(newModelEqualities)
               true
             case Some(true) =>
               // there are definitely no more solutions
@@ -633,7 +636,7 @@ object CallTransformation {
       override def next() : Map[Identifier, Expr] = nextModel match {
         case None => {
           // Let's compute the next model
-          val (outcome, model) = solver.restartAndDecideWithModel(And(inputEqualities :: predicate :: addedNegations :: Nil), false)
+          val (outcome, model) = solver.decideWithModel(toCheck, false)
           val toReturn = (outcome match {
             case Some(false) =>
               // there is a solution, we need to complete model for nonmentioned variables
@@ -648,7 +651,7 @@ object CallTransformation {
               }
 
               val newModelEqualities = And(outputVariables.map(ov => Equals(Variable(ov), completeModel(ov))).toList)
-              addedNegations = And(addedNegations, negate(newModelEqualities))
+              toCheck = negate(newModelEqualities)
               completeModel
             case Some(true) =>
               // Definitely no more solutions
