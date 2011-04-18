@@ -14,6 +14,8 @@ trait AbstractZ3Solver {
 
   val reporter: Reporter
 
+  class CantTranslateException(t: Z3AST) extends Exception("Can't translate from Z3 tree: " + t)
+
   protected[purescala] var z3 : Z3Context
   protected[purescala] var program : Program
 
@@ -29,7 +31,7 @@ trait AbstractZ3Solver {
     try {
       Some(fromZ3Formula(tree))
     } catch {
-      case _ => None
+      case e: CantTranslateException => None
     }
   }
 

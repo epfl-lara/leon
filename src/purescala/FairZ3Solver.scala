@@ -659,8 +659,6 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
   }
 
   protected[purescala] def fromZ3Formula(tree : Z3AST) : Expr = {
-    class CantTranslateException(t: Z3AST) extends Exception("Can't translate from Z3 tree: " + t)
-
     def rec(t: Z3AST) : Expr = z3.getASTKind(t) match {
       case Z3AppAST(decl, args) => {
         val argsSize = args.size
