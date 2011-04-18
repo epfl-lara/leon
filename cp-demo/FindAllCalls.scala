@@ -126,23 +126,10 @@ object FindAllCalls {
     Timer.stop
     
     println("Solution set size: " + set1.size)
-    if (set1 != set2) {
-      println(set1)
-      println(set2)
-      assert(false)
-    }
-    if (set2 != set3) {
-      println(set2)
-      println(set3)
-      assert(false)
-    }
-    if (set3 != set4) {
-      println(set3)
-      println(set4)
-      assert(false)
-    }
-
-    println("Fixed size solution set size : " + set5.size)
+    assert(set1 == set2)
+    assert(set1 == set3)
+    assert(set1 == set4)
+    println("Fixed-size solution set size : " + set5.size)
   }
 
   /** Printing trees */

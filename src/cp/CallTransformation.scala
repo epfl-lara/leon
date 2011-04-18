@@ -301,8 +301,8 @@ object CallTransformation {
   import Definitions.UnsatisfiableConstraintException
   import Definitions.UnknownConstraintException
 
-  private def newSolver() = new FairZ3Solver(new QuietReporter())
-  // private def newSolver() = new FairZ3Solver(new purescala.DefaultReporter())
+  private def newReporter() = new QuietReporter()
+  private def newSolver() = new FairZ3Solver(newReporter())
 
   def chooseExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Expr) : Seq[Expr] = {
     val program    = deserialize[Program](progString, progId)

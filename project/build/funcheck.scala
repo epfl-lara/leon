@@ -18,7 +18,7 @@ class FunCheckProject(info: ProjectInfo) extends DefaultProject(info) with FileT
   lazy val extensionJars : List[Path] = multisetsLib.jarPath :: multisets.jarPath :: orderedsets.jarPath :: setconstraints.jarPath :: Nil
 
   val scriptPath: Path = "." / "funcheck"
-  val cpScriptPath: Path = "." / "cp"
+  val cpScriptPath: Path = "." / "scalac-cp"
 
   lazy val all = task { None } dependsOn(generateScript, generateCpScript) describedAs("Compile everything and produce a script file.")
 
