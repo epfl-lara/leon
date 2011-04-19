@@ -116,6 +116,30 @@ object Definitions {
     throw new NotImplementedException()
   }
 
+  def findAll[A,B,C,D,E](pred : (A,B,C,D,E) => Boolean) : Iterator[(A,B,C,D,E)] = {
+    throw new NotImplementedException()
+  }
+
+  def findAll[A,B,C,D,E,F](pred : (A,B,C,D,E,F) => Boolean) : Iterator[(A,B,C,D,E,F)] = {
+    throw new NotImplementedException()
+  }
+
+  def findAll[A,B,C,D,E,F,G](pred : (A,B,C,D,E,F,G) => Boolean) : Iterator[(A,B,C,D,E,F,G)] = {
+    throw new NotImplementedException()
+  }
+
+  def findAll[A,B,C,D,E,F,G,H](pred : (A,B,C,D,E,F,G,H) => Boolean) : Iterator[(A,B,C,D,E,F,G,H)] = {
+    throw new NotImplementedException()
+  }
+
+  def findAll[A,B,C,D,E,F,G,H,I](pred : (A,B,C,D,E,F,G,H,I) => Boolean) : Iterator[(A,B,C,D,E,F,G,H,I)] = {
+    throw new NotImplementedException()
+  }
+
+  def findAll[A,B,C,D,E,F,G,H,I,J](pred : (A,B,C,D,E,F,G,H,I,J) => Boolean) : Iterator[(A,B,C,D,E,F,G,H,I,J)] = {
+    throw new NotImplementedException()
+  }
+
   def distinct[A](args: A*) : Boolean = {
     throw new NotImplementedException()
   }
