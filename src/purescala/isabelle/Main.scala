@@ -219,10 +219,10 @@ class Main(reporter : Reporter) extends Analyser(reporter) {
       
       for((ccd, id, ids, ex) <- patterns) {
         // describes a pattern of the form: id @ CCD(ids) => ex
-        ...
+        // ...
       }
 
-      throw Exception("unsupported")
+      throw new Exception("unsupported")
     }
 
     case mex @ MatchExpr(s, csc) => {
