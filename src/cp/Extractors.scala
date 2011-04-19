@@ -329,6 +329,17 @@ trait Extractors {
       }
     }
 
+    object ExDistinctCall {
+      def unapply(tree: Apply): Option[(Tree,List[Tree])] = tree match {
+        case Apply(
+          TypeApply(Select(Select(cpIdent, definitionsName), distinctName), typeTree :: Nil),
+          args) if definitionsName.toString == "Definitions" && 
+                   distinctName.toString == "distinct" =>
+            Some((typeTree, args))
+        case _ => None
+      }
+    }
+
     // used for case classes selectors.
     object ExParameterlessMethodCall {
       def unapply(tree: Select): Option[(Tree,Name)] = tree match {

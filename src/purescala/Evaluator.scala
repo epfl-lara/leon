@@ -228,6 +228,11 @@ object Evaluator {
         case i @ IntLiteral(_) => i
         case b @ BooleanLiteral(_) => b
 
+        case Distinct(args) => {
+          val newArgs = args.map(rec(ctx, _))
+          BooleanLiteral(newArgs.distinct.size == newArgs.size)
+        } 
+
         case other => {
           Settings.reporter.error("Error: don't know how to handle " + other + " in Evaluator.")
           throw RuntimeErrorEx("unhandled case in Evaluator") 

@@ -127,6 +127,13 @@ object PrettyPrinter {
     case MultisetCardinality(t) => ppUnary(sb, t, "|", "|", lvl)
     case MultisetPlus(l,r) => ppBinary(sb, l, r, " \u228E ", lvl)    // U+
     case MultisetToSet(e) => pp(e, sb, lvl).append(".toSet")
+
+    case Distinct(exprs) => {
+      var nsb = sb
+      nsb.append("distinct")
+      nsb = ppNary(nsb, exprs, "(", ", ", ")", lvl)
+      nsb
+    }
     
     case IfExpr(c, t, e) => {
       var nsb = sb

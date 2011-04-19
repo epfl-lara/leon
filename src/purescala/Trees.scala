@@ -324,6 +324,11 @@ object Trees {
   @serializable case class Concat(list1: Expr, list2: Expr) extends Expr 
   @serializable case class ListAt(list: Expr, index: Expr) extends Expr 
 
+  /* Constraint programming */
+  @serializable case class Distinct(exprs: Seq[Expr]) extends Expr with FixedType {
+    val fixedType = BooleanType
+  }
+
   object UnaryOperator {
     def unapply(expr: Expr) : Option[(Expr,(Expr)=>Expr)] = expr match {
       case Not(t) => Some((t,Not(_)))
@@ -382,6 +387,7 @@ object Trees {
       case Or(args) => Some((args, Or.apply))
       case FiniteSet(args) => Some((args, FiniteSet))
       case FiniteMultiset(args) => Some((args, FiniteMultiset))
+      case Distinct(args) => Some((args, Distinct))
       case _ => None
     }
   }

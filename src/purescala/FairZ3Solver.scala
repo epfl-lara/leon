@@ -659,6 +659,8 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         }
         case SetMin(s) => intSetMinFun(rec(s))
         case SetMax(s) => intSetMaxFun(rec(s))
+        
+        case Distinct(exs) => z3.mkDistinct(exs.map(rec(_)): _*)
   
         case _ => {
           reporter.warning("Can't handle this in translation to Z3: " + ex)

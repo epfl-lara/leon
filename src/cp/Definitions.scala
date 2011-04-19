@@ -116,4 +116,8 @@ object Definitions {
     throw new NotImplementedException()
   }
 
+  def distinct[A](args: A*) : Boolean = {
+    throw new NotImplementedException()
+  }
+
 }

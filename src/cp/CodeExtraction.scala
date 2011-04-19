@@ -815,6 +815,10 @@ trait CodeExtraction extends Extractors {
         val r3 = rec(t3)
         IfExpr(r1, r2, r3).setType(leastUpperBound(r2.getType, r3.getType))
       }
+      case ExDistinctCall(tt,args) => {
+        val tpe = scalaType2PureScala(unit, silent)(tt.tpe)
+        Distinct(args.map(rec(_))).setType(BooleanType)
+      }
       case lc @ ExMethodCall(sy,nm,ar) => {
         if(defsToDefs.keysIterator.find(_ == sy).isEmpty && !tolerant) {
           if(!silent)
