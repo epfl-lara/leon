@@ -37,6 +37,12 @@ class CPComponent(val global: Global, val pluginInstance: CPPlugin)
 
       val prog: purescala.Definitions.Program = extractCode(unit)
 
+      println("Analyzing @spec functions")
+      val analysis = new purescala.Analysis(prog)
+      analysis.analyse
+
+      println("Finished analysis, starting transformation")
+
       val (progString, progId) = serialize(prog)
 
       transformCalls(unit, prog, progString, progId)
