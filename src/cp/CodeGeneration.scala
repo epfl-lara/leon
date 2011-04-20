@@ -29,18 +29,18 @@ trait CodeGeneration {
 
   private lazy val cpPackage                      = definitions.getModule("cp")
 
-  private lazy val callTransformationModule       = definitions.getModule("cp.CallTransformation")
-  private lazy val chooseExecFunction             = definitions.getMember(callTransformationModule, "chooseExec")
-  private lazy val chooseMinimizingExecFunction   = definitions.getMember(callTransformationModule, "chooseMinimizingExec")
-  private lazy val chooseMaximizingExecFunction   = definitions.getMember(callTransformationModule, "chooseMaximizingExec")
-  private lazy val findMinimizingExecFunction     = definitions.getMember(callTransformationModule, "findMinimizingExec")
-  private lazy val findMaximizingExecFunction     = definitions.getMember(callTransformationModule, "findMaximizingExec")
-  private lazy val findExecFunction               = definitions.getMember(callTransformationModule, "findExec")
-  private lazy val findAllExecFunction            = definitions.getMember(callTransformationModule, "findAllExec")
-  private lazy val findAllMinimizingExecFunction  = definitions.getMember(callTransformationModule, "findAllMinimizingExec")
-  private lazy val inputVarFunction               = definitions.getMember(callTransformationModule, "inputVar")
-  private lazy val skipCounterFunction            = definitions.getMember(callTransformationModule, "skipCounter")
-  private lazy val copySettingsFunction           = definitions.getMember(callTransformationModule, "copySettings")
+  private lazy val runtimeMethodsModule           = definitions.getModule("cp.RuntimeMethods")
+  private lazy val chooseExecFunction             = definitions.getMember(runtimeMethodsModule, "chooseExec")
+  private lazy val chooseMinimizingExecFunction   = definitions.getMember(runtimeMethodsModule, "chooseMinimizingExec")
+  private lazy val chooseMaximizingExecFunction   = definitions.getMember(runtimeMethodsModule, "chooseMaximizingExec")
+  private lazy val findMinimizingExecFunction     = definitions.getMember(runtimeMethodsModule, "findMinimizingExec")
+  private lazy val findMaximizingExecFunction     = definitions.getMember(runtimeMethodsModule, "findMaximizingExec")
+  private lazy val findExecFunction               = definitions.getMember(runtimeMethodsModule, "findExec")
+  private lazy val findAllExecFunction            = definitions.getMember(runtimeMethodsModule, "findAllExec")
+  private lazy val findAllMinimizingExecFunction  = definitions.getMember(runtimeMethodsModule, "findAllMinimizingExec")
+  private lazy val inputVarFunction               = definitions.getMember(runtimeMethodsModule, "inputVar")
+  private lazy val skipCounterFunction            = definitions.getMember(runtimeMethodsModule, "skipCounter")
+  private lazy val copySettingsFunction           = definitions.getMember(runtimeMethodsModule, "copySettings")
 
   private lazy val serializationModule            = definitions.getModule("cp.Serialization")
   private lazy val getProgramFunction             = definitions.getMember(serializationModule, "getProgram")
@@ -73,13 +73,13 @@ trait CodeGeneration {
 
     private def execCode(function : Symbol, progString : String, progId : Int, exprString : String, exprId : Int, 
         outputVarsString : String, outputVarsId : Int, inputConstraints : Tree) : Tree = {
-      (cpPackage DOT callTransformationModule DOT function) APPLY
+      (cpPackage DOT runtimeMethodsModule DOT function) APPLY
         (LIT(progString), LIT(progId), LIT(exprString), LIT(exprId), LIT(outputVarsString), LIT(outputVarsId), inputConstraints)
     }
 
     private def execOptimizingCode(function : Symbol, progString : String, progId : Int, exprString : String, exprId : Int, 
         outputVarsString : String, outputVarsId : Int, optExprString : String, optExprId : Int, inputConstraints : Tree) : Tree = {
-      (cpPackage DOT callTransformationModule DOT function) APPLY
+      (cpPackage DOT runtimeMethodsModule DOT function) APPLY
         (LIT(progString), LIT(progId), LIT(exprString), LIT(exprId), LIT(outputVarsString), LIT(outputVarsId), LIT(optExprString), LIT(optExprId), inputConstraints)
     }
 
@@ -304,7 +304,7 @@ trait CodeGeneration {
       NEW(
         ID(equalsClass),
           // retrieve input variable list and get corresponding variable
-        (cpPackage DOT callTransformationModule DOT inputVarFunction) APPLY
+        (cpPackage DOT runtimeMethodsModule DOT inputVarFunction) APPLY
           ((cpPackage DOT serializationModule DOT getInputVarListFunction) APPLY (LIT(inputVarListString), LIT(inputVarListId)), LIT(varId.name)),
         // invoke s2e on corresponding Tree
         scalaToExprSym APPLY variablesToTrees(Variable(varId))
@@ -320,11 +320,11 @@ trait CodeGeneration {
     }
 
     def skipCounter(i : Int) : Tree = {
-      (cpPackage DOT callTransformationModule DOT skipCounterFunction) APPLY LIT(i)
+      (cpPackage DOT runtimeMethodsModule DOT skipCounterFunction) APPLY LIT(i)
     }
 
     def copySettings(settingsString : String, settingsId : Int) : Tree = {
-      (cpPackage DOT callTransformationModule DOT copySettingsFunction) APPLY (LIT(settingsString), LIT(settingsId))
+      (cpPackage DOT runtimeMethodsModule DOT copySettingsFunction) APPLY (LIT(settingsString), LIT(settingsId))
     }
   }
 }
