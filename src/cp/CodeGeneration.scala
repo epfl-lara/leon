@@ -40,6 +40,7 @@ trait CodeGeneration {
   private lazy val findAllMinimizingExecFunction  = definitions.getMember(callTransformationModule, "findAllMinimizingExec")
   private lazy val inputVarFunction               = definitions.getMember(callTransformationModule, "inputVar")
   private lazy val skipCounterFunction            = definitions.getMember(callTransformationModule, "skipCounter")
+  private lazy val copySettingsFunction           = definitions.getMember(callTransformationModule, "copySettings")
 
   private lazy val serializationModule            = definitions.getModule("cp.Serialization")
   private lazy val getProgramFunction             = definitions.getMember(serializationModule, "getProgram")
@@ -320,6 +321,10 @@ trait CodeGeneration {
 
     def skipCounter(i : Int) : Tree = {
       (cpPackage DOT callTransformationModule DOT skipCounterFunction) APPLY LIT(i)
+    }
+
+    def copySettings(settingsString : String, settingsId : Int) : Tree = {
+      (cpPackage DOT callTransformationModule DOT copySettingsFunction) APPLY (LIT(settingsString), LIT(settingsId))
     }
   }
 }

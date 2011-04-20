@@ -267,6 +267,9 @@ trait CallTransformation
 
           val skipCounter                                                   = codeGen.skipCounter(purescala.Common.FreshIdentifier.last)
 
+          val (settingsString, settingsId) = serialize(new RuntimeSettings)
+          val copySettings                                                  = codeGen.copySettings(settingsString, settingsId)
+
           val exprSeqToScalaCodes : List[Tree] = (for (sig <- chooseSignatures(unit)) yield {
             val (exprSeqToScalaCode, exprSeqToScalaSym) = codeGen.exprSeqToScalaMethod(cd.symbol, exprToScalaCastSym, sig)
             exprSeqToScalaSyms += (sig -> exprSeqToScalaSym)
@@ -283,6 +286,7 @@ trait CallTransformation
                                       typer.typed(atOwner(currentOwner) {exprToScalaCastCode}) :: 
                                       typer.typed(atOwner(currentOwner) {scalaToExprCode}) :: 
                                       typer.typed(atOwner(currentOwner) {skipCounter}) ::
+                                      typer.typed(atOwner(currentOwner) {copySettings}) ::
                                       exprSeqToScalaCodes.map(es2sc => typer.typed(atOwner(currentOwner) {es2sc})) :::
                                       transformStats(body, tree.symbol))
                               }) 
@@ -576,6 +580,22 @@ object CallTransformation {
     purescala.Common.FreshIdentifier.forceSkip(i)
   }
 
+  def copySettings(settingsString : String, settingsId : Int) : Unit = {
+    val recovered = deserialize[RuntimeSettings](settingsString, settingsId)
+  
+    purescala.Settings.experimental         = recovered.experimental
+    purescala.Settings.showIDs              = recovered.showIDs
+    purescala.Settings.noForallAxioms       = recovered.noForallAxioms
+    purescala.Settings.unrollingLevel       = recovered.unrollingLevel
+    purescala.Settings.zeroInlining         = recovered.zeroInlining
+    purescala.Settings.useBAPA              = recovered.useBAPA
+    purescala.Settings.useInstantiator      = recovered.useInstantiator
+    purescala.Settings.useFairInstantiator  = recovered.useFairInstantiator
+    purescala.Settings.useCores             = recovered.useCores
+    purescala.Settings.pruneBranches        = recovered.pruneBranches
+    purescala.Settings.solverTimeout        = recovered.solverTimeout
+  }
+  
   def inputVar(inputVarList : List[Variable], varName : String) : Variable = {
     inputVarList.find(_.id.name == varName).getOrElse(scala.Predef.error("Could not find input variable '" + varName + "' in list " + inputVarList))
   }
