@@ -125,12 +125,12 @@ object RedBlackTree {
     val defaultBound = 3
     val bound = if (args.isEmpty) defaultBound else args(0).toInt
 
-    // enumerateAllUpTo(bound)
+    enumerateAllUpTo(bound)
 
     val solutionSet = scala.collection.mutable.Set[Tree]()
-    println("Fixing size of trees to " + (bound + 1))
+    println("Fixing size of trees to " + (bound))
     Timer.go
-    for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound) && size(t) == bound + 1)) {
+    for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound - 1) && size(t) == bound)) {
       solutionSet += tree
     }
     Timer.stop
