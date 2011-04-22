@@ -12,6 +12,7 @@ trait Extractors {
 
   private lazy val setTraitSym = definitions.getClass("scala.collection.immutable.Set")
   private lazy val multisetTraitSym = definitions.getClass("scala.collection.immutable.Multiset")
+  private lazy val optionClassSym = definitions.getClass("scala.Option")
 
   object StructuralExtractors {
     object ScalaPredef {
@@ -168,6 +169,16 @@ trait Extractors {
     object ExInt32Literal {
       def unapply(tree: Literal): Option[Int] = tree match {
         case Literal(c @ Constant(i)) if c.tpe == IntClass.tpe => Some(c.intValue)
+        case _ => None
+      }
+    }
+
+    object ExSomeConstruction {
+      def unapply(tree: Apply) : Option[(Type,Tree)] = tree match {
+        case Apply(s @ Select(New(tpt), n), arg) if (arg.size == 1 && n == nme.CONSTRUCTOR && tpt.symbol.name.toString == "Some") => tpt.tpe match {
+          case TypeRef(_, sym, tpe :: Nil) => Some((tpe, arg(0)))
+          case _ => None
+        }
         case _ => None
       }
     }
@@ -345,6 +356,7 @@ trait Extractors {
             emptyName),  theTypeTree :: Nil) if (
             collectionName.toString == "collection" && immutableName.toString == "immutable" && setName.toString == "Set" && emptyName.toString == "empty"
           ) => Some(theTypeTree)
+        case TypeApply(Select(Select(Select(This(scalaName), predefName), setname), applyName), theTypeTree :: Nil)  if ("scala".equals(scalaName.toString) && "Predef".equals(predefName.toString) && "empty".equals(applyName.toString)) => Some(theTypeTree)
         case _ => None
       }
     }
@@ -367,17 +379,8 @@ trait Extractors {
 
     object ExFiniteSet {
       def unapply(tree: Apply): Option[(Tree,List[Tree])] = tree match {
-        case Apply(
-          TypeApply(
-            Select(
-              Select(
-                Select(
-                  Select(Ident(s), collectionName),
-                  immutableName),
-                setName),
-              emptyName),  theTypeTree :: Nil), args) if (
-              collectionName.toString == "collection" && immutableName.toString == "immutable" && setName.toString == "Set" && emptyName.toString == "apply"
-            )=> Some(theTypeTree, args)
+        case Apply(TypeApply(Select(Select(Select(Select(Ident(s), collectionName), immutableName), setName), applyName), theTypeTree :: Nil), args) if (collectionName.toString == "collection" && immutableName.toString == "immutable" && setName.toString == "Set" && applyName.toString == "apply") => Some((theTypeTree, args))
+        case Apply(TypeApply(Select(Select(Select(This(scalaName), predefName), setname), applyName), theTypeTree :: Nil), args) if ("scala".equals(scalaName.toString) && "Predef".equals(predefName.toString) && "apply".equals(applyName.toString)) => Some((theTypeTree, args))
         case _ => None
       }
     }

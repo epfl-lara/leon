@@ -17,7 +17,25 @@ trait CodeExtraction extends Extractors {
   import ExpressionExtractors._
 
   private lazy val setTraitSym = definitions.getClass("scala.collection.immutable.Set")
-  private lazy val multisetTraitSym = definitions.getClass("scala.collection.immutable.Multiset")
+  private lazy val multisetTraitSym = try {
+    definitions.getClass("scala.collection.immutable.Multiset")
+  } catch {
+    case _ => null
+  }
+  private lazy val optionClassSym = definitions.getClass("scala.Option")
+  private lazy val someClassSym   = definitions.getClass("scala.Some")
+
+  def isSetTraitSym(sym : Symbol) : Boolean = {
+    sym == setTraitSym || sym.tpe.toString.startsWith("scala.Predef.Set")
+  }
+
+  def isMultisetTraitSym(sym : Symbol) : Boolean = {
+    sym == multisetTraitSym
+  }
+
+  def isOptionClassSym(sym : Symbol) : Boolean = {
+    sym == optionClassSym || sym == someClassSym
+  }
 
   private val varSubsts: scala.collection.mutable.Map[Symbol,Function0[Expr]] =
     scala.collection.mutable.Map.empty[Symbol,Function0[Expr]]
@@ -346,6 +364,11 @@ trait CodeExtraction extends Extractors {
           throw ImpureCodeEncounteredException(tr)
         }
       }
+      case ExSomeConstruction(tpe, arg) => {
+        println("Got Some !" + tpe + ":" + arg)
+        val underlying = scalaType2PureScala(unit, silent)(tpe)
+        OptionSome(rec(arg)).setType(OptionType(underlying))
+      }
       case ExCaseClassConstruction(tpt, args) => {
         val cctype = scalaType2PureScala(unit, silent)(tpt.tpe)
         if(!cctype.isInstanceOf[CaseClassType]) {
@@ -562,13 +585,15 @@ trait CodeExtraction extends Extractors {
     def rec(tr: Type): purescala.TypeTrees.TypeTree = tr match {
       case tpe if tpe == IntClass.tpe => Int32Type
       case tpe if tpe == BooleanClass.tpe => BooleanType
-      case TypeRef(_, sym, btt :: Nil) if sym == setTraitSym => SetType(rec(btt))
-      case TypeRef(_, sym, btt :: Nil) if sym == multisetTraitSym => MultisetType(rec(btt))
+      case TypeRef(_, sym, btt :: Nil) if isSetTraitSym(sym) => SetType(rec(btt))
+      case TypeRef(_, sym, btt :: Nil) if isMultisetTraitSym(sym) => MultisetType(rec(btt))
+      case TypeRef(_, sym, btt :: Nil) if isOptionClassSym(sym) => OptionType(rec(btt))
       case TypeRef(_, sym, Nil) if classesToClasses.keySet.contains(sym) => classDefToClassType(classesToClasses(sym))
 
       case _ => {
         if(!silent) {
           unit.error(NoPosition, "Could not extract type as PureScala. [" + tr + "]")
+          throw new Exception("aouch")
         }
         throw ImpureCodeEncounteredException(null)
       }

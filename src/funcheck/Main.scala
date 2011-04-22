@@ -48,7 +48,7 @@ object Main {
       } else {
         val runner = new PluginRunner(settings, printerFunction, actionOnProgram)
         runner.funcheckPlugin.processOptions(funcheckOptions.map(_.substring(2)), Console.err.println(_))
-        runner.funcheckPlugin.stopAfterExtraction = false
+        //runner.funcheckPlugin.stopAfterExtraction = false
         runner.funcheckPlugin.stopAfterAnalysis = false
         val run = new runner.Run
         run.compile(command.files)

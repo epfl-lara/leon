@@ -272,8 +272,10 @@ object Trees {
   }
 
   /* Option expressions */
-  // case class OptionSome(value: Expr) extends Expr 
-  // case class OptionNone(baseType: TypeTree) extends Expr with Terminal
+  @serializable case class OptionSome(value: Expr) extends Expr 
+  @serializable case class OptionNone(baseType: TypeTree) extends Expr with Terminal with FixedType {
+    val fixedType = OptionType(baseType)
+  }
 
   /* Set expressions */
   @serializable case class EmptySet(baseType: TypeTree) extends Expr with Terminal

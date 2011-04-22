@@ -80,6 +80,17 @@ object PrettyPrinter {
     case IntLiteral(v) => sb.append(v)
     case BooleanLiteral(v) => sb.append(v)
     case StringLiteral(s) => sb.append("\"" + s + "\"")
+
+    case OptionSome(a) => {
+      var nsb = sb
+      nsb.append("Some(")
+      nsb = pp(a, nsb, lvl)
+      nsb.append(")")
+      nsb
+    }
+
+    case OptionNone(_) => sb.append("None")
+
     case CaseClass(cd, args) => {
       var nsb = sb
       nsb.append(cd.id)
@@ -222,6 +233,7 @@ object PrettyPrinter {
     case BooleanType => sb.append("Boolean")
     case SetType(bt) => pp(bt, sb.append("Set["), lvl).append("]")
     case MultisetType(bt) => pp(bt, sb.append("Multiset["), lvl).append("]")
+    case OptionType(bt) => pp(bt, sb.append("Option["), lvl).append("]")
     case c: ClassType => sb.append(c.classDef.id)
     case _ => sb.append("Type?")
   }

@@ -78,8 +78,8 @@ object TypeTrees {
     }
 
     case (o1, o2) if (o1 == o2) => o1
-    case (o1,NoType) => o1
-    case (NoType,o2) => o2
+    case (o1,BottomType) => o1
+    case (BottomType,o2) => o2
     case (o1,AnyType) => AnyType
     case (AnyType,o2) => AnyType
 
@@ -94,7 +94,7 @@ object TypeTrees {
   def domainSize(typeTree: TypeTree) : TypeSize = typeTree match {
     case Untyped => FiniteSize(0)
     case AnyType => InfiniteSize
-    case NoType => FiniteSize(0)
+    case BottomType => FiniteSize(0)
     case BooleanType => FiniteSize(2)
     case Int32Type => InfiniteSize
     case ListType(_) => InfiniteSize
@@ -124,7 +124,7 @@ object TypeTrees {
 
   @serializable case object Untyped extends TypeTree
   @serializable case object AnyType extends TypeTree
-  @serializable case object NoType extends TypeTree // This is the type of errors (ie. subtype of anything)
+  @serializable case object BottomType extends TypeTree // This type is useful when we need an underlying type for None, Set.empty, etc. It should always be removed after parsing, though.
   @serializable case object BooleanType extends TypeTree
   @serializable case object Int32Type extends TypeTree
 
