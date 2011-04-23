@@ -10,8 +10,8 @@ object RedBlackTree {
   @spec case class Node(color: Color, left: Tree, value: Int, right: Tree) extends Tree
 
   @spec sealed abstract class OptionInt
-  @spec case class Some(v : Int) extends OptionInt
-  @spec case class None() extends OptionInt
+  @spec case class SomeInt(v : Int) extends OptionInt
+  @spec case class NoneInt() extends OptionInt
 
   @spec def max(a: Int, b: Int) : Int = {
     if (a >= b) a else b
@@ -55,28 +55,53 @@ object RedBlackTree {
     case Node(_,l,v,r) => 0 <= v && v <= bound && boundValues(l,bound) && boundValues(r,bound)
   }
 
-  @spec def orderedKeys(t : Tree) : Boolean = orderedKeys(t, None(), None())
+  @spec def orderedKeys(t : Tree) : Boolean = orderedKeys(t, NoneInt(), NoneInt())
 
   @spec def orderedKeys(t : Tree, min : OptionInt, max : OptionInt) : Boolean = t match {
     case Empty() => true
     case Node(c,a,v,b) =>
       val minOK = 
         min match {
-          case Some(minVal) =>
+          case SomeInt(minVal) =>
             v > minVal
-          case None() => true
+          case NoneInt() => true
         }
       val maxOK =
         max match {
-          case Some(maxVal) =>
+          case SomeInt(maxVal) =>
             v < maxVal
-          case None() => true
+          case NoneInt() => true
         }
-      minOK && maxOK && orderedKeys(a, min, Some(v)) && orderedKeys(b, Some(v), max)
+      minOK && maxOK && orderedKeys(a, min, SomeInt(v)) && orderedKeys(b, SomeInt(v), max)
   }
 
   @spec def isRedBlackTree(t : Tree) : Boolean = {
     blackBalanced(t) && redNodesHaveBlackChildren(t) && orderedKeys(t) // && isBlack(t)
+  }
+
+  def main(args: Array[String]) : Unit = {
+    val defaultBound = 3
+    val bound = if (args.isEmpty) defaultBound else args(0).toInt
+
+    // enumerateAllUpTo(bound)
+
+    try {
+      val t = choose((t: Tree) => size(t) > 7 && height(t) <= 3)
+    } catch {
+      case e: UnsatisfiableConstraintException => println("constraint is unsatisfiable")
+    }
+
+    val solutionSet = scala.collection.mutable.Set[Tree]()
+    println("Fixing size of trees to " + (bound))
+    Timer.go
+    for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound - 1) && size(t) == bound)) {
+      solutionSet += tree
+    }
+    Timer.stop
+    
+    // for (tree <- solutionSet)
+    //   println(print(tree) + "\n-----------\n")
+    println("Fixed-size solution set size : " + solutionSet.size)
   }
 
   def enumerateAllUpTo(bound : Int) : Unit = {
@@ -119,25 +144,6 @@ object RedBlackTree {
     assert(set1 == set2)
     assert(set1 == set3)
     assert(set1 == set4)
-  }
-
-  def main(args: Array[String]) : Unit = {
-    val defaultBound = 3
-    val bound = if (args.isEmpty) defaultBound else args(0).toInt
-
-    enumerateAllUpTo(bound)
-
-    val solutionSet = scala.collection.mutable.Set[Tree]()
-    println("Fixing size of trees to " + (bound))
-    Timer.go
-    for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound - 1) && size(t) == bound)) {
-      solutionSet += tree
-    }
-    Timer.stop
-    
-    // for (tree <- solutionSet)
-    //   println(print(tree) + "\n#####\n")
-    println("Fixed-size solution set size : " + solutionSet.size)
   }
 
   /** Printing trees */
