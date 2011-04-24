@@ -1,5 +1,5 @@
 import cp.Definitions._
-import cp.Utils._
+import purescala.Stopwatch
 
 object RedBlackTree { 
   @spec sealed abstract class Color
@@ -96,12 +96,12 @@ object RedBlackTree {
 
     val solutionSet = scala.collection.mutable.Set[Tree]()
     println("Fixing size of trees to " + (bound))
-    val timer = new Timer("Fixed-size enumeration", true)
-    timer.start
+    val sw = new Stopwatch("Fixed-size enumeration", false)
+    sw.start
     for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound - 1) && size(t) == bound)) {
       solutionSet += tree
     }
-    timer.stop
+    sw.stop
 
     // for (tree <- solutionSet)
     //   println(print(tree) + "\n-----------\n")

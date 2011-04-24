@@ -11,8 +11,10 @@ object RuntimeMethods {
   import purescala.{DefaultReporter,QuietReporter}
   import purescala.FairZ3Solver
 
-  private def newReporter() = new QuietReporter()
-  // private def newReporter() = new DefaultReporter()
+  import purescala.Stopwatch
+  
+  private val silent = true
+  private def newReporter() = if (silent) new QuietReporter() else new DefaultReporter()
   private def newSolver() = new FairZ3Solver(newReporter())
 
   def chooseExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Expr) : Seq[Expr] = {
@@ -325,7 +327,9 @@ object RuntimeMethods {
       override def hasNext : Boolean = nextModel match {
         case None => 
           // Check whether there are any more models
+          val stopwatch = new Stopwatch("hasNext", true).start
           val (outcome, model) = solver.decideWithModel(toCheck, false)
+          stopwatch.stop
           val toReturn = (outcome match {
             case Some(false) =>
               // there is a solution, we need to complete model for nonmentioned variables
@@ -362,7 +366,9 @@ object RuntimeMethods {
       override def next() : Map[Identifier, Expr] = nextModel match {
         case None => {
           // Let's compute the next model
+          val stopwatch = new Stopwatch("next", true).start
           val (outcome, model) = solver.decideWithModel(toCheck, false)
+          stopwatch.stop
           val toReturn = (outcome match {
             case Some(false) =>
               // there is a solution, we need to complete model for nonmentioned variables

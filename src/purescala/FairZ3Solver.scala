@@ -326,7 +326,9 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         println(blockingSetAsZ3)
         z3.checkAssumptions(blockingSetAsZ3 : _*)
       } else {
+        val stopwatch = new Stopwatch("Z3 search", true).start
         val (a, m) = z3.checkAndGetModel()
+        stopwatch.stop
         (a, m, Seq.empty[Z3AST])
       }
 
