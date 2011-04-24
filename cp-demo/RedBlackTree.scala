@@ -1,4 +1,5 @@
 import cp.Definitions._
+import cp.Utils._
 
 object RedBlackTree { 
   @spec sealed abstract class Color
@@ -85,20 +86,23 @@ object RedBlackTree {
 
     // enumerateAllUpTo(bound)
 
+    /*
     try {
       val t = choose((t: Tree) => size(t) > 7 && height(t) <= 3)
     } catch {
       case e: UnsatisfiableConstraintException => println("constraint is unsatisfiable")
     }
+    */
 
     val solutionSet = scala.collection.mutable.Set[Tree]()
     println("Fixing size of trees to " + (bound))
-    Timer.go
+    val timer = new Timer("Fixed-size enumeration", true)
+    timer.start
     for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound - 1) && size(t) == bound)) {
       solutionSet += tree
     }
-    Timer.stop
-    
+    timer.stop
+
     // for (tree <- solutionSet)
     //   println(print(tree) + "\n-----------\n")
     println("Fixed-size solution set size : " + solutionSet.size)
@@ -113,32 +117,24 @@ object RedBlackTree {
     val set4 = scala.collection.mutable.Set[Tree]()
 
     println("Minimizing size:")
-    Timer.go
     for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound) minimizing size(t))) {
       set1 += tree
     }
-    Timer.stop
     
     println("Minimizing height:")
-    Timer.go
     for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound) minimizing height(t))) {
       set2 += tree
     }
-    Timer.stop
 
     println("Minimizing bound:")
-    Timer.go
     for ((tree, bb) <- findAll((t : Tree, b: Int) => isRedBlackTree(t) && boundValues(t, b) && b >= 0 && b <= bound minimizing b)) {
       set3 += tree
     }
-    Timer.stop
     
     println("No minimization:")
-    Timer.go
     for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound))) {
       set4 += tree
     }
-    Timer.stop
 
     println("Solution set size: " + set1.size)
     assert(set1 == set2)
@@ -153,19 +149,5 @@ object RedBlackTree {
     case Node(c,l,v,r) =>
       indent(print(r)) + "\n" + (if (c == Black()) "B" else "R") + " " + v.toString + "\n" + indent(print(l))
     case Empty() => "E"
-  }
-}
-
-object Timer {
-  var start: Long = 0L
-  var end: Long = 0L
-  def go = {
-    start = System.currentTimeMillis
-  }
-  def stop : Double = {
-    end = System.currentTimeMillis
-    val seconds = (end - start) / 1000.0
-    println("  Measured time: " + seconds + " s")
-    seconds
   }
 }

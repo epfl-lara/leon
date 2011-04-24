@@ -1,4 +1,5 @@
 import cp.Definitions._
+import cp.Utils.Timer
 
 object Lists {
     @spec sealed abstract class List
@@ -29,25 +30,12 @@ object SortedList {
     val len = if (args.isEmpty) 3 else args(0).toInt
     val set = scala.collection.mutable.Set[List]()
 
-    Timer.go
+    val timer = new Timer("Sorted list enumeration", true)
+    timer.start
     for (list <- findAll((l : List) => isSorted(l) && valuesWithin(l, 0, len) && size(l) == len))
       set += list
-    Timer.stop
+    timer.stop
       
     println("size : " + set.size)
-  }
-}
-
-object Timer {
-  var start: Long = 0L
-  var end: Long = 0L
-  def go = {
-    start = System.currentTimeMillis
-  }
-  def stop : Double = {
-    end = System.currentTimeMillis
-    val seconds = (end - start) / 1000.0
-    println("  Measured time: " + seconds + " s")
-    seconds
   }
 }
