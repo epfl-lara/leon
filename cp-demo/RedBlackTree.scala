@@ -46,7 +46,7 @@ object RedBlackTree {
   }
 
   @spec def blackHeight(t : Tree) : Int = t match {
-    case Empty() => 1
+    case Empty() => 0
     case Node(Black(), l, _, _) => blackHeight(l) + 1
     case Node(Red(), l, _, _) => blackHeight(l)
   }
@@ -106,6 +106,7 @@ object RedBlackTree {
     // for (tree <- solutionSet)
     //   println(print(tree) + "\n-----------\n")
     println("Fixed-size solution set size : " + solutionSet.size)
+    Stopwatch.printSummary
   }
 
   def enumerateAllUpTo(bound : Int) : Unit = {

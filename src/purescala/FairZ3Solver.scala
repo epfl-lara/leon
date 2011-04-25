@@ -254,6 +254,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
   }
 
   def decideWithModel(vc: Expr, forValidity: Boolean): (Option[Boolean], Map[Identifier,Expr]) = {
+    val initializationStopwatch = new Stopwatch("decideWithModel init", true).start
     var forceStop : Boolean = false
 
     var foundDefinitiveAnswer : Boolean = false
@@ -307,12 +308,16 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
 
     var iterationsLeft : Int = if(Settings.unrollingLevel > 0) Settings.unrollingLevel else 16121984
 
+    initializationStopwatch.stop
     while(!foundDefinitiveAnswer && !forceStop) {
       iterationsLeft -= 1
 
+      val blocking2Z3Stopwatch = new Stopwatch("Blocking to Z3 conv").start
       val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.map(toZ3Formula(z3, _).get).toSeq
       // println("Blocking set : " + blockingSet)
+      blocking2Z3Stopwatch.stop
 
+      val assertBlockingStopwatch = new Stopwatch("Assert blocking set").start
       if(Settings.useCores) {
         // NOOP
       } else {
@@ -320,6 +325,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         if(!blockingSetAsZ3.isEmpty)
           z3.assertCnstr(z3.mkAnd(blockingSetAsZ3 : _*))
       }
+      assertBlockingStopwatch.stop
 
       reporter.info(" - Running Z3 search...")
       val (answer, model, core) : (Option[Boolean], Z3Model, Seq[Z3AST]) = if(Settings.useCores) {
@@ -379,7 +385,9 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
           if(!Settings.useCores) {
             z3.pop(1)
             
+            val stopwatch = new Stopwatch("Second Z3 search", true).start
             val (result2,m2) = z3.checkAndGetModel()
+            stopwatch.stop
 
             if (result2 == Some(false)) {
               foundAnswer(Some(true))
@@ -398,6 +406,8 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
             
           if(!foundDefinitiveAnswer) { 
             reporter.info("- We need to keep going.")
+
+            val unrollingStopwatch = new Stopwatch("Unrolling", true).start
 
             val toRelease : Set[Expr] = if(Settings.useCores) {
               core.map(ast => fromZ3Formula(ast) match {
@@ -470,6 +480,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
               //z3.assertCnstr(toZ3Formula(z3, And(newClauses)).get)
               blockingSet = blockingSet ++ Set(newBlockers.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
             }
+            unrollingStopwatch.stop
           }
         }
       }
