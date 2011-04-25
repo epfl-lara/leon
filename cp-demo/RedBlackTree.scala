@@ -1,64 +1,64 @@
 import cp.Definitions._
 import purescala.Stopwatch
 
-object RedBlackTree { 
-  @spec sealed abstract class Color
-  @spec case class Red() extends Color
-  @spec case class Black() extends Color
+@spec object Specs { 
+  sealed abstract class Color
+  case class Red() extends Color
+  case class Black() extends Color
  
-  @spec sealed abstract class Tree
-  @spec case class Empty() extends Tree
-  @spec case class Node(color: Color, left: Tree, value: Int, right: Tree) extends Tree
+  sealed abstract class Tree
+  case class Empty() extends Tree
+  case class Node(color: Color, left: Tree, value: Int, right: Tree) extends Tree
 
-  @spec sealed abstract class OptionInt
-  @spec case class SomeInt(v : Int) extends OptionInt
-  @spec case class NoneInt() extends OptionInt
+  sealed abstract class OptionInt
+  case class SomeInt(v : Int) extends OptionInt
+  case class NoneInt() extends OptionInt
 
-  @spec def max(a: Int, b: Int) : Int = {
+  def max(a: Int, b: Int) : Int = {
     if (a >= b) a else b
   } ensuring (res => res >= a && res >= b)
 
-  @spec def size(t: Tree) : Int = (t match {
+  def size(t: Tree) : Int = (t match {
     case Empty() => 0
     case Node(_, l, v, r) => size(l) + 1 + size(r)
   }) ensuring (_ >= 0)
 
-  @spec def height(t: Tree) : Int = (t match {
+  def height(t: Tree) : Int = (t match {
     case Empty() => 0
     case Node(_,l,_,r) => max(height(l), height(r)) + 1
   }) ensuring (_ >= 0)
 
-  @spec def isBlack(t: Tree) : Boolean = t match {
+  def isBlack(t: Tree) : Boolean = t match {
     case Empty() => true
     case Node(Black(),_,_,_) => true
     case _ => false
   }
 
-  @spec def redNodesHaveBlackChildren(t: Tree) : Boolean = t match {
+  def redNodesHaveBlackChildren(t: Tree) : Boolean = t match {
     case Empty() => true
     case Node(Black(), l, _, r) => redNodesHaveBlackChildren(l) && redNodesHaveBlackChildren(r)
     case Node(Red(), l, _, r) => isBlack(l) && isBlack(r) && redNodesHaveBlackChildren(l) && redNodesHaveBlackChildren(r)
   }
 
-  @spec def blackBalanced(t : Tree) : Boolean = t match {
+  def blackBalanced(t : Tree) : Boolean = t match {
     case Node(_,l,_,r) => blackBalanced(l) && blackBalanced(r) && blackHeight(l) == blackHeight(r)
     case Empty() => true
   }
 
-  @spec def blackHeight(t : Tree) : Int = t match {
+  def blackHeight(t : Tree) : Int = t match {
     case Empty() => 0
     case Node(Black(), l, _, _) => blackHeight(l) + 1
     case Node(Red(), l, _, _) => blackHeight(l)
   }
 
-  @spec def boundValues(t : Tree, bound : Int) : Boolean = t match {
+  def boundValues(t : Tree, bound : Int) : Boolean = t match {
     case Empty() => true
     case Node(_,l,v,r) => 0 <= v && v <= bound && boundValues(l,bound) && boundValues(r,bound)
   }
 
-  @spec def orderedKeys(t : Tree) : Boolean = orderedKeys(t, NoneInt(), NoneInt())
+  def orderedKeys(t : Tree) : Boolean = orderedKeys(t, NoneInt(), NoneInt())
 
-  @spec def orderedKeys(t : Tree, min : OptionInt, max : OptionInt) : Boolean = t match {
+  def orderedKeys(t : Tree, min : OptionInt, max : OptionInt) : Boolean = t match {
     case Empty() => true
     case Node(c,a,v,b) =>
       val minOK = 
@@ -76,9 +76,13 @@ object RedBlackTree {
       minOK && maxOK && orderedKeys(a, min, SomeInt(v)) && orderedKeys(b, SomeInt(v), max)
   }
 
-  @spec def isRedBlackTree(t : Tree) : Boolean = {
+  def isRedBlackTree(t : Tree) : Boolean = {
     blackBalanced(t) && redNodesHaveBlackChildren(t) && orderedKeys(t) // && isBlack(t)
   }
+}
+
+object RedBlackTree {
+  import Specs._
 
   def main(args: Array[String]) : Unit = {
     val defaultBound = 3

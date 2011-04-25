@@ -95,8 +95,8 @@ trait CodeExtraction extends Extractors {
         scala.collection.mutable.Set.empty[String]
 
       // We first traverse for collecting type definitions
-      def collectTypeDefinitions(tree: Tree) = tree match {
-        case cd @ ExAbstractClass(o2, sym) if cd.symbol.annotations.exists(_.atp.safeToString == "cp.Definitions.spec") => {
+      def collectTypeDefinitions(inSpecObject : Boolean)(tree: Tree) : Unit = tree match {
+        case cd @ ExAbstractClass(o2, sym) if inSpecObject || cd.symbol.annotations.exists(_.atp.safeToString == "cp.Definitions.spec") => {
           if(scalaClassNames.contains(o2)) {
             unit.error(tree.pos, "A class with the same name already exists.")
           } else {
@@ -104,7 +104,7 @@ trait CodeExtraction extends Extractors {
             scalaClassNames += o2
           }
         }
-        case cd @ ExCaseClass(o2, sym, args) if cd.symbol.annotations.exists(_.atp.safeToString == "cp.Definitions.spec") => {
+        case cd @ ExCaseClass(o2, sym, args) if inSpecObject || cd.symbol.annotations.exists(_.atp.safeToString == "cp.Definitions.spec") => {
           if(scalaClassNames.contains(o2)) {
             unit.error(tree.pos, "A class with the same name already exists.")
           } else {
@@ -113,9 +113,12 @@ trait CodeExtraction extends Extractors {
             scalaClassArgs  += (sym -> args)
           }
         }
+        case cd @ ExObjectDef(n, templ) if cd.symbol.annotations.exists(_.atp.safeToString == "cp.Definitions.spec") => {
+          templ.body.foreach(collectTypeDefinitions(true)(_))
+        }
         case _ => ;
       }
-      new ForeachTreeTraverser(collectTypeDefinitions).traverse(unit.body)
+      new ForeachTreeTraverser(collectTypeDefinitions(false)).traverse(unit.body)
 
       stopIfErrors
 
@@ -162,8 +165,8 @@ trait CodeExtraction extends Extractors {
       // end of class (type) extraction
 
       // Let us now collect function signatures
-      def collectFunctionSignatures(tree: Tree) = tree match {
-        case dd @ ExFunctionDef(n,p,t,b) if dd.symbol.annotations.exists(_.atp.safeToString == "cp.Definitions.spec") => {
+      def collectFunctionSignatures(inSpecObject : Boolean)(tree: Tree) : Unit = tree match {
+        case dd @ ExFunctionDef(n,p,t,b) if inSpecObject || dd.symbol.annotations.exists(_.atp.safeToString == "cp.Definitions.spec") => {
           val mods = dd.mods
           val funDef = extractFunSig(n, p, t).setPosInfo(dd.pos.line, dd.pos.column)
           if(mods.isPrivate) funDef.addAnnotation("private")
@@ -175,19 +178,25 @@ trait CodeExtraction extends Extractors {
           }
           defsToDefs += (dd.symbol -> funDef)
         }
-        case _ => ;
-      }
-      new ForeachTreeTraverser(collectFunctionSignatures).traverse(unit.body)
-
-      // And finally extract function bodies
-      def extractFunctionBodies(tree: Tree) = tree match {
-        case dd @ ExFunctionDef(n,p,t,b) if dd.symbol.annotations.exists(_.atp.safeToString == "cp.Definitions.spec") => {
-          val fd = defsToDefs(dd.symbol)
-          defsToDefs(dd.symbol) = extractFunDef(fd, b)
+        case cd @ ExObjectDef(n, templ) if cd.symbol.annotations.exists(_.atp.safeToString == "cp.Definitions.spec") => {
+          templ.body.foreach(collectFunctionSignatures(true)(_))
         }
         case _ => ;
       }
-      new ForeachTreeTraverser(extractFunctionBodies).traverse(unit.body)
+      new ForeachTreeTraverser(collectFunctionSignatures(false)).traverse(unit.body)
+
+      // And finally extract function bodies
+      def extractFunctionBodies(inSpecObject : Boolean)(tree: Tree) : Unit = tree match {
+        case dd @ ExFunctionDef(n,p,t,b) if inSpecObject || dd.symbol.annotations.exists(_.atp.safeToString == "cp.Definitions.spec") => {
+          val fd = defsToDefs(dd.symbol)
+          defsToDefs(dd.symbol) = extractFunDef(fd, b)
+        }
+        case cd @ ExObjectDef(n, templ) if cd.symbol.annotations.exists(_.atp.safeToString == "cp.Definitions.spec") => {
+          templ.body.foreach(extractFunctionBodies(true)(_))
+        }
+        case _ => ;
+      }
+      new ForeachTreeTraverser(extractFunctionBodies(false)).traverse(unit.body)
 
       funDefs = defsToDefs.valuesIterator.toList
 
