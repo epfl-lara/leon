@@ -6,6 +6,8 @@ graphName=../graphs/${title}.ps
 trans=transposed
 cat ${filename} | grep "GRAPH: " | sed 's/GRAPH: '// | ./transpose.awk > ${trans}
 
+mkdir -p ../graphs
+
 cat base-gnuplot-script > plotscript
 echo "set title \"${title}\"" >> plotscript
 echo "set output \"${graphName}\"" >> plotscript
