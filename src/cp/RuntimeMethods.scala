@@ -327,7 +327,7 @@ object RuntimeMethods {
       override def hasNext : Boolean = nextModel match {
         case None => 
           // Check whether there are any more models
-          val stopwatch = new Stopwatch("hasNext", true).start
+          val stopwatch = new Stopwatch("hasNext", false).start
           val (outcome, model) = solver.decideWithModel(toCheck, false)
           stopwatch.stop
           stopwatch.writeToSummary

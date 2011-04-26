@@ -33,5 +33,6 @@ object SortedList {
       set += list
       
     println("size : " + set.size)
+    purescala.Stopwatch.printSummary
   }
 }

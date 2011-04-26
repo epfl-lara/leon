@@ -254,11 +254,11 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
   }
 
   def decideWithModel(vc: Expr, forValidity: Boolean): (Option[Boolean], Map[Identifier,Expr]) = {
-    val initializationStopwatch = new Stopwatch("init", true)
-    val blocking2Z3Stopwatch    = new Stopwatch("blocking-set-to-z3", true)
-    val z3SearchStopwatch       = new Stopwatch("z3-search-1", true)
-    val secondZ3SearchStopwatch = new Stopwatch("z3-search-2", true)
-    val unrollingStopwatch      = new Stopwatch("unrolling", true)
+    val initializationStopwatch = new Stopwatch("init",               false)
+    val blocking2Z3Stopwatch    = new Stopwatch("blocking-set-to-z3", false)
+    val z3SearchStopwatch       = new Stopwatch("z3-search-1",        false)
+    val secondZ3SearchStopwatch = new Stopwatch("z3-search-2",        false)
+    val unrollingStopwatch      = new Stopwatch("unrolling",          false)
 
     initializationStopwatch.start
 
