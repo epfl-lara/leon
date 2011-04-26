@@ -1,0 +1,33 @@
+#!/bin/bash
+
+cd ../../..
+
+ts=`date +%F-%R`
+evalFolder="eval/cp/data"
+demoFolder="cp-demo"
+
+#classes=( "RedBlackTree" "SortedList" )
+
+if [ "$#" -lt "3" ]
+then
+  echo "Please provide a class name and bounds for problem size"
+  exit 1
+fi
+
+class=${1}
+base=${2}
+limit=${3}
+
+mkdir -p ${evalFolder}
+
+evalFileBase=${evalFolder}/${class}-${ts}-CAV
+./cp CAV ${demoFolder}/${class}.scala || (echo "Could not compile..." && exit 1)
+
+for (( i=${base}; i<=${limit}; i++ ))
+do
+  currentFile=${evalFileBase}-${i}
+  ./cp-runner ${class} $i | tee -a ${currentFile}
+  cd eval/cp/scripts
+  ./generate-graph ../../../${currentFile}
+  cd ../../..
+done

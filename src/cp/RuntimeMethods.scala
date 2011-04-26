@@ -330,6 +330,7 @@ object RuntimeMethods {
           val stopwatch = new Stopwatch("hasNext", true).start
           val (outcome, model) = solver.decideWithModel(toCheck, false)
           stopwatch.stop
+          stopwatch.writeToSummary
           val toReturn = (outcome match {
             case Some(false) =>
               // there is a solution, we need to complete model for nonmentioned variables
@@ -366,9 +367,7 @@ object RuntimeMethods {
       override def next() : Map[Identifier, Expr] = nextModel match {
         case None => {
           // Let's compute the next model
-          val stopwatch = new Stopwatch("next", true).start
           val (outcome, model) = solver.decideWithModel(toCheck, false)
-          stopwatch.stop
           val toReturn = (outcome match {
             case Some(false) =>
               // there is a solution, we need to complete model for nonmentioned variables

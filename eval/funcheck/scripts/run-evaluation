@@ -1,9 +1,13 @@
 #!/bin/bash
 
+cd ../../..
+
 ts=`date +%F-%R`
 demoFolder="demo"
 files=( ${demoFolder}"/AssociativeList.scala" ${demoFolder}/"InsertionSort.scala" ${demoFolder}"/RedBlackTree.scala" ${demoFolder}"/PropositionalLogic.scala" "${demoFolder}/ListWithSize.scala")
-#files=( ${pldi}"/RedBlackTree.scala" )
+
+dataFolder="eval/funcheck/data"
+
 if [ "$#" -lt "1" ]
 then
   echo "Please provide an unrolling value"
@@ -17,18 +21,18 @@ do
   ./funcheck CAV $f
 done
 
-mv summary summary-CAV-${ts}
+mv summary ${dataFolder}/summary-CAV-${ts}
 
 for f in ${files[@]}
 do
   ./funcheck CAV prune $f
 done
 
-mv summary summary-CAV-prune-${ts}
+mv summary ${dataFolder}/summary-CAV-prune-${ts}
 
 for f in ${files[@]}
 do
   ./funcheck PLDI unrolling=${1} $f
 done
 
-mv summary summary-PLDI-${ts}
+mv summary ${dataFolder}/summary-PLDI-${ts}
