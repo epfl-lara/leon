@@ -1,6 +1,8 @@
 package cp
 
 object Definitions {
+  import Trees._
+
   class spec extends StaticAnnotation
 
   final class NotImplementedException extends Exception
@@ -20,7 +22,9 @@ object Definitions {
 
   implicit def any2Optimizable(x : Boolean) : Optimizable = new Optimizable(x)
 
-  def choose[A](pred : A => Boolean) : A = {
+  implicit def pred2cons1[A](pred: A => Boolean) : Constraint1[A] = throw new NotImplementedException
+
+  def choose[A](constraint: Constraint1[A]) : A = {
     throw new NotImplementedException()
   }
 

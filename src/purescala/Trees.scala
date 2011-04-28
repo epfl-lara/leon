@@ -216,6 +216,8 @@ object Trees {
     override def setType(tt: TypeTree) = { id.setType(tt); this }
   }
 
+  @serializable case class DeBruijnIndex(index: Int) extends Expr with Terminal
+
   // represents the result in post-conditions
   @serializable case class ResultVariable() extends Expr with Terminal
 

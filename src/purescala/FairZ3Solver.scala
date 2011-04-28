@@ -259,6 +259,9 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     val z3SearchStopwatch       = new Stopwatch("z3-search-1",        false)
     val secondZ3SearchStopwatch = new Stopwatch("z3-search-2",        false)
     val unrollingStopwatch      = new Stopwatch("unrolling",          false)
+    val luckyStopwatch          = new Stopwatch("lucky",              false)
+    val validatingStopwatch     = new Stopwatch("validating",         false)
+    val decideTopLevelSw        = new Stopwatch("top-level",          false).start
 
     initializationStopwatch.start
 
@@ -320,7 +323,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
       iterationsLeft -= 1
 
       blocking2Z3Stopwatch.start
-      val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.map(toZ3Formula(z3, _).get).toSeq
+      val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.toSeq.map(toZ3Formula(z3, _).get)
       // println("Blocking set : " + blockingSet)
       blocking2Z3Stopwatch.stop
 
@@ -359,7 +362,9 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
           }
         }
         case (Some(true), m) => { // SAT
+          validatingStopwatch.start
           val (trueModel, model) = validateAndDeleteModel(m, toCheckAgainstModels, varsInVC)
+          validatingStopwatch.stop
 
           if (trueModel) {
             foundAnswer(Some(false), model)
@@ -394,6 +399,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
             val (result2,m2) = z3.checkAndGetModel()
             secondZ3SearchStopwatch.stop
 
+            luckyStopwatch.start
             if (result2 == Some(false)) {
               foundAnswer(Some(true))
             } else {
@@ -403,6 +409,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
                 foundAnswer(Some(false), cleanModel)
               } 
             }
+            luckyStopwatch.stop
           }
 
           if(forceStop) {
@@ -496,11 +503,15 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
       }
     }
 
+    decideTopLevelSw.stop
+    decideTopLevelSw.writeToSummary
     initializationStopwatch.writeToSummary
     blocking2Z3Stopwatch.writeToSummary
     z3SearchStopwatch.writeToSummary
     secondZ3SearchStopwatch.writeToSummary
     unrollingStopwatch.writeToSummary
+    luckyStopwatch.writeToSummary
+    validatingStopwatch.writeToSummary
 
     if(forceStop) {
       (None, Map.empty)
@@ -808,6 +819,22 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     // stores the invocations that boolean literals are guarding.
     private val blocked : MutableMap[(Identifier,Boolean),Set[FunctionInvocation]] = MutableMap.empty
 
+    // Returns whether some invocations were actually blocked in the end.
+    private def registerBlocked(blockingAtom : Identifier, polarity : Boolean, invocations : Set[FunctionInvocation]) : Boolean = {
+      // TODO
+      // val filtered = invocations -- "those who are axiomatized"
+      val filtered = invocations
+
+      val pair = (blockingAtom, polarity)
+      val alreadyBlocked = blocked.get(pair)
+      alreadyBlocked match {
+        case None => blocked(pair) = filtered
+        case Some(prev) => blocked(pair) = prev ++ filtered
+      }
+
+      !filtered.isEmpty
+    }
+
     def wasUnrolledBefore(functionInvocation : FunctionInvocation) : Boolean = {
       everythingEverUnrolled(functionInvocation)
     }
@@ -844,16 +871,16 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
               val calls = topLevelFunctionCallsOf(then)
               if(!calls.isEmpty) {
                 assert(!blocked.isDefinedAt((id,true)))
-                blocked((id,true)) = calls
-                blockers = (id,true) :: blockers
+                if(registerBlocked(id, true, calls)) //blocked((id,true)) = calls
+                  blockers = (id,true) :: blockers
               }
             }
             case Implies(Not(v @ Variable(id)), elze) => {
               val calls = topLevelFunctionCallsOf(elze)
               if(!calls.isEmpty) {
                 assert(!blocked.isDefinedAt((id,false)))
-                blocked((id,false)) = calls
-                blockers = (id,false) :: blockers
+                if(registerBlocked(id, false, calls)) //blocked((id,false)) = calls
+                  blockers = (id,false) :: blockers
               }
             }
             case _ => scala.Predef.error("Who added this as a clause? " + clause)
