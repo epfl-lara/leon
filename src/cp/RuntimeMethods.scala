@@ -17,10 +17,10 @@ object RuntimeMethods {
   private def newReporter() = if (silent) new QuietReporter() else new DefaultReporter()
   private def newSolver() = new FairZ3Solver(newReporter())
 
-  def chooseExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Expr) : Seq[Expr] = {
-    val program    = deserialize[Program](progString, progId)
-    val expr       = deserialize[Expr](exprString, exprId)
-    val outputVars = deserialize[Seq[Identifier]](outputVarsString, outputVarsId)
+  def chooseExec(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, inputConstraints : Expr) : Seq[Expr] = {
+    val program    = deserialize[Program](serializedProg)
+    val expr       = deserialize[Expr](serializedExpr)
+    val outputVars = deserialize[Seq[Identifier]](serializedOutputVars)
 
     chooseExec(program, expr, outputVars, inputConstraints)
   }
@@ -42,11 +42,11 @@ object RuntimeMethods {
     }
   }
 
-  def chooseMinimizingExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, minExprString : String, minExprId : Int, inputConstraints : Expr) : Seq[Expr] = {
-    val program    = deserialize[Program](progString, progId)
-    val expr       = deserialize[Expr](exprString, exprId)
-    val outputVars = deserialize[Seq[Identifier]](outputVarsString, outputVarsId)
-    val minExpr    = deserialize[Expr](minExprString, minExprId)
+  def chooseMinimizingExec(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, serializedMinExpr : Serialized, inputConstraints : Expr) : Seq[Expr] = {
+    val program    = deserialize[Program](serializedProg)
+    val expr       = deserialize[Expr](serializedExpr)
+    val outputVars = deserialize[Seq[Identifier]](serializedOutputVars)
+    val minExpr    = deserialize[Expr](serializedMinExpr)
 
     chooseMinimizingExec(program, expr, outputVars, minExpr, inputConstraints)
   }
@@ -127,11 +127,11 @@ object RuntimeMethods {
     }
   }
 
-  def chooseMaximizingExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, maxExprString : String, maxExprId : Int, inputConstraints : Expr) : Seq[Expr] = {
-    val program    = deserialize[Program](progString, progId)
-    val expr       = deserialize[Expr](exprString, exprId)
-    val outputVars = deserialize[Seq[Identifier]](outputVarsString, outputVarsId)
-    val maxExpr    = deserialize[Expr](maxExprString, maxExprId)
+  def chooseMaximizingExec(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, serializedMaxExpr : Serialized, inputConstraints : Expr) : Seq[Expr] = {
+    val program    = deserialize[Program](serializedProg)
+    val expr       = deserialize[Expr](serializedExpr)
+    val outputVars = deserialize[Seq[Identifier]](serializedOutputVars)
+    val maxExpr    = deserialize[Expr](serializedMaxExpr)
 
     chooseMaximizingExec(program, expr, outputVars, maxExpr, inputConstraints)
   }
@@ -208,37 +208,37 @@ object RuntimeMethods {
 
   }
 
-  def findExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Expr) : Option[Seq[Expr]] = {
+  def findExec(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, inputConstraints : Expr) : Option[Seq[Expr]] = {
     try {
-      Some(chooseExec(progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraints))
+      Some(chooseExec(serializedProg, serializedExpr, serializedOutputVars, inputConstraints))
     } catch {
       case e: UnsatisfiableConstraintException  => None
       case e: UnknownConstraintException        => None
     }
   }
 
-  def findMinimizingExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, minExprString : String, minExprId : Int, inputConstraints : Expr) : Option[Seq[Expr]] = {
+  def findMinimizingExec(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, serializedMinExpr : Serialized, inputConstraints : Expr) : Option[Seq[Expr]] = {
     try {
-      Some(chooseMinimizingExec(progString, progId, exprString, exprId, outputVarsString, outputVarsId, minExprString, minExprId, inputConstraints))
+      Some(chooseMinimizingExec(serializedProg, serializedExpr, serializedOutputVars, serializedMinExpr, inputConstraints))
     } catch {
       case e: UnsatisfiableConstraintException  => None
       case e: UnknownConstraintException        => None
     }
   }
 
-  def findMaximizingExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, maxExprString : String, maxExprId : Int, inputConstraints : Expr) : Option[Seq[Expr]] = {
+  def findMaximizingExec(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, serializedMaxExpr : Serialized, inputConstraints : Expr) : Option[Seq[Expr]] = {
     try {
-      Some(chooseMaximizingExec(progString, progId, exprString, exprId, outputVarsString, outputVarsId, maxExprString, maxExprId, inputConstraints))
+      Some(chooseMaximizingExec(serializedProg, serializedExpr, serializedOutputVars, serializedMaxExpr, inputConstraints))
     } catch {
       case e: UnsatisfiableConstraintException  => None
       case e: UnknownConstraintException        => None
     }
   }
 
-  def findAllExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Expr) : Iterator[Seq[Expr]] = {
-    val program    = deserialize[Program](progString, progId)
-    val expr       = deserialize[Expr](exprString, exprId)
-    val outputVars = deserialize[Seq[Identifier]](outputVarsString, outputVarsId)
+  def findAllExec(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, inputConstraints : Expr) : Iterator[Seq[Expr]] = {
+    val program    = deserialize[Program](serializedProg)
+    val expr       = deserialize[Expr](serializedExpr)
+    val outputVars = deserialize[Seq[Identifier]](serializedOutputVars)
 
     findAllExec(program, expr, outputVars, inputConstraints)
   }
@@ -250,11 +250,11 @@ object RuntimeMethods {
     exprIterator
   }
 
-  def findAllMinimizingExec(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, minExprString : String, minExprId : Int, inputConstraints : Expr) : Iterator[Seq[Expr]] = {
-    val program    = deserialize[Program](progString, progId)
-    val expr       = deserialize[Expr](exprString, exprId)
-    val outputVars = deserialize[Seq[Identifier]](outputVarsString, outputVarsId)
-    val minExpr    = deserialize[Expr](minExprString, minExprId)
+  def findAllMinimizingExec(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, serializedMinExpr : Serialized, inputConstraints : Expr) : Iterator[Seq[Expr]] = {
+    val program    = deserialize[Program](serializedProg)
+    val expr       = deserialize[Expr](serializedExpr)
+    val outputVars = deserialize[Seq[Identifier]](serializedOutputVars)
+    val minExpr    = deserialize[Expr](serializedMinExpr)
 
     findAllMinimizingExec(program, expr, outputVars, minExpr, None, inputConstraints)
   }
@@ -288,8 +288,8 @@ object RuntimeMethods {
     purescala.Common.FreshIdentifier.forceSkip(i)
   }
 
-  def copySettings(settingsString : String, settingsId : Int) : Unit = {
-    val recovered = deserialize[RuntimeSettings](settingsString, settingsId)
+  def copySettings(serializedSettings : Serialized) : Unit = {
+    val recovered = deserialize[RuntimeSettings](serializedSettings)
   
     purescala.Settings.experimental         = recovered.experimental
     purescala.Settings.showIDs              = recovered.showIDs

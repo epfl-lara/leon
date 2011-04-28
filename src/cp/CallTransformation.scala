@@ -6,6 +6,8 @@ import purescala.Common.Identifier
 import purescala.Definitions._
 import purescala.Trees._
 
+import Serialization._
+
 trait CallTransformation 
   extends TypingTransformers
   with CodeGeneration
@@ -48,10 +50,10 @@ trait CallTransformation
     extracted.toMap
   }
 
-  def transformCalls(unit: CompilationUnit, prog: Program, progString : String, progId : Int) : Unit =
-    unit.body = new CallTransformer(unit, prog, progString, progId).transform(unit.body)
+  def transformCalls(unit: CompilationUnit, prog: Program, serializedProg : Serialized) : Unit =
+    unit.body = new CallTransformer(unit, prog, serializedProg).transform(unit.body)
   
-  class CallTransformer(unit: CompilationUnit, prog: Program, progString: String, progId : Int) extends TypingTransformer(unit) {
+  class CallTransformer(unit: CompilationUnit, prog: Program, serializedProg : Serialized) extends TypingTransformer(unit) {
     var exprToScalaSym : Symbol = null
     var exprToScalaCastSym : Symbol = null
     var scalaToExprSym : Symbol = null
@@ -76,7 +78,7 @@ trait CallTransformation
             case None => purescalaReporter.error("Could not extract `choose' predicate: " + funBody); super.transform(tree)
             case Some(b) =>
               // serialize expression
-              val (exprString, exprId) = serialize(b)
+              val serializedExpr = serialize(b)
               
               // compute input variables
               val inputVars : Seq[Identifier] = (variablesOf(b) ++ (minExpr match {
@@ -91,29 +93,29 @@ trait CallTransformation
               purescalaReporter.info("Output variables : " + outputVars.mkString(", "))
 
               // serialize list of input "Variable"s
-              val (inputVarListString, inputVarListId) = serialize(inputVars map (iv => Variable(iv)))
+              val serializedInputVarList = serialize(inputVars map (iv => Variable(iv)))
 
               // serialize outputVars sequence
-              val (outputVarsString, outputVarsId) = serialize(outputVars)
+              val serializedOutputVars = serialize(outputVars)
 
               // input constraints
               val inputConstraints : Seq[Tree] = (for (iv <- inputVars) yield {
-                codeGen.inputEquality(inputVarListString, inputVarListId, iv, scalaToExprSym)
+                codeGen.inputEquality(serializedInputVarList, iv, scalaToExprSym)
               })
 
               val inputConstraintsConjunction = if (inputVars.isEmpty) codeGen.trueLiteral else codeGen.andExpr(inputConstraints)
 
               val exprSeqTree = (minExpr, maxExpr) match {
                 case (None, None) => {
-                  codeGen.chooseExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraintsConjunction)
+                  codeGen.chooseExecCode(serializedProg, serializedExpr, serializedOutputVars, inputConstraintsConjunction)
                 }
                 case (Some(minE), None) => {
-                  val (minExprString, minExprId) = serialize(minE)
-                  codeGen.chooseMinimizingExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, minExprString, minExprId, inputConstraintsConjunction)
+                  val serializedMinExpr = serialize(minE)
+                  codeGen.chooseMinimizingExecCode(serializedProg, serializedExpr, serializedOutputVars, serializedMinExpr, inputConstraintsConjunction)
                 }
                 case (None, Some(maxE)) => {
-                  val (maxExprString, maxExprId) = serialize(maxE)
-                  codeGen.chooseMaximizingExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, maxExprString, maxExprId, inputConstraintsConjunction)
+                  val serializedMaxExpr = serialize(maxE)
+                  codeGen.chooseMaximizingExecCode(serializedProg, serializedExpr, serializedOutputVars, serializedMaxExpr, inputConstraintsConjunction)
                 }
                 case _ =>
                   scala.Predef.error("Unreachable case")
@@ -140,7 +142,7 @@ trait CallTransformation
             case None => purescalaReporter.error("Could not extract `find' predicate: " + funBody); super.transform(tree)
             case Some(b) =>
               // serialize expression
-              val (exprString, exprId) = serialize(b)
+              val serializedExpr = serialize(b)
               
               // compute input variables
               val inputVars : Seq[Identifier] = (variablesOf(b) ++ (minExpr match {
@@ -156,29 +158,29 @@ trait CallTransformation
               purescalaReporter.info("Output variables : " + outputVars.mkString(", "))
 
               // serialize list of input "Variable"s
-              val (inputVarListString, inputVarListId) = serialize(inputVars map (iv => Variable(iv)))
+              val serializedInputVarList = serialize(inputVars map (iv => Variable(iv)))
 
               // serialize outputVars sequence
-              val (outputVarsString, outputVarsId) = serialize(outputVars)
+              val serializedOutputVars = serialize(outputVars)
 
               // input constraints
               val inputConstraints : Seq[Tree] = (for (iv <- inputVars) yield {
-                codeGen.inputEquality(inputVarListString, inputVarListId, iv, scalaToExprSym)
+                codeGen.inputEquality(serializedInputVarList, iv, scalaToExprSym)
               })
 
               val inputConstraintsConjunction = if (inputVars.isEmpty) codeGen.trueLiteral else codeGen.andExpr(inputConstraints)
 
               val exprSeqOptionTree = (minExpr, maxExpr) match {
                 case (None, None) => {
-                  codeGen.findExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraintsConjunction)
+                  codeGen.findExecCode(serializedProg, serializedExpr, serializedOutputVars, inputConstraintsConjunction)
                 }
                 case (Some(minE), None) => {
-                  val (minExprString, minExprId) = serialize(minE)
-                  codeGen.findMinimizingExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, minExprString, minExprId, inputConstraintsConjunction)
+                  val serializedMinExpr = serialize(minE)
+                  codeGen.findMinimizingExecCode(serializedProg, serializedExpr, serializedOutputVars, serializedMinExpr, inputConstraintsConjunction)
                 }
                 case (None, Some(maxE)) => {
-                  val (maxExprString, maxExprId) = serialize(maxE)
-                  codeGen.findMaximizingExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, maxExprString, maxExprId, inputConstraintsConjunction)
+                  val serializedMaxExpr = serialize(maxE)
+                  codeGen.findMaximizingExecCode(serializedProg, serializedExpr, serializedOutputVars, serializedMaxExpr, inputConstraintsConjunction)
                 }
                 case _ =>
                   scala.Predef.error("Unreachable case")
@@ -205,7 +207,7 @@ trait CallTransformation
             case None => purescalaReporter.error("Could not extract choose predicate: " + funBody); super.transform(tree)
             case Some(b) =>
               // serialize expression
-              val (exprString, exprId) = serialize(b)
+              val serializedExpr = serialize(b)
               
               // compute input variables
               val inputVars : Seq[Identifier] = (variablesOf(b) ++ (minExpr match {
@@ -220,24 +222,24 @@ trait CallTransformation
               purescalaReporter.info("Output variables : " + outputVars.mkString(", "))
 
               // serialize list of input "Variable"s
-              val (inputVarListString, inputVarListId) = serialize(inputVars map (iv => Variable(iv)))
+              val serializedInputVarList = serialize(inputVars map (iv => Variable(iv)))
 
               // serialize outputVars sequence
-              val (outputVarsString, outputVarsId) = serialize(outputVars)
+              val serializedOutputVars = serialize(outputVars)
 
               // input constraints
               val inputConstraints : Seq[Tree] = (for (iv <- inputVars) yield {
-                codeGen.inputEquality(inputVarListString, inputVarListId, iv, scalaToExprSym)
+                codeGen.inputEquality(serializedInputVarList, iv, scalaToExprSym)
               })
 
               val inputConstraintsConjunction = if (inputVars.isEmpty) codeGen.trueLiteral else codeGen.andExpr(inputConstraints)
 
               val exprSeqIteratorTree = (minExpr, maxExpr) match {
                 case (None, None) =>
-                  codeGen.findAllExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraintsConjunction)
+                  codeGen.findAllExecCode(serializedProg, serializedExpr, serializedOutputVars, inputConstraintsConjunction)
                 case (Some(minE), None) =>
-                  val (minExprString, minExprId) = serialize(minE)
-                  codeGen.findAllMinimizingExecCode(progString, progId, exprString, exprId, outputVarsString, outputVarsId, minExprString, minExprId, inputConstraintsConjunction)
+                  val serializedMinExpr = serialize(minE)
+                  codeGen.findAllMinimizingExecCode(serializedProg, serializedExpr, serializedOutputVars, serializedMinExpr, inputConstraintsConjunction)
                 case (None, Some(maxE)) =>
                   throw new Exception("not implemented")
                 case _ => 
@@ -260,13 +262,13 @@ trait CallTransformation
           exprToScalaSym      = e2sSym
           exprToScalaCastSym  = e2sCastSym
 
-          val (scalaToExprCode, s2eSym)                                     = codeGen.scalaToExprMethod(cd.symbol, prog, progString, progId)
+          val (scalaToExprCode, s2eSym)                                     = codeGen.scalaToExprMethod(cd.symbol, prog, serializedProg)
           scalaToExprSym      = s2eSym
 
           val skipCounter                                                   = codeGen.skipCounter(purescala.Common.FreshIdentifier.last)
 
-          val (settingsString, settingsId) = serialize(new RuntimeSettings)
-          val copySettings                                                  = codeGen.copySettings(settingsString, settingsId)
+          val serializedSettings = serialize(new RuntimeSettings)
+          val copySettings                                                  = codeGen.copySettings(serializedSettings)
 
           val exprSeqToScalaCodes : List[Tree] = (for (sig <- chooseSignatures(unit)) yield {
             val (exprSeqToScalaCode, exprSeqToScalaSym) = codeGen.exprSeqToScalaMethod(cd.symbol, exprToScalaCastSym, sig)

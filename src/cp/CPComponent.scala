@@ -6,10 +6,10 @@ import scala.tools.nsc.plugins._
 class CPComponent(val global: Global, val pluginInstance: CPPlugin)
   extends PluginComponent
   with CodeExtraction
-  with Serialization
   with CallTransformation
 {
   import global._
+  import Serialization._
 
   // This is how it works from 2.8 on..
   override val runsRightAfter: Option[String] = None
@@ -43,9 +43,9 @@ class CPComponent(val global: Global, val pluginInstance: CPPlugin)
 
       println("Finished analysis, starting transformation")
 
-      val (progString, progId) = serialize(prog)
+      val serializedProg = serialize(prog)
 
-      transformCalls(unit, prog, progString, progId)
+      transformCalls(unit, prog, serializedProg)
       println("Finished transformation")
     }
   }

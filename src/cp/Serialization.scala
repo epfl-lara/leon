@@ -1,6 +1,6 @@
 package cp
 
-trait Serialization {
+object Serialization {
   import java.io.{ByteArrayInputStream,ByteArrayOutputStream,ObjectInputStream,ObjectOutputStream}
   import purescala.Definitions._
   import purescala.Trees._
@@ -18,7 +18,9 @@ trait Serialization {
     }
   }
 
-  def serialize(obj : Any) : (String, Int) = {
+  case class Serialized(string : String, id : Int)
+
+  def serialize(obj : Any) : Serialized = {
     val bos = new ByteArrayOutputStream()
     val oos = new ObjectOutputStream(bos)
 
@@ -29,28 +31,29 @@ trait Serialization {
     val array = bos.toByteArray
     val string = new String(array, encoding)
 
-    (string, UniqueCounter.next)
+    Serialized(string, UniqueCounter.next)
   }
 
-  def deserialize[A](serialized : String, id : Int) : A = cache.get(id) match {
-    case Some(cached) =>
-      cached.asInstanceOf[A]
-    case None =>
-      val bis = new ByteArrayInputStream(serialized.getBytes(encoding))
-      val ois = new ObjectInputStream(bis)
+  def deserialize[A](serialized : Serialized) : A = {
+    val Serialized(string, id) = serialized
+    cache.get(id) match {
+      case Some(cached) =>
+        cached.asInstanceOf[A]
+      case None =>
+        val bis = new ByteArrayInputStream(string.getBytes(encoding))
+        val ois = new ObjectInputStream(bis)
 
-      val recovered : A = ois.readObject().asInstanceOf[A]
-      bis.close()
-      
-      cache += (id -> recovered)
-      recovered
+        val recovered : A = ois.readObject().asInstanceOf[A]
+        bis.close()
+        
+        cache += (id -> recovered)
+        recovered
+    }
   }
 
-  def getProgram(serialized : String, id : Int) : Program =
-    deserialize[Program](serialized, id)
+  def getProgram(serialized : Serialized) : Program =
+    deserialize[Program](serialized)
 
-  def getInputVarList(serialized : String, id : Int) : List[Variable] =
-    deserialize[List[Variable]](serialized, id)
+  def getInputVarList(serialized : Serialized) : List[Variable] =
+    deserialize[List[Variable]](serialized)
 }
-
-object Serialization extends Serialization

@@ -5,6 +5,8 @@ import purescala.TypeTrees.classDefToClassType
 import purescala.Definitions._
 import purescala.Common.Identifier
 
+import Serialization._
+
 trait CodeGeneration {
   self: CPComponent =>
   import global._
@@ -45,6 +47,7 @@ trait CodeGeneration {
   private lazy val serializationModule            = definitions.getModule("cp.Serialization")
   private lazy val getProgramFunction             = definitions.getMember(serializationModule, "getProgram")
   private lazy val getInputVarListFunction        = definitions.getMember(serializationModule, "getInputVarList")
+  private lazy val serializedClass                = definitions.getClass("cp.Serialization.Serialized")
 
   private lazy val purescalaPackage               = definitions.getModule("purescala")
 
@@ -71,47 +74,51 @@ trait CodeGeneration {
 
   class CodeGenerator(unit : CompilationUnit, owner : Symbol, defaultPos : Position) {
 
-    private def execCode(function : Symbol, progString : String, progId : Int, exprString : String, exprId : Int, 
-        outputVarsString : String, outputVarsId : Int, inputConstraints : Tree) : Tree = {
+    private def newSerialized(serialized : Serialized) : Tree = {
+      NEW(ID(serializedClass), LIT(serialized.string), LIT(serialized.id))
+    }
+
+    private def execCode(function : Symbol, serializedProg : Serialized, serializedExpr : Serialized, 
+        serializedOutputVars : Serialized, inputConstraints : Tree) : Tree = {
       (cpPackage DOT runtimeMethodsModule DOT function) APPLY
-        (LIT(progString), LIT(progId), LIT(exprString), LIT(exprId), LIT(outputVarsString), LIT(outputVarsId), inputConstraints)
+        (newSerialized(serializedProg), newSerialized(serializedExpr), newSerialized(serializedOutputVars), inputConstraints)
     }
 
-    private def execOptimizingCode(function : Symbol, progString : String, progId : Int, exprString : String, exprId : Int, 
-        outputVarsString : String, outputVarsId : Int, optExprString : String, optExprId : Int, inputConstraints : Tree) : Tree = {
+    private def execOptimizingCode(function : Symbol, serializedProg : Serialized, serializedExpr : Serialized, 
+        serializedOutputVars : Serialized, serializedOptExpr : Serialized, inputConstraints : Tree) : Tree = {
       (cpPackage DOT runtimeMethodsModule DOT function) APPLY
-        (LIT(progString), LIT(progId), LIT(exprString), LIT(exprId), LIT(outputVarsString), LIT(outputVarsId), LIT(optExprString), LIT(optExprId), inputConstraints)
+        (newSerialized(serializedProg), newSerialized(serializedExpr), newSerialized(serializedOutputVars), newSerialized(serializedOptExpr), inputConstraints)
     }
 
-    def chooseExecCode(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Tree) : Tree = {
-      execCode(chooseExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraints)
+    def chooseExecCode(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, inputConstraints : Tree) : Tree = {
+      execCode(chooseExecFunction, serializedProg, serializedExpr, serializedOutputVars, inputConstraints)
     }
 
-    def chooseMinimizingExecCode(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, minExprString : String, minExprId : Int, inputConstraints : Tree) : Tree = {
-      execOptimizingCode(chooseMinimizingExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, minExprString, minExprId, inputConstraints)
+    def chooseMinimizingExecCode(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, serializedMinExpr : Serialized, inputConstraints : Tree) : Tree = {
+      execOptimizingCode(chooseMinimizingExecFunction, serializedProg, serializedExpr, serializedOutputVars, serializedMinExpr, inputConstraints)
     }
 
-    def chooseMaximizingExecCode(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, maxExprString : String, maxExprId : Int, inputConstraints : Tree) : Tree = {
-      execOptimizingCode(chooseMaximizingExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, maxExprString, maxExprId, inputConstraints)
+    def chooseMaximizingExecCode(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, serializedMaxExpr : Serialized, inputConstraints : Tree) : Tree = {
+      execOptimizingCode(chooseMaximizingExecFunction, serializedProg, serializedExpr, serializedOutputVars, serializedMaxExpr, inputConstraints)
     }
 
-    def findMinimizingExecCode(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, minExprString : String, minExprId : Int, inputConstraints : Tree) : Tree = {
-      execOptimizingCode(findMinimizingExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, minExprString, minExprId, inputConstraints)
+    def findMinimizingExecCode(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, serializedMinExpr : Serialized, inputConstraints : Tree) : Tree = {
+      execOptimizingCode(findMinimizingExecFunction, serializedProg, serializedExpr, serializedOutputVars, serializedMinExpr, inputConstraints)
     }
 
-    def findMaximizingExecCode(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, maxExprString : String, maxExprId : Int, inputConstraints : Tree) : Tree = {
-      execOptimizingCode(findMaximizingExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, maxExprString, maxExprId, inputConstraints)
+    def findMaximizingExecCode(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, serializedMaxExpr : Serialized, inputConstraints : Tree) : Tree = {
+      execOptimizingCode(findMaximizingExecFunction, serializedProg, serializedExpr, serializedOutputVars, serializedMaxExpr, inputConstraints)
     }
 
-    def findExecCode(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Tree) : Tree = {
-      execCode(findExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraints)
+    def findExecCode(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, inputConstraints : Tree) : Tree = {
+      execCode(findExecFunction, serializedProg, serializedExpr, serializedOutputVars, inputConstraints)
     }
       
-    def findAllExecCode(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, inputConstraints : Tree) : Tree = {
-      execCode(findAllExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, inputConstraints)
+    def findAllExecCode(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, inputConstraints : Tree) : Tree = {
+      execCode(findAllExecFunction, serializedProg, serializedExpr, serializedOutputVars, inputConstraints)
     }
-    def findAllMinimizingExecCode(progString : String, progId : Int, exprString : String, exprId : Int, outputVarsString : String, outputVarsId : Int, minExprString : String, minExprId : Int, inputConstraints : Tree) : Tree = {
-      execOptimizingCode(findAllMinimizingExecFunction, progString, progId, exprString, exprId, outputVarsString, outputVarsId, minExprString, minExprId, inputConstraints)
+    def findAllMinimizingExecCode(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, serializedMinExpr : Serialized, inputConstraints : Tree) : Tree = {
+      execOptimizingCode(findAllMinimizingExecFunction, serializedProg, serializedExpr, serializedOutputVars, serializedMinExpr, inputConstraints)
     }
 
     def mapIterator(mapFunction : Symbol, iterTree : Tree) : Tree = {
@@ -248,7 +255,7 @@ trait CodeGeneration {
 
     /* Generate the method for converting ground Scala terms into funcheck
      * expressions */
-    def scalaToExprMethod(owner : Symbol, prog : Program, progString : String, progId : Int) : (Tree, Symbol) = {
+    def scalaToExprMethod(owner : Symbol, prog : Program, serializedProg : Serialized) : (Tree, Symbol) = {
       val methodSym = owner.newMethod(NoPosition, unit.fresh.newName(NoPosition, "scalaToExpr"))
       methodSym setInfo (MethodType(methodSym newSyntheticValueParams (List(definitions.AnyClass.tpe)), exprClass.tpe))
       owner.info.decls.enter(methodSym)
@@ -281,7 +288,7 @@ trait CodeGeneration {
               TypeTree(caseClassClass.tpe),
               List(
                 List(
-                  (((cpPackage DOT serializationModule DOT getProgramFunction) APPLY (LIT(progString), LIT(progId))) DOT caseClassDefFunction) APPLY LIT(scalaSym.nameString),
+                  (((cpPackage DOT serializationModule DOT getProgramFunction) APPLY (newSerialized(serializedProg))) DOT caseClassDefFunction) APPLY LIT(scalaSym.nameString),
                   (scalaPackage DOT collectionModule DOT immutableModule DOT definitions.ListModule DOT listModuleApplyFunction) APPLY (memberSyms map {
                     case ms => methodSym APPLY (scalaBinderSym DOT ms)
                   })
@@ -300,12 +307,12 @@ trait CodeGeneration {
       (DEF(methodSym) === matchExpr, methodSym)
     }
 
-    def inputEquality(inputVarListString : String, inputVarListId : Int, varId : Identifier, scalaToExprSym : Symbol) : Tree = {
+    def inputEquality(serializedInputVarList : Serialized, varId : Identifier, scalaToExprSym : Symbol) : Tree = {
       NEW(
         ID(equalsClass),
           // retrieve input variable list and get corresponding variable
         (cpPackage DOT runtimeMethodsModule DOT inputVarFunction) APPLY
-          ((cpPackage DOT serializationModule DOT getInputVarListFunction) APPLY (LIT(inputVarListString), LIT(inputVarListId)), LIT(varId.name)),
+          ((cpPackage DOT serializationModule DOT getInputVarListFunction) APPLY (newSerialized(serializedInputVarList)), LIT(varId.name)),
         // invoke s2e on corresponding Tree
         scalaToExprSym APPLY variablesToTrees(Variable(varId))
       )
@@ -323,8 +330,8 @@ trait CodeGeneration {
       (cpPackage DOT runtimeMethodsModule DOT skipCounterFunction) APPLY LIT(i)
     }
 
-    def copySettings(settingsString : String, settingsId : Int) : Tree = {
-      (cpPackage DOT runtimeMethodsModule DOT copySettingsFunction) APPLY (LIT(settingsString), LIT(settingsId))
+    def copySettings(serializedSettings : Serialized) : Tree = {
+      (cpPackage DOT runtimeMethodsModule DOT copySettingsFunction) APPLY (newSerialized(serializedSettings))
     }
   }
 }
