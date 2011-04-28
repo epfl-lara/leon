@@ -13,7 +13,7 @@ echo "set title \"${title}\"" >> plotscript
 echo "set output \"${graphName}\"" >> plotscript
 echo "set xlabel \"Invocations\"" >> plotscript
 echo "set ylabel \"Execution time (s)\"" >> plotscript
-echo "plot \"${trans}\" using 1, '' using 2, '' using 3, '' using 4, '' using 5" >> plotscript
+echo "plot \"${trans}\" using 1, '' using 2, '' using 3, '' using 4, '' using 5, '' using 6" >> plotscript
 gnuplot plotscript
 rm plotscript
 rm ${trans}
