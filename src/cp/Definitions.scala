@@ -1,7 +1,7 @@
 package cp
 
 object Definitions {
-  import Trees._
+  import Constraints._
 
   class spec extends StaticAnnotation
 
@@ -22,13 +22,14 @@ object Definitions {
 
   implicit def any2Optimizable(x : Boolean) : Optimizable = new Optimizable(x)
 
-  implicit def pred2cons1[A](pred: A => Boolean) : Constraint1[A] = throw new NotImplementedException
+  implicit def pred2cons1[A](pred : A => Boolean) : Constraint1[A] = throw new NotImplementedException
+  implicit def pred2cons2[A,B](pred : (A,B) => Boolean) : Constraint2[A,B] = throw new NotImplementedException
 
-  def choose[A](constraint: Constraint1[A]) : A = {
+  def choose[A](constraint : Constraint1[A]) : A = {
     throw new NotImplementedException()
   }
 
-  def choose[A,B](pred : (A,B) => Boolean) : (A,B) = {
+  def choose[A,B](constraint : Constraint2[A,B]) : (A,B) = {
     throw new NotImplementedException()
   }
 
@@ -145,7 +146,7 @@ object Definitions {
   }
 
   def distinct[A](args: A*) : Boolean = {
-    throw new NotImplementedException()
+    args.toList.distinct.size == args.size
   }
 
 }

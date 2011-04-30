@@ -738,7 +738,17 @@ object Trees {
     case i @ IfExpr(a1,a2,a3) => allIdentifiers(a1) ++ allIdentifiers(a2) ++ allIdentifiers(a3)
     case m @ MatchExpr(scrut, cses) =>
       (cses map (_.allIdentifiers)).foldLeft(Set[Identifier]())((a, b) => a ++ b) ++ allIdentifiers(scrut)
+    case Variable(id) => Set(id)
     case t: Terminal => Set.empty
+  }
+
+  def allDeBruijnIndices(expr: Expr) : Set[DeBruijnIndex] =  {
+    def convert(t: Expr) : Set[DeBruijnIndex] = t match {
+      case i @ DeBruijnIndex(idx) => Set(i)
+      case _ => Set.empty
+    }
+    def combine(s1: Set[DeBruijnIndex], s2: Set[DeBruijnIndex]) = s1 ++ s2
+    treeCatamorphism(convert, combine, expr)
   }
 
   /* Simplifies let expressions:

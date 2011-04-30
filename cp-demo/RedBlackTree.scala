@@ -102,7 +102,7 @@ object RedBlackTree {
     println("Fixing size of trees to " + (bound))
     val sw = new Stopwatch("Fixed-size enumeration", false)
     sw.start
-    for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound - 1))) {
+    for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound - 1) && size(t) == bound)) {
       solutionSet += tree
     }
     sw.stop

@@ -44,6 +44,13 @@ trait CodeGeneration {
   private lazy val skipCounterFunction            = definitions.getMember(runtimeMethodsModule, "skipCounter")
   private lazy val copySettingsFunction           = definitions.getMember(runtimeMethodsModule, "copySettings")
 
+  private lazy val baseConstraintClasses          = List(
+                                                    definitions.getClass("cp.Constraints.BaseConstraint1"),
+                                                    definitions.getClass("cp.Constraints.BaseConstraint2")
+                                                    )
+
+  private lazy val converterClass                 = definitions.getClass("cp.Converter")
+
   private lazy val serializationModule            = definitions.getModule("cp.Serialization")
   private lazy val getProgramFunction             = definitions.getMember(serializationModule, "getProgram")
   private lazy val getInputVarListFunction        = definitions.getMember(serializationModule, "getInputVarList")
@@ -90,8 +97,9 @@ trait CodeGeneration {
         (newSerialized(serializedProg), newSerialized(serializedExpr), newSerialized(serializedOutputVars), newSerialized(serializedOptExpr), inputConstraints)
     }
 
-    def chooseExecCode(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, inputConstraints : Tree) : Tree = {
-      execCode(chooseExecFunction, serializedProg, serializedExpr, serializedOutputVars, inputConstraints)
+    def chooseExecCode(serializedProg : Serialized, serializedConstraint : Serialized) : Tree = {
+      (cpPackage DOT runtimeMethodsModule DOT chooseExecFunction) APPLY
+        (newSerialized(serializedProg), newSerialized(serializedConstraint))
     }
 
     def chooseMinimizingExecCode(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, serializedMinExpr : Serialized, inputConstraints : Tree) : Tree = {
@@ -305,6 +313,38 @@ trait CodeGeneration {
       )
 
       (DEF(methodSym) === matchExpr, methodSym)
+    }
+
+    def inputVarValues(serializedInputVarList : Serialized, inputVars : Seq[Identifier], scalaToExprSym : Symbol) : Tree = {
+      val inputVarTrees = inputVars.map((iv: Identifier) => scalaToExprSym APPLY variablesToTrees(Variable(iv))).toList
+      (scalaPackage DOT collectionModule DOT immutableModule DOT definitions.ListModule DOT listModuleApplyFunction) APPLY (inputVarTrees)
+    }
+
+    def newConstraint(exprToScalaSym : Symbol, serializedProg : Serialized, serializedInputVarList : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Tree, arity : Int) : Tree = {
+      NEW(
+        ID(baseConstraintClasses(arity-1)),
+        newConverter(exprToScalaSym),
+        newSerialized(serializedProg),
+        newSerialized(serializedInputVarList),
+        newSerialized(serializedOutputVars),
+        newSerialized(serializedExpr),
+        inputVarValues
+      )
+    }
+
+    def newConverter(exprToScalaSym : Symbol) : Tree = {
+      val anonFunSym = owner.newValue(NoPosition, nme.ANON_FUN_NAME) setInfo (exprToScalaSym.tpe)
+      val argValue = anonFunSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "x")) setInfo (exprClass.tpe)
+
+      val anonFun = Function(
+        List(ValDef(argValue, EmptyTree)),
+        exprToScalaSym APPLY ID(argValue)
+      ) setSymbol anonFunSym 
+
+      NEW(
+        ID(converterClass),
+        anonFun
+      )
     }
 
     def inputEquality(serializedInputVarList : Serialized, varId : Identifier, scalaToExprSym : Symbol) : Tree = {

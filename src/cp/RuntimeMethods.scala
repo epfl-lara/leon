@@ -3,6 +3,7 @@ package cp
 /** A collection of methods that are called on runtime */
 object RuntimeMethods {
   import Serialization._
+  import Constraints._
   import Definitions.UnsatisfiableConstraintException
   import Definitions.UnknownConstraintException
   import purescala.Definitions._
@@ -17,18 +18,19 @@ object RuntimeMethods {
   private def newReporter() = if (silent) new QuietReporter() else new DefaultReporter()
   private def newSolver() = new FairZ3Solver(newReporter())
 
-  def chooseExec(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, inputConstraints : Expr) : Seq[Expr] = {
+  def chooseExec(serializedProg : Serialized, serializedConstraint : Serialized) : Seq[Expr] = {
     val program    = deserialize[Program](serializedProg)
-    val expr       = deserialize[Expr](serializedExpr)
-    val outputVars = deserialize[Seq[Identifier]](serializedOutputVars)
+    val constraint = deserialize[Constraint](serializedConstraint)
 
-    chooseExec(program, expr, outputVars, inputConstraints)
+    chooseExec(program, constraint)
   }
 
-  private def chooseExec(program : Program, expr : Expr, outputVars : Seq[Identifier], inputConstraints : Expr) : Seq[Expr] = {
+  private def chooseExec(program : Program, constraint : Constraint) : Seq[Expr] = {
     val solver = newSolver()
     solver.setProgram(program)
 
+    throw new Exception("not implemented")
+    /*
     val toCheck = expr :: inputConstraints :: Nil
     val (outcome, model) = solver.restartAndDecideWithModel(And(toCheck), false)
 
@@ -40,6 +42,7 @@ object RuntimeMethods {
       case None =>
         throw new UnknownConstraintException()
     }
+    */
   }
 
   def chooseMinimizingExec(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, serializedMinExpr : Serialized, inputConstraints : Expr) : Seq[Expr] = {
@@ -210,7 +213,10 @@ object RuntimeMethods {
 
   def findExec(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, inputConstraints : Expr) : Option[Seq[Expr]] = {
     try {
+      /*
       Some(chooseExec(serializedProg, serializedExpr, serializedOutputVars, inputConstraints))
+      */
+      throw new Exception("not implemented")
     } catch {
       case e: UnsatisfiableConstraintException  => None
       case e: UnknownConstraintException        => None

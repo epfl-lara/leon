@@ -7,6 +7,7 @@ import purescala.Definitions._
 import purescala.Trees._
 
 import Serialization._
+import Constraints._
 
 trait CallTransformation 
   extends TypingTransformers
@@ -36,13 +37,15 @@ trait CallTransformation
     signatures.toSet
   }
 
+  /** extract predicates beforehand so the stored last used ID value is valid */
   def predicateMap(unit: CompilationUnit) : Map[Position,(FunDef,Option[Expr],Option[Expr])] = {
     val extracted = scala.collection.mutable.Map[Position,(FunDef,Option[Expr],Option[Expr])]()
     def extractPredicates(tree: Tree) = tree match {
-      case Apply(TypeApply(Select(s: Select, n), typeTreeList), List(predicate: Function)) if (cpDefinitionsModule == s.symbol && 
-          (n.toString == "choose" || n.toString == "find" || n.toString == "findAll")) =>
+      case Apply(TypeApply(Select(Select(cpIdent, definitionsName), pred2cons1Name), typeTreeList), List(predicate: Function)) if 
+        (definitionsName.toString == "Definitions" && pred2cons1Name.toString.matches("pred2cons\\d")) => {
         val Function(funValDefs, funBody) = predicate
         extracted += (predicate.pos -> extractPredicate(unit, funValDefs, funBody))
+      }
       case _ => 
     }
     new ForeachTreeTraverser(extractPredicates).traverse(unit.body)
@@ -63,23 +66,27 @@ trait CallTransformation
 
     override def transform(tree: Tree) : Tree = {
       tree match {
-        case a @ Apply(TypeApply(Select(s: Select, n), typeTreeList), rhs @ List(predicate: Function)) if (cpDefinitionsModule == s.symbol && n.toString == "choose") => {
+        /** Transform implicit conversions to Constraint into instantiation of Constraints */
+        case Apply(TypeApply(Select(Select(cpIdent, definitionsName), pred2cons1Name), typeTreeList), List(predicate: Function)) if 
+          (definitionsName.toString == "Definitions" && pred2cons1Name.toString.matches("pred2cons\\d")) => {
+
+          println("i'm in conversion from pred to constraint!")
           val Function(funValDefs, funBody) = predicate
 
           val (fd, minExpr, maxExpr) = extractedPredicates(predicate.pos)
           val outputVars : Seq[Identifier] = fd.args.map(_.id)
-
+          
           purescalaReporter.info("Considering predicate:") 
           purescalaReporter.info(fd)
 
           val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
 
           fd.body match {
-            case None => purescalaReporter.error("Could not extract `choose' predicate: " + funBody); super.transform(tree)
+            case None => purescalaReporter.error("Could not extract predicate: " + funBody); super.transform(tree)
             case Some(b) =>
               // serialize expression
               val serializedExpr = serialize(b)
-              
+
               // compute input variables
               val inputVars : Seq[Identifier] = (variablesOf(b) ++ (minExpr match {
                 case Some(e) => variablesOf(e)
@@ -98,33 +105,28 @@ trait CallTransformation
               // serialize outputVars sequence
               val serializedOutputVars = serialize(outputVars)
 
-              // input constraints
-              val inputConstraints : Seq[Tree] = (for (iv <- inputVars) yield {
-                codeGen.inputEquality(serializedInputVarList, iv, scalaToExprSym)
-              })
+              // sequence of input values
+              val inputVarValues : Tree = codeGen.inputVarValues(serializedInputVarList, inputVars, scalaToExprSym)
 
-              val inputConstraintsConjunction = if (inputVars.isEmpty) codeGen.trueLiteral else codeGen.andExpr(inputConstraints)
-
-              val exprSeqTree = (minExpr, maxExpr) match {
-                case (None, None) => {
-                  codeGen.chooseExecCode(serializedProg, serializedExpr, serializedOutputVars, inputConstraintsConjunction)
-                }
-                case (Some(minE), None) => {
-                  val serializedMinExpr = serialize(minE)
-                  codeGen.chooseMinimizingExecCode(serializedProg, serializedExpr, serializedOutputVars, serializedMinExpr, inputConstraintsConjunction)
-                }
-                case (None, Some(maxE)) => {
-                  val serializedMaxExpr = serialize(maxE)
-                  codeGen.chooseMaximizingExecCode(serializedProg, serializedExpr, serializedOutputVars, serializedMaxExpr, inputConstraintsConjunction)
-                }
-                case _ =>
-                  scala.Predef.error("Unreachable case")
-              }
+              // create constraint instance
+              val code = codeGen.newConstraint(exprToScalaSym, serializedProg, serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, outputVars.size)
 
               typer.typed(atOwner(currentOwner) {
-                exprSeqToScalaSyms(typeTreeList) APPLY exprSeqTree
+                code
               })
           }
+        }
+
+        case a @ Apply(TypeApply(Select(s: Select, n), typeTreeList), rhs @ List(constraint: Constraint)) if (cpDefinitionsModule == s.symbol && n.toString == "choose") => {
+          val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
+
+          val serializedConstraint = serialize(constraint)
+
+          val exprSeqTree = codeGen.chooseExecCode(serializedProg, serializedConstraint)
+          
+          typer.typed(atOwner(currentOwner) {
+            exprSeqToScalaSyms(typeTreeList) APPLY exprSeqTree
+          })
         }
 
         case a @ Apply(TypeApply(Select(s: Select, n), typeTreeList), rhs @ List(predicate: Function)) if (cpDefinitionsModule == s.symbol && n.toString == "find") => {
