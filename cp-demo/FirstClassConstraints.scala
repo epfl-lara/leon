@@ -19,7 +19,7 @@ object FirstClassConstraints {
     val pred2 : Constraint1[Int] = (y : Int) => y == outer
     val orPred = pred1 || pred2
 
-    val solution: Int = orPred.solve
+    val solution: Int = (!orPred).solve
 
     val optSol = orPred.find
 

@@ -50,6 +50,10 @@ object Constraints {
       MinConstraint1[A](this, minFunc)
       
     def ||(other : Constraint1[A]) : Constraint1[A] = OrConstraint1[A](this, other)
+
+    def &&(other : Constraint1[A]) : Constraint1[A] = AndConstraint1[A](this, other)
+
+    def unary_! : Constraint1[A] = NotConstraint1[A](this)
   }
 
   sealed trait Constraint2[A,B] extends Constraint {
@@ -60,6 +64,10 @@ object Constraints {
       MinConstraint2[A,B](this, minFunc)
       
     def ||(other : Constraint2[A,B]) : Constraint2[A,B] = OrConstraint2[A,B](this, other)
+
+    def &&(other : Constraint2[A,B]) : Constraint2[A,B] = AndConstraint2[A,B](this, other)
+
+    def unary_! : Constraint2[A,B] = NotConstraint2[A,B](this)
   }
 
   abstract class BaseConstraint(conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) 
@@ -113,10 +121,62 @@ object Constraints {
     }
   }
 
+  class AndConstraint1[A](val constraints : Seq[Constraint1[A]]) extends Constraint1[A]
+
+  object AndConstraint1 {
+    def apply[A](l : Constraint1[A], r : Constraint1[A]) : Constraint1[A] = {
+      new AndConstraint1[A](Seq(l,r))
+    }
+
+    def unapply[A](and : AndConstraint1[A]) : Option[Seq[Constraint1[A]]] =
+      if (and == null) None else Some(and.constraints)
+  }
+
+  class AndConstraint2[A,B](val constraints : Seq[Constraint2[A,B]]) extends Constraint2[A,B]
+
+  object AndConstraint2 {
+    def apply[A,B](l : Constraint2[A,B], r : Constraint2[A,B]) : Constraint2[A,B] = {
+      new AndConstraint2[A,B](Seq(l,r))
+    }
+
+    def unapply[A,B](and : AndConstraint2[A,B]) : Option[Seq[Constraint2[A,B]]] =
+      if (and == null) None else Some(and.constraints)
+  }
+
+  /** Extractor for and constraints of any type signature */
+  object AndConstraint {
+    def unapply(constraint : Constraint) : Option[Seq[Constraint]] = constraint match {
+      case AndConstraint1(cs) => Some(cs)
+      case AndConstraint2(cs) => Some(cs)
+      case _ => None
+    }
+  }
+
+  case class NotConstraint1[A](constraint : Constraint1[A]) extends Constraint1[A]
+  case class NotConstraint2[A,B](constraint : Constraint2[A,B]) extends Constraint2[A,B]
+
+  /** Extractor for `not' constraints of any type signature */
+  object NotConstraint {
+    def unapply(constraint : Constraint) : Option[Constraint] = constraint match {
+      case NotConstraint1(c) => Some(c)
+      case NotConstraint2(c) => Some(c)
+      case _ => None
+    }
+  }
+
   /** Extractor for NAry constraints of any type signature */
   object NAryConstraint {
     def unapply(constraint : Constraint) : Option[Seq[Constraint]] = constraint match {
       case OrConstraint(cs) => Some(cs)
+      case AndConstraint(cs) => Some(cs)
+      case _ => None
+    }
+  }
+
+  /** Extractor for unary constraints of any type signature */
+  object UnaryConstraint {
+    def unapply(constraint : Constraint) : Option[Constraint] = constraint match {
+      case NotConstraint(c) => Some(c)
       case _ => None
     }
   }
@@ -197,21 +257,26 @@ object Constraints {
    * indices */
   private def exprOf(constraint : Constraint) : Expr = constraint match {
     case bc : BaseConstraint => bc.exprWithIndices
+    case NotConstraint(c) => Not(exprOf(c))
     case OrConstraint(cs) => Or(cs map exprOf)
+    case AndConstraint(cs) => And(cs map exprOf)
   }
 
   private def programOf(constraint : Constraint) : Program = constraint match {
     case bc : BaseConstraint => bc.program
+    case UnaryConstraint(c) => programOf(c)
     case NAryConstraint(cs) => programOf(cs.head)
   }
 
   private def typesOf(constraint : Constraint) : Seq[TypeTree] = constraint match {
     case bc : BaseConstraint => bc.outputVars.map(_.getType)
+    case UnaryConstraint(c) => typesOf(c)
     case NAryConstraint(cs) => typesOf(cs.head)
   }
 
   private def envOf(constraint : Constraint) : Map[Variable,Expr] = constraint match {
     case bc : BaseConstraint => bc.env
+    case UnaryConstraint(c) => envOf(c)
     case NAryConstraint(cs) =>
       val allEnvs = cs map (envOf(_))
       allEnvs.foldLeft(Map[Variable,Expr]()){ case (m1, m2) => m1 ++ m2 }
@@ -219,6 +284,7 @@ object Constraints {
 
   private def converterOf(constraint : Constraint) : Converter = constraint match {
     case bc : BaseConstraint => bc.converter
+    case UnaryConstraint(c) => converterOf(c)
     case NAryConstraint(cs) => converterOf(cs.head)
   }
 
