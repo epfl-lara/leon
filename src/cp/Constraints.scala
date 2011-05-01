@@ -7,108 +7,59 @@ import purescala.TypeTrees._
 import purescala.Common._
 import purescala.{QuietReporter,DefaultReporter}
 import purescala.FairZ3Solver
+import purescala.Stopwatch
 import Definitions.{UnsatisfiableConstraintException,UnknownConstraintException}
 
 object Constraints {
-  final class NotImplementedException extends Exception
-
   private val silent = true
   private def newReporter() = if (silent) new QuietReporter() else new DefaultReporter()
-  private def newSolver() = new FairZ3Solver(newReporter())
-
-  sealed trait Constraint
-
-  private def modelValue(varId: Identifier, model: Map[Identifier, Expr]) : Expr = model.get(varId) match {
-    case Some(value) => value
-    case None => simplestValue(varId.getType)
+  private def newSolver(program : Program) = {
+    val s = new FairZ3Solver(newReporter())
+    s.setProgram(program)
+    s
   }
 
-  def programOf(constraint : Constraint) : Program = constraint match {
-    case bc : BaseConstraint => bc.program
-    case NAryConstraint(cs) => programOf(cs.head)
-  }
+  sealed trait Constraint {
+    self =>
 
-  def exprOf(constraint : Constraint) : Expr = constraint match {
-    case bc : BaseConstraint => bc.exprWithIndices
-    case OrConstraint(cs) => Or(cs map exprOf)
-  }
+    type sig
+    val convertingFunction : (Seq[Expr] => sig)
 
-  def typesOf(constraint : Constraint) : Seq[TypeTree] = constraint match {
-    case bc : BaseConstraint => bc.outputVars.map(_.getType)
-    case NAryConstraint(cs) => typesOf(cs.head)
-  }
-
-  def envOf(constraint : Constraint) : Map[Variable,Expr] = constraint match {
-    case bc : BaseConstraint => bc.env
-    case NAryConstraint(cs) =>
-      val allEnvs = cs map (envOf(_))
-      val distinctEnvs = allEnvs.distinct
-      if (distinctEnvs.size > 1) {
-        throw new Exception("Environments differ in constraint: \n" + distinctEnvs.mkString("\n"))
-      }
-      allEnvs(0)
-  }
-
-  def converterOf(constraint : Constraint) : Converter = constraint match {
-    case bc : BaseConstraint => bc.converter
-    case NAryConstraint(cs) => converterOf(cs.head)
-  }
-
-  private def exprSeqSolution(constraint : Constraint) : Seq[Expr] = {
-    val solver = newSolver()
-    val program = programOf(constraint)
-    solver.setProgram(program)
-
-    // println("My program is")
-    // println(program)
-
-    val expr = exprOf(constraint)
-
-    // println("My expr is")
-    // println(expr)
-
-    val outputVarTypes = typesOf(constraint)
-
-    val freshOutputIDs = outputVarTypes.zipWithIndex.map{ case (t, idx) => FreshIdentifier("x" + idx).setType(t) }
-    val deBruijnIndices = outputVarTypes.zipWithIndex.map{ case (t, idx) => DeBruijnIndex(idx).setType(t) }
-    val exprWithFreshIDs = replace((deBruijnIndices zip (freshOutputIDs map (Variable(_)))).toMap, expr)
-
-    // println("Expr with fresh IDs")
-    // println(exprWithFreshIDs)
-
-    val env = envOf(constraint)
-
-    // println("Environment")
-    // println(env)
-
-    val inputConstraints = if (env.isEmpty) BooleanLiteral(true) else And(env.map{ case (v, e) => Equals(v, e) }.toSeq)
-
-    val (outcome, model) = solver.restartAndDecideWithModel(And(exprWithFreshIDs, inputConstraints), false)
-    val exprSeq = outcome match {
-      case Some(false) =>
-        freshOutputIDs.map(id => modelValue(id, model))
-      case Some(true) =>
-        throw new UnsatisfiableConstraintException()
-      case None =>
-        throw new UnknownConstraintException()
+    def solve : sig = {
+      convertingFunction(solveExprSeq(this))
     }
 
-    // println("Solution!")
-    // println(exprSeq)
+    def find : Option[sig] = {
+      try {
+        Some(this.solve)
+      } catch {
+        case e: UnsatisfiableConstraintException => None
+        case e: UnknownConstraintException => None
+      }
+    }
 
-    exprSeq
+    def findAll : Iterator[sig] = {
+      findAllExprSeq(this).map(convertingFunction(_))
+    }
+
   }
+
+  abstract class MinConstraint(cons : Constraint, minCons : Constraint)
+  case class MinConstraint1[A](cons : Constraint1[A], minCons : Constraint1[A]) extends MinConstraint(cons, minCons)
+  case class MinConstraint2[A,B](cons : Constraint2[A,B], minCons : Constraint2[A,B]) extends MinConstraint(cons, minCons)
 
   sealed trait Constraint1[A] extends Constraint {
-    def solve : A = {
-      val convertingFunction = converterOf(this).exprSeq2scala1[A] _
-      convertingFunction(exprSeqSolution(this))
-    }
-
+    type sig = A
+    val convertingFunction = converterOf(this).exprSeq2scala1[A] _
+    // def minimizing(minCons : Constraint1[A])
+      
     def ||(other : Constraint1[A]) : Constraint1[A] = OrConstraint1[A](this, other)
   }
 
   sealed trait Constraint2[A,B] extends Constraint {
+    type sig = (A,B)
+    val convertingFunction = converterOf(this).exprSeq2scala2[A,B] _
+
     def ||(other : Constraint2[A,B]) : Constraint2[A,B] = OrConstraint2[A,B](this, other)
   }
 
@@ -132,7 +83,7 @@ object Constraints {
   case class BaseConstraint2[A,B](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) 
     extends BaseConstraint(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues) with Constraint2[A,B]
 
-  class OrConstraint1[A](val exprs : Seq[Constraint1[A]]) extends Constraint1[A]
+  class OrConstraint1[A](val constraints : Seq[Constraint1[A]]) extends Constraint1[A]
 
   object OrConstraint1 {
     def apply[A](l : Constraint1[A], r : Constraint1[A]) : Constraint1[A] = {
@@ -140,10 +91,10 @@ object Constraints {
     }
 
     def unapply[A](or : OrConstraint1[A]) : Option[Seq[Constraint1[A]]] =
-      if (or == null) None else Some(or.exprs)
+      if (or == null) None else Some(or.constraints)
   }
 
-  class OrConstraint2[A,B](val exprs : Seq[Constraint2[A,B]]) extends Constraint2[A,B]
+  class OrConstraint2[A,B](val constraints : Seq[Constraint2[A,B]]) extends Constraint2[A,B]
 
   object OrConstraint2 {
     def apply[A,B](l : Constraint2[A,B], r : Constraint2[A,B]) : Constraint2[A,B] = {
@@ -151,14 +102,14 @@ object Constraints {
     }
 
     def unapply[A,B](or : OrConstraint2[A,B]) : Option[Seq[Constraint2[A,B]]] =
-      if (or == null) None else Some(or.exprs)
+      if (or == null) None else Some(or.constraints)
   }
 
   /** Extractor for or constraints of any type signature */
   object OrConstraint {
     def unapply(constraint : Constraint) : Option[Seq[Constraint]] = constraint match {
-      case OrConstraint1(exprs) => Some(exprs)
-      case OrConstraint2(exprs) => Some(exprs)
+      case OrConstraint1(cs) => Some(cs)
+      case OrConstraint2(cs) => Some(cs)
       case _ => None
     }
   }
@@ -166,9 +117,190 @@ object Constraints {
   /** Extractor for NAry constraints of any type signature */
   object NAryConstraint {
     def unapply(constraint : Constraint) : Option[Seq[Constraint]] = constraint match {
-      case OrConstraint(exprs) => Some(exprs)
+      case OrConstraint(cs) => Some(cs)
       case _ => None
     }
   }
 
+  /********** CONSTRAINT METHODS **********/
+  /** Compute the expression associated with this constraint, with De Bruijn
+   * indices */
+  private def exprOf(constraint : Constraint) : Expr = constraint match {
+    case bc : BaseConstraint => bc.exprWithIndices
+    case OrConstraint(cs) => Or(cs map exprOf)
+  }
+
+  private def programOf(constraint : Constraint) : Program = constraint match {
+    case bc : BaseConstraint => bc.program
+    case NAryConstraint(cs) => programOf(cs.head)
+  }
+
+  private def typesOf(constraint : Constraint) : Seq[TypeTree] = constraint match {
+    case bc : BaseConstraint => bc.outputVars.map(_.getType)
+    case NAryConstraint(cs) => typesOf(cs.head)
+  }
+
+  private def envOf(constraint : Constraint) : Map[Variable,Expr] = constraint match {
+    case bc : BaseConstraint => bc.env
+    case NAryConstraint(cs) =>
+      val allEnvs = cs map (envOf(_))
+      val distinctEnvs = allEnvs.distinct
+      if (distinctEnvs.size > 1) {
+        throw new Exception("Environments differ in constraint: \n" + distinctEnvs.mkString("\n"))
+      }
+      allEnvs(0)
+  }
+
+  private def converterOf(constraint : Constraint) : Converter = constraint match {
+    case bc : BaseConstraint => bc.converter
+    case NAryConstraint(cs) => converterOf(cs.head)
+  }
+
+  /** Compute a fresh sequence of output variables, the combined expression
+   * containing those, and the constraint for the environment */
+  private def combinedConstraint(constraint : Constraint) : (Seq[Identifier], Expr, Expr) = {
+    val expr = exprOf(constraint)
+
+    val outputVarTypes = typesOf(constraint)
+
+    val freshOutputIDs = outputVarTypes.zipWithIndex.map{ case (t, idx) => FreshIdentifier("x" + idx).setType(t) }
+    val deBruijnIndices = outputVarTypes.zipWithIndex.map{ case (t, idx) => DeBruijnIndex(idx).setType(t) }
+    val exprWithFreshIDs = replace((deBruijnIndices zip (freshOutputIDs map (Variable(_)))).toMap, expr)
+
+    val env = envOf(constraint)
+
+    val inputConstraints = if (env.isEmpty) BooleanLiteral(true) else And(env.map{ case (v, e) => Equals(v, e) }.toSeq)
+
+    (freshOutputIDs, exprWithFreshIDs, inputConstraints)
+  }
+
+  /********** SOLVING METHODS **********/
+  /** Return interpretation of the constant in model if it exists, the simplest
+   * value otherwise */
+  private def modelValue(varId: Identifier, model: Map[Identifier, Expr]) : Expr = model.get(varId) match {
+    case Some(value) => value
+    case None => simplestValue(varId.getType)
+  }
+
+  /** Return a solution as a sequence of expressions */
+  private def solveExprSeq(constraint : Constraint) : Seq[Expr] = {
+    val solver = newSolver(programOf(constraint))
+
+    val (freshOutputIDs, expr, inputConstraints) = combinedConstraint(constraint)
+
+    val (outcome, model) = solver.restartAndDecideWithModel(And(expr, inputConstraints), false)
+
+    outcome match {
+      case Some(false) =>
+        freshOutputIDs.map(id => modelValue(id, model))
+      case Some(true) =>
+        throw new UnsatisfiableConstraintException()
+      case None =>
+        throw new UnknownConstraintException()
+    }
+  }
+
+  /** Return an iterator of solutions as sequences of expressions */
+  private def findAllExprSeq(constraint : Constraint) : Iterator[Seq[Expr]] = {
+    val program = programOf(constraint)
+    val (freshOutputIDs, expr, inputConstraints) = combinedConstraint(constraint)
+
+    val modelIterator = solutionsIterator(program, expr, inputConstraints, freshOutputIDs.toSet)
+    val exprIterator  = modelIterator.map(model => freshOutputIDs.map(id => model(id)))
+
+    exprIterator
+  }
+
+  /** Returns an iterator of interpretations for each identifier in the specified set */
+  private def solutionsIterator(program : Program, predicate : Expr, inputEqualities : Expr, outputVariables : Set[Identifier]) : Iterator[Map[Identifier, Expr]] = {
+    val solver = newSolver(program)
+    solver.restartZ3
+
+    new Iterator[Map[Identifier, Expr]] {
+
+      // If nextModel is None, we do not know yet whether there is a next element
+      var nextModel: Option[Option[Map[Identifier, Expr]]] = None
+
+      // We add after finding each model the negation of the previous one
+      var addedNegations: Expr = BooleanLiteral(true)
+
+      var toCheck: Expr = And(inputEqualities, predicate)
+
+      override def hasNext : Boolean = nextModel match {
+        case None => 
+          // Check whether there are any more models
+          val stopwatch = new Stopwatch("hasNext", false).start
+          val (outcome, model) = solver.decideWithModel(toCheck, false)
+          stopwatch.stop
+          stopwatch.writeToSummary
+          val toReturn = (outcome match {
+            case Some(false) =>
+              // there is a solution, we need to complete model for nonmentioned variables
+              val completeModel = outputVariables.foldLeft(model){
+                case (modelSoFar, ov) => modelSoFar.get(ov) match {
+                  case None =>
+                    // model has to be augmented for ov
+                    modelSoFar + (ov -> simplestValue(ov.getType))
+                  case _ =>
+                    modelSoFar
+                }
+              }
+              nextModel = Some(Some(completeModel))
+              val newModelEqualities = And(outputVariables.map(ov => Equals(Variable(ov), completeModel(ov))).toList)
+              toCheck = negate(newModelEqualities)
+              true
+            case Some(true) =>
+              // there are definitely no more solutions
+              nextModel = Some(None)
+              false
+            case None =>
+              // unknown
+              nextModel = Some(None)
+              false
+          })
+          toReturn
+        case Some(None) =>
+          // There are no more models
+          false
+        case Some(Some(map)) =>
+          true
+      }
+
+      override def next() : Map[Identifier, Expr] = nextModel match {
+        case None => {
+          // Let's compute the next model
+          val (outcome, model) = solver.decideWithModel(toCheck, false)
+          val toReturn = (outcome match {
+            case Some(false) =>
+              // there is a solution, we need to complete model for nonmentioned variables
+              val completeModel = outputVariables.foldLeft(model){
+                case (modelSoFar, ov) => modelSoFar.get(ov) match {
+                  case None =>
+                    // model has to be augmented for ov
+                    modelSoFar + (ov -> simplestValue(ov.getType))
+                  case _ =>
+                    modelSoFar
+                }
+              }
+
+              val newModelEqualities = And(outputVariables.map(ov => Equals(Variable(ov), completeModel(ov))).toList)
+              toCheck = negate(newModelEqualities)
+              completeModel
+            case Some(true) =>
+              // Definitely no more solutions
+              throw new Exception("Requesting a new model while there are no more")
+            case None =>
+              // Unknown
+              throw new Exception("Requesting a new model while there are no more")
+          })
+          toReturn
+        }
+        case Some(Some(m)) =>
+          nextModel = None
+          m
+        case Some(None) =>
+          throw new Exception("Requesting a new model while the last result was unknown")
+      }
+    }
+  }
 }

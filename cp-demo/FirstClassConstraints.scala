@@ -15,12 +15,22 @@ object FirstClassConstraints {
 
   def main(args: Array[String]) : Unit = {
     val outer: Int = 42
-    val pred1 : Constraint1[Int] = (x : Int) => x > outer
+    val pred1 : Constraint1[Int] = (x : Int) => x > outer && x < 50
     val pred2 : Constraint1[Int] = (y : Int) => y == outer
     val orPred = pred1 || pred2
 
     val solution: Int = orPred.solve
 
+    val optSol = orPred.find
+
     println(solution)
+    println(optSol)
+
+    for (s <- orPred.findAll)
+      println("A solution : " + s)
+
+    val twoArgPred : Constraint2[Int, Boolean] = (x : Int, b : Boolean) => x > 42 && !b
+
+    println(twoArgPred.solve)
   }
 }
