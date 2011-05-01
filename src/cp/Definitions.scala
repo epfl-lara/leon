@@ -19,5 +19,4 @@ object Definitions {
   def distinct[A](args: A*) : Boolean = {
     args.toList.distinct.size == args.size
   }
-
 }
