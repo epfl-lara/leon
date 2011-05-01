@@ -23,6 +23,10 @@ object FirstClassConstraints {
 
     val optSol = orPred.find
 
+    val minSol = orPred minimizing ((x: Int) => x)
+
+    println("min sol: " + minSol.solve)
+
     println(solution)
     println(optSol)
 

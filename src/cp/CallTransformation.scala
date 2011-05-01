@@ -37,18 +37,23 @@ trait CallTransformation
     signatures.toSet
   }
 
-  /** extract predicates beforehand so the stored last used ID value is valid */
-  def predicateMap(unit: CompilationUnit) : Map[Position,(FunDef,Option[Expr],Option[Expr])] = {
-    val extracted = scala.collection.mutable.Map[Position,(FunDef,Option[Expr],Option[Expr])]()
-    def extractPredicates(tree: Tree) = tree match {
-      case Apply(TypeApply(Select(Select(cpIdent, definitionsName), pred2cons1Name), typeTreeList), List(predicate: Function)) if 
-        (definitionsName.toString == "Definitions" && pred2cons1Name.toString.matches("pred2cons\\d")) => {
+  /** extract predicates and functions beforehand so the stored last used ID value is valid */
+  def funDefMap(unit: CompilationUnit) : Map[Position,FunDef] = {
+    val extracted = scala.collection.mutable.Map[Position,FunDef]()
+    def extractFunDefs(tree: Tree) = tree match {
+      case Apply(TypeApply(Select(Select(cpIdent, definitionsName), pred2consName), typeTreeList), List(predicate: Function)) if 
+        (definitionsName.toString == "Definitions" && pred2consName.toString.matches("pred2cons\\d")) => {
         val Function(funValDefs, funBody) = predicate
-        extracted += (predicate.pos -> extractPredicate(unit, funValDefs, funBody))
+        extracted += (predicate.pos -> extractFunction(unit, funValDefs, funBody))
+      }
+      case Apply(TypeApply(Select(Select(cpIdent, definitionsName), func2optFuncName), typeTreeList), List(function: Function)) if 
+        (definitionsName.toString == "Definitions" && func2optFuncName.toString.matches("func2optFunc\\d")) => {
+        val Function(funValDefs, funBody) = function
+        extracted += (function.pos -> extractFunction(unit, funValDefs, funBody))
       }
       case _ => 
     }
-    new ForeachTreeTraverser(extractPredicates).traverse(unit.body)
+    new ForeachTreeTraverser(extractFunDefs).traverse(unit.body)
 
     extracted.toMap
   }
@@ -62,61 +67,82 @@ trait CallTransformation
     var scalaToExprSym : Symbol = null
     val exprSeqToScalaSyms : scala.collection.mutable.Map[List[Tree],Symbol] = scala.collection.mutable.Map[List[Tree],Symbol]()
 
-    val extractedPredicates : Map[Position,(FunDef,Option[Expr],Option[Expr])] = predicateMap(unit)
+    val extractedFunDefs : Map[Position,FunDef] = funDefMap(unit)
+
+    private def transformHelper(tree : Tree, function : Function, codeGen : CodeGenerator) : Option[(Serialized, Serialized, Serialized, Tree, Int)] = {
+      println("i'm in conversion from function to expr!")
+      val Function(funValDefs, funBody) = function
+
+      val fd = extractedFunDefs(function.pos)
+      val outputVars : Seq[Identifier] = fd.args.map(_.id)
+      
+      purescalaReporter.info("Considering function:") 
+      purescalaReporter.info(fd)
+
+      fd.body match {
+        case None => purescalaReporter.error("Could not extract function: " + funBody); None
+        case Some(b) =>
+          // serialize expression
+          val serializedExpr = serialize(b)
+
+          // compute input variables
+          val inputVars : Seq[Identifier] = variablesOf(b).filter(!outputVars.contains(_)).toSeq
+
+          purescalaReporter.info("Input variables  : " + inputVars.mkString(", "))
+          purescalaReporter.info("Output variables : " + outputVars.mkString(", "))
+
+          // serialize list of input "Variable"s
+          val serializedInputVarList = serialize(inputVars map (iv => Variable(iv)))
+
+          // serialize outputVars sequence
+          val serializedOutputVars = serialize(outputVars)
+
+          // sequence of input values
+          val inputVarValues : Tree = codeGen.inputVarValues(serializedInputVarList, inputVars, scalaToExprSym)
+
+          Some((serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, outputVars.size))
+      }
+    }
 
     override def transform(tree: Tree) : Tree = {
       tree match {
         /** Transform implicit conversions to Constraint into instantiation of Constraints */
-        case Apply(TypeApply(Select(Select(cpIdent, definitionsName), pred2cons1Name), typeTreeList), List(predicate: Function)) if 
-          (definitionsName.toString == "Definitions" && pred2cons1Name.toString.matches("pred2cons\\d")) => {
-
-          println("i'm in conversion from pred to constraint!")
-          val Function(funValDefs, funBody) = predicate
-
-          val (fd, minExpr, maxExpr) = extractedPredicates(predicate.pos)
-          val outputVars : Seq[Identifier] = fd.args.map(_.id)
-          
-          purescalaReporter.info("Considering predicate:") 
-          purescalaReporter.info(fd)
+        case Apply(TypeApply(Select(Select(cpIdent, definitionsName), pred2consName), typeTreeList), List(predicate: Function)) if 
+          (definitionsName.toString == "Definitions" && pred2consName.toString.matches("pred2cons\\d")) => {
 
           val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
 
-          fd.body match {
-            case None => purescalaReporter.error("Could not extract predicate: " + funBody); super.transform(tree)
-            case Some(b) =>
-              // serialize expression
-              val serializedExpr = serialize(b)
-
-              // compute input variables
-              val inputVars : Seq[Identifier] = (variablesOf(b) ++ (minExpr match {
-                case Some(e) => variablesOf(e)
-                case None => Set.empty
-              }) ++ (maxExpr match {
-                case Some(e) => variablesOf(e)
-                case None => Set.empty
-              })).filter(!outputVars.contains(_)).toSeq
-
-              purescalaReporter.info("Input variables  : " + inputVars.mkString(", "))
-              purescalaReporter.info("Output variables : " + outputVars.mkString(", "))
-
-              // serialize list of input "Variable"s
-              val serializedInputVarList = serialize(inputVars map (iv => Variable(iv)))
-
-              // serialize outputVars sequence
-              val serializedOutputVars = serialize(outputVars)
-
-              // sequence of input values
-              val inputVarValues : Tree = codeGen.inputVarValues(serializedInputVarList, inputVars, scalaToExprSym)
-
+          transformHelper(tree, predicate, codeGen) match {
+            case Some((serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, arity)) => {
               // create constraint instance
-              val code = codeGen.newConstraint(exprToScalaSym, serializedProg, serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, outputVars.size)
+              val code = codeGen.newConstraint(exprToScalaSym, serializedProg, serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, arity)
 
               typer.typed(atOwner(currentOwner) {
                 code
               })
+            }
+            case None => super.transform(tree)
           }
         }
 
+        case Apply(TypeApply(Select(Select(cpIdent, definitionsName), func2optFuncName), typeTreeList), List(function: Function)) if 
+          (definitionsName.toString == "Definitions" && func2optFuncName.toString.matches("func2optFunc\\d")) => {
+          val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
+
+          transformHelper(tree, function, codeGen) match {
+            case Some((serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, arity)) => {
+              // create constraint instance
+              val code = codeGen.newOptimizingFunction(exprToScalaSym, serializedProg, serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, arity)
+
+              typer.typed(atOwner(currentOwner) {
+                code
+              })
+            }
+            case None => super.transform(tree)
+          }
+        }
+
+        /*
         case a @ Apply(TypeApply(Select(s: Select, n), typeTreeList), rhs @ List(constraint: Constraint)) if (cpDefinitionsModule == s.symbol && n.toString == "choose") => {
           val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
 
@@ -255,6 +281,7 @@ trait CallTransformation
               })
           }
         }
+        */
 
         // Insert generated method definitions
         case cd @ ClassDef(mods, name, tparams, impl) if (cd.symbol.isModuleClass && tparams.isEmpty && !cd.symbol.isSynthetic) => {

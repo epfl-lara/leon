@@ -522,7 +522,7 @@ trait CodeExtraction extends Extractors {
     Program(programName, topLevelObjDef)
   }
 
-  def extractPredicate(unit: CompilationUnit, params: Seq[ValDef], body: Tree) : (FunDef, Option[Expr], Option[Expr]) = {
+  def extractFunction(unit: CompilationUnit, params: Seq[ValDef], body: Tree) : FunDef = {
     def s2ps(tree: Tree): Expr = {
       try {
         scala2PureScala(unit, false, true)(tree)
@@ -540,8 +540,6 @@ trait CodeExtraction extends Extractors {
     }
 
     var realBody : Tree         = body
-    var minExpr  : Option[Expr] = None
-    var maxExpr  : Option[Expr] = None
 
     val newParams = params.map(p => {
       val ptpe = st2ps(p.tpt.tpe)
@@ -549,37 +547,14 @@ trait CodeExtraction extends Extractors {
       varSubsts(p.symbol) = (() => Variable(newID))
       VarDecl(newID, ptpe)
     })
-    val fd = new FunDef(FreshIdentifier("predicate"), BooleanType, newParams)
-
-    realBody match {
-      case ExMinimizingExpression(body2, minimizingTerm) =>
-        realBody = body2
-        val me = s2ps(minimizingTerm)
-        if (me.getType != Int32Type)
-          unit.error(minimizingTerm.pos, "Minimizing expression of non-integer type")
-        minExpr = Some(me)
-      case ExMaximizingExpression(body2, maximizingTerm) =>
-        realBody = body2
-        val me = s2ps(maximizingTerm)
-        if (me.getType != Int32Type)
-          unit.error(maximizingTerm.pos, "Maximizing expression of non-integer type")
-        maxExpr = Some(me)
-      case _ => ;
-    }
-
-    // We check that there cannot be multiple `minimizing' / `maximizing' expressions
-    realBody match {
-      case ExMinimizingExpression(_,_) => unit.error(realBody.pos, "Multiple minimizing/maximizing expressions not allowed")
-      case ExMaximizingExpression(_,_) => unit.error(realBody.pos, "Multiple minimizing/maximizing expressions not allowed")
-      case _ => ;
-    }
+    val fd = new FunDef(FreshIdentifier("function"), BooleanType, newParams)
 
     stopIfErrors
     
     val bodyAttempt = try { Some(scala2PureScala(unit, false, true)(realBody)) } catch { case ImpureCodeEncounteredException(_) => None }
     fd.body = bodyAttempt
 
-    (fd,minExpr,maxExpr)
+    fd
   }
 
   /** An exception thrown when non-purescala compatible code is encountered. */

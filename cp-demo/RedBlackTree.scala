@@ -1,4 +1,5 @@
 import cp.Definitions._
+import cp.Constraints._
 import purescala.Stopwatch
 
 @spec object Specs { 
@@ -51,9 +52,9 @@ import purescala.Stopwatch
     case Node(Red(), l, _, _) => blackHeight(l)
   }
 
-  def boundValues(t : Tree, bound : Int) : Boolean = t match {
+  def valuesWithin(t : Tree, bound : Int) : Boolean = t match {
     case Empty() => true
-    case Node(_,l,v,r) => 0 <= v && v <= bound && boundValues(l,bound) && boundValues(r,bound)
+    case Node(_,l,v,r) => 0 <= v && v <= bound && valuesWithin(l,bound) && valuesWithin(r,bound)
   }
 
   def orderedKeys(t : Tree) : Boolean = orderedKeys(t, NoneInt(), NoneInt())
@@ -90,22 +91,11 @@ object RedBlackTree {
 
     // enumerateAllUpTo(bound)
 
-    /*
-    try {
-      val t = choose((t: Tree) => size(t) > 7 && height(t) <= 3)
-    } catch {
-      case e: UnsatisfiableConstraintException => println("constraint is unsatisfiable")
-    }
-    */
-
     val solutionSet = scala.collection.mutable.Set[Tree]()
     println("Fixing size of trees to " + (bound))
-    val sw = new Stopwatch("Fixed-size enumeration", false)
-    sw.start
-    for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound - 1) && size(t) == bound)) {
+    for (tree <- ((t : Tree) => isRedBlackTree(t) && valuesWithin(t, bound - 1) && size(t) == bound).findAll) {
       solutionSet += tree
     }
-    sw.stop
 
     // for (tree <- solutionSet)
     //   println(print(tree) + "\n-----------\n")
@@ -113,39 +103,39 @@ object RedBlackTree {
     Stopwatch.printSummary
   }
 
-  def enumerateAllUpTo(bound : Int) : Unit = {
-    println("Bound is " + bound)
+  // def enumerateAllUpTo(bound : Int) : Unit = {
+  //   println("Bound is " + bound)
 
-    val set1 = scala.collection.mutable.Set[Tree]()
-    val set2 = scala.collection.mutable.Set[Tree]()
-    val set3 = scala.collection.mutable.Set[Tree]()
-    val set4 = scala.collection.mutable.Set[Tree]()
+  //   val set1 = scala.collection.mutable.Set[Tree]()
+  //   val set2 = scala.collection.mutable.Set[Tree]()
+  //   val set3 = scala.collection.mutable.Set[Tree]()
+  //   val set4 = scala.collection.mutable.Set[Tree]()
 
-    println("Minimizing size:")
-    for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound) minimizing size(t))) {
-      set1 += tree
-    }
-    
-    println("Minimizing height:")
-    for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound) minimizing height(t))) {
-      set2 += tree
-    }
+  //   println("Minimizing size:")
+  //   for (tree <- findAll((t : Tree) => isRedBlackTree(t) && valuesWithin(t, bound) minimizing size(t))) {
+  //     set1 += tree
+  //   }
+  //   
+  //   println("Minimizing height:")
+  //   for (tree <- findAll((t : Tree) => isRedBlackTree(t) && valuesWithin(t, bound) minimizing height(t))) {
+  //     set2 += tree
+  //   }
 
-    println("Minimizing bound:")
-    for ((tree, bb) <- findAll((t : Tree, b: Int) => isRedBlackTree(t) && boundValues(t, b) && b >= 0 && b <= bound minimizing b)) {
-      set3 += tree
-    }
-    
-    println("No minimization:")
-    for (tree <- findAll((t : Tree) => isRedBlackTree(t) && boundValues(t, bound))) {
-      set4 += tree
-    }
+  //   println("Minimizing bound:")
+  //   for ((tree, bb) <- findAll((t : Tree, b: Int) => isRedBlackTree(t) && valuesWithin(t, b) && b >= 0 && b <= bound minimizing b)) {
+  //     set3 += tree
+  //   }
+  //   
+  //   println("No minimization:")
+  //   for (tree <- findAll((t : Tree) => isRedBlackTree(t) && valuesWithin(t, bound))) {
+  //     set4 += tree
+  //   }
 
-    println("Solution set size: " + set1.size)
-    assert(set1 == set2)
-    assert(set1 == set3)
-    assert(set1 == set4)
-  }
+  //   println("Solution set size: " + set1.size)
+  //   assert(set1 == set2)
+  //   assert(set1 == set3)
+  //   assert(set1 == set4)
+  // }
 
   /** Printing trees */
   def indent(s: String) = ("  "+s).split('\n').mkString("\n  ")

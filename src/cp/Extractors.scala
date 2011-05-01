@@ -51,6 +51,7 @@ trait Extractors {
       }        
     }
 
+    /*
     object ExMinimizingExpression {
       def unapply(tree: Apply) : Option[(Tree,Tree)] = tree match {
         case Apply(Select(Apply(Select(Select(cpIdent, definitionsName), any2OptimizableName), realExpr :: Nil), minimizingName), minimizingTerm :: Nil) if (
@@ -70,6 +71,7 @@ trait Extractors {
         case _ => None
       }        
     }
+    */
 
     object ExRequiredExpression {
       /** Extracts the 'require' contract from an expression (only if it's the

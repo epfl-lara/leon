@@ -49,6 +49,11 @@ trait CodeGeneration {
                                                     definitions.getClass("cp.Constraints.BaseConstraint2")
                                                     )
 
+  private lazy val baseOptimizingFunctionClasses  = List(
+                                                    definitions.getClass("cp.Constraints.BaseOptimizingFunction1"),
+                                                    definitions.getClass("cp.Constraints.BaseOptimizingFunction2")
+                                                    )
+
   private lazy val converterClass                 = definitions.getClass("cp.Converter")
 
   private lazy val serializationModule            = definitions.getModule("cp.Serialization")
@@ -323,6 +328,18 @@ trait CodeGeneration {
     def newConstraint(exprToScalaSym : Symbol, serializedProg : Serialized, serializedInputVarList : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Tree, arity : Int) : Tree = {
       NEW(
         ID(baseConstraintClasses(arity-1)),
+        newConverter(exprToScalaSym),
+        newSerialized(serializedProg),
+        newSerialized(serializedInputVarList),
+        newSerialized(serializedOutputVars),
+        newSerialized(serializedExpr),
+        inputVarValues
+      )
+    }
+
+    def newOptimizingFunction(exprToScalaSym : Symbol, serializedProg : Serialized, serializedInputVarList : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Tree, arity : Int) : Tree = {
+      NEW(
+        ID(baseOptimizingFunctionClasses(arity-1)),
         newConverter(exprToScalaSym),
         newSerialized(serializedProg),
         newSerialized(serializedInputVarList),

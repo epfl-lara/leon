@@ -29,7 +29,7 @@ object SortedList {
     val len = if (args.isEmpty) 3 else args(0).toInt
     val set = scala.collection.mutable.Set[List]()
 
-    for (list <- findAll((l : List) => isSorted(l) && valuesWithin(l, 0, len) && size(l) == len))
+    for (list <- ((l : List) => isSorted(l) && valuesWithin(l, 0, len) && size(l) == len).findAll)
       set += list
       
     println("size : " + set.size)
