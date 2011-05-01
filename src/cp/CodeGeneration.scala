@@ -90,94 +90,6 @@ trait CodeGeneration {
       NEW(ID(serializedClass), LIT(serialized.string), LIT(serialized.id))
     }
 
-    private def execCode(function : Symbol, serializedProg : Serialized, serializedExpr : Serialized, 
-        serializedOutputVars : Serialized, inputConstraints : Tree) : Tree = {
-      (cpPackage DOT runtimeMethodsModule DOT function) APPLY
-        (newSerialized(serializedProg), newSerialized(serializedExpr), newSerialized(serializedOutputVars), inputConstraints)
-    }
-
-    private def execOptimizingCode(function : Symbol, serializedProg : Serialized, serializedExpr : Serialized, 
-        serializedOutputVars : Serialized, serializedOptExpr : Serialized, inputConstraints : Tree) : Tree = {
-      (cpPackage DOT runtimeMethodsModule DOT function) APPLY
-        (newSerialized(serializedProg), newSerialized(serializedExpr), newSerialized(serializedOutputVars), newSerialized(serializedOptExpr), inputConstraints)
-    }
-
-    def chooseExecCode(serializedProg : Serialized, serializedConstraint : Serialized) : Tree = {
-      (cpPackage DOT runtimeMethodsModule DOT chooseExecFunction) APPLY
-        (newSerialized(serializedProg), newSerialized(serializedConstraint))
-    }
-
-    def chooseMinimizingExecCode(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, serializedMinExpr : Serialized, inputConstraints : Tree) : Tree = {
-      execOptimizingCode(chooseMinimizingExecFunction, serializedProg, serializedExpr, serializedOutputVars, serializedMinExpr, inputConstraints)
-    }
-
-    def chooseMaximizingExecCode(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, serializedMaxExpr : Serialized, inputConstraints : Tree) : Tree = {
-      execOptimizingCode(chooseMaximizingExecFunction, serializedProg, serializedExpr, serializedOutputVars, serializedMaxExpr, inputConstraints)
-    }
-
-    def findMinimizingExecCode(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, serializedMinExpr : Serialized, inputConstraints : Tree) : Tree = {
-      execOptimizingCode(findMinimizingExecFunction, serializedProg, serializedExpr, serializedOutputVars, serializedMinExpr, inputConstraints)
-    }
-
-    def findMaximizingExecCode(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, serializedMaxExpr : Serialized, inputConstraints : Tree) : Tree = {
-      execOptimizingCode(findMaximizingExecFunction, serializedProg, serializedExpr, serializedOutputVars, serializedMaxExpr, inputConstraints)
-    }
-
-    def findExecCode(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, inputConstraints : Tree) : Tree = {
-      execCode(findExecFunction, serializedProg, serializedExpr, serializedOutputVars, inputConstraints)
-    }
-      
-    def findAllExecCode(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, inputConstraints : Tree) : Tree = {
-      execCode(findAllExecFunction, serializedProg, serializedExpr, serializedOutputVars, inputConstraints)
-    }
-    def findAllMinimizingExecCode(serializedProg : Serialized, serializedExpr : Serialized, serializedOutputVars : Serialized, serializedMinExpr : Serialized, inputConstraints : Tree) : Tree = {
-      execOptimizingCode(findAllMinimizingExecFunction, serializedProg, serializedExpr, serializedOutputVars, serializedMinExpr, inputConstraints)
-    }
-
-    def mapIterator(mapFunction : Symbol, iterTree : Tree) : Tree = {
-      val returnType = mapFunction.tpe match {
-        case MethodType(_,rt) => rt
-        case unhandled => scala.Predef.error("Unexpected method type : " + unhandled)
-      }
-
-      val seqExprType = typeRef(NoPrefix, definitions.SeqClass, List(exprClass.tpe))
-
-      val anonFunSym = owner.newValue(NoPosition, nme.ANON_FUN_NAME) setInfo (mapFunction.tpe)
-      val argValue = anonFunSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "x")) setInfo seqExprType
-
-      val anonFun = Function(
-        List(ValDef(argValue, EmptyTree)),
-        mapFunction APPLY ID(argValue)
-      ) setSymbol anonFunSym 
-
-      Apply(
-        TypeApply(iterTree DOT iteratorMapFunction, List(TypeTree(returnType))),
-        List(BLOCK(anonFun))
-      )
-    }
-
-    def mapOption(mapFunction : Symbol, optionTree : Tree) : Tree = {
-      val returnType = mapFunction.tpe match {
-        case MethodType(_,rt) => rt
-        case unhandled        => scala.Predef.error("Unexpected method type : " + unhandled)
-      }
-
-      val seqExprType = typeRef(NoPrefix, definitions.SeqClass, List(exprClass.tpe))
-
-      val anonFunSym = owner.newValue(NoPosition, nme.ANON_FUN_NAME) setInfo (mapFunction.tpe)
-      val argValue = anonFunSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "x")) setInfo seqExprType
-
-      val anonFun = Function(
-        List(ValDef(argValue, EmptyTree)),
-        mapFunction APPLY ID(argValue)
-      ) setSymbol anonFunSym 
-
-      Apply(
-        TypeApply(optionTree DOT optionMapFunction, List(TypeTree(returnType))),
-        List(BLOCK(anonFun))
-      )
-    }
-
     def exprSeqToScalaMethod(owner : Symbol, exprToScalaCastSym : Symbol, signature : List[Tree]) : (Tree, Symbol) = {
       val returnType = if (signature.size == 1) signature.head.tpe else definitions.tupleType(signature.map(_.tpe))
 
@@ -362,25 +274,6 @@ trait CodeGeneration {
         ID(converterClass),
         anonFun
       )
-    }
-
-    def inputEquality(serializedInputVarList : Serialized, varId : Identifier, scalaToExprSym : Symbol) : Tree = {
-      NEW(
-        ID(equalsClass),
-          // retrieve input variable list and get corresponding variable
-        (cpPackage DOT runtimeMethodsModule DOT inputVarFunction) APPLY
-          ((cpPackage DOT serializationModule DOT getInputVarListFunction) APPLY (newSerialized(serializedInputVarList)), LIT(varId.name)),
-        // invoke s2e on corresponding Tree
-        scalaToExprSym APPLY variablesToTrees(Variable(varId))
-      )
-    }
-
-    def andExpr(exprs : Seq[Tree]) : Tree = {
-      NEW(ID(andClass), (scalaPackage DOT collectionModule DOT immutableModule DOT definitions.ListModule DOT listModuleApplyFunction) APPLY (exprs.toList))
-    }
-
-    def trueLiteral : Tree = {
-      NEW(ID(booleanLiteralClass), LIT(true))
     }
 
     def skipCounter(i : Int) : Tree = {

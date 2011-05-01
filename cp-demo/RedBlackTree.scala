@@ -89,7 +89,7 @@ object RedBlackTree {
     val defaultBound = 3
     val bound = if (args.isEmpty) defaultBound else args(0).toInt
 
-    // enumerateAllUpTo(bound)
+    enumerateAllUpTo(bound)
 
     val solutionSet = scala.collection.mutable.Set[Tree]()
     println("Fixing size of trees to " + (bound))
@@ -103,39 +103,41 @@ object RedBlackTree {
     Stopwatch.printSummary
   }
 
-  // def enumerateAllUpTo(bound : Int) : Unit = {
-  //   println("Bound is " + bound)
+  def enumerateAllUpTo(bound : Int) : Unit = {
+    println("Bound is " + bound)
 
-  //   val set1 = scala.collection.mutable.Set[Tree]()
-  //   val set2 = scala.collection.mutable.Set[Tree]()
-  //   val set3 = scala.collection.mutable.Set[Tree]()
-  //   val set4 = scala.collection.mutable.Set[Tree]()
+    val set1 = scala.collection.mutable.Set[Tree]()
+    val set2 = scala.collection.mutable.Set[Tree]()
+    val set3 = scala.collection.mutable.Set[Tree]()
+    val set4 = scala.collection.mutable.Set[Tree]()
 
-  //   println("Minimizing size:")
-  //   for (tree <- findAll((t : Tree) => isRedBlackTree(t) && valuesWithin(t, bound) minimizing size(t))) {
-  //     set1 += tree
-  //   }
-  //   
-  //   println("Minimizing height:")
-  //   for (tree <- findAll((t : Tree) => isRedBlackTree(t) && valuesWithin(t, bound) minimizing height(t))) {
-  //     set2 += tree
-  //   }
+    println("Minimizing size:")
+    for (tree <- (((t : Tree) => isRedBlackTree(t) && valuesWithin(t, bound)) minimizing ((t: Tree) => size(t))).findAll) {
+      set1 += tree
+    }
+    
+    /*
+    println("Minimizing height:")
+    for (tree <- findAll((t : Tree) => isRedBlackTree(t) && valuesWithin(t, bound) minimizing height(t))) {
+      set2 += tree
+    }
 
-  //   println("Minimizing bound:")
-  //   for ((tree, bb) <- findAll((t : Tree, b: Int) => isRedBlackTree(t) && valuesWithin(t, b) && b >= 0 && b <= bound minimizing b)) {
-  //     set3 += tree
-  //   }
-  //   
-  //   println("No minimization:")
-  //   for (tree <- findAll((t : Tree) => isRedBlackTree(t) && valuesWithin(t, bound))) {
-  //     set4 += tree
-  //   }
+    println("Minimizing bound:")
+    for ((tree, bb) <- findAll((t : Tree, b: Int) => isRedBlackTree(t) && valuesWithin(t, b) && b >= 0 && b <= bound minimizing b)) {
+      set3 += tree
+    }
+    
+    println("No minimization:")
+    for (tree <- findAll((t : Tree) => isRedBlackTree(t) && valuesWithin(t, bound))) {
+      set4 += tree
+    }
 
-  //   println("Solution set size: " + set1.size)
-  //   assert(set1 == set2)
-  //   assert(set1 == set3)
-  //   assert(set1 == set4)
-  // }
+    assert(set1 == set2)
+    assert(set1 == set3)
+    assert(set1 == set4)
+    */
+    println("Solution set size: " + set1.size)
+  }
 
   /** Printing trees */
   def indent(s: String) = ("  "+s).split('\n').mkString("\n  ")
