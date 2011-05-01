@@ -20,8 +20,6 @@ object Constraints {
   }
 
   sealed trait Constraint {
-    self =>
-
     type sig
     val convertingFunction : (Seq[Expr] => sig)
 
@@ -44,14 +42,48 @@ object Constraints {
 
   }
 
-  abstract class MinConstraint(cons : Constraint, minCons : Constraint)
-  case class MinConstraint1[A](cons : Constraint1[A], minCons : Constraint1[A]) extends MinConstraint(cons, minCons)
-  case class MinConstraint2[A,B](cons : Constraint2[A,B], minCons : Constraint2[A,B]) extends MinConstraint(cons, minCons)
+  sealed trait OptimizingTerm
+  sealed trait OptimizingTerm1[A] extends OptimizingTerm // can contain integer functions
+  sealed trait OptimizingTerm2[A,B] extends OptimizingTerm
+
+  abstract class MinConstraint(cons : Constraint, minTerm : OptimizingTerm) {
+    type sig
+    val convertingFunction : (Seq[Expr] => sig)
+
+    def solve : sig = {
+      convertingFunction(solveMinimizingExprSeq(cons, minTerm))
+    }
+
+    def find : Option[sig] = {
+      try {
+        Some(this.solve)
+      } catch {
+        case e: UnsatisfiableConstraintException => None
+        case e: UnknownConstraintException => None
+      }
+    }
+
+    def findAll : Iterator[sig] = {
+      findAllMinimizingExprSeq(cons, minTerm).map(convertingFunction(_))
+    } 
+  }
+
+  case class MinConstraint1[A](cons : Constraint1[A], minTerm : OptimizingTerm1[A]) extends MinConstraint(cons, minTerm) {
+    type sig = A
+    val convertingFunction = converterOf(cons).exprSeq2scala1[A] _
+  }
+
+  case class MinConstraint2[A,B](cons : Constraint2[A,B], minTerm : OptimizingTerm2[A,B]) extends MinConstraint(cons, minTerm) {
+    type sig = (A,B)
+    val convertingFunction = converterOf(cons).exprSeq2scala2[A,B] _
+  }
 
   sealed trait Constraint1[A] extends Constraint {
     type sig = A
     val convertingFunction = converterOf(this).exprSeq2scala1[A] _
-    // def minimizing(minCons : Constraint1[A])
+
+    def minimizing(minTerm : OptimizingTerm1[A]) : MinConstraint1[A] =
+      MinConstraint1[A](this, minTerm)
       
     def ||(other : Constraint1[A]) : Constraint1[A] = OrConstraint1[A](this, other)
   }
@@ -200,6 +232,10 @@ object Constraints {
     }
   }
 
+  /** Return a solution that minimizes the given term, as a sequence of expressions */
+  private def solveMinimizingExprSeq(constraint : Constraint, minTerm : OptimizingTerm) : Seq[Expr] =
+    throw new Exception()
+
   /** Return an iterator of solutions as sequences of expressions */
   private def findAllExprSeq(constraint : Constraint) : Iterator[Seq[Expr]] = {
     val program = programOf(constraint)
@@ -210,6 +246,10 @@ object Constraints {
 
     exprIterator
   }
+
+  /** Enumerate all solutions ordered by the term to minimize, as sequences of expressions */
+  private def findAllMinimizingExprSeq(constraint : Constraint, minTerm : OptimizingTerm) : Iterator[Seq[Expr]] =
+    throw new Exception()
 
   /** Returns an iterator of interpretations for each identifier in the specified set */
   private def solutionsIterator(program : Program, predicate : Expr, inputEqualities : Expr, outputVariables : Set[Identifier]) : Iterator[Map[Identifier, Expr]] = {
