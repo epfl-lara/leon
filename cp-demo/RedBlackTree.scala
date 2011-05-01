@@ -89,7 +89,7 @@ object RedBlackTree {
     val defaultBound = 3
     val bound = if (args.isEmpty) defaultBound else args(0).toInt
 
-    enumerateAllUpTo(bound)
+    // enumerateAllUpTo(bound)
 
     val solutionSet = scala.collection.mutable.Set[Tree]()
     println("Fixing size of trees to " + (bound))

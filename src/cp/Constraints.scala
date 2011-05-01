@@ -77,11 +77,12 @@ object Constraints {
     lazy val program : Program            = deserialize[Program](serializedProg)
     lazy val inputVars : Seq[Variable]    = deserialize[Seq[Variable]](serializedInputVars)
     lazy val outputVars : Seq[Identifier] = deserialize[Seq[Identifier]](serializedOutputVars)
-    lazy val expr : Expr                  = deserialize[Expr](serializedExpr)
-    lazy val env : Map[Variable,Expr]     = (inputVars zip inputVarValues).toMap
+    private lazy val initialExpr : Expr   = deserialize[Expr](serializedExpr)
+    lazy val env : Map[Expr,Expr]         = (inputVars zip inputVarValues).toMap
 
     lazy val deBruijnIndices: Seq[DeBruijnIndex] = outputVars.zipWithIndex.map{ case (v, idx) => DeBruijnIndex(idx).setType(v.getType) }
-    lazy val exprWithIndices: Expr = replace(((outputVars map (Variable(_))) zip deBruijnIndices).toMap, expr)
+    private lazy val exprWithIndices: Expr = replace(((outputVars map (Variable(_))) zip deBruijnIndices).toMap, initialExpr)
+    lazy val expr : Expr = replace(env, exprWithIndices)
   }
 
   case class BaseConstraint1[A](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) 
@@ -192,11 +193,12 @@ object Constraints {
     lazy val program : Program            = deserialize[Program](serializedProg)
     lazy val inputVars : Seq[Variable]    = deserialize[Seq[Variable]](serializedInputVars)
     lazy val outputVars : Seq[Identifier] = deserialize[Seq[Identifier]](serializedOutputVars)
-    lazy val expr : Expr                  = deserialize[Expr](serializedExpr)
-    lazy val env : Map[Variable,Expr]     = (inputVars zip inputVarValues).toMap
+    private lazy val initialExpr : Expr   = deserialize[Expr](serializedExpr)
+    lazy val env : Map[Expr,Expr]         = (inputVars zip inputVarValues).toMap
 
     lazy val deBruijnIndices: Seq[DeBruijnIndex] = outputVars.zipWithIndex.map{ case (v, idx) => DeBruijnIndex(idx).setType(v.getType) }
-    lazy val exprWithIndices: Expr = replace(((outputVars map (Variable(_))) zip deBruijnIndices).toMap, expr)
+    private lazy val exprWithIndices: Expr = replace(((outputVars map (Variable(_))) zip deBruijnIndices).toMap, initialExpr)
+    lazy val expr : Expr = replace(env, exprWithIndices)
   }
 
   case class BaseOptimizingFunction1[A](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) 
@@ -241,11 +243,7 @@ object Constraints {
   /** Compute the expression associated with this function, with De Bruijn
    * indices */
   private def exprOf(function : OptimizingFunction) : Expr = function match {
-    case bf : BaseOptimizingFunction => bf.exprWithIndices
-  }
-
-  private def envOf(function : OptimizingFunction) : Map[Variable,Expr] = function match {
-    case bf : BaseOptimizingFunction => bf.env
+    case bf : BaseOptimizingFunction => bf.expr
   }
 
   private def typesOf(function : OptimizingFunction) : Seq[TypeTree] = function match {
@@ -256,7 +254,7 @@ object Constraints {
   /** Compute the expression associated with this constraint, with De Bruijn
    * indices */
   private def exprOf(constraint : Constraint) : Expr = constraint match {
-    case bc : BaseConstraint => bc.exprWithIndices
+    case bc : BaseConstraint => bc.expr
     case NotConstraint(c) => Not(exprOf(c))
     case OrConstraint(cs) => Or(cs map exprOf)
     case AndConstraint(cs) => And(cs map exprOf)
@@ -274,23 +272,15 @@ object Constraints {
     case NAryConstraint(cs) => typesOf(cs.head)
   }
 
-  private def envOf(constraint : Constraint) : Map[Variable,Expr] = constraint match {
-    case bc : BaseConstraint => bc.env
-    case UnaryConstraint(c) => envOf(c)
-    case NAryConstraint(cs) =>
-      val allEnvs = cs map (envOf(_))
-      allEnvs.foldLeft(Map[Variable,Expr]()){ case (m1, m2) => m1 ++ m2 }
-  }
-
   private def converterOf(constraint : Constraint) : Converter = constraint match {
     case bc : BaseConstraint => bc.converter
     case UnaryConstraint(c) => converterOf(c)
     case NAryConstraint(cs) => converterOf(cs.head)
   }
 
-  /** Compute a fresh sequence of output variables, the combined expression
-   * containing those, and the constraint for the environment */
-  private def combineConstraint(constraint : Constraint) : (Seq[Identifier], Expr, Expr) = {
+  /** Compute a fresh sequence of output variables and the combined expression
+   * containing those */
+  private def combineConstraint(constraint : Constraint) : (Seq[Identifier], Expr) = {
     val expr = exprOf(constraint)
 
     val outputVarTypes = typesOf(constraint)
@@ -299,22 +289,7 @@ object Constraints {
     val deBruijnIndices = outputVarTypes.zipWithIndex.map{ case (t, idx) => DeBruijnIndex(idx).setType(t) }
     val exprWithFreshIDs = replace((deBruijnIndices zip (freshOutputIDs map (Variable(_)))).toMap, expr)
 
-    val env = envOf(constraint)
-
-    val inputConstraints = if (env.isEmpty) BooleanLiteral(true) else And(env.map{ case (v, e) => Equals(v, e) }.toSeq)
-
-    (freshOutputIDs, exprWithFreshIDs, inputConstraints)
-  }
-
-  /** Compute the combined expression to optimize (using De Bruijn indices),
-   * and the constraints for the environment */
-  private def combineOptimizingFunction(function : OptimizingFunction) : (Expr, Expr) = {
-    val optExpr = exprOf(function)
-
-    val env = envOf(function)
-    val inputConstraints = if (env.isEmpty) BooleanLiteral(true) else And(env.map{ case (v, e) => Equals(v, e) }.toSeq)
-
-    (optExpr, inputConstraints)
+    (freshOutputIDs, exprWithFreshIDs)
   }
 
   /********** SOLVING METHODS **********/
@@ -329,9 +304,9 @@ object Constraints {
   private def solveExprSeq(constraint : Constraint) : Seq[Expr] = {
     val solver = newSolver(programOf(constraint))
 
-    val (freshOutputIDs, expr, inputConstraints) = combineConstraint(constraint)
+    val (freshOutputIDs, expr) = combineConstraint(constraint)
 
-    val (outcome, model) = solver.restartAndDecideWithModel(And(expr, inputConstraints), false)
+    val (outcome, model) = solver.restartAndDecideWithModel(expr, false)
 
     outcome match {
       case Some(false) =>
@@ -346,23 +321,23 @@ object Constraints {
   /** Return a solution that minimizes the given term, as a sequence of expressions */
   private def solveMinimizingExprSeq(constraint : Constraint, minFunc : OptimizingFunction) : Seq[Expr] = {
     val program = programOf(constraint)
-    val (freshOutputIDs, expr, inputConstraints) = combineConstraint(constraint)
-    val (minExprWithIndices, minExprInputConstraints) = combineOptimizingFunction(minFunc)
+    val (freshOutputIDs, expr) = combineConstraint(constraint)
+    val minExprWithIndices = exprOf(minFunc)
 
     val funcSignature = typesOf(minFunc)
     val deBruijnIndices = funcSignature.zipWithIndex.map{ case (t, idx) => DeBruijnIndex(idx).setType(t) }
     val minExprWithIDs = replace((deBruijnIndices zip (freshOutputIDs map (Variable(_)))).toMap, minExprWithIndices)
 
-    val (model, value) = minimizingModelAndValue(program, expr, freshOutputIDs, minExprWithIDs, And(inputConstraints, minExprInputConstraints))
+    val (model, value) = minimizingModelAndValue(program, expr, freshOutputIDs, minExprWithIDs)
     model
   }
 
   /** Return an iterator of solutions as sequences of expressions */
   private def findAllExprSeq(constraint : Constraint) : Iterator[Seq[Expr]] = {
     val program = programOf(constraint)
-    val (freshOutputIDs, expr, inputConstraints) = combineConstraint(constraint)
+    val (freshOutputIDs, expr) = combineConstraint(constraint)
 
-    val modelIterator = solutionsIterator(program, expr, inputConstraints, freshOutputIDs.toSet)
+    val modelIterator = solutionsIterator(program, expr, freshOutputIDs.toSet)
     val exprIterator  = modelIterator.map(model => freshOutputIDs.map(id => model(id)))
 
     exprIterator
@@ -371,30 +346,30 @@ object Constraints {
   /** Enumerate all solutions ordered by the term to minimize, as sequences of expressions */
   private def findAllMinimizingExprSeq(constraint : Constraint, minFunc : OptimizingFunction) : Iterator[Seq[Expr]] = {
     val program = programOf(constraint)
-    val (freshOutputIDs, expr, inputConstraints) = combineConstraint(constraint)
-    val (minExprWithIndices, minExprInputConstraints) = combineOptimizingFunction(minFunc)
+    val (freshOutputIDs, expr) = combineConstraint(constraint)
+    val minExprWithIndices = exprOf(minFunc)
 
     val funcSignature = typesOf(minFunc)
     val deBruijnIndices = funcSignature.zipWithIndex.map{ case (t, idx) => DeBruijnIndex(idx).setType(t) }
     val minExprWithIDs = replace((deBruijnIndices zip (freshOutputIDs map (Variable(_)))).toMap, minExprWithIndices)
 
-    findAllMinimizingExprSeq(program, expr, freshOutputIDs, minExprWithIDs, None, And(inputConstraints, minExprInputConstraints))
+    findAllMinimizingExprSeq(program, expr, freshOutputIDs, minExprWithIDs, None)
   }
 
-  private def findAllMinimizingExprSeq(program : Program, expr : Expr, outputVars : Seq[Identifier], minExpr : Expr, minExprBound : Option[Int], inputConstraints : Expr) : Iterator[Seq[Expr]] = {
+  private def findAllMinimizingExprSeq(program : Program, expr : Expr, outputVars : Seq[Identifier], minExpr : Expr, minExprBound : Option[Int]) : Iterator[Seq[Expr]] = {
     try {
       val toCheck = minExprBound match {
         case None => expr
         case Some(b) => And(expr, GreaterThan(minExpr, IntLiteral(b)))
       }
       // purescala.Settings.reporter.info("Now calling findAllMinimizing with " + toCheck)
-      val minValue = minimizingModelAndValue(program, toCheck, outputVars, minExpr, inputConstraints)._2
+      val minValue = minimizingModelAndValue(program, toCheck, outputVars, minExpr)._2
 
       val minValConstraint    = And(expr, Equals(minExpr, IntLiteral(minValue)))
-      val minValModelIterator = solutionsIterator(program, minValConstraint, inputConstraints, outputVars.toSet)
+      val minValModelIterator = solutionsIterator(program, minValConstraint, outputVars.toSet)
       val minValExprIterator  = minValModelIterator.map(model => outputVars.map(id => model(id)))
 
-      minValExprIterator ++ findAllMinimizingExprSeq(program, expr, outputVars, minExpr, Some(minValue), inputConstraints)
+      minValExprIterator ++ findAllMinimizingExprSeq(program, expr, outputVars, minExpr, Some(minValue))
     } catch {
       case e: UnsatisfiableConstraintException  => Iterator[Seq[Expr]]()
       case e: UnknownConstraintException        => Iterator[Seq[Expr]]()
@@ -402,7 +377,7 @@ object Constraints {
   }
 
 
-  private def minimizingModelAndValue(program : Program, expr : Expr, outputVars : Seq[Identifier], minExpr : Expr, inputConstraints : Expr) : (Seq[Expr], Int) = {
+  private def minimizingModelAndValue(program : Program, expr : Expr, outputVars : Seq[Identifier], minExpr : Expr) : (Seq[Expr], Int) = {
     def stop(lo : Option[Int], hi : Int) : Boolean = lo match {
       case Some(l) => hi - l <= 2
       case None => false
@@ -418,7 +393,7 @@ object Constraints {
       // println("  pivot  : " + pivot)
       // println("  hi     : " + hi)
       // println
-      val toCheck = expr :: inputConstraints :: LessEquals(minExpr, IntLiteral(pivot)) :: Nil
+      val toCheck = expr :: LessEquals(minExpr, IntLiteral(pivot)) :: Nil
       val (outcome, model) = solver.restartAndDecideWithModel(And(toCheck), false)
 
       outcome match {
@@ -456,7 +431,7 @@ object Constraints {
     // We declare a variable to hold the value to minimize:
     val minExprID = purescala.Common.FreshIdentifier("minExpr").setType(purescala.TypeTrees.Int32Type)
 
-    solver.restartAndDecideWithModel(And(expr :: inputConstraints :: Equals(minExpr, Variable(minExprID)) :: Nil), false) match {
+    solver.restartAndDecideWithModel(And(expr :: Equals(minExpr, Variable(minExprID)) :: Nil), false) match {
       case (Some(false), model) =>
         // there is a satisfying assignment
         val minExprVal = modelValue(minExprID, model) match {
@@ -473,7 +448,7 @@ object Constraints {
     }
   }
   /** Returns an iterator of interpretations for each identifier in the specified set */
-  private def solutionsIterator(program : Program, predicate : Expr, inputEqualities : Expr, outputVariables : Set[Identifier]) : Iterator[Map[Identifier, Expr]] = {
+  private def solutionsIterator(program : Program, predicate : Expr, outputVariables : Set[Identifier]) : Iterator[Map[Identifier, Expr]] = {
     val solver = newSolver(program)
     solver.restartZ3
 
@@ -485,7 +460,7 @@ object Constraints {
       // We add after finding each model the negation of the previous one
       var addedNegations: Expr = BooleanLiteral(true)
 
-      var toCheck: Expr = And(inputEqualities, predicate)
+      var toCheck: Expr = predicate
 
       override def hasNext : Boolean = nextModel match {
         case None => 
