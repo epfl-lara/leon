@@ -39,7 +39,6 @@ object Constraints {
     def findAll : Iterator[sig] = {
       findAllExprSeq(this).map(convertingFunction(_))
     }
-
   }
 
   sealed trait Constraint1[A] extends Constraint {
@@ -68,28 +67,39 @@ object Constraints {
     def &&(other : Constraint2[A,B]) : Constraint2[A,B] = AndConstraint2[A,B](this, other)
 
     def unary_! : Constraint2[A,B] = NotConstraint2[A,B](this)
+
+    // def proj0 : Constraint1[A] = proj0(this)
   }
 
-  abstract class BaseConstraint(conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) 
+  abstract class BaseConstraint(val converter : Converter, val program : Program, inputVars : Seq[Variable], val outputVars : Seq[Identifier], initialExpr : Expr, inputVarValues : Seq[Expr]) 
     extends Constraint {
-
-    val converter : Converter             = conv
-    lazy val program : Program            = deserialize[Program](serializedProg)
-    lazy val inputVars : Seq[Variable]    = deserialize[Seq[Variable]](serializedInputVars)
-    lazy val outputVars : Seq[Identifier] = deserialize[Seq[Identifier]](serializedOutputVars)
-    private lazy val initialExpr : Expr   = deserialize[Expr](serializedExpr)
-    lazy val env : Map[Expr,Expr]         = (inputVars zip inputVarValues).toMap
-
-    lazy val deBruijnIndices: Seq[DeBruijnIndex] = outputVars.zipWithIndex.map{ case (v, idx) => DeBruijnIndex(idx).setType(v.getType) }
-    private lazy val exprWithIndices: Expr = replace(((outputVars map (Variable(_))) zip deBruijnIndices).toMap, initialExpr)
-    lazy val expr : Expr = replace(env, exprWithIndices)
+    private lazy val env : Map[Expr,Expr]                 = (inputVars zip inputVarValues).toMap
+    private lazy val deBruijnIndices: Seq[DeBruijnIndex]  = outputVars.zipWithIndex.map{ case (v, idx) => DeBruijnIndex(idx).setType(v.getType) }
+    private lazy val exprWithIndices: Expr                = replace(((outputVars map (Variable(_))) zip deBruijnIndices).toMap, initialExpr)
+    lazy val expr : Expr                                  = replace(env, exprWithIndices)
   }
 
-  case class BaseConstraint1[A](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) 
-    extends BaseConstraint(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues) with Constraint1[A]
+  object BaseConstraint1 {
+    def apply[A](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+      val program : Program             = deserialize[Program](serializedProg)
+      val inputVars : Seq[Variable]     = deserialize[Seq[Variable]](serializedInputVars)
+      val outputVars : Seq[Identifier]  = deserialize[Seq[Identifier]](serializedOutputVars)
+      val initialExpr : Expr            = deserialize[Expr](serializedExpr)
 
-  case class BaseConstraint2[A,B](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) 
-    extends BaseConstraint(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues) with Constraint2[A,B]
+      new BaseConstraint(conv, program, inputVars, outputVars, initialExpr, inputVarValues) with Constraint1[A]
+    }
+  }
+
+  object BaseConstraint2 {
+    def apply[A,B](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+      val program : Program             = deserialize[Program](serializedProg)
+      val inputVars : Seq[Variable]     = deserialize[Seq[Variable]](serializedInputVars)
+      val outputVars : Seq[Identifier]  = deserialize[Seq[Identifier]](serializedOutputVars)
+      val initialExpr : Expr            = deserialize[Expr](serializedExpr)
+
+      new BaseConstraint(conv, program, inputVars, outputVars, initialExpr, inputVarValues) with Constraint2[A,B]
+    }
+  }
 
   class OrConstraint1[A](val constraints : Seq[Constraint1[A]]) extends Constraint1[A]
 
@@ -186,26 +196,36 @@ object Constraints {
   sealed trait OptimizingFunction1[A] extends OptimizingFunction // can contain integer functions
   sealed trait OptimizingFunction2[A,B] extends OptimizingFunction
 
-  abstract class BaseOptimizingFunction(conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) 
+  abstract class BaseOptimizingFunction(val converter : Converter, program : Program, inputVars : Seq[Variable], val outputVars : Seq[Identifier], initialExpr : Expr, inputVarValues : Seq[Expr]) 
     extends OptimizingFunction {
 
-    val converter : Converter             = conv
-    lazy val program : Program            = deserialize[Program](serializedProg)
-    lazy val inputVars : Seq[Variable]    = deserialize[Seq[Variable]](serializedInputVars)
-    lazy val outputVars : Seq[Identifier] = deserialize[Seq[Identifier]](serializedOutputVars)
-    private lazy val initialExpr : Expr   = deserialize[Expr](serializedExpr)
-    lazy val env : Map[Expr,Expr]         = (inputVars zip inputVarValues).toMap
-
-    lazy val deBruijnIndices: Seq[DeBruijnIndex] = outputVars.zipWithIndex.map{ case (v, idx) => DeBruijnIndex(idx).setType(v.getType) }
-    private lazy val exprWithIndices: Expr = replace(((outputVars map (Variable(_))) zip deBruijnIndices).toMap, initialExpr)
-    lazy val expr : Expr = replace(env, exprWithIndices)
+    private lazy val env : Map[Expr,Expr]       = (inputVars zip inputVarValues).toMap
+    private lazy val deBruijnIndices: Seq[DeBruijnIndex]  = outputVars.zipWithIndex.map{ case (v, idx) => DeBruijnIndex(idx).setType(v.getType) }
+    private lazy val exprWithIndices: Expr                = replace(((outputVars map (Variable(_))) zip deBruijnIndices).toMap, initialExpr)
+    lazy val expr : Expr                                  = replace(env, exprWithIndices)
   }
 
-  case class BaseOptimizingFunction1[A](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) 
-    extends BaseOptimizingFunction(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues) with OptimizingFunction1[A]
+  object BaseOptimizingFunction1 {
+    def apply[A](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+      val program : Program             = deserialize[Program](serializedProg)
+      val inputVars : Seq[Variable]     = deserialize[Seq[Variable]](serializedInputVars)
+      val outputVars : Seq[Identifier]  = deserialize[Seq[Identifier]](serializedOutputVars)
+      val initialExpr : Expr            = deserialize[Expr](serializedExpr)
 
-  case class BaseOptimizingFunction2[A,B](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) 
-    extends BaseOptimizingFunction(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues) with OptimizingFunction2[A,B]
+      new BaseOptimizingFunction(conv, program, inputVars, outputVars, initialExpr, inputVarValues) with OptimizingFunction1[A]
+    }
+  }
+
+  object BaseOptimizingFunction2 {
+    def apply[A,B](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+      val program : Program             = deserialize[Program](serializedProg)
+      val inputVars : Seq[Variable]     = deserialize[Seq[Variable]](serializedInputVars)
+      val outputVars : Seq[Identifier]  = deserialize[Seq[Identifier]](serializedOutputVars)
+      val initialExpr : Expr            = deserialize[Expr](serializedExpr)
+
+      new BaseOptimizingFunction(conv, program, inputVars, outputVars, initialExpr, inputVarValues) with OptimizingFunction2[A,B]
+    }
+  }
 
   abstract class MinConstraint(cons : Constraint, minFunc : OptimizingFunction) {
     type sig
@@ -291,6 +311,10 @@ object Constraints {
 
     (freshOutputIDs, exprWithFreshIDs)
   }
+
+  // def proj0[A,B](constraint : Constraint2[A,B]) : Constraint1[A] = constraint match {
+  //   case bc : BaseConstraint => 
+  // }
 
   /********** SOLVING METHODS **********/
   /** Return interpretation of the constant in model if it exists, the simplest

@@ -44,9 +44,9 @@ trait CodeGeneration {
   private lazy val skipCounterFunction            = definitions.getMember(runtimeMethodsModule, "skipCounter")
   private lazy val copySettingsFunction           = definitions.getMember(runtimeMethodsModule, "copySettings")
 
-  private lazy val baseConstraintClasses          = List(
-                                                    definitions.getClass("cp.Constraints.BaseConstraint1"),
-                                                    definitions.getClass("cp.Constraints.BaseConstraint2")
+  private lazy val baseConstraintModules          = List(
+                                                    definitions.getModule("cp.Constraints.BaseConstraint1"),
+                                                    definitions.getModule("cp.Constraints.BaseConstraint2")
                                                     )
 
   private lazy val baseOptimizingFunctionClasses  = List(
@@ -238,8 +238,7 @@ trait CodeGeneration {
     }
 
     def newConstraint(exprToScalaSym : Symbol, serializedProg : Serialized, serializedInputVarList : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Tree, arity : Int) : Tree = {
-      NEW(
-        ID(baseConstraintClasses(arity-1)),
+      baseConstraintModules(arity-1) APPLY (
         newConverter(exprToScalaSym),
         newSerialized(serializedProg),
         newSerialized(serializedInputVarList),
