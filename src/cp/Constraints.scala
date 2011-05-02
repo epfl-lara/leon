@@ -71,13 +71,7 @@ object Constraints {
     // def proj0 : Constraint1[A] = proj0(this)
   }
 
-  abstract class BaseConstraint(val converter : Converter, val program : Program, inputVars : Seq[Variable], val outputVars : Seq[Identifier], initialExpr : Expr, inputVarValues : Seq[Expr]) 
-    extends Constraint {
-    private lazy val env : Map[Expr,Expr]                 = (inputVars zip inputVarValues).toMap
-    private lazy val deBruijnIndices: Seq[DeBruijnIndex]  = outputVars.zipWithIndex.map{ case (v, idx) => DeBruijnIndex(idx).setType(v.getType) }
-    private lazy val exprWithIndices: Expr                = replace(((outputVars map (Variable(_))) zip deBruijnIndices).toMap, initialExpr)
-    lazy val expr : Expr                                  = replace(env, exprWithIndices)
-  }
+  abstract case class BaseConstraint(converter : Converter, program : Program, expr : Expr, types : Seq[TypeTree]) extends Constraint
 
   object BaseConstraint1 {
     def apply[A](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
@@ -86,7 +80,12 @@ object Constraints {
       val outputVars : Seq[Identifier]  = deserialize[Seq[Identifier]](serializedOutputVars)
       val initialExpr : Expr            = deserialize[Expr](serializedExpr)
 
-      new BaseConstraint(conv, program, inputVars, outputVars, initialExpr, inputVarValues) with Constraint1[A]
+      val env : Map[Expr,Expr]                 = (inputVars zip inputVarValues).toMap
+      val deBruijnIndices: Seq[DeBruijnIndex]  = outputVars.zipWithIndex.map{ case (v, idx) => DeBruijnIndex(idx).setType(v.getType) }
+      val exprWithIndices: Expr                = replace(((outputVars map (Variable(_))) zip deBruijnIndices).toMap, initialExpr)
+      val expr : Expr                          = replace(env, exprWithIndices)
+      val types : Seq[TypeTree]                = outputVars.map(_.getType)
+      new BaseConstraint(conv, program, expr, types) with Constraint1[A]
     }
   }
 
@@ -97,7 +96,12 @@ object Constraints {
       val outputVars : Seq[Identifier]  = deserialize[Seq[Identifier]](serializedOutputVars)
       val initialExpr : Expr            = deserialize[Expr](serializedExpr)
 
-      new BaseConstraint(conv, program, inputVars, outputVars, initialExpr, inputVarValues) with Constraint2[A,B]
+      val env : Map[Expr,Expr]                 = (inputVars zip inputVarValues).toMap
+      val deBruijnIndices: Seq[DeBruijnIndex]  = outputVars.zipWithIndex.map{ case (v, idx) => DeBruijnIndex(idx).setType(v.getType) }
+      val exprWithIndices: Expr                = replace(((outputVars map (Variable(_))) zip deBruijnIndices).toMap, initialExpr)
+      val expr : Expr                          = replace(env, exprWithIndices)
+      val types : Seq[TypeTree]                = outputVars.map(_.getType)
+      new BaseConstraint(conv, program, expr, types) with Constraint2[A,B]
     }
   }
 
@@ -196,14 +200,7 @@ object Constraints {
   sealed trait OptimizingFunction1[A] extends OptimizingFunction // can contain integer functions
   sealed trait OptimizingFunction2[A,B] extends OptimizingFunction
 
-  abstract class BaseOptimizingFunction(val converter : Converter, program : Program, inputVars : Seq[Variable], val outputVars : Seq[Identifier], initialExpr : Expr, inputVarValues : Seq[Expr]) 
-    extends OptimizingFunction {
-
-    private lazy val env : Map[Expr,Expr]       = (inputVars zip inputVarValues).toMap
-    private lazy val deBruijnIndices: Seq[DeBruijnIndex]  = outputVars.zipWithIndex.map{ case (v, idx) => DeBruijnIndex(idx).setType(v.getType) }
-    private lazy val exprWithIndices: Expr                = replace(((outputVars map (Variable(_))) zip deBruijnIndices).toMap, initialExpr)
-    lazy val expr : Expr                                  = replace(env, exprWithIndices)
-  }
+  abstract case class BaseOptimizingFunction(converter : Converter, program : Program, expr : Expr, types : Seq[TypeTree]) extends OptimizingFunction
 
   object BaseOptimizingFunction1 {
     def apply[A](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
@@ -212,7 +209,12 @@ object Constraints {
       val outputVars : Seq[Identifier]  = deserialize[Seq[Identifier]](serializedOutputVars)
       val initialExpr : Expr            = deserialize[Expr](serializedExpr)
 
-      new BaseOptimizingFunction(conv, program, inputVars, outputVars, initialExpr, inputVarValues) with OptimizingFunction1[A]
+      val env : Map[Expr,Expr]                 = (inputVars zip inputVarValues).toMap
+      val deBruijnIndices: Seq[DeBruijnIndex]  = outputVars.zipWithIndex.map{ case (v, idx) => DeBruijnIndex(idx).setType(v.getType) }
+      val exprWithIndices: Expr                = replace(((outputVars map (Variable(_))) zip deBruijnIndices).toMap, initialExpr)
+      val expr : Expr                          = replace(env, exprWithIndices)
+      val types : Seq[TypeTree]                = outputVars.map(_.getType)
+      new BaseOptimizingFunction(conv, program, expr, types) with OptimizingFunction1[A]
     }
   }
 
@@ -223,7 +225,12 @@ object Constraints {
       val outputVars : Seq[Identifier]  = deserialize[Seq[Identifier]](serializedOutputVars)
       val initialExpr : Expr            = deserialize[Expr](serializedExpr)
 
-      new BaseOptimizingFunction(conv, program, inputVars, outputVars, initialExpr, inputVarValues) with OptimizingFunction2[A,B]
+      val env : Map[Expr,Expr]                 = (inputVars zip inputVarValues).toMap
+      val deBruijnIndices: Seq[DeBruijnIndex]  = outputVars.zipWithIndex.map{ case (v, idx) => DeBruijnIndex(idx).setType(v.getType) }
+      val exprWithIndices: Expr                = replace(((outputVars map (Variable(_))) zip deBruijnIndices).toMap, initialExpr)
+      val expr : Expr                          = replace(env, exprWithIndices)
+      val types : Seq[TypeTree]                = outputVars.map(_.getType)
+      new BaseOptimizingFunction(conv, program, expr, types) with OptimizingFunction2[A,B]
     }
   }
 
@@ -263,37 +270,37 @@ object Constraints {
   /** Compute the expression associated with this function, with De Bruijn
    * indices */
   private def exprOf(function : OptimizingFunction) : Expr = function match {
-    case bf : BaseOptimizingFunction => bf.expr
+    case BaseOptimizingFunction(_,_,expr,_) => expr
   }
 
   private def typesOf(function : OptimizingFunction) : Seq[TypeTree] = function match {
-    case bf : BaseOptimizingFunction => bf.outputVars.map(_.getType)
+    case BaseOptimizingFunction(_,_,_,types) => types
   }
 
   /********** CONSTRAINT METHODS **********/
   /** Compute the expression associated with this constraint, with De Bruijn
    * indices */
   private def exprOf(constraint : Constraint) : Expr = constraint match {
-    case bc : BaseConstraint => bc.expr
+    case BaseConstraint(_,_,expr,_) => expr
     case NotConstraint(c) => Not(exprOf(c))
     case OrConstraint(cs) => Or(cs map exprOf)
     case AndConstraint(cs) => And(cs map exprOf)
   }
 
   private def programOf(constraint : Constraint) : Program = constraint match {
-    case bc : BaseConstraint => bc.program
+    case BaseConstraint(_,program,_,_) => program
     case UnaryConstraint(c) => programOf(c)
     case NAryConstraint(cs) => programOf(cs.head)
   }
 
   private def typesOf(constraint : Constraint) : Seq[TypeTree] = constraint match {
-    case bc : BaseConstraint => bc.outputVars.map(_.getType)
+    case BaseConstraint(_,_,_,types) => types
     case UnaryConstraint(c) => typesOf(c)
     case NAryConstraint(cs) => typesOf(cs.head)
   }
 
   private def converterOf(constraint : Constraint) : Converter = constraint match {
-    case bc : BaseConstraint => bc.converter
+    case BaseConstraint(converter,_,_,_) => converter
     case UnaryConstraint(c) => converterOf(c)
     case NAryConstraint(cs) => converterOf(cs.head)
   }
