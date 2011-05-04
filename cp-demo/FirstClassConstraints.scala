@@ -13,5 +13,8 @@ object FirstClassConstraints {
     for (x <- oneOf(l).findAll)
       println("A solution: " + x)
 
+    val p = ((x : Int, y : Int) => x > y).proj0 && ((x : Int, y : Int) => x < y).proj0
+    println(p.solve)
+
   }
 }

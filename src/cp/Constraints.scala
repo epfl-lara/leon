@@ -68,7 +68,18 @@ object Constraints {
 
     def unary_! : Constraint2[A,B] = NotConstraint2[A,B](this)
 
-    // def proj0 : Constraint1[A] = proj0(this)
+    def proj0 : Constraint1[A] = this.asInstanceOf[Constraint] match {
+      case BaseConstraint(conv,pr,ex,ts) => {
+        val deBruijnIndices = ts.zipWithIndex.map{ case (t,idx) => DeBruijnIndex(idx).setType(t) }
+        val freshIDs = deBruijnIndices.tail.zipWithIndex.map{ case (dbi, i) => FreshIdentifier("x" + i).setType(dbi.getType) }
+        val subst = deBruijnIndices.tail.zip(freshIDs map (Variable)).toMap[Expr,Expr]
+        new BaseConstraint(conv, pr, replace(subst, ex), ts.take(1)) with Constraint1[A]
+      }
+      case NotConstraint2(c) => NotConstraint1[A](c.asInstanceOf[Constraint2[A,B]].proj0)
+      case OrConstraint2(cs) => OrConstraint1[A](cs map (c => c.asInstanceOf[Constraint2[A,B]].proj0))
+      case AndConstraint2(cs) => AndConstraint1[A](cs map (c => c.asInstanceOf[Constraint2[A,B]].proj0))
+      case _ => error("Cannot reach this")
+    }
   }
 
   abstract case class BaseConstraint(converter : Converter, program : Program, expr : Expr, types : Seq[TypeTree]) extends Constraint
@@ -112,6 +123,10 @@ object Constraints {
       new OrConstraint1[A](Seq(l,r))
     }
 
+    def apply[A](cs : Seq[Constraint1[A]]) : Constraint1[A] = {
+      new OrConstraint1[A](cs)
+    }
+
     def unapply[A](or : OrConstraint1[A]) : Option[Seq[Constraint1[A]]] =
       if (or == null) None else Some(or.constraints)
   }
@@ -119,9 +134,11 @@ object Constraints {
   class OrConstraint2[A,B](val constraints : Seq[Constraint2[A,B]]) extends Constraint2[A,B]
 
   object OrConstraint2 {
-    def apply[A,B](l : Constraint2[A,B], r : Constraint2[A,B]) : Constraint2[A,B] = {
+    def apply[A,B](l : Constraint2[A,B], r : Constraint2[A,B]) : Constraint2[A,B] =
       new OrConstraint2[A,B](Seq(l,r))
-    }
+
+    def apply[A,B](cs : Seq[Constraint2[A,B]]) : Constraint2[A,B] =
+      new OrConstraint2[A,B](cs)
 
     def unapply[A,B](or : OrConstraint2[A,B]) : Option[Seq[Constraint2[A,B]]] =
       if (or == null) None else Some(or.constraints)
@@ -139,9 +156,11 @@ object Constraints {
   class AndConstraint1[A](val constraints : Seq[Constraint1[A]]) extends Constraint1[A]
 
   object AndConstraint1 {
-    def apply[A](l : Constraint1[A], r : Constraint1[A]) : Constraint1[A] = {
+    def apply[A](l : Constraint1[A], r : Constraint1[A]) : Constraint1[A] =
       new AndConstraint1[A](Seq(l,r))
-    }
+
+    def apply[A](cs : Seq[Constraint1[A]]) : Constraint1[A] =
+      new AndConstraint1[A](cs)
 
     def unapply[A](and : AndConstraint1[A]) : Option[Seq[Constraint1[A]]] =
       if (and == null) None else Some(and.constraints)
@@ -150,9 +169,11 @@ object Constraints {
   class AndConstraint2[A,B](val constraints : Seq[Constraint2[A,B]]) extends Constraint2[A,B]
 
   object AndConstraint2 {
-    def apply[A,B](l : Constraint2[A,B], r : Constraint2[A,B]) : Constraint2[A,B] = {
+    def apply[A,B](l : Constraint2[A,B], r : Constraint2[A,B]) : Constraint2[A,B] =
       new AndConstraint2[A,B](Seq(l,r))
-    }
+
+    def apply[A,B](cs : Seq[Constraint2[A,B]]) : Constraint2[A,B] =
+      new AndConstraint2[A,B](cs)
 
     def unapply[A,B](and : AndConstraint2[A,B]) : Option[Seq[Constraint2[A,B]]] =
       if (and == null) None else Some(and.constraints)
@@ -318,10 +339,6 @@ object Constraints {
 
     (freshOutputIDs, exprWithFreshIDs)
   }
-
-  // def proj0[A,B](constraint : Constraint2[A,B]) : Constraint1[A] = constraint match {
-  //   case bc : BaseConstraint => 
-  // }
 
   /********** SOLVING METHODS **********/
   /** Return interpretation of the constant in model if it exists, the simplest
