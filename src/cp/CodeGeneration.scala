@@ -45,13 +45,13 @@ trait CodeGeneration {
   private lazy val copySettingsFunction           = definitions.getMember(runtimeMethodsModule, "copySettings")
 
   private lazy val baseConstraintModules          = List(
-                                                    definitions.getModule("cp.Constraints.BaseConstraint1"),
-                                                    definitions.getModule("cp.Constraints.BaseConstraint2")
+                                                    definitions.getModule("cp.Terms.BaseConstraint1"),
+                                                    definitions.getModule("cp.Terms.BaseConstraint2")
                                                     )
 
   private lazy val baseIntTermModules  = List(
-                                                    definitions.getModule("cp.Constraints.BaseIntTerm1"),
-                                                    definitions.getModule("cp.Constraints.BaseIntTerm2")
+                                                    definitions.getModule("cp.Terms.BaseIntTerm1"),
+                                                    definitions.getModule("cp.Terms.BaseIntTerm2")
                                                     )
 
   private lazy val converterClass                 = definitions.getClass("cp.Converter")

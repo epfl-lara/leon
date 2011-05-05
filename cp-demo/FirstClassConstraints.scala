@@ -1,5 +1,5 @@
 import cp.Definitions._
-import cp.Constraints._
+import cp.Terms._
 
 object FirstClassConstraints {
   def oneOf(lst : List[Int]) : Constraint1[Int] = lst match {
