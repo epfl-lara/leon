@@ -103,24 +103,24 @@ object Terms {
     }
   }
 
+  object BaseTerm1 {
+    def apply[T1,R](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+      val (converter, program, expr, types) = BaseTerm.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
+      new BaseTerm[T1,R](converter, program, expr, types) with Term1[T1,R]
+    }
+  }
+
+  object BaseTerm2 {
+    def apply[T1,T2,R](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+      val (converter, program, expr, types) = BaseTerm.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
+      new BaseTerm[(T1,T2),R](converter, program, expr, types) with Term2[T1,T2,R]
+    }
+  }
+
   /** A constraint is just a term with Boolean range */
   type Constraint[T] = Term[T,Boolean]
   type Constraint1[T1] = Term1[T1,Boolean]
   type Constraint2[T1,T2] = Term2[T1,T2,Boolean]
-
-  object BaseConstraint1 {
-    def apply[A](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
-      val (converter, program, expr, types) = BaseTerm.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
-      new BaseTerm[A,Boolean](converter, program, expr, types) with Constraint1[A]
-    }
-  }
-
-  object BaseConstraint2 {
-    def apply[A,B](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
-      val (converter, program, expr, types) = BaseTerm.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
-      new BaseTerm[(A,B),Boolean](converter, program, expr, types) with Constraint2[A,B]
-    }
-  }
 
   abstract case class OrConstraint[A](val constraints : Seq[Constraint[A]]) extends Constraint[A]
 

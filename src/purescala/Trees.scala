@@ -336,6 +336,7 @@ object Trees {
   object UnaryOperator {
     def unapply(expr: Expr) : Option[(Expr,(Expr)=>Expr)] = expr match {
       case Not(t) => Some((t,Not(_)))
+      case UMinus(t) => Some((t,UMinus))
       case SetCardinality(t) => Some((t,SetCardinality))
       case MultisetCardinality(t) => Some((t,MultisetCardinality))
       case MultisetToSet(t) => Some((t,MultisetToSet))

@@ -44,14 +44,9 @@ trait CodeGeneration {
   private lazy val skipCounterFunction            = definitions.getMember(runtimeMethodsModule, "skipCounter")
   private lazy val copySettingsFunction           = definitions.getMember(runtimeMethodsModule, "copySettings")
 
-  private lazy val baseConstraintModules          = List(
-                                                    definitions.getModule("cp.Terms.BaseConstraint1"),
-                                                    definitions.getModule("cp.Terms.BaseConstraint2")
-                                                    )
-
-  private lazy val baseIntTermModules  = List(
-                                                    definitions.getModule("cp.Terms.BaseIntTerm1"),
-                                                    definitions.getModule("cp.Terms.BaseIntTerm2")
+  private lazy val baseTermModules                = List(
+                                                    definitions.getModule("cp.Terms.BaseTerm1"),
+                                                    definitions.getModule("cp.Terms.BaseTerm2")
                                                     )
 
   private lazy val converterClass                 = definitions.getClass("cp.Converter")
@@ -237,19 +232,8 @@ trait CodeGeneration {
       (scalaPackage DOT collectionModule DOT immutableModule DOT definitions.ListModule DOT listModuleApplyFunction) APPLY (inputVarTrees)
     }
 
-    def newConstraint(exprToScalaSym : Symbol, serializedProg : Serialized, serializedInputVarList : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Tree, arity : Int) : Tree = {
-      baseConstraintModules(arity-1) APPLY (
-        newConverter(exprToScalaSym),
-        newSerialized(serializedProg),
-        newSerialized(serializedInputVarList),
-        newSerialized(serializedOutputVars),
-        newSerialized(serializedExpr),
-        inputVarValues
-      )
-    }
-
-    def newOptimizingFunction(exprToScalaSym : Symbol, serializedProg : Serialized, serializedInputVarList : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Tree, arity : Int) : Tree = {
-      baseIntTermModules(arity-1) APPLY (
+    def newBaseTerm(exprToScalaSym : Symbol, serializedProg : Serialized, serializedInputVarList : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Tree, arity : Int) : Tree = {
+      baseTermModules(arity-1) APPLY (
         newConverter(exprToScalaSym),
         newSerialized(serializedProg),
         newSerialized(serializedInputVarList),

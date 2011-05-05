@@ -92,7 +92,12 @@ trait CallTransformation
 
     override def transform(tree: Tree) : Tree = {
       tree match {
-        /** Transform implicit conversions to Constraint into instantiation of Constraints */
+        /** Transform implicit conversions to terms into instantiation of base terms */
+        case Apply(TypeApply(Select(Select(cpIdent, definitionsName), func2termName), typeTreeList), List(function: Function)) if 
+          (definitionsName.toString == "Definitions" && func2termName.toString.matches("func2term\\d")) => {
+          super.transform(tree)
+        }
+
         case Apply(TypeApply(Select(Select(cpIdent, definitionsName), pred2consName), typeTreeList), List(predicate: Function)) if 
           (definitionsName.toString == "Definitions" && pred2consName.toString.matches("pred2cons\\d")) => {
 
@@ -101,7 +106,7 @@ trait CallTransformation
           transformHelper(tree, predicate, codeGen) match {
             case Some((serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, arity)) => {
               // create constraint instance
-              val code = codeGen.newConstraint(exprToScalaSym, serializedProg, serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, arity)
+              val code = codeGen.newBaseTerm(exprToScalaSym, serializedProg, serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, arity)
 
               typer.typed(atOwner(currentOwner) {
                 code
@@ -118,7 +123,7 @@ trait CallTransformation
           transformHelper(tree, function, codeGen) match {
             case Some((serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, arity)) => {
               // create constraint instance
-              val code = codeGen.newOptimizingFunction(exprToScalaSym, serializedProg, serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, arity)
+              val code = codeGen.newBaseTerm(exprToScalaSym, serializedProg, serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, arity)
 
               typer.typed(atOwner(currentOwner) {
                 code
