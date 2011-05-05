@@ -357,6 +357,7 @@ trait CodeExtraction extends Extractors {
       }
       case ExInt32Literal(v) => IntLiteral(v).setType(Int32Type)
       case ExBooleanLiteral(v) => BooleanLiteral(v).setType(BooleanType)
+      case ExTyped(e,tpt) => rec(e)
       case ExIdentifier(sym,tpt) => varSubsts.get(sym) match {
         case Some(fun) => fun()
         case None => {
