@@ -18,7 +18,7 @@ object FirstClassConstraints {
   def main(args: Array[String]) : Unit = {
     val l = List(1, 3, 5, 7)
 
-    for (x <- (oneOf(l) minimizing ((x: Int) => -x)).findAll)
+    for (x <- (oneOf(l) minimizing (- (_: Int))).findAll)
       println("A solution: " + x)
 
     val mapper : Term1[MyList,MyList] = (l : MyList) => l match { case MyCons(_, xs) => xs; case x => x }
