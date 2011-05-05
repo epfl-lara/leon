@@ -1,7 +1,7 @@
 package cp
 
 object Definitions {
-  import Constraints._
+  import Terms._
 
   class spec extends StaticAnnotation
 

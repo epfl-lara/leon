@@ -7,7 +7,7 @@ import purescala.Definitions._
 import purescala.Trees._
 
 import Serialization._
-import Constraints._
+import Terms._
 
 trait CallTransformation 
   extends TypingTransformers

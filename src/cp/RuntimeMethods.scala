@@ -3,7 +3,7 @@ package cp
 /** A collection of methods that are called on runtime */
 object RuntimeMethods {
   import Serialization._
-  import Constraints._
+  import Terms._
   import Definitions.UnsatisfiableConstraintException
   import Definitions.UnknownConstraintException
   import purescala.Definitions._
@@ -14,7 +14,7 @@ object RuntimeMethods {
 
   import purescala.Stopwatch
   
-  /* WILL BE PORTED TO Constraints.scala
+  /* WILL BE PORTED TO Terms.scala
   private def chooseMaximizingExec(program : Program, expr : Expr, outputVars : Seq[Identifier], maxExpr : Expr, inputConstraints : Expr) : Seq[Expr] = {
     def stop(lo : Int, hi : Option[Int]) : Boolean = hi match {
       case Some(h) => h - lo <= 2

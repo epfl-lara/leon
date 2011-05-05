@@ -10,7 +10,7 @@ import purescala.FairZ3Solver
 import purescala.Stopwatch
 import Definitions.{UnsatisfiableConstraintException,UnknownConstraintException}
 
-object Constraints {
+object Terms {
   /** Terms are functions with domain T (which can be a tuple) and range R */
   sealed trait Term[T,R] {
     /** The converting function defines how Expr values returned by the solver
