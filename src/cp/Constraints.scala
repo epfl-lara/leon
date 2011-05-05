@@ -11,23 +11,17 @@ import purescala.Stopwatch
 import Definitions.{UnsatisfiableConstraintException,UnknownConstraintException}
 
 object Constraints {
-  private val silent = true
-  private def newReporter() = if (silent) new QuietReporter() else new DefaultReporter()
-  private def newSolver(program : Program) = {
-    val s = new FairZ3Solver(newReporter())
-    s.setProgram(program)
-    s
-  }
+  /** Terms are functions with domain T (which can be a tuple) and range R */
+  sealed trait Term[T,R] {
+    /** The converting function defines how Expr values returned by the solver
+     * will be converted back to Scala values */
+    val convertingFunction : (Seq[Expr] => T)
 
-  sealed trait Constraint {
-    type sig
-    val convertingFunction : (Seq[Expr] => sig)
-
-    def solve : sig = {
+    def solve(implicit asConstraint: (R) => Boolean) : T = {
       convertingFunction(solveExprSeq(this))
     }
 
-    def find : Option[sig] = {
+    def find(implicit asConstraint: (R) => Boolean) : Option[T] = {
       try {
         Some(this.solve)
       } catch {
@@ -36,56 +30,64 @@ object Constraints {
       }
     }
 
-    def findAll : Iterator[sig] = {
+    def findAll(implicit asConstraint: (R) => Boolean) : Iterator[T] = {
       findAllExprSeq(this).map(convertingFunction(_))
     }
   }
 
-  sealed trait Constraint1[A] extends Constraint {
-    type sig = A
-    val convertingFunction = converterOf(this).exprSeq2scala1[A] _
+  /** Terms of one argument */
+  sealed trait Term1[T1,R] extends Term[T1,R] {
+    val convertingFunction = converterOf(this).exprSeq2scala1[T1] _
+    type t2c = (Term1[T1,R]) => Term1[T1,Boolean]
 
-    def minimizing(minFunc : OptimizingFunction1[A]) : MinConstraint1[A] =
-      MinConstraint1[A](this, minFunc)
+    def minimizing(minFunc : IntTerm1[T1])(implicit asConstraint: t2c) : MinConstraint1[T1] = {
+      MinConstraint1[T1](asConstraint(this), minFunc)
+    }
       
-    def ||(other : Constraint1[A]) : Constraint1[A] = OrConstraint1[A](this, other)
+    def ||(other : Constraint1[T1])(implicit asConstraint: t2c) : Constraint1[T1] = OrConstraint1[T1](asConstraint(this), other)
 
-    def &&(other : Constraint1[A]) : Constraint1[A] = AndConstraint1[A](this, other)
+    def &&(other : Constraint1[T1])(implicit asConstraint: t2c) : Constraint1[T1] = AndConstraint1[T1](asConstraint(this), other)
 
-    def unary_! : Constraint1[A] = NotConstraint1[A](this)
+    def unary_!(implicit asConstraint: t2c) : Constraint1[T1] = NotConstraint1[T1](asConstraint(this))
   }
 
-  sealed trait Constraint2[A,B] extends Constraint {
-    type sig = (A,B)
-    val convertingFunction = converterOf(this).exprSeq2scala2[A,B] _
+  /** Terms of two arguments */
+  sealed trait Term2[T1,T2,R] extends Term[(T1,T2),R] {
+    val convertingFunction = converterOf(this).exprSeq2scala2[T1,T2] _
+    type t2c = (Term2[T1,T2,R]) => Term2[T1,T2,Boolean]
 
-    def minimizing(minFunc : OptimizingFunction2[A,B]) : MinConstraint2[A,B] =
-      MinConstraint2[A,B](this, minFunc)
+    def minimizing(minFunc : IntTerm2[T1,T2])(implicit asConstraint: t2c) : MinConstraint2[T1,T2] =
+      MinConstraint2[T1,T2](asConstraint(this), minFunc)
       
-    def ||(other : Constraint2[A,B]) : Constraint2[A,B] = OrConstraint2[A,B](this, other)
+    def ||(other : Constraint2[T1,T2])(implicit asConstraint: t2c) : Constraint2[T1,T2] = OrConstraint2[T1,T2](this, other)
 
-    def &&(other : Constraint2[A,B]) : Constraint2[A,B] = AndConstraint2[A,B](this, other)
+    def &&(other : Constraint2[T1,T2])(implicit asConstraint: t2c) : Constraint2[T1,T2] = AndConstraint2[T1,T2](this, other)
 
-    def unary_! : Constraint2[A,B] = NotConstraint2[A,B](this)
+    def unary_!(implicit asConstraint: t2c) : Constraint2[T1,T2] = NotConstraint2[T1,T2](this)
+  }
 
+    /*  this is for Constraint2[A,B]
     def proj0 : Constraint1[A] = this.asInstanceOf[Constraint] match {
-      case BaseConstraint(conv,pr,ex,ts) => {
+      case BaseTerm(conv,pr,ex,ts) => {
         val deBruijnIndices = ts.zipWithIndex.map{ case (t,idx) => DeBruijnIndex(idx).setType(t) }
         val freshIDs = deBruijnIndices.tail.zipWithIndex.map{ case (dbi, i) => FreshIdentifier("x" + i).setType(dbi.getType) }
         val subst = deBruijnIndices.tail.zip(freshIDs map (Variable)).toMap[Expr,Expr]
-        new BaseConstraint(conv, pr, replace(subst, ex), ts.take(1)) with Constraint1[A]
+        new BaseTerm[Boolean](conv, pr, replace(subst, ex), ts.take(1)) with Constraint1[A]
       }
       case NotConstraint2(c) => NotConstraint1[A](c.asInstanceOf[Constraint2[A,B]].proj0)
       case OrConstraint2(cs) => OrConstraint1[A](cs map (c => c.asInstanceOf[Constraint2[A,B]].proj0))
       case AndConstraint2(cs) => AndConstraint1[A](cs map (c => c.asInstanceOf[Constraint2[A,B]].proj0))
       case _ => error("Cannot reach this")
     }
-  }
+    */
 
-  abstract case class BaseConstraint(converter : Converter, program : Program, expr : Expr, types : Seq[TypeTree]) extends Constraint
+  /** A base term corresponds to an expression extracted from Scala code. It
+   * holds the expression with De Bruijn indices */
+  abstract case class BaseTerm[T,R](converter : Converter, program : Program, expr : Expr, types : Seq[TypeTree]) extends Term[T,R]
 
-  object BaseConstraint1 {
-    def apply[A](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+  /** Contains helper methods for constructing base terms */
+  object BaseTerm {
+    def processArgs(converter : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) : (Converter,Program,Expr,Seq[TypeTree]) = {
       val program : Program             = deserialize[Program](serializedProg)
       val inputVars : Seq[Variable]     = deserialize[Seq[Variable]](serializedInputVars)
       val outputVars : Seq[Identifier]  = deserialize[Seq[Identifier]](serializedOutputVars)
@@ -94,176 +96,144 @@ object Constraints {
       val env : Map[Expr,Expr]                 = (inputVars zip inputVarValues).toMap
       val deBruijnIndices: Seq[DeBruijnIndex]  = outputVars.zipWithIndex.map{ case (v, idx) => DeBruijnIndex(idx).setType(v.getType) }
       val exprWithIndices: Expr                = replace(((outputVars map (Variable(_))) zip deBruijnIndices).toMap, initialExpr)
+
       val expr : Expr                          = replace(env, exprWithIndices)
       val types : Seq[TypeTree]                = outputVars.map(_.getType)
-      new BaseConstraint(conv, program, expr, types) with Constraint1[A]
+      (converter, program, expr, types)
+    }
+  }
+
+  /** A constraint is just a term with Boolean range */
+  type Constraint[T] = Term[T,Boolean]
+  type Constraint1[T1] = Term1[T1,Boolean]
+  type Constraint2[T1,T2] = Term2[T1,T2,Boolean]
+
+  object BaseConstraint1 {
+    def apply[A](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+      val (converter, program, expr, types) = BaseTerm.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
+      new BaseTerm[A,Boolean](converter, program, expr, types) with Constraint1[A]
     }
   }
 
   object BaseConstraint2 {
     def apply[A,B](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
-      val program : Program             = deserialize[Program](serializedProg)
-      val inputVars : Seq[Variable]     = deserialize[Seq[Variable]](serializedInputVars)
-      val outputVars : Seq[Identifier]  = deserialize[Seq[Identifier]](serializedOutputVars)
-      val initialExpr : Expr            = deserialize[Expr](serializedExpr)
-
-      val env : Map[Expr,Expr]                 = (inputVars zip inputVarValues).toMap
-      val deBruijnIndices: Seq[DeBruijnIndex]  = outputVars.zipWithIndex.map{ case (v, idx) => DeBruijnIndex(idx).setType(v.getType) }
-      val exprWithIndices: Expr                = replace(((outputVars map (Variable(_))) zip deBruijnIndices).toMap, initialExpr)
-      val expr : Expr                          = replace(env, exprWithIndices)
-      val types : Seq[TypeTree]                = outputVars.map(_.getType)
-      new BaseConstraint(conv, program, expr, types) with Constraint2[A,B]
+      val (converter, program, expr, types) = BaseTerm.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
+      new BaseTerm[(A,B),Boolean](converter, program, expr, types) with Constraint2[A,B]
     }
   }
 
-  class OrConstraint1[A](val constraints : Seq[Constraint1[A]]) extends Constraint1[A]
+  abstract case class OrConstraint[A](val constraints : Seq[Constraint[A]]) extends Constraint[A]
 
   object OrConstraint1 {
     def apply[A](l : Constraint1[A], r : Constraint1[A]) : Constraint1[A] = {
-      new OrConstraint1[A](Seq(l,r))
+      new OrConstraint[A](Seq(l,r)) with Constraint1[A]
     }
 
     def apply[A](cs : Seq[Constraint1[A]]) : Constraint1[A] = {
-      new OrConstraint1[A](cs)
+      new OrConstraint[A](cs) with Constraint1[A]
     }
 
-    def unapply[A](or : OrConstraint1[A]) : Option[Seq[Constraint1[A]]] =
+    def unapply[A](or : OrConstraint[A]) : Option[Seq[Constraint[A]]] =
       if (or == null) None else Some(or.constraints)
   }
-
-  class OrConstraint2[A,B](val constraints : Seq[Constraint2[A,B]]) extends Constraint2[A,B]
 
   object OrConstraint2 {
-    def apply[A,B](l : Constraint2[A,B], r : Constraint2[A,B]) : Constraint2[A,B] =
-      new OrConstraint2[A,B](Seq(l,r))
+    def apply[A,B](l : Constraint2[A,B], r : Constraint2[A,B]) : Constraint2[A,B] = {
+      new OrConstraint[(A,B)](Seq(l,r)) with Constraint2[A,B]
+    }
 
-    def apply[A,B](cs : Seq[Constraint2[A,B]]) : Constraint2[A,B] =
-      new OrConstraint2[A,B](cs)
+    def apply[A,B](cs : Seq[Constraint2[A,B]]) : Constraint2[A,B] = {
+      new OrConstraint[(A,B)](cs) with Constraint2[A,B]
+    }
 
-    def unapply[A,B](or : OrConstraint2[A,B]) : Option[Seq[Constraint2[A,B]]] =
+    def unapply(or : OrConstraint[_]) : Option[Seq[Constraint[_]]] =
       if (or == null) None else Some(or.constraints)
   }
 
-  /** Extractor for or constraints of any type signature */
-  object OrConstraint {
-    def unapply(constraint : Constraint) : Option[Seq[Constraint]] = constraint match {
-      case OrConstraint1(cs) => Some(cs)
-      case OrConstraint2(cs) => Some(cs)
-      case _ => None
-    }
-  }
-
-  class AndConstraint1[A](val constraints : Seq[Constraint1[A]]) extends Constraint1[A]
+  abstract case class AndConstraint[A](val constraints : Seq[Constraint[A]]) extends Constraint[A]
 
   object AndConstraint1 {
     def apply[A](l : Constraint1[A], r : Constraint1[A]) : Constraint1[A] =
-      new AndConstraint1[A](Seq(l,r))
+      new AndConstraint[A](Seq(l,r)) with Constraint1[A]
 
     def apply[A](cs : Seq[Constraint1[A]]) : Constraint1[A] =
-      new AndConstraint1[A](cs)
+      new AndConstraint[A](cs) with Constraint1[A]
 
-    def unapply[A](and : AndConstraint1[A]) : Option[Seq[Constraint1[A]]] =
+    def unapply[A](and : AndConstraint[A]) : Option[Seq[Constraint[A]]] =
       if (and == null) None else Some(and.constraints)
   }
-
-  class AndConstraint2[A,B](val constraints : Seq[Constraint2[A,B]]) extends Constraint2[A,B]
 
   object AndConstraint2 {
     def apply[A,B](l : Constraint2[A,B], r : Constraint2[A,B]) : Constraint2[A,B] =
-      new AndConstraint2[A,B](Seq(l,r))
+      new AndConstraint[(A,B)](Seq(l,r)) with Constraint2[A,B]
 
     def apply[A,B](cs : Seq[Constraint2[A,B]]) : Constraint2[A,B] =
-      new AndConstraint2[A,B](cs)
+      new AndConstraint[(A,B)](cs) with Constraint2[A,B]
 
-    def unapply[A,B](and : AndConstraint2[A,B]) : Option[Seq[Constraint2[A,B]]] =
+    def unapply(and : AndConstraint[_]) : Option[Seq[Constraint[_]]] =
       if (and == null) None else Some(and.constraints)
   }
 
-  /** Extractor for and constraints of any type signature */
-  object AndConstraint {
-    def unapply(constraint : Constraint) : Option[Seq[Constraint]] = constraint match {
-      case AndConstraint1(cs) => Some(cs)
-      case AndConstraint2(cs) => Some(cs)
-      case _ => None
+  abstract case class NotConstraint[A](constraint : Constraint[A]) extends Constraint[A]
+  object NotConstraint1 {
+    def apply[A](c : Constraint1[A]) : Constraint1[A] =
+      new NotConstraint[A](c) with Constraint1[A]
+
+    def unapply[A](not : NotConstraint[A]) : Option[Constraint[A]] =
+      if (not == null) None else Some(not.constraint)
+  }
+  object NotConstraint2 {
+    def apply[A,B](c : Constraint2[A,B]) : Constraint2[A,B] =
+      new NotConstraint[(A,B)](c) with Constraint2[A,B]
+
+    def unapply[A](not : NotConstraint[A]) : Option[Constraint[A]] =
+      if (not == null) None else Some(not.constraint)
+  }
+
+  type IntTerm[T] = Term[T,Int]
+  type IntTerm1[T1] = Term1[T1,Int]
+  type IntTerm2[T1,T2] = Term2[T1,T2,Int]
+
+  object BaseIntTerm1 {
+    def apply[A](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+      val (converter, program, expr, types) = BaseTerm.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
+      new BaseTerm[A,Int](converter, program, expr, types) with IntTerm1[A]
     }
   }
 
-  case class NotConstraint1[A](constraint : Constraint1[A]) extends Constraint1[A]
-  case class NotConstraint2[A,B](constraint : Constraint2[A,B]) extends Constraint2[A,B]
-
-  /** Extractor for `not' constraints of any type signature */
-  object NotConstraint {
-    def unapply(constraint : Constraint) : Option[Constraint] = constraint match {
-      case NotConstraint1(c) => Some(c)
-      case NotConstraint2(c) => Some(c)
-      case _ => None
+  object BaseIntTerm2 {
+    def apply[A,B](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+      val (converter, program, expr, types) = BaseTerm.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
+      new BaseTerm[(A,B),Int](converter, program, expr, types) with IntTerm2[A,B]
     }
   }
 
-  /** Extractor for NAry constraints of any type signature */
-  object NAryConstraint {
-    def unapply(constraint : Constraint) : Option[Seq[Constraint]] = constraint match {
+  /** Extractor for NAry terms of any type signature */
+  object NAryTerm {
+    def unapply(term : Term[_,_]) : Option[Seq[Term[_,_]]] = term match {
       case OrConstraint(cs) => Some(cs)
       case AndConstraint(cs) => Some(cs)
       case _ => None
     }
   }
 
-  /** Extractor for unary constraints of any type signature */
-  object UnaryConstraint {
-    def unapply(constraint : Constraint) : Option[Constraint] = constraint match {
+  /** Extractor for unary terms of any type signature */
+  object UnaryTerm {
+    def unapply(term : Term[_,_]) : Option[Term[_,_]] = term match {
       case NotConstraint(c) => Some(c)
       case _ => None
     }
   }
 
-  sealed trait OptimizingFunction
-  sealed trait OptimizingFunction1[A] extends OptimizingFunction // can contain integer functions
-  sealed trait OptimizingFunction2[A,B] extends OptimizingFunction
+  /** This construct represents a constraint with an expression to minimize */
+  abstract class MinConstraint[T](cons : Constraint[_], minFunc : IntTerm[_]) {
+    val convertingFunction : (Seq[Expr] => T)
 
-  abstract case class BaseOptimizingFunction(converter : Converter, program : Program, expr : Expr, types : Seq[TypeTree]) extends OptimizingFunction
-
-  object BaseOptimizingFunction1 {
-    def apply[A](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
-      val program : Program             = deserialize[Program](serializedProg)
-      val inputVars : Seq[Variable]     = deserialize[Seq[Variable]](serializedInputVars)
-      val outputVars : Seq[Identifier]  = deserialize[Seq[Identifier]](serializedOutputVars)
-      val initialExpr : Expr            = deserialize[Expr](serializedExpr)
-
-      val env : Map[Expr,Expr]                 = (inputVars zip inputVarValues).toMap
-      val deBruijnIndices: Seq[DeBruijnIndex]  = outputVars.zipWithIndex.map{ case (v, idx) => DeBruijnIndex(idx).setType(v.getType) }
-      val exprWithIndices: Expr                = replace(((outputVars map (Variable(_))) zip deBruijnIndices).toMap, initialExpr)
-      val expr : Expr                          = replace(env, exprWithIndices)
-      val types : Seq[TypeTree]                = outputVars.map(_.getType)
-      new BaseOptimizingFunction(conv, program, expr, types) with OptimizingFunction1[A]
-    }
-  }
-
-  object BaseOptimizingFunction2 {
-    def apply[A,B](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
-      val program : Program             = deserialize[Program](serializedProg)
-      val inputVars : Seq[Variable]     = deserialize[Seq[Variable]](serializedInputVars)
-      val outputVars : Seq[Identifier]  = deserialize[Seq[Identifier]](serializedOutputVars)
-      val initialExpr : Expr            = deserialize[Expr](serializedExpr)
-
-      val env : Map[Expr,Expr]                 = (inputVars zip inputVarValues).toMap
-      val deBruijnIndices: Seq[DeBruijnIndex]  = outputVars.zipWithIndex.map{ case (v, idx) => DeBruijnIndex(idx).setType(v.getType) }
-      val exprWithIndices: Expr                = replace(((outputVars map (Variable(_))) zip deBruijnIndices).toMap, initialExpr)
-      val expr : Expr                          = replace(env, exprWithIndices)
-      val types : Seq[TypeTree]                = outputVars.map(_.getType)
-      new BaseOptimizingFunction(conv, program, expr, types) with OptimizingFunction2[A,B]
-    }
-  }
-
-  abstract class MinConstraint(cons : Constraint, minFunc : OptimizingFunction) {
-    type sig
-    val convertingFunction : (Seq[Expr] => sig)
-
-    def solve : sig = {
+    def solve : T = {
       convertingFunction(solveMinimizingExprSeq(cons, minFunc))
     }
 
-    def find : Option[sig] = {
+    def find : Option[T] = {
       try {
         Some(this.solve)
       } catch {
@@ -272,63 +242,49 @@ object Constraints {
       }
     }
 
-    def findAll : Iterator[sig] = {
+    def findAll : Iterator[T] = {
       findAllMinimizingExprSeq(cons, minFunc).map(convertingFunction(_))
     } 
   }
 
-  case class MinConstraint1[A](cons : Constraint1[A], minFunc : OptimizingFunction1[A]) extends MinConstraint(cons, minFunc) {
-    type sig = A
-    val convertingFunction = converterOf(cons).exprSeq2scala1[A] _
+  case class MinConstraint1[T](cons : Constraint1[T], minFunc : IntTerm1[T]) extends MinConstraint[T](cons, minFunc) {
+    val convertingFunction = converterOf(cons).exprSeq2scala1[T] _
   }
 
-  case class MinConstraint2[A,B](cons : Constraint2[A,B], minFunc : OptimizingFunction2[A,B]) extends MinConstraint(cons, minFunc) {
-    type sig = (A,B)
-    val convertingFunction = converterOf(cons).exprSeq2scala2[A,B] _
+  case class MinConstraint2[T1,T2](cons : Constraint2[T1,T2], minFunc : IntTerm2[T1,T2]) extends MinConstraint[(T1,T2)](cons, minFunc) {
+    val convertingFunction = converterOf(cons).exprSeq2scala2[T1,T2] _
   }
 
-  /********** OPTIMIZING FUNCTION METHODS **********/
-  /** Compute the expression associated with this function, with De Bruijn
-   * indices */
-  private def exprOf(function : OptimizingFunction) : Expr = function match {
-    case BaseOptimizingFunction(_,_,expr,_) => expr
+  /********** TERM METHODS **********/
+  private def converterOf(term : Term[_,_]) : Converter = term match {
+    case BaseTerm(converter,_,_,_) => converter
+    case UnaryTerm(c) => converterOf(c)
+    case NAryTerm(cs) => converterOf(cs.head)
   }
 
-  private def typesOf(function : OptimizingFunction) : Seq[TypeTree] = function match {
-    case BaseOptimizingFunction(_,_,_,types) => types
+  private def typesOf(term : Term[_,_]) : Seq[TypeTree] = term match {
+    case BaseTerm(_,_,_,types) => types
+    case UnaryTerm(c) => typesOf(c)
+    case NAryTerm(cs) => typesOf(cs.head)
   }
 
-  /********** CONSTRAINT METHODS **********/
-  /** Compute the expression associated with this constraint, with De Bruijn
-   * indices */
-  private def exprOf(constraint : Constraint) : Expr = constraint match {
-    case BaseConstraint(_,_,expr,_) => expr
+  private def exprOf(term : Term[_,_]) : Expr = term match {
+    case BaseTerm(_,_,expr,_) => expr
     case NotConstraint(c) => Not(exprOf(c))
     case OrConstraint(cs) => Or(cs map exprOf)
     case AndConstraint(cs) => And(cs map exprOf)
+    case _ => error("here is what i couldn't match: " + term)
   }
 
-  private def programOf(constraint : Constraint) : Program = constraint match {
-    case BaseConstraint(_,program,_,_) => program
-    case UnaryConstraint(c) => programOf(c)
-    case NAryConstraint(cs) => programOf(cs.head)
-  }
-
-  private def typesOf(constraint : Constraint) : Seq[TypeTree] = constraint match {
-    case BaseConstraint(_,_,_,types) => types
-    case UnaryConstraint(c) => typesOf(c)
-    case NAryConstraint(cs) => typesOf(cs.head)
-  }
-
-  private def converterOf(constraint : Constraint) : Converter = constraint match {
-    case BaseConstraint(converter,_,_,_) => converter
-    case UnaryConstraint(c) => converterOf(c)
-    case NAryConstraint(cs) => converterOf(cs.head)
+  private def programOf(term : Term[_,_]) : Program = term match {
+    case BaseTerm(_,program,_,_) => program
+    case UnaryTerm(c) => programOf(c)
+    case NAryTerm(cs) => programOf(cs.head)
   }
 
   /** Compute a fresh sequence of output variables and the combined expression
    * containing those */
-  private def combineConstraint(constraint : Constraint) : (Seq[Identifier], Expr) = {
+  private def combineConstraint(constraint : Constraint[_]) : (Seq[Identifier], Expr) = {
     val expr = exprOf(constraint)
 
     val outputVarTypes = typesOf(constraint)
@@ -341,6 +297,15 @@ object Constraints {
   }
 
   /********** SOLVING METHODS **********/
+
+  private val silent = true
+  private def newReporter() = if (silent) new QuietReporter() else new DefaultReporter()
+  private def newSolver(program : Program) = {
+    val s = new FairZ3Solver(newReporter())
+    s.setProgram(program)
+    s
+  }
+
   /** Return interpretation of the constant in model if it exists, the simplest
    * value otherwise */
   private def modelValue(varId: Identifier, model: Map[Identifier, Expr]) : Expr = model.get(varId) match {
@@ -349,7 +314,8 @@ object Constraints {
   }
 
   /** Return a solution as a sequence of expressions */
-  private def solveExprSeq(constraint : Constraint) : Seq[Expr] = {
+  private def solveExprSeq(c : Term[_,_]) : Seq[Expr] = {
+    val constraint = c.asInstanceOf[Constraint[_]]
     val solver = newSolver(programOf(constraint))
 
     val (freshOutputIDs, expr) = combineConstraint(constraint)
@@ -367,7 +333,7 @@ object Constraints {
   }
 
   /** Return a solution that minimizes the given term, as a sequence of expressions */
-  private def solveMinimizingExprSeq(constraint : Constraint, minFunc : OptimizingFunction) : Seq[Expr] = {
+  private def solveMinimizingExprSeq(constraint : Constraint[_], minFunc : IntTerm[_]) : Seq[Expr] = {
     val program = programOf(constraint)
     val (freshOutputIDs, expr) = combineConstraint(constraint)
     val minExprWithIndices = exprOf(minFunc)
@@ -381,7 +347,8 @@ object Constraints {
   }
 
   /** Return an iterator of solutions as sequences of expressions */
-  private def findAllExprSeq(constraint : Constraint) : Iterator[Seq[Expr]] = {
+  private def findAllExprSeq(c : Term[_,_]) : Iterator[Seq[Expr]] = {
+    val constraint = c.asInstanceOf[Constraint[_]]
     val program = programOf(constraint)
     val (freshOutputIDs, expr) = combineConstraint(constraint)
 
@@ -392,7 +359,7 @@ object Constraints {
   }
 
   /** Enumerate all solutions ordered by the term to minimize, as sequences of expressions */
-  private def findAllMinimizingExprSeq(constraint : Constraint, minFunc : OptimizingFunction) : Iterator[Seq[Expr]] = {
+  private def findAllMinimizingExprSeq(constraint : Constraint[_], minFunc : IntTerm[_]) : Iterator[Seq[Expr]] = {
     val program = programOf(constraint)
     val (freshOutputIDs, expr) = combineConstraint(constraint)
     val minExprWithIndices = exprOf(minFunc)

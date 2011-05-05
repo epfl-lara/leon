@@ -10,11 +10,11 @@ object FirstClassConstraints {
   def main(args: Array[String]) : Unit = {
     val l = List(1, 3, 5, 7)
 
-    for (x <- oneOf(l).findAll)
+    for (x <- (oneOf(l) minimizing ((x: Int) => x)).findAll)
       println("A solution: " + x)
 
-    val p = ((x : Int, y : Int) => x > y).proj0 && ((x : Int, y : Int) => x < y).proj0
-    println(p.solve)
+    // val p = ((x : Int, y : Int) => x > y).proj0 && ((x : Int, y : Int) => x < y).proj0
+    // println(p.solve)
 
   }
 }
