@@ -16,7 +16,6 @@ done
 if [ -e ${runner} ]
 then
     ${runner} ${newargs}
-    exit 0
 else
     echo "${runner} not found. Have you run 'sbt all' ?"
     exit 1

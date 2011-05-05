@@ -1,7 +1,15 @@
 import cp.Definitions._
 import cp.Terms._
 
+@spec object Specs {
+  abstract class MyList
+  case class MyCons(head : Int, tail : MyList) extends MyList
+  case class MyNil() extends MyList
+}
+
 object FirstClassConstraints {
+  import Specs._
+
   def oneOf(lst : List[Int]) : Constraint1[Int] = lst match {
    case Nil => (x : Int) => false
    case c::cs => ((x : Int) => x == c) || oneOf(cs)
@@ -13,8 +21,7 @@ object FirstClassConstraints {
     for (x <- (oneOf(l) minimizing ((x: Int) => -x)).findAll)
       println("A solution: " + x)
 
-    // val p = ((x : Int, y : Int) => x > y).proj0 && ((x : Int, y : Int) => x < y).proj0
-    // println(p.solve)
+    val mapper : Term1[MyList,MyList] = (l : MyList) => l match { case MyCons(_, xs) => xs; case x => x }
 
   }
 }
