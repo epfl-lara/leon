@@ -50,13 +50,9 @@ object Terms {
 
     def unary_!(implicit asConstraint: t2c) : Constraint1[T1] = NotConstraint1[T1](asConstraint(this))
 
-    /** function composition this . other */
-    def compose[A](other : Term[A,T1]) : Term[A,R] = {
-      val otherExpr = exprOf(other)
-      val thisExpr  = exprOf(this)
-
-      throw new Exception()
-    }
+    /** function composition this ∘ other */
+    def compose0[A](other : Term1[A,T1]) : Term1[A,R]       = compose_0_1_1(other, this)
+    def compose0[A,B](other : Term2[A,B,T1]) : Term2[A,B,R] = compose_0_2_1(other, this)
   }
 
   /** Terms with two arguments */
@@ -72,6 +68,9 @@ object Terms {
     def &&(other : Constraint2[T1,T2])(implicit asConstraint: t2c) : Constraint2[T1,T2] = AndConstraint2[T1,T2](this, other)
 
     def unary_!(implicit asConstraint: t2c) : Constraint2[T1,T2] = NotConstraint2[T1,T2](this)
+
+    def compose0[A](other : Term1[A, T1]) : Term2[A,T2,R] = compose_0_1_2(other, this)
+    def compose1[A](other : Term1[A, T2]) : Term2[T1,A,R] = compose_1_1_2(other, this)
   }
 
     /*  this is for Constraint2[A,B]
@@ -219,6 +218,52 @@ object Terms {
   }
 
   /********** TERM METHODS **********/
+  /** compose_i_j_k will compose f (of arity j) and g (of arity k) as "g∘f" by
+   * inserting arguments of f in place of argument i of g */
+  private def compose_0_1_1[T1,T2,T3](f : Term[T1,T2], g : Term[T2,T3]) : Term1[T1,T3] = {
+    val (newExpr, newTypes) = compose(f, g, 0, 1, 1)
+    Term1(f.program, newExpr, newTypes, f.converter)
+  }
+
+  private def compose_0_2_1[T1,T2,R1,R2](f : Term[(T1,T2),R1], g : Term[R1,R2]) : Term2[T1,T2,R2] = {
+    val (newExpr, newTypes) = compose(f, g, 0, 2, 1)
+    Term2(f.program, newExpr, newTypes, f.converter)
+  }
+
+  private def compose_0_1_2[T1,R1,T2,R2](f : Term[T1,R1], g : Term[(R1,T2),R2]) : Term2[T1,T2,R2] = {
+    val (newExpr, newTypes) = compose(f, g, 0, 1, 2)
+    Term2(f.program, newExpr, newTypes, f.converter)
+  }
+
+  private def compose_1_1_2[T1,R1,T2,R2](f : Term[T1,R1], g : Term[(T2,R1),R2]) : Term2[T2,T1,R2] = {
+    val (newExpr, newTypes) = compose(f, g, 1, 1, 2)
+    Term2(f.program, newExpr, newTypes, f.converter)
+  }
+
+  /** Compute composed expression for g∘f */
+  private def compose(f : Term[_,_], g : Term[_,_], index : Int, nf : Int, ng : Int) : (Expr, Seq[TypeTree]) = (f, g) match {
+    case (Term(_,ef,tf,_),Term(_,eg,tg,_)) => {
+      val deBruijnF = tf.zipWithIndex.map{ case (t,i) => DeBruijnIndex(i).setType(t) }
+      val deBruijnG = tg.zipWithIndex.map{ case (t,i) => DeBruijnIndex(i).setType(t) }
+      assert(deBruijnF.size == nf && deBruijnG.size == ng)
+      // println("de Bruijn of f: " + deBruijnF)
+      // println("de Bruijn of g: " + deBruijnG)
+      val substG : Map[Expr,Expr] = deBruijnG.drop(index + 1).map{ case d @ DeBruijnIndex(i) => (d, DeBruijnIndex(i + nf - 1).setType(d.getType)) }.toMap
+      val substF : Map[Expr,Expr] = deBruijnF.map{ case d @ DeBruijnIndex(i) => (d, DeBruijnIndex(i + index).setType(d.getType)) }.toMap
+      // println("subst of f: " + substF)
+      // println("subst of g: " + substG)
+      val renamedExprF = replace(substF, ef)
+      val renamedExprG = replace(substG, eg)
+      // println("renamed f: " + renamedExprF)
+      // println("renamed g: " + renamedExprG)
+      val indexToReplace = deBruijnG(index)
+      val newExpr   = replace(Map(indexToReplace -> renamedExprF), renamedExprG)
+      val newTypes  = g.types.take(index) ++ f.types ++ g.types.drop(index + nf)
+      assert(newTypes.size == nf + ng - 1)
+      (newExpr, newTypes)
+    }
+  }
+
   private def converterOf(term : Term[_,_]) : Converter = term.converter
 
   private def typesOf(term : Term[_,_]) : Seq[TypeTree] = term.types
