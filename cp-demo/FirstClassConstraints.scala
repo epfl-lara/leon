@@ -37,11 +37,12 @@ object FirstClassConstraints {
     println("Composed f3: " + f3.expr)
     println("Composed f4: " + f4.expr)
 
-    val f5 = ((x : Int, y : Int) => x + y) compose0 ((x : Int) => x + 42) 
+    val f5 = ((x : Int, y : Int) => x + y) compose0 ((x : Int) => x + 42) compose1 ((x: Int) => x + 43)
     println("Composed f5: " + f5.expr)
-    val f6 = f5 compose1 ((x: Int) => x + 43)
-    println("Composed f6: " + f6.expr)
 
-    println("has size 3: " + hasSize(3).expr)
+    // println("has size 3: " + hasSize(3).expr)
+
+    for (s <- hasSize(3).findAll)
+      println(s)
   }
 }

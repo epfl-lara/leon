@@ -63,7 +63,7 @@ trait CallTransformation
         case None => purescalaReporter.error("Could not extract function: " + funBody); None
         case Some(b) =>
           // serialize expression
-          val serializedExpr = serialize(b)
+          val serializedExpr = serialize(matchToIfThenElse(b))
 
           // compute input variables
           val inputVars : Seq[Identifier] = variablesOf(b).filter(!outputVars.contains(_)).toSeq

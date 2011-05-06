@@ -246,16 +246,13 @@ object Terms {
       val deBruijnF = tf.zipWithIndex.map{ case (t,i) => DeBruijnIndex(i).setType(t) }
       val deBruijnG = tg.zipWithIndex.map{ case (t,i) => DeBruijnIndex(i).setType(t) }
       assert(deBruijnF.size == nf && deBruijnG.size == ng)
-      // println("de Bruijn of f: " + deBruijnF)
-      // println("de Bruijn of g: " + deBruijnG)
+
       val substG : Map[Expr,Expr] = deBruijnG.drop(index + 1).map{ case d @ DeBruijnIndex(i) => (d, DeBruijnIndex(i + nf - 1).setType(d.getType)) }.toMap
       val substF : Map[Expr,Expr] = deBruijnF.map{ case d @ DeBruijnIndex(i) => (d, DeBruijnIndex(i + index).setType(d.getType)) }.toMap
-      // println("subst of f: " + substF)
-      // println("subst of g: " + substG)
+
       val renamedExprF = replace(substF, ef)
       val renamedExprG = replace(substG, eg)
-      // println("renamed f: " + renamedExprF)
-      // println("renamed g: " + renamedExprG)
+
       val indexToReplace = deBruijnG(index)
       val newExpr   = replace(Map(indexToReplace -> renamedExprF), renamedExprG)
       val newTypes  = g.types.take(index) ++ f.types ++ g.types.drop(index + nf)
