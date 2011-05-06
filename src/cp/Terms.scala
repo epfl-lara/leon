@@ -73,6 +73,21 @@ object Terms {
     def compose1[A](other : Term1[A, T2]) : Term2[T1,A,R] = compose_1_1_2(other, this)
   }
 
+  /** Terms with three arguments */
+  sealed trait Term3[T1,T2,T3,R] extends Term[(T1,T2,T3),R] {
+    val convertingFunction = converterOf(this).exprSeq2scala3[T1,T2,T3] _
+    type t2c = (Term3[T1,T2,T3,R]) => Term3[T1,T2,T3,Boolean]
+
+    def minimizing(minFunc : IntTerm3[T1,T2,T3])(implicit asConstraint: t2c) : MinConstraint3[T1,T2,T3] =
+      MinConstraint3[T1,T2,T3](asConstraint(this), minFunc)
+      
+    def ||(other : Constraint3[T1,T2,T3])(implicit asConstraint: t2c) : Constraint3[T1,T2,T3] = OrConstraint3[T1,T2,T3](this, other)
+
+    def &&(other : Constraint3[T1,T2,T3])(implicit asConstraint: t2c) : Constraint3[T1,T2,T3] = AndConstraint3[T1,T2,T3](this, other)
+
+    def unary_!(implicit asConstraint: t2c) : Constraint3[T1,T2,T3] = NotConstraint3[T1,T2,T3](this)
+  }
+
     /*  this is for Constraint2[A,B]
     def proj0 : Constraint1[A] = this.asInstanceOf[Constraint] match {
       case BaseTerm(conv,pr,ex,ts) => {
@@ -126,10 +141,21 @@ object Terms {
       new Term[(T1,T2),R](program, expr, types, converter) with Term2[T1,T2,R]
   }
 
+  object Term3 {
+    def apply[T1,T2,T3,R](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+      val (converter, program, expr, types) = Term.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
+      new Term[(T1,T2,T3),R](program, expr, types, converter) with Term3[T1,T2,T3,R]
+    }
+
+    def apply[T1,T2,T3,R](program : Program, expr : Expr, types : Seq[TypeTree], converter : Converter) =
+      new Term[(T1,T2,T3),R](program, expr, types, converter) with Term3[T1,T2,T3,R]
+  }
+
   /** A constraint is just a term with Boolean range */
   type Constraint[T] = Term[T,Boolean]
   type Constraint1[T1] = Term1[T1,Boolean]
   type Constraint2[T1,T2] = Term2[T1,T2,Boolean]
+  type Constraint3[T1,T2,T3] = Term3[T1,T2,T3,Boolean]
 
   object OrConstraint1 {
     def apply[A](l : Constraint[A], r : Constraint[A]) : Constraint1[A] = (l, r) match {
@@ -148,6 +174,16 @@ object Terms {
 
     def apply[A,B](cs : Seq[Constraint[(A,B)]]) : Constraint2[A,B] = cs match {
       case s @ Seq(Term(p,ex,ts,conv), _*) => Term2(p, Or(s.map(_.expr)), ts, conv)
+    }
+  }
+
+  object OrConstraint3 {
+    def apply[A,B,C](l : Constraint[(A,B,C)], r : Constraint[(A,B,C)]) : Constraint3[A,B,C] = (l, r) match {
+      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term3(p1,Or(ex1,ex2),ts1,conv1)
+    }
+
+    def apply[A,B,C](cs : Seq[Constraint[(A,B,C)]]) : Constraint3[A,B,C] = cs match {
+      case s @ Seq(Term(p,ex,ts,conv), _*) => Term3(p, Or(s.map(_.expr)), ts, conv)
     }
   }
 
@@ -171,6 +207,16 @@ object Terms {
     }
   }
 
+  object AndConstraint3 {
+    def apply[A,B,C](l : Constraint[(A,B,C)], r : Constraint[(A,B,C)]) : Constraint3[A,B,C] = (l, r) match {
+      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term3(p1,And(ex1,ex2),ts1,conv1)
+    }
+
+    def apply[A,B,C](cs : Seq[Constraint[(A,B,C)]]) : Constraint3[A,B,C] = cs match {
+      case s @ Seq(Term(p,ex,ts,conv), _*) => Term3(p, And(s.map(_.expr)), ts, conv)
+    }
+  }
+
   object NotConstraint1 {
     def apply[A](c : Constraint[A]) : Constraint1[A] = c match {
       case Term(p,ex,ts,conv) => Term1(p,Not(ex),ts,conv)
@@ -183,9 +229,16 @@ object Terms {
     }
   }
 
+  object NotConstraint3 {
+    def apply[A,B,C](c : Constraint[(A,B,C)]) : Constraint3[A,B,C] = c match {
+      case Term(p,ex,ts,conv) => Term3(p,Not(ex),ts,conv)
+    }
+  }
+
   type IntTerm[T] = Term[T,Int]
   type IntTerm1[T1] = Term1[T1,Int]
   type IntTerm2[T1,T2] = Term2[T1,T2,Int]
+  type IntTerm3[T1,T2,T3] = Term3[T1,T2,T3,Int]
 
   /** This construct represents a constraint with an expression to minimize */
   abstract class MinConstraint[T](cons : Constraint[_], minFunc : IntTerm[_]) {
@@ -217,6 +270,10 @@ object Terms {
     val convertingFunction = converterOf(cons).exprSeq2scala2[T1,T2] _
   }
 
+  case class MinConstraint3[T1,T2,T3](cons : Constraint3[T1,T2,T3], minFunc : IntTerm3[T1,T2,T3]) extends MinConstraint[(T1,T2,T3)](cons, minFunc) {
+    val convertingFunction = converterOf(cons).exprSeq2scala3[T1,T2,T3] _
+  }
+
   /********** TERM METHODS **********/
   /** compose_i_j_k will compose f (of arity j) and g (of arity k) as "g∘f" by
    * inserting arguments of f in place of argument i of g */
@@ -224,17 +281,50 @@ object Terms {
     val (newExpr, newTypes) = compose(f, g, 0, 1, 1)
     Term1(f.program, newExpr, newTypes, f.converter)
   }
+
   private def compose_0_2_1[A1,A2,R1,R2](f : Term[(A1,A2),R1], g : Term[(R1),R2]) : Term2[A1,A2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 2, 1)
     Term2(f.program, newExpr, newTypes, f.converter)
   }
+
+  private def compose_0_3_1[A1,A2,A3,R1,R2](f : Term[(A1,A2,A3),R1], g : Term[(R1),R2]) : Term3[A1,A2,A3,R2] = {
+    val (newExpr, newTypes) = compose(f, g, 0, 3, 1)
+    Term3(f.program, newExpr, newTypes, f.converter)
+  }
+
   private def compose_0_1_2[A1,R1,B2,R2](f : Term[(A1),R1], g : Term[(R1,B2),R2]) : Term2[A1,B2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 1, 2)
     Term2(f.program, newExpr, newTypes, f.converter)
   }
+
   private def compose_1_1_2[A1,R1,B1,R2](f : Term[(A1),R1], g : Term[(B1,R1),R2]) : Term2[B1,A1,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 1, 2)
     Term2(f.program, newExpr, newTypes, f.converter)
+  }
+
+  private def compose_0_2_2[A1,A2,R1,B2,R2](f : Term[(A1,A2),R1], g : Term[(R1,B2),R2]) : Term3[A1,A2,B2,R2] = {
+    val (newExpr, newTypes) = compose(f, g, 0, 2, 2)
+    Term3(f.program, newExpr, newTypes, f.converter)
+  }
+
+  private def compose_1_2_2[A1,A2,R1,B1,R2](f : Term[(A1,A2),R1], g : Term[(B1,R1),R2]) : Term3[B1,A1,A2,R2] = {
+    val (newExpr, newTypes) = compose(f, g, 1, 2, 2)
+    Term3(f.program, newExpr, newTypes, f.converter)
+  }
+
+  private def compose_0_1_3[A1,R1,B2,B3,R2](f : Term[(A1),R1], g : Term[(R1,B2,B3),R2]) : Term3[A1,B2,B3,R2] = {
+    val (newExpr, newTypes) = compose(f, g, 0, 1, 3)
+    Term3(f.program, newExpr, newTypes, f.converter)
+  }
+
+  private def compose_1_1_3[A1,R1,B1,B3,R2](f : Term[(A1),R1], g : Term[(B1,R1,B3),R2]) : Term3[B1,A1,B3,R2] = {
+    val (newExpr, newTypes) = compose(f, g, 1, 1, 3)
+    Term3(f.program, newExpr, newTypes, f.converter)
+  }
+
+  private def compose_2_1_3[A1,R1,B1,B2,R2](f : Term[(A1),R1], g : Term[(B1,B2,R1),R2]) : Term3[B1,B2,A1,R2] = {
+    val (newExpr, newTypes) = compose(f, g, 2, 1, 3)
+    Term3(f.program, newExpr, newTypes, f.converter)
   }
 
   /** Compute composed expression for g∘f */

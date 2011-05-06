@@ -44,11 +44,6 @@ trait CodeGeneration {
   private lazy val skipCounterFunction            = definitions.getMember(runtimeMethodsModule, "skipCounter")
   private lazy val copySettingsFunction           = definitions.getMember(runtimeMethodsModule, "copySettings")
 
-  private lazy val termModules                    = List(
-                                                    definitions.getModule("cp.Terms.Term1"),
-                                                    definitions.getModule("cp.Terms.Term2")
-                                                    )
-
   private lazy val converterClass                 = definitions.getClass("cp.Converter")
 
   private lazy val serializationModule            = definitions.getModule("cp.Serialization")
@@ -78,6 +73,8 @@ trait CodeGeneration {
   private lazy val caseClassClass                 = definitions.getClass("purescala.Trees.CaseClass")
   private lazy val andClass                       = definitions.getClass("purescala.Trees.And")
   private lazy val equalsClass                    = definitions.getClass("purescala.Trees.Equals")
+
+  private def termModules(arity : Int)            = definitions.getModule("cp.Terms.Term" + arity)
 
   class CodeGenerator(unit : CompilationUnit, owner : Symbol, defaultPos : Position) {
 
@@ -233,7 +230,7 @@ trait CodeGeneration {
     }
 
     def newBaseTerm(exprToScalaSym : Symbol, serializedProg : Serialized, serializedInputVarList : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Tree, arity : Int) : Tree = {
-      termModules(arity-1) APPLY (
+      termModules(arity) APPLY (
         newConverter(exprToScalaSym),
         newSerialized(serializedProg),
         newSerialized(serializedInputVarList),

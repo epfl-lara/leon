@@ -40,9 +40,10 @@ object FirstClassConstraints {
     val f5 = ((x : Int, y : Int) => x + y) compose0 ((x : Int) => x + 42) compose1 ((x: Int) => x + 43)
     println("Composed f5: " + f5.expr)
 
-    // println("has size 3: " + hasSize(3).expr)
-
-    for (s <- hasSize(3).findAll)
-      println(s)
+    // println("has size 5: " + hasSize(5).expr)
+ 
+    println(hasSize(5).solve)
+    // for (s <- hasSize(3).findAll)
+    //   println(s)
   }
 }
