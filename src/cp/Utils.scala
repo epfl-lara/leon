@@ -42,7 +42,11 @@ object Utils {
         }
       }).flatten.flatten
 
-      methods.mkString("\n")
+      methods.mkString("\n\n")
     }
+  }
+
+  def main(args: Array[String]) : Unit = {
+    println(GenerateCompose(args(0).toInt))
   }
 }
