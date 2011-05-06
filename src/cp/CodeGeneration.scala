@@ -44,9 +44,9 @@ trait CodeGeneration {
   private lazy val skipCounterFunction            = definitions.getMember(runtimeMethodsModule, "skipCounter")
   private lazy val copySettingsFunction           = definitions.getMember(runtimeMethodsModule, "copySettings")
 
-  private lazy val baseTermModules                = List(
-                                                    definitions.getModule("cp.Terms.BaseTerm1"),
-                                                    definitions.getModule("cp.Terms.BaseTerm2")
+  private lazy val termModules                    = List(
+                                                    definitions.getModule("cp.Terms.Term1"),
+                                                    definitions.getModule("cp.Terms.Term2")
                                                     )
 
   private lazy val converterClass                 = definitions.getClass("cp.Converter")
@@ -233,7 +233,7 @@ trait CodeGeneration {
     }
 
     def newBaseTerm(exprToScalaSym : Symbol, serializedProg : Serialized, serializedInputVarList : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Tree, arity : Int) : Tree = {
-      baseTermModules(arity-1) APPLY (
+      termModules(arity-1) APPLY (
         newConverter(exprToScalaSym),
         newSerialized(serializedProg),
         newSerialized(serializedInputVarList),

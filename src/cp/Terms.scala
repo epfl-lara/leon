@@ -12,7 +12,7 @@ import Definitions.{UnsatisfiableConstraintException,UnknownConstraintException}
 
 object Terms {
   /** Terms are functions with domain T (which can be a tuple) and range R */
-  sealed trait Term[T,R] {
+  abstract case class Term[T,R](program : Program, expr : Expr, types : Seq[TypeTree], converter : Converter) {
     /** The converting function defines how Expr values returned by the solver
      * will be converted back to Scala values */
     val convertingFunction : (Seq[Expr] => T)
@@ -35,7 +35,7 @@ object Terms {
     }
   }
 
-  /** Terms of one argument */
+  /** Terms with one argument */
   sealed trait Term1[T1,R] extends Term[T1,R] {
     val convertingFunction = converterOf(this).exprSeq2scala1[T1] _
     type t2c = (Term1[T1,R]) => Term1[T1,Boolean]
@@ -49,9 +49,17 @@ object Terms {
     def &&(other : Constraint1[T1])(implicit asConstraint: t2c) : Constraint1[T1] = AndConstraint1[T1](asConstraint(this), other)
 
     def unary_!(implicit asConstraint: t2c) : Constraint1[T1] = NotConstraint1[T1](asConstraint(this))
+
+    /** function composition this . other */
+    def compose[A](other : Term[A,T1]) : Term[A,R] = {
+      val otherExpr = exprOf(other)
+      val thisExpr  = exprOf(this)
+
+      throw new Exception()
+    }
   }
 
-  /** Terms of two arguments */
+  /** Terms with two arguments */
   sealed trait Term2[T1,T2,R] extends Term[(T1,T2),R] {
     val convertingFunction = converterOf(this).exprSeq2scala2[T1,T2] _
     type t2c = (Term2[T1,T2,R]) => Term2[T1,T2,Boolean]
@@ -81,12 +89,8 @@ object Terms {
     }
     */
 
-  /** A base term corresponds to an expression extracted from Scala code. It
-   * holds the expression with De Bruijn indices */
-  abstract case class BaseTerm[T,R](converter : Converter, program : Program, expr : Expr, types : Seq[TypeTree]) extends Term[T,R]
-
   /** Contains helper methods for constructing base terms */
-  object BaseTerm {
+  object Term {
     def processArgs(converter : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) : (Converter,Program,Expr,Seq[TypeTree]) = {
       val program : Program             = deserialize[Program](serializedProg)
       val inputVars : Seq[Variable]     = deserialize[Seq[Variable]](serializedInputVars)
@@ -103,18 +107,24 @@ object Terms {
     }
   }
 
-  object BaseTerm1 {
+  object Term1 {
     def apply[T1,R](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
-      val (converter, program, expr, types) = BaseTerm.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
-      new BaseTerm[T1,R](converter, program, expr, types) with Term1[T1,R]
+      val (converter, program, expr, types) = Term.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
+      new Term[T1,R](program, expr, types, converter) with Term1[T1,R]
     }
+
+    def apply[T1,R](program : Program, expr : Expr, types : Seq[TypeTree], converter : Converter) =
+      new Term[T1,R](program, expr, types, converter) with Term1[T1,R]
   }
 
-  object BaseTerm2 {
+  object Term2 {
     def apply[T1,T2,R](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
-      val (converter, program, expr, types) = BaseTerm.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
-      new BaseTerm[(T1,T2),R](converter, program, expr, types) with Term2[T1,T2,R]
+      val (converter, program, expr, types) = Term.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
+      new Term[(T1,T2),R](program, expr, types, converter) with Term2[T1,T2,R]
     }
+
+    def apply[T1,T2,R](program : Program, expr : Expr, types : Seq[TypeTree], converter : Converter) =
+      new Term[(T1,T2),R](program, expr, types, converter) with Term2[T1,T2,R]
   }
 
   /** A constraint is just a term with Boolean range */
@@ -122,108 +132,61 @@ object Terms {
   type Constraint1[T1] = Term1[T1,Boolean]
   type Constraint2[T1,T2] = Term2[T1,T2,Boolean]
 
-  abstract case class OrConstraint[A](val constraints : Seq[Constraint[A]]) extends Constraint[A]
-
   object OrConstraint1 {
-    def apply[A](l : Constraint1[A], r : Constraint1[A]) : Constraint1[A] = {
-      new OrConstraint[A](Seq(l,r)) with Constraint1[A]
+    def apply[A](l : Constraint[A], r : Constraint[A]) : Constraint1[A] = (l, r) match {
+      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term1(p1,Or(ex1,ex2),ts1,conv1)
     }
 
-    def apply[A](cs : Seq[Constraint1[A]]) : Constraint1[A] = {
-      new OrConstraint[A](cs) with Constraint1[A]
+    def apply[A](cs : Seq[Constraint[A]]) : Constraint1[A] = cs match {
+      case s @ Seq(Term(p,ex,ts,conv), _*) => Term1(p, Or(s.map(_.expr)), ts, conv)
     }
-
-    def unapply[A](or : OrConstraint[A]) : Option[Seq[Constraint[A]]] =
-      if (or == null) None else Some(or.constraints)
   }
 
   object OrConstraint2 {
-    def apply[A,B](l : Constraint2[A,B], r : Constraint2[A,B]) : Constraint2[A,B] = {
-      new OrConstraint[(A,B)](Seq(l,r)) with Constraint2[A,B]
+    def apply[A,B](l : Constraint[(A,B)], r : Constraint[(A,B)]) : Constraint2[A,B] = (l, r) match {
+      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term2(p1,Or(ex1,ex2),ts1,conv1)
     }
 
-    def apply[A,B](cs : Seq[Constraint2[A,B]]) : Constraint2[A,B] = {
-      new OrConstraint[(A,B)](cs) with Constraint2[A,B]
+    def apply[A,B](cs : Seq[Constraint[(A,B)]]) : Constraint2[A,B] = cs match {
+      case s @ Seq(Term(p,ex,ts,conv), _*) => Term2(p, Or(s.map(_.expr)), ts, conv)
     }
-
-    def unapply(or : OrConstraint[_]) : Option[Seq[Constraint[_]]] =
-      if (or == null) None else Some(or.constraints)
   }
 
-  abstract case class AndConstraint[A](val constraints : Seq[Constraint[A]]) extends Constraint[A]
-
   object AndConstraint1 {
-    def apply[A](l : Constraint1[A], r : Constraint1[A]) : Constraint1[A] =
-      new AndConstraint[A](Seq(l,r)) with Constraint1[A]
+    def apply[A](l : Constraint[A], r : Constraint[A]) : Constraint1[A] = (l, r) match {
+      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term1(p1,And(ex1,ex2),ts1,conv1)
+    }
 
-    def apply[A](cs : Seq[Constraint1[A]]) : Constraint1[A] =
-      new AndConstraint[A](cs) with Constraint1[A]
-
-    def unapply[A](and : AndConstraint[A]) : Option[Seq[Constraint[A]]] =
-      if (and == null) None else Some(and.constraints)
+    def apply[A](cs : Seq[Constraint[A]]) : Constraint1[A] = cs match {
+      case s @ Seq(Term(p,ex,ts,conv), _*) => Term1(p, And(s.map(_.expr)), ts, conv)
+    }
   }
 
   object AndConstraint2 {
-    def apply[A,B](l : Constraint2[A,B], r : Constraint2[A,B]) : Constraint2[A,B] =
-      new AndConstraint[(A,B)](Seq(l,r)) with Constraint2[A,B]
+    def apply[A,B](l : Constraint[(A,B)], r : Constraint[(A,B)]) : Constraint2[A,B] = (l, r) match {
+      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term2(p1,And(ex1,ex2),ts1,conv1)
+    }
 
-    def apply[A,B](cs : Seq[Constraint2[A,B]]) : Constraint2[A,B] =
-      new AndConstraint[(A,B)](cs) with Constraint2[A,B]
-
-    def unapply(and : AndConstraint[_]) : Option[Seq[Constraint[_]]] =
-      if (and == null) None else Some(and.constraints)
+    def apply[A,B](cs : Seq[Constraint[(A,B)]]) : Constraint2[A,B] = cs match {
+      case s @ Seq(Term(p,ex,ts,conv), _*) => Term2(p, And(s.map(_.expr)), ts, conv)
+    }
   }
 
-  abstract case class NotConstraint[A](constraint : Constraint[A]) extends Constraint[A]
   object NotConstraint1 {
-    def apply[A](c : Constraint1[A]) : Constraint1[A] =
-      new NotConstraint[A](c) with Constraint1[A]
-
-    def unapply[A](not : NotConstraint[A]) : Option[Constraint[A]] =
-      if (not == null) None else Some(not.constraint)
+    def apply[A](c : Constraint[A]) : Constraint1[A] = c match {
+      case Term(p,ex,ts,conv) => Term1(p,Not(ex),ts,conv)
+    }
   }
-  object NotConstraint2 {
-    def apply[A,B](c : Constraint2[A,B]) : Constraint2[A,B] =
-      new NotConstraint[(A,B)](c) with Constraint2[A,B]
 
-    def unapply[A](not : NotConstraint[A]) : Option[Constraint[A]] =
-      if (not == null) None else Some(not.constraint)
+  object NotConstraint2 {
+    def apply[A,B](c : Constraint[(A,B)]) : Constraint2[A,B] = c match {
+      case Term(p,ex,ts,conv) => Term2(p,Not(ex),ts,conv)
+    }
   }
 
   type IntTerm[T] = Term[T,Int]
   type IntTerm1[T1] = Term1[T1,Int]
   type IntTerm2[T1,T2] = Term2[T1,T2,Int]
-
-  object BaseIntTerm1 {
-    def apply[A](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
-      val (converter, program, expr, types) = BaseTerm.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
-      new BaseTerm[A,Int](converter, program, expr, types) with IntTerm1[A]
-    }
-  }
-
-  object BaseIntTerm2 {
-    def apply[A,B](conv : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
-      val (converter, program, expr, types) = BaseTerm.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
-      new BaseTerm[(A,B),Int](converter, program, expr, types) with IntTerm2[A,B]
-    }
-  }
-
-  /** Extractor for NAry terms of any type signature */
-  object NAryTerm {
-    def unapply(term : Term[_,_]) : Option[Seq[Term[_,_]]] = term match {
-      case OrConstraint(cs) => Some(cs)
-      case AndConstraint(cs) => Some(cs)
-      case _ => None
-    }
-  }
-
-  /** Extractor for unary terms of any type signature */
-  object UnaryTerm {
-    def unapply(term : Term[_,_]) : Option[Term[_,_]] = term match {
-      case NotConstraint(c) => Some(c)
-      case _ => None
-    }
-  }
 
   /** This construct represents a constraint with an expression to minimize */
   abstract class MinConstraint[T](cons : Constraint[_], minFunc : IntTerm[_]) {
@@ -256,31 +219,13 @@ object Terms {
   }
 
   /********** TERM METHODS **********/
-  private def converterOf(term : Term[_,_]) : Converter = term match {
-    case BaseTerm(converter,_,_,_) => converter
-    case UnaryTerm(c) => converterOf(c)
-    case NAryTerm(cs) => converterOf(cs.head)
-  }
+  private def converterOf(term : Term[_,_]) : Converter = term.converter
 
-  private def typesOf(term : Term[_,_]) : Seq[TypeTree] = term match {
-    case BaseTerm(_,_,_,types) => types
-    case UnaryTerm(c) => typesOf(c)
-    case NAryTerm(cs) => typesOf(cs.head)
-  }
+  private def typesOf(term : Term[_,_]) : Seq[TypeTree] = term.types
 
-  private def exprOf(term : Term[_,_]) : Expr = term match {
-    case BaseTerm(_,_,expr,_) => expr
-    case NotConstraint(c) => Not(exprOf(c))
-    case OrConstraint(cs) => Or(cs map exprOf)
-    case AndConstraint(cs) => And(cs map exprOf)
-    case _ => error("here is what i couldn't match: " + term)
-  }
+  private def exprOf(term : Term[_,_]) : Expr = term.expr
 
-  private def programOf(term : Term[_,_]) : Program = term match {
-    case BaseTerm(_,program,_,_) => program
-    case UnaryTerm(c) => programOf(c)
-    case NAryTerm(cs) => programOf(cs.head)
-  }
+  private def programOf(term : Term[_,_]) : Program = term.program
 
   /** Compute a fresh sequence of output variables and the combined expression
    * containing those */
