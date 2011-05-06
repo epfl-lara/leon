@@ -220,22 +220,19 @@ object Terms {
   /********** TERM METHODS **********/
   /** compose_i_j_k will compose f (of arity j) and g (of arity k) as "g∘f" by
    * inserting arguments of f in place of argument i of g */
-  private def compose_0_1_1[T1,T2,T3](f : Term[T1,T2], g : Term[T2,T3]) : Term1[T1,T3] = {
+  private def compose_0_1_1[A1,R1,R2](f : Term[(A1),R1], g : Term[(R1),R2]) : Term1[A1,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 1, 1)
     Term1(f.program, newExpr, newTypes, f.converter)
   }
-
-  private def compose_0_2_1[T1,T2,R1,R2](f : Term[(T1,T2),R1], g : Term[R1,R2]) : Term2[T1,T2,R2] = {
+  private def compose_0_2_1[A1,A2,R1,R2](f : Term[(A1,A2),R1], g : Term[(R1),R2]) : Term2[A1,A2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 2, 1)
     Term2(f.program, newExpr, newTypes, f.converter)
   }
-
-  private def compose_0_1_2[T1,R1,T2,R2](f : Term[T1,R1], g : Term[(R1,T2),R2]) : Term2[T1,T2,R2] = {
+  private def compose_0_1_2[A1,R1,B2,R2](f : Term[(A1),R1], g : Term[(R1,B2),R2]) : Term2[A1,B2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 1, 2)
     Term2(f.program, newExpr, newTypes, f.converter)
   }
-
-  private def compose_1_1_2[T1,R1,T2,R2](f : Term[T1,R1], g : Term[(T2,R1),R2]) : Term2[T2,T1,R2] = {
+  private def compose_1_1_2[A1,R1,B1,R2](f : Term[(A1),R1], g : Term[(B1,R1),R2]) : Term2[B1,A1,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 1, 2)
     Term2(f.program, newExpr, newTypes, f.converter)
   }
@@ -255,7 +252,7 @@ object Terms {
 
       val indexToReplace = deBruijnG(index)
       val newExpr   = replace(Map(indexToReplace -> renamedExprF), renamedExprG)
-      val newTypes  = g.types.take(index) ++ f.types ++ g.types.drop(index + nf)
+      val newTypes  = g.types.take(index) ++ f.types ++ g.types.drop(index + 1)
       assert(newTypes.size == nf + ng - 1)
       (newExpr, newTypes)
     }

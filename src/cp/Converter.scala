@@ -10,4 +10,7 @@ class Converter(expr2scala : (Expr => Any)) {
 
   def exprSeq2scala2[A,B](exprs: Seq[Expr]) : (A,B) =
     (expr2scala(exprs(0)).asInstanceOf[A], expr2scala(exprs(1)).asInstanceOf[B])
+
+  def exprSeq2scala3[A,B,C](exprs: Seq[Expr]) : (A,B,C) =
+    (expr2scala(exprs(0)).asInstanceOf[A], expr2scala(exprs(1)).asInstanceOf[B], expr2scala(exprs(2)).asInstanceOf[C])
 }
