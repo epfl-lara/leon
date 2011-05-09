@@ -1,5 +1,5 @@
 import cp.Definitions._
-import cp.Constraints._
+import cp.Terms._
 import purescala.Stopwatch
 
 @spec object Specs { 

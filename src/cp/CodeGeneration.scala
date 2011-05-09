@@ -229,14 +229,16 @@ trait CodeGeneration {
       (scalaPackage DOT collectionModule DOT immutableModule DOT definitions.ListModule DOT listModuleApplyFunction) APPLY (inputVarTrees)
     }
 
-    def newBaseTerm(exprToScalaSym : Symbol, serializedProg : Serialized, serializedInputVarList : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Tree, arity : Int) : Tree = {
-      termModules(arity) APPLY (
+    def newBaseTerm(exprToScalaSym : Symbol, serializedProg : Serialized, serializedInputVarList : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Tree, function : Function, typeTreeList : List[Tree], arity : Int) : Tree = {
+      TypeApply(
+        Ident(termModules(arity)), typeTreeList) APPLY(
         newConverter(exprToScalaSym),
         newSerialized(serializedProg),
         newSerialized(serializedInputVarList),
         newSerialized(serializedOutputVars),
         newSerialized(serializedExpr),
-        inputVarValues
+        inputVarValues,
+        function
       )
     }
 

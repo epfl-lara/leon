@@ -94,7 +94,7 @@ trait CallTransformation
           transformHelper(tree, function, codeGen) match {
             case Some((serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, arity)) => {
               // create constraint instance
-              val code = codeGen.newBaseTerm(exprToScalaSym, serializedProg, serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, arity)
+              val code = codeGen.newBaseTerm(exprToScalaSym, serializedProg, serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, function, typeTreeList, arity)
 
               typer.typed(atOwner(currentOwner) {
                 code

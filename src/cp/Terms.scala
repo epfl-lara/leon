@@ -12,7 +12,7 @@ import Definitions.{UnsatisfiableConstraintException,UnknownConstraintException}
 
 object Terms {
   /** Terms are functions with domain T (which can be a tuple) and range R */
-  abstract case class Term[T,R](program : Program, expr : Expr, types : Seq[TypeTree], converter : Converter) {
+  abstract case class Term[T,R](program : Program, expr : Expr, scalaExpr : (T)=>R, types : Seq[TypeTree], converter : Converter) {
     /** The converting function defines how Expr values returned by the solver
      * will be converted back to Scala values */
     val convertingFunction : (Seq[Expr] => T)
@@ -90,6 +90,8 @@ object Terms {
   }
   */
 
+  /** GENERATED CODE: */
+
   /** Type aliases for terms with boolean and integer range */
   type Constraint[T] = Term[T,Boolean]
   type Constraint1[T1] = Term1[T1,Boolean]
@@ -101,7 +103,6 @@ object Terms {
   type Constraint7[T1,T2,T3,T4,T5,T6,T7] = Term7[T1,T2,T3,T4,T5,T6,T7,Boolean]
   type Constraint8[T1,T2,T3,T4,T5,T6,T7,T8] = Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean]
   type Constraint9[T1,T2,T3,T4,T5,T6,T7,T8,T9] = Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean]
-
   type IntTerm[T] = Term[T,Int]
   type IntTerm1[T1] = Term1[T1,Int]
   type IntTerm2[T1,T2] = Term2[T1,T2,Int]
@@ -112,21 +113,21 @@ object Terms {
   type IntTerm7[T1,T2,T3,T4,T5,T6,T7] = Term7[T1,T2,T3,T4,T5,T6,T7,Int]
   type IntTerm8[T1,T2,T3,T4,T5,T6,T7,T8] = Term8[T1,T2,T3,T4,T5,T6,T7,T8,Int]
   type IntTerm9[T1,T2,T3,T4,T5,T6,T7,T8,T9] = Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Int]
-
+  
   sealed trait Term1[T1,R] extends Term[(T1),R] {
     val convertingFunction = converterOf(this).exprSeq2scala1[T1] _
     type t2c = (Term1[T1,R]) => Term1[T1,Boolean]
     
     def ||(other : Term1[T1,Boolean])(implicit asConstraint : t2c) : Term1[T1,Boolean] = OrConstraint1[T1](this, other)
-
+  
     def &&(other : Term1[T1,Boolean])(implicit asConstraint : t2c) : Term1[T1,Boolean] = AndConstraint1[T1](this, other)
-
+  
     def unary_!(implicit asConstraint : t2c) : Term1[T1,Boolean] = NotConstraint1[T1](this)
-
+  
     def minimizing(minFunc : Term1[T1,Int])(implicit asConstraint : t2c) : MinConstraint1[T1] = {
       MinConstraint1[T1](asConstraint(this), minFunc)
     }
-
+  
     def compose0[A1](other : Term1[A1,T1]) : Term1[A1,R] = compose_0_1_1(other, this)
     def compose0[A1,A2](other : Term2[A1,A2,T1]) : Term2[A1,A2,R] = compose_0_2_1(other, this)
     def compose0[A1,A2,A3](other : Term3[A1,A2,A3,T1]) : Term3[A1,A2,A3,R] = compose_0_3_1(other, this)
@@ -137,21 +138,21 @@ object Terms {
     def compose0[A1,A2,A3,A4,A5,A6,A7,A8](other : Term8[A1,A2,A3,A4,A5,A6,A7,A8,T1]) : Term8[A1,A2,A3,A4,A5,A6,A7,A8,R] = compose_0_8_1(other, this)
     def compose0[A1,A2,A3,A4,A5,A6,A7,A8,A9](other : Term9[A1,A2,A3,A4,A5,A6,A7,A8,A9,T1]) : Term9[A1,A2,A3,A4,A5,A6,A7,A8,A9,R] = compose_0_9_1(other, this)
   }
-
+  
   sealed trait Term2[T1,T2,R] extends Term[(T1,T2),R] {
     val convertingFunction = converterOf(this).exprSeq2scala2[T1,T2] _
     type t2c = (Term2[T1,T2,R]) => Term2[T1,T2,Boolean]
     
     def ||(other : Term2[T1,T2,Boolean])(implicit asConstraint : t2c) : Term2[T1,T2,Boolean] = OrConstraint2[T1,T2](this, other)
-
+  
     def &&(other : Term2[T1,T2,Boolean])(implicit asConstraint : t2c) : Term2[T1,T2,Boolean] = AndConstraint2[T1,T2](this, other)
-
+  
     def unary_!(implicit asConstraint : t2c) : Term2[T1,T2,Boolean] = NotConstraint2[T1,T2](this)
-
+  
     def minimizing(minFunc : Term2[T1,T2,Int])(implicit asConstraint : t2c) : MinConstraint2[T1,T2] = {
       MinConstraint2[T1,T2](asConstraint(this), minFunc)
     }
-
+  
     def compose0[A1](other : Term1[A1,T1]) : Term2[A1,T2,R] = compose_0_1_2(other, this)
     def compose1[A1](other : Term1[A1,T2]) : Term2[T1,A1,R] = compose_1_1_2(other, this)
     def compose0[A1,A2](other : Term2[A1,A2,T1]) : Term3[A1,A2,T2,R] = compose_0_2_2(other, this)
@@ -169,21 +170,21 @@ object Terms {
     def compose0[A1,A2,A3,A4,A5,A6,A7,A8](other : Term8[A1,A2,A3,A4,A5,A6,A7,A8,T1]) : Term9[A1,A2,A3,A4,A5,A6,A7,A8,T2,R] = compose_0_8_2(other, this)
     def compose1[A1,A2,A3,A4,A5,A6,A7,A8](other : Term8[A1,A2,A3,A4,A5,A6,A7,A8,T2]) : Term9[T1,A1,A2,A3,A4,A5,A6,A7,A8,R] = compose_1_8_2(other, this)
   }
-
+  
   sealed trait Term3[T1,T2,T3,R] extends Term[(T1,T2,T3),R] {
     val convertingFunction = converterOf(this).exprSeq2scala3[T1,T2,T3] _
     type t2c = (Term3[T1,T2,T3,R]) => Term3[T1,T2,T3,Boolean]
     
     def ||(other : Term3[T1,T2,T3,Boolean])(implicit asConstraint : t2c) : Term3[T1,T2,T3,Boolean] = OrConstraint3[T1,T2,T3](this, other)
-
+  
     def &&(other : Term3[T1,T2,T3,Boolean])(implicit asConstraint : t2c) : Term3[T1,T2,T3,Boolean] = AndConstraint3[T1,T2,T3](this, other)
-
+  
     def unary_!(implicit asConstraint : t2c) : Term3[T1,T2,T3,Boolean] = NotConstraint3[T1,T2,T3](this)
-
+  
     def minimizing(minFunc : Term3[T1,T2,T3,Int])(implicit asConstraint : t2c) : MinConstraint3[T1,T2,T3] = {
       MinConstraint3[T1,T2,T3](asConstraint(this), minFunc)
     }
-
+  
     def compose0[A1](other : Term1[A1,T1]) : Term3[A1,T2,T3,R] = compose_0_1_3(other, this)
     def compose1[A1](other : Term1[A1,T2]) : Term3[T1,A1,T3,R] = compose_1_1_3(other, this)
     def compose2[A1](other : Term1[A1,T3]) : Term3[T1,T2,A1,R] = compose_2_1_3(other, this)
@@ -206,21 +207,21 @@ object Terms {
     def compose1[A1,A2,A3,A4,A5,A6,A7](other : Term7[A1,A2,A3,A4,A5,A6,A7,T2]) : Term9[T1,A1,A2,A3,A4,A5,A6,A7,T3,R] = compose_1_7_3(other, this)
     def compose2[A1,A2,A3,A4,A5,A6,A7](other : Term7[A1,A2,A3,A4,A5,A6,A7,T3]) : Term9[T1,T2,A1,A2,A3,A4,A5,A6,A7,R] = compose_2_7_3(other, this)
   }
-
+  
   sealed trait Term4[T1,T2,T3,T4,R] extends Term[(T1,T2,T3,T4),R] {
     val convertingFunction = converterOf(this).exprSeq2scala4[T1,T2,T3,T4] _
     type t2c = (Term4[T1,T2,T3,T4,R]) => Term4[T1,T2,T3,T4,Boolean]
     
     def ||(other : Term4[T1,T2,T3,T4,Boolean])(implicit asConstraint : t2c) : Term4[T1,T2,T3,T4,Boolean] = OrConstraint4[T1,T2,T3,T4](this, other)
-
+  
     def &&(other : Term4[T1,T2,T3,T4,Boolean])(implicit asConstraint : t2c) : Term4[T1,T2,T3,T4,Boolean] = AndConstraint4[T1,T2,T3,T4](this, other)
-
+  
     def unary_!(implicit asConstraint : t2c) : Term4[T1,T2,T3,T4,Boolean] = NotConstraint4[T1,T2,T3,T4](this)
-
+  
     def minimizing(minFunc : Term4[T1,T2,T3,T4,Int])(implicit asConstraint : t2c) : MinConstraint4[T1,T2,T3,T4] = {
       MinConstraint4[T1,T2,T3,T4](asConstraint(this), minFunc)
     }
-
+  
     def compose0[A1](other : Term1[A1,T1]) : Term4[A1,T2,T3,T4,R] = compose_0_1_4(other, this)
     def compose1[A1](other : Term1[A1,T2]) : Term4[T1,A1,T3,T4,R] = compose_1_1_4(other, this)
     def compose2[A1](other : Term1[A1,T3]) : Term4[T1,T2,A1,T4,R] = compose_2_1_4(other, this)
@@ -246,21 +247,21 @@ object Terms {
     def compose2[A1,A2,A3,A4,A5,A6](other : Term6[A1,A2,A3,A4,A5,A6,T3]) : Term9[T1,T2,A1,A2,A3,A4,A5,A6,T4,R] = compose_2_6_4(other, this)
     def compose3[A1,A2,A3,A4,A5,A6](other : Term6[A1,A2,A3,A4,A5,A6,T4]) : Term9[T1,T2,T3,A1,A2,A3,A4,A5,A6,R] = compose_3_6_4(other, this)
   }
-
+  
   sealed trait Term5[T1,T2,T3,T4,T5,R] extends Term[(T1,T2,T3,T4,T5),R] {
     val convertingFunction = converterOf(this).exprSeq2scala5[T1,T2,T3,T4,T5] _
     type t2c = (Term5[T1,T2,T3,T4,T5,R]) => Term5[T1,T2,T3,T4,T5,Boolean]
     
     def ||(other : Term5[T1,T2,T3,T4,T5,Boolean])(implicit asConstraint : t2c) : Term5[T1,T2,T3,T4,T5,Boolean] = OrConstraint5[T1,T2,T3,T4,T5](this, other)
-
+  
     def &&(other : Term5[T1,T2,T3,T4,T5,Boolean])(implicit asConstraint : t2c) : Term5[T1,T2,T3,T4,T5,Boolean] = AndConstraint5[T1,T2,T3,T4,T5](this, other)
-
+  
     def unary_!(implicit asConstraint : t2c) : Term5[T1,T2,T3,T4,T5,Boolean] = NotConstraint5[T1,T2,T3,T4,T5](this)
-
+  
     def minimizing(minFunc : Term5[T1,T2,T3,T4,T5,Int])(implicit asConstraint : t2c) : MinConstraint5[T1,T2,T3,T4,T5] = {
       MinConstraint5[T1,T2,T3,T4,T5](asConstraint(this), minFunc)
     }
-
+  
     def compose0[A1](other : Term1[A1,T1]) : Term5[A1,T2,T3,T4,T5,R] = compose_0_1_5(other, this)
     def compose1[A1](other : Term1[A1,T2]) : Term5[T1,A1,T3,T4,T5,R] = compose_1_1_5(other, this)
     def compose2[A1](other : Term1[A1,T3]) : Term5[T1,T2,A1,T4,T5,R] = compose_2_1_5(other, this)
@@ -287,21 +288,21 @@ object Terms {
     def compose3[A1,A2,A3,A4,A5](other : Term5[A1,A2,A3,A4,A5,T4]) : Term9[T1,T2,T3,A1,A2,A3,A4,A5,T5,R] = compose_3_5_5(other, this)
     def compose4[A1,A2,A3,A4,A5](other : Term5[A1,A2,A3,A4,A5,T5]) : Term9[T1,T2,T3,T4,A1,A2,A3,A4,A5,R] = compose_4_5_5(other, this)
   }
-
+  
   sealed trait Term6[T1,T2,T3,T4,T5,T6,R] extends Term[(T1,T2,T3,T4,T5,T6),R] {
     val convertingFunction = converterOf(this).exprSeq2scala6[T1,T2,T3,T4,T5,T6] _
     type t2c = (Term6[T1,T2,T3,T4,T5,T6,R]) => Term6[T1,T2,T3,T4,T5,T6,Boolean]
     
     def ||(other : Term6[T1,T2,T3,T4,T5,T6,Boolean])(implicit asConstraint : t2c) : Term6[T1,T2,T3,T4,T5,T6,Boolean] = OrConstraint6[T1,T2,T3,T4,T5,T6](this, other)
-
+  
     def &&(other : Term6[T1,T2,T3,T4,T5,T6,Boolean])(implicit asConstraint : t2c) : Term6[T1,T2,T3,T4,T5,T6,Boolean] = AndConstraint6[T1,T2,T3,T4,T5,T6](this, other)
-
+  
     def unary_!(implicit asConstraint : t2c) : Term6[T1,T2,T3,T4,T5,T6,Boolean] = NotConstraint6[T1,T2,T3,T4,T5,T6](this)
-
+  
     def minimizing(minFunc : Term6[T1,T2,T3,T4,T5,T6,Int])(implicit asConstraint : t2c) : MinConstraint6[T1,T2,T3,T4,T5,T6] = {
       MinConstraint6[T1,T2,T3,T4,T5,T6](asConstraint(this), minFunc)
     }
-
+  
     def compose0[A1](other : Term1[A1,T1]) : Term6[A1,T2,T3,T4,T5,T6,R] = compose_0_1_6(other, this)
     def compose1[A1](other : Term1[A1,T2]) : Term6[T1,A1,T3,T4,T5,T6,R] = compose_1_1_6(other, this)
     def compose2[A1](other : Term1[A1,T3]) : Term6[T1,T2,A1,T4,T5,T6,R] = compose_2_1_6(other, this)
@@ -327,21 +328,21 @@ object Terms {
     def compose4[A1,A2,A3,A4](other : Term4[A1,A2,A3,A4,T5]) : Term9[T1,T2,T3,T4,A1,A2,A3,A4,T6,R] = compose_4_4_6(other, this)
     def compose5[A1,A2,A3,A4](other : Term4[A1,A2,A3,A4,T6]) : Term9[T1,T2,T3,T4,T5,A1,A2,A3,A4,R] = compose_5_4_6(other, this)
   }
-
+  
   sealed trait Term7[T1,T2,T3,T4,T5,T6,T7,R] extends Term[(T1,T2,T3,T4,T5,T6,T7),R] {
     val convertingFunction = converterOf(this).exprSeq2scala7[T1,T2,T3,T4,T5,T6,T7] _
     type t2c = (Term7[T1,T2,T3,T4,T5,T6,T7,R]) => Term7[T1,T2,T3,T4,T5,T6,T7,Boolean]
     
     def ||(other : Term7[T1,T2,T3,T4,T5,T6,T7,Boolean])(implicit asConstraint : t2c) : Term7[T1,T2,T3,T4,T5,T6,T7,Boolean] = OrConstraint7[T1,T2,T3,T4,T5,T6,T7](this, other)
-
+  
     def &&(other : Term7[T1,T2,T3,T4,T5,T6,T7,Boolean])(implicit asConstraint : t2c) : Term7[T1,T2,T3,T4,T5,T6,T7,Boolean] = AndConstraint7[T1,T2,T3,T4,T5,T6,T7](this, other)
-
+  
     def unary_!(implicit asConstraint : t2c) : Term7[T1,T2,T3,T4,T5,T6,T7,Boolean] = NotConstraint7[T1,T2,T3,T4,T5,T6,T7](this)
-
+  
     def minimizing(minFunc : Term7[T1,T2,T3,T4,T5,T6,T7,Int])(implicit asConstraint : t2c) : MinConstraint7[T1,T2,T3,T4,T5,T6,T7] = {
       MinConstraint7[T1,T2,T3,T4,T5,T6,T7](asConstraint(this), minFunc)
     }
-
+  
     def compose0[A1](other : Term1[A1,T1]) : Term7[A1,T2,T3,T4,T5,T6,T7,R] = compose_0_1_7(other, this)
     def compose1[A1](other : Term1[A1,T2]) : Term7[T1,A1,T3,T4,T5,T6,T7,R] = compose_1_1_7(other, this)
     def compose2[A1](other : Term1[A1,T3]) : Term7[T1,T2,A1,T4,T5,T6,T7,R] = compose_2_1_7(other, this)
@@ -364,21 +365,21 @@ object Terms {
     def compose5[A1,A2,A3](other : Term3[A1,A2,A3,T6]) : Term9[T1,T2,T3,T4,T5,A1,A2,A3,T7,R] = compose_5_3_7(other, this)
     def compose6[A1,A2,A3](other : Term3[A1,A2,A3,T7]) : Term9[T1,T2,T3,T4,T5,T6,A1,A2,A3,R] = compose_6_3_7(other, this)
   }
-
+  
   sealed trait Term8[T1,T2,T3,T4,T5,T6,T7,T8,R] extends Term[(T1,T2,T3,T4,T5,T6,T7,T8),R] {
     val convertingFunction = converterOf(this).exprSeq2scala8[T1,T2,T3,T4,T5,T6,T7,T8] _
     type t2c = (Term8[T1,T2,T3,T4,T5,T6,T7,T8,R]) => Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean]
     
     def ||(other : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean])(implicit asConstraint : t2c) : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean] = OrConstraint8[T1,T2,T3,T4,T5,T6,T7,T8](this, other)
-
+  
     def &&(other : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean])(implicit asConstraint : t2c) : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean] = AndConstraint8[T1,T2,T3,T4,T5,T6,T7,T8](this, other)
-
+  
     def unary_!(implicit asConstraint : t2c) : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean] = NotConstraint8[T1,T2,T3,T4,T5,T6,T7,T8](this)
-
+  
     def minimizing(minFunc : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Int])(implicit asConstraint : t2c) : MinConstraint8[T1,T2,T3,T4,T5,T6,T7,T8] = {
       MinConstraint8[T1,T2,T3,T4,T5,T6,T7,T8](asConstraint(this), minFunc)
     }
-
+  
     def compose0[A1](other : Term1[A1,T1]) : Term8[A1,T2,T3,T4,T5,T6,T7,T8,R] = compose_0_1_8(other, this)
     def compose1[A1](other : Term1[A1,T2]) : Term8[T1,A1,T3,T4,T5,T6,T7,T8,R] = compose_1_1_8(other, this)
     def compose2[A1](other : Term1[A1,T3]) : Term8[T1,T2,A1,T4,T5,T6,T7,T8,R] = compose_2_1_8(other, this)
@@ -396,21 +397,21 @@ object Terms {
     def compose6[A1,A2](other : Term2[A1,A2,T7]) : Term9[T1,T2,T3,T4,T5,T6,A1,A2,T8,R] = compose_6_2_8(other, this)
     def compose7[A1,A2](other : Term2[A1,A2,T8]) : Term9[T1,T2,T3,T4,T5,T6,T7,A1,A2,R] = compose_7_2_8(other, this)
   }
-
+  
   sealed trait Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R] extends Term[(T1,T2,T3,T4,T5,T6,T7,T8,T9),R] {
     val convertingFunction = converterOf(this).exprSeq2scala9[T1,T2,T3,T4,T5,T6,T7,T8,T9] _
     type t2c = (Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R]) => Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean]
     
     def ||(other : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean])(implicit asConstraint : t2c) : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean] = OrConstraint9[T1,T2,T3,T4,T5,T6,T7,T8,T9](this, other)
-
+  
     def &&(other : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean])(implicit asConstraint : t2c) : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean] = AndConstraint9[T1,T2,T3,T4,T5,T6,T7,T8,T9](this, other)
-
+  
     def unary_!(implicit asConstraint : t2c) : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean] = NotConstraint9[T1,T2,T3,T4,T5,T6,T7,T8,T9](this)
-
+  
     def minimizing(minFunc : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Int])(implicit asConstraint : t2c) : MinConstraint9[T1,T2,T3,T4,T5,T6,T7,T8,T9] = {
       MinConstraint9[T1,T2,T3,T4,T5,T6,T7,T8,T9](asConstraint(this), minFunc)
     }
-
+  
     def compose0[A1](other : Term1[A1,T1]) : Term9[A1,T2,T3,T4,T5,T6,T7,T8,T9,R] = compose_0_1_9(other, this)
     def compose1[A1](other : Term1[A1,T2]) : Term9[T1,A1,T3,T4,T5,T6,T7,T8,T9,R] = compose_1_1_9(other, this)
     def compose2[A1](other : Term1[A1,T3]) : Term9[T1,T2,A1,T4,T5,T6,T7,T8,T9,R] = compose_2_1_9(other, this)
@@ -421,1126 +422,1127 @@ object Terms {
     def compose7[A1](other : Term1[A1,T8]) : Term9[T1,T2,T3,T4,T5,T6,T7,A1,T9,R] = compose_7_1_9(other, this)
     def compose8[A1](other : Term1[A1,T9]) : Term9[T1,T2,T3,T4,T5,T6,T7,T8,A1,R] = compose_8_1_9(other, this)
   }
-
+  
   object Term1 {
-    def apply[T1,R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+    def apply[T1,R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr], scalaExpr : (T1) => R) = {
       val (converter, program, expr, types) = Term.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
-      new Term[(T1),R](program, expr, types, converter) with Term1[T1,R]
+      new Term[(T1),R](program, expr, scalaExpr, types, converter) with Term1[T1,R]
     }
     
-    def apply[T1,R](program : Program, expr : Expr, types : Seq[TypeTree], converter : Converter) =
-      new Term[(T1),R](program, expr, types, converter) with Term1[T1,R]
+    def apply[T1,R](program : Program, expr : Expr, scalaExpr : ((T1)) => R, types : Seq[TypeTree], converter : Converter) =
+      new Term[(T1),R](program, expr, scalaExpr, types, converter) with Term1[T1,R]
   }
-
+  
   object OrConstraint1 {
     def apply[T1](l : Term[(T1),Boolean], r : Term[(T1),Boolean]) : Term1[T1,Boolean] = (l, r) match {
-      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term1(p1,Or(ex1,ex2),ts1,conv1)
+      case (Term(p1,ex1,scalaEx1,ts1,conv1), Term(p2,ex2,scalaEx2,ts2,conv2)) => Term1(p1,Or(ex1,ex2),(p : (T1)) => scalaEx1(p) || scalaEx2(p),ts1,conv1)
     }
   }
-
+  
   object AndConstraint1 {
     def apply[T1](l : Term[(T1),Boolean], r : Term[(T1),Boolean]) : Term1[T1,Boolean] = (l, r) match {
-      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term1(p1,And(ex1,ex2),ts1,conv1)
+      case (Term(p1,ex1,scalaEx1,ts1,conv1), Term(p2,ex2,scalaEx2,ts2,conv2)) => Term1(p1,And(ex1,ex2),(p : (T1)) => scalaEx1(p) && scalaEx2(p),ts1,conv1)
     }
   }
-
+  
   object NotConstraint1 {
     def apply[T1](c : Term[(T1),Boolean]) : Term1[T1,Boolean] = c match {
-      case Term(p,ex,ts,conv) => Term1(p,Not(ex),ts,conv)
+      case Term(p,ex,scalaEx,ts,conv) => Term1(p,Not(ex),(p : (T1)) => ! scalaEx(p),ts,conv)
     }
   }
-
+  
   object Term2 {
-    def apply[T1,T2,R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+    def apply[T1,T2,R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr], scalaExpr : (T1,T2) => R) = {
       val (converter, program, expr, types) = Term.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
-      new Term[(T1,T2),R](program, expr, types, converter) with Term2[T1,T2,R]
+      new Term[(T1,T2),R](program, expr, scalaExpr.tupled, types, converter) with Term2[T1,T2,R]
     }
     
-    def apply[T1,T2,R](program : Program, expr : Expr, types : Seq[TypeTree], converter : Converter) =
-      new Term[(T1,T2),R](program, expr, types, converter) with Term2[T1,T2,R]
+    def apply[T1,T2,R](program : Program, expr : Expr, scalaExpr : ((T1,T2)) => R, types : Seq[TypeTree], converter : Converter) =
+      new Term[(T1,T2),R](program, expr, scalaExpr, types, converter) with Term2[T1,T2,R]
   }
-
+  
   object OrConstraint2 {
     def apply[T1,T2](l : Term[(T1,T2),Boolean], r : Term[(T1,T2),Boolean]) : Term2[T1,T2,Boolean] = (l, r) match {
-      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term2(p1,Or(ex1,ex2),ts1,conv1)
+      case (Term(p1,ex1,scalaEx1,ts1,conv1), Term(p2,ex2,scalaEx2,ts2,conv2)) => Term2(p1,Or(ex1,ex2),(p : (T1,T2)) => scalaEx1(p) || scalaEx2(p),ts1,conv1)
     }
   }
-
+  
   object AndConstraint2 {
     def apply[T1,T2](l : Term[(T1,T2),Boolean], r : Term[(T1,T2),Boolean]) : Term2[T1,T2,Boolean] = (l, r) match {
-      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term2(p1,And(ex1,ex2),ts1,conv1)
+      case (Term(p1,ex1,scalaEx1,ts1,conv1), Term(p2,ex2,scalaEx2,ts2,conv2)) => Term2(p1,And(ex1,ex2),(p : (T1,T2)) => scalaEx1(p) && scalaEx2(p),ts1,conv1)
     }
   }
-
+  
   object NotConstraint2 {
     def apply[T1,T2](c : Term[(T1,T2),Boolean]) : Term2[T1,T2,Boolean] = c match {
-      case Term(p,ex,ts,conv) => Term2(p,Not(ex),ts,conv)
+      case Term(p,ex,scalaEx,ts,conv) => Term2(p,Not(ex),(p : (T1,T2)) => ! scalaEx(p),ts,conv)
     }
   }
-
+  
   object Term3 {
-    def apply[T1,T2,T3,R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+    def apply[T1,T2,T3,R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr], scalaExpr : (T1,T2,T3) => R) = {
       val (converter, program, expr, types) = Term.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
-      new Term[(T1,T2,T3),R](program, expr, types, converter) with Term3[T1,T2,T3,R]
+      new Term[(T1,T2,T3),R](program, expr, scalaExpr.tupled, types, converter) with Term3[T1,T2,T3,R]
     }
     
-    def apply[T1,T2,T3,R](program : Program, expr : Expr, types : Seq[TypeTree], converter : Converter) =
-      new Term[(T1,T2,T3),R](program, expr, types, converter) with Term3[T1,T2,T3,R]
+    def apply[T1,T2,T3,R](program : Program, expr : Expr, scalaExpr : ((T1,T2,T3)) => R, types : Seq[TypeTree], converter : Converter) =
+      new Term[(T1,T2,T3),R](program, expr, scalaExpr, types, converter) with Term3[T1,T2,T3,R]
   }
-
+  
   object OrConstraint3 {
     def apply[T1,T2,T3](l : Term[(T1,T2,T3),Boolean], r : Term[(T1,T2,T3),Boolean]) : Term3[T1,T2,T3,Boolean] = (l, r) match {
-      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term3(p1,Or(ex1,ex2),ts1,conv1)
+      case (Term(p1,ex1,scalaEx1,ts1,conv1), Term(p2,ex2,scalaEx2,ts2,conv2)) => Term3(p1,Or(ex1,ex2),(p : (T1,T2,T3)) => scalaEx1(p) || scalaEx2(p),ts1,conv1)
     }
   }
-
+  
   object AndConstraint3 {
     def apply[T1,T2,T3](l : Term[(T1,T2,T3),Boolean], r : Term[(T1,T2,T3),Boolean]) : Term3[T1,T2,T3,Boolean] = (l, r) match {
-      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term3(p1,And(ex1,ex2),ts1,conv1)
+      case (Term(p1,ex1,scalaEx1,ts1,conv1), Term(p2,ex2,scalaEx2,ts2,conv2)) => Term3(p1,And(ex1,ex2),(p : (T1,T2,T3)) => scalaEx1(p) && scalaEx2(p),ts1,conv1)
     }
   }
-
+  
   object NotConstraint3 {
     def apply[T1,T2,T3](c : Term[(T1,T2,T3),Boolean]) : Term3[T1,T2,T3,Boolean] = c match {
-      case Term(p,ex,ts,conv) => Term3(p,Not(ex),ts,conv)
+      case Term(p,ex,scalaEx,ts,conv) => Term3(p,Not(ex),(p : (T1,T2,T3)) => ! scalaEx(p),ts,conv)
     }
   }
-
+  
   object Term4 {
-    def apply[T1,T2,T3,T4,R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+    def apply[T1,T2,T3,T4,R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr], scalaExpr : (T1,T2,T3,T4) => R) = {
       val (converter, program, expr, types) = Term.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
-      new Term[(T1,T2,T3,T4),R](program, expr, types, converter) with Term4[T1,T2,T3,T4,R]
+      new Term[(T1,T2,T3,T4),R](program, expr, scalaExpr.tupled, types, converter) with Term4[T1,T2,T3,T4,R]
     }
     
-    def apply[T1,T2,T3,T4,R](program : Program, expr : Expr, types : Seq[TypeTree], converter : Converter) =
-      new Term[(T1,T2,T3,T4),R](program, expr, types, converter) with Term4[T1,T2,T3,T4,R]
+    def apply[T1,T2,T3,T4,R](program : Program, expr : Expr, scalaExpr : ((T1,T2,T3,T4)) => R, types : Seq[TypeTree], converter : Converter) =
+      new Term[(T1,T2,T3,T4),R](program, expr, scalaExpr, types, converter) with Term4[T1,T2,T3,T4,R]
   }
-
+  
   object OrConstraint4 {
     def apply[T1,T2,T3,T4](l : Term[(T1,T2,T3,T4),Boolean], r : Term[(T1,T2,T3,T4),Boolean]) : Term4[T1,T2,T3,T4,Boolean] = (l, r) match {
-      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term4(p1,Or(ex1,ex2),ts1,conv1)
+      case (Term(p1,ex1,scalaEx1,ts1,conv1), Term(p2,ex2,scalaEx2,ts2,conv2)) => Term4(p1,Or(ex1,ex2),(p : (T1,T2,T3,T4)) => scalaEx1(p) || scalaEx2(p),ts1,conv1)
     }
   }
-
+  
   object AndConstraint4 {
     def apply[T1,T2,T3,T4](l : Term[(T1,T2,T3,T4),Boolean], r : Term[(T1,T2,T3,T4),Boolean]) : Term4[T1,T2,T3,T4,Boolean] = (l, r) match {
-      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term4(p1,And(ex1,ex2),ts1,conv1)
+      case (Term(p1,ex1,scalaEx1,ts1,conv1), Term(p2,ex2,scalaEx2,ts2,conv2)) => Term4(p1,And(ex1,ex2),(p : (T1,T2,T3,T4)) => scalaEx1(p) && scalaEx2(p),ts1,conv1)
     }
   }
-
+  
   object NotConstraint4 {
     def apply[T1,T2,T3,T4](c : Term[(T1,T2,T3,T4),Boolean]) : Term4[T1,T2,T3,T4,Boolean] = c match {
-      case Term(p,ex,ts,conv) => Term4(p,Not(ex),ts,conv)
+      case Term(p,ex,scalaEx,ts,conv) => Term4(p,Not(ex),(p : (T1,T2,T3,T4)) => ! scalaEx(p),ts,conv)
     }
   }
-
+  
   object Term5 {
-    def apply[T1,T2,T3,T4,T5,R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+    def apply[T1,T2,T3,T4,T5,R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr], scalaExpr : (T1,T2,T3,T4,T5) => R) = {
       val (converter, program, expr, types) = Term.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
-      new Term[(T1,T2,T3,T4,T5),R](program, expr, types, converter) with Term5[T1,T2,T3,T4,T5,R]
+      new Term[(T1,T2,T3,T4,T5),R](program, expr, scalaExpr.tupled, types, converter) with Term5[T1,T2,T3,T4,T5,R]
     }
     
-    def apply[T1,T2,T3,T4,T5,R](program : Program, expr : Expr, types : Seq[TypeTree], converter : Converter) =
-      new Term[(T1,T2,T3,T4,T5),R](program, expr, types, converter) with Term5[T1,T2,T3,T4,T5,R]
+    def apply[T1,T2,T3,T4,T5,R](program : Program, expr : Expr, scalaExpr : ((T1,T2,T3,T4,T5)) => R, types : Seq[TypeTree], converter : Converter) =
+      new Term[(T1,T2,T3,T4,T5),R](program, expr, scalaExpr, types, converter) with Term5[T1,T2,T3,T4,T5,R]
   }
-
+  
   object OrConstraint5 {
     def apply[T1,T2,T3,T4,T5](l : Term[(T1,T2,T3,T4,T5),Boolean], r : Term[(T1,T2,T3,T4,T5),Boolean]) : Term5[T1,T2,T3,T4,T5,Boolean] = (l, r) match {
-      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term5(p1,Or(ex1,ex2),ts1,conv1)
+      case (Term(p1,ex1,scalaEx1,ts1,conv1), Term(p2,ex2,scalaEx2,ts2,conv2)) => Term5(p1,Or(ex1,ex2),(p : (T1,T2,T3,T4,T5)) => scalaEx1(p) || scalaEx2(p),ts1,conv1)
     }
   }
-
+  
   object AndConstraint5 {
     def apply[T1,T2,T3,T4,T5](l : Term[(T1,T2,T3,T4,T5),Boolean], r : Term[(T1,T2,T3,T4,T5),Boolean]) : Term5[T1,T2,T3,T4,T5,Boolean] = (l, r) match {
-      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term5(p1,And(ex1,ex2),ts1,conv1)
+      case (Term(p1,ex1,scalaEx1,ts1,conv1), Term(p2,ex2,scalaEx2,ts2,conv2)) => Term5(p1,And(ex1,ex2),(p : (T1,T2,T3,T4,T5)) => scalaEx1(p) && scalaEx2(p),ts1,conv1)
     }
   }
-
+  
   object NotConstraint5 {
     def apply[T1,T2,T3,T4,T5](c : Term[(T1,T2,T3,T4,T5),Boolean]) : Term5[T1,T2,T3,T4,T5,Boolean] = c match {
-      case Term(p,ex,ts,conv) => Term5(p,Not(ex),ts,conv)
+      case Term(p,ex,scalaEx,ts,conv) => Term5(p,Not(ex),(p : (T1,T2,T3,T4,T5)) => ! scalaEx(p),ts,conv)
     }
   }
-
+  
   object Term6 {
-    def apply[T1,T2,T3,T4,T5,T6,R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+    def apply[T1,T2,T3,T4,T5,T6,R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr], scalaExpr : (T1,T2,T3,T4,T5,T6) => R) = {
       val (converter, program, expr, types) = Term.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
-      new Term[(T1,T2,T3,T4,T5,T6),R](program, expr, types, converter) with Term6[T1,T2,T3,T4,T5,T6,R]
+      new Term[(T1,T2,T3,T4,T5,T6),R](program, expr, scalaExpr.tupled, types, converter) with Term6[T1,T2,T3,T4,T5,T6,R]
     }
     
-    def apply[T1,T2,T3,T4,T5,T6,R](program : Program, expr : Expr, types : Seq[TypeTree], converter : Converter) =
-      new Term[(T1,T2,T3,T4,T5,T6),R](program, expr, types, converter) with Term6[T1,T2,T3,T4,T5,T6,R]
+    def apply[T1,T2,T3,T4,T5,T6,R](program : Program, expr : Expr, scalaExpr : ((T1,T2,T3,T4,T5,T6)) => R, types : Seq[TypeTree], converter : Converter) =
+      new Term[(T1,T2,T3,T4,T5,T6),R](program, expr, scalaExpr, types, converter) with Term6[T1,T2,T3,T4,T5,T6,R]
   }
-
+  
   object OrConstraint6 {
     def apply[T1,T2,T3,T4,T5,T6](l : Term[(T1,T2,T3,T4,T5,T6),Boolean], r : Term[(T1,T2,T3,T4,T5,T6),Boolean]) : Term6[T1,T2,T3,T4,T5,T6,Boolean] = (l, r) match {
-      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term6(p1,Or(ex1,ex2),ts1,conv1)
+      case (Term(p1,ex1,scalaEx1,ts1,conv1), Term(p2,ex2,scalaEx2,ts2,conv2)) => Term6(p1,Or(ex1,ex2),(p : (T1,T2,T3,T4,T5,T6)) => scalaEx1(p) || scalaEx2(p),ts1,conv1)
     }
   }
-
+  
   object AndConstraint6 {
     def apply[T1,T2,T3,T4,T5,T6](l : Term[(T1,T2,T3,T4,T5,T6),Boolean], r : Term[(T1,T2,T3,T4,T5,T6),Boolean]) : Term6[T1,T2,T3,T4,T5,T6,Boolean] = (l, r) match {
-      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term6(p1,And(ex1,ex2),ts1,conv1)
+      case (Term(p1,ex1,scalaEx1,ts1,conv1), Term(p2,ex2,scalaEx2,ts2,conv2)) => Term6(p1,And(ex1,ex2),(p : (T1,T2,T3,T4,T5,T6)) => scalaEx1(p) && scalaEx2(p),ts1,conv1)
     }
   }
-
+  
   object NotConstraint6 {
     def apply[T1,T2,T3,T4,T5,T6](c : Term[(T1,T2,T3,T4,T5,T6),Boolean]) : Term6[T1,T2,T3,T4,T5,T6,Boolean] = c match {
-      case Term(p,ex,ts,conv) => Term6(p,Not(ex),ts,conv)
+      case Term(p,ex,scalaEx,ts,conv) => Term6(p,Not(ex),(p : (T1,T2,T3,T4,T5,T6)) => ! scalaEx(p),ts,conv)
     }
   }
-
+  
   object Term7 {
-    def apply[T1,T2,T3,T4,T5,T6,T7,R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+    def apply[T1,T2,T3,T4,T5,T6,T7,R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr], scalaExpr : (T1,T2,T3,T4,T5,T6,T7) => R) = {
       val (converter, program, expr, types) = Term.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
-      new Term[(T1,T2,T3,T4,T5,T6,T7),R](program, expr, types, converter) with Term7[T1,T2,T3,T4,T5,T6,T7,R]
+      new Term[(T1,T2,T3,T4,T5,T6,T7),R](program, expr, scalaExpr.tupled, types, converter) with Term7[T1,T2,T3,T4,T5,T6,T7,R]
     }
     
-    def apply[T1,T2,T3,T4,T5,T6,T7,R](program : Program, expr : Expr, types : Seq[TypeTree], converter : Converter) =
-      new Term[(T1,T2,T3,T4,T5,T6,T7),R](program, expr, types, converter) with Term7[T1,T2,T3,T4,T5,T6,T7,R]
+    def apply[T1,T2,T3,T4,T5,T6,T7,R](program : Program, expr : Expr, scalaExpr : ((T1,T2,T3,T4,T5,T6,T7)) => R, types : Seq[TypeTree], converter : Converter) =
+      new Term[(T1,T2,T3,T4,T5,T6,T7),R](program, expr, scalaExpr, types, converter) with Term7[T1,T2,T3,T4,T5,T6,T7,R]
   }
-
+  
   object OrConstraint7 {
     def apply[T1,T2,T3,T4,T5,T6,T7](l : Term[(T1,T2,T3,T4,T5,T6,T7),Boolean], r : Term[(T1,T2,T3,T4,T5,T6,T7),Boolean]) : Term7[T1,T2,T3,T4,T5,T6,T7,Boolean] = (l, r) match {
-      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term7(p1,Or(ex1,ex2),ts1,conv1)
+      case (Term(p1,ex1,scalaEx1,ts1,conv1), Term(p2,ex2,scalaEx2,ts2,conv2)) => Term7(p1,Or(ex1,ex2),(p : (T1,T2,T3,T4,T5,T6,T7)) => scalaEx1(p) || scalaEx2(p),ts1,conv1)
     }
   }
-
+  
   object AndConstraint7 {
     def apply[T1,T2,T3,T4,T5,T6,T7](l : Term[(T1,T2,T3,T4,T5,T6,T7),Boolean], r : Term[(T1,T2,T3,T4,T5,T6,T7),Boolean]) : Term7[T1,T2,T3,T4,T5,T6,T7,Boolean] = (l, r) match {
-      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term7(p1,And(ex1,ex2),ts1,conv1)
+      case (Term(p1,ex1,scalaEx1,ts1,conv1), Term(p2,ex2,scalaEx2,ts2,conv2)) => Term7(p1,And(ex1,ex2),(p : (T1,T2,T3,T4,T5,T6,T7)) => scalaEx1(p) && scalaEx2(p),ts1,conv1)
     }
   }
-
+  
   object NotConstraint7 {
     def apply[T1,T2,T3,T4,T5,T6,T7](c : Term[(T1,T2,T3,T4,T5,T6,T7),Boolean]) : Term7[T1,T2,T3,T4,T5,T6,T7,Boolean] = c match {
-      case Term(p,ex,ts,conv) => Term7(p,Not(ex),ts,conv)
+      case Term(p,ex,scalaEx,ts,conv) => Term7(p,Not(ex),(p : (T1,T2,T3,T4,T5,T6,T7)) => ! scalaEx(p),ts,conv)
     }
   }
-
+  
   object Term8 {
-    def apply[T1,T2,T3,T4,T5,T6,T7,T8,R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+    def apply[T1,T2,T3,T4,T5,T6,T7,T8,R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr], scalaExpr : (T1,T2,T3,T4,T5,T6,T7,T8) => R) = {
       val (converter, program, expr, types) = Term.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
-      new Term[(T1,T2,T3,T4,T5,T6,T7,T8),R](program, expr, types, converter) with Term8[T1,T2,T3,T4,T5,T6,T7,T8,R]
+      new Term[(T1,T2,T3,T4,T5,T6,T7,T8),R](program, expr, scalaExpr.tupled, types, converter) with Term8[T1,T2,T3,T4,T5,T6,T7,T8,R]
     }
     
-    def apply[T1,T2,T3,T4,T5,T6,T7,T8,R](program : Program, expr : Expr, types : Seq[TypeTree], converter : Converter) =
-      new Term[(T1,T2,T3,T4,T5,T6,T7,T8),R](program, expr, types, converter) with Term8[T1,T2,T3,T4,T5,T6,T7,T8,R]
+    def apply[T1,T2,T3,T4,T5,T6,T7,T8,R](program : Program, expr : Expr, scalaExpr : ((T1,T2,T3,T4,T5,T6,T7,T8)) => R, types : Seq[TypeTree], converter : Converter) =
+      new Term[(T1,T2,T3,T4,T5,T6,T7,T8),R](program, expr, scalaExpr, types, converter) with Term8[T1,T2,T3,T4,T5,T6,T7,T8,R]
   }
-
+  
   object OrConstraint8 {
     def apply[T1,T2,T3,T4,T5,T6,T7,T8](l : Term[(T1,T2,T3,T4,T5,T6,T7,T8),Boolean], r : Term[(T1,T2,T3,T4,T5,T6,T7,T8),Boolean]) : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean] = (l, r) match {
-      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term8(p1,Or(ex1,ex2),ts1,conv1)
+      case (Term(p1,ex1,scalaEx1,ts1,conv1), Term(p2,ex2,scalaEx2,ts2,conv2)) => Term8(p1,Or(ex1,ex2),(p : (T1,T2,T3,T4,T5,T6,T7,T8)) => scalaEx1(p) || scalaEx2(p),ts1,conv1)
     }
   }
-
+  
   object AndConstraint8 {
     def apply[T1,T2,T3,T4,T5,T6,T7,T8](l : Term[(T1,T2,T3,T4,T5,T6,T7,T8),Boolean], r : Term[(T1,T2,T3,T4,T5,T6,T7,T8),Boolean]) : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean] = (l, r) match {
-      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term8(p1,And(ex1,ex2),ts1,conv1)
+      case (Term(p1,ex1,scalaEx1,ts1,conv1), Term(p2,ex2,scalaEx2,ts2,conv2)) => Term8(p1,And(ex1,ex2),(p : (T1,T2,T3,T4,T5,T6,T7,T8)) => scalaEx1(p) && scalaEx2(p),ts1,conv1)
     }
   }
-
+  
   object NotConstraint8 {
     def apply[T1,T2,T3,T4,T5,T6,T7,T8](c : Term[(T1,T2,T3,T4,T5,T6,T7,T8),Boolean]) : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean] = c match {
-      case Term(p,ex,ts,conv) => Term8(p,Not(ex),ts,conv)
+      case Term(p,ex,scalaEx,ts,conv) => Term8(p,Not(ex),(p : (T1,T2,T3,T4,T5,T6,T7,T8)) => ! scalaEx(p),ts,conv)
     }
   }
-
+  
   object Term9 {
-    def apply[T1,T2,T3,T4,T5,T6,T7,T8,T9,R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) = {
+    def apply[T1,T2,T3,T4,T5,T6,T7,T8,T9,R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr], scalaExpr : (T1,T2,T3,T4,T5,T6,T7,T8,T9) => R) = {
       val (converter, program, expr, types) = Term.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
-      new Term[(T1,T2,T3,T4,T5,T6,T7,T8,T9),R](program, expr, types, converter) with Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R]
+      new Term[(T1,T2,T3,T4,T5,T6,T7,T8,T9),R](program, expr, scalaExpr.tupled, types, converter) with Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R]
     }
     
-    def apply[T1,T2,T3,T4,T5,T6,T7,T8,T9,R](program : Program, expr : Expr, types : Seq[TypeTree], converter : Converter) =
-      new Term[(T1,T2,T3,T4,T5,T6,T7,T8,T9),R](program, expr, types, converter) with Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R]
+    def apply[T1,T2,T3,T4,T5,T6,T7,T8,T9,R](program : Program, expr : Expr, scalaExpr : ((T1,T2,T3,T4,T5,T6,T7,T8,T9)) => R, types : Seq[TypeTree], converter : Converter) =
+      new Term[(T1,T2,T3,T4,T5,T6,T7,T8,T9),R](program, expr, scalaExpr, types, converter) with Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R]
   }
-
+  
   object OrConstraint9 {
     def apply[T1,T2,T3,T4,T5,T6,T7,T8,T9](l : Term[(T1,T2,T3,T4,T5,T6,T7,T8,T9),Boolean], r : Term[(T1,T2,T3,T4,T5,T6,T7,T8,T9),Boolean]) : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean] = (l, r) match {
-      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term9(p1,Or(ex1,ex2),ts1,conv1)
+      case (Term(p1,ex1,scalaEx1,ts1,conv1), Term(p2,ex2,scalaEx2,ts2,conv2)) => Term9(p1,Or(ex1,ex2),(p : (T1,T2,T3,T4,T5,T6,T7,T8,T9)) => scalaEx1(p) || scalaEx2(p),ts1,conv1)
     }
   }
-
+  
   object AndConstraint9 {
     def apply[T1,T2,T3,T4,T5,T6,T7,T8,T9](l : Term[(T1,T2,T3,T4,T5,T6,T7,T8,T9),Boolean], r : Term[(T1,T2,T3,T4,T5,T6,T7,T8,T9),Boolean]) : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean] = (l, r) match {
-      case (Term(p1,ex1,ts1,conv1), Term(p2,ex2,ts2,conv2)) => Term9(p1,And(ex1,ex2),ts1,conv1)
+      case (Term(p1,ex1,scalaEx1,ts1,conv1), Term(p2,ex2,scalaEx2,ts2,conv2)) => Term9(p1,And(ex1,ex2),(p : (T1,T2,T3,T4,T5,T6,T7,T8,T9)) => scalaEx1(p) && scalaEx2(p),ts1,conv1)
     }
   }
-
+  
   object NotConstraint9 {
     def apply[T1,T2,T3,T4,T5,T6,T7,T8,T9](c : Term[(T1,T2,T3,T4,T5,T6,T7,T8,T9),Boolean]) : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean] = c match {
-      case Term(p,ex,ts,conv) => Term9(p,Not(ex),ts,conv)
+      case Term(p,ex,scalaEx,ts,conv) => Term9(p,Not(ex),(p : (T1,T2,T3,T4,T5,T6,T7,T8,T9)) => ! scalaEx(p),ts,conv)
     }
   }
-
+  
   case class MinConstraint1[T1](cons : Term1[T1,Boolean], minFunc : Term1[T1,Int]) extends MinConstraint[(T1)](cons, minFunc) {
     val convertingFunction = converterOf(cons).exprSeq2scala1[T1] _
   }
-
+  
   case class MinConstraint2[T1,T2](cons : Term2[T1,T2,Boolean], minFunc : Term2[T1,T2,Int]) extends MinConstraint[(T1,T2)](cons, minFunc) {
     val convertingFunction = converterOf(cons).exprSeq2scala2[T1,T2] _
   }
-
+  
   case class MinConstraint3[T1,T2,T3](cons : Term3[T1,T2,T3,Boolean], minFunc : Term3[T1,T2,T3,Int]) extends MinConstraint[(T1,T2,T3)](cons, minFunc) {
     val convertingFunction = converterOf(cons).exprSeq2scala3[T1,T2,T3] _
   }
-
+  
   case class MinConstraint4[T1,T2,T3,T4](cons : Term4[T1,T2,T3,T4,Boolean], minFunc : Term4[T1,T2,T3,T4,Int]) extends MinConstraint[(T1,T2,T3,T4)](cons, minFunc) {
     val convertingFunction = converterOf(cons).exprSeq2scala4[T1,T2,T3,T4] _
   }
-
+  
   case class MinConstraint5[T1,T2,T3,T4,T5](cons : Term5[T1,T2,T3,T4,T5,Boolean], minFunc : Term5[T1,T2,T3,T4,T5,Int]) extends MinConstraint[(T1,T2,T3,T4,T5)](cons, minFunc) {
     val convertingFunction = converterOf(cons).exprSeq2scala5[T1,T2,T3,T4,T5] _
   }
-
+  
   case class MinConstraint6[T1,T2,T3,T4,T5,T6](cons : Term6[T1,T2,T3,T4,T5,T6,Boolean], minFunc : Term6[T1,T2,T3,T4,T5,T6,Int]) extends MinConstraint[(T1,T2,T3,T4,T5,T6)](cons, minFunc) {
     val convertingFunction = converterOf(cons).exprSeq2scala6[T1,T2,T3,T4,T5,T6] _
   }
-
+  
   case class MinConstraint7[T1,T2,T3,T4,T5,T6,T7](cons : Term7[T1,T2,T3,T4,T5,T6,T7,Boolean], minFunc : Term7[T1,T2,T3,T4,T5,T6,T7,Int]) extends MinConstraint[(T1,T2,T3,T4,T5,T6,T7)](cons, minFunc) {
     val convertingFunction = converterOf(cons).exprSeq2scala7[T1,T2,T3,T4,T5,T6,T7] _
   }
-
+  
   case class MinConstraint8[T1,T2,T3,T4,T5,T6,T7,T8](cons : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean], minFunc : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Int]) extends MinConstraint[(T1,T2,T3,T4,T5,T6,T7,T8)](cons, minFunc) {
     val convertingFunction = converterOf(cons).exprSeq2scala8[T1,T2,T3,T4,T5,T6,T7,T8] _
   }
-
+  
   case class MinConstraint9[T1,T2,T3,T4,T5,T6,T7,T8,T9](cons : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean], minFunc : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Int]) extends MinConstraint[(T1,T2,T3,T4,T5,T6,T7,T8,T9)](cons, minFunc) {
     val convertingFunction = converterOf(cons).exprSeq2scala9[T1,T2,T3,T4,T5,T6,T7,T8,T9] _
   }
-
+  
   /********** TERM METHODS **********/
   /** compose_i_j_k will compose f (of arity j) and g (of arity k) as "g∘f" by
    * inserting arguments of f in place of argument i of g */
   private def compose_0_1_1[A1,R1,R2](f : Term[(A1),R1], g : Term[(R1),R2]) : Term1[A1,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 1, 1)
-    Term1(f.program, newExpr, newTypes, f.converter)
+    Term1(f.program, newExpr, (p : (A1)) => g.scalaExpr((f.scalaExpr((p)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_2_1[A1,A2,R1,R2](f : Term[(A1,A2),R1], g : Term[(R1),R2]) : Term2[A1,A2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 2, 1)
-    Term2(f.program, newExpr, newTypes, f.converter)
+    Term2(f.program, newExpr, (p : (A1,A2)) => g.scalaExpr((f.scalaExpr((p._1,p._2)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_3_1[A1,A2,A3,R1,R2](f : Term[(A1,A2,A3),R1], g : Term[(R1),R2]) : Term3[A1,A2,A3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 3, 1)
-    Term3(f.program, newExpr, newTypes, f.converter)
+    Term3(f.program, newExpr, (p : (A1,A2,A3)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_4_1[A1,A2,A3,A4,R1,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(R1),R2]) : Term4[A1,A2,A3,A4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 4, 1)
-    Term4(f.program, newExpr, newTypes, f.converter)
+    Term4(f.program, newExpr, (p : (A1,A2,A3,A4)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_5_1[A1,A2,A3,A4,A5,R1,R2](f : Term[(A1,A2,A3,A4,A5),R1], g : Term[(R1),R2]) : Term5[A1,A2,A3,A4,A5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 5, 1)
-    Term5(f.program, newExpr, newTypes, f.converter)
+    Term5(f.program, newExpr, (p : (A1,A2,A3,A4,A5)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4,p._5)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_6_1[A1,A2,A3,A4,A5,A6,R1,R2](f : Term[(A1,A2,A3,A4,A5,A6),R1], g : Term[(R1),R2]) : Term6[A1,A2,A3,A4,A5,A6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 6, 1)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (A1,A2,A3,A4,A5,A6)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_7_1[A1,A2,A3,A4,A5,A6,A7,R1,R2](f : Term[(A1,A2,A3,A4,A5,A6,A7),R1], g : Term[(R1),R2]) : Term7[A1,A2,A3,A4,A5,A6,A7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 7, 1)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (A1,A2,A3,A4,A5,A6,A7)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6,p._7)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_8_1[A1,A2,A3,A4,A5,A6,A7,A8,R1,R2](f : Term[(A1,A2,A3,A4,A5,A6,A7,A8),R1], g : Term[(R1),R2]) : Term8[A1,A2,A3,A4,A5,A6,A7,A8,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 8, 1)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (A1,A2,A3,A4,A5,A6,A7,A8)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6,p._7,p._8)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_9_1[A1,A2,A3,A4,A5,A6,A7,A8,A9,R1,R2](f : Term[(A1,A2,A3,A4,A5,A6,A7,A8,A9),R1], g : Term[(R1),R2]) : Term9[A1,A2,A3,A4,A5,A6,A7,A8,A9,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 9, 1)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (A1,A2,A3,A4,A5,A6,A7,A8,A9)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6,p._7,p._8,p._9)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_1_2[A1,R1,B2,R2](f : Term[(A1),R1], g : Term[(R1,B2),R2]) : Term2[A1,B2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 1, 2)
-    Term2(f.program, newExpr, newTypes, f.converter)
+    Term2(f.program, newExpr, (p : (A1,B2)) => g.scalaExpr((f.scalaExpr((p._1)),p._2)), newTypes, f.converter)
   }
-
+  
   private def compose_1_1_2[A1,R1,B1,R2](f : Term[(A1),R1], g : Term[(B1,R1),R2]) : Term2[B1,A1,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 1, 2)
-    Term2(f.program, newExpr, newTypes, f.converter)
+    Term2(f.program, newExpr, (p : (B1,A1)) => g.scalaExpr((p._1,f.scalaExpr((p._2)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_2_2[A1,A2,R1,B2,R2](f : Term[(A1,A2),R1], g : Term[(R1,B2),R2]) : Term3[A1,A2,B2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 2, 2)
-    Term3(f.program, newExpr, newTypes, f.converter)
+    Term3(f.program, newExpr, (p : (A1,A2,B2)) => g.scalaExpr((f.scalaExpr((p._1,p._2)),p._3)), newTypes, f.converter)
   }
-
+  
   private def compose_1_2_2[A1,A2,R1,B1,R2](f : Term[(A1,A2),R1], g : Term[(B1,R1),R2]) : Term3[B1,A1,A2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 2, 2)
-    Term3(f.program, newExpr, newTypes, f.converter)
+    Term3(f.program, newExpr, (p : (B1,A1,A2)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_3_2[A1,A2,A3,R1,B2,R2](f : Term[(A1,A2,A3),R1], g : Term[(R1,B2),R2]) : Term4[A1,A2,A3,B2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 3, 2)
-    Term4(f.program, newExpr, newTypes, f.converter)
+    Term4(f.program, newExpr, (p : (A1,A2,A3,B2)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3)),p._4)), newTypes, f.converter)
   }
-
+  
   private def compose_1_3_2[A1,A2,A3,R1,B1,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,R1),R2]) : Term4[B1,A1,A2,A3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 3, 2)
-    Term4(f.program, newExpr, newTypes, f.converter)
+    Term4(f.program, newExpr, (p : (B1,A1,A2,A3)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_4_2[A1,A2,A3,A4,R1,B2,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(R1,B2),R2]) : Term5[A1,A2,A3,A4,B2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 4, 2)
-    Term5(f.program, newExpr, newTypes, f.converter)
+    Term5(f.program, newExpr, (p : (A1,A2,A3,A4,B2)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4)),p._5)), newTypes, f.converter)
   }
-
+  
   private def compose_1_4_2[A1,A2,A3,A4,R1,B1,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(B1,R1),R2]) : Term5[B1,A1,A2,A3,A4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 4, 2)
-    Term5(f.program, newExpr, newTypes, f.converter)
+    Term5(f.program, newExpr, (p : (B1,A1,A2,A3,A4)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4,p._5)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_5_2[A1,A2,A3,A4,A5,R1,B2,R2](f : Term[(A1,A2,A3,A4,A5),R1], g : Term[(R1,B2),R2]) : Term6[A1,A2,A3,A4,A5,B2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 5, 2)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (A1,A2,A3,A4,A5,B2)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4,p._5)),p._6)), newTypes, f.converter)
   }
-
+  
   private def compose_1_5_2[A1,A2,A3,A4,A5,R1,B1,R2](f : Term[(A1,A2,A3,A4,A5),R1], g : Term[(B1,R1),R2]) : Term6[B1,A1,A2,A3,A4,A5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 5, 2)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (B1,A1,A2,A3,A4,A5)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4,p._5,p._6)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_6_2[A1,A2,A3,A4,A5,A6,R1,B2,R2](f : Term[(A1,A2,A3,A4,A5,A6),R1], g : Term[(R1,B2),R2]) : Term7[A1,A2,A3,A4,A5,A6,B2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 6, 2)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (A1,A2,A3,A4,A5,A6,B2)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6)),p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_1_6_2[A1,A2,A3,A4,A5,A6,R1,B1,R2](f : Term[(A1,A2,A3,A4,A5,A6),R1], g : Term[(B1,R1),R2]) : Term7[B1,A1,A2,A3,A4,A5,A6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 6, 2)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,A1,A2,A3,A4,A5,A6)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4,p._5,p._6,p._7)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_7_2[A1,A2,A3,A4,A5,A6,A7,R1,B2,R2](f : Term[(A1,A2,A3,A4,A5,A6,A7),R1], g : Term[(R1,B2),R2]) : Term8[A1,A2,A3,A4,A5,A6,A7,B2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 7, 2)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (A1,A2,A3,A4,A5,A6,A7,B2)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6,p._7)),p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_1_7_2[A1,A2,A3,A4,A5,A6,A7,R1,B1,R2](f : Term[(A1,A2,A3,A4,A5,A6,A7),R1], g : Term[(B1,R1),R2]) : Term8[B1,A1,A2,A3,A4,A5,A6,A7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 7, 2)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,A1,A2,A3,A4,A5,A6,A7)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4,p._5,p._6,p._7,p._8)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_8_2[A1,A2,A3,A4,A5,A6,A7,A8,R1,B2,R2](f : Term[(A1,A2,A3,A4,A5,A6,A7,A8),R1], g : Term[(R1,B2),R2]) : Term9[A1,A2,A3,A4,A5,A6,A7,A8,B2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 8, 2)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (A1,A2,A3,A4,A5,A6,A7,A8,B2)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6,p._7,p._8)),p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_1_8_2[A1,A2,A3,A4,A5,A6,A7,A8,R1,B1,R2](f : Term[(A1,A2,A3,A4,A5,A6,A7,A8),R1], g : Term[(B1,R1),R2]) : Term9[B1,A1,A2,A3,A4,A5,A6,A7,A8,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 8, 2)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,A1,A2,A3,A4,A5,A6,A7,A8)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4,p._5,p._6,p._7,p._8,p._9)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_1_3[A1,R1,B2,B3,R2](f : Term[(A1),R1], g : Term[(R1,B2,B3),R2]) : Term3[A1,B2,B3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 1, 3)
-    Term3(f.program, newExpr, newTypes, f.converter)
+    Term3(f.program, newExpr, (p : (A1,B2,B3)) => g.scalaExpr((f.scalaExpr((p._1)),p._2,p._3)), newTypes, f.converter)
   }
-
+  
   private def compose_1_1_3[A1,R1,B1,B3,R2](f : Term[(A1),R1], g : Term[(B1,R1,B3),R2]) : Term3[B1,A1,B3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 1, 3)
-    Term3(f.program, newExpr, newTypes, f.converter)
+    Term3(f.program, newExpr, (p : (B1,A1,B3)) => g.scalaExpr((p._1,f.scalaExpr((p._2)),p._3)), newTypes, f.converter)
   }
-
+  
   private def compose_2_1_3[A1,R1,B1,B2,R2](f : Term[(A1),R1], g : Term[(B1,B2,R1),R2]) : Term3[B1,B2,A1,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 1, 3)
-    Term3(f.program, newExpr, newTypes, f.converter)
+    Term3(f.program, newExpr, (p : (B1,B2,A1)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_2_3[A1,A2,R1,B2,B3,R2](f : Term[(A1,A2),R1], g : Term[(R1,B2,B3),R2]) : Term4[A1,A2,B2,B3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 2, 3)
-    Term4(f.program, newExpr, newTypes, f.converter)
+    Term4(f.program, newExpr, (p : (A1,A2,B2,B3)) => g.scalaExpr((f.scalaExpr((p._1,p._2)),p._3,p._4)), newTypes, f.converter)
   }
-
+  
   private def compose_1_2_3[A1,A2,R1,B1,B3,R2](f : Term[(A1,A2),R1], g : Term[(B1,R1,B3),R2]) : Term4[B1,A1,A2,B3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 2, 3)
-    Term4(f.program, newExpr, newTypes, f.converter)
+    Term4(f.program, newExpr, (p : (B1,A1,A2,B3)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3)),p._4)), newTypes, f.converter)
   }
-
+  
   private def compose_2_2_3[A1,A2,R1,B1,B2,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,R1),R2]) : Term4[B1,B2,A1,A2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 2, 3)
-    Term4(f.program, newExpr, newTypes, f.converter)
+    Term4(f.program, newExpr, (p : (B1,B2,A1,A2)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_3_3[A1,A2,A3,R1,B2,B3,R2](f : Term[(A1,A2,A3),R1], g : Term[(R1,B2,B3),R2]) : Term5[A1,A2,A3,B2,B3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 3, 3)
-    Term5(f.program, newExpr, newTypes, f.converter)
+    Term5(f.program, newExpr, (p : (A1,A2,A3,B2,B3)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3)),p._4,p._5)), newTypes, f.converter)
   }
-
+  
   private def compose_1_3_3[A1,A2,A3,R1,B1,B3,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,R1,B3),R2]) : Term5[B1,A1,A2,A3,B3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 3, 3)
-    Term5(f.program, newExpr, newTypes, f.converter)
+    Term5(f.program, newExpr, (p : (B1,A1,A2,A3,B3)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4)),p._5)), newTypes, f.converter)
   }
-
+  
   private def compose_2_3_3[A1,A2,A3,R1,B1,B2,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,B2,R1),R2]) : Term5[B1,B2,A1,A2,A3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 3, 3)
-    Term5(f.program, newExpr, newTypes, f.converter)
+    Term5(f.program, newExpr, (p : (B1,B2,A1,A2,A3)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4,p._5)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_4_3[A1,A2,A3,A4,R1,B2,B3,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(R1,B2,B3),R2]) : Term6[A1,A2,A3,A4,B2,B3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 4, 3)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (A1,A2,A3,A4,B2,B3)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4)),p._5,p._6)), newTypes, f.converter)
   }
-
+  
   private def compose_1_4_3[A1,A2,A3,A4,R1,B1,B3,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(B1,R1,B3),R2]) : Term6[B1,A1,A2,A3,A4,B3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 4, 3)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (B1,A1,A2,A3,A4,B3)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4,p._5)),p._6)), newTypes, f.converter)
   }
-
+  
   private def compose_2_4_3[A1,A2,A3,A4,R1,B1,B2,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(B1,B2,R1),R2]) : Term6[B1,B2,A1,A2,A3,A4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 4, 3)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (B1,B2,A1,A2,A3,A4)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4,p._5,p._6)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_5_3[A1,A2,A3,A4,A5,R1,B2,B3,R2](f : Term[(A1,A2,A3,A4,A5),R1], g : Term[(R1,B2,B3),R2]) : Term7[A1,A2,A3,A4,A5,B2,B3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 5, 3)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (A1,A2,A3,A4,A5,B2,B3)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4,p._5)),p._6,p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_1_5_3[A1,A2,A3,A4,A5,R1,B1,B3,R2](f : Term[(A1,A2,A3,A4,A5),R1], g : Term[(B1,R1,B3),R2]) : Term7[B1,A1,A2,A3,A4,A5,B3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 5, 3)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,A1,A2,A3,A4,A5,B3)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4,p._5,p._6)),p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_2_5_3[A1,A2,A3,A4,A5,R1,B1,B2,R2](f : Term[(A1,A2,A3,A4,A5),R1], g : Term[(B1,B2,R1),R2]) : Term7[B1,B2,A1,A2,A3,A4,A5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 5, 3)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,B2,A1,A2,A3,A4,A5)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4,p._5,p._6,p._7)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_6_3[A1,A2,A3,A4,A5,A6,R1,B2,B3,R2](f : Term[(A1,A2,A3,A4,A5,A6),R1], g : Term[(R1,B2,B3),R2]) : Term8[A1,A2,A3,A4,A5,A6,B2,B3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 6, 3)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (A1,A2,A3,A4,A5,A6,B2,B3)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6)),p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_1_6_3[A1,A2,A3,A4,A5,A6,R1,B1,B3,R2](f : Term[(A1,A2,A3,A4,A5,A6),R1], g : Term[(B1,R1,B3),R2]) : Term8[B1,A1,A2,A3,A4,A5,A6,B3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 6, 3)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,A1,A2,A3,A4,A5,A6,B3)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4,p._5,p._6,p._7)),p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_2_6_3[A1,A2,A3,A4,A5,A6,R1,B1,B2,R2](f : Term[(A1,A2,A3,A4,A5,A6),R1], g : Term[(B1,B2,R1),R2]) : Term8[B1,B2,A1,A2,A3,A4,A5,A6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 6, 3)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,A1,A2,A3,A4,A5,A6)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4,p._5,p._6,p._7,p._8)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_7_3[A1,A2,A3,A4,A5,A6,A7,R1,B2,B3,R2](f : Term[(A1,A2,A3,A4,A5,A6,A7),R1], g : Term[(R1,B2,B3),R2]) : Term9[A1,A2,A3,A4,A5,A6,A7,B2,B3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 7, 3)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (A1,A2,A3,A4,A5,A6,A7,B2,B3)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6,p._7)),p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_1_7_3[A1,A2,A3,A4,A5,A6,A7,R1,B1,B3,R2](f : Term[(A1,A2,A3,A4,A5,A6,A7),R1], g : Term[(B1,R1,B3),R2]) : Term9[B1,A1,A2,A3,A4,A5,A6,A7,B3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 7, 3)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,A1,A2,A3,A4,A5,A6,A7,B3)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4,p._5,p._6,p._7,p._8)),p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_2_7_3[A1,A2,A3,A4,A5,A6,A7,R1,B1,B2,R2](f : Term[(A1,A2,A3,A4,A5,A6,A7),R1], g : Term[(B1,B2,R1),R2]) : Term9[B1,B2,A1,A2,A3,A4,A5,A6,A7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 7, 3)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,A1,A2,A3,A4,A5,A6,A7)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4,p._5,p._6,p._7,p._8,p._9)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_1_4[A1,R1,B2,B3,B4,R2](f : Term[(A1),R1], g : Term[(R1,B2,B3,B4),R2]) : Term4[A1,B2,B3,B4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 1, 4)
-    Term4(f.program, newExpr, newTypes, f.converter)
+    Term4(f.program, newExpr, (p : (A1,B2,B3,B4)) => g.scalaExpr((f.scalaExpr((p._1)),p._2,p._3,p._4)), newTypes, f.converter)
   }
-
+  
   private def compose_1_1_4[A1,R1,B1,B3,B4,R2](f : Term[(A1),R1], g : Term[(B1,R1,B3,B4),R2]) : Term4[B1,A1,B3,B4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 1, 4)
-    Term4(f.program, newExpr, newTypes, f.converter)
+    Term4(f.program, newExpr, (p : (B1,A1,B3,B4)) => g.scalaExpr((p._1,f.scalaExpr((p._2)),p._3,p._4)), newTypes, f.converter)
   }
-
+  
   private def compose_2_1_4[A1,R1,B1,B2,B4,R2](f : Term[(A1),R1], g : Term[(B1,B2,R1,B4),R2]) : Term4[B1,B2,A1,B4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 1, 4)
-    Term4(f.program, newExpr, newTypes, f.converter)
+    Term4(f.program, newExpr, (p : (B1,B2,A1,B4)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3)),p._4)), newTypes, f.converter)
   }
-
+  
   private def compose_3_1_4[A1,R1,B1,B2,B3,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,R1),R2]) : Term4[B1,B2,B3,A1,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 1, 4)
-    Term4(f.program, newExpr, newTypes, f.converter)
+    Term4(f.program, newExpr, (p : (B1,B2,B3,A1)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_2_4[A1,A2,R1,B2,B3,B4,R2](f : Term[(A1,A2),R1], g : Term[(R1,B2,B3,B4),R2]) : Term5[A1,A2,B2,B3,B4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 2, 4)
-    Term5(f.program, newExpr, newTypes, f.converter)
+    Term5(f.program, newExpr, (p : (A1,A2,B2,B3,B4)) => g.scalaExpr((f.scalaExpr((p._1,p._2)),p._3,p._4,p._5)), newTypes, f.converter)
   }
-
+  
   private def compose_1_2_4[A1,A2,R1,B1,B3,B4,R2](f : Term[(A1,A2),R1], g : Term[(B1,R1,B3,B4),R2]) : Term5[B1,A1,A2,B3,B4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 2, 4)
-    Term5(f.program, newExpr, newTypes, f.converter)
+    Term5(f.program, newExpr, (p : (B1,A1,A2,B3,B4)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3)),p._4,p._5)), newTypes, f.converter)
   }
-
+  
   private def compose_2_2_4[A1,A2,R1,B1,B2,B4,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,R1,B4),R2]) : Term5[B1,B2,A1,A2,B4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 2, 4)
-    Term5(f.program, newExpr, newTypes, f.converter)
+    Term5(f.program, newExpr, (p : (B1,B2,A1,A2,B4)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4)),p._5)), newTypes, f.converter)
   }
-
+  
   private def compose_3_2_4[A1,A2,R1,B1,B2,B3,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,B3,R1),R2]) : Term5[B1,B2,B3,A1,A2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 2, 4)
-    Term5(f.program, newExpr, newTypes, f.converter)
+    Term5(f.program, newExpr, (p : (B1,B2,B3,A1,A2)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4,p._5)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_3_4[A1,A2,A3,R1,B2,B3,B4,R2](f : Term[(A1,A2,A3),R1], g : Term[(R1,B2,B3,B4),R2]) : Term6[A1,A2,A3,B2,B3,B4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 3, 4)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (A1,A2,A3,B2,B3,B4)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3)),p._4,p._5,p._6)), newTypes, f.converter)
   }
-
+  
   private def compose_1_3_4[A1,A2,A3,R1,B1,B3,B4,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,R1,B3,B4),R2]) : Term6[B1,A1,A2,A3,B3,B4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 3, 4)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (B1,A1,A2,A3,B3,B4)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4)),p._5,p._6)), newTypes, f.converter)
   }
-
+  
   private def compose_2_3_4[A1,A2,A3,R1,B1,B2,B4,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,B2,R1,B4),R2]) : Term6[B1,B2,A1,A2,A3,B4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 3, 4)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (B1,B2,A1,A2,A3,B4)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4,p._5)),p._6)), newTypes, f.converter)
   }
-
+  
   private def compose_3_3_4[A1,A2,A3,R1,B1,B2,B3,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,B2,B3,R1),R2]) : Term6[B1,B2,B3,A1,A2,A3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 3, 4)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (B1,B2,B3,A1,A2,A3)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4,p._5,p._6)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_4_4[A1,A2,A3,A4,R1,B2,B3,B4,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(R1,B2,B3,B4),R2]) : Term7[A1,A2,A3,A4,B2,B3,B4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 4, 4)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (A1,A2,A3,A4,B2,B3,B4)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4)),p._5,p._6,p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_1_4_4[A1,A2,A3,A4,R1,B1,B3,B4,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(B1,R1,B3,B4),R2]) : Term7[B1,A1,A2,A3,A4,B3,B4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 4, 4)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,A1,A2,A3,A4,B3,B4)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4,p._5)),p._6,p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_2_4_4[A1,A2,A3,A4,R1,B1,B2,B4,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(B1,B2,R1,B4),R2]) : Term7[B1,B2,A1,A2,A3,A4,B4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 4, 4)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,B2,A1,A2,A3,A4,B4)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4,p._5,p._6)),p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_3_4_4[A1,A2,A3,A4,R1,B1,B2,B3,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(B1,B2,B3,R1),R2]) : Term7[B1,B2,B3,A1,A2,A3,A4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 4, 4)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,B2,B3,A1,A2,A3,A4)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4,p._5,p._6,p._7)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_5_4[A1,A2,A3,A4,A5,R1,B2,B3,B4,R2](f : Term[(A1,A2,A3,A4,A5),R1], g : Term[(R1,B2,B3,B4),R2]) : Term8[A1,A2,A3,A4,A5,B2,B3,B4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 5, 4)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (A1,A2,A3,A4,A5,B2,B3,B4)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4,p._5)),p._6,p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_1_5_4[A1,A2,A3,A4,A5,R1,B1,B3,B4,R2](f : Term[(A1,A2,A3,A4,A5),R1], g : Term[(B1,R1,B3,B4),R2]) : Term8[B1,A1,A2,A3,A4,A5,B3,B4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 5, 4)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,A1,A2,A3,A4,A5,B3,B4)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4,p._5,p._6)),p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_2_5_4[A1,A2,A3,A4,A5,R1,B1,B2,B4,R2](f : Term[(A1,A2,A3,A4,A5),R1], g : Term[(B1,B2,R1,B4),R2]) : Term8[B1,B2,A1,A2,A3,A4,A5,B4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 5, 4)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,A1,A2,A3,A4,A5,B4)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4,p._5,p._6,p._7)),p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_3_5_4[A1,A2,A3,A4,A5,R1,B1,B2,B3,R2](f : Term[(A1,A2,A3,A4,A5),R1], g : Term[(B1,B2,B3,R1),R2]) : Term8[B1,B2,B3,A1,A2,A3,A4,A5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 5, 4)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,B3,A1,A2,A3,A4,A5)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4,p._5,p._6,p._7,p._8)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_6_4[A1,A2,A3,A4,A5,A6,R1,B2,B3,B4,R2](f : Term[(A1,A2,A3,A4,A5,A6),R1], g : Term[(R1,B2,B3,B4),R2]) : Term9[A1,A2,A3,A4,A5,A6,B2,B3,B4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 6, 4)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (A1,A2,A3,A4,A5,A6,B2,B3,B4)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6)),p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_1_6_4[A1,A2,A3,A4,A5,A6,R1,B1,B3,B4,R2](f : Term[(A1,A2,A3,A4,A5,A6),R1], g : Term[(B1,R1,B3,B4),R2]) : Term9[B1,A1,A2,A3,A4,A5,A6,B3,B4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 6, 4)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,A1,A2,A3,A4,A5,A6,B3,B4)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4,p._5,p._6,p._7)),p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_2_6_4[A1,A2,A3,A4,A5,A6,R1,B1,B2,B4,R2](f : Term[(A1,A2,A3,A4,A5,A6),R1], g : Term[(B1,B2,R1,B4),R2]) : Term9[B1,B2,A1,A2,A3,A4,A5,A6,B4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 6, 4)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,A1,A2,A3,A4,A5,A6,B4)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4,p._5,p._6,p._7,p._8)),p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_3_6_4[A1,A2,A3,A4,A5,A6,R1,B1,B2,B3,R2](f : Term[(A1,A2,A3,A4,A5,A6),R1], g : Term[(B1,B2,B3,R1),R2]) : Term9[B1,B2,B3,A1,A2,A3,A4,A5,A6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 6, 4)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,A1,A2,A3,A4,A5,A6)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4,p._5,p._6,p._7,p._8,p._9)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_1_5[A1,R1,B2,B3,B4,B5,R2](f : Term[(A1),R1], g : Term[(R1,B2,B3,B4,B5),R2]) : Term5[A1,B2,B3,B4,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 1, 5)
-    Term5(f.program, newExpr, newTypes, f.converter)
+    Term5(f.program, newExpr, (p : (A1,B2,B3,B4,B5)) => g.scalaExpr((f.scalaExpr((p._1)),p._2,p._3,p._4,p._5)), newTypes, f.converter)
   }
-
+  
   private def compose_1_1_5[A1,R1,B1,B3,B4,B5,R2](f : Term[(A1),R1], g : Term[(B1,R1,B3,B4,B5),R2]) : Term5[B1,A1,B3,B4,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 1, 5)
-    Term5(f.program, newExpr, newTypes, f.converter)
+    Term5(f.program, newExpr, (p : (B1,A1,B3,B4,B5)) => g.scalaExpr((p._1,f.scalaExpr((p._2)),p._3,p._4,p._5)), newTypes, f.converter)
   }
-
+  
   private def compose_2_1_5[A1,R1,B1,B2,B4,B5,R2](f : Term[(A1),R1], g : Term[(B1,B2,R1,B4,B5),R2]) : Term5[B1,B2,A1,B4,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 1, 5)
-    Term5(f.program, newExpr, newTypes, f.converter)
+    Term5(f.program, newExpr, (p : (B1,B2,A1,B4,B5)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3)),p._4,p._5)), newTypes, f.converter)
   }
-
+  
   private def compose_3_1_5[A1,R1,B1,B2,B3,B5,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,R1,B5),R2]) : Term5[B1,B2,B3,A1,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 1, 5)
-    Term5(f.program, newExpr, newTypes, f.converter)
+    Term5(f.program, newExpr, (p : (B1,B2,B3,A1,B5)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4)),p._5)), newTypes, f.converter)
   }
-
+  
   private def compose_4_1_5[A1,R1,B1,B2,B3,B4,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,B4,R1),R2]) : Term5[B1,B2,B3,B4,A1,R2] = {
     val (newExpr, newTypes) = compose(f, g, 4, 1, 5)
-    Term5(f.program, newExpr, newTypes, f.converter)
+    Term5(f.program, newExpr, (p : (B1,B2,B3,B4,A1)) => g.scalaExpr((p._1,p._2,p._3,p._4,f.scalaExpr((p._5)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_2_5[A1,A2,R1,B2,B3,B4,B5,R2](f : Term[(A1,A2),R1], g : Term[(R1,B2,B3,B4,B5),R2]) : Term6[A1,A2,B2,B3,B4,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 2, 5)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (A1,A2,B2,B3,B4,B5)) => g.scalaExpr((f.scalaExpr((p._1,p._2)),p._3,p._4,p._5,p._6)), newTypes, f.converter)
   }
-
+  
   private def compose_1_2_5[A1,A2,R1,B1,B3,B4,B5,R2](f : Term[(A1,A2),R1], g : Term[(B1,R1,B3,B4,B5),R2]) : Term6[B1,A1,A2,B3,B4,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 2, 5)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (B1,A1,A2,B3,B4,B5)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3)),p._4,p._5,p._6)), newTypes, f.converter)
   }
-
+  
   private def compose_2_2_5[A1,A2,R1,B1,B2,B4,B5,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,R1,B4,B5),R2]) : Term6[B1,B2,A1,A2,B4,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 2, 5)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (B1,B2,A1,A2,B4,B5)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4)),p._5,p._6)), newTypes, f.converter)
   }
-
+  
   private def compose_3_2_5[A1,A2,R1,B1,B2,B3,B5,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,B3,R1,B5),R2]) : Term6[B1,B2,B3,A1,A2,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 2, 5)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (B1,B2,B3,A1,A2,B5)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4,p._5)),p._6)), newTypes, f.converter)
   }
-
+  
   private def compose_4_2_5[A1,A2,R1,B1,B2,B3,B4,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,B3,B4,R1),R2]) : Term6[B1,B2,B3,B4,A1,A2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 4, 2, 5)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (B1,B2,B3,B4,A1,A2)) => g.scalaExpr((p._1,p._2,p._3,p._4,f.scalaExpr((p._5,p._6)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_3_5[A1,A2,A3,R1,B2,B3,B4,B5,R2](f : Term[(A1,A2,A3),R1], g : Term[(R1,B2,B3,B4,B5),R2]) : Term7[A1,A2,A3,B2,B3,B4,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 3, 5)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (A1,A2,A3,B2,B3,B4,B5)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3)),p._4,p._5,p._6,p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_1_3_5[A1,A2,A3,R1,B1,B3,B4,B5,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,R1,B3,B4,B5),R2]) : Term7[B1,A1,A2,A3,B3,B4,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 3, 5)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,A1,A2,A3,B3,B4,B5)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4)),p._5,p._6,p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_2_3_5[A1,A2,A3,R1,B1,B2,B4,B5,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,B2,R1,B4,B5),R2]) : Term7[B1,B2,A1,A2,A3,B4,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 3, 5)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,B2,A1,A2,A3,B4,B5)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4,p._5)),p._6,p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_3_3_5[A1,A2,A3,R1,B1,B2,B3,B5,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,B2,B3,R1,B5),R2]) : Term7[B1,B2,B3,A1,A2,A3,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 3, 5)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,B2,B3,A1,A2,A3,B5)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4,p._5,p._6)),p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_4_3_5[A1,A2,A3,R1,B1,B2,B3,B4,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,B2,B3,B4,R1),R2]) : Term7[B1,B2,B3,B4,A1,A2,A3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 4, 3, 5)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,B2,B3,B4,A1,A2,A3)) => g.scalaExpr((p._1,p._2,p._3,p._4,f.scalaExpr((p._5,p._6,p._7)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_4_5[A1,A2,A3,A4,R1,B2,B3,B4,B5,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(R1,B2,B3,B4,B5),R2]) : Term8[A1,A2,A3,A4,B2,B3,B4,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 4, 5)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (A1,A2,A3,A4,B2,B3,B4,B5)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4)),p._5,p._6,p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_1_4_5[A1,A2,A3,A4,R1,B1,B3,B4,B5,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(B1,R1,B3,B4,B5),R2]) : Term8[B1,A1,A2,A3,A4,B3,B4,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 4, 5)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,A1,A2,A3,A4,B3,B4,B5)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4,p._5)),p._6,p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_2_4_5[A1,A2,A3,A4,R1,B1,B2,B4,B5,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(B1,B2,R1,B4,B5),R2]) : Term8[B1,B2,A1,A2,A3,A4,B4,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 4, 5)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,A1,A2,A3,A4,B4,B5)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4,p._5,p._6)),p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_3_4_5[A1,A2,A3,A4,R1,B1,B2,B3,B5,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(B1,B2,B3,R1,B5),R2]) : Term8[B1,B2,B3,A1,A2,A3,A4,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 4, 5)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,B3,A1,A2,A3,A4,B5)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4,p._5,p._6,p._7)),p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_4_4_5[A1,A2,A3,A4,R1,B1,B2,B3,B4,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(B1,B2,B3,B4,R1),R2]) : Term8[B1,B2,B3,B4,A1,A2,A3,A4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 4, 4, 5)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,B3,B4,A1,A2,A3,A4)) => g.scalaExpr((p._1,p._2,p._3,p._4,f.scalaExpr((p._5,p._6,p._7,p._8)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_5_5[A1,A2,A3,A4,A5,R1,B2,B3,B4,B5,R2](f : Term[(A1,A2,A3,A4,A5),R1], g : Term[(R1,B2,B3,B4,B5),R2]) : Term9[A1,A2,A3,A4,A5,B2,B3,B4,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 5, 5)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (A1,A2,A3,A4,A5,B2,B3,B4,B5)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4,p._5)),p._6,p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_1_5_5[A1,A2,A3,A4,A5,R1,B1,B3,B4,B5,R2](f : Term[(A1,A2,A3,A4,A5),R1], g : Term[(B1,R1,B3,B4,B5),R2]) : Term9[B1,A1,A2,A3,A4,A5,B3,B4,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 5, 5)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,A1,A2,A3,A4,A5,B3,B4,B5)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4,p._5,p._6)),p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_2_5_5[A1,A2,A3,A4,A5,R1,B1,B2,B4,B5,R2](f : Term[(A1,A2,A3,A4,A5),R1], g : Term[(B1,B2,R1,B4,B5),R2]) : Term9[B1,B2,A1,A2,A3,A4,A5,B4,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 5, 5)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,A1,A2,A3,A4,A5,B4,B5)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4,p._5,p._6,p._7)),p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_3_5_5[A1,A2,A3,A4,A5,R1,B1,B2,B3,B5,R2](f : Term[(A1,A2,A3,A4,A5),R1], g : Term[(B1,B2,B3,R1,B5),R2]) : Term9[B1,B2,B3,A1,A2,A3,A4,A5,B5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 5, 5)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,A1,A2,A3,A4,A5,B5)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4,p._5,p._6,p._7,p._8)),p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_4_5_5[A1,A2,A3,A4,A5,R1,B1,B2,B3,B4,R2](f : Term[(A1,A2,A3,A4,A5),R1], g : Term[(B1,B2,B3,B4,R1),R2]) : Term9[B1,B2,B3,B4,A1,A2,A3,A4,A5,R2] = {
     val (newExpr, newTypes) = compose(f, g, 4, 5, 5)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,B4,A1,A2,A3,A4,A5)) => g.scalaExpr((p._1,p._2,p._3,p._4,f.scalaExpr((p._5,p._6,p._7,p._8,p._9)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_1_6[A1,R1,B2,B3,B4,B5,B6,R2](f : Term[(A1),R1], g : Term[(R1,B2,B3,B4,B5,B6),R2]) : Term6[A1,B2,B3,B4,B5,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 1, 6)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (A1,B2,B3,B4,B5,B6)) => g.scalaExpr((f.scalaExpr((p._1)),p._2,p._3,p._4,p._5,p._6)), newTypes, f.converter)
   }
-
+  
   private def compose_1_1_6[A1,R1,B1,B3,B4,B5,B6,R2](f : Term[(A1),R1], g : Term[(B1,R1,B3,B4,B5,B6),R2]) : Term6[B1,A1,B3,B4,B5,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 1, 6)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (B1,A1,B3,B4,B5,B6)) => g.scalaExpr((p._1,f.scalaExpr((p._2)),p._3,p._4,p._5,p._6)), newTypes, f.converter)
   }
-
+  
   private def compose_2_1_6[A1,R1,B1,B2,B4,B5,B6,R2](f : Term[(A1),R1], g : Term[(B1,B2,R1,B4,B5,B6),R2]) : Term6[B1,B2,A1,B4,B5,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 1, 6)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (B1,B2,A1,B4,B5,B6)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3)),p._4,p._5,p._6)), newTypes, f.converter)
   }
-
+  
   private def compose_3_1_6[A1,R1,B1,B2,B3,B5,B6,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,R1,B5,B6),R2]) : Term6[B1,B2,B3,A1,B5,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 1, 6)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (B1,B2,B3,A1,B5,B6)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4)),p._5,p._6)), newTypes, f.converter)
   }
-
+  
   private def compose_4_1_6[A1,R1,B1,B2,B3,B4,B6,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,B4,R1,B6),R2]) : Term6[B1,B2,B3,B4,A1,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 4, 1, 6)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (B1,B2,B3,B4,A1,B6)) => g.scalaExpr((p._1,p._2,p._3,p._4,f.scalaExpr((p._5)),p._6)), newTypes, f.converter)
   }
-
+  
   private def compose_5_1_6[A1,R1,B1,B2,B3,B4,B5,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,B4,B5,R1),R2]) : Term6[B1,B2,B3,B4,B5,A1,R2] = {
     val (newExpr, newTypes) = compose(f, g, 5, 1, 6)
-    Term6(f.program, newExpr, newTypes, f.converter)
+    Term6(f.program, newExpr, (p : (B1,B2,B3,B4,B5,A1)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,f.scalaExpr((p._6)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_2_6[A1,A2,R1,B2,B3,B4,B5,B6,R2](f : Term[(A1,A2),R1], g : Term[(R1,B2,B3,B4,B5,B6),R2]) : Term7[A1,A2,B2,B3,B4,B5,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 2, 6)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (A1,A2,B2,B3,B4,B5,B6)) => g.scalaExpr((f.scalaExpr((p._1,p._2)),p._3,p._4,p._5,p._6,p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_1_2_6[A1,A2,R1,B1,B3,B4,B5,B6,R2](f : Term[(A1,A2),R1], g : Term[(B1,R1,B3,B4,B5,B6),R2]) : Term7[B1,A1,A2,B3,B4,B5,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 2, 6)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,A1,A2,B3,B4,B5,B6)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3)),p._4,p._5,p._6,p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_2_2_6[A1,A2,R1,B1,B2,B4,B5,B6,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,R1,B4,B5,B6),R2]) : Term7[B1,B2,A1,A2,B4,B5,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 2, 6)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,B2,A1,A2,B4,B5,B6)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4)),p._5,p._6,p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_3_2_6[A1,A2,R1,B1,B2,B3,B5,B6,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,B3,R1,B5,B6),R2]) : Term7[B1,B2,B3,A1,A2,B5,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 2, 6)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,B2,B3,A1,A2,B5,B6)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4,p._5)),p._6,p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_4_2_6[A1,A2,R1,B1,B2,B3,B4,B6,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,B3,B4,R1,B6),R2]) : Term7[B1,B2,B3,B4,A1,A2,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 4, 2, 6)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,B2,B3,B4,A1,A2,B6)) => g.scalaExpr((p._1,p._2,p._3,p._4,f.scalaExpr((p._5,p._6)),p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_5_2_6[A1,A2,R1,B1,B2,B3,B4,B5,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,B3,B4,B5,R1),R2]) : Term7[B1,B2,B3,B4,B5,A1,A2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 5, 2, 6)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,B2,B3,B4,B5,A1,A2)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,f.scalaExpr((p._6,p._7)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_3_6[A1,A2,A3,R1,B2,B3,B4,B5,B6,R2](f : Term[(A1,A2,A3),R1], g : Term[(R1,B2,B3,B4,B5,B6),R2]) : Term8[A1,A2,A3,B2,B3,B4,B5,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 3, 6)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (A1,A2,A3,B2,B3,B4,B5,B6)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3)),p._4,p._5,p._6,p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_1_3_6[A1,A2,A3,R1,B1,B3,B4,B5,B6,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,R1,B3,B4,B5,B6),R2]) : Term8[B1,A1,A2,A3,B3,B4,B5,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 3, 6)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,A1,A2,A3,B3,B4,B5,B6)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4)),p._5,p._6,p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_2_3_6[A1,A2,A3,R1,B1,B2,B4,B5,B6,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,B2,R1,B4,B5,B6),R2]) : Term8[B1,B2,A1,A2,A3,B4,B5,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 3, 6)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,A1,A2,A3,B4,B5,B6)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4,p._5)),p._6,p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_3_3_6[A1,A2,A3,R1,B1,B2,B3,B5,B6,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,B2,B3,R1,B5,B6),R2]) : Term8[B1,B2,B3,A1,A2,A3,B5,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 3, 6)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,B3,A1,A2,A3,B5,B6)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4,p._5,p._6)),p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_4_3_6[A1,A2,A3,R1,B1,B2,B3,B4,B6,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,B2,B3,B4,R1,B6),R2]) : Term8[B1,B2,B3,B4,A1,A2,A3,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 4, 3, 6)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,B3,B4,A1,A2,A3,B6)) => g.scalaExpr((p._1,p._2,p._3,p._4,f.scalaExpr((p._5,p._6,p._7)),p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_5_3_6[A1,A2,A3,R1,B1,B2,B3,B4,B5,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,B2,B3,B4,B5,R1),R2]) : Term8[B1,B2,B3,B4,B5,A1,A2,A3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 5, 3, 6)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,B3,B4,B5,A1,A2,A3)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,f.scalaExpr((p._6,p._7,p._8)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_4_6[A1,A2,A3,A4,R1,B2,B3,B4,B5,B6,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(R1,B2,B3,B4,B5,B6),R2]) : Term9[A1,A2,A3,A4,B2,B3,B4,B5,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 4, 6)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (A1,A2,A3,A4,B2,B3,B4,B5,B6)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3,p._4)),p._5,p._6,p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_1_4_6[A1,A2,A3,A4,R1,B1,B3,B4,B5,B6,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(B1,R1,B3,B4,B5,B6),R2]) : Term9[B1,A1,A2,A3,A4,B3,B4,B5,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 4, 6)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,A1,A2,A3,A4,B3,B4,B5,B6)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4,p._5)),p._6,p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_2_4_6[A1,A2,A3,A4,R1,B1,B2,B4,B5,B6,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(B1,B2,R1,B4,B5,B6),R2]) : Term9[B1,B2,A1,A2,A3,A4,B4,B5,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 4, 6)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,A1,A2,A3,A4,B4,B5,B6)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4,p._5,p._6)),p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_3_4_6[A1,A2,A3,A4,R1,B1,B2,B3,B5,B6,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(B1,B2,B3,R1,B5,B6),R2]) : Term9[B1,B2,B3,A1,A2,A3,A4,B5,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 4, 6)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,A1,A2,A3,A4,B5,B6)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4,p._5,p._6,p._7)),p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_4_4_6[A1,A2,A3,A4,R1,B1,B2,B3,B4,B6,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(B1,B2,B3,B4,R1,B6),R2]) : Term9[B1,B2,B3,B4,A1,A2,A3,A4,B6,R2] = {
     val (newExpr, newTypes) = compose(f, g, 4, 4, 6)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,B4,A1,A2,A3,A4,B6)) => g.scalaExpr((p._1,p._2,p._3,p._4,f.scalaExpr((p._5,p._6,p._7,p._8)),p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_5_4_6[A1,A2,A3,A4,R1,B1,B2,B3,B4,B5,R2](f : Term[(A1,A2,A3,A4),R1], g : Term[(B1,B2,B3,B4,B5,R1),R2]) : Term9[B1,B2,B3,B4,B5,A1,A2,A3,A4,R2] = {
     val (newExpr, newTypes) = compose(f, g, 5, 4, 6)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,B4,B5,A1,A2,A3,A4)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,f.scalaExpr((p._6,p._7,p._8,p._9)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_1_7[A1,R1,B2,B3,B4,B5,B6,B7,R2](f : Term[(A1),R1], g : Term[(R1,B2,B3,B4,B5,B6,B7),R2]) : Term7[A1,B2,B3,B4,B5,B6,B7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 1, 7)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (A1,B2,B3,B4,B5,B6,B7)) => g.scalaExpr((f.scalaExpr((p._1)),p._2,p._3,p._4,p._5,p._6,p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_1_1_7[A1,R1,B1,B3,B4,B5,B6,B7,R2](f : Term[(A1),R1], g : Term[(B1,R1,B3,B4,B5,B6,B7),R2]) : Term7[B1,A1,B3,B4,B5,B6,B7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 1, 7)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,A1,B3,B4,B5,B6,B7)) => g.scalaExpr((p._1,f.scalaExpr((p._2)),p._3,p._4,p._5,p._6,p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_2_1_7[A1,R1,B1,B2,B4,B5,B6,B7,R2](f : Term[(A1),R1], g : Term[(B1,B2,R1,B4,B5,B6,B7),R2]) : Term7[B1,B2,A1,B4,B5,B6,B7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 1, 7)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,B2,A1,B4,B5,B6,B7)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3)),p._4,p._5,p._6,p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_3_1_7[A1,R1,B1,B2,B3,B5,B6,B7,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,R1,B5,B6,B7),R2]) : Term7[B1,B2,B3,A1,B5,B6,B7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 1, 7)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,B2,B3,A1,B5,B6,B7)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4)),p._5,p._6,p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_4_1_7[A1,R1,B1,B2,B3,B4,B6,B7,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,B4,R1,B6,B7),R2]) : Term7[B1,B2,B3,B4,A1,B6,B7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 4, 1, 7)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,B2,B3,B4,A1,B6,B7)) => g.scalaExpr((p._1,p._2,p._3,p._4,f.scalaExpr((p._5)),p._6,p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_5_1_7[A1,R1,B1,B2,B3,B4,B5,B7,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,B4,B5,R1,B7),R2]) : Term7[B1,B2,B3,B4,B5,A1,B7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 5, 1, 7)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,B2,B3,B4,B5,A1,B7)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,f.scalaExpr((p._6)),p._7)), newTypes, f.converter)
   }
-
+  
   private def compose_6_1_7[A1,R1,B1,B2,B3,B4,B5,B6,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,B4,B5,B6,R1),R2]) : Term7[B1,B2,B3,B4,B5,B6,A1,R2] = {
     val (newExpr, newTypes) = compose(f, g, 6, 1, 7)
-    Term7(f.program, newExpr, newTypes, f.converter)
+    Term7(f.program, newExpr, (p : (B1,B2,B3,B4,B5,B6,A1)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6,f.scalaExpr((p._7)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_2_7[A1,A2,R1,B2,B3,B4,B5,B6,B7,R2](f : Term[(A1,A2),R1], g : Term[(R1,B2,B3,B4,B5,B6,B7),R2]) : Term8[A1,A2,B2,B3,B4,B5,B6,B7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 2, 7)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (A1,A2,B2,B3,B4,B5,B6,B7)) => g.scalaExpr((f.scalaExpr((p._1,p._2)),p._3,p._4,p._5,p._6,p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_1_2_7[A1,A2,R1,B1,B3,B4,B5,B6,B7,R2](f : Term[(A1,A2),R1], g : Term[(B1,R1,B3,B4,B5,B6,B7),R2]) : Term8[B1,A1,A2,B3,B4,B5,B6,B7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 2, 7)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,A1,A2,B3,B4,B5,B6,B7)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3)),p._4,p._5,p._6,p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_2_2_7[A1,A2,R1,B1,B2,B4,B5,B6,B7,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,R1,B4,B5,B6,B7),R2]) : Term8[B1,B2,A1,A2,B4,B5,B6,B7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 2, 7)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,A1,A2,B4,B5,B6,B7)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4)),p._5,p._6,p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_3_2_7[A1,A2,R1,B1,B2,B3,B5,B6,B7,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,B3,R1,B5,B6,B7),R2]) : Term8[B1,B2,B3,A1,A2,B5,B6,B7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 2, 7)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,B3,A1,A2,B5,B6,B7)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4,p._5)),p._6,p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_4_2_7[A1,A2,R1,B1,B2,B3,B4,B6,B7,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,B3,B4,R1,B6,B7),R2]) : Term8[B1,B2,B3,B4,A1,A2,B6,B7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 4, 2, 7)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,B3,B4,A1,A2,B6,B7)) => g.scalaExpr((p._1,p._2,p._3,p._4,f.scalaExpr((p._5,p._6)),p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_5_2_7[A1,A2,R1,B1,B2,B3,B4,B5,B7,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,B3,B4,B5,R1,B7),R2]) : Term8[B1,B2,B3,B4,B5,A1,A2,B7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 5, 2, 7)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,B3,B4,B5,A1,A2,B7)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,f.scalaExpr((p._6,p._7)),p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_6_2_7[A1,A2,R1,B1,B2,B3,B4,B5,B6,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,B3,B4,B5,B6,R1),R2]) : Term8[B1,B2,B3,B4,B5,B6,A1,A2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 6, 2, 7)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,B3,B4,B5,B6,A1,A2)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6,f.scalaExpr((p._7,p._8)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_3_7[A1,A2,A3,R1,B2,B3,B4,B5,B6,B7,R2](f : Term[(A1,A2,A3),R1], g : Term[(R1,B2,B3,B4,B5,B6,B7),R2]) : Term9[A1,A2,A3,B2,B3,B4,B5,B6,B7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 3, 7)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (A1,A2,A3,B2,B3,B4,B5,B6,B7)) => g.scalaExpr((f.scalaExpr((p._1,p._2,p._3)),p._4,p._5,p._6,p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_1_3_7[A1,A2,A3,R1,B1,B3,B4,B5,B6,B7,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,R1,B3,B4,B5,B6,B7),R2]) : Term9[B1,A1,A2,A3,B3,B4,B5,B6,B7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 3, 7)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,A1,A2,A3,B3,B4,B5,B6,B7)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3,p._4)),p._5,p._6,p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_2_3_7[A1,A2,A3,R1,B1,B2,B4,B5,B6,B7,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,B2,R1,B4,B5,B6,B7),R2]) : Term9[B1,B2,A1,A2,A3,B4,B5,B6,B7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 3, 7)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,A1,A2,A3,B4,B5,B6,B7)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4,p._5)),p._6,p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_3_3_7[A1,A2,A3,R1,B1,B2,B3,B5,B6,B7,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,B2,B3,R1,B5,B6,B7),R2]) : Term9[B1,B2,B3,A1,A2,A3,B5,B6,B7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 3, 7)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,A1,A2,A3,B5,B6,B7)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4,p._5,p._6)),p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_4_3_7[A1,A2,A3,R1,B1,B2,B3,B4,B6,B7,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,B2,B3,B4,R1,B6,B7),R2]) : Term9[B1,B2,B3,B4,A1,A2,A3,B6,B7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 4, 3, 7)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,B4,A1,A2,A3,B6,B7)) => g.scalaExpr((p._1,p._2,p._3,p._4,f.scalaExpr((p._5,p._6,p._7)),p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_5_3_7[A1,A2,A3,R1,B1,B2,B3,B4,B5,B7,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,B2,B3,B4,B5,R1,B7),R2]) : Term9[B1,B2,B3,B4,B5,A1,A2,A3,B7,R2] = {
     val (newExpr, newTypes) = compose(f, g, 5, 3, 7)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,B4,B5,A1,A2,A3,B7)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,f.scalaExpr((p._6,p._7,p._8)),p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_6_3_7[A1,A2,A3,R1,B1,B2,B3,B4,B5,B6,R2](f : Term[(A1,A2,A3),R1], g : Term[(B1,B2,B3,B4,B5,B6,R1),R2]) : Term9[B1,B2,B3,B4,B5,B6,A1,A2,A3,R2] = {
     val (newExpr, newTypes) = compose(f, g, 6, 3, 7)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,B4,B5,B6,A1,A2,A3)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6,f.scalaExpr((p._7,p._8,p._9)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_1_8[A1,R1,B2,B3,B4,B5,B6,B7,B8,R2](f : Term[(A1),R1], g : Term[(R1,B2,B3,B4,B5,B6,B7,B8),R2]) : Term8[A1,B2,B3,B4,B5,B6,B7,B8,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 1, 8)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (A1,B2,B3,B4,B5,B6,B7,B8)) => g.scalaExpr((f.scalaExpr((p._1)),p._2,p._3,p._4,p._5,p._6,p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_1_1_8[A1,R1,B1,B3,B4,B5,B6,B7,B8,R2](f : Term[(A1),R1], g : Term[(B1,R1,B3,B4,B5,B6,B7,B8),R2]) : Term8[B1,A1,B3,B4,B5,B6,B7,B8,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 1, 8)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,A1,B3,B4,B5,B6,B7,B8)) => g.scalaExpr((p._1,f.scalaExpr((p._2)),p._3,p._4,p._5,p._6,p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_2_1_8[A1,R1,B1,B2,B4,B5,B6,B7,B8,R2](f : Term[(A1),R1], g : Term[(B1,B2,R1,B4,B5,B6,B7,B8),R2]) : Term8[B1,B2,A1,B4,B5,B6,B7,B8,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 1, 8)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,A1,B4,B5,B6,B7,B8)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3)),p._4,p._5,p._6,p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_3_1_8[A1,R1,B1,B2,B3,B5,B6,B7,B8,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,R1,B5,B6,B7,B8),R2]) : Term8[B1,B2,B3,A1,B5,B6,B7,B8,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 1, 8)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,B3,A1,B5,B6,B7,B8)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4)),p._5,p._6,p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_4_1_8[A1,R1,B1,B2,B3,B4,B6,B7,B8,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,B4,R1,B6,B7,B8),R2]) : Term8[B1,B2,B3,B4,A1,B6,B7,B8,R2] = {
     val (newExpr, newTypes) = compose(f, g, 4, 1, 8)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,B3,B4,A1,B6,B7,B8)) => g.scalaExpr((p._1,p._2,p._3,p._4,f.scalaExpr((p._5)),p._6,p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_5_1_8[A1,R1,B1,B2,B3,B4,B5,B7,B8,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,B4,B5,R1,B7,B8),R2]) : Term8[B1,B2,B3,B4,B5,A1,B7,B8,R2] = {
     val (newExpr, newTypes) = compose(f, g, 5, 1, 8)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,B3,B4,B5,A1,B7,B8)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,f.scalaExpr((p._6)),p._7,p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_6_1_8[A1,R1,B1,B2,B3,B4,B5,B6,B8,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,B4,B5,B6,R1,B8),R2]) : Term8[B1,B2,B3,B4,B5,B6,A1,B8,R2] = {
     val (newExpr, newTypes) = compose(f, g, 6, 1, 8)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,B3,B4,B5,B6,A1,B8)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6,f.scalaExpr((p._7)),p._8)), newTypes, f.converter)
   }
-
+  
   private def compose_7_1_8[A1,R1,B1,B2,B3,B4,B5,B6,B7,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,B4,B5,B6,B7,R1),R2]) : Term8[B1,B2,B3,B4,B5,B6,B7,A1,R2] = {
     val (newExpr, newTypes) = compose(f, g, 7, 1, 8)
-    Term8(f.program, newExpr, newTypes, f.converter)
+    Term8(f.program, newExpr, (p : (B1,B2,B3,B4,B5,B6,B7,A1)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6,p._7,f.scalaExpr((p._8)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_2_8[A1,A2,R1,B2,B3,B4,B5,B6,B7,B8,R2](f : Term[(A1,A2),R1], g : Term[(R1,B2,B3,B4,B5,B6,B7,B8),R2]) : Term9[A1,A2,B2,B3,B4,B5,B6,B7,B8,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 2, 8)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (A1,A2,B2,B3,B4,B5,B6,B7,B8)) => g.scalaExpr((f.scalaExpr((p._1,p._2)),p._3,p._4,p._5,p._6,p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_1_2_8[A1,A2,R1,B1,B3,B4,B5,B6,B7,B8,R2](f : Term[(A1,A2),R1], g : Term[(B1,R1,B3,B4,B5,B6,B7,B8),R2]) : Term9[B1,A1,A2,B3,B4,B5,B6,B7,B8,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 2, 8)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,A1,A2,B3,B4,B5,B6,B7,B8)) => g.scalaExpr((p._1,f.scalaExpr((p._2,p._3)),p._4,p._5,p._6,p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_2_2_8[A1,A2,R1,B1,B2,B4,B5,B6,B7,B8,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,R1,B4,B5,B6,B7,B8),R2]) : Term9[B1,B2,A1,A2,B4,B5,B6,B7,B8,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 2, 8)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,A1,A2,B4,B5,B6,B7,B8)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3,p._4)),p._5,p._6,p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_3_2_8[A1,A2,R1,B1,B2,B3,B5,B6,B7,B8,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,B3,R1,B5,B6,B7,B8),R2]) : Term9[B1,B2,B3,A1,A2,B5,B6,B7,B8,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 2, 8)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,A1,A2,B5,B6,B7,B8)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4,p._5)),p._6,p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_4_2_8[A1,A2,R1,B1,B2,B3,B4,B6,B7,B8,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,B3,B4,R1,B6,B7,B8),R2]) : Term9[B1,B2,B3,B4,A1,A2,B6,B7,B8,R2] = {
     val (newExpr, newTypes) = compose(f, g, 4, 2, 8)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,B4,A1,A2,B6,B7,B8)) => g.scalaExpr((p._1,p._2,p._3,p._4,f.scalaExpr((p._5,p._6)),p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_5_2_8[A1,A2,R1,B1,B2,B3,B4,B5,B7,B8,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,B3,B4,B5,R1,B7,B8),R2]) : Term9[B1,B2,B3,B4,B5,A1,A2,B7,B8,R2] = {
     val (newExpr, newTypes) = compose(f, g, 5, 2, 8)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,B4,B5,A1,A2,B7,B8)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,f.scalaExpr((p._6,p._7)),p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_6_2_8[A1,A2,R1,B1,B2,B3,B4,B5,B6,B8,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,B3,B4,B5,B6,R1,B8),R2]) : Term9[B1,B2,B3,B4,B5,B6,A1,A2,B8,R2] = {
     val (newExpr, newTypes) = compose(f, g, 6, 2, 8)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,B4,B5,B6,A1,A2,B8)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6,f.scalaExpr((p._7,p._8)),p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_7_2_8[A1,A2,R1,B1,B2,B3,B4,B5,B6,B7,R2](f : Term[(A1,A2),R1], g : Term[(B1,B2,B3,B4,B5,B6,B7,R1),R2]) : Term9[B1,B2,B3,B4,B5,B6,B7,A1,A2,R2] = {
     val (newExpr, newTypes) = compose(f, g, 7, 2, 8)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,B4,B5,B6,B7,A1,A2)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6,p._7,f.scalaExpr((p._8,p._9)))), newTypes, f.converter)
   }
-
+  
   private def compose_0_1_9[A1,R1,B2,B3,B4,B5,B6,B7,B8,B9,R2](f : Term[(A1),R1], g : Term[(R1,B2,B3,B4,B5,B6,B7,B8,B9),R2]) : Term9[A1,B2,B3,B4,B5,B6,B7,B8,B9,R2] = {
     val (newExpr, newTypes) = compose(f, g, 0, 1, 9)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (A1,B2,B3,B4,B5,B6,B7,B8,B9)) => g.scalaExpr((f.scalaExpr((p._1)),p._2,p._3,p._4,p._5,p._6,p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_1_1_9[A1,R1,B1,B3,B4,B5,B6,B7,B8,B9,R2](f : Term[(A1),R1], g : Term[(B1,R1,B3,B4,B5,B6,B7,B8,B9),R2]) : Term9[B1,A1,B3,B4,B5,B6,B7,B8,B9,R2] = {
     val (newExpr, newTypes) = compose(f, g, 1, 1, 9)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,A1,B3,B4,B5,B6,B7,B8,B9)) => g.scalaExpr((p._1,f.scalaExpr((p._2)),p._3,p._4,p._5,p._6,p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_2_1_9[A1,R1,B1,B2,B4,B5,B6,B7,B8,B9,R2](f : Term[(A1),R1], g : Term[(B1,B2,R1,B4,B5,B6,B7,B8,B9),R2]) : Term9[B1,B2,A1,B4,B5,B6,B7,B8,B9,R2] = {
     val (newExpr, newTypes) = compose(f, g, 2, 1, 9)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,A1,B4,B5,B6,B7,B8,B9)) => g.scalaExpr((p._1,p._2,f.scalaExpr((p._3)),p._4,p._5,p._6,p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_3_1_9[A1,R1,B1,B2,B3,B5,B6,B7,B8,B9,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,R1,B5,B6,B7,B8,B9),R2]) : Term9[B1,B2,B3,A1,B5,B6,B7,B8,B9,R2] = {
     val (newExpr, newTypes) = compose(f, g, 3, 1, 9)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,A1,B5,B6,B7,B8,B9)) => g.scalaExpr((p._1,p._2,p._3,f.scalaExpr((p._4)),p._5,p._6,p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_4_1_9[A1,R1,B1,B2,B3,B4,B6,B7,B8,B9,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,B4,R1,B6,B7,B8,B9),R2]) : Term9[B1,B2,B3,B4,A1,B6,B7,B8,B9,R2] = {
     val (newExpr, newTypes) = compose(f, g, 4, 1, 9)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,B4,A1,B6,B7,B8,B9)) => g.scalaExpr((p._1,p._2,p._3,p._4,f.scalaExpr((p._5)),p._6,p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_5_1_9[A1,R1,B1,B2,B3,B4,B5,B7,B8,B9,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,B4,B5,R1,B7,B8,B9),R2]) : Term9[B1,B2,B3,B4,B5,A1,B7,B8,B9,R2] = {
     val (newExpr, newTypes) = compose(f, g, 5, 1, 9)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,B4,B5,A1,B7,B8,B9)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,f.scalaExpr((p._6)),p._7,p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_6_1_9[A1,R1,B1,B2,B3,B4,B5,B6,B8,B9,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,B4,B5,B6,R1,B8,B9),R2]) : Term9[B1,B2,B3,B4,B5,B6,A1,B8,B9,R2] = {
     val (newExpr, newTypes) = compose(f, g, 6, 1, 9)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,B4,B5,B6,A1,B8,B9)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6,f.scalaExpr((p._7)),p._8,p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_7_1_9[A1,R1,B1,B2,B3,B4,B5,B6,B7,B9,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,B4,B5,B6,B7,R1,B9),R2]) : Term9[B1,B2,B3,B4,B5,B6,B7,A1,B9,R2] = {
     val (newExpr, newTypes) = compose(f, g, 7, 1, 9)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,B4,B5,B6,B7,A1,B9)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6,p._7,f.scalaExpr((p._8)),p._9)), newTypes, f.converter)
   }
-
+  
   private def compose_8_1_9[A1,R1,B1,B2,B3,B4,B5,B6,B7,B8,R2](f : Term[(A1),R1], g : Term[(B1,B2,B3,B4,B5,B6,B7,B8,R1),R2]) : Term9[B1,B2,B3,B4,B5,B6,B7,B8,A1,R2] = {
     val (newExpr, newTypes) = compose(f, g, 8, 1, 9)
-    Term9(f.program, newExpr, newTypes, f.converter)
+    Term9(f.program, newExpr, (p : (B1,B2,B3,B4,B5,B6,B7,B8,A1)) => g.scalaExpr((p._1,p._2,p._3,p._4,p._5,p._6,p._7,p._8,f.scalaExpr((p._9)))), newTypes, f.converter)
   }
+  /** END OF GENERATED CODE. */
 
   /** Compute composed expression for g∘f */
   private def compose(f : Term[_,_], g : Term[_,_], index : Int, nf : Int, ng : Int) : (Expr, Seq[TypeTree]) = (f, g) match {
-    case (Term(_,ef,tf,_),Term(_,eg,tg,_)) => {
+    case (Term(_,ef,_,tf,_),Term(_,eg,_,tg,_)) => {
       val deBruijnF = tf.zipWithIndex.map{ case (t,i) => DeBruijnIndex(i).setType(t) }
       val deBruijnG = tg.zipWithIndex.map{ case (t,i) => DeBruijnIndex(i).setType(t) }
       assert(deBruijnF.size == nf && deBruijnG.size == ng)
