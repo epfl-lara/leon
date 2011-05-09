@@ -1,4 +1,4 @@
-18.04.2011:
+09.05.2011:
 
 - Things we discussed:
   - use matchToIfThenElse to handle pattern-matching with guards - CHECKED but with unexpected behaviour :
