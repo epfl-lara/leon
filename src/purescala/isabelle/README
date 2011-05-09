@@ -15,10 +15,10 @@
     avoid case expressions when it's at the top-level  - CHECKED
   - compute strongly-connected components for function graphs and recursive
     data-types - CHECKED using Kosaraju's algorithm for strongly connected components 
-  - topological sorting on Connected components 
+  - topological sorting on Connected components - CHECKED
       -- problems : MutuallyRecursive.thy - could not find termination order
   - try to run Nitpick on lemmas with bugs. - tried but nothing useful deduced
-  - deal with functions with duplicate names - CHECKED
+  - deal with functions with duplicate names - CHECKED (each function has its number of arguments attached)
 
 
 --------------------------------------------------
@@ -36,8 +36,8 @@ Ganea Octavian
 	      case TriplePair(Triple(None(),t1,None()),Triple(None(),t2,None()))  if(t1 && t2) => Triple(Some(v),true,Some(v))
 				case _ => true
 			}
-	4) mutally recursive functions
-
+		- translation done well, but isabelle refuses to cooperate 
+			
 - what works : everything else : 
 		1) keywords of the variables names
 		2) mutually recursive datatypes 
@@ -46,7 +46,9 @@ Ganea Octavian
 		5) constant functions (arrity 0)
 		6) preconditions and postconditions translated as lemmas
 		7) usage of sets and other predefined datatypes
-		etc
+		8) mutally recursive functions sorted topological by their strongly connected components
+		9) duplicate function names		
+		10)instanceOf
 
 		
 		
