@@ -1,12 +1,24 @@
 18.04.2011:
 
 - Things we discussed:
-  - use matchToIfThenElse to handle pattern-matching with guards
+  - use matchToIfThenElse to handle pattern-matching with guards - CHECKED but with unexpected behaviour :
+   	-- match to If not working for 
+				size of BSTSimpler.scala (lexicographic termination order not found)
+				isBST  - scripting does not finish ; if I add | _ => False to translation of instanceOf then it gives an error : _ => False is redundant
+		--  the following has no lexicographic termination order
+		def size(t : Tree) : Int = (t match {
+		    case Leaf() => 1
+		    case tt @ Node(l,_,r) => size(tt.left) + 1 + size(tt.right)
+		  }) ensuring(_ >= 1)
+  
   - use SimplePatternMatching extractor to handle "simple" pattern-matching to
-    avoid case expressions when it's at the top-level
+    avoid case expressions when it's at the top-level  - CHECKED
   - compute strongly-connected components for function graphs and recursive
-    data-types
-  - try to run Nitpick on lemmas with bugs.
+    data-types - CHECKED using Kosaraju's algorithm for strongly connected components 
+  - topological sorting on Connected components 
+      -- problems : MutuallyRecursive.thy - could not find termination order
+  - try to run Nitpick on lemmas with bugs. - tried but nothing useful deduced
+  - deal with functions with duplicate names - CHECKED
 
 
 --------------------------------------------------
@@ -16,6 +28,7 @@ Ganea Octavian
 - translation from LEON to Isabelle
 
 - does NOT work:
+	
 	1) proofs of the lemmas : it just tries induction on the first argument (if it has one) and then auto
 	2) some obscure operations on sets: multisets, min , max 
 	3) if on a case branch of a match: for example :
@@ -34,3 +47,7 @@ Ganea Octavian
 		6) preconditions and postconditions translated as lemmas
 		7) usage of sets and other predefined datatypes
 		etc
+
+		
+		
+		
