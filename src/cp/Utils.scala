@@ -2,99 +2,70 @@ package cp
 
 object Utils {
 
-  val composeMethods = scala.collection.mutable.Map[Int,Seq[String]]()
   private def indent(s : String) : String = s.split("\n").mkString("  ", "\n  ", "")
-
-  /** Generate `compose' methods for terms */
-  object GenerateCompose {
-    def apply(maxArity : Int) : String = {
-      val methods : Seq[String] = (for (arityG <- 1 to maxArity) yield {
-        for (arityF <- 1 to (maxArity - arityG + 1)) yield {
-          for (index <- 0 until arityG) yield {
-            val methodName = "compose_%d_%d_%d" format (index, arityF, arityG)
-            val fParams = (1 to arityF).map("A" + _)
-            val gParams = (1 to arityG).map("B" + _)
-
-            val replacedGParams = gParams.take(index) ++ Seq("R1") ++ gParams.drop(index + 1)
-            val allParams = fParams ++ Seq("R1") ++ (gParams.take(index) ++ gParams.drop(index + 1)) ++ Seq("R2")
-
-            val methodParams = allParams.mkString("[", ",", "]")
-
-            val fParamsTuple = fParams.mkString("(", ",", ")")
-            val replacedGParamsTuple = replacedGParams.mkString("(", ",", ")")
-
-            val newTermSize = arityG + arityF - 1
-            val resultParams = (gParams.take(index) ++ fParams ++ gParams.drop(index + 1) ++ Seq("R2"))
-            val resultParamsBrackets = resultParams.mkString("[", ",", "]")
-            val anonFunParams = gParams.take(index) ++ fParams ++ gParams.drop(index + 1) 
-            val anonFunParamsParen = anonFunParams.mkString("(", ",", ")")
-
-            val fParamsBrackets = fParams.mkString("[", ",", "]")
-            val rangeType = "T" + (index + 1)
-            val otherTypeParams = (fParams ++ Seq(rangeType)).mkString("[", ",", "]")
-            val resultTermArity = arityG + arityF - 1
-            val classParams = (1 to arityG) map ("T" + _)
-            val resultTermParams = (classParams.take(index) ++ fParams ++ classParams.drop(index + 1) ++ Seq("R")).mkString("[", ",", "]")
-
-            val anonFunArg = "(p : %s)" format (anonFunParamsParen)
-            val anonFunArgsF = if (arityG + arityF == 2) Seq("p") else ( ((index + 1) to (index + arityF)) map ("p._" + _) )
-            val anonFunArgsG = ((1 to (index)) map ("p._" + _)) ++ Seq("f.scalaExpr" + anonFunArgsF.mkString("((", ",", "))")) ++ (((index + arityF + 1) to (arityF + arityG - 1)) map ("p._" + _))
-            val anonFunArgsGParen = anonFunArgsG.mkString("((", ",", "))")
-            val s1 =
-"""private def %s%s(f : Term[%s,%s], g : Term[%s,%s]) : Term%d%s = {
-  val (newExpr, newTypes) = compose(f, g, %d, %d, %d)
-  Term%d(f.program, newExpr, %s => g.scalaExpr%s, newTypes, f.converter)
-}""" format (methodName, methodParams, fParamsTuple, "R1", replacedGParamsTuple, "R2", newTermSize, resultParamsBrackets, index, arityF, arityG, newTermSize, anonFunArg, anonFunArgsGParen)
-
-            val s2 =
-"""def compose%d%s(other : Term%d%s) : Term%d%s = %s(other, this)""" format (index, fParamsBrackets, arityF, otherTypeParams, resultTermArity, resultTermParams, methodName)
-            composeMethods(arityG) = s2 +: composeMethods.getOrElse(arityG,Nil)
-
-            s1
-          }
-        }
-      }).flatten.flatten
-      val comments =
-"""/********** TERM METHODS **********/
-/** compose_i_j_k will compose f (of arity j) and g (of arity k) as "g∘f" by
- * inserting arguments of f in place of argument i of g */
-"""
-      comments + methods.mkString("\n\n")
-    }
-  }
 
   object GenerateTerms {
     def apply(maxArity : Int) : String = {
       val termTraits = for (arity <- 1 to maxArity) yield {
         val traitArgParams = (1 to arity) map ("T" + _)
-        val traitArgParamsString = traitArgParams.mkString("[", ",", "]")
+        val traitArgParamsString = traitArgParams.mkString(",")
         val traitParams = traitArgParams ++ Seq("R")
         val traitParamsString = traitParams.mkString("[", ",", "]")
         val termClassParamTuple = traitArgParams.mkString("(", ",", ")")
         val traitName = "Term%d%s" format (arity, traitParamsString)
         val booleanTraitName = "Term%d%s" format (arity, (traitArgParams ++ Seq("Boolean")).mkString("[", ",", "]"))
-        val orConstraintName = "OrConstraint%d%s" format (arity, traitArgParamsString)
-        val andConstraintName = "AndConstraint%d%s" format (arity, traitArgParamsString)
-        val notConstraintName = "NotConstraint%d%s" format (arity, traitArgParamsString)
-        val curriedImplicit2Boolean = "(implicit asConstraint : t2c)"
-        val orMethod = "def ||(other : %s)%s : %s = %s(this, other)" format (booleanTraitName, curriedImplicit2Boolean, booleanTraitName, orConstraintName)
-        val andMethod = "def &&(other : %s)%s : %s = %s(this, other)" format (booleanTraitName, curriedImplicit2Boolean, booleanTraitName, andConstraintName)
-        val notMethod = "def unary_!%s : %s = %s(this)" format (curriedImplicit2Boolean, booleanTraitName, notConstraintName)
+        val curriedImplicit2Boolean = "(implicit asBoolean : (R) => Boolean)"
+        val curriedImplicit2Constraint = "(implicit asConstraint : t2c)"
+        val anonFunParams = traitArgParams.zipWithIndex.map{ case (p, i) => "x_%d : %s" format (i, p) }
+        val anonFunParamString = anonFunParams.mkString(",")
+        val anonFunArgs = (0 until arity).map(i => "x_%d" format (i))
+        val anonFunArgsString = anonFunArgs.mkString(",")
+        val orMethod = """def ||(other : %s)%s : %s = 
+  Term%d(this.program, Or(this.expr, other.expr), (%s) => this.scalaFunction(%s) || other.scalaFunction(%s), this.types, this.converter)""" format (booleanTraitName, curriedImplicit2Boolean, booleanTraitName, arity, anonFunParamString, anonFunArgsString, anonFunArgsString)
+        val andMethod = """def &&(other : %s)%s : %s = 
+  Term%d(this.program, And(this.expr, other.expr), (%s) => this.scalaFunction(%s) && other.scalaFunction(%s), this.types, this.converter)""" format (booleanTraitName, curriedImplicit2Boolean, booleanTraitName, arity, anonFunParamString, anonFunArgsString, anonFunArgsString)
+        val notMethod = """def unary_!%s : %s = 
+  Term%d(this.program, Not(this.expr), (%s) => ! this.scalaFunction(%s), this.types, this.converter)""" format (curriedImplicit2Boolean, booleanTraitName, arity, anonFunParamString, anonFunArgsString)
         
         val intTraitName = "Term%d%s" format (arity, (traitArgParams ++ Seq("Int")).mkString("[", ",", "]"))
         val minimizingMethod = 
-"""def minimizing(minFunc : %s)%s : MinConstraint%d%s = {
-  MinConstraint%d%s(asConstraint(this), minFunc)
-}""" format (intTraitName, curriedImplicit2Boolean, arity, traitArgParamsString, arity, traitArgParamsString)
+"""def minimizing(minFunc : %s)%s : MinConstraint%d[%s] = {
+  MinConstraint%d[%s](asConstraint(this), minFunc)
+}""" format (intTraitName, curriedImplicit2Constraint, arity, traitArgParamsString, arity, traitArgParamsString)
 
-        val composeMethodsString = composeMethods.getOrElse(arity, Nil).reverse.mkString("\n")
+        val composeMethods = (for (arityF <- 1 to (maxArity - arity + 1)) yield {
+          for (index <- 0 until arity) yield {
+            val fParams = (1 to arityF).map("A" + _)
+            val thisParams = (1 to arity).map("T" + _)
+            val fTermParams = fParams ++ Seq("T" + (index + 1))
+
+            val resultParams = thisParams.take(index) ++ fParams ++ thisParams.drop(index + 1)
+            val resultTermArity = arity + arityF - 1
+            val resultTermParams = resultParams ++ Seq("R")
+
+            val scalaFunctionParams = resultParams.zipWithIndex.map{ case (p, i) => "x_%d : %s" format (i, p) }
+            val scalaFunctionArgs = (0 until resultParams.size).map("x_" + _)
+            val fApplication = "other.scalaFunction(%s)" format (scalaFunctionArgs.drop(index).take(arityF).mkString(", "))
+            val thisFunctionParams = scalaFunctionArgs.take(index) ++ Seq(fApplication) ++ scalaFunctionArgs.drop(index + arityF)
+            val s2 =
+"""def compose%d[%s](other : Term%d[%s]) : Term%d[%s] = {
+  val (newExpr, newTypes) = Terms.compose(other, this, %d, %d, %d)
+  Term%d(this.program, newExpr, (%s) => this.scalaFunction(%s), newTypes, this.converter)
+}""" format (index, fParams.mkString(", "), arityF, fTermParams.mkString(", "), resultTermArity, resultTermParams.mkString(", "), index, arityF, arity, resultTermArity, scalaFunctionParams.mkString(", "), thisFunctionParams.mkString(", "))
+
+            s2
+          }
+        }).flatten.mkString("\n\n")
+
+        val (applyParams, applyArgs) = traitArgParams.zipWithIndex.map{ case (p, i) => ("x_%d : %s" format (i, p), "x_%d" format (i)) }.unzip
 
         val termTraitString =
-"""sealed trait %s extends Term[%s,%s] {
-  val convertingFunction = converterOf(this).exprSeq2scala%d%s _
+"""sealed trait %s extends Term[%s,%s] with Function%d[%s] {
+  val convertingFunction = converterOf(this).exprSeq2scala%d[%s] _
   type t2c = (%s) => %s
-  
-%s
+  val scalaFunction : %s => %s
+
+  override def apply(%s) : R = scalaFunction(%s)
 
 %s
 
@@ -103,7 +74,9 @@ object Utils {
 %s
 
 %s
-}""" format (traitName, termClassParamTuple, "R", arity, traitArgParamsString, traitName, booleanTraitName, indent(orMethod), indent(andMethod), indent(notMethod), indent(minimizingMethod), indent(composeMethodsString))
+
+%s
+}""" format (traitName, termClassParamTuple, "R", arity, traitParams.mkString(","), arity, traitArgParamsString, traitName, booleanTraitName, termClassParamTuple, "R", applyParams.mkString(", "), applyArgs.mkString(", "), indent(orMethod), indent(andMethod), indent(notMethod), indent(minimizingMethod), indent(composeMethods))
         
         termTraitString
       }
@@ -127,34 +100,18 @@ object Utils {
 """object Term%d {
   def apply%s(conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr], scalaExpr : %s => %s) = {
     val (converter, program, expr, types) = Term.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
-    new %s(program, expr, scalaExpr%s, types, converter) with %s
+    new %s(program, expr, types, converter) with %s {
+      val scalaFunction = scalaExpr
+    }
   }
   
-  def apply%s(program : Program, expr : Expr, scalaExpr : (%s) => %s, types : Seq[TypeTree], converter : Converter) =
-    new %s(program, expr, scalaExpr, types, converter) with %s
-}""" format (arity, applyParamString, argParamTuple, "R", termClassName, if (arity == 1) "" else ".tupled", termTraitName, applyParamString, argParamTuple, "R", termClassName, termTraitName)
+  def apply%s(program : Program, expr : Expr, scalaExpr : %s => %s, types : Seq[TypeTree], converter : Converter) =
+    new %s(program, expr, types, converter) with %s {
+      val scalaFunction = scalaExpr
+    }
+}""" format (arity, applyParamString, argParamTuple, "R", termClassName, termTraitName, applyParamString, argParamTuple, "R", termClassName, termTraitName)
 
-        val anonFunArgs = "(p : %s)" format (argParamTuple)
-        val anonFunArgTuple = "(p)"
-        val binaryOpObjectString =
-"""object %sConstraint%d {
-  def apply%s(l : %s, r : %s) : %s = (l, r) match {
-    case (Term(p1,ex1,scalaEx1,ts1,conv1), Term(p2,ex2,scalaEx2,ts2,conv2)) => Term%d(p1,%s(ex1,ex2),%s => scalaEx1%s %s scalaEx2%s,ts1,conv1)
-  }
-}""" 
-        val orObjectString = binaryOpObjectString format ("Or", arity, argParamsString, booleanTermClassName, booleanTermClassName, booleanTermTraitName, arity, "Or", anonFunArgs, anonFunArgTuple, "||", anonFunArgTuple)
-        val andObjectString = binaryOpObjectString format ("And", arity, argParamsString, booleanTermClassName, booleanTermClassName, booleanTermTraitName, arity, "And", anonFunArgs, anonFunArgTuple, "&&", anonFunArgTuple)
-
-        val unaryOpObjectString =
-"""object %sConstraint%d {
-  def apply%s(c : %s) : %s = c match {
-    case Term(p,ex,scalaEx,ts,conv) => Term%d(p,%s(ex),%s => %s scalaEx%s,ts,conv)
-  }
-}"""
-
-        val notObjectString = unaryOpObjectString format ("Not", arity, argParamsString, booleanTermClassName, booleanTermTraitName, arity, "Not", anonFunArgs, "!", anonFunArgTuple)
-
-        List(objectString, orObjectString, andObjectString, notObjectString).mkString("\n\n")
+        objectString
       }
 
       objectStrings.mkString("\n\n")
@@ -227,7 +184,6 @@ object Utils {
   }
 
   def main(args: Array[String]) : Unit = {
-    val staticComposeMethods = GenerateCompose(args(0).toInt)
     val termTraits = GenerateTerms(args(0).toInt)
     val termObjects = GenerateTermObjects(args(0).toInt)
     val minConstraintsClasses = GenerateMinConstraintClasses(args(0).toInt)
@@ -235,7 +191,7 @@ object Utils {
 
     val converterMethods = GenerateConverterMethods(args(0).toInt)
 
-    val everything = Seq(typeAliases, termTraits, termObjects, minConstraintsClasses, staticComposeMethods).mkString("\n\n")
+    val everything = Seq(typeAliases, termTraits, termObjects, minConstraintsClasses).mkString("\n\n")
     println(indent(everything))
   }
 }
