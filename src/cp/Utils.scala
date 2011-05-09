@@ -47,8 +47,12 @@ object Utils {
           }
         }
       }).flatten.flatten
-        
-      methods.mkString("\n\n")
+      val comments =
+"""/********** TERM METHODS **********/
+/** compose_i_j_k will compose f (of arity j) and g (of arity k) as "g∘f" by
+ * inserting arguments of f in place of argument i of g */
+"""
+      comments + methods.mkString("\n\n")
     }
   }
 
@@ -190,7 +194,8 @@ object Utils {
         intTerms = intType :: intTerms
       }
 
-      (booleanTerms.reverse ++ intTerms.reverse).mkString("\n")
+      val comment = """/** Type aliases for terms with boolean and integer range */"""
+      (Seq(comment) ++ booleanTerms.reverse ++ intTerms.reverse).mkString("\n")
     }
   }
 
@@ -213,11 +218,15 @@ object Utils {
   }
 
   def main(args: Array[String]) : Unit = {
-    println(GenerateCompose(args(0).toInt))
-    println(GenerateTerms(args(0).toInt))
-    println(GenerateTermObjects(args(0).toInt))
-    println(GenerateMinConstraintClasses(args(0).toInt))
-    println(GenerateTypeAliases(args(0).toInt))
-    println(GenerateConverterMethods(args(0).toInt))
+    val staticComposeMethods = GenerateCompose(args(0).toInt)
+    val termTraits = GenerateTerms(args(0).toInt)
+    val termObjects = GenerateTermObjects(args(0).toInt)
+    val minConstraintsClasses = GenerateMinConstraintClasses(args(0).toInt)
+    val typeAliases = GenerateTypeAliases(args(0).toInt)
+
+    val converterMethods = GenerateConverterMethods(args(0).toInt)
+
+    val everything = Seq(typeAliases, termTraits, termObjects, minConstraintsClasses, staticComposeMethods).mkString("\n\n")
+    println(indent(everything))
   }
 }

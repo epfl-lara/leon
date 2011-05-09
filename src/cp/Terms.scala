@@ -35,6 +35,28 @@ object Terms {
     }
   }
 
+  /** This construct represents a constraint with an expression to minimize */
+  abstract class MinConstraint[T](cons : Constraint[_], minFunc : IntTerm[_]) {
+    val convertingFunction : (Seq[Expr] => T)
+
+    def solve : T = {
+      convertingFunction(solveMinimizingExprSeq(cons, minFunc))
+    }
+
+    def find : Option[T] = {
+      try {
+        Some(this.solve)
+      } catch {
+        case e: UnsatisfiableConstraintException => None
+        case e: UnknownConstraintException => None
+      }
+    }
+
+    def findAll : Iterator[T] = {
+      findAllMinimizingExprSeq(cons, minFunc).map(convertingFunction(_))
+    } 
+  }
+
   /** Contains helper methods for constructing base terms */
   object Term {
     def processArgs(converter : Converter, serializedProg : Serialized, serializedInputVars : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr]) : (Converter,Program,Expr,Seq[TypeTree]) = {
@@ -68,7 +90,7 @@ object Terms {
   }
   */
 
-  /** A constraint is just a term with Boolean range */
+  /** Type aliases for terms with boolean and integer range */
   type Constraint[T] = Term[T,Boolean]
   type Constraint1[T1] = Term1[T1,Boolean]
   type Constraint2[T1,T2] = Term2[T1,T2,Boolean]
@@ -79,6 +101,7 @@ object Terms {
   type Constraint7[T1,T2,T3,T4,T5,T6,T7] = Term7[T1,T2,T3,T4,T5,T6,T7,Boolean]
   type Constraint8[T1,T2,T3,T4,T5,T6,T7,T8] = Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean]
   type Constraint9[T1,T2,T3,T4,T5,T6,T7,T8,T9] = Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean]
+
   type IntTerm[T] = Term[T,Int]
   type IntTerm1[T1] = Term1[T1,Int]
   type IntTerm2[T1,T2] = Term2[T1,T2,Int]
@@ -649,27 +672,6 @@ object Terms {
     def apply[T1,T2,T3,T4,T5,T6,T7,T8,T9](c : Term[(T1,T2,T3,T4,T5,T6,T7,T8,T9),Boolean]) : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean] = c match {
       case Term(p,ex,ts,conv) => Term9(p,Not(ex),ts,conv)
     }
-  }
-  /** This construct represents a constraint with an expression to minimize */
-  abstract class MinConstraint[T](cons : Constraint[_], minFunc : IntTerm[_]) {
-    val convertingFunction : (Seq[Expr] => T)
-
-    def solve : T = {
-      convertingFunction(solveMinimizingExprSeq(cons, minFunc))
-    }
-
-    def find : Option[T] = {
-      try {
-        Some(this.solve)
-      } catch {
-        case e: UnsatisfiableConstraintException => None
-        case e: UnknownConstraintException => None
-      }
-    }
-
-    def findAll : Iterator[T] = {
-      findAllMinimizingExprSeq(cons, minFunc).map(convertingFunction(_))
-    } 
   }
 
   case class MinConstraint1[T1](cons : Term1[T1,Boolean], minFunc : Term1[T1,Int]) extends MinConstraint[(T1)](cons, minFunc) {
