@@ -20,10 +20,10 @@ object RedBlackTree {
     case Node(_, l, v, r) => content(l) ++ Set(v) ++ content(r)
   }
 
-  def size(t: Tree) : Int = t match {
+  def size(t: Tree) : Int = (t match {
     case Empty() => 0
     case Node(_, l, v, r) => size(l) + 1 + size(r)
-  }
+  }) ensuring(_ >= 0)
 
   /* We consider leaves to be black by definition */
   def isBlack(t: Tree) : Boolean = t match {

@@ -276,6 +276,7 @@ object Definitions {
   }
   @serializable class FunDef(val id: Identifier, val returnType: TypeTree, val args: VarDecls) extends Definition with ScalacPositional {
     var body: Option[Expr] = None
+    def implementation : Option[Expr] = body
     var precondition: Option[Expr] = None
     var postcondition: Option[Expr] = None
 
@@ -299,5 +300,69 @@ object Definitions {
     def annotations : Set[String] = annots
 
     def isPrivate : Boolean = annots.contains("private")
+  }
+  
+  object Catamorphism {
+    // If a function is a catamorphism, this deconstructs it into the cases. Eg:
+    // def size(l : List) : Int = ...
+    // should return:
+    // List,
+    // Seq(
+    //   (Nil(), 0)
+    //   (Cons(x, xs), 1 + size(xs)))
+    // ...where x and xs are fresh (and could be unused in the expr)
+    import scala.collection.mutable.{Map=>MutableMap}
+    type CataRepr = (AbstractClassDef,Seq[(CaseClass,Expr)])
+    private val unapplyCache : MutableMap[FunDef,CataRepr] = MutableMap.empty
+
+    def unapply(funDef : FunDef) : Option[CataRepr] = if(
+        funDef == null ||
+        funDef.args.size != 1 ||
+        funDef.hasPrecondition ||
+        !funDef.hasImplementation ||
+        (funDef.hasPostcondition && functionCallsOf(funDef.postcondition.get) != Set.empty)
+      ) {
+      None 
+    } else if(unapplyCache.isDefinedAt(funDef)) {
+      Some(unapplyCache(funDef))
+    } else {
+      var moreConditions = true
+      val argVar = funDef.args(0).toVariable
+      val argVarType = argVar.getType
+      val body = funDef.body.get
+      val iteized = matchToIfThenElse(body)
+      val invocations = functionCallsOf(iteized)
+      moreConditions = moreConditions && invocations.forall(_ match {
+        case FunctionInvocation(fd, Seq(CaseClassSelector(_, e, _))) if fd == funDef && e == argVar => true
+        case _ => false
+      })
+      moreConditions = moreConditions && argVarType.isInstanceOf[AbstractClassType]
+      var spmList : Seq[(CaseClassDef,Identifier,Seq[Identifier],Expr)] = Seq.empty
+      moreConditions = moreConditions && (body match {
+        case SimplePatternMatching(scrut, _, s) if scrut == argVar => spmList = s; true
+        case _ => false
+      })
+
+      val patternSeq : Seq[(CaseClass,Expr)] = if(moreConditions) {
+        spmList.map(tuple => {
+          val (ccd, id, ids, ex) = tuple
+          val ex2 = matchToIfThenElse(ex)
+          if(!(variablesOf(ex2) -- ids).isEmpty) {
+            moreConditions = false
+          }
+          (CaseClass(ccd, ids.map(Variable(_))), ex2)
+        })
+      } else {
+        Seq.empty
+      }
+
+      if(moreConditions) {
+        val finalResult = (argVarType.asInstanceOf[AbstractClassType].classDef, patternSeq)
+        unapplyCache(funDef) = finalResult
+        Some(finalResult)
+      } else {
+        None
+      }
+    }
   }
 }

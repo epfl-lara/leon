@@ -14,7 +14,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
   // have to comment this to use the solver for constraint solving...
   // assert(Settings.useFairInstantiator)
 
-  private final val UNKNOWNASSAT : Boolean = false
+  private final val UNKNOWNASSAT : Boolean = !Settings.noForallAxioms
 
   val description = "Fair Z3 Solver"
   override val shortDescription = "Z3-f"
@@ -49,7 +49,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
       z3.delete
     }
     z3 = new Z3Context(z3cfg)
-    //z3.traceToStdout
+    // z3.traceToStdout
 
     exprToZ3Id = Map.empty
     z3IdToExpr = Map.empty
@@ -185,6 +185,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
 
   private var functionMap: Map[FunDef, Z3FuncDecl] = Map.empty
   private var reverseFunctionMap: Map[Z3FuncDecl, FunDef] = Map.empty
+  private var axiomatizedFunctions : Set[FunDef] = Set.empty
 
   def prepareFunctions: Unit = {
     functionMap = Map.empty
@@ -197,6 +198,61 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
       functionMap = functionMap + (funDef -> z3Decl)
       reverseFunctionMap = reverseFunctionMap + (z3Decl -> funDef)
     }
+
+    if(!Settings.noForallAxioms) {
+      prepareAxioms
+    }
+  }
+
+  private def prepareAxioms : Unit = {
+    assert(!Settings.noForallAxioms)
+    program.definedFunctions.foreach(_ match {
+      case fd @ Catamorphism(acd, cases) => {
+        assert(!fd.hasPrecondition && fd.hasImplementation)
+        for(cse <- cases) {
+          val (cc @ CaseClass(ccd, args), expr) = cse
+          assert(args.forall(_.isInstanceOf[Variable]))
+          val argsAsIDs = args.map(_.asInstanceOf[Variable].id)
+          assert(variablesOf(expr) -- argsAsIDs.toSet == Set.empty)
+          val axiom : Z3AST = if(args.isEmpty) {
+            val eq = Equals(FunctionInvocation(fd, Seq(cc)), expr)
+            toZ3Formula(z3, eq).get
+          } else {
+            val z3ArgSorts = argsAsIDs.map(i => typeToSort(i.getType))
+            val boundVars = z3ArgSorts.zipWithIndex.map(p => z3.mkBound(p._2, p._1))
+            val map : Map[Identifier,Z3AST] = (argsAsIDs zip boundVars).toMap
+            val eq = Equals(FunctionInvocation(fd, Seq(cc)), expr)
+            val z3IzedEq = toZ3Formula(z3, eq, map).get
+            val z3IzedCC = toZ3Formula(z3, cc, map).get
+            val pattern = z3.mkPattern(functionDefToDecl(fd)(z3IzedCC))
+            val nameTypePairs = z3ArgSorts.map(s => (z3.mkFreshIntSymbol, s))
+            z3.mkForAll(0, List(pattern), nameTypePairs, z3IzedEq)
+          }
+          //println("I'll assert now an axiom: " + axiom)
+          //println("Case axiom:")
+          //println(axiom)
+          z3.assertCnstr(axiom)
+        }
+
+        if(fd.hasPostcondition) {
+          // we know it doesn't contain any function invocation
+          val cleaned = matchToIfThenElse(expandLets(fd.postcondition.get))
+          val argSort = typeToSort(fd.args(0).getType)
+          val bound = z3.mkBound(0, argSort)
+          val subst = replace(Map(ResultVariable() -> FunctionInvocation(fd, Seq(fd.args(0).toVariable))), cleaned)
+          val z3IzedPost = toZ3Formula(z3, subst, Map(fd.args(0).id -> bound)).get
+          val pattern = z3.mkPattern(functionDefToDecl(fd)(bound))
+          val nameTypePairs = Seq((z3.mkFreshIntSymbol, argSort))
+          val postAxiom = z3.mkForAll(0, List(pattern), nameTypePairs, z3IzedPost)
+          //println("Post axiom:")
+          //println(postAxiom)
+          z3.assertCnstr(postAxiom)
+        }
+
+        axiomatizedFunctions += fd
+      }
+      case _ => ;
+    })
   }
 
   // assumes prepareSorts has been called....
@@ -306,13 +362,17 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     // println("Bunch of blocking bools: " + sib.map(_.toString).mkString(", "))
 
     // println("Basis : " + basis)
-    z3.assertCnstr(toZ3Formula(z3, basis).get)
+    val bb = toZ3Formula(z3, basis).get
+    // println("Base : " + bb)
+    z3.assertCnstr(bb)
     // println(toZ3Formula(z3, basis).get)
     // for(clause <- clauses) {
     //   println("we're getting a new clause " + clause)
     //   z3.assertCnstr(toZ3Formula(z3, clause).get)
     // }
-    z3.assertCnstr(toZ3Formula(z3, And(clauses)).get)
+    val cc = toZ3Formula(z3, And(clauses)).get
+    // println("CC : " + cc)
+    z3.assertCnstr(cc)
 
     blockingSet ++= Set(guards.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
 
@@ -594,10 +654,10 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     // exprToZ3Id = Map.empty
     // z3IdToExpr = Map.empty
 
-    for((k, v) <- initialMap) {
-      exprToZ3Id += (k.toVariable -> v)
-      z3IdToExpr += (v -> k.toVariable)
-    }
+    // for((k, v) <- initialMap) {
+    //   exprToZ3Id += (k.toVariable -> v)
+    //   z3IdToExpr += (v -> k.toVariable)
+    // }
 
     def rec(ex: Expr): Z3AST = { 
       //println("Stacking up call for:")
@@ -629,6 +689,10 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
             z3IdToExpr += (newAST -> v)
             newAST
           }
+        }
+
+        case ite @ IfExpr(c, t, e) => {
+          z3.mkITE(rec(c), rec(t), rec(e))
         }
         // case ite @ IfExpr(c, t, e) => {
         //   val switch = z3.mkFreshConst("path", z3.mkBoolSort)
@@ -821,9 +885,15 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
 
     // Returns whether some invocations were actually blocked in the end.
     private def registerBlocked(blockingAtom : Identifier, polarity : Boolean, invocations : Set[FunctionInvocation]) : Boolean = {
-      // TODO
-      // val filtered = invocations -- "those who are axiomatized"
-      val filtered = invocations
+      val filtered = invocations.filter(i => {
+        val FunctionInvocation(fd, _) = i
+        if(axiomatizedFunctions(fd)) {
+          reporter.info("I'm not registering " + i + " as blocked because it's axiomatized.")
+          false
+        } else {
+          true
+        }
+      })
 
       val pair = (blockingAtom, polarity)
       val alreadyBlocked = blocked.get(pair)
@@ -843,11 +913,6 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
       everythingEverUnrolled += functionInvocation
     }
 
-    def closeUnrollings2(formula : Expr) : (Expr, Seq[Expr], Seq[(Identifier,Boolean)]) = {
-
-      scala.Predef.error("wtf")
-    }
-
     def closeUnrollings(formula : Expr) : (Expr, Seq[Expr], Seq[(Identifier,Boolean)]) = {
       var (basis, clauses, ite2Bools) = clausifyITE(formula)
 
@@ -856,19 +921,17 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
       var treatedClauses : List[Expr] = Nil
       var blockers : List[(Identifier,Boolean)] = Nil
 
-      stillToUnroll = stillToUnroll ++ topLevelFunctionCallsOf(basis)
+      stillToUnroll = stillToUnroll ++ topLevelFunctionCallsOf(basis, axiomatizedFunctions)
       do {
         // We go through each clause and figure out what must be enrolled and
         // what must be blocked. We register everything.
         for(clause <- clauses) {
           clause match {
             case Iff(Variable(_), cond) => {
-              stillToUnroll = stillToUnroll ++ topLevelFunctionCallsOf(cond)
+              stillToUnroll = stillToUnroll ++ topLevelFunctionCallsOf(cond, axiomatizedFunctions)
             }
-            // TODO : sort out the functions that are not recursive and unroll
-            // them in any case
             case Implies(v @ Variable(id), then) => {
-              val calls = topLevelFunctionCallsOf(then)
+              val calls = topLevelFunctionCallsOf(then, axiomatizedFunctions)
               if(!calls.isEmpty) {
                 assert(!blocked.isDefinedAt((id,true)))
                 if(registerBlocked(id, true, calls)) //blocked((id,true)) = calls
@@ -876,7 +939,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
               }
             }
             case Implies(Not(v @ Variable(id)), elze) => {
-              val calls = topLevelFunctionCallsOf(elze)
+              val calls = topLevelFunctionCallsOf(elze, axiomatizedFunctions)
               if(!calls.isEmpty) {
                 assert(!blocked.isDefinedAt((id,false)))
                 if(registerBlocked(id, false, calls)) //blocked((id,false)) = calls
@@ -902,7 +965,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
             
             for(formula <- unrolled) {
               val (basis2, clauses2, _) = clausifyITE(formula)
-              stillToUnroll = stillToUnroll ++ topLevelFunctionCallsOf(basis2)
+              stillToUnroll = stillToUnroll ++ topLevelFunctionCallsOf(basis2, axiomatizedFunctions)
               clauses = clauses2 ::: clauses
               treatedClauses = basis2 :: treatedClauses
             }

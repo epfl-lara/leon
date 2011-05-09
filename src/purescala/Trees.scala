@@ -681,14 +681,14 @@ object Trees {
     treeCatamorphism(convert, combine, compute, expr)
   }
 
-  def topLevelFunctionCallsOf(expr: Expr) : Set[FunctionInvocation] = {
+  def topLevelFunctionCallsOf(expr: Expr, barring : Set[FunDef] = Set.empty) : Set[FunctionInvocation] = {
     def convert(t: Expr) : Set[FunctionInvocation] = t match {
-      case f @ FunctionInvocation(_, _) => Set(f)
+      case f @ FunctionInvocation(fd, _) if(!barring(fd)) => Set(f)
       case _ => Set.empty
     }
     def combine(s1: Set[FunctionInvocation], s2: Set[FunctionInvocation]) = s1 ++ s2
     def compute(t: Expr, s: Set[FunctionInvocation]) = t match {
-      case f @ FunctionInvocation(_, _) => Set(f) // ++ s that's the difference with the one below
+      case f @ FunctionInvocation(fd,  _) if(!barring(fd)) => Set(f) // ++ s that's the difference with the one below
       case _ => s
     }
     treeCatamorphism(convert, combine, compute, expr)
