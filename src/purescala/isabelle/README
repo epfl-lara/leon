@@ -20,7 +20,7 @@
   - try to run Nitpick on lemmas with bugs. - tried but nothing useful deduced
   - deal with functions with duplicate names - CHECKED (each function has its number of arguments attached)
 
-
+	- for the above 2 problems you can refer to files : testcases/MutuallyRecursive.scala and testcases/ConnectedTest.scala
 --------------------------------------------------
 
 Ganea Octavian
