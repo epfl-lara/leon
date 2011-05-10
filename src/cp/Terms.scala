@@ -1555,7 +1555,8 @@ object Terms {
               nextModel = Some(Some(completeModel))
               val newModelEqualities = And(outputVariables.map(ov => Equals(Variable(ov), completeModel(ov))))
               toCheck = negate(newModelEqualities)
-              toUseAsEvaluator = toUseAsEvaluator.map(e => ((m : Map[Identifier,Expr]) => e(m) && !m.forall{ case (k,v) => completeModel.get(k) == Some(v) }))
+              // accumulate negations of models in evaluator
+              // toUseAsEvaluator = toUseAsEvaluator.map(e => ((m : Map[Identifier,Expr]) => e(m) && !m.forall{ case (k,v) => completeModel.get(k) == Some(v) }))
               true
             case Some(true) =>
               // there are definitely no more solutions
@@ -1593,7 +1594,8 @@ object Terms {
 
               val newModelEqualities = And(outputVariables.map(ov => Equals(Variable(ov), completeModel(ov))))
               toCheck = negate(newModelEqualities)
-              toUseAsEvaluator = toUseAsEvaluator.map(e => ((m : Map[Identifier,Expr]) => e(m) && !m.forall{ case (k,v) => completeModel.get(k) == Some(v) }))
+              // accumulate negations of models in evaluator
+              // toUseAsEvaluator = toUseAsEvaluator.map(e => ((m : Map[Identifier,Expr]) => e(m) && !m.forall(p => completeModel.get(p._1) == Some(p._2))))
               completeModel
             case Some(true) =>
               // Definitely no more solutions
