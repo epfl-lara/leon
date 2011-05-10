@@ -470,7 +470,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
 
               //println("(I'm going to pretend this never happened...)")
 
-              val evalResult = eval(asMap, toCheckAgainstModels)
+              val evalResult = eval(asMap, toCheckAgainstModels, None)
 
               
               evalResult match {

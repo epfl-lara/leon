@@ -105,6 +105,8 @@ object RuntimeMethods {
     purescala.Settings.useCores             = recovered.useCores
     purescala.Settings.pruneBranches        = recovered.pruneBranches
     purescala.Settings.solverTimeout        = recovered.solverTimeout
+
+    Settings.useScalaEvaluator              = recovered.useScalaEvaluator
   }
   
   def inputVar(inputVarList : List[Variable], varName : String) : Variable = {

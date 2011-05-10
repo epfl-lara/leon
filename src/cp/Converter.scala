@@ -4,7 +4,7 @@ import purescala.Trees._
 
 /** A converter has functions for converting FunCheck expressions into Scala
  * values */
-class Converter(expr2scala : (Expr => Any)) {
+class Converter(val expr2scala : (Expr => Any)) {
   def exprSeq2scala1[T1](exprs : Seq[Expr]) : (T1) =
     (expr2scala(exprs(0)).asInstanceOf[T1])
 

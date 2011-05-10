@@ -59,11 +59,13 @@ object Utils {
 
         val (applyParams, applyArgs) = traitArgParams.zipWithIndex.map{ case (p, i) => ("x_%d : %s" format (i, p), "x_%d" format (i)) }.unzip
 
+        val evaluatorArgs = traitArgParams.zipWithIndex.map{ case (p, i) => "converter.expr2scala(s(%d)).asInstanceOf[%s]" format (i, p) }
         val termTraitString =
 """sealed trait %s extends Term[%s,%s] with Function%d[%s] {
   val convertingFunction = converterOf(this).exprSeq2scala%d[%s] _
   type t2c = (%s) => %s
   val scalaFunction : %s => %s
+  val evaluator : (Seq[Expr]) => R = (s : Seq[Expr]) => scalaFunction(%s)
 
   override def apply(%s) : R = scalaFunction(%s)
 
@@ -76,7 +78,13 @@ object Utils {
 %s
 
 %s
-}""" format (traitName, termClassParamTuple, "R", arity, traitParams.mkString(","), arity, traitArgParamsString, traitName, booleanTraitName, termClassParamTuple, "R", applyParams.mkString(", "), applyArgs.mkString(", "), indent(orMethod), indent(andMethod), indent(notMethod), indent(minimizingMethod), indent(composeMethods))
+}""" format (traitName, termClassParamTuple, "R", arity, traitParams.mkString(","), 
+  arity, traitArgParamsString, 
+  traitName, booleanTraitName, 
+  termClassParamTuple, "R", 
+  evaluatorArgs.mkString(","),
+  applyParams.mkString(", "), applyArgs.mkString(", "), 
+  indent(orMethod), indent(andMethod), indent(notMethod), indent(minimizingMethod), indent(composeMethods))
         
         termTraitString
       }

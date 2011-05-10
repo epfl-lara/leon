@@ -16,12 +16,13 @@ object Terms {
     /** The converting function defines how Expr values returned by the solver
      * will be converted back to Scala values */
     val convertingFunction : (Seq[Expr] => T)
+    val evaluator : (Seq[Expr]) => R
 
-    def solve(implicit asBoolean: (R) => Boolean) : T = {
-      convertingFunction(solveExprSeq(this))
+    def solve(implicit asConstraint: (Term[T,R]) => Term[T,Boolean]) : T = {
+      convertingFunction(solveExprSeq(asConstraint(this)))
     }
 
-    def find(implicit asBoolean: (R) => Boolean) : Option[T] = {
+    def find(implicit asConstraint: (Term[T,R]) => Term[T,Boolean]) : Option[T] = {
       try {
         Some(this.solve)
       } catch {
@@ -30,8 +31,8 @@ object Terms {
       }
     }
 
-    def findAll(implicit asBoolean: (R) => Boolean) : Iterator[T] = {
-      findAllExprSeq(this).map(convertingFunction(_))
+    def findAll(implicit asConstraint: (Term[T,R]) => Term[T,Boolean]) : Iterator[T] = {
+      findAllExprSeq(asConstraint(this)).map(convertingFunction(_))
     }
   }
 
@@ -118,6 +119,7 @@ object Terms {
     val convertingFunction = converterOf(this).exprSeq2scala1[T1] _
     type t2c = (Term1[T1,R]) => Term1[T1,Boolean]
     val scalaFunction : (T1) => R
+    val evaluator : (Seq[Expr]) => R = (s : Seq[Expr]) => scalaFunction(converter.expr2scala(s(0)).asInstanceOf[T1])
   
     override def apply(x_0 : T1) : R = scalaFunction(x_0)
   
@@ -184,6 +186,7 @@ object Terms {
     val convertingFunction = converterOf(this).exprSeq2scala2[T1,T2] _
     type t2c = (Term2[T1,T2,R]) => Term2[T1,T2,Boolean]
     val scalaFunction : (T1,T2) => R
+    val evaluator : (Seq[Expr]) => R = (s : Seq[Expr]) => scalaFunction(converter.expr2scala(s(0)).asInstanceOf[T1],converter.expr2scala(s(1)).asInstanceOf[T2])
   
     override def apply(x_0 : T1, x_1 : T2) : R = scalaFunction(x_0, x_1)
   
@@ -285,6 +288,7 @@ object Terms {
     val convertingFunction = converterOf(this).exprSeq2scala3[T1,T2,T3] _
     type t2c = (Term3[T1,T2,T3,R]) => Term3[T1,T2,T3,Boolean]
     val scalaFunction : (T1,T2,T3) => R
+    val evaluator : (Seq[Expr]) => R = (s : Seq[Expr]) => scalaFunction(converter.expr2scala(s(0)).asInstanceOf[T1],converter.expr2scala(s(1)).asInstanceOf[T2],converter.expr2scala(s(2)).asInstanceOf[T3])
   
     override def apply(x_0 : T1, x_1 : T2, x_2 : T3) : R = scalaFunction(x_0, x_1, x_2)
   
@@ -411,6 +415,7 @@ object Terms {
     val convertingFunction = converterOf(this).exprSeq2scala4[T1,T2,T3,T4] _
     type t2c = (Term4[T1,T2,T3,T4,R]) => Term4[T1,T2,T3,T4,Boolean]
     val scalaFunction : (T1,T2,T3,T4) => R
+    val evaluator : (Seq[Expr]) => R = (s : Seq[Expr]) => scalaFunction(converter.expr2scala(s(0)).asInstanceOf[T1],converter.expr2scala(s(1)).asInstanceOf[T2],converter.expr2scala(s(2)).asInstanceOf[T3],converter.expr2scala(s(3)).asInstanceOf[T4])
   
     override def apply(x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4) : R = scalaFunction(x_0, x_1, x_2, x_3)
   
@@ -552,6 +557,7 @@ object Terms {
     val convertingFunction = converterOf(this).exprSeq2scala5[T1,T2,T3,T4,T5] _
     type t2c = (Term5[T1,T2,T3,T4,T5,R]) => Term5[T1,T2,T3,T4,T5,Boolean]
     val scalaFunction : (T1,T2,T3,T4,T5) => R
+    val evaluator : (Seq[Expr]) => R = (s : Seq[Expr]) => scalaFunction(converter.expr2scala(s(0)).asInstanceOf[T1],converter.expr2scala(s(1)).asInstanceOf[T2],converter.expr2scala(s(2)).asInstanceOf[T3],converter.expr2scala(s(3)).asInstanceOf[T4],converter.expr2scala(s(4)).asInstanceOf[T5])
   
     override def apply(x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5) : R = scalaFunction(x_0, x_1, x_2, x_3, x_4)
   
@@ -698,6 +704,7 @@ object Terms {
     val convertingFunction = converterOf(this).exprSeq2scala6[T1,T2,T3,T4,T5,T6] _
     type t2c = (Term6[T1,T2,T3,T4,T5,T6,R]) => Term6[T1,T2,T3,T4,T5,T6,Boolean]
     val scalaFunction : (T1,T2,T3,T4,T5,T6) => R
+    val evaluator : (Seq[Expr]) => R = (s : Seq[Expr]) => scalaFunction(converter.expr2scala(s(0)).asInstanceOf[T1],converter.expr2scala(s(1)).asInstanceOf[T2],converter.expr2scala(s(2)).asInstanceOf[T3],converter.expr2scala(s(3)).asInstanceOf[T4],converter.expr2scala(s(4)).asInstanceOf[T5],converter.expr2scala(s(5)).asInstanceOf[T6])
   
     override def apply(x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6) : R = scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5)
   
@@ -839,6 +846,7 @@ object Terms {
     val convertingFunction = converterOf(this).exprSeq2scala7[T1,T2,T3,T4,T5,T6,T7] _
     type t2c = (Term7[T1,T2,T3,T4,T5,T6,T7,R]) => Term7[T1,T2,T3,T4,T5,T6,T7,Boolean]
     val scalaFunction : (T1,T2,T3,T4,T5,T6,T7) => R
+    val evaluator : (Seq[Expr]) => R = (s : Seq[Expr]) => scalaFunction(converter.expr2scala(s(0)).asInstanceOf[T1],converter.expr2scala(s(1)).asInstanceOf[T2],converter.expr2scala(s(2)).asInstanceOf[T3],converter.expr2scala(s(3)).asInstanceOf[T4],converter.expr2scala(s(4)).asInstanceOf[T5],converter.expr2scala(s(5)).asInstanceOf[T6],converter.expr2scala(s(6)).asInstanceOf[T7])
   
     override def apply(x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7) : R = scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6)
   
@@ -965,6 +973,7 @@ object Terms {
     val convertingFunction = converterOf(this).exprSeq2scala8[T1,T2,T3,T4,T5,T6,T7,T8] _
     type t2c = (Term8[T1,T2,T3,T4,T5,T6,T7,T8,R]) => Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean]
     val scalaFunction : (T1,T2,T3,T4,T5,T6,T7,T8) => R
+    val evaluator : (Seq[Expr]) => R = (s : Seq[Expr]) => scalaFunction(converter.expr2scala(s(0)).asInstanceOf[T1],converter.expr2scala(s(1)).asInstanceOf[T2],converter.expr2scala(s(2)).asInstanceOf[T3],converter.expr2scala(s(3)).asInstanceOf[T4],converter.expr2scala(s(4)).asInstanceOf[T5],converter.expr2scala(s(5)).asInstanceOf[T6],converter.expr2scala(s(6)).asInstanceOf[T7],converter.expr2scala(s(7)).asInstanceOf[T8])
   
     override def apply(x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8) : R = scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, x_7)
   
@@ -1066,6 +1075,7 @@ object Terms {
     val convertingFunction = converterOf(this).exprSeq2scala9[T1,T2,T3,T4,T5,T6,T7,T8,T9] _
     type t2c = (Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R]) => Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean]
     val scalaFunction : (T1,T2,T3,T4,T5,T6,T7,T8,T9) => R
+    val evaluator : (Seq[Expr]) => R = (s : Seq[Expr]) => scalaFunction(converter.expr2scala(s(0)).asInstanceOf[T1],converter.expr2scala(s(1)).asInstanceOf[T2],converter.expr2scala(s(2)).asInstanceOf[T3],converter.expr2scala(s(3)).asInstanceOf[T4],converter.expr2scala(s(4)).asInstanceOf[T5],converter.expr2scala(s(5)).asInstanceOf[T6],converter.expr2scala(s(6)).asInstanceOf[T7],converter.expr2scala(s(7)).asInstanceOf[T8],converter.expr2scala(s(8)).asInstanceOf[T9])
   
     override def apply(x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8, x_8 : T9) : R = scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8)
   
@@ -1351,14 +1361,20 @@ object Terms {
     case None => simplestValue(varId.getType)
   }
 
+  private def evaluator(constraint : Term[_,Boolean], ids : Seq[Identifier]) : Option[(Map[Identifier,Expr])=>Boolean] = {
+    if (cp.Settings.useScalaEvaluator) {
+      Some((m : Map[Identifier,Expr]) => constraint.evaluator(ids.map(modelValue(_, m))))
+    } else None
+  }
+
   /** Return a solution as a sequence of expressions */
-  private def solveExprSeq(c : Term[_,_]) : Seq[Expr] = {
-    val constraint = c.asInstanceOf[Constraint[_]]
+  private def solveExprSeq(constraint : Term[_,Boolean]) : Seq[Expr] = {
     val solver = newSolver(programOf(constraint))
 
     val (freshOutputIDs, expr) = combineConstraint(constraint)
 
-    val (outcome, model) = solver.restartAndDecideWithModel(expr, false)
+    solver.restartZ3
+    val (outcome, model) = solver.decideWithModel(expr, false, evaluator(constraint, freshOutputIDs))
 
     outcome match {
       case Some(false) =>
@@ -1385,12 +1401,11 @@ object Terms {
   }
 
   /** Return an iterator of solutions as sequences of expressions */
-  private def findAllExprSeq(c : Term[_,_]) : Iterator[Seq[Expr]] = {
-    val constraint = c.asInstanceOf[Constraint[_]]
+  private def findAllExprSeq(constraint : Term[_,Boolean]) : Iterator[Seq[Expr]] = {
     val program = programOf(constraint)
     val (freshOutputIDs, expr) = combineConstraint(constraint)
 
-    val modelIterator = solutionsIterator(program, expr, freshOutputIDs.toSet)
+    val modelIterator = solutionsIterator(program, expr, freshOutputIDs, evaluator(constraint, freshOutputIDs))
     val exprIterator  = modelIterator.map(model => freshOutputIDs.map(id => model(id)))
 
     exprIterator
@@ -1419,7 +1434,7 @@ object Terms {
       val minValue = minimizingModelAndValue(program, toCheck, outputVars, minExpr)._2
 
       val minValConstraint    = And(expr, Equals(minExpr, IntLiteral(minValue)))
-      val minValModelIterator = solutionsIterator(program, minValConstraint, outputVars.toSet)
+      val minValModelIterator = solutionsIterator(program, minValConstraint, outputVars)
       val minValExprIterator  = minValModelIterator.map(model => outputVars.map(id => model(id)))
 
       minValExprIterator ++ findAllMinimizingExprSeq(program, expr, outputVars, minExpr, Some(minValue))
@@ -1447,7 +1462,8 @@ object Terms {
       // println("  hi     : " + hi)
       // println
       val toCheck = expr :: LessEquals(minExpr, IntLiteral(pivot)) :: Nil
-      val (outcome, model) = solver.restartAndDecideWithModel(And(toCheck), false)
+      solver.restartZ3
+      val (outcome, model) = solver.decideWithModel(And(toCheck), false)
 
       outcome match {
         case Some(false) =>
@@ -1484,7 +1500,8 @@ object Terms {
     // We declare a variable to hold the value to minimize:
     val minExprID = purescala.Common.FreshIdentifier("minExpr").setType(purescala.TypeTrees.Int32Type)
 
-    solver.restartAndDecideWithModel(And(expr :: Equals(minExpr, Variable(minExprID)) :: Nil), false) match {
+    solver.restartZ3
+    solver.decideWithModel(And(expr :: Equals(minExpr, Variable(minExprID)) :: Nil), false) match {
       case (Some(false), model) =>
         // there is a satisfying assignment
         val minExprVal = modelValue(minExprID, model) match {
@@ -1501,7 +1518,7 @@ object Terms {
     }
   }
   /** Returns an iterator of interpretations for each identifier in the specified set */
-  private def solutionsIterator(program : Program, predicate : Expr, outputVariables : Set[Identifier]) : Iterator[Map[Identifier, Expr]] = {
+  private def solutionsIterator(program : Program, predicate : Expr, outputVariables : Seq[Identifier], evaluator : Option[(Map[Identifier,Expr]) => Boolean] = None) : Iterator[Map[Identifier, Expr]] = {
     val solver = newSolver(program)
     solver.restartZ3
 
@@ -1514,12 +1531,13 @@ object Terms {
       var addedNegations: Expr = BooleanLiteral(true)
 
       var toCheck: Expr = predicate
+      var toUseAsEvaluator : Option[(Map[Identifier,Expr]) => Boolean] = evaluator
 
       override def hasNext : Boolean = nextModel match {
         case None => 
           // Check whether there are any more models
           val stopwatch = new Stopwatch("hasNext", false).start
-          val (outcome, model) = solver.decideWithModel(toCheck, false)
+          val (outcome, model) = solver.decideWithModel(toCheck, false, toUseAsEvaluator)
           stopwatch.stop
           stopwatch.writeToSummary
           val toReturn = (outcome match {
@@ -1535,8 +1553,9 @@ object Terms {
                 }
               }
               nextModel = Some(Some(completeModel))
-              val newModelEqualities = And(outputVariables.map(ov => Equals(Variable(ov), completeModel(ov))).toList)
+              val newModelEqualities = And(outputVariables.map(ov => Equals(Variable(ov), completeModel(ov))))
               toCheck = negate(newModelEqualities)
+              toUseAsEvaluator = toUseAsEvaluator.map(e => ((m : Map[Identifier,Expr]) => e(m) && !m.forall{ case (k,v) => completeModel.get(k) == Some(v) }))
               true
             case Some(true) =>
               // there are definitely no more solutions
@@ -1572,8 +1591,9 @@ object Terms {
                 }
               }
 
-              val newModelEqualities = And(outputVariables.map(ov => Equals(Variable(ov), completeModel(ov))).toList)
+              val newModelEqualities = And(outputVariables.map(ov => Equals(Variable(ov), completeModel(ov))))
               toCheck = negate(newModelEqualities)
+              toUseAsEvaluator = toUseAsEvaluator.map(e => ((m : Map[Identifier,Expr]) => e(m) && !m.forall{ case (k,v) => completeModel.get(k) == Some(v) }))
               completeModel
             case Some(true) =>
               // Definitely no more solutions

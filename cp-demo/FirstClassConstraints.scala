@@ -44,7 +44,9 @@ object FirstClassConstraints {
 
     // println("has size 5: " + hasSize(5).expr)
  
-    println(hasSize(5).solve)
+    // println(hasSize(5).solve)
+    val p : Term1[Int,Boolean] = ((x: Int) => x > 5)
+    println(p.solve)
     // for (s <- hasSize(3).findAll)
     //   println(s)
   }

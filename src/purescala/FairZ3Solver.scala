@@ -304,12 +304,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     decideWithModel(vc, forValidity)._1
   }
 
-  def restartAndDecideWithModel(vc: Expr, forValidity: Boolean): (Option[Boolean], Map[Identifier,Expr]) = {
-    restartZ3
-    decideWithModel(vc, forValidity)
-  }
-
-  def decideWithModel(vc: Expr, forValidity: Boolean): (Option[Boolean], Map[Identifier,Expr]) = {
+  def decideWithModel(vc: Expr, forValidity: Boolean, evaluator: Option[(Map[Identifier,Expr])=> Boolean] = None): (Option[Boolean], Map[Identifier,Expr]) = {
     val initializationStopwatch = new Stopwatch("init",               false)
     val blocking2Z3Stopwatch    = new Stopwatch("blocking-set-to-z3", false)
     val z3SearchStopwatch       = new Stopwatch("z3-search-1",        false)
@@ -423,7 +418,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         }
         case (Some(true), m) => { // SAT
           validatingStopwatch.start
-          val (trueModel, model) = validateAndDeleteModel(m, toCheckAgainstModels, varsInVC)
+          val (trueModel, model) = validateAndDeleteModel(m, toCheckAgainstModels, varsInVC, evaluator)
           validatingStopwatch.stop
 
           if (trueModel) {
@@ -464,7 +459,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
               foundAnswer(Some(true))
             } else {
               // we might have been lucky :D
-              val (wereWeLucky, cleanModel) = validateAndDeleteModel(m2, toCheckAgainstModels, varsInVC)
+              val (wereWeLucky, cleanModel) = validateAndDeleteModel(m2, toCheckAgainstModels, varsInVC, evaluator)
               if(wereWeLucky) {
                 foundAnswer(Some(false), cleanModel)
               } 
@@ -581,14 +576,14 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     }
   }
 
-  private def validateAndDeleteModel(model: Z3Model, formula: Expr, variables: Set[Identifier]) : (Boolean, Map[Identifier,Expr]) = {
+  private def validateAndDeleteModel(model: Z3Model, formula: Expr, variables: Set[Identifier], evaluator: Option[(Map[Identifier,Expr])=>Boolean]) : (Boolean, Map[Identifier,Expr]) = {
     import Evaluator._
 
     val asMap = modelToMap(model, variables)
     model.delete
 
     lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
-    val evalResult = eval(asMap, formula)
+    val evalResult = eval(asMap, formula, evaluator)
 
     evalResult match {
       case OK(BooleanLiteral(true)) => {

@@ -25,7 +25,7 @@ object Evaluator {
     val finalResult = None
   }
 
-  def eval(context: EvaluationContext, expression: Expr, maxSteps: Int=500000) : EvaluationResult = {
+  def eval(context: EvaluationContext, expression: Expr, evaluator: Option[(EvaluationContext)=>Boolean], maxSteps: Int=500000) : EvaluationResult = {
     case class RuntimeErrorEx(msg: String) extends Exception
     case class InfiniteComputationEx() extends Exception
     case class TypeErrorEx(typeError: TypeError) extends Exception
@@ -240,12 +240,21 @@ object Evaluator {
       }
     }
 
-    try {
-      OK(rec(context, expression))
-    } catch {
-      case RuntimeErrorEx(msg) => RuntimeError(msg)
-      case InfiniteComputationEx() => InfiniteComputation()
-      case TypeErrorEx(te) => te
+    evaluator match {
+      case Some(evalFun) =>
+        try {
+          OK(BooleanLiteral(evalFun(context)))
+        } catch {
+          case e: Exception => RuntimeError(e.getMessage)
+        }
+      case None =>
+        try {
+          OK(rec(context, expression))
+        } catch {
+          case RuntimeErrorEx(msg) => RuntimeError(msg)
+          case InfiniteComputationEx() => InfiniteComputation()
+          case TypeErrorEx(te) => te
+        }
     }
   }
 

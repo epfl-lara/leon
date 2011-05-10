@@ -3,7 +3,6 @@
 cd ../../..
 
 ts=`date +%F-%R`
-evalFolder="eval/cp/data"
 demoFolder="cp-demo"
 
 #classes=( "RedBlackTree" "SortedList" )
@@ -18,6 +17,8 @@ class=${1}
 base=${2}
 limit=${3}
 
+evalFolder="eval/cp/data/${ts}-${class}"
+
 mkdir -p ${evalFolder}
 
 evalFileBase=${evalFolder}/${class}-${ts}-CAV
@@ -31,3 +32,17 @@ do
   ./generate-graph ../../../${currentFile}
   cd ../../..
 done
+
+evalFileBase=${evalFolder}/${class}-${ts}-CAV-scalaEval
+./cp CAV scalaEval ${demoFolder}/${class}.scala || (echo "Could not compile..." && exit 1)
+
+for (( i=${base}; i<=${limit}; i++ ))
+do
+  currentFile=${evalFileBase}-${i}
+  ./cp-runner ${class} $i | tee -a ${currentFile}
+  cd eval/cp/scripts
+  ./generate-graph ../../../${currentFile}
+  cd ../../..
+done
+
+mv eval/cp/graphs/${class}-${ts}-* ${evalFolder}

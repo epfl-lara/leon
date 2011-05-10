@@ -27,7 +27,8 @@ class CPPlugin(val global: Global) extends Plugin {
     "  -P:constraint-programming:PLDI               PLDI 2011 settings. Now frozen. Not completely functional. See CAV." + "\n" +
     "  -P:constraint-programming:CAV                CAV 2011 settings. In progress." + "\n" +
     "  -P:constraint-programming:prune              (with CAV) Use additional SMT queries to rule out some unrollings." + "\n" +
-    "  -P:constraint-programming:cores              (with CAV) Use UNSAT cores in the unrolling/refinement step."
+    "  -P:constraint-programming:cores              (with CAV) Use UNSAT cores in the unrolling/refinement step." + "\n" +
+    "  -P:constraint-programming:scalaEval          (with CAV) Use functions stored in constraints to evaluate models."
   )
 
   /** Processes the command-line options. */
@@ -46,6 +47,7 @@ class CPPlugin(val global: Global) extends Plugin {
         case "CAV"       =>                      { purescala.Settings.experimental = true; purescala.Settings.useInstantiator = false; purescala.Settings.useFairInstantiator = true; purescala.Settings.useBAPA = false; purescala.Settings.zeroInlining = true }
         case "prune"     =>                      purescala.Settings.pruneBranches = true
         case "cores"     =>                      purescala.Settings.useCores = true
+        case "scalaEval" =>                      cp.Settings.useScalaEvaluator = true
         case s if s.startsWith("unrolling=") =>  purescala.Settings.unrollingLevel = try { s.substring("unrolling=".length, s.length).toInt } catch { case _ => 0 }
         case s if s.startsWith("functions=") =>  purescala.Settings.functionsToAnalyse = Set(splitList(s.substring("functions=".length, s.length)): _*)
         case s if s.startsWith("extensions=") => purescala.Settings.extensionNames = splitList(s.substring("extensions=".length, s.length))
