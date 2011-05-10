@@ -1,27 +1,32 @@
 import funcheck.Utils._
+import funcheck.Annotations._
 
 object Test {
-  sealed abstract class List
-  case class Cons(head: Int, tail: List) extends List
-  case class Nil() extends List
+    sealed abstract class List
+    case class Cons(head: Int, tail: List) extends List
+    case class Nil() extends List
 
-  def append(value: Int, list: List) : List = list match {
-    case Nil() => Cons(value, Nil())
-    case Cons(x, xs) => Cons(x, append(value, xs))
-  }
+    @axiomatize
+    def size(l: List) : Int = (l match {
+        case Nil() => 0
+        case Cons(_, t) => 1 + size(t)
+    }) ensuring(res => res >= 0)
 
-  def isSorted(list: List) : Boolean = list match {
-    case Nil() => true
-    case Cons(x, Nil()) => true
-    case Cons(x, c @ Cons(y, ys)) => x <= y && isSorted(c)
-  }
+    @axiomatize
+    def isSorted(l : List) : Boolean = l match {
+      case Nil() => true
+      case Cons(x, xs) => xs match {
+        case Nil() => true
+        case Cons(y, _) => x <= y && isSorted(xs)
+      }
+    }
 
-  def isSorted2(list: List) : Boolean = list match {
-    case Cons(x, c @ Cons(y, ys)) => x <= y && isSorted2(c)
-    case _ => true
-  }
+    def valuesWithin(l: List, lower: Int, upper: Int) : Boolean = l match {
+      case Nil() => true
+      case Cons(x, xs) => x >= lower && x <= upper && valuesWithin(xs, lower, upper)
+    }
 
-  def sameSorted(list: List) : Boolean = {
-    isSorted(list) == isSorted2(list)
-  } holds
+    def findOne(l : List) : Boolean = {
+      isSorted(l) && valuesWithin(l, 0, 3) && size(l) == 3
+    } ensuring(res => !res)
 }

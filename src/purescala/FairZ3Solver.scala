@@ -202,6 +202,12 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     if(!Settings.noForallAxioms) {
       prepareAxioms
     }
+
+    for(funDef <- program.definedFunctions) {
+      if (funDef.annotations.contains("axiomatize") && !axiomatizedFunctions(funDef)) {
+        reporter.warning("Function " + funDef.id + " was marked for axiomatization but could not be handled.")
+      }
+    }
   }
 
   private def prepareAxioms : Unit = {
@@ -228,9 +234,9 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
             val nameTypePairs = z3ArgSorts.map(s => (z3.mkFreshIntSymbol, s))
             z3.mkForAll(0, List(pattern), nameTypePairs, z3IzedEq)
           }
-          //println("I'll assert now an axiom: " + axiom)
-          //println("Case axiom:")
-          //println(axiom)
+          // println("I'll assert now an axiom: " + axiom)
+          // println("Case axiom:")
+          // println(axiom)
           z3.assertCnstr(axiom)
         }
 
@@ -392,7 +398,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
 
       reporter.info(" - Running Z3 search...")
       val (answer, model, core) : (Option[Boolean], Z3Model, Seq[Z3AST]) = if(Settings.useCores) {
-        println(blockingSetAsZ3)
+        // println(blockingSetAsZ3)
         z3.checkAssumptions(blockingSetAsZ3 : _*)
       } else {
         z3SearchStopwatch.start

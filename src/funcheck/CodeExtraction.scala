@@ -179,6 +179,7 @@ trait CodeExtraction extends Extractors {
             for(a <- dd.symbol.annotations) {
               a.atp.safeToString match {
                 case "funcheck.Annotations.induct" => funDef.addAnnotation("induct")
+                case "funcheck.Annotations.axiomatize" => funDef.addAnnotation("axiomatize")
                 case _ => ;
               }
             }
