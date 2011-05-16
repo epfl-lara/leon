@@ -320,6 +320,8 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     val validatingStopwatch     = new Stopwatch("validating",         false)
     val decideTopLevelSw        = new Stopwatch("top-level",          false).start
 
+    // println("Deciding : " + vc)
+
     initializationStopwatch.start
 
     var forceStop : Boolean = false
@@ -604,11 +606,11 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
       }
       case OK(BooleanLiteral(false)) => {
         reporter.info("- Invalid model.")
-        (false, Map.empty)
+        (false, asMap)
       }
       case other => {
         reporter.error("Something went wrong. While evaluating the model, we got this: " + other)
-        (false, Map.empty)
+        (false, asMap)
       }
     }
   }
