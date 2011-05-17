@@ -36,6 +36,15 @@ object Terms {
     }
   }
 
+  def customSolver[T](findAllMethod : Iterator[T]) : Term1[T,Boolean] = {
+    new Term[T,Boolean](null, null, null, null) with Term1[T,Boolean] {
+      val scalaFunction = null
+      override def findAll(implicit asConstraint: (Term[T,Boolean]) => Term[T,Boolean]) : Iterator[T] = findAllMethod
+      override def solve(implicit asConstraint: (Term[T,Boolean]) => Term[T,Boolean]) : T = throw new Exception("invoking `solve' on user-defined constraint")
+      override def find(implicit asConstraint: (Term[T,Boolean]) => Term[T,Boolean]) : Option[T] = throw new Exception("invoking `find' on user-defined constraint")
+    }
+  }
+
   /** This construct represents a constraint with an expression to minimize */
   abstract class MinConstraint[T](cons : Constraint[_], minFunc : IntTerm[_]) {
     val convertingFunction : (Seq[Expr] => T)
@@ -115,7 +124,7 @@ object Terms {
   type IntTerm8[T1,T2,T3,T4,T5,T6,T7,T8] = Term8[T1,T2,T3,T4,T5,T6,T7,T8,Int]
   type IntTerm9[T1,T2,T3,T4,T5,T6,T7,T8,T9] = Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Int]
   
-  sealed trait Term1[T1,R] extends Term[(T1),R] with Function1[T1,R] {
+  trait Term1[T1,R] extends Term[(T1),R] with Function1[T1,R] {
     val convertingFunction = converterOf(this).exprSeq2scala1[T1] _
     type t2c = (Term1[T1,R]) => Term1[T1,Boolean]
     val scalaFunction : (T1) => R
@@ -182,7 +191,7 @@ object Terms {
     }
   }
   
-  sealed trait Term2[T1,T2,R] extends Term[(T1,T2),R] with Function2[T1,T2,R] {
+  trait Term2[T1,T2,R] extends Term[(T1,T2),R] with Function2[T1,T2,R] {
     val convertingFunction = converterOf(this).exprSeq2scala2[T1,T2] _
     type t2c = (Term2[T1,T2,R]) => Term2[T1,T2,Boolean]
     val scalaFunction : (T1,T2) => R
@@ -284,7 +293,7 @@ object Terms {
     }
   }
   
-  sealed trait Term3[T1,T2,T3,R] extends Term[(T1,T2,T3),R] with Function3[T1,T2,T3,R] {
+  trait Term3[T1,T2,T3,R] extends Term[(T1,T2,T3),R] with Function3[T1,T2,T3,R] {
     val convertingFunction = converterOf(this).exprSeq2scala3[T1,T2,T3] _
     type t2c = (Term3[T1,T2,T3,R]) => Term3[T1,T2,T3,Boolean]
     val scalaFunction : (T1,T2,T3) => R
@@ -411,7 +420,7 @@ object Terms {
     }
   }
   
-  sealed trait Term4[T1,T2,T3,T4,R] extends Term[(T1,T2,T3,T4),R] with Function4[T1,T2,T3,T4,R] {
+  trait Term4[T1,T2,T3,T4,R] extends Term[(T1,T2,T3,T4),R] with Function4[T1,T2,T3,T4,R] {
     val convertingFunction = converterOf(this).exprSeq2scala4[T1,T2,T3,T4] _
     type t2c = (Term4[T1,T2,T3,T4,R]) => Term4[T1,T2,T3,T4,Boolean]
     val scalaFunction : (T1,T2,T3,T4) => R
@@ -553,7 +562,7 @@ object Terms {
     }
   }
   
-  sealed trait Term5[T1,T2,T3,T4,T5,R] extends Term[(T1,T2,T3,T4,T5),R] with Function5[T1,T2,T3,T4,T5,R] {
+  trait Term5[T1,T2,T3,T4,T5,R] extends Term[(T1,T2,T3,T4,T5),R] with Function5[T1,T2,T3,T4,T5,R] {
     val convertingFunction = converterOf(this).exprSeq2scala5[T1,T2,T3,T4,T5] _
     type t2c = (Term5[T1,T2,T3,T4,T5,R]) => Term5[T1,T2,T3,T4,T5,Boolean]
     val scalaFunction : (T1,T2,T3,T4,T5) => R
@@ -700,7 +709,7 @@ object Terms {
     }
   }
   
-  sealed trait Term6[T1,T2,T3,T4,T5,T6,R] extends Term[(T1,T2,T3,T4,T5,T6),R] with Function6[T1,T2,T3,T4,T5,T6,R] {
+  trait Term6[T1,T2,T3,T4,T5,T6,R] extends Term[(T1,T2,T3,T4,T5,T6),R] with Function6[T1,T2,T3,T4,T5,T6,R] {
     val convertingFunction = converterOf(this).exprSeq2scala6[T1,T2,T3,T4,T5,T6] _
     type t2c = (Term6[T1,T2,T3,T4,T5,T6,R]) => Term6[T1,T2,T3,T4,T5,T6,Boolean]
     val scalaFunction : (T1,T2,T3,T4,T5,T6) => R
@@ -842,7 +851,7 @@ object Terms {
     }
   }
   
-  sealed trait Term7[T1,T2,T3,T4,T5,T6,T7,R] extends Term[(T1,T2,T3,T4,T5,T6,T7),R] with Function7[T1,T2,T3,T4,T5,T6,T7,R] {
+  trait Term7[T1,T2,T3,T4,T5,T6,T7,R] extends Term[(T1,T2,T3,T4,T5,T6,T7),R] with Function7[T1,T2,T3,T4,T5,T6,T7,R] {
     val convertingFunction = converterOf(this).exprSeq2scala7[T1,T2,T3,T4,T5,T6,T7] _
     type t2c = (Term7[T1,T2,T3,T4,T5,T6,T7,R]) => Term7[T1,T2,T3,T4,T5,T6,T7,Boolean]
     val scalaFunction : (T1,T2,T3,T4,T5,T6,T7) => R
@@ -969,7 +978,7 @@ object Terms {
     }
   }
   
-  sealed trait Term8[T1,T2,T3,T4,T5,T6,T7,T8,R] extends Term[(T1,T2,T3,T4,T5,T6,T7,T8),R] with Function8[T1,T2,T3,T4,T5,T6,T7,T8,R] {
+  trait Term8[T1,T2,T3,T4,T5,T6,T7,T8,R] extends Term[(T1,T2,T3,T4,T5,T6,T7,T8),R] with Function8[T1,T2,T3,T4,T5,T6,T7,T8,R] {
     val convertingFunction = converterOf(this).exprSeq2scala8[T1,T2,T3,T4,T5,T6,T7,T8] _
     type t2c = (Term8[T1,T2,T3,T4,T5,T6,T7,T8,R]) => Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean]
     val scalaFunction : (T1,T2,T3,T4,T5,T6,T7,T8) => R
@@ -1071,7 +1080,7 @@ object Terms {
     }
   }
   
-  sealed trait Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R] extends Term[(T1,T2,T3,T4,T5,T6,T7,T8,T9),R] with Function9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R] {
+  trait Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R] extends Term[(T1,T2,T3,T4,T5,T6,T7,T8,T9),R] with Function9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R] {
     val convertingFunction = converterOf(this).exprSeq2scala9[T1,T2,T3,T4,T5,T6,T7,T8,T9] _
     type t2c = (Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R]) => Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean]
     val scalaFunction : (T1,T2,T3,T4,T5,T6,T7,T8,T9) => R
