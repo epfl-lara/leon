@@ -12,7 +12,7 @@ import Definitions.{UnsatisfiableConstraintException,UnknownConstraintException}
 
 object Terms {
   /** Terms are functions with domain T (which can be a tuple) and range R */
-  abstract case class Term[T,R](program : Program, expr : Expr, types : Seq[TypeTree], converter : Converter) {
+  abstract class Term[T,R](val program : Program, val expr : Expr, val types : Seq[TypeTree], val converter : Converter) {
     /** The converting function defines how Expr values returned by the solver
      * will be converted back to Scala values */
     val convertingFunction : (Seq[Expr] => T)
@@ -1302,24 +1302,22 @@ object Terms {
   /** END OF GENERATED CODE. */
 
   /** Compute composed expression for g∘f */
-  private def compose(f : Term[_,_], g : Term[_,_], index : Int, nf : Int, ng : Int) : (Expr, Seq[TypeTree]) = (f, g) match {
-    case (Term(_,ef,tf,_),Term(_,eg,tg,_)) => {
-      val deBruijnF = tf.zipWithIndex.map{ case (t,i) => DeBruijnIndex(i).setType(t) }
-      val deBruijnG = tg.zipWithIndex.map{ case (t,i) => DeBruijnIndex(i).setType(t) }
-      assert(deBruijnF.size == nf && deBruijnG.size == ng)
+  private def compose(f : Term[_,_], g : Term[_,_], index : Int, nf : Int, ng : Int) : (Expr, Seq[TypeTree]) = {
+    val deBruijnF = f.types.zipWithIndex.map{ case (t,i) => DeBruijnIndex(i).setType(t) }
+    val deBruijnG = g.types.zipWithIndex.map{ case (t,i) => DeBruijnIndex(i).setType(t) }
+    assert(deBruijnF.size == nf && deBruijnG.size == ng)
 
-      val substG : Map[Expr,Expr] = deBruijnG.drop(index + 1).map{ case d @ DeBruijnIndex(i) => (d, DeBruijnIndex(i + nf - 1).setType(d.getType)) }.toMap
-      val substF : Map[Expr,Expr] = deBruijnF.map{ case d @ DeBruijnIndex(i) => (d, DeBruijnIndex(i + index).setType(d.getType)) }.toMap
+    val substG : Map[Expr,Expr] = deBruijnG.drop(index + 1).map{ case d @ DeBruijnIndex(i) => (d, DeBruijnIndex(i + nf - 1).setType(d.getType)) }.toMap
+    val substF : Map[Expr,Expr] = deBruijnF.map{ case d @ DeBruijnIndex(i) => (d, DeBruijnIndex(i + index).setType(d.getType)) }.toMap
 
-      val renamedExprF = replace(substF, ef)
-      val renamedExprG = replace(substG, eg)
+    val renamedExprF = replace(substF, f.expr)
+    val renamedExprG = replace(substG, g.expr)
 
-      val indexToReplace = deBruijnG(index)
-      val newExpr   = replace(Map(indexToReplace -> renamedExprF), renamedExprG)
-      val newTypes  = g.types.take(index) ++ f.types ++ g.types.drop(index + 1)
-      assert(newTypes.size == nf + ng - 1)
-      (newExpr, newTypes)
-    }
+    val indexToReplace = deBruijnG(index)
+    val newExpr   = replace(Map(indexToReplace -> renamedExprF), renamedExprG)
+    val newTypes  = g.types.take(index) ++ f.types ++ g.types.drop(index + 1)
+    assert(newTypes.size == nf + ng - 1)
+    (newExpr, newTypes)
   }
 
   private def converterOf(term : Term[_,_]) : Converter = term.converter
@@ -1346,7 +1344,7 @@ object Terms {
 
   /********** SOLVING METHODS **********/
 
-  private val silent = true
+  private val silent = false
   private def newReporter() = if (silent) new QuietReporter() else new DefaultReporter()
   private def newSolver(program : Program) = {
     val s = new FairZ3Solver(newReporter())
@@ -1374,6 +1372,7 @@ object Terms {
     val (freshOutputIDs, expr) = combineConstraint(constraint)
 
     solver.restartZ3
+    println("Going to decide: " + expr)
     val (outcome, model) = solver.decideWithModel(expr, false, evaluator(constraint, freshOutputIDs))
 
     outcome match {
