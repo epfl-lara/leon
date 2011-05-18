@@ -61,7 +61,7 @@ object Utils {
 
         val evaluatorArgs = traitArgParams.zipWithIndex.map{ case (p, i) => "converter.expr2scala(s(%d)).asInstanceOf[%s]" format (i, p) }
         val termTraitString =
-"""sealed trait %s extends Term[%s,%s] with Function%d[%s] {
+"""trait %s extends Term[%s,%s] with Function%d[%s] {
   val convertingFunction = converterOf(this).exprSeq2scala%d[%s] _
   type t2c = (%s) => %s
   val scalaFunction : %s => %s
