@@ -504,15 +504,14 @@ class Main(reporter: Reporter) extends Analyser(reporter) {
                     pp(vd.tpe, subtype, 0) // type of parameter
 
                     ind(nsb, lvl)
-                    nsb.append("fun " + id2 + "__" + vd.id + " :: \"" + idparent + " \\<Rightarrow> " + subtype.toString + "\"")
+                    nsb.append("primrec " + id2 + "__" + vd.id + " :: \"" + idparent + " \\<Rightarrow> " + subtype.toString + "\"")
                     nsb.append(" where\n")
                     ind(nsb, lvl + 2)
-                    nsb.append("\"" + id2 + "__" + vd.id + " var = \n")
-                    ind(nsb, lvl + 4)
-                    nsb.append("(case var of (" + id2)
+                    nsb.append("\"" + id2 + "__" + vd.id)
+                    nsb.append(" (" + id2)
                     for (j <- varDecls)
                       nsb.append(" " + freshName(j.id.toString))
-                    nsb.append(") \\<Rightarrow> " + freshName(vd.id.toString) + ")\"\n\n")
+                    nsb.append(") = " + freshName(vd.id.toString) + "\"\n\n")
 
                   })
                 }
@@ -552,12 +551,19 @@ class Main(reporter: Reporter) extends Analyser(reporter) {
         	var fun_decl = "fun "
         	comp.foreach(fun => {
         		  var body = functionBody(fun)
-        		  if(body.indexOf("fun ") >=0)
-        			  nsb.append("\n" + fun_decl + body.substring(body.indexOf("fun ") + 4,body.indexOf("where")))
+        		  var indexOfFunDeclaration = body.indexOf("fun ")
+        		  var offsetOfFunDeclaration = indexOfFunDeclaration + 4
+        		  if(body.indexOf("primrec ") >=0){
+        		    indexOfFunDeclaration = body.indexOf("primrec ") 
+        		    offsetOfFunDeclaration = indexOfFunDeclaration + 8 
+        		    fun_decl = "primrec "
+        		  }
+        		  if(indexOfFunDeclaration >=0)
+        			  nsb.append("\n" + fun_decl + body.substring(offsetOfFunDeclaration,body.indexOf("where")))
         		  else{
         		    fun_decl = "definition "
         		    assert(body.indexOf("definition ") >=0)
-        			nsb.append("\n" + fun_decl + body.substring(body.indexOf("definition ") + 4,body.indexOf("where")))        		    
+        			nsb.append("\n" + fun_decl + body.substring(body.indexOf("definition ") + 11,body.indexOf("where")))        		    
         		  }
         		    
 	              fun_decl = "and "
@@ -612,8 +618,12 @@ class Main(reporter: Reporter) extends Analyser(reporter) {
         })
 
         ind(nsb, lvl)
-        if (args.size > 0)
-          nsb.append("fun ")
+        if (args.size > 0){
+          transformGuardedMatchExpression(body.get) match {
+            case SimplePatternMatching(e, ct, patterns) => nsb.append("primrec ")
+            case _ 	=> nsb.append("fun ")
+          }
+        }
         else
           nsb.append("definition ")
         nsb.append(functionName)
@@ -649,6 +659,8 @@ class Main(reporter: Reporter) extends Analyser(reporter) {
             return false
           }
 
+          //we look if the outermost match refers to a parameter of the function
+          //and if so we split the definition of the function
           transformGuardedMatchExpression(body.get) match {
             case mex @ MatchExpr(s, csc) if(isArgument(s.toString)) => {
               def ppc(sb: StringBuffer, p: Pattern, matchcase: MatchCase): StringBuffer = p match {
