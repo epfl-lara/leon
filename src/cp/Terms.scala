@@ -36,10 +36,10 @@ object Terms {
     }
   }
 
-  def customSolver[T](findAllMethod : Iterator[T]) : Term1[T,Boolean] = {
+  def customConstraint[T](solutionEnumerator : Iterator[T]) : Term1[T,Boolean] = {
     new Term[T,Boolean](null, null, null, null) with Term1[T,Boolean] {
       val scalaFunction = null
-      override def findAll(implicit asConstraint: (Term[T,Boolean]) => Term[T,Boolean]) : Iterator[T] = findAllMethod
+      override def findAll(implicit asConstraint: (Term[T,Boolean]) => Term[T,Boolean]) : Iterator[T] = solutionEnumerator
       override def solve(implicit asConstraint: (Term[T,Boolean]) => Term[T,Boolean]) : T = throw new Exception("invoking `solve' on user-defined constraint")
       override def find(implicit asConstraint: (Term[T,Boolean]) => Term[T,Boolean]) : Option[T] = throw new Exception("invoking `find' on user-defined constraint")
     }
