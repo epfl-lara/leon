@@ -36,15 +36,6 @@ object Terms {
     }
   }
 
-  def customConstraint[T](solutionEnumerator : Iterator[T]) : Term1[T,Boolean] = {
-    new Term[T,Boolean](null, null, null, null) with Term1[T,Boolean] {
-      val scalaFunction = null
-      override def findAll(implicit asConstraint: (Term[T,Boolean]) => Term[T,Boolean]) : Iterator[T] = solutionEnumerator
-      override def solve(implicit asConstraint: (Term[T,Boolean]) => Term[T,Boolean]) : T = throw new Exception("invoking `solve' on user-defined constraint")
-      override def find(implicit asConstraint: (Term[T,Boolean]) => Term[T,Boolean]) : Option[T] = throw new Exception("invoking `find' on user-defined constraint")
-    }
-  }
-
   /** This construct represents a constraint with an expression to minimize */
   abstract class MinConstraint[T](cons : Constraint[_], minFunc : IntTerm[_]) {
     val convertingFunction : (Seq[Expr] => T)
@@ -131,6 +122,13 @@ object Terms {
     val evaluator : (Seq[Expr]) => R = (s : Seq[Expr]) => scalaFunction(converter.expr2scala(s(0)).asInstanceOf[T1])
   
     override def apply(x_0 : T1) : R = scalaFunction(x_0)
+
+    def customize(generator : Iterator[T1])(implicit asBooleanFunction : (T1 => R) => (T1 => Boolean)) : Term1[T1,Boolean] = {
+      new Term[T1,Boolean](program, expr, types, converter) with Term1[T1,Boolean] {
+        val scalaFunction : (T1) => Boolean = Term1.this.scalaFunction
+        override def findAll(implicit asConstraint: (Term[T1,Boolean]) => Term[T1,Boolean]) : Iterator[T1] = generator.filter(scalaFunction(_))
+      }
+    }
   
     def ||(other : Term1[T1,Boolean])(implicit asBoolean : (R) => Boolean) : Term1[T1,Boolean] = 
       Term1(this.program, Or(this.expr, other.expr), (x_0 : T1) => this.scalaFunction(x_0) || other.scalaFunction(x_0), this.types, this.converter)
