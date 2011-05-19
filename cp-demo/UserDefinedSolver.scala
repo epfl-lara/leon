@@ -26,8 +26,8 @@ object UserDefinedSolver {
   def main(args: Array[String]): Unit = {
     val generator = ((t: Tree) => t != Leaf()).customize(new Iterator[Tree] {
       private var counter = 0
-      def hasNext : Boolean = { counter += 1; counter < 10 }
-      def next : Tree = genTree.sample.get
+      def hasNext : Boolean = counter < 10
+      def next : Tree = { counter += 1; genTree.sample.get }
     })
 
     for (t <- generator.findAll) {
