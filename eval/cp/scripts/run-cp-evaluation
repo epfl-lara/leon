@@ -33,8 +33,20 @@ do
   cd ../../..
 done
 
-evalFileBase=${evalFolder}/${class}-${ts}-CAV-scalaEval
-./cp CAV scalaEval ${demoFolder}/${class}.scala || (echo "Could not compile..." && exit 1)
+evalFileBase=${evalFolder}/${class}-${ts}-CAV-axioms
+./cp CAV axioms ${demoFolder}/${class}.scala || (echo "Could not compile..." && exit 1)
+
+for (( i=${base}; i<=${limit}; i++ ))
+do
+  currentFile=${evalFileBase}-${i}
+  ./cp-runner ${class} $i | tee -a ${currentFile}
+  cd eval/cp/scripts
+  ./generate-graph ../../../${currentFile}
+  cd ../../..
+done
+
+evalFileBase=${evalFolder}/${class}-${ts}-CAV-axioms-scalaEval
+./cp CAV axioms scalaEval ${demoFolder}/${class}.scala || (echo "Could not compile..." && exit 1)
 
 for (( i=${base}; i<=${limit}; i++ ))
 do
