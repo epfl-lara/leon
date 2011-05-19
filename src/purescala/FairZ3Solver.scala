@@ -215,6 +215,8 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     program.definedFunctions.foreach(_ match {
       case fd @ Catamorphism(acd, cases) => {
         assert(!fd.hasPrecondition && fd.hasImplementation)
+        reporter.info("Will attempt to axiomatize the function definition:")
+        reporter.info(fd)
         for(cse <- cases) {
           val (cc @ CaseClass(ccd, args), expr) = cse
           assert(args.forall(_.isInstanceOf[Variable]))
@@ -352,6 +354,10 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
       None
     }
 
+    // naive implementation of unrolling everything every n-th iteration
+    val unrollingThreshold = 100
+    var unrollingCounter = 0
+
     val expandedVC = expandLets(if (forValidity) negate(vc) else vc)
     toCheckAgainstModels = And(toCheckAgainstModels,expandedVC)
 
@@ -408,6 +414,10 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         z3SearchStopwatch.stop
         (a, m, Seq.empty[Z3AST])
       }
+      reporter.info(" - Finished search with blocked literals")
+
+      // if (Settings.useCores)
+      //   reporter.info(" - Core is : " + core)
 
       val reinterpretedAnswer = if(!UNKNOWNASSAT) answer else (answer match {
         case None | Some(true) => Some(true)
@@ -455,24 +465,35 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         case (Some(false), m) => {
           //m.delete
 
-          if(!Settings.useCores) {
+          if(!Settings.useCores)
             z3.pop(1)
             
+          if (Settings.luckyTest) {
+            // we need the model to perform the additional test
             secondZ3SearchStopwatch.start
             val (result2,m2) = z3.checkAndGetModel()
             secondZ3SearchStopwatch.stop
 
-            luckyStopwatch.start
             if (result2 == Some(false)) {
               foundAnswer(Some(true))
             } else {
+              luckyStopwatch.start
               // we might have been lucky :D
               val (wereWeLucky, cleanModel) = validateAndDeleteModel(m2, toCheckAgainstModels, varsInVC, evaluator)
               if(wereWeLucky) {
                 foundAnswer(Some(false), cleanModel)
               } 
+              luckyStopwatch.stop
             }
-            luckyStopwatch.stop
+          } else {
+            // only checking will suffice
+            secondZ3SearchStopwatch.start
+            val result2 = z3.check()
+            secondZ3SearchStopwatch.stop
+
+            if (result2 == Some(false)) {
+              foundAnswer(Some(true))
+            }
           }
 
           if(forceStop) {
@@ -485,14 +506,25 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
             unrollingStopwatch.start
 
             val toRelease : Set[Expr] = if(Settings.useCores) {
-              core.map(ast => fromZ3Formula(ast) match {
-                case n @ Not(Variable(_)) => n
-                case v @ Variable(_) => v
-                case _ => scala.Predef.error("Impossible element extracted from core: " + ast)
-              }).toSet
+              unrollingCounter = unrollingCounter + 1
+              if (unrollingCounter > unrollingThreshold) {
+                reporter.info(" - Reached threshold for unrolling all blocked literals, will unroll all now.")
+                unrollingCounter = 0
+                blockingSet
+              } else {
+                // reporter.info(" - Will only unroll literals from core")
+                core.map(ast => fromZ3Formula(ast) match {
+                  case n @ Not(Variable(_)) => n
+                  case v @ Variable(_) => v
+                  case _ => scala.Predef.error("Impossible element extracted from core: " + ast)
+                }).toSet
+              }
             } else {
               blockingSet
             }
+
+            // reporter.info(" - toRelease   : " + toRelease)
+            // reporter.info(" - blockingSet : " + blockingSet)
 
             var fixedForEver : Set[Expr] = Set.empty
 
@@ -885,7 +917,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
 
     // stores the invocations that boolean literals are guarding.
     private val blocked : MutableMap[(Identifier,Boolean),Set[FunctionInvocation]] = MutableMap.empty
-
+    
     // Returns whether some invocations were actually blocked in the end.
     private def registerBlocked(blockingAtom : Identifier, polarity : Boolean, invocations : Set[FunctionInvocation]) : Boolean = {
       val filtered = invocations.filter(i => {
@@ -1046,6 +1078,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
           // TODO this is probably where the unrolling of the recursive call
           // should actually occur, rather than delegating that to
           // closeUnrollings.
+          // reporter.info("Unlocking : " + functionInvocation)
           val (_, clauses, blockers) = closeUnrollings(functionInvocation)
           newClauses = newClauses ++ clauses
           newBlockers = newBlockers ++ blockers

@@ -36,7 +36,8 @@ class FunCheckPlugin(val global: Global, val actionAfterExtraction : Option[Prog
     "  -P:funcheck:PLDI               PLDI 2011 settings. Now frozen. Not completely functional. See CAV." + "\n" +
     "  -P:funcheck:CAV                CAV 2011 settings. In progress." + "\n" +
     "  -P:funcheck:prune              (with CAV) Use additional SMT queries to rule out some unrollings." + "\n" +
-    "  -P:funcheck:cores              (with CAV) Use UNSAT cores in the unrolling/refinement step."
+    "  -P:funcheck:cores              (with CAV) Use UNSAT cores in the unrolling/refinement step." + "\n" +
+    "  -P:funcheck:lucky              (with CAV) Perform additional tests to potentially find models early."
   )
 
   /** Processes the command-line options. */
@@ -58,6 +59,7 @@ class FunCheckPlugin(val global: Global, val actionAfterExtraction : Option[Prog
         case "CAV"       =>                      { purescala.Settings.experimental = true; purescala.Settings.useInstantiator = false; purescala.Settings.useFairInstantiator = true; purescala.Settings.useBAPA = false; purescala.Settings.zeroInlining = true }
         case "prune"     =>                      purescala.Settings.pruneBranches = true
         case "cores"     =>                      purescala.Settings.useCores = true
+        case "lucky"     =>                      purescala.Settings.luckyTest = true
         case s if s.startsWith("unrolling=") =>  purescala.Settings.unrollingLevel = try { s.substring("unrolling=".length, s.length).toInt } catch { case _ => 0 }
         case s if s.startsWith("functions=") =>  purescala.Settings.functionsToAnalyse = Set(splitList(s.substring("functions=".length, s.length)): _*)
         case s if s.startsWith("extensions=") => purescala.Settings.extensionNames = splitList(s.substring("extensions=".length, s.length))
