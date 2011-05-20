@@ -1165,6 +1165,7 @@ object Trees {
     case CaseClassType(ccd) =>
       val fields = ccd.fields
       CaseClass(ccd, fields.map(f => simplestValue(f.getType)))
+    case SetType(baseType) => FiniteSet(Nil)
     case _ => throw new Exception("I can't choose simplest value for type " + tpe)
   }
 }
