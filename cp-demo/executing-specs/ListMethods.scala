@@ -12,7 +12,7 @@ import cp.Terms._
   })
 }
 
-object FirstClassConstraints {
+object ListMethods {
   import Specs._
 
   def last(list : List) : Int = {
