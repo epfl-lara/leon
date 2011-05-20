@@ -12,6 +12,7 @@ package cp
   var useCores : Boolean = purescala.Settings.useCores 
   var pruneBranches : Boolean = purescala.Settings.pruneBranches 
   var solverTimeout : Option[Int] = purescala.Settings.solverTimeout 
+  var luckyTest : Boolean = purescala.Settings.luckyTest 
 
   var useScalaEvaluator : Boolean = Settings.useScalaEvaluator
 }

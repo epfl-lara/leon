@@ -21,5 +21,5 @@ object Settings {
   var pruneBranches : Boolean = false
   def useAnyInstantiator : Boolean = useInstantiator || useFairInstantiator
   var solverTimeout : Option[Int] = None
-  var luckyTest : Boolean = false
+  var luckyTest : Boolean = true
 }
