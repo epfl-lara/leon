@@ -89,18 +89,35 @@ object RedBlackTree {
     val defaultBound = 3
     val bound = if (args.isEmpty) defaultBound else args(0).toInt
 
-    // enumerateAllUpTo(bound)
+    val isBoundedRBT : Constraint1[Tree] = (t : Tree) => isRedBlackTree(t) && valuesWithin(t, bound - 1)
 
-    val solutionSet = scala.collection.mutable.Set[Tree]()
-    println("Fixing size of trees to " + (bound))
-    for (tree <- ((t : Tree) => isRedBlackTree(t) && valuesWithin(t, bound - 1) && size(t) == bound).findAll) {
-      solutionSet += tree
+    println("Minimizing size:")
+    for ((tree, index) <- (isBoundedRBT minimizing ((t: Tree) => size(t))).findAll.zipWithIndex) {
+      println("Tree " + index + ":")
+      println(print(tree))
+      println("----")
     }
 
-    // for (tree <- solutionSet)
-    //   println(print(tree) + "\n-----------\n")
-    println("Fixed-size solution set size : " + solutionSet.size)
-    Stopwatch.printSummary
+    println("Without minimization:")
+    for (tree <- isBoundedRBT.findAll) {
+      println(print(tree))
+      println("----")
+    }
+
+    println("Fixing size of trees to " + (bound))
+    for (tree <- (isBoundedRBT && ((t : Tree) => size(t) == bound)).findAll) {
+      println(print(tree))
+      println("----")
+    }
+  }
+
+  /** Printing trees */
+  def indent(s: String) = ("  "+s).split('\n').mkString("\n  ")
+
+  def print(tree: Tree): String = tree match {
+    case Node(c,l,v,r) =>
+      indent(print(r)) + "\n" + (if (c == Black()) "B" else "R") + " " + v.toString + "\n" + indent(print(l))
+    case Empty() => "E"
   }
 
   def enumerateAllUpTo(bound : Int) : Unit = {
@@ -113,7 +130,7 @@ object RedBlackTree {
 
     println("Minimizing size:")
     for (tree <- (((t : Tree) => isRedBlackTree(t) && valuesWithin(t, bound)) minimizing ((t: Tree) => size(t))).findAll) {
-      set1 += tree
+      println(print(tree))
     }
     
     /*
@@ -137,14 +154,5 @@ object RedBlackTree {
     assert(set1 == set4)
     */
     println("Solution set size: " + set1.size)
-  }
-
-  /** Printing trees */
-  def indent(s: String) = ("  "+s).split('\n').mkString("\n  ")
-
-  def print(tree: Tree): String = tree match {
-    case Node(c,l,v,r) =>
-      indent(print(r)) + "\n" + (if (c == Black()) "B" else "R") + " " + v.toString + "\n" + indent(print(l))
-    case Empty() => "E"
   }
 }
