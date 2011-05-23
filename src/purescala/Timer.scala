@@ -1,7 +1,7 @@
 package purescala
 
 /** Creates a thread that, when started, counts for maxsecs seconds and then
- * calls the callback, unless the timer was halter first. */
+ * calls the callback, unless the timer was halted first. */
 class Timer(callback : () => Unit, maxSecs : Int) extends Thread {
   private var keepRunning = true
   private val asMillis : Long = 1000L * maxSecs
