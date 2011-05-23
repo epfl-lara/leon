@@ -36,4 +36,12 @@ object Maps {
     val map2 = map.updated(k, v)
     map2
   } ensuring (res => res.isDefinedAt(k))
+
+  def readOverWrite(m : Map[Int,Int], k1 : Int, k2 : Int, e : Int) : Boolean = {
+    val newM = m.updated(k2, e)
+    if (m.isDefinedAt(k1))
+      newM(k1) == (if (k1 == k2) e else m(k1))
+    else
+      true
+  } holds
 }

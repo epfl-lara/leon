@@ -504,6 +504,8 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
           }
         }
         case (Some(true), m) => { // SAT
+          println("the model is ")
+          println(m)
           validatingStopwatch.start
           val (trueModel, model) = validateAndDeleteModel(m, toCheckAgainstModels, varsInVC, evaluator)
           validatingStopwatch.stop
@@ -868,7 +870,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
             val toSort = typeToSort(toType)
             val constArray = z3.mkConstArray(toSort, mapRangeNoneConstructors(toType)())
             z3.mkStore(constArray, rec(from), mapRangeSomeConstructors(toType)(rec(to)))
-          case errorType => scala.Predef.error("Unexpected type for singleton map: " + errorType)
+          case errorType => scala.Predef.error("Unexpected type for singleton map: " + (ex, errorType))
         }
         case e @ EmptyMap(fromType, toType) => {
           val fromSort = typeToSort(fromType)
@@ -880,9 +882,17 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
             val fromSort = typeToSort(fromType)
             val toSort = typeToSort(toType)
             elems.foldLeft(z3.mkConstArray(toSort, mapRangeNoneConstructors(toType)())){ case (ast, SingletonMap(k,v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(toType)(rec(v))) }
-          case errorType => scala.Predef.error("Unexpected type for finite map: " + errorType)
+          case errorType => scala.Predef.error("Unexpected type for finite map: " + (ex, errorType))
         }
-        case MapGet(m,k) => z3.mkSelect(rec(m), rec(k))
+        case mg @ MapGet(m,k) => m.getType match {
+          case MapType(fromType, toType) =>
+            val errorAST = z3.mkFreshConst("errorValue", typeToSort(toType))
+            // exprToZ3Id += (e -> errorAST)
+            // z3IdToExpr += (errorAST -> e)
+            val selected = z3.mkSelect(rec(m), rec(k))
+            z3.mkITE(z3.mkDistinct(selected, mapRangeNoneConstructors(toType)()), mapRangeValueSelectors(toType)(selected), errorAST)
+          case errorType => scala.Predef.error("Unexpected type for map: " + (ex, errorType))
+        }
         case MapUnion(m1,m2) => m1.getType match {
           case MapType(ft, tt) => m2 match {
             case FiniteMap(ss) =>
@@ -892,11 +902,11 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
             case SingletonMap(k, v) => z3.mkStore(rec(m1), rec(k), mapRangeSomeConstructors(tt)(rec(v)))
             case _ => scala.Predef.error("map updates can only be applied with concrete map instances")
           }
-          case errorType => scala.Predef.error("Unexpected type for map: " + errorType)
+          case errorType => scala.Predef.error("Unexpected type for map: " + (ex, errorType))
         }
         case MapIsDefinedAt(m,k) => m.getType match {
           case MapType(ft, tt) => z3.mkDistinct(z3.mkSelect(rec(m), rec(k)), mapRangeNoneConstructors(tt)())
-          case errorType => scala.Predef.error("Unexpected type for map: " + errorType)
+          case errorType => scala.Predef.error("Unexpected type for map: " + (ex, errorType))
         }
         
         case Distinct(exs) => z3.mkDistinct(exs.map(rec(_)): _*)
