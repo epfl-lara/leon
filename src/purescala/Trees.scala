@@ -395,6 +395,7 @@ object Trees {
       case And(args) => Some((args, And.apply))
       case Or(args) => Some((args, Or.apply))
       case FiniteSet(args) => Some((args, FiniteSet))
+      case FiniteMap(args) => Some((args, (as : Seq[Expr]) => FiniteMap(as.asInstanceOf[Seq[SingletonMap]])))
       case FiniteMultiset(args) => Some((args, FiniteMultiset))
       case Distinct(args) => Some((args, Distinct))
       case _ => None
@@ -1169,7 +1170,8 @@ object Trees {
     case CaseClassType(ccd) =>
       val fields = ccd.fields
       CaseClass(ccd, fields.map(f => simplestValue(f.getType)))
-    case SetType(baseType) => FiniteSet(Nil)
+    case SetType(baseType) => FiniteSet(Nil).setType(tpe)
+    case MapType(fromType, toType) => EmptyMap(fromType, toType).setType(tpe)
     case _ => throw new Exception("I can't choose simplest value for type " + tpe)
   }
 }

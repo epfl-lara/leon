@@ -128,6 +128,7 @@ object Evaluator {
 
           (lv,rv) match {
             case (FiniteSet(el1),FiniteSet(el2)) => BooleanLiteral(el1.toSet == el2.toSet)
+            case (FiniteMap(el1),FiniteMap(el2)) => BooleanLiteral(el1.toSet == el2.toSet)
             case _ => BooleanLiteral(lv == rv)
           }
         }
@@ -227,6 +228,34 @@ object Evaluator {
         case e @ EmptySet(_) => e
         case i @ IntLiteral(_) => i
         case b @ BooleanLiteral(_) => b
+
+        case f @ FiniteMap(ss) => FiniteMap(ss.map(rec(ctx,_)).distinct.asInstanceOf[Seq[SingletonMap]]).setType(f.getType)
+        case e @ EmptyMap(_,_) => e
+        case s @ SingletonMap(f,t) => SingletonMap(rec(ctx,f), rec(ctx,t)).setType(s.getType)
+        case g @ MapGet(m,k) => (rec(ctx,m), rec(ctx,k)) match {
+          case (FiniteMap(ss), e) => ss.find(_.from == e) match {
+            case Some(v) => v
+            case None => throw RuntimeErrorEx("key not found: " + e)
+          }
+          case (EmptyMap(ft,tt), e) => throw RuntimeErrorEx("key not found: " + e)
+          // case (SingletonMap(f,t), e) => if (f == e) t else throw RuntimeErrorEx("key not found: " + e)
+          case (l,r) => throw TypeErrorEx(TypeError(l, MapType(r.getType, g.getType)))
+        }
+        case u @ MapUnion(m1,m2) => (rec(ctx,m1), rec(ctx,m2)) match {
+          case (EmptyMap(_,_), r) => r
+          case (l, EmptyMap(_,_)) => l
+          case (f1@FiniteMap(ss1), FiniteMap(ss2)) => {
+            val filtered1 = ss1.filterNot(s => ss2.contains(s))
+            val newSs = filtered1 ++ ss2
+            FiniteMap(newSs).setType(f1.getType)
+          }
+          case (l, r) => throw TypeErrorEx(TypeError(l, m1.getType))
+        }
+        case i @ MapIsDefinedAt(m,k) => (rec(ctx,m), rec(ctx,k)) match {
+          case (EmptyMap(_,_),_) => BooleanLiteral(false)
+          case (FiniteMap(ss), e) => BooleanLiteral(ss.exists(_.from == e))
+          case (l, r) => throw TypeErrorEx(TypeError(l, m.getType))
+        }
 
         case Distinct(args) => {
           val newArgs = args.map(rec(ctx, _))

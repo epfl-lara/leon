@@ -11,6 +11,8 @@ import z3plugins.bapa.{BAPATheory, BAPATheoryEqc, BAPATheoryBubbles}
 import z3plugins.instantiator.{AbstractInstantiator,Instantiator}
 
 import scala.collection.mutable.{HashMap => MutableHashMap}
+import scala.collection.mutable.{Map => MutableMap}
+import scala.collection.mutable.{Set => MutableSet}
 
 class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3Solver with Z3ModelReconstruction {
   import Settings.useBAPA
@@ -93,6 +95,13 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   private var reverseADTTesters: Map[Z3FuncDecl, CaseClassDef] = Map.empty
   private var reverseADTConstructors: Map[Z3FuncDecl, CaseClassDef] = Map.empty
   private var reverseADTFieldSelectors: Map[Z3FuncDecl, (CaseClassDef,Identifier)] = Map.empty
+
+  protected[purescala] val mapRangeSorts: MutableMap[TypeTree, Z3Sort] = MutableMap.empty
+  protected[purescala] val mapRangeSomeConstructors: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
+  protected[purescala] val mapRangeNoneConstructors: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
+  protected[purescala] val mapRangeSomeTesters: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
+  protected[purescala] val mapRangeNoneTesters: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
+  protected[purescala] val mapRangeValueSelectors: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
 
   case class UntranslatableTypeException(msg: String) extends Exception(msg)
   private def prepareSorts: Unit = {

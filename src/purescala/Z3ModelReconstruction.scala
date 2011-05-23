@@ -24,6 +24,21 @@ trait Z3ModelReconstruction {
       expectedType match {
         case BooleanType => model.evalAs[Boolean](z3ID).map(BooleanLiteral(_))
         case Int32Type => model.evalAs[Int](z3ID).map(IntLiteral(_))
+        case MapType(kt,vt) => model.eval(z3ID) match {
+          case None => None
+          case Some(t) => model.getArrayValue(t) match {
+            case None => None
+            case Some((map, elseValue)) => 
+              assert(elseValue == mapRangeNoneConstructors(vt)())
+              val singletons = for ((index, value) <- map if z3.getASTKind(value) != mapRangeNoneConstructors(vt)()) yield {
+                z3.getASTKind(value) match {
+                  case Z3AppAST(someCons, List(arg)) if someCons == mapRangeSomeConstructors(vt) => SingletonMap(fromZ3Formula(index), fromZ3Formula(arg))
+                  case _ => scala.Predef.error("unexpected value in map: " + value)
+                }
+              }
+              if (singletons.isEmpty) Some(EmptyMap(kt, vt)) else Some(FiniteMap(singletons.toSeq))
+          }
+        }
         case other => model.eval(z3ID) match {
           case None => None
           case Some(t) => softFromZ3Formula(t)

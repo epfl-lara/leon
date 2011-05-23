@@ -7,6 +7,9 @@ import Extensions._
 import Trees._
 import TypeTrees._
 
+import scala.collection.mutable.{Map => MutableMap}
+import scala.collection.mutable.{Set => MutableSet}
+
 // This is just to factor out the things that are common in "classes that deal
 // with a Z3 instance"
 trait AbstractZ3Solver {
@@ -23,6 +26,13 @@ trait AbstractZ3Solver {
   protected[purescala] var adtTesters: Map[CaseClassDef, Z3FuncDecl]
   protected[purescala] var adtConstructors: Map[CaseClassDef, Z3FuncDecl]
   protected[purescala] var adtFieldSelectors: Map[Identifier, Z3FuncDecl]
+
+  protected[purescala] val mapRangeSorts: MutableMap[TypeTree, Z3Sort]
+  protected[purescala] val mapRangeSomeConstructors: MutableMap[TypeTree, Z3FuncDecl]
+  protected[purescala] val mapRangeNoneConstructors: MutableMap[TypeTree, Z3FuncDecl]
+  protected[purescala] val mapRangeSomeTesters: MutableMap[TypeTree, Z3FuncDecl]
+  protected[purescala] val mapRangeNoneTesters: MutableMap[TypeTree, Z3FuncDecl]
+  protected[purescala] val mapRangeValueSelectors: MutableMap[TypeTree, Z3FuncDecl]
 
   protected[purescala] var exprToZ3Id : Map[Expr,Z3AST]
   protected[purescala] def fromZ3Formula(tree : Z3AST) : Expr

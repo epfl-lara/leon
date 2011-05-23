@@ -100,12 +100,12 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
   private var reverseADTConstructors: Map[Z3FuncDecl, CaseClassDef] = Map.empty
   private var reverseADTFieldSelectors: Map[Z3FuncDecl, (CaseClassDef,Identifier)] = Map.empty
 
-  private val mapRangeSorts: MutableMap[TypeTree, Z3Sort] = MutableMap.empty
-  private val mapRangeSomeConstructors: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
-  private val mapRangeNoneConstructors: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
-  private val mapRangeSomeTesters: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
-  private val mapRangeNoneTesters: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
-  private val mapRangeValueSelectors: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
+  protected[purescala] val mapRangeSorts: MutableMap[TypeTree, Z3Sort] = MutableMap.empty
+  protected[purescala] val mapRangeSomeConstructors: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
+  protected[purescala] val mapRangeNoneConstructors: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
+  protected[purescala] val mapRangeSomeTesters: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
+  protected[purescala] val mapRangeNoneTesters: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
+  protected[purescala] val mapRangeValueSelectors: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
 
   private def mapRangeSort(toType : TypeTree) : Z3Sort = mapRangeSorts.get(toType) match {
     case Some(z3sort) => z3sort
@@ -391,7 +391,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     val validatingStopwatch     = new Stopwatch("validating",         false)
     val decideTopLevelSw        = new Stopwatch("top-level",          false).start
 
-    println("Deciding : " + vc)
+    // println("Deciding : " + vc)
 
     initializationStopwatch.start
 
@@ -504,8 +504,6 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
           }
         }
         case (Some(true), m) => { // SAT
-          println("the model is ")
-          println(m)
           validatingStopwatch.start
           val (trueModel, model) = validateAndDeleteModel(m, toCheckAgainstModels, varsInVC, evaluator)
           validatingStopwatch.stop
@@ -1003,8 +1001,13 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
               assert(argsSize == 2)
               Division(rargs(0), rargs(1))
             }
+            // case OpAsArray => {
+            //   assert(argsSize == 0)
+            //   
+            // }
             case other => {
               System.err.println("Don't know what to do with this declKind : " + other)
+              System.err.println("The arguments are : " + args)
               throw new CantTranslateException(t)
             }
           }

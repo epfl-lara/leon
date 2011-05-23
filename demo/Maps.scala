@@ -44,4 +44,8 @@ object Maps {
     else
       true
   } holds
+
+  def findModel(m : Map[Int,Int]) : Boolean = {
+    m != Map.empty[Int,Int].updated(0, 42)
+  } holds
 }

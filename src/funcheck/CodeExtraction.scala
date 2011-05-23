@@ -531,11 +531,9 @@ trait CodeExtraction extends Extractors {
         val rf = rec(f)
         val rt = rec(t)
         val newSingleton = SingletonMap(rf, rt).setType(rm.getType)
-        println("singleton: " + newSingleton)
         rm.getType match {
           case MapType(ft, tt) =>
-            println("extracted maptype: " + MapType(ft, tt))
-            MapUnion(rm, newSingleton).setType(rm.getType)
+            MapUnion(rm, FiniteMap(Seq(newSingleton)).setType(rm.getType)).setType(rm.getType)
           case _ => {
             if (!silent) unit.error(tree.pos, "updated can only be applied to maps.")
             throw ImpureCodeEncounteredException(tree)
