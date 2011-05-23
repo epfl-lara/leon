@@ -30,7 +30,10 @@ trait Z3ModelReconstruction {
             case None => None
             case Some((map, elseValue)) => 
               // assert(elseValue == mapRangeNoneConstructors(vt)())
-              val singletons = for ((index, value) <- map if z3.getASTKind(value) != mapRangeNoneConstructors(vt)()) yield {
+              val singletons = for ((index, value) <- map if (z3.getASTKind(value) match {
+                case Z3AppAST(someCons, _) if someCons == mapRangeSomeConstructors(vt) => true
+                case _ => false
+              })) yield {
                 z3.getASTKind(value) match {
                   case Z3AppAST(someCons, List(arg)) if someCons == mapRangeSomeConstructors(vt) => SingletonMap(fromZ3Formula(index), fromZ3Formula(arg))
                   case _ => scala.Predef.error("unexpected value in map: " + value)
