@@ -28,12 +28,12 @@ object AssociativeList {
     case Cons(KeyValuePair(k,_), xs) => Set(k) ++ domain(xs)
   }
 
-  def find(l: List, e: Int): OptionInt = (l match {
+  def find(l: List, k0: Int): OptionInt = (l match {
     case Nil() => None()
-    case Cons(KeyValuePair(k, v), xs) => if (k == e) Some(v) else find(xs, e)
+    case Cons(KeyValuePair(k, v), xs) => if (k == k0) Some(v) else find(xs, k0)
   }) ensuring(res => res match {
-    case None() => !asMap(l).isDefinedAt(e)
-    case Some(v) => asMap(l)(e) == v
+    case None() => !asMap(l).isDefinedAt(k0)
+    case Some(v) => asMap(l).isDefinedAt(k0) && asMap(l)(k0) == v
   })
 
   def noDuplicates(l: List): Boolean = l match {
@@ -41,10 +41,13 @@ object AssociativeList {
     case Cons(KeyValuePair(k, v), xs) => find(xs, k) == None() && noDuplicates(xs)
   }
 
+//  @induct
   def updateElem(l: List, k0: Int, v0: Int): List = (l match {
     case Nil() => Cons(KeyValuePair(k0, v0), Nil())
-    case Cons(kv1 @ KeyValuePair(k, v), xs) => if(k0 == k) Cons(KeyValuePair(k0, v0), xs) else Cons(kv1, updateElem(xs, k0, v0))
-  }) ensuring(res => asMap(res)(k0) == v0)
+    case Cons(KeyValuePair(k, v), xs) => if(k0 == k) Cons(KeyValuePair(k0, v0), xs) else Cons(KeyValuePair(k, v), updateElem(xs, k0, v0))
+  }) ensuring(res => {
+    asMap(res).isDefinedAt(k0) && asMap(res)(k0) == v0
+  })
 
   @induct
   def readOverWrite(l: List, k1: Int, k2: Int, e: Int) : Boolean = {
@@ -54,6 +57,10 @@ object AssociativeList {
   def prop1(l : List) : Boolean = {
     (l == Nil()) == (asMap(l) == Map.empty[Int,Int])
   } holds
+
+  def weird(m : Map[Int,Int], k : Int, v : Int) : Boolean = {
+    !(m(k) == v) || m.isDefinedAt(k)
+  } //holds
 
   // def prop0(l : List, m : Map[Int,Int]) : Boolean = {
   //   size(l) > 4 && asMap(l) == m
