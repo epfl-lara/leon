@@ -131,6 +131,7 @@ object PrettyPrinter {
     case SetMax(s) => pp(s, sb, lvl).append(".max")
     case SetUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)        // \cup
     case MultisetUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)   // \cup
+    case MapUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)        // \cup
     case SetDifference(l,r) => ppBinary(sb, l, r, " \\ ", lvl)       
     case MultisetDifference(l,r) => ppBinary(sb, l, r, " \\ ", lvl)       
     case SetIntersection(l,r) => ppBinary(sb, l, r, " \u2229 ", lvl) // \cap
@@ -139,6 +140,22 @@ object PrettyPrinter {
     case MultisetCardinality(t) => ppUnary(sb, t, "|", "|", lvl)
     case MultisetPlus(l,r) => ppBinary(sb, l, r, " \u228E ", lvl)    // U+
     case MultisetToSet(e) => pp(e, sb, lvl).append(".toSet")
+    case EmptyMap(_,_) => sb.append("{}")
+    case SingletonMap(f,t) => ppBinary(sb, f, t, " -> ", lvl)
+    case FiniteMap(rs) => ppNary(sb, rs, "{", ", ", "}", lvl)
+    case MapGet(m,k) => {
+      var nsb = sb
+      pp(m, nsb, lvl)
+      nsb = ppNary(nsb, Seq(k), "(", ",", ")", lvl)
+      nsb
+    }
+    case MapIsDefinedAt(m,k) => {
+      var nsb = sb
+      pp(m, nsb, lvl)
+      nsb.append(".isDefinedAt")
+      nsb = ppNary(nsb, Seq(k), "(", ",", ")", lvl)
+      nsb
+    }
 
     case Distinct(exprs) => {
       var nsb = sb
@@ -233,6 +250,7 @@ object PrettyPrinter {
     case Int32Type => sb.append("Int")
     case BooleanType => sb.append("Boolean")
     case SetType(bt) => pp(bt, sb.append("Set["), lvl).append("]")
+    case MapType(ft,tt) => pp(tt, pp(ft, sb.append("Map["), lvl).append(","), lvl).append("]")
     case MultisetType(bt) => pp(bt, sb.append("Multiset["), lvl).append("]")
     case OptionType(bt) => pp(bt, sb.append("Option["), lvl).append("]")
     case c: ClassType => sb.append(c.classDef.id)

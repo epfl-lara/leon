@@ -384,6 +384,23 @@ trait Extractors {
       }
     }
 
+    object ExEmptyMap {
+      def unapply(tree: TypeApply): Option[(Tree,Tree)] = tree match {
+        case TypeApply(
+          Select(
+            Select(
+              Select(
+                Select(Ident(s), collectionName),
+                immutableName),
+              mapName),
+            emptyName), fromTypeTree :: toTypeTree :: Nil) if (
+            collectionName.toString == "collection" && immutableName.toString == "immutable" && mapName.toString == "Map" && emptyName.toString == "empty"
+          ) => Some((fromTypeTree, toTypeTree))
+        case TypeApply(Select(Select(Select(This(scalaName), predefName), mapName), emptyName), fromTypeTree :: toTypeTree :: Nil) if (scalaName.toString == "scala" && predefName.toString == "Predef" && emptyName.toString == "empty") => Some((fromTypeTree, toTypeTree))
+        case _ => None
+      }
+    }
+
     object ExFiniteSet {
       def unapply(tree: Apply): Option[(Tree,List[Tree])] = tree match {
         case Apply(TypeApply(Select(Select(Select(Select(Ident(s), collectionName), immutableName), setName), applyName), theTypeTree :: Nil), args) if (collectionName.toString == "collection" && immutableName.toString == "immutable" && setName.toString == "Set" && applyName.toString == "apply") => Some((theTypeTree, args))
@@ -408,6 +425,7 @@ trait Extractors {
         case _ => None
       }
     }
+
 
     object ExUnion {
       def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
@@ -461,6 +479,28 @@ trait Extractors {
     object ExMultisetToSet {
       def unapply(tree: Select): Option[Tree] = tree match {
         case Select(t, n) if (n.toString == "toSet") => Some(t)
+        case _ => None
+      }
+    }
+
+    object ExMapUpdated {
+      def unapply(tree: Apply): Option[(Tree,Tree,Tree)] = tree match {
+        case Apply(TypeApply(Select(lhs, n), typeTreeList), List(from, to)) if (n.toString == "updated") => 
+          Some((lhs, from, to))
+        case _ => None
+      }
+    }
+
+    object ExMapApply {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n.toString == "apply") => Some((lhs, rhs))
+        case _ => None
+      }
+    }
+
+    object ExMapIsDefinedAt {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n.toString == "isDefinedAt") => Some((lhs, rhs))
         case _ => None
       }
     }

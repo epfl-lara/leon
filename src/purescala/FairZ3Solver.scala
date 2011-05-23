@@ -38,6 +38,54 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
   private var toCheckAgainstModels: Expr = BooleanLiteral(true)
   private var varsInVC: Set[Identifier] = Set.empty
 
+  private val mapRangeSorts: MutableMap[TypeTree, Z3Sort] = MutableMap.empty
+  private val mapRangeSomeConstructors: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
+  private val mapRangeNoneConstructors: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
+  private val mapRangeSomeTesters: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
+  private val mapRangeNoneTesters: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
+  private val mapRangeValueSelectors: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
+
+  private def mapRangeSort(toType : TypeTree) : Z3Sort = mapRangeSorts.get(toType) match {
+    case Some(z3sort) => z3sort
+    case None => {
+      import Z3Context.{ADTSortReference, RecursiveType, RegularSort}
+      intSort = z3.mkIntSort
+      boolSort = z3.mkBoolSort
+
+      def typeToSortRef(tt: TypeTree): ADTSortReference = tt match {
+        case BooleanType => RegularSort(boolSort)
+        case Int32Type => RegularSort(intSort)
+        case AbstractClassType(d) => RegularSort(adtSorts(d))
+        case CaseClassType(d) => RegularSort(adtSorts(d))
+        case _ => throw UntranslatableTypeException("Can't handle type " + tt)
+      }
+
+      val z3info = z3.mkADTSorts(
+        Seq(
+          (
+            toType.toString + "Option",
+            Seq(toType.toString + "Some", toType.toString + "None"),
+            Seq(
+              Seq(("value", typeToSortRef(toType))),
+              Seq()
+            )
+          )
+        )
+      )
+
+      z3info match {
+        case Seq((optionSort, Seq(someCons, noneCons), Seq(someTester, noneTester), Seq(Seq(valueSelector), Seq()))) =>
+          mapRangeSorts += ((toType, optionSort))
+          mapRangeSomeConstructors += ((toType, someCons))
+          mapRangeNoneConstructors += ((toType, noneCons))
+          mapRangeSomeTesters += ((toType, someTester))
+          mapRangeNoneTesters += ((toType, noneTester))
+          mapRangeValueSelectors += ((toType, valueSelector))
+          optionSort
+      }
+    }
+  }
+
   override def setProgram(prog: Program): Unit = {
     program = prog
   }
@@ -53,6 +101,16 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
 
     exprToZ3Id = Map.empty
     z3IdToExpr = Map.empty
+
+    mapSorts = Map.empty
+
+    mapRangeSorts.clear
+    mapRangeSomeConstructors.clear
+    mapRangeNoneConstructors.clear
+    mapRangeSomeTesters.clear
+    mapRangeNoneTesters.clear
+    mapRangeValueSelectors.clear
+
     counter = 0
     prepareSorts
     prepareFunctions
@@ -75,6 +133,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
   private var intSort: Z3Sort = null
   private var boolSort: Z3Sort = null
   private var setSorts: Map[TypeTree, Z3Sort] = Map.empty
+  private var mapSorts: Map[TypeTree, Z3Sort] = Map.empty
   private var intSetMinFun: Z3FuncDecl = null
   private var intSetMaxFun: Z3FuncDecl = null
   private var setCardFuns: Map[TypeTree, Z3FuncDecl] = Map.empty
@@ -285,6 +344,16 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         newSetSort
       }
     }
+    case mt @ MapType(fromType, toType) => mapSorts.get(mt) match {
+      case Some(s) => s
+      case None => {
+        val fromSort = typeToSort(fromType)
+        val toSort = mapRangeSort(toType)
+        val ms = z3.mkArraySort(fromSort, toSort)
+        mapSorts += ((mt, ms))
+        ms
+      }
+    }
     case other => fallbackSorts.get(other) match {
       case Some(s) => s
       case None => {
@@ -322,7 +391,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     val validatingStopwatch     = new Stopwatch("validating",         false)
     val decideTopLevelSw        = new Stopwatch("top-level",          false).start
 
-    // println("Deciding : " + vc)
+    println("Deciding : " + vc)
 
     initializationStopwatch.start
 
@@ -793,6 +862,42 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         }
         case SetMin(s) => intSetMinFun(rec(s))
         case SetMax(s) => intSetMaxFun(rec(s))
+        case s @ SingletonMap(from,to) => s.getType match {
+          case MapType(fromType, toType) =>
+            val fromSort = typeToSort(fromType)
+            val toSort = typeToSort(toType)
+            val constArray = z3.mkConstArray(toSort, mapRangeNoneConstructors(toType)())
+            z3.mkStore(constArray, rec(from), mapRangeSomeConstructors(toType)(rec(to)))
+          case errorType => scala.Predef.error("Unexpected type for singleton map: " + errorType)
+        }
+        case e @ EmptyMap(fromType, toType) => {
+          val fromSort = typeToSort(fromType)
+          val toSort = typeToSort(toType)
+          z3.mkConstArray(toSort, mapRangeNoneConstructors(toType)())
+        }
+        case f @ FiniteMap(elems) => f.getType match {
+          case MapType(fromType, toType) =>
+            val fromSort = typeToSort(fromType)
+            val toSort = typeToSort(toType)
+            elems.foldLeft(z3.mkConstArray(toSort, mapRangeNoneConstructors(toType)())){ case (ast, SingletonMap(k,v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(toType)(rec(v))) }
+          case errorType => scala.Predef.error("Unexpected type for finite map: " + errorType)
+        }
+        case MapGet(m,k) => z3.mkSelect(rec(m), rec(k))
+        case MapUnion(m1,m2) => m1.getType match {
+          case MapType(ft, tt) => m2 match {
+            case FiniteMap(ss) =>
+              ss.foldLeft(rec(m1)){
+                case (ast, SingletonMap(k, v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(tt)(rec(v)))
+              }
+            case SingletonMap(k, v) => z3.mkStore(rec(m1), rec(k), mapRangeSomeConstructors(tt)(rec(v)))
+            case _ => scala.Predef.error("map updates can only be applied with concrete map instances")
+          }
+          case errorType => scala.Predef.error("Unexpected type for map: " + errorType)
+        }
+        case MapIsDefinedAt(m,k) => m.getType match {
+          case MapType(ft, tt) => z3.mkDistinct(z3.mkSelect(rec(m), rec(k)), mapRangeNoneConstructors(tt)())
+          case errorType => scala.Predef.error("Unexpected type for map: " + errorType)
+        }
         
         case Distinct(exs) => z3.mkDistinct(exs.map(rec(_)): _*)
   

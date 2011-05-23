@@ -319,6 +319,9 @@ object Trees {
   @serializable case class MapGet(map: Expr, key: Expr) extends Expr 
   @serializable case class MapUnion(map1: Expr, map2: Expr) extends Expr 
   @serializable case class MapDifference(map: Expr, keys: Expr) extends Expr 
+  @serializable case class MapIsDefinedAt(map: Expr, key: Expr) extends Expr with FixedType {
+    val fixedType = BooleanType
+  }
 
   /* List operations */
   @serializable case class NilList(baseType: TypeTree) extends Expr with Terminal
@@ -378,6 +381,7 @@ object Trees {
       case MapGet(t1,t2) => Some((t1,t2,MapGet))
       case MapUnion(t1,t2) => Some((t1,t2,MapUnion))
       case MapDifference(t1,t2) => Some((t1,t2,MapDifference))
+      case MapIsDefinedAt(t1,t2) => Some((t1,t2, MapIsDefinedAt))
       case Concat(t1,t2) => Some((t1,t2,Concat))
       case ListAt(t1,t2) => Some((t1,t2,ListAt))
       case _ => None
