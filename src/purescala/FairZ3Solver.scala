@@ -866,20 +866,20 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
           case MapType(fromType, toType) =>
             val fromSort = typeToSort(fromType)
             val toSort = typeToSort(toType)
-            val constArray = z3.mkConstArray(toSort, mapRangeNoneConstructors(toType)())
+            val constArray = z3.mkConstArray(fromSort, mapRangeNoneConstructors(toType)())
             z3.mkStore(constArray, rec(from), mapRangeSomeConstructors(toType)(rec(to)))
           case errorType => scala.Predef.error("Unexpected type for singleton map: " + (ex, errorType))
         }
         case e @ EmptyMap(fromType, toType) => {
           val fromSort = typeToSort(fromType)
           val toSort = typeToSort(toType)
-          z3.mkConstArray(toSort, mapRangeNoneConstructors(toType)())
+          z3.mkConstArray(fromSort, mapRangeNoneConstructors(toType)())
         }
         case f @ FiniteMap(elems) => f.getType match {
           case MapType(fromType, toType) =>
             val fromSort = typeToSort(fromType)
             val toSort = typeToSort(toType)
-            elems.foldLeft(z3.mkConstArray(toSort, mapRangeNoneConstructors(toType)())){ case (ast, SingletonMap(k,v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(toType)(rec(v))) }
+            elems.foldLeft(z3.mkConstArray(fromSort, mapRangeNoneConstructors(toType)())){ case (ast, SingletonMap(k,v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(toType)(rec(v))) }
           case errorType => scala.Predef.error("Unexpected type for finite map: " + (ex, errorType))
         }
         case mg @ MapGet(m,k) => m.getType match {

@@ -11,6 +11,7 @@ trait Extractors {
   import global.definitions._
 
   private lazy val setTraitSym = definitions.getClass("scala.collection.immutable.Set")
+  private lazy val mapTraitSym = definitions.getClass("scala.collection.immutable.Map")
   private lazy val multisetTraitSym = definitions.getClass("scala.collection.immutable.Multiset")
   private lazy val optionClassSym = definitions.getClass("scala.Option")
 
@@ -404,7 +405,7 @@ trait Extractors {
     object ExFiniteSet {
       def unapply(tree: Apply): Option[(Tree,List[Tree])] = tree match {
         case Apply(TypeApply(Select(Select(Select(Select(Ident(s), collectionName), immutableName), setName), applyName), theTypeTree :: Nil), args) if (collectionName.toString == "collection" && immutableName.toString == "immutable" && setName.toString == "Set" && applyName.toString == "apply") => Some((theTypeTree, args))
-        case Apply(TypeApply(Select(Select(Select(This(scalaName), predefName), setname), applyName), theTypeTree :: Nil), args) if ("scala".equals(scalaName.toString) && "Predef".equals(predefName.toString) && "apply".equals(applyName.toString)) => Some((theTypeTree, args))
+        case Apply(TypeApply(Select(Select(Select(This(scalaName), predefName), setName), applyName), theTypeTree :: Nil), args) if ("scala".equals(scalaName.toString) && "Predef".equals(predefName.toString) && setName.toString == "Set" && "apply".equals(applyName.toString)) => Some((theTypeTree, args))
         case _ => None
       }
     }
@@ -426,6 +427,13 @@ trait Extractors {
       }
     }
 
+    // object ExFiniteMap {
+    //   def unapply(tree: Apply): Option[(Tree,Tree,List[Tree])] = tree match {
+    //     case Apply(TypeApply(Select(Select(Select(Select(Ident(s), collectionName), immutableName), mapName), applyName), List(fromTypeTree, toTypeTree)), args) if (collectionName.toString == "collection" && immutableName.toString == "immutable" && mapName.toString == "Map" && applyName.toString == "apply") => Some((fromTypeTree, toTypeTree, args))
+    //     case Apply(TypeApply(Select(Select(Select(This(scalaName), predefName), mapName), applyName), List(fromTypeTree, toTypeTree)), args) if (scalaName.toString == "scala" && predefName.toString == "Predef" && mapName.toString == "Map" && applyName.toString == "apply") => Some((fromTypeTree, toTypeTree, args))
+    //     case _ => None
+    //   }
+    // }
 
     object ExUnion {
       def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {

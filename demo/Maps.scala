@@ -19,6 +19,10 @@ object Maps {
   // - solver
   // - printer OK
 
+  sealed abstract class List
+  case class Cons(head : Int, tail : List) extends List
+  case class Nil() extends List
+
   def applyTest(m : Map[Int,Int], i : Int) : Int = m(i)
 
   def isDefinedAtTest(m : Map[Int,Int], i : Int) : Boolean = m.isDefinedAt(i)
@@ -45,7 +49,7 @@ object Maps {
       true
   } holds
 
-  def findModel(m : Map[Int,Int]) : Boolean = {
-    m != Map.empty[Int,Int].updated(0, 42)
+  def findModel(m : Map[Int,List]) : Boolean = {
+    m == Map.empty[Int,List].updated(42, Nil()) || m == Map.empty[Int, List]
   } holds
 }

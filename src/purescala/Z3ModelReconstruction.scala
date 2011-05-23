@@ -29,7 +29,7 @@ trait Z3ModelReconstruction {
           case Some(t) => model.getArrayValue(t) match {
             case None => None
             case Some((map, elseValue)) => 
-              assert(elseValue == mapRangeNoneConstructors(vt)())
+              // assert(elseValue == mapRangeNoneConstructors(vt)())
               val singletons = for ((index, value) <- map if z3.getASTKind(value) != mapRangeNoneConstructors(vt)()) yield {
                 z3.getASTKind(value) match {
                   case Z3AppAST(someCons, List(arg)) if someCons == mapRangeSomeConstructors(vt) => SingletonMap(fromZ3Formula(index), fromZ3Formula(arg))
