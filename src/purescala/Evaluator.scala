@@ -245,7 +245,7 @@ object Evaluator {
           case (EmptyMap(_,_), r) => r
           case (l, EmptyMap(_,_)) => l
           case (f1@FiniteMap(ss1), FiniteMap(ss2)) => {
-            val filtered1 = ss1.filterNot(s => ss2.contains(s))
+            val filtered1 = ss1.filterNot(s1 => ss2.exists(s2 => s2.from == s1.from))
             val newSs = filtered1 ++ ss2
             FiniteMap(newSs).setType(f1.getType)
           }
