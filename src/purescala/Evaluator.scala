@@ -234,7 +234,7 @@ object Evaluator {
         case s @ SingletonMap(f,t) => SingletonMap(rec(ctx,f), rec(ctx,t)).setType(s.getType)
         case g @ MapGet(m,k) => (rec(ctx,m), rec(ctx,k)) match {
           case (FiniteMap(ss), e) => ss.find(_.from == e) match {
-            case Some(v) => v
+            case Some(SingletonMap(k0,v0)) => v0
             case None => throw RuntimeErrorEx("key not found: " + e)
           }
           case (EmptyMap(ft,tt), e) => throw RuntimeErrorEx("key not found: " + e)
