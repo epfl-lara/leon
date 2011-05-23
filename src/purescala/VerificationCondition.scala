@@ -48,4 +48,5 @@ object VCKind extends Enumeration {
   val Precondition = Value("precond.")
   val Postcondition = Value("postcond.")
   val ExhaustiveMatch = Value("match.")
+  val MapAccess = Value("map acc.")
 }

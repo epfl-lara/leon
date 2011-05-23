@@ -543,13 +543,16 @@ trait CodeExtraction extends Extractors {
       case ExMapApply(m,f) => {
         val rm = rec(m)
         val rf = rec(f)
-        MapGet(rm, rf).setType(rm.getType match {
+        val tpe = rm.getType match {
           case MapType(_,toType) => toType
           case _ => {
             if (!silent) unit.error(tree.pos, "apply on non-map expression")
             throw ImpureCodeEncounteredException(tree)
           }
-        })
+        }
+        val mg = MapGet(rm, rf).setType(tpe)
+        val ida = MapIsDefinedAt(rm, rf)
+        IfExpr(ida, mg, Error("key not found for map access").setType(tpe)).setType(tpe)
       }
       case ExMapIsDefinedAt(m,k) => {
         val rm = rec(m)

@@ -155,8 +155,37 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
       toRet
     }
 
+    def generateMapAccessChecks(function: FunDef) : Seq[VerificationCondition] = {
+      val toRet = if (function.hasBody) {
+        val cleanBody = matchToIfThenElse(function.body.get)
+
+        val allPathConds = collectWithPathCondition((t => t match {
+          case Error("key not found for map access") => true
+          case _ => false
+        }), cleanBody)
+
+        def withPrecIfDefined(conds: Seq[Expr]) : Expr = if (function.hasPrecondition) {
+          Not(And(matchToIfThenElse(function.precondition.get), And(conds)))
+        } else {
+          Not(And(conds))
+        }
+
+        allPathConds.map(pc =>
+          new VerificationCondition(
+            withPrecIfDefined(pc._1),
+            function,
+            VCKind.MapAccess,
+            this.asInstanceOf[DefaultTactic]).setPosInfo(pc._2.asInstanceOf[Error])
+        ).toSeq
+      } else {
+        Seq.empty
+      }
+
+      toRet
+    }
+
     def generateMiscCorrectnessConditions(function: FunDef) : Seq[VerificationCondition] = {
-      Seq.empty
+      generateMapAccessChecks(function)
     }
 
     // prec: there should be no lets and no pattern-matching in this expression

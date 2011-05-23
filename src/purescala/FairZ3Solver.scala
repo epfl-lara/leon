@@ -886,11 +886,8 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         }
         case mg @ MapGet(m,k) => m.getType match {
           case MapType(fromType, toType) =>
-            val errorAST = z3.mkFreshConst("errorValue", typeToSort(toType))
-            // exprToZ3Id += (e -> errorAST)
-            // z3IdToExpr += (errorAST -> e)
             val selected = z3.mkSelect(rec(m), rec(k))
-            z3.mkITE(z3.mkDistinct(selected, mapRangeNoneConstructors(toType)()), mapRangeValueSelectors(toType)(selected), errorAST)
+            mapRangeValueSelectors(toType)(selected)
           case errorType => scala.Predef.error("Unexpected type for map: " + (ex, errorType))
         }
         case MapUnion(m1,m2) => m1.getType match {
