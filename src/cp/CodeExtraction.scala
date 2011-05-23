@@ -17,6 +17,7 @@ trait CodeExtraction extends Extractors {
   import ExpressionExtractors._
 
   private lazy val setTraitSym = definitions.getClass("scala.collection.immutable.Set")
+  private lazy val mapTraitSym = definitions.getClass("scala.collection.immutable.Map")
   private lazy val multisetTraitSym = try {
     definitions.getClass("scala.collection.immutable.Multiset")
   } catch {
@@ -27,6 +28,10 @@ trait CodeExtraction extends Extractors {
 
   def isSetTraitSym(sym : Symbol) : Boolean = {
     sym == setTraitSym || sym.tpe.toString.startsWith("scala.Predef.Set")
+  }
+
+  def isMapTraitSym(sym : Symbol) : Boolean = {
+    sym == mapTraitSym || sym.tpe.toString.startsWith("scala.Predef.Map")
   }
 
   def isMultisetTraitSym(sym : Symbol) : Boolean = {
@@ -431,6 +436,7 @@ trait CodeExtraction extends Extractors {
             for(a <- dd.symbol.annotations) {
               a.atp.safeToString match {
                 case "funcheck.Annotations.induct" => funDef.addAnnotation("induct")
+                case "funcheck.Annotations.axiomatize" => funDef.addAnnotation("axiomatize")
                 case _ => ;
               }
             }
@@ -647,7 +653,7 @@ trait CodeExtraction extends Extractors {
       case ExInt32Literal(v) => IntLiteral(v).setType(Int32Type)
       case ExBooleanLiteral(v) => BooleanLiteral(v).setType(BooleanType)
       case ExTyped(e,tpt) => rec(e).setType(scalaType2PureScala(unit,silent)(tpt.tpe))
-      case i @ ExIdentifier(sym,tpt) => varSubsts.get(sym) match {
+      case ExIdentifier(sym,tpt) => varSubsts.get(sym) match {
         case Some(fun) => fun()
         case None => {
           if (tolerant) {
@@ -710,6 +716,11 @@ trait CodeExtraction extends Extractors {
       case ExEmptyMultiset(tt) => {
         val underlying = scalaType2PureScala(unit, silent)(tt.tpe)
         EmptyMultiset(underlying).setType(MultisetType(underlying))          
+      }
+      case ExEmptyMap(ft, tt) => {
+        val fromUnderlying = scalaType2PureScala(unit, silent)(ft.tpe)
+        val toUnderlying   = scalaType2PureScala(unit, silent)(tt.tpe)
+        EmptyMap(fromUnderlying, toUnderlying).setType(MapType(fromUnderlying, toUnderlying))
       }
       case ExSetMin(t) => {
         val set = rec(t)
@@ -806,6 +817,36 @@ trait CodeExtraction extends Extractors {
           }
         }
       }
+      case ExMapUpdated(m,f,t) => {
+        val rm = rec(m)
+        val rf = rec(f)
+        val rt = rec(t)
+        val newSingleton = SingletonMap(rf, rt).setType(rm.getType)
+        rm.getType match {
+          case MapType(ft, tt) =>
+            MapUnion(rm, FiniteMap(Seq(newSingleton)).setType(rm.getType)).setType(rm.getType)
+          case _ => {
+            if (!silent) unit.error(tree.pos, "updated can only be applied to maps.")
+            throw ImpureCodeEncounteredException(tree)
+          }
+        }
+      }
+      case ExMapApply(m,f) => {
+        val rm = rec(m)
+        val rf = rec(f)
+        MapGet(rm, rf).setType(rm.getType match {
+          case MapType(_,toType) => toType
+          case _ => {
+            if (!silent) unit.error(tree.pos, "apply on non-map expression")
+            throw ImpureCodeEncounteredException(tree)
+          }
+        })
+      }
+      case ExMapIsDefinedAt(m,k) => {
+        val rm = rec(m)
+        val rk = rec(k)
+        MapIsDefinedAt(rm, rk)
+      }
 
       case ExPlusPlusPlus(t1,t2) => {
         val rl = rec(t1)
@@ -898,6 +939,7 @@ trait CodeExtraction extends Extractors {
       case TypeRef(_, sym, btt :: Nil) if isSetTraitSym(sym) => SetType(rec(btt))
       case TypeRef(_, sym, btt :: Nil) if isMultisetTraitSym(sym) => MultisetType(rec(btt))
       case TypeRef(_, sym, btt :: Nil) if isOptionClassSym(sym) => OptionType(rec(btt))
+      case TypeRef(_, sym, List(ftt,ttt)) if isMapTraitSym(sym) => MapType(rec(ftt),rec(ttt))
       case TypeRef(_, sym, Nil) if classesToClasses.keySet.contains(sym) => classDefToClassType(classesToClasses(sym))
 
       case _ => {
