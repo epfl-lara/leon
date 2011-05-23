@@ -4,20 +4,6 @@ import funcheck.Utils._
 import funcheck.Annotations._
 
 object Maps { 
-  // To implement:
-  //   - updated -> MapUnion (simply mkStore)
-  //   - isDefinedAt -> MapIsDefinedAt (look it up by using mkSelect, check if it is MapSome(bla)
-  //   - apply -> MapGet (look it up by using mkSelect, and return the value if it is MapSome(v)
-  //
-  //   - constant maps -> FiniteMap , empty map -> EmptyMap (use store on mkArrayConst with default value MapNone)
-
-  // deal with it in:
-  // - trees OK (we assume current structure is suitable)
-  // - evaluator
-  // - codeextraction OK
-  // - extractors OK
-  // - solver
-  // - printer OK
 
   sealed abstract class List
   case class Cons(head : Int, tail : List) extends List
