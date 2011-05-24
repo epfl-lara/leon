@@ -18,4 +18,8 @@ class TrivialSolver(reporter: Reporter) extends Solver(reporter) {
     case And(exs) if exs.contains(BooleanLiteral(false)) => Some(false)
     case _ => None
   }
+
+  def halt() {
+    //nothing to do
+  }
 }

@@ -381,6 +381,15 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     decideWithModel(vc, forValidity)._1
   }
 
+  private var forceStop : Boolean = false
+  private var foundDefinitiveAnswer : Boolean = false
+  def halt() {
+    if(!foundDefinitiveAnswer) {
+      forceStop = true
+      z3.softCheckCancel
+    }
+  }
+
   def decideWithModel(vc: Expr, forValidity: Boolean, evaluator: Option[(Map[Identifier,Expr])=> Boolean] = None): (Option[Boolean], Map[Identifier,Expr]) = {
     val initializationStopwatch = new Stopwatch("init",               false)
     val blocking2Z3Stopwatch    = new Stopwatch("blocking-set-to-z3", false)
@@ -395,9 +404,9 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
 
     initializationStopwatch.start
 
-    var forceStop : Boolean = false
+    forceStop = false
 
-    var foundDefinitiveAnswer : Boolean = false
+    foundDefinitiveAnswer = false
     def stopCallback() : Unit = {
       if(!foundDefinitiveAnswer) {
         reporter.error(" - Timeout reached.")

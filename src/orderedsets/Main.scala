@@ -13,6 +13,11 @@ class Main(reporter: Reporter) extends Solver(reporter) {
   val description = "BAPA with ordering"
   override val shortDescription = "BAPA<"
 
+  //TODO
+  def halt() {
+    error("TODO halt in multiset Solver")
+  }
+
   // checks for V-A-L-I-D-I-T-Y !
   // Some(true) means formula is valid (negation is unsat)
   // Some(false) means formula is not valid (negation is sat)

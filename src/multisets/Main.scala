@@ -12,6 +12,10 @@ class Main(reporter: Reporter) extends Solver(reporter) {
   val description = "Multiset Solver"
   Global.reporter = reporter
 
+  //TODO
+  def halt() {
+    error("TODO halt in multiset Solver")
+  }
 
 
   def createFormulaThatSomethingsIsSet(s:String):FormulaIn = {

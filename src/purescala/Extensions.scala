@@ -21,6 +21,10 @@ object Extensions {
 
     def isUnsat(expression: Expr) : Option[Boolean] = solve(negate(expression))
     def superseeds : Seq[String] = Nil
+
+    //once this is called, the solver should halt and return a value (probably Unknown) from the
+    //solve method as soon as possible
+    def halt() : Unit
   }
   
   abstract class Analyser(reporter: Reporter) extends Extension(reporter) {
@@ -80,6 +84,8 @@ object Extensions {
     // these extensions are always loaded, unless specified otherwise
     val defaultExtensions: Seq[Extension] = if(Settings.runDefaultExtensions) {
       //(new TestExtension(extensionsReporter)) :: 
+      //new RandomSolver(extensionsReporter, Some(50)) ::
+      //new ParallelSolver(extensionsReporter, new RandomSolver(extensionsReporter), new FairZ3Solver(extensionsReporter)) ::
       (if(Settings.useFairInstantiator) {
         (new FairZ3Solver(extensionsReporter))
       } else {
