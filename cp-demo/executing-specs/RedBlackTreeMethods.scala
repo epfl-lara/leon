@@ -144,6 +144,9 @@ object RedBlackTreeMethods {
   def addDeclarative(x : Int, tree : Tree) : Tree =
     ((t : Tree) => isRedBlackTree(t) && content(t) == content(tree) ++ Set(x)).solve
 
+  def removeDeclarative(x : Int, tree : Tree) : Tree =
+    ((t : Tree) => isRedBlackTree(t) && content(t) == content(tree) -- Set(x)).solve
+
   def main(args: Array[String]) : Unit = {
     val defaultBound = 3
     val bound = if (args.isEmpty) defaultBound else args(0).toInt
@@ -151,7 +154,10 @@ object RedBlackTreeMethods {
     val tree = ((t : Tree) => isRedBlackTree(t) && size(t) == bound).solve
 
     println("Initial tree: " + treeString(tree))
-    println("New tree with added element: " + treeString(addDeclarative(42, tree)))
+    val treeWith42 = addDeclarative(42, tree)
+    println("New tree with added element: " + treeString(treeWith42))
+    val treeWithout42 = removeDeclarative(42, treeWith42)
+    println("New tree with removed element: " + treeString(treeWithout42))
     
     Stopwatch.printSummary
   }

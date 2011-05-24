@@ -29,7 +29,8 @@ class CPPlugin(val global: Global) extends Plugin {
     "  -P:constraint-programming:prune              (with CAV) Use additional SMT queries to rule out some unrollings." + "\n" +
     "  -P:constraint-programming:cores              (with CAV) Use UNSAT cores in the unrolling/refinement step." + "\n" +
     "  -P:constraint-programming:noLuckyTests       (with CAV) Do not perform additional tests to potentially find models early." + "\n" +
-    "  -P:constraint-programming:scalaEval          (with CAV) Use functions stored in constraints to evaluate models."
+    "  -P:constraint-programming:scalaEval          (with CAV) Use functions stored in constraints to evaluate models." + "\n" +
+    "  -P:constraint-programming:verbose            Print solver output."
   )
 
   /** Processes the command-line options. */
@@ -50,6 +51,7 @@ class CPPlugin(val global: Global) extends Plugin {
         case "cores"     =>                      purescala.Settings.useCores = true
         case "noLuckyTests" =>                   purescala.Settings.luckyTest = false
         case "scalaEval" =>                      cp.Settings.useScalaEvaluator = true
+        case "verbose  " =>                      cp.Settings.verbose = true
         case s if s.startsWith("unrolling=") =>  purescala.Settings.unrollingLevel = try { s.substring("unrolling=".length, s.length).toInt } catch { case _ => 0 }
         case s if s.startsWith("functions=") =>  purescala.Settings.functionsToAnalyse = Set(splitList(s.substring("functions=".length, s.length)): _*)
         case s if s.startsWith("extensions=") => purescala.Settings.extensionNames = splitList(s.substring("extensions=".length, s.length))

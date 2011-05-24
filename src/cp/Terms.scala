@@ -1351,7 +1351,7 @@ object Terms {
 
   /********** SOLVING METHODS **********/
 
-  private val silent = false
+  private val silent = ! Settings.verbose
   private def newReporter() = if (silent) new QuietReporter() else new DefaultReporter()
   private def newSolver(program : Program) = {
     val s = new FairZ3Solver(newReporter())

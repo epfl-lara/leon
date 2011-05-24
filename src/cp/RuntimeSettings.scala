@@ -15,8 +15,10 @@ package cp
   var luckyTest : Boolean = purescala.Settings.luckyTest 
 
   var useScalaEvaluator : Boolean = Settings.useScalaEvaluator
+  var verbose : Boolean = Settings.verbose
 }
 
 object Settings {
   var useScalaEvaluator : Boolean = false
+  var verbose : Boolean = false
 }
