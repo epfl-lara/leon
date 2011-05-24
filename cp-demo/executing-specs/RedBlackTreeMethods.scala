@@ -150,15 +150,23 @@ object RedBlackTreeMethods {
   def main(args: Array[String]) : Unit = {
     val defaultBound = 3
     val bound = if (args.isEmpty) defaultBound else args(0).toInt
+    val nbTrees = if (args.size == 2) args(1).toInt else 5
 
     val tree = ((t : Tree) => isRedBlackTree(t) && size(t) == bound).solve
 
-    println("Initial tree: " + treeString(tree))
-    val treeWith42 = addDeclarative(42, tree)
-    println("New tree with added element: " + treeString(treeWith42))
-    val treeWithout42 = removeDeclarative(42, treeWith42)
-    println("New tree with removed element: " + treeString(treeWithout42))
-    
+    val someTrees = for (i <- 1 to nbTrees) yield ((t : Tree) => isRedBlackTree(t) && size(t) == bound).solve
+
+    println("Initial trees:")
+    println(someTrees.map(treeString(_)).mkString("\n---------\n"))
+
+    val treesWith42 = someTrees.map(addDeclarative(42, _))
+    println("New trees with added element:")
+    println(treesWith42.map(treeString(_)).mkString("\n---------\n"))
+
+    val treesWithout42 = treesWith42.map(removeDeclarative(42, _))
+    println("New trees with removed element:")
+    println(treesWithout42.map(treeString(_)).mkString("\n---------\n"))
+
     Stopwatch.printSummary
   }
 

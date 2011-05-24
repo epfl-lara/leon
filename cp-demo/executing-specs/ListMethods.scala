@@ -29,6 +29,11 @@ import cp.Terms._
     case Cons(_, xs) => 1 + size(xs)
   }) ensuring (_ >= 0)
 
+  def valuesWithin(l : List, lower : Int, upper : Int) : Boolean = l match {
+    case Nil() => true
+    case Cons(x, xs) => x >= lower && x <= upper && valuesWithin(xs, lower, upper)
+  }
+
   def occurrences(l : List, i : Int) : Int = (l match {
     case Nil() => 0
     case Cons(x, xs) => (if (x == i) 1 else 0) + occurrences(xs, i)
@@ -58,16 +63,29 @@ object ListMethods {
     ((l : List) => isPermutationOf(l, list) && isSorted(l)).solve
 
   def main(args: Array[String]) : Unit = {
-    val len = if (args.isEmpty) 5 else args(0).toInt
-    val l = ((l : List) => size(l) == len).solve
+    val bound = if (args.isEmpty) 5 else args(0).toInt
+    val nbLists = if (args.size == 2) args(1).toInt else 5
 
-    println("Here is a list: " + l)
-    println("Here is its last element: " + last(l))
+    // val l = ((l : List) => size(l) == bound).solve
+    // val lists = for (i <- 1 to nbLists) yield ((l : List) => size(l) == bound).solve
+    // val lists = ((l : List) => size(l) == bound && valuesWithin(l, 0, bound - 1)).findAll.toList
+    val lists = Seq(
+      Cons(1, Cons(2, Cons(3, Nil()))),
+      Cons(2, Cons(1, Cons(3, Nil()))),
+      Cons(1, Cons(2, Cons(4, Nil()))),
+      Cons(5, Cons(2, Cons(3, Nil()))),
+      Cons(7, Cons(2, Cons(9, Nil()))))
 
-    val added = add(l, 42)
-    println("Here is that list with 42 added to it: " + added)
+    println("Here are lists:")
+    println(lists.mkString("\n"))
 
-    val sorted = sort(added)
-    println("Here is the previous list, this time sorted: " + sorted)
+    // println("Here is its last element: " + last(l))
+
+    val added = lists.map(add(_, 42))
+    println("Here are those lists with 42 added to them:")
+    println(added.mkString("\n"))
+
+    // val sorted = sort(added)
+    // println("Here is the previous list, this time sorted: " + sorted)
   }
 }

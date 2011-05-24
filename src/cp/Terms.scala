@@ -1379,7 +1379,6 @@ object Terms {
     val (freshOutputIDs, expr) = combineConstraint(constraint)
 
     solver.restartZ3
-    println("Going to decide: " + expr)
     val (outcome, model) = solver.decideWithModel(expr, false, evaluator(constraint, freshOutputIDs))
 
     outcome match {
