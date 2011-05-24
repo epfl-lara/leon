@@ -1110,6 +1110,31 @@ object Trees {
     searchAndReplaceDFS(rewritePM)(expr)
   }
 
+  private var mapGetConverterCache = new scala.collection.mutable.HashMap[Expr,Expr]()
+  /** Rewrites all map accesses with additional error conditions. */
+  def mapGetWithChecks(expr: Expr) : Expr = {
+    val toRet = if (mapGetConverterCache.isDefinedAt(expr)) {
+      matchConverterCache(expr)
+    } else {
+      val converted = convertMapGet(expr)
+      mapGetConverterCache(expr) = converted
+      converted
+    }
+
+    toRet
+  }
+
+  private def convertMapGet(expr: Expr) : Expr = {
+    def rewriteMapGet(e: Expr) : Option[Expr] = e match {
+      case mg @ MapGet(m,k) => 
+        val ida = MapIsDefinedAt(m, k)
+        Some(IfExpr(ida, mg, Error("key not found for map access").setType(mg.getType)).setType(mg.getType))
+      case _ => None
+    }
+
+    searchAndReplaceDFS(rewriteMapGet)(expr)
+  }
+
   // prec: expression does not contain match expressions
   def measureADTChildrenDepth(expression: Expr) : Int = {
     import scala.math.max

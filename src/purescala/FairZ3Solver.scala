@@ -504,7 +504,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
           }
         }
         case (Some(true), m) => { // SAT
-          // println("the model is")
+          // println("Model returned by Z3:")
           // println(m)
           validatingStopwatch.start
           val (trueModel, model) = validateAndDeleteModel(m, toCheckAgainstModels, varsInVC, evaluator)
@@ -786,9 +786,9 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         case v@Variable(id) => z3Vars.get(id) match {
           case Some(ast) => ast
           case None => {
-            if (id.isLetBinder) {
-              scala.Predef.error("Error in formula being translated to Z3: identifier " + id + " seems to have escaped its let-definition")
-            }
+            // if (id.isLetBinder) {
+            //   scala.Predef.error("Error in formula being translated to Z3: identifier " + id + " seems to have escaped its let-definition")
+            // }
             val newAST = z3.mkFreshConst(id.uniqueName/*name*/, typeToSort(v.getType))
             z3Vars = z3Vars + (id -> newAST)
             exprToZ3Id += (v -> newAST)

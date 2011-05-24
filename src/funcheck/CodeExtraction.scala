@@ -550,9 +550,7 @@ trait CodeExtraction extends Extractors {
             throw ImpureCodeEncounteredException(tree)
           }
         }
-        val mg = MapGet(rm, rf).setType(tpe)
-        val ida = MapIsDefinedAt(rm, rf)
-        IfExpr(ida, mg, Error("key not found for map access").setType(tpe)).setType(tpe)
+        MapGet(rm, rf).setType(tpe)
       }
       case ExMapIsDefinedAt(m,k) => {
         val rm = rec(m)

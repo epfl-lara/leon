@@ -59,8 +59,9 @@ object AssociativeList {
   } holds
 
   def weird(m : Map[Int,Int], k : Int, v : Int) : Boolean = {
-    !(m(k) == v) || m.isDefinedAt(k)
-  } holds
+    m(k) == v && !m.isDefinedAt(k)
+    // m.isDefinedAt(k) || !(m(k) == v) 
+  } ensuring(res => !res)
 
   // def prop0(l : List, m : Map[Int,Int]) : Boolean = {
   //   size(l) > 4 && asMap(l) == m

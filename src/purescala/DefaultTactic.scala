@@ -157,7 +157,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
 
     def generateMapAccessChecks(function: FunDef) : Seq[VerificationCondition] = {
       val toRet = if (function.hasBody) {
-        val cleanBody = matchToIfThenElse(function.body.get)
+        val cleanBody = mapGetWithChecks(matchToIfThenElse(function.body.get))
 
         val allPathConds = collectWithPathCondition((t => t match {
           case Error("key not found for map access") => true
@@ -165,7 +165,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
         }), cleanBody)
 
         def withPrecIfDefined(conds: Seq[Expr]) : Expr = if (function.hasPrecondition) {
-          Not(And(matchToIfThenElse(function.precondition.get), And(conds)))
+          Not(And(mapGetWithChecks(matchToIfThenElse(function.precondition.get)), And(conds)))
         } else {
           Not(And(conds))
         }
