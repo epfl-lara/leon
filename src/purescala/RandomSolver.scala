@@ -63,7 +63,7 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
   private var running = true
 
   def solve(expression: Expr) : Option[Boolean] = {
-    println("solving: " + expression)
+    //println("solving: " + expression)
     val vars = variablesOf(expression)
     val randomValue = randomValueGen()
     running = true
@@ -80,7 +80,7 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
 
       val var2val: Map[Identifier, Expr] = Map(vars.map(v => (v, randomValue(v.getType))).toList: _*)
 
-      println("trying with : " + var2val)
+      //println("trying with : " + var2val)
 
       val evalResult = eval(var2val, expression, None)
       evalResult match {

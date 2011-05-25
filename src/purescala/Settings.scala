@@ -11,15 +11,16 @@ object Settings {
   var noForallAxioms: Boolean = true
   var unrollingLevel: Int = 0
   var zeroInlining : Boolean = false
-  var useBAPA: Boolean = true
+  var useBAPA: Boolean = false
   var impureTestcases: Boolean = false
   var nbTestcases: Int = 1
   var testBounds: (Int, Int) = (0, 3)
   var useInstantiator: Boolean = false
-  var useFairInstantiator: Boolean = false
+  var useFairInstantiator: Boolean = true
   var useCores : Boolean = false
   var pruneBranches : Boolean = false
   def useAnyInstantiator : Boolean = useInstantiator || useFairInstantiator
   var solverTimeout : Option[Int] = None
   var luckyTest : Boolean = true
+  var useQuickCheck : Boolean = false
 }

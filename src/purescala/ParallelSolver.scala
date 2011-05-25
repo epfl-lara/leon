@@ -24,8 +24,9 @@ class ParallelSolver(reporter: Reporter, solvers: Solver*) extends Solver(report
     solvers.foreach(_.setProgram(prog))
   }
 
-  val description = "Solver running subsolvers in parallel"
-  override val shortDescription = "parallel"
+  val description = "Solver running subsolvers in parallel " + solvers.map(_.description).mkString("(", ", ", ")")
+  override val shortDescription = solvers.map(_.shortDescription).mkString("//")
+  override val superseeds : Seq[String] = solvers.map(_.shortDescription).toSeq
 
   private val lock = new Lock
   private var nbResponses: Int = 0

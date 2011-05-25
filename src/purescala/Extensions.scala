@@ -83,15 +83,19 @@ object Extensions {
     }
     // these extensions are always loaded, unless specified otherwise
     val defaultExtensions: Seq[Extension] = if(Settings.runDefaultExtensions) {
-      //(new TestExtension(extensionsReporter)) :: 
-      //new RandomSolver(extensionsReporter, Some(50)) ::
-      //new ParallelSolver(extensionsReporter, new RandomSolver(extensionsReporter), new FairZ3Solver(extensionsReporter)) ::
-      (if(Settings.useFairInstantiator) {
+      val z3s : Solver = (if(Settings.useFairInstantiator) {
         (new FairZ3Solver(extensionsReporter))
       } else {
         (new Z3Solver(extensionsReporter))
-      }) ::
-      Nil
+      })
+  
+      val qcs : Solver = (if(Settings.useQuickCheck) {
+        new ParallelSolver(extensionsReporter, new RandomSolver(extensionsReporter), z3s)
+      } else {
+        z3s
+      })
+
+      qcs :: Nil
     } else {
       Nil
     }

@@ -27,17 +27,16 @@ class FunCheckPlugin(val global: Global, val actionAfterExtraction : Option[Prog
     "  -P:funcheck:unrolling=[0,1,2]  Unrolling depth for recursive functions" + "\n" + 
     "  -P:funcheck:axioms             Generate simple forall axioms for recursive functions when possible" + "\n" + 
     "  -P:funcheck:tolerant           Silently extracts non-pure function bodies as ''unknown''" + "\n" +
-    "  -P:funcheck:nobapa             Disable BAPA Z3 extension" + "\n" +
+    "  -P:funcheck:bapa               Use BAPA Z3 extension (incompatible with many other things)" + "\n" +
     "  -P:funcheck:impure             Generate testcases only for impure functions" + "\n" +
     "  -P:funcheck:testcases=[1,2]    Number of testcases to generate per function" + "\n" +
     "  -P:funcheck:testbounds=l:u     Lower and upper bounds for integers in recursive datatypes" + "\n" +
-    "  -P:funcheck:timeout=N          Sets a timeout of N seconds (FairZ3 only)" + "\n" +
+    "  -P:funcheck:timeout=N          Sets a timeout of N seconds" + "\n" +
     "  -P:funcheck:XP                 Enable weird transformations and other bug-producing features" + "\n" +
-    "  -P:funcheck:PLDI               PLDI 2011 settings. Now frozen. Not completely functional. See CAV." + "\n" +
-    "  -P:funcheck:CAV                CAV 2011 settings. In progress." + "\n" +
-    "  -P:funcheck:prune              (with CAV) Use additional SMT queries to rule out some unrollings." + "\n" +
-    "  -P:funcheck:cores              (with CAV) Use UNSAT cores in the unrolling/refinement step." + "\n" +
-    "  -P:funcheck:noLuckyTests       (with CAV) Do not perform additional tests to potentially find models early."
+    "  -P:funcheck:prune              Use additional SMT queries to rule out some unrollings" + "\n" +
+    "  -P:funcheck:cores              Use UNSAT cores in the unrolling/refinement step" + "\n" +
+    "  -P:funcheck:quickcheck         Use QuickCheck-like random search in parrallel with Z3" + "\n" +
+    "  -P:funcheck:noLuckyTests       Do not perform additional tests to potentially find models early"
   )
 
   /** Processes the command-line options. */
@@ -51,14 +50,12 @@ class FunCheckPlugin(val global: Global, val actionAfterExtraction : Option[Prog
         case "tolerant"   =>                     silentlyTolerateNonPureBodies = true
         case "nodefaults" =>                     purescala.Settings.runDefaultExtensions = false
         case "axioms"     =>                     purescala.Settings.noForallAxioms = false
-        case "nobapa"     =>                     purescala.Settings.useBAPA = false
+        case "bapa"       =>                     purescala.Settings.useBAPA = true
         case "impure"     =>                     purescala.Settings.impureTestcases = true
-        case "newPM"      =>                     { println("''newPM'' is no longer a command-line option, because the new translation is now on by default."); System.exit(0) }
         case "XP"         =>                     purescala.Settings.experimental = true
-        case "PLDI"       =>                     { purescala.Settings.experimental = true; purescala.Settings.useInstantiator = true; purescala.Settings.useFairInstantiator = false; purescala.Settings.useBAPA = false; purescala.Settings.zeroInlining = true }
-        case "CAV"       =>                      { purescala.Settings.experimental = true; purescala.Settings.useInstantiator = false; purescala.Settings.useFairInstantiator = true; purescala.Settings.useBAPA = false; purescala.Settings.zeroInlining = true }
         case "prune"     =>                      purescala.Settings.pruneBranches = true
         case "cores"     =>                      purescala.Settings.useCores = true
+        case "quickcheck" =>                     purescala.Settings.useQuickCheck = true
         case "noLuckyTests" =>                   purescala.Settings.luckyTest = false
         case s if s.startsWith("unrolling=") =>  purescala.Settings.unrollingLevel = try { s.substring("unrolling=".length, s.length).toInt } catch { case _ => 0 }
         case s if s.startsWith("functions=") =>  purescala.Settings.functionsToAnalyse = Set(splitList(s.substring("functions=".length, s.length)): _*)
