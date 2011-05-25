@@ -56,32 +56,26 @@ object ListMethods {
     elem
   }
 
-  def add(list : List, elem : Int) : List =
-    ((l : List) => content(l) == content(list) ++ Set(elem)).solve
+  def appendElem(list : List, elem : Int) : List =
+    ((l : List) => concat(list, Cons(elem, Nil())) == l).solve
 
   def sort(list : List) : List =
     ((l : List) => isPermutationOf(l, list) && isSorted(l)).solve
 
   def main(args: Array[String]) : Unit = {
-    val bound = if (args.isEmpty) 5 else args(0).toInt
-    val nbLists = if (args.size == 2) args(1).toInt else 5
+    val bound = if (args.isEmpty) 3 else args(0).toInt
+    val nbLists = if (args.size == 2) args(1).toInt else 3
 
     // val l = ((l : List) => size(l) == bound).solve
     // val lists = for (i <- 1 to nbLists) yield ((l : List) => size(l) == bound).solve
-    // val lists = ((l : List) => size(l) == bound && valuesWithin(l, 0, bound - 1)).findAll.toList
-    val lists = Seq(
-      Cons(1, Cons(2, Cons(3, Nil()))),
-      Cons(2, Cons(1, Cons(3, Nil()))),
-      Cons(1, Cons(2, Cons(4, Nil()))),
-      Cons(5, Cons(2, Cons(3, Nil()))),
-      Cons(7, Cons(2, Cons(9, Nil()))))
+    val lists = ((l : List) => size(l) == bound && valuesWithin(l, 0, bound - 1)).findAll.toList
 
     println("Here are lists:")
     println(lists.mkString("\n"))
 
     // println("Here is its last element: " + last(l))
 
-    val added = lists.map(add(_, 42))
+    val added = lists.map(appendElem(_, 42))
     println("Here are those lists with 42 added to them:")
     println(added.mkString("\n"))
 
