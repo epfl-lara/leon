@@ -469,7 +469,7 @@ trait Extractors {
 
     object ExUnion {
       def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
-        case Apply(Select(lhs, n), List(rhs)) if (n == nme.PLUSPLUS) => Some((lhs,rhs))
+        case Apply(Select(lhs, n), List(rhs)) if (n == encode("++")/*nme.PLUSPLUS*/) => Some((lhs,rhs))
         case _ => None
       }
     }

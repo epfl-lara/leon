@@ -6,6 +6,8 @@ import z3.scala._
 import AST._
 import NormalForms.{simplify, setVariables, rewriteSetRel}
 
+import scala.sys.error
+
 class BAPATheoryBubbles(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (bubbles)") with Bubbles {
 
   /* Flags */

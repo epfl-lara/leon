@@ -35,8 +35,8 @@ trait Z3ModelReconstruction {
                 case _ => false
               })) yield {
                 z3.getASTKind(value) match {
-                  case Z3AppAST(someCons, List(arg)) if someCons == mapRangeSomeConstructors(vt) => SingletonMap(fromZ3Formula(index), fromZ3Formula(arg))
-                  case _ => scala.Predef.error("unexpected value in map: " + value)
+                  case Z3AppAST(someCons, arg :: Nil) if someCons == mapRangeSomeConstructors(vt) => SingletonMap(fromZ3Formula(index), fromZ3Formula(arg))
+                  case _ => scala.sys.error("unexpected value in map: " + value)
                 }
               }
               if (singletons.isEmpty) Some(EmptyMap(kt, vt)) else Some(FiniteMap(singletons.toSeq))

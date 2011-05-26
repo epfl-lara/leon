@@ -14,6 +14,8 @@ import z3.scala._
 import AST._
 import NormalForms.{simplify, rewriteSetRel, setVariables, purify}
 
+import scala.sys.error
+
 class BAPATheory(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory") with VennRegions { //with InclusionGraphs {
 
   /* Register callbacks */

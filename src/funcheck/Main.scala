@@ -60,9 +60,9 @@ object Main {
 /** This class is a compiler that will be used for running the plugin in
  * standalone mode. Original version courtesy of D. Zufferey. */
 class PluginRunner(settings : Settings, reportingFunction : String => Unit, actionOnProgram : Option[Program=>Unit]) extends Global(settings, new SimpleReporter(settings, reportingFunction)) {
-    val funcheckPlugin = new FunCheckPlugin(this, actionOnProgram)
+  val funcheckPlugin = new FunCheckPlugin(this, actionOnProgram)
 
-    protected def addToPhasesSet(sub : SubComponent, descr : String) : Unit = {
+  protected def myAddToPhasesSet(sub : SubComponent, descr : String) : Unit = {
     phasesSet += sub
   }
 
@@ -80,6 +80,6 @@ class PluginRunner(settings : Settings, reportingFunction : String => Unit, acti
       val zipped = funcheckPlugin.components zip funcheckPlugin.descriptions
       zipped
     }
-    phs foreach (addToPhasesSet _).tupled
+    phs foreach (myAddToPhasesSet _).tupled
   }
 }

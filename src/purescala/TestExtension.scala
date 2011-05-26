@@ -64,7 +64,7 @@ class TestExtension(val reporter: Reporter) extends Analyser(reporter) {
     }
     case u @ UnaryOperator(a,_) => leadsToCall(a)
     case t : Terminal => false
-    case unhandled => scala.Predef.error("unhandled.")
+    case unhandled => scala.sys.error("unhandled.")
   }
 
   private def cleanClausify(formula : Expr, program : Program) : Unit = {

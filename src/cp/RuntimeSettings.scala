@@ -1,6 +1,6 @@
 package cp
 
-@serializable class RuntimeSettings {
+class RuntimeSettings extends Serializable {
   var experimental : Boolean = purescala.Settings.experimental 
   var showIDs: Boolean = purescala.Settings.showIDs
   var noForallAxioms: Boolean = purescala.Settings.noForallAxioms

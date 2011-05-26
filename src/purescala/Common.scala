@@ -5,7 +5,9 @@ object Common {
   import TypeTrees.Typed
 
   // the type is left blank (Untyped) for Identifiers that are not variables
-  @serializable class Identifier private[Common](val name: String, val id: Int, alwaysShowUniqueID: Boolean = false) extends Typed {
+  class Identifier private[Common](val name: String, val id: Int, alwaysShowUniqueID: Boolean = false) extends Typed {
+    self : Serializable =>
+
     override def equals(other: Any): Boolean = {
       if(other == null || !other.isInstanceOf[Identifier])
         false
@@ -60,7 +62,7 @@ object Common {
     def apply(name: String, alwaysShowUniqueID: Boolean = false) : Identifier = new Identifier(name, UniqueCounter.next, alwaysShowUniqueID)
   }
 
-  @serializable trait ScalacPositional {
+  trait ScalacPositional {
     self =>
 
     private var prow: Int = -1078

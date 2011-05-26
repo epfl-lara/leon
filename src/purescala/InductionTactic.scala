@@ -17,7 +17,7 @@ class InductionTactic(reporter: Reporter) extends DefaultTactic(reporter) {
       })
     if (filtered.size != 1) None else (filtered.head.getType match {
       case AbstractClassType(classDef) => Some(classDef)
-      case _ => scala.Predef.error("This should not happen.")
+      case _ => scala.sys.error("This should not happen.")
     })
   } 
 
@@ -29,7 +29,7 @@ class InductionTactic(reporter: Reporter) extends DefaultTactic(reporter) {
       })
     if (filtered.size == 0) None else (filtered.head.getType match {
       case AbstractClassType(classDef) => Some((classDef, filtered.head))
-      case _ => scala.Predef.error("This should not happen.")
+      case _ => scala.sys.error("This should not happen.")
     })
   } 
 
@@ -75,7 +75,7 @@ class InductionTactic(reporter: Reporter) extends DefaultTactic(reporter) {
                   Implies(And(inductiveHypothesis), withPrec)
                 }
               new VerificationCondition(Implies(CaseClassInstanceOf(ccd, argAsVar), conditionForChild), funDef, VCKind.Postcondition, this)
-            case _ => error("Abstract class has non-case class subtype.")
+            case _ => scala.sys.error("Abstract class has non-case class subtype.")
           }))
           println("Induction tactic yields the following VCs:")
           println(conditionsForEachChild.map(vc => vc.condition).mkString("\n"))

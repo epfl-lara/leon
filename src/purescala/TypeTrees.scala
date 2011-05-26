@@ -5,7 +5,7 @@ object TypeTrees {
   import Trees._
   import Definitions._
 
-  @serializable trait Typed {
+  trait Typed extends Serializable {
     self =>
 
     private var _type: Option[TypeTree] = None
@@ -17,12 +17,12 @@ object TypeTrees {
 
     def setType(tt: TypeTree): self.type = _type match {
       case None => _type = Some(tt); this
-      case Some(o) if o != tt => scala.Predef.error("Resetting type information.")
+      case Some(o) if o != tt => scala.sys.error("Resetting type information.")
       case _ => this
     }
   }
 
-  @serializable trait FixedType extends Typed {
+  trait FixedType extends Typed {
     self =>
 
     val fixedType: TypeTree
@@ -31,7 +31,7 @@ object TypeTrees {
   }
     
 
-  @serializable sealed abstract class TypeTree {
+  sealed abstract class TypeTree extends Serializable {
     override def toString: String = PrettyPrinter(this)
   }
 
@@ -39,7 +39,7 @@ object TypeTrees {
   def bestRealType(t: TypeTree) : TypeTree = t match {
     case c: ClassType if c.classDef.isInstanceOf[CaseClassDef] => {
       c.classDef.parent match {
-        case None => scala.Predef.error("Asking for real type of a case class without abstract parent")
+        case None => scala.sys.error("Asking for real type of a case class without abstract parent")
         case Some(p) => AbstractClassType(p)
       }
     }
@@ -71,7 +71,7 @@ object TypeTrees {
       }
 
       if(found.isEmpty) {
-        scala.Predef.error("Asking for lub of unrelated class types : " + t1 + " and " + t2)
+        scala.sys.error("Asking for lub of unrelated class types : " + t1 + " and " + t2)
       } else {
         classDefToClassType(found.get)
       }
@@ -83,13 +83,13 @@ object TypeTrees {
     case (o1,AnyType) => AnyType
     case (AnyType,o2) => AnyType
 
-    case _ => scala.Predef.error("Asking for lub of unrelated types: " + t1 + " and " + t2)
+    case _ => scala.sys.error("Asking for lub of unrelated types: " + t1 + " and " + t2)
   }
 
   // returns the number of distinct values that inhabit a type
-  @serializable sealed abstract class TypeSize
-  @serializable case class FiniteSize(size: Int) extends TypeSize
-  @serializable case object InfiniteSize extends TypeSize
+  sealed abstract class TypeSize extends Serializable
+  case class FiniteSize(size: Int) extends TypeSize
+  case object InfiniteSize extends TypeSize
 
   def domainSize(typeTree: TypeTree) : TypeSize = typeTree match {
     case Untyped => FiniteSize(0)
@@ -122,20 +122,20 @@ object TypeTrees {
     case c: ClassType => InfiniteSize
   }
 
-  @serializable case object Untyped extends TypeTree
-  @serializable case object AnyType extends TypeTree
-  @serializable case object BottomType extends TypeTree // This type is useful when we need an underlying type for None, Set.empty, etc. It should always be removed after parsing, though.
-  @serializable case object BooleanType extends TypeTree
-  @serializable case object Int32Type extends TypeTree
+  case object Untyped extends TypeTree
+  case object AnyType extends TypeTree
+  case object BottomType extends TypeTree // This type is useful when we need an underlying type for None, Set.empty, etc. It should always be removed after parsing, though.
+  case object BooleanType extends TypeTree
+  case object Int32Type extends TypeTree
 
-  @serializable case class ListType(base: TypeTree) extends TypeTree
-  @serializable case class TupleType(bases: Seq[TypeTree]) extends TypeTree { lazy val dimension: Int = bases.length }
-  @serializable case class SetType(base: TypeTree) extends TypeTree
-  @serializable case class MultisetType(base: TypeTree) extends TypeTree
-  @serializable case class MapType(from: TypeTree, to: TypeTree) extends TypeTree
-  @serializable case class OptionType(base: TypeTree) extends TypeTree
+  case class ListType(base: TypeTree) extends TypeTree
+  case class TupleType(bases: Seq[TypeTree]) extends TypeTree { lazy val dimension: Int = bases.length }
+  case class SetType(base: TypeTree) extends TypeTree
+  case class MultisetType(base: TypeTree) extends TypeTree
+  case class MapType(from: TypeTree, to: TypeTree) extends TypeTree
+  case class OptionType(base: TypeTree) extends TypeTree
 
-  @serializable sealed abstract class ClassType extends TypeTree {
+  sealed abstract class ClassType extends TypeTree {
     val classDef: ClassTypeDef
     val id: Identifier = classDef.id
 
@@ -145,8 +145,8 @@ object TypeTrees {
       case _ => false
     }
   }
-  @serializable case class AbstractClassType(classDef: AbstractClassDef) extends ClassType
-  @serializable case class CaseClassType(classDef: CaseClassDef) extends ClassType
+  case class AbstractClassType(classDef: AbstractClassDef) extends ClassType
+  case class CaseClassType(classDef: CaseClassDef) extends ClassType
 
   def classDefToClassType(cd: ClassTypeDef): ClassType = cd match {
     case a: AbstractClassDef => AbstractClassType(a)

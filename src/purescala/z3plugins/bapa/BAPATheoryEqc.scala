@@ -13,6 +13,8 @@ import z3.scala._
 import AST._
 import NormalForms.{simplify, setVariables, rewriteSetRel}
 
+import scala.sys.error
+
 class BAPATheoryEqc(val z3: Z3Context) extends Z3Theory(z3, "BAPATheory (eqc)") with VennRegions {
 
   /* Register callbacks */

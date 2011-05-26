@@ -50,7 +50,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   }
 
   def halt() {
-    scala.Predef.error("Halt not supported")
+    scala.sys.error("Halt not supported")
   }
 
   private def restartZ3: Unit = {
@@ -64,7 +64,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     if (useBAPA) bapa = new BAPATheoryType(z3)
     if (useInstantiator) instantiator = new Instantiator(this) else
     if (useFairInstantiator) instantiator = {
-      scala.Predef.error("Z3Solver should not be used with FairInst. FairZ3Solver should be used instead.")
+      scala.sys.error("Z3Solver should not be used with FairInst. FairZ3Solver should be used instead.")
     }
 
     exprToZ3Id = Map.empty
@@ -201,7 +201,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     if(useAnyInstantiator) {
       instantiator.functionDefToDecl(funDef)
     } else {
-      functionMap.getOrElse(funDef, scala.Predef.error("No Z3 definition found for function symbol " + funDef.id.name + ". (Instantiator is off)."))
+      functionMap.getOrElse(funDef, scala.sys.error("No Z3 definition found for function symbol " + funDef.id.name + ". (Instantiator is off)."))
     }
   }
   def isKnownDecl(decl: Z3FuncDecl) : Boolean = if(useAnyInstantiator) {
@@ -213,7 +213,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     if(useAnyInstantiator) {
       instantiator.functionDeclToDef(decl)
     } else {
-      reverseFunctionMap.getOrElse(decl, scala.Predef.error("No FunDef corresponds to Z3 definition " + decl + ". (Instantiator is off)."))
+      reverseFunctionMap.getOrElse(decl, scala.sys.error("No FunDef corresponds to Z3 definition " + decl + ". (Instantiator is off)."))
     }
   }
   private var functionMap: Map[FunDef, Z3FuncDecl] = Map.empty
@@ -506,7 +506,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
                   finalResult = (Some(false), asMap)
                 }
                 case t @ TypeError(_,_) => {
-                  scala.Predef.error("Type error in model evaluation.\n" + t.msg)
+                  scala.sys.error("Type error in model evaluation.\n" + t.msg)
                 }
                 case _ => {
                   reporter.info("    -> candidate model discarded.")
@@ -574,7 +574,7 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         case Some(ast) => ast
         case None => {
           if (id.isLetBinder) {
-            //scala.Predef.error("Error in formula being translated to Z3: identifier " + id + " seems to have escaped its let-definition")
+            //scala.sys.error("Error in formula being translated to Z3: identifier " + id + " seems to have escaped its let-definition")
           }
           val newAST = z3.mkFreshConst(id.name, typeToSort(v.getType))
           z3Vars = z3Vars + (id -> newAST)

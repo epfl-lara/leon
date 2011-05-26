@@ -4,6 +4,8 @@ import scala.text.{Document, DocBreak}
 import Document._
 import AST._
 
+import scala.sys.error
+
 object PrettyPrinter {
 
   /* Interface */

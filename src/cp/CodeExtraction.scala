@@ -69,12 +69,12 @@ trait CodeExtraction extends Extractors {
 
     def s2ps(tree: Tree): Expr = toPureScala(unit)(tree) match {
       case Some(ex) => ex
-      case None => stopIfErrors; scala.Predef.error("unreachable error.")
+      case None => stopIfErrors; scala.sys.error("unreachable error.")
     }
 
     def st2ps(tree: Type): purescala.TypeTrees.TypeTree = toPureScalaType(unit)(tree) match {
       case Some(tt) => tt
-      case None => stopIfErrors; scala.Predef.error("unreachable error.")
+      case None => stopIfErrors; scala.sys.error("unreachable error.")
     }
 
 
@@ -306,12 +306,12 @@ trait CodeExtraction extends Extractors {
 
     def s2ps(tree: Tree): Expr = toPureScala(unit)(tree) match {
       case Some(ex) => ex
-      case None => stopIfErrors; scala.Predef.error("unreachable error.")
+      case None => stopIfErrors; scala.sys.error("unreachable error.")
     }
 
     def st2ps(tree: Type): purescala.TypeTrees.TypeTree = toPureScalaType(unit)(tree) match {
       case Some(tt) => tt
-      case None => stopIfErrors; scala.Predef.error("unreachable error.")
+      case None => stopIfErrors; scala.sys.error("unreachable error.")
     }
 
     def extractTopLevelDef: ObjectDef = {
@@ -551,7 +551,7 @@ trait CodeExtraction extends Extractors {
       try {
         scala2PureScala(unit, false, true)(tree)
       } catch {
-        case ImpureCodeEncounteredException(_) => stopIfErrors; scala.Predef.error("unreachable error.")
+        case ImpureCodeEncounteredException(_) => stopIfErrors; scala.sys.error("unreachable error.")
       }
     }
 
@@ -559,7 +559,7 @@ trait CodeExtraction extends Extractors {
       try {
         scalaType2PureScala(unit, false)(tree)
       } catch {
-        case ImpureCodeEncounteredException(_) => stopIfErrors; scala.Predef.error("unreachable error.")
+        case ImpureCodeEncounteredException(_) => stopIfErrors; scala.sys.error("unreachable error.")
       }
     }
 

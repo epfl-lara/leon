@@ -10,7 +10,7 @@ object Settings {
   var runDefaultExtensions: Boolean = true
   var noForallAxioms: Boolean = true
   var unrollingLevel: Int = 0
-  var zeroInlining : Boolean = false
+  var zeroInlining : Boolean = true
   var useBAPA: Boolean = false
   var impureTestcases: Boolean = false
   var nbTestcases: Int = 1

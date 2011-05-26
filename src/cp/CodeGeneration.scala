@@ -91,7 +91,7 @@ trait CodeGeneration {
     def exprSeqToScalaMethod(owner : Symbol, exprToScalaCastSym : Symbol, signature : List[Tree]) : (Tree, Symbol) = {
       val returnType = if (signature.size == 1) signature.head.tpe else definitions.tupleType(signature.map(_.tpe))
 
-      val methodSym = owner.newMethod(NoPosition, unit.fresh.newName(NoPosition, "exprSeqToScala"))
+      val methodSym = owner.newMethod(NoPosition, unit.fresh.newName("exprSeqToScala"))
       methodSym setInfo (MethodType(methodSym newSyntheticValueParams (List(typeRef(NoPrefix, definitions.SeqClass, List(exprClass.tpe)))), returnType))
 
       owner.info.decls.enter(methodSym)
@@ -115,10 +115,12 @@ trait CodeGeneration {
     def exprToScalaMethods(owner : Symbol, prog : Program) : ((Symbol, Tree), (Symbol, Tree)) = {
       // `method` is the one that matches expressions and converts them
       // recursively, `castMethod` invokes `method` and casts the results.
-      val methodSym     = owner.newMethod(NoPosition, unit.fresh.newName(NoPosition, "exprToScala"))
-      val castMethodSym = owner.newMethod(NoPosition, unit.fresh.newName(NoPosition, "exprToScalaCast"))
+      val methodSym     = owner.newMethod(NoPosition, unit.fresh.newName("exprToScala"))
+      val castMethodSym = owner.newMethod(NoPosition, unit.fresh.newName("exprToScalaCast"))
 
-      val parametricType = castMethodSym.newTypeParameter(NoPosition, unit.fresh.newName(NoPosition, "A"))
+      // PS: Changed the following for 2.9.0.1 :
+      // val parametricType = castMethodSym.newTypeParameter(NoPosition, unit.fresh.newName("A"))
+      val parametricType = castMethodSym.newTypeParameter(NoPosition, global.newTypeName("A"))
       parametricType setInfo (TypeBounds(definitions.NothingClass.typeConstructor, definitions.AnyClass.typeConstructor))
 
       methodSym      setInfo (MethodType(methodSym     newSyntheticValueParams (List(exprClass.tpe)), definitions.AnyClass.tpe))
@@ -128,11 +130,11 @@ trait CodeGeneration {
       owner.info.decls.enter(castMethodSym)
 
       // the following is for the recursive method
-      val intSym        = methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "value")).setInfo(definitions.IntClass.tpe)
-      val booleanSym    = methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "value")).setInfo(definitions.BooleanClass.tpe)
+      val intSym        = methodSym.newValue(NoPosition, unit.fresh.newName("value")).setInfo(definitions.IntClass.tpe)
+      val booleanSym    = methodSym.newValue(NoPosition, unit.fresh.newName("value")).setInfo(definitions.BooleanClass.tpe)
 
-      val ccdBinderSym  = methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "ccd")).setInfo(caseClassDefClass.tpe)
-      val argsBinderSym = methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "args")).setInfo(typeRef(NoPrefix, definitions.SeqClass, List(exprClass.tpe)))
+      val ccdBinderSym  = methodSym.newValue(NoPosition, unit.fresh.newName("ccd")).setInfo(caseClassDefClass.tpe)
+      val argsBinderSym = methodSym.newValue(NoPosition, unit.fresh.newName("args")).setInfo(typeRef(NoPrefix, definitions.SeqClass, List(exprClass.tpe)))
 
       val definedCaseClasses : Seq[CaseClassDef] = prog.definedClasses.filter(_.isInstanceOf[CaseClassDef]).map(_.asInstanceOf[CaseClassDef])
       val dccSyms = definedCaseClasses map (reverseClassesToClasses(_))
@@ -147,7 +149,7 @@ trait CodeGeneration {
                     case purescala.TypeTrees.BooleanType => definitions.BooleanClass
                     case purescala.TypeTrees.Int32Type => definitions.IntClass
                     case c : purescala.TypeTrees.ClassType => reverseClassesToClasses(c.classDef)
-                    case _ => scala.Predef.error("Cannot generate method using type : " + tpe)
+                    case _ => scala.sys.error("Cannot generate method using type : " + tpe)
                   }
                   Apply(
                     TypeApply(
@@ -179,20 +181,20 @@ trait CodeGeneration {
     /* Generate the method for converting ground Scala terms into funcheck
      * expressions */
     def scalaToExprMethod(owner : Symbol, prog : Program, serializedProg : Serialized) : (Tree, Symbol) = {
-      val methodSym = owner.newMethod(NoPosition, unit.fresh.newName(NoPosition, "scalaToExpr"))
+      val methodSym = owner.newMethod(NoPosition, unit.fresh.newName("scalaToExpr"))
       methodSym setInfo (MethodType(methodSym newSyntheticValueParams (List(definitions.AnyClass.tpe)), exprClass.tpe))
       owner.info.decls.enter(methodSym)
 
-      val intSym        = methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "value")).setInfo(definitions.IntClass.tpe)
-      val booleanSym    = methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "value")).setInfo(definitions.BooleanClass.tpe)
+      val intSym        = methodSym.newValue(NoPosition, unit.fresh.newName("value")).setInfo(definitions.IntClass.tpe)
+      val booleanSym    = methodSym.newValue(NoPosition, unit.fresh.newName("value")).setInfo(definitions.BooleanClass.tpe)
 
       // TODO how to declare this type Set[_] 
       val setType     = typeRef(NoPrefix, setClass, List(WildcardType))
-      val setSym     = methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "value")).setInfo(setType)
+      val setSym     = methodSym.newValue(NoPosition, unit.fresh.newName("value")).setInfo(setType)
 
       // anonymous function for mapping set to FiniteSet expression
       // val anonFunSym = methodSym.newValue(NoPosition, nme.ANON_FUN_NAME) setInfo (methodSym.tpe)
-      // val argValue = anonFunSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "x")) setInfo (definitions.AnyClass.tpe)
+      // val argValue = anonFunSym.newValue(NoPosition, unit.fresh.newName("x")) setInfo (definitions.AnyClass.tpe)
       // val anonFun = Function(
       //   List(ValDef(argValue, EmptyTree)),
       //   methodSym APPLY ID(argValue)
@@ -206,11 +208,11 @@ trait CodeGeneration {
           /*
           val binderSyms = (ccd.fields.map {
             case VarDecl(id, tpe) =>
-              methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, id.name)).setInfo(definitions.AnyClass.tpe)
+              methodSym.newValue(NoPosition, unit.fresh.newName(id.name)).setInfo(definitions.AnyClass.tpe)
           }).toList
           */
 
-          val scalaBinderSym = methodSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "cc")).setInfo(scalaSym.tpe)
+          val scalaBinderSym = methodSym.newValue(NoPosition, unit.fresh.newName("cc")).setInfo(scalaSym.tpe)
 
           val memberSyms = (ccd.fields.map {
             case VarDecl(id, tpe) =>
@@ -263,7 +265,7 @@ trait CodeGeneration {
 
     def newConverter(exprToScalaSym : Symbol) : Tree = {
       val anonFunSym = owner.newValue(NoPosition, nme.ANON_FUN_NAME) setInfo (exprToScalaSym.tpe)
-      val argValue = anonFunSym.newValue(NoPosition, unit.fresh.newName(NoPosition, "x")) setInfo (exprClass.tpe)
+      val argValue = anonFunSym.newValue(NoPosition, unit.fresh.newName("x")) setInfo (exprClass.tpe)
 
       val anonFun = Function(
         List(ValDef(argValue, EmptyTree)),

@@ -211,7 +211,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
           case BinaryOperator(t1, t2, _) => rec(t1, path); rec(t2, path)
           case UnaryOperator(t, _) => rec(t, path)
           case t : Terminal => ;
-          case _ => scala.Predef.error("Unhandled tree in collectWithPathCondition : " + expr)
+          case _ => scala.sys.error("Unhandled tree in collectWithPathCondition : " + expr)
         }
       }
 

@@ -13,6 +13,8 @@ import Evaluator._
 
 import scala.util.Random
 
+import scala.sys.error
+
 class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends Solver(reporter) {
   require(nbTrial.forall(i => i >= 0))
 

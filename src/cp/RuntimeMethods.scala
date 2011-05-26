@@ -74,7 +74,7 @@ object RuntimeMethods {
         // there is a satisfying assignment
         val maxExprVal = modelValue(maxExprID, model) match {
           case IntLiteral(i) => i
-          case e => scala.Predef.error("Unexpected value for term to maximize : " + e)
+          case e => scala.sys.error("Unexpected value for term to maximize : " + e)
         }
 
         val optimalModel = maxAux(maxExprVal, maxExprVal - 1, None)
@@ -110,6 +110,6 @@ object RuntimeMethods {
   }
   
   def inputVar(inputVarList : List[Variable], varName : String) : Variable = {
-    inputVarList.find(_.id.name == varName).getOrElse(scala.Predef.error("Could not find input variable '" + varName + "' in list " + inputVarList))
+    inputVarList.find(_.id.name == varName).getOrElse(scala.sys.error("Could not find input variable '" + varName + "' in list " + inputVarList))
   }
 }

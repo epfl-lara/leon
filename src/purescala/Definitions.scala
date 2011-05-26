@@ -5,7 +5,7 @@ object Definitions {
   import Trees._
   import TypeTrees._
 
-  @serializable sealed abstract class Definition {
+  sealed abstract class Definition extends Serializable {
     val id: Identifier
     override def toString: String = PrettyPrinter(this)
     override def hashCode : Int = id.hashCode
@@ -17,9 +17,11 @@ object Definitions {
   }
 
   /** A VarDecl declares a new identifier to be of a certain type. */
-  @serializable case class VarDecl(id: Identifier, tpe: TypeTree) extends Typed {
+  case class VarDecl(id: Identifier, tpe: TypeTree) extends Typed {
+    self: Serializable =>
+
     override def getType = tpe
-    override def setType(tt: TypeTree) = scala.Predef.error("Can't set type of VarDecl.")
+    override def setType(tt: TypeTree) = scala.sys.error("Can't set type of VarDecl.")
 
     override def hashCode : Int = id.hashCode
     override def equals(that : Any) : Boolean = that match {
@@ -30,11 +32,11 @@ object Definitions {
     def toVariable : Variable = Variable(id).setType(tpe)
   }
 
-  @serializable type VarDecls = Seq[VarDecl]
+  type VarDecls = Seq[VarDecl]
 
   /** A wrapper for a program. For now a program is simply a single object. The
    * name is meaningless and we just use the package name as id. */
-  @serializable case class Program(id: Identifier, mainObject: ObjectDef) extends Definition {
+  case class Program(id: Identifier, mainObject: ObjectDef) extends Definition {
     def definedFunctions = mainObject.definedFunctions
     def definedClasses = mainObject.definedClasses
     def classHierarchyRoots = mainObject.classHierarchyRoots
@@ -54,13 +56,13 @@ object Definitions {
 
   /** Objects work as containers for class definitions, functions (def's) and
    * val's. */
-  @serializable case class ObjectDef(id: Identifier, defs : Seq[Definition], invariants: Seq[Expr]) extends Definition {
+  case class ObjectDef(id: Identifier, defs : Seq[Definition], invariants: Seq[Expr]) extends Definition {
     lazy val definedFunctions : Seq[FunDef] = defs.filter(_.isInstanceOf[FunDef]).map(_.asInstanceOf[FunDef])
 
     lazy val definedClasses : Seq[ClassTypeDef] = defs.filter(_.isInstanceOf[ClassTypeDef]).map(_.asInstanceOf[ClassTypeDef])
 
     def caseClassDef(caseClassName : String) : CaseClassDef =
-    definedClasses.find(ctd => ctd.id.name == caseClassName).getOrElse(scala.Predef.error("Asking for non-existent case class def: " + caseClassName)).asInstanceOf[CaseClassDef]
+    definedClasses.find(ctd => ctd.id.name == caseClassName).getOrElse(scala.sys.error("Asking for non-existent case class def: " + caseClassName)).asInstanceOf[CaseClassDef]
 
     def allIdentifiers : Set[Identifier] = {
       (defs       map (_.allIdentifiers)).foldLeft(Set[Identifier]())((a, b) => a ++ b) ++ 
@@ -149,7 +151,7 @@ object Definitions {
 
   /** Useful because case classes and classes are somewhat unified in some
    * patterns (of pattern-matching, that is) */
-  @serializable sealed trait ClassTypeDef extends Definition {
+  sealed trait ClassTypeDef extends Definition {
     self =>
 
     val id: Identifier
@@ -162,7 +164,7 @@ object Definitions {
 
   /** Will be used at some point as a common ground for case classes (which
    * implicitely define extractors) and explicitely defined unapply methods. */
-  @serializable sealed trait ExtractorTypeDef
+  sealed trait ExtractorTypeDef 
 
   /** Abstract classes. */
   object AbstractClassDef {
@@ -170,7 +172,7 @@ object Definitions {
       if(acd == null) None else Some((acd.id, acd.parent))
     }
   }
-  @serializable class AbstractClassDef(val id: Identifier, prnt: Option[AbstractClassDef] = None) extends ClassTypeDef {
+  class AbstractClassDef(val id: Identifier, prnt: Option[AbstractClassDef] = None) extends ClassTypeDef {
     private var parent_ = prnt
     var fields: VarDecls = Nil
     val isAbstract = true
@@ -198,7 +200,7 @@ object Definitions {
 
     def setParent(newParent: AbstractClassDef) = {
       if(parent_.isDefined) {
-        scala.Predef.error("Resetting parent is forbidden.")
+        scala.sys.error("Resetting parent is forbidden.")
       }
       newParent.registerChild(this)
       parent_ = Some(newParent)
@@ -214,14 +216,14 @@ object Definitions {
     }
   }
 
-  @serializable class CaseClassDef(val id: Identifier, prnt: Option[AbstractClassDef] = None) extends ClassTypeDef with ExtractorTypeDef {
+  class CaseClassDef(val id: Identifier, prnt: Option[AbstractClassDef] = None) extends ClassTypeDef with ExtractorTypeDef {
     private var parent_ = prnt
     var fields: VarDecls = Nil
     val isAbstract = false
 
     def setParent(newParent: AbstractClassDef) = {
       if(parent_.isDefined) {
-        scala.Predef.error("Resetting parent is forbidden.")
+        scala.sys.error("Resetting parent is forbidden.")
       }
       newParent.registerChild(this)
       parent_ = Some(newParent)
@@ -248,7 +250,7 @@ object Definitions {
       if(found)
         i
       else
-        scala.Predef.error("Asking for index of field that does not belong to the case class.")
+        scala.sys.error("Asking for index of field that does not belong to the case class.")
     }
   }
 
@@ -259,7 +261,7 @@ object Definitions {
   //}
   
   /** Values */
-  @serializable case class ValDef(varDecl: VarDecl, value: Expr) extends Definition {
+  case class ValDef(varDecl: VarDecl, value: Expr) extends Definition {
     val id: Identifier = varDecl.id
     def allIdentifiers : Set[Identifier] = Trees.allIdentifiers(value) + id
   }
@@ -274,7 +276,7 @@ object Definitions {
       }
     }
   }
-  @serializable class FunDef(val id: Identifier, val returnType: TypeTree, val args: VarDecls) extends Definition with ScalacPositional {
+  class FunDef(val id: Identifier, val returnType: TypeTree, val args: VarDecls) extends Definition with ScalacPositional {
     var body: Option[Expr] = None
     def implementation : Option[Expr] = body
     var precondition: Option[Expr] = None

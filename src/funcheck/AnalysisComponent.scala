@@ -36,7 +36,7 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin)
         println("Extracted program for " + unit + ": ")
         println(prog)
         println("Extraction complete. Now terminating the compiler process.")
-        exit(0)
+        sys.exit(0)
       } else {
         if(!pluginInstance.actionAfterExtraction.isDefined) {
           println("Extracted program for " + unit + ". Re-run with -P:funcheck:parse to see the output.")
@@ -50,7 +50,7 @@ class AnalysisComponent(val global: Global, val pluginInstance: FunCheckPlugin)
         analysis.analyse
         if(pluginInstance.stopAfterAnalysis) {
           println("Analysis complete. Now terminating the compiler process.")
-          exit(0)
+          sys.exit(0)
         }
       } else {
         pluginInstance.actionAfterExtraction.get(prog)

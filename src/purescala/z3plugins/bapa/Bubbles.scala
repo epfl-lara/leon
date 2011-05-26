@@ -6,6 +6,8 @@ import z3.scala._
 import AST._
 import NormalForms.simplify
 
+import scala.sys.error
+
 trait Bubbles {
 
   /* Flags */

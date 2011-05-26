@@ -109,7 +109,7 @@ object StrongConnectedComponents {
     			stack.remove(index)
     		transposeGraph = transposeGraph - el
 		    transposeGraph foreach( (t) =>{
-		      transposeGraph.update(t._1, t._2 - el) 
+		      transposeGraph.update(t._1, t._2.filter(_ != el)) 
 		    })     		
     	}
     }

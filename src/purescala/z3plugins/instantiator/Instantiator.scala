@@ -48,11 +48,11 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
   }
   def isKnownDef(funDef: FunDef) : Boolean = functionMap.isDefinedAt(funDef)
   def functionDefToDecl(funDef: FunDef) : Z3FuncDecl = {
-    functionMap.getOrElse(funDef, scala.Predef.error("No Z3 definition found for function symbol "+ funDef.id.name + " in Instantiator."))
+    functionMap.getOrElse(funDef, scala.sys.error("No Z3 definition found for function symbol "+ funDef.id.name + " in Instantiator."))
   }
   def isKnownDecl(decl: Z3FuncDecl) : Boolean = reverseFunctionMap.isDefinedAt(decl)
   def functionDeclToDef(decl: Z3FuncDecl) : FunDef = {
-    reverseFunctionMap.getOrElse(decl, scala.Predef.error("No FunDef found for Z3 definition " + decl + " in Instantiator."))
+    reverseFunctionMap.getOrElse(decl, scala.sys.error("No FunDef found for Z3 definition " + decl + " in Instantiator."))
   }
 
   // Related to discovering function calls and adding instantiations

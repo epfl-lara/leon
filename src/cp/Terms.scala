@@ -1511,7 +1511,7 @@ object Terms {
         // there is a satisfying assignment
         val minExprVal = modelValue(minExprID, model) match {
           case IntLiteral(i) => i
-          case e => scala.Predef.error("Unexpected value for term to minimize : " + e)
+          case e => scala.sys.error("Unexpected value for term to minimize : " + e)
         }
 
         val (optimalModel, optimalValue) = minAux(minExprVal - 1, None, minExprVal + 1)

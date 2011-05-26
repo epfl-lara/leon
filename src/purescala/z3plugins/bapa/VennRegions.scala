@@ -4,6 +4,8 @@ import scala.collection.mutable.{ArrayBuffer,HashMap}
 import z3.scala.{Z3Context, Z3AST, Z3Theory}
 import AST._
 
+import scala.sys.error
+
 trait VennRegions {
   val z3: Z3Context
   protected def assertAxiomSafe(ast: Z3AST): Unit
