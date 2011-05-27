@@ -3,6 +3,8 @@ package purescala
 //TODO: improve type error? Actually this is weird it does not seem to have any error of type anymore..
 //TODO: Model leads to runtype error
 
+//TODO: Halt must be "thread safe", initialize externalrunning from the solve method is not really correct
+
 import Common._
 import Definitions._
 import Extensions._
@@ -62,18 +64,19 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
     res
   }
 
-  private var running = true
+  private var externalRunning = true
 
   def solve(expression: Expr) : Option[Boolean] = {
     //println("solving: " + expression)
     val vars = variablesOf(expression)
     val randomValue = randomValueGen()
-    running = true
+    var running = true
+    externalRunning = true
 
     var result: Option[Boolean] = None
 
     var i = 0
-    while(running) {
+    while(running && externalRunning) {
 
       nbTrial match {
         case Some(n) => running &&= (i < n)
@@ -118,7 +121,7 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
   }
 
   def halt() {
-    running = false
+    externalRunning = false
   }
 
 }

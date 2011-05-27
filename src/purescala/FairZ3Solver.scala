@@ -386,7 +386,8 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
   def halt() {
     if(!foundDefinitiveAnswer) {
       forceStop = true
-      z3.softCheckCancel
+      if(z3 != null)
+        z3.softCheckCancel
     }
   }
 

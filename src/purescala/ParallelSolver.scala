@@ -20,19 +20,87 @@ class ParallelSolver(reporter: Reporter, solvers: Solver*) extends Solver(report
   private val nbSolvers = solvers.size
   require(nbSolvers >= 2)
 
-  override def setProgram(prog: Program): Unit = {
-    solvers.foreach(_.setProgram(prog))
-  }
-
   val description = "Solver running subsolvers in parallel " + solvers.map(_.description).mkString("(", ", ", ")")
   override val shortDescription = solvers.map(_.shortDescription).mkString("//")
   override val superseeds : Seq[String] = solvers.map(_.shortDescription).toSeq
 
+  class SolverRunner(s: Solver) extends Actor {
+    def act(): Unit = {
+      while(true) {
+        receive {
+          case Solve(expr) => {
+            reporter.info("Starting solver " + s.shortDescription)
+            val res = s.solve(expr)
+            coordinator ! Result(res)
+            reporter.info("Ending solver " + s.shortDescription)
+          }
+        }
+      }
+    }
+  }
+
+  class Coordinator extends Actor {
+
+    def act(): Unit = {
+      while(true) {
+        receive {
+          case s@Solve(expr) => {
+            solverRunners.foreach(_ ! s)
+            var result: Option[Boolean] = None
+            var nbResponses = 0
+
+            while(nbResponses < nbSolvers) {
+              receive {
+                case Result(Some(b)) => {
+                  solvers.foreach(_.halt)
+                  result = Some(b)
+                  nbResponses += 1
+                }
+                case Result(None) => {
+                  nbResponses += 1
+                }
+              }
+            }
+            reply(result)
+          }
+        }
+      }
+    }
+  }
+
+  private val solverRunners = solvers.map(s => new SolverRunner(s).start())
+  solverRunners.foreach(_.start())
+  private val coordinator = new Coordinator
+  coordinator.start()
+
+  case class Solve(expr: Expr)
+  case class Result(res: Option[Boolean])
+
+  def solve(expression: Expr) : Option[Boolean] = {
+    val result = (coordinator !? Solve(expression)).asInstanceOf[Option[Boolean]]
+    result
+  }
+
+  def halt() {
+    solvers.foreach(_.halt)
+  }
+
+  override def setProgram(prog: Program): Unit = {
+    solvers.foreach(_.setProgram(prog))
+  }
+
+}
+
+
+
+
+/*
   private val lock = new Lock
   private var nbResponses: Int = 0
   private var result: Option[Boolean] = None
   private var resultNotReady: Boolean = true
   private var foundSolution: Boolean = false
+
 
   class SolverRunner(s: Solver, expr: Expr) extends Actor {
     def act() {
@@ -61,25 +129,5 @@ class ParallelSolver(reporter: Reporter, solvers: Solver*) extends Solver(report
       reporter.info("Ending solver " + s.shortDescription)
     }
   }
+  */
 
-  def solve(expression: Expr) : Option[Boolean] = {
-    foundSolution = false
-    resultNotReady = true
-    result = None
-    nbResponses = 0
-
-    solvers.foreach(s => new SolverRunner(s, expression).start())
-
-    while(resultNotReady) {
-      Thread.sleep(50) //TODO it does not seem to halt without the sleep...
-    }
-    result
-  }
-
-  def halt() {
-    lock.acquire
-    solvers.foreach(_.halt)
-    lock.release
-  }
-
-}
