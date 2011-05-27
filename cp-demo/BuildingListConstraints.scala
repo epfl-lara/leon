@@ -35,7 +35,7 @@ object FirstClassConstraints {
     for (x <- oneOf(l).findAll)
       println("A solution to `oneOf': " + x)
 
-    val nilHasSize3 = hASsize(3)(Nil())
+    val nilHasSize3 = hasSize(3)(Nil())
     println("Does Nil() have size 3? : " + nilHasSize3)
  
     val aList = hasSize(5).solve

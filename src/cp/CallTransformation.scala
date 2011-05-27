@@ -106,7 +106,7 @@ trait CallTransformation
 
         // Insert generated method definitions
         case cd @ ClassDef(mods, name, tparams, impl) if (cd.symbol.isModuleClass && tparams.isEmpty && !cd.symbol.isSynthetic) => {
-          val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
+          val codeGen = new CodeGenerator(unit, currentOwner, impl.pos)
 
           val ((e2sSym, exprToScalaCode), (e2sCastSym,exprToScalaCastCode)) = codeGen.exprToScalaMethods(cd.symbol, prog)
           exprToScalaSym      = e2sSym
