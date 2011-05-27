@@ -2,4 +2,4 @@
 
 LD_LIBRARY_PATH=lib-bin \
 JAVA_OPTS="-Xmx512M -Xms512M -Xss256M" \
-scala -classpath bin/purescala/purescala-definitions_2.8.1-1.0.jar:lib/z3.jar:bin/cp/constraint-programming-plugin_2.8.1-1.0.jar:lib/scalacheck_2.8.1-1.8.jar:out ${@}
+scala -classpath bin/purescala/purescala-definitions_2.9.0-1-1.0.jar:lib/z3.jar:bin/cp/constraint-programming-plugin_2.9.0-1-1.0.jar:lib/scalacheck_2.8.1-1.8.jar:out ${@}
