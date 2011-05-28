@@ -24,6 +24,9 @@ class ParallelSolver(reporter: Reporter, solvers: Solver*) extends Solver(report
   override val shortDescription = solvers.map(_.shortDescription).mkString("//")
   override val superseeds : Seq[String] = solvers.map(_.shortDescription).toSeq
 
+  case class Solve(expr: Expr)
+  case class Result(res: Option[Boolean])
+
   class SolverRunner(s: Solver) extends Actor {
     def act(): Unit = {
       while(true) {
@@ -72,9 +75,6 @@ class ParallelSolver(reporter: Reporter, solvers: Solver*) extends Solver(report
   solverRunners.foreach(_.start())
   private val coordinator = new Coordinator
   coordinator.start()
-
-  case class Solve(expr: Expr)
-  case class Result(res: Option[Boolean])
 
   def solve(expression: Expr) : Option[Boolean] = {
     val result = (coordinator !? Solve(expression)).asInstanceOf[Option[Boolean]]

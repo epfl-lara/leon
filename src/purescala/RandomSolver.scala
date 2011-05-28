@@ -23,55 +23,60 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
   val description = "Solver applying random testing"
   override val shortDescription = "random"
 
+  private val startingBound = 2
+  private var bound = startingBound
+  private val startingThreshold = 20
+  private var threshold = startingThreshold
+
+  private val random = new Random()
+
   private def randomType(): TypeTree = {
-    (new Random()).nextInt(2) match {
+    random.nextInt(2) match {
       case 0 => Int32Type
       case 1 => BooleanType
     }
   }
 
-  private def randomValueGen(): (TypeTree) => Expr = {
-    val random = new Random()
-    var nbIntGenerated = 0
-    
-    def res(tpe: TypeTree): Expr = tpe match {
-      case Int32Type => {
-        val r = nbIntGenerated match {
-          case 0 => IntLiteral(0)
-          case 1 => IntLiteral(1)
-          case _ => IntLiteral(random.nextInt())
+  private def randomValue(t: TypeTree, size: Int): Expr = t match {
+    case Int32Type => IntLiteral(size - random.nextInt(2*size + 1))
+    case BooleanType => BooleanLiteral(random.nextBoolean())
+    case AbstractClassType(acd) => {
+      val children = acd.knownChildren
+      if(size <= 0) {
+        val terminalChildren = children.filter{ 
+          case CaseClassDef(_, _, fields) => fields.isEmpty
+          case _ => false
         }
-        nbIntGenerated += 1
-        r
+        if(terminalChildren.isEmpty) 
+          error("We got a problem")
+        else
+          CaseClass(terminalChildren(random.nextInt(terminalChildren.size)).asInstanceOf[CaseClassDef], Seq())
+      } else {
+        randomValue(classDefToClassType(children(random.nextInt(children.size))), size)
       }
-      case BooleanType => BooleanLiteral(random.nextBoolean())
-
-      case AbstractClassType(acd) => {
-        val children = acd.knownChildren
-        res(classDefToClassType(children(random.nextInt(children.size))))
-      }
-      case CaseClassType(cd) => CaseClass(cd, cd.fields.map(f => res(f.getType))) 
-      case AnyType => res(randomType())
-      case Untyped => error("I don't know what to do")
-      case BottomType => error("I don't know what to do")
-      case ListType(base) => error("I don't know what to do")
-      case SetType(base) => error("I don't know what to do")
-      case TupleType(bases) => error("I don't know what to do")
-      case MultisetType(base) => error("I don't know what to do")
-      case MapType(from, to) => error("I don't know what to do")
-      case OptionType(base) => error("I don't know what to do")    
     }
-    res
+    case CaseClassType(cd) => {
+      CaseClass(cd, cd.fields.map(f => randomValue(f.getType, size - 1))) 
+    }
+    case AnyType => randomValue(randomType(), size)
+    case Untyped => error("I don't know what to do")
+    case BottomType => error("I don't know what to do")
+    case ListType(base) => error("I don't know what to do")
+    case SetType(base) => error("I don't know what to do")
+    case TupleType(bases) => error("I don't know what to do")
+    case MultisetType(base) => error("I don't know what to do")
+    case MapType(from, to) => error("I don't know what to do")
+    case OptionType(base) => error("I don't know what to do")    
   }
 
   private var externalRunning = true
 
   def solve(expression: Expr) : Option[Boolean] = {
-    //println("solving: " + expression)
     val vars = variablesOf(expression)
-    val randomValue = randomValueGen()
     var running = true
     externalRunning = true
+    threshold = startingThreshold
+    bound = startingBound
 
     var result: Option[Boolean] = None
 
@@ -83,17 +88,22 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
         case None => ()
       }
 
-      val var2val: Map[Identifier, Expr] = Map(vars.map(v => (v, randomValue(v.getType))).toList: _*)
+      if(i > threshold) {
+        threshold *= 2
+        bound *= 2
+      }
+
+      val var2val: Map[Identifier, Expr] = Map(vars.map(v => (v, randomValue(v.getType, bound))).toList: _*)
 
       //println("trying with : " + var2val)
 
       val evalResult = eval(var2val, expression, None)
       evalResult match {
         case OK(BooleanLiteral(true)) => {
-          reporter.info("Example tried but formula was true")
+          //reporter.info("Example tried but formula was true")
         }
         case OK(BooleanLiteral(false)) => {
-          reporter.info("Example tried and formula was false")
+          //reporter.info("Example tried and formula was false")
           result = Some(false)
           running = false
         }
