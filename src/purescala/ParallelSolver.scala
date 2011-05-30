@@ -28,6 +28,25 @@ class ParallelSolver(reporter: Reporter, solvers: Solver*) extends Solver(report
   case class Result(res: Option[Boolean])
 
   class SolverRunner(s: Solver) extends Actor {
+
+    /*
+    val that = this
+    val worker = new Actor {
+      def act(): Unit = {
+        while(true) {
+          receive {
+            case Solve(expr) => {
+              reporter.info("Starting solver " + s.shortDescription)
+              val res = s.solve(expr)
+              that ! Result(res)
+              reporter.info("Ending solver " + s.shortDescription)
+            }
+          }
+        }
+      }
+    }
+    */
+    
     def act(): Unit = {
       while(true) {
         receive {
