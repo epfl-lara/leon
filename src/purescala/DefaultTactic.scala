@@ -189,7 +189,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
     }
 
     // prec: there should be no lets and no pattern-matching in this expression
-    private def collectWithPathCondition(matcher: Expr=>Boolean, expression: Expr) : Set[(Seq[Expr],Expr)] = {
+    def collectWithPathCondition(matcher: Expr=>Boolean, expression: Expr) : Set[(Seq[Expr],Expr)] = {
       var collected : Set[(Seq[Expr],Expr)] = Set.empty
 
       def rec(expr: Expr, path: List[Expr]) : Unit = {

@@ -666,6 +666,7 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
               //z3.assertCnstr(toZ3Formula(z3, And(newClauses)).get)
               blockingSet = blockingSet ++ Set(newBlockers.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
             }
+            reporter.info(" - finished unrolling")
             unrollingStopwatch.stop
           }
         }
