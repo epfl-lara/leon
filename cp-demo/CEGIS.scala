@@ -26,8 +26,9 @@ object CEGIS {
               currentCnstr = currentCnstr && cnstrGivenX(counterex)
           }
         }
-        case None => println("cannot prove property!")
-        continue = false
+        case None => 
+          println("cannot prove property!")
+          continue = false
       }
     }
   }
