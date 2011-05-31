@@ -8,7 +8,7 @@ object CEGIS {
     val initialX = ((x: Int) => true).solve
     println("Initial x: " + initialX)
 
-    def cnstrGivenX(x0: Int): Constraint3[Int,Int,Int] = ((x: Int, a: Int, b: Int) => a * (x0 - 1) < b * x0)
+    def cnstrGivenX(x0: Int)              : Constraint3[Int,Int,Int] = ((x: Int, a: Int, b: Int) => a * (x0 - 1) < b * x0)
     def cnstrGivenParams(a0: Int, b0: Int): Constraint3[Int,Int,Int] = ((x: Int, a: Int, b: Int) => a0 * (x - 1) < b0 * x)
 
     var currentCnstr: Constraint3[Int,Int,Int] = cnstrGivenX(initialX)
