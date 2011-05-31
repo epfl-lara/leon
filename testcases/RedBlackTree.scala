@@ -51,4 +51,9 @@ object RedBlackTree {
     case Node(Red(),l,v,r) => Node(Black(),l,v,r)
     case _ => n
   }
+
+  def flip(t : Tree) : Tree = t match {
+    case Empty() => Empty()
+    case Node(color,l,e,r) => Node(color,flip(r),e,flip(l))
+  }
 }
