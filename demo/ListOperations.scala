@@ -75,6 +75,11 @@ object ListOperations {
       case Cons(x,xs) => Cons(x, append(xs, l2))
     }) ensuring(content(_) == content(l1) ++ content(l2))
 
+    def definedForAll(f : Map[Int, Int], l : List) : Boolean = l match {
+      case Nil() => true
+      case Cons(x, xs) => f.isDefinedAt(x) && definedForAll(f, xs)
+    }
+
     def map(f : Map[Int,Int], l : List) : List = {
       require(definedForAll(f, l))
       l match {
@@ -88,11 +93,6 @@ object ListOperations {
       require(definedForAll(f, l1) && definedForAll(f, l2))
       map(f, append(l1, l2)) == append(map(f, l1), map(f, l2))
     } holds
-
-    def definedForAll(f : Map[Int, Int], l : List) : Boolean = l match {
-      case Nil() => true
-      case Cons(x, xs) => f.isDefinedAt(x) && definedForAll(f, xs)
-    }
 
     @induct
     def nilAppend(l : List) : Boolean = (append(l, Nil()) == l) holds
