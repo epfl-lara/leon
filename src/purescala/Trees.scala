@@ -1203,6 +1203,7 @@ object Trees {
       CaseClass(ccd, fields.map(f => simplestValue(f.getType)))
     case SetType(baseType) => FiniteSet(Nil).setType(tpe)
     case MapType(fromType, toType) => EmptyMap(fromType, toType).setType(tpe)
+    case FunctionType(fromTypes, toType) => AnonymousFunction(Seq.empty, simplestValue(toType)).setType(tpe)
     case _ => throw new Exception("I can't choose simplest value for type " + tpe)
   }
 }
