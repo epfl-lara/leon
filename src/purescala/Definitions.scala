@@ -287,6 +287,11 @@ object Definitions {
     def hasPrecondition : Boolean = precondition.isDefined
     def hasPostcondition : Boolean = postcondition.isDefined
 
+    def getImplementation : Expr = body.get
+    def getBody : Expr = body.get
+    def getPrecondition : Expr = precondition.get
+    def getPostcondition : Expr = postcondition.get
+
     def allIdentifiers : Set[Identifier] = {
       args.map(_.id).toSet ++
       body.map(Trees.allIdentifiers(_)).getOrElse(Set[Identifier]()) ++
