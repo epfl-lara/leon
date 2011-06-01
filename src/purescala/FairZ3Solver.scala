@@ -54,10 +54,13 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     exprToZ3Id = Map.empty
     z3IdToExpr = Map.empty
 
-    anonymousFuns = Map.empty
+    // anonymousFuns = Map.empty
     fallbackSorts = Map.empty
 
     mapSorts = Map.empty
+    funSorts = Map.empty
+    funDomainConstructors = Map.empty
+    funDomainSelectors = Map.empty
 
     mapRangeSorts.clear
     mapRangeSomeConstructors.clear
@@ -89,13 +92,18 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
   private var boolSort: Z3Sort = null
   private var setSorts: Map[TypeTree, Z3Sort] = Map.empty
   private var mapSorts: Map[TypeTree, Z3Sort] = Map.empty
+
+  protected[purescala] var funSorts: Map[TypeTree, Z3Sort] = Map.empty
+  protected[purescala] var funDomainConstructors: Map[TypeTree, Z3FuncDecl] = Map.empty
+  protected[purescala] var funDomainSelectors: Map[TypeTree, Seq[Z3FuncDecl]] = Map.empty
+
   private var intSetMinFun: Z3FuncDecl = null
   private var intSetMaxFun: Z3FuncDecl = null
   private var setCardFuns: Map[TypeTree, Z3FuncDecl] = Map.empty
   private var adtSorts: Map[ClassTypeDef, Z3Sort] = Map.empty
   private var fallbackSorts: Map[TypeTree, Z3Sort] = Map.empty
 
-  protected[purescala] var anonymousFuns: Map[Identifier, Z3FuncDecl] = Map.empty
+  // protected[purescala] var anonymousFuns: Map[Identifier, Z3FuncDecl] = Map.empty
 
   protected[purescala] var adtTesters: Map[CaseClassDef, Z3FuncDecl] = Map.empty
   protected[purescala] var adtConstructors: Map[CaseClassDef, Z3FuncDecl] = Map.empty
@@ -357,6 +365,19 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         val ms = z3.mkArraySort(fromSort, toSort)
         mapSorts += ((mt, ms))
         ms
+      }
+    }
+    case ft @ FunctionType(fts, tt) => funSorts.get(ft) match {
+      case Some(s) => s
+      case None => {
+        val fss = fts map typeToSort
+        val ts = typeToSort(tt)
+        val (tupleSort, consFuncDecl, projFuncDecls) = z3.mkTupleSort(fts.map(_.toString).mkString("(",", ", ")"), fss: _*)
+        val funSort = z3.mkArraySort(tupleSort, ts)
+        funSorts += (ft -> funSort)
+        funDomainConstructors += (ft -> consFuncDecl)
+        funDomainSelectors += (ft -> projFuncDecls)
+        funSort
       }
     }
     case other => fallbackSorts.get(other) match {
@@ -921,18 +942,14 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
           case MapType(ft, tt) => z3.mkDistinct(z3.mkSelect(rec(m), rec(k)), mapRangeNoneConstructors(tt)())
           case errorType => scala.sys.error("Unexpected type for map: " + (ex, errorType))
         }
-        case AnonymousFunctionInvocation(id, args) => anonymousFuns.get(id) match {
-          case Some(fd) => fd(args map rec: _*)
-          case None => {
-            id.getType match {
-              case FunctionType(fts, tt) => {
-                val newFD = z3.mkFreshFuncDecl(id.uniqueName, fts map typeToSort, typeToSort(tt))
-                anonymousFuns = anonymousFuns + (id -> newFD)
-                newFD(args map rec: _*)
-              }
-              case errorType => scala.sys.error("Unexpected type for function: " + (id, errorType))
-            }
+        case AnonymousFunctionInvocation(id, args) => id.getType match {
+          case ft @ FunctionType(fts, tt) => {
+            val consFD = funDomainConstructors(ft)
+            val rid = rec(Variable(id))
+            val rargs = args map rec
+            z3.mkSelect(rid, consFD(rargs: _*))
           }
+          case errorType => scala.sys.error("Unexpected type for function: " + (ex, errorType))
         }
         
         case Distinct(exs) => z3.mkDistinct(exs.map(rec(_)): _*)

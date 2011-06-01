@@ -34,7 +34,9 @@ trait AbstractZ3Solver {
   protected[purescala] val mapRangeNoneTesters: MutableMap[TypeTree, Z3FuncDecl]
   protected[purescala] val mapRangeValueSelectors: MutableMap[TypeTree, Z3FuncDecl]
 
-  protected[purescala] var anonymousFuns: Map[Identifier, Z3FuncDecl]
+  protected[purescala] var funSorts: Map[TypeTree, Z3Sort]
+  protected[purescala] var funDomainConstructors: Map[TypeTree, Z3FuncDecl]
+  protected[purescala] var funDomainSelectors: Map[TypeTree, Seq[Z3FuncDecl]]
 
   protected[purescala] var exprToZ3Id : Map[Expr,Z3AST]
   protected[purescala] def fromZ3Formula(tree : Z3AST) : Expr

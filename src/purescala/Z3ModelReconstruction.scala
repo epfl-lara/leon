@@ -42,13 +42,24 @@ trait Z3ModelReconstruction {
               if (singletons.isEmpty) Some(EmptyMap(kt, vt)) else Some(FiniteMap(singletons.toSeq))
           }
         }
-        case FunctionType(fts, tt) => scala.sys.error("should not have reached this case, function interpretations are handled differently.")
+        case funType @ FunctionType(fts, tt) => model.eval(z3ID) match {
+          case None => None
+          case Some(t) => model.getArrayValue(t) match {
+            case None => None
+            case Some((es, ev)) =>
+              val entries: Seq[(Seq[Expr], Expr)] = es.toSeq.map(e => (e, z3.getASTKind(e._1))).collect {
+                case ((key, value), Z3AppAST(cons, args)) if cons == funDomainConstructors(funType) => (args map fromZ3Formula, fromZ3Formula(value))
+              }
+              val elseValue = fromZ3Formula(ev)
+              Some(AnonymousFunction(entries, elseValue))
+          }
+        }
         case other => model.eval(z3ID) match {
           case None => None
           case Some(t) => softFromZ3Formula(t)
         }
       }
-    } else if (anonymousFuns.isDefinedAt(id)) {
+    } /*else if (anonymousFuns.isDefinedAt(id)) {
       val z3fd: Z3FuncDecl = anonymousFuns(id)
 
       expectedType match {
@@ -67,7 +78,7 @@ trait Z3ModelReconstruction {
         }
         case errorType => scala.sys.error("unexpected type for function: " + errorType)
       }
-    } else None
+    } */else None
   }
 
   def modelToMap(model: Z3Model, ids: Iterable[Identifier]) : Map[Identifier,Expr] = {
