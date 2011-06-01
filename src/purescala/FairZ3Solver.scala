@@ -54,7 +54,6 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     exprToZ3Id = Map.empty
     z3IdToExpr = Map.empty
 
-    // anonymousFuns = Map.empty
     fallbackSorts = Map.empty
 
     mapSorts = Map.empty
@@ -102,8 +101,6 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
   private var setCardFuns: Map[TypeTree, Z3FuncDecl] = Map.empty
   private var adtSorts: Map[ClassTypeDef, Z3Sort] = Map.empty
   private var fallbackSorts: Map[TypeTree, Z3Sort] = Map.empty
-
-  // protected[purescala] var anonymousFuns: Map[Identifier, Z3FuncDecl] = Map.empty
 
   protected[purescala] var adtTesters: Map[CaseClassDef, Z3FuncDecl] = Map.empty
   protected[purescala] var adtConstructors: Map[CaseClassDef, Z3FuncDecl] = Map.empty

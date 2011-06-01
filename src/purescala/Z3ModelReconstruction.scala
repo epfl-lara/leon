@@ -29,15 +29,8 @@ trait Z3ModelReconstruction {
           case Some(t) => model.getArrayValue(t) match {
             case None => None
             case Some((map, elseValue)) => 
-              // assert(elseValue == mapRangeNoneConstructors(vt)())
-              val singletons = for ((index, value) <- map if (z3.getASTKind(value) match {
-                case Z3AppAST(someCons, _) if someCons == mapRangeSomeConstructors(vt) => true
-                case _ => false
-              })) yield {
-                z3.getASTKind(value) match {
-                  case Z3AppAST(someCons, arg :: Nil) if someCons == mapRangeSomeConstructors(vt) => SingletonMap(fromZ3Formula(index), fromZ3Formula(arg))
-                  case _ => scala.sys.error("unexpected value in map: " + value)
-                }
+              val singletons = map.map(e => (e, z3.getASTKind(e._2))).collect {
+                case ((index, value), Z3AppAST(someCons, arg :: Nil)) if someCons == mapRangeSomeConstructors(vt) => SingletonMap(fromZ3Formula(index), fromZ3Formula(arg))
               }
               if (singletons.isEmpty) Some(EmptyMap(kt, vt)) else Some(FiniteMap(singletons.toSeq))
           }
@@ -59,26 +52,7 @@ trait Z3ModelReconstruction {
           case Some(t) => softFromZ3Formula(t)
         }
       }
-    } /*else if (anonymousFuns.isDefinedAt(id)) {
-      val z3fd: Z3FuncDecl = anonymousFuns(id)
-
-      expectedType match {
-        case FunctionType(fts, tt) => {
-          // TODO change ScalaZ3 to avoid recomputing this
-          model.getModelFuncInterpretations.find(_._1 == z3fd) match {
-            case Some((_, es, ev)) => {
-              val entries = es.map {
-                case (args, value) => (args map fromZ3Formula, fromZ3Formula(value))
-              }
-              val elseValue = fromZ3Formula(ev)
-              Some(AnonymousFunction(entries, elseValue))
-            }
-            case None => None
-          }
-        }
-        case errorType => scala.sys.error("unexpected type for function: " + errorType)
-      }
-    } */else None
+    } else None
   }
 
   def modelToMap(model: Z3Model, ids: Iterable[Identifier]) : Map[Identifier,Expr] = {
