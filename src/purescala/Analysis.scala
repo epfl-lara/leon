@@ -23,11 +23,24 @@ class Analysis(val program: Program, val reporter: Reporter = Settings.reporter)
   val inductionTactic = new InductionTactic(reporter)
   inductionTactic.setProgram(program)
 
+  def analyse : Unit = {
+    for(funDef <- program.definedFunctions.toList.sortWith((fd1, fd2) => fd1 < fd2)) {
+      if(funDef.hasImplementation) {
+        reporter.info("Creating template for " + funDef.id + "...") 
+
+        val t : FunctionTemplate = FunctionTemplate.mkTemplate(funDef, program)
+        reporter.info("The template : " + t)
+      } else {
+        reporter.info("Skipping template creating for " + funDef.id + " as it doesn't have a known implementation.")
+      }
+    }
+  }
+
   // Calling this method will run all analyses on the program passed at
   // construction time. If at least one solver is loaded, verification
   // conditions are generated and passed to all solvers. Otherwise, only the
   // Analysis extensions are run on the program.
-  def analyse : Unit = {
+  def analyseReal : Unit = {
     if(solverExtensions.size > 1) {
       reporter.info("Running verification condition generation...")
 
