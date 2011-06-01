@@ -331,6 +331,10 @@ object Trees {
   case class Concat(list1: Expr, list2: Expr) extends Expr 
   case class ListAt(list: Expr, index: Expr) extends Expr 
 
+  /* Function operations */
+  case class AnonymousFunction(entries: Seq[(Seq[Expr],Expr)], elseValue: Expr) extends Expr
+  case class AnonymousFunctionInvocation(id: Identifier, args: Seq[Expr]) extends Expr
+
   /* Constraint programming */
   case class Distinct(exprs: Seq[Expr]) extends Expr with FixedType {
     val fixedType = BooleanType
@@ -391,6 +395,7 @@ object Trees {
   object NAryOperator {
     def unapply(expr: Expr) : Option[(Seq[Expr],(Seq[Expr])=>Expr)] = expr match {
       case fi @ FunctionInvocation(fd, args) => Some((args, (as => FunctionInvocation(fd, as).setPosInfo(fi))))
+      case AnonymousFunctionInvocation(id, args) => Some((args, (as => AnonymousFunctionInvocation(id, as))))
       case CaseClass(cd, args) => Some((args, CaseClass(cd, _)))
       case And(args) => Some((args, And.apply))
       case Or(args) => Some((args, Or.apply))
@@ -681,6 +686,7 @@ object Trees {
     def compute(t: Expr, s: Set[Identifier]) = t match {
       case Let(i,_,_) => s -- Set(i)
       case MatchExpr(_, cses) => s -- (cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b))
+      case AnonymousFunctionInvocation(i,_) => s ++ Set[Identifier](i)
       case _ => s
     }
     treeCatamorphism(convert, combine, compute, expr)

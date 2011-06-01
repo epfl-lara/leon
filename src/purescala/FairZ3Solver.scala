@@ -54,6 +54,9 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
     exprToZ3Id = Map.empty
     z3IdToExpr = Map.empty
 
+    anonymousFuns = Map.empty
+    fallbackSorts = Map.empty
+
     mapSorts = Map.empty
 
     mapRangeSorts.clear
@@ -91,6 +94,8 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
   private var setCardFuns: Map[TypeTree, Z3FuncDecl] = Map.empty
   private var adtSorts: Map[ClassTypeDef, Z3Sort] = Map.empty
   private var fallbackSorts: Map[TypeTree, Z3Sort] = Map.empty
+
+  protected[purescala] var anonymousFuns: Map[Identifier, Z3FuncDecl] = Map.empty
 
   protected[purescala] var adtTesters: Map[CaseClassDef, Z3FuncDecl] = Map.empty
   protected[purescala] var adtConstructors: Map[CaseClassDef, Z3FuncDecl] = Map.empty
@@ -514,7 +519,9 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
           }
         }
         case (Some(true), m) => { // SAT
+          println("MODEL IS: " + m)
           validatingStopwatch.start
+          println("VARS IN VC: " + varsInVC)
           val (trueModel, model) = validateAndDeleteModel(m, toCheckAgainstModels, varsInVC, evaluator)
           validatingStopwatch.stop
 
@@ -913,6 +920,19 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
         case MapIsDefinedAt(m,k) => m.getType match {
           case MapType(ft, tt) => z3.mkDistinct(z3.mkSelect(rec(m), rec(k)), mapRangeNoneConstructors(tt)())
           case errorType => scala.sys.error("Unexpected type for map: " + (ex, errorType))
+        }
+        case AnonymousFunctionInvocation(id, args) => anonymousFuns.get(id) match {
+          case Some(fd) => fd(args map rec: _*)
+          case None => {
+            id.getType match {
+              case FunctionType(fts, tt) => {
+                val newFD = z3.mkFreshFuncDecl(id.uniqueName, fts map typeToSort, typeToSort(tt))
+                anonymousFuns = anonymousFuns + (id -> newFD)
+                newFD(args map rec: _*)
+              }
+              case errorType => scala.sys.error("Unexpected type for function: " + (id, errorType))
+            }
+          }
         }
         
         case Distinct(exs) => z3.mkDistinct(exs.map(rec(_)): _*)

@@ -111,6 +111,26 @@ object PrettyPrinter {
       nsb = ppNary(nsb, args, "(", ", ", ")", lvl)
       nsb
     }
+    case AnonymousFunction(es, ev) => {
+      var nsb = sb
+      nsb.append("{")
+      es.foreach {
+        case (as, res) => 
+          nsb = ppNary(nsb, as, "", " ", "", lvl)
+          nsb.append(" -> ")
+          nsb = pp(res, nsb, lvl)
+          nsb.append(", ")
+      }
+      nsb.append("else -> ")
+      nsb = pp(ev, nsb, lvl)
+      nsb.append("}")
+    }
+    case AnonymousFunctionInvocation(id, args) => {
+      var nsb = sb
+      nsb.append(id)
+      nsb = ppNary(nsb, args, "(", ", ", ")", lvl)
+      nsb
+    }
     case Plus(l,r) => ppBinary(sb, l, r, " + ", lvl)
     case Minus(l,r) => ppBinary(sb, l, r, " - ", lvl)
     case Times(l,r) => ppBinary(sb, l, r, " * ", lvl)
@@ -245,6 +265,20 @@ object PrettyPrinter {
 
   // TYPE TREES
   // all type trees are printed in-line
+  private def ppNaryType(sb: StringBuffer, tpes: Seq[TypeTree], pre: String, op: String, post: String, lvl: Int): StringBuffer = {
+    var nsb = sb
+    nsb.append(pre)
+    val sz = tpes.size
+    var c = 0
+
+    tpes.foreach(t => {
+      nsb = pp(t, nsb, lvl) ; c += 1 ; if(c < sz) nsb.append(op)
+    })
+
+    nsb.append(post)
+    nsb
+  }
+
   private def pp(tpe: TypeTree, sb: StringBuffer, lvl: Int): StringBuffer = tpe match {
     case Untyped => sb.append("???")
     case Int32Type => sb.append("Int")
@@ -253,6 +287,15 @@ object PrettyPrinter {
     case MapType(ft,tt) => pp(tt, pp(ft, sb.append("Map["), lvl).append(","), lvl).append("]")
     case MultisetType(bt) => pp(bt, sb.append("Multiset["), lvl).append("]")
     case OptionType(bt) => pp(bt, sb.append("Option["), lvl).append("]")
+    case FunctionType(fts, tt) => {
+      var nsb = sb
+      if (fts.size > 1)
+        nsb = ppNaryType(nsb, fts, "(", ", ", ")", lvl)
+      else if (fts.size == 1)
+        nsb = pp(fts.head, nsb, lvl)
+      nsb.append(" => ")
+      pp(tt, nsb, lvl)
+    }
     case c: ClassType => sb.append(c.classDef.id)
     case _ => sb.append("Type?")
   }

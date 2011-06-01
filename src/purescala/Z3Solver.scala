@@ -107,6 +107,8 @@ class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   protected[purescala] val mapRangeNoneTesters: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
   protected[purescala] val mapRangeValueSelectors: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
 
+  protected[purescala] var anonymousFuns: Map[Identifier, Z3FuncDecl] = Map.empty
+
   case class UntranslatableTypeException(msg: String) extends Exception(msg)
   private def prepareSorts: Unit = {
     import Z3Context.{ADTSortReference, RecursiveType, RegularSort}

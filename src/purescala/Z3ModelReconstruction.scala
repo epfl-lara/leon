@@ -18,7 +18,7 @@ trait Z3ModelReconstruction {
   def modelValue(model: Z3Model, id: Identifier, tpe: TypeTree = null) : Option[Expr] = {
     val expectedType = if(tpe == null) id.getType else tpe
     
-    if(!exprToZ3Id.isDefinedAt(id.toVariable)) None else {
+    if(exprToZ3Id.isDefinedAt(id.toVariable)) {
       val z3ID : Z3AST = exprToZ3Id(id.toVariable)
 
       expectedType match {
@@ -42,12 +42,32 @@ trait Z3ModelReconstruction {
               if (singletons.isEmpty) Some(EmptyMap(kt, vt)) else Some(FiniteMap(singletons.toSeq))
           }
         }
+        case FunctionType(fts, tt) => scala.sys.error("should not have reached this case, function interpretations are handled differently.")
         case other => model.eval(z3ID) match {
           case None => None
           case Some(t) => softFromZ3Formula(t)
         }
       }
-    }
+    } else if (anonymousFuns.isDefinedAt(id)) {
+      val z3fd: Z3FuncDecl = anonymousFuns(id)
+
+      expectedType match {
+        case FunctionType(fts, tt) => {
+          // TODO change ScalaZ3 to avoid recomputing this
+          model.getModelFuncInterpretations.find(_._1 == z3fd) match {
+            case Some((_, es, ev)) => {
+              val entries = es.map {
+                case (args, value) => (args map fromZ3Formula, fromZ3Formula(value))
+              }
+              val elseValue = fromZ3Formula(ev)
+              Some(AnonymousFunction(entries, elseValue))
+            }
+            case None => None
+          }
+        }
+        case errorType => scala.sys.error("unexpected type for function: " + errorType)
+      }
+    } else None
   }
 
   def modelToMap(model: Z3Model, ids: Iterable[Identifier]) : Map[Identifier,Expr] = {
