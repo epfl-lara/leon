@@ -114,4 +114,10 @@ object ListOperations {
       }
       case Cons(x, xs) => concat0(xs, l2, Cons(x, l3))
     }) ensuring(content(_) == content(l1) ++ content(l2) ++ content(l3))
+
+    
+    def curiousAndWrongMap(f : Int => Int, l : List) : List = (l match {
+      case Nil() => Nil()
+      case Cons(x, xs) => Cons(f(x), map(f, xs))
+    }) ensuring(res => res == l)
 }
