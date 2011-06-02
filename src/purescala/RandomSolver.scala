@@ -66,7 +66,8 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
     case TupleType(bases) => error("I don't know what to do")
     case MultisetType(base) => error("I don't know what to do")
     case MapType(from, to) => error("I don't know what to do")
-    case OptionType(base) => error("I don't know what to do")    
+    case OptionType(base) => error("I don't know what to do")
+    case f : FunctionType => error("I don't know what to do")
   }
 
   private var externalRunning = true

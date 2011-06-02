@@ -10,7 +10,7 @@ import TypeTrees._
 import scala.collection.mutable.{Map => MutableMap}
 import scala.collection.mutable.{Set => MutableSet}
 
-class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3Solver with Z3ModelReconstruction {
+class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3Solver with Z3ModelReconstruction {
   // have to comment this to use the solver for constraint solving...
   // assert(Settings.useFairInstantiator)
 

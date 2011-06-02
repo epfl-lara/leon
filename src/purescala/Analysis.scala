@@ -15,13 +15,12 @@ class Analysis(val program: Program, val reporter: Reporter = Settings.reporter)
   val trivialSolver = new TrivialSolver(reporter) // This one you can't disable :D
 
   val solverExtensions1: Seq[Solver] = trivialSolver +: loadedSolverExtensions
-  //TODO: is it really correct?
   val solverExtensions = 
     if(Settings.solverTimeout == None) {
       solverExtensions1 
     } else {
       val t = Settings.solverTimeout.get 
-      solverExtensions1.map(s => new TimeoutSolver(reporter, s, t))
+      solverExtensions1.map(s => new TimeoutSolver(s, t))
     }
 
 

@@ -8,10 +8,10 @@ import TypeTrees._
 
 import scala.sys.error
 
-class TimeoutSolver(reporter: Reporter, solver : Solver, timeout : Int) extends Solver(reporter) {
+class TimeoutSolver(solver : Solver, timeout : Int) extends Solver(solver.reporter) {
 
   val description = solver.description + ", with timeout"
-  override val shortDescription = solver.shortDescription + "+timeout"
+  override val shortDescription = solver.shortDescription
 
   override def setProgram(prog: Program): Unit = {
     solver.setProgram(prog)

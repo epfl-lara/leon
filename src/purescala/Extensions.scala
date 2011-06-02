@@ -9,7 +9,7 @@ object Extensions {
     def shortDescription: String = description
   }
 
-  abstract class Solver(reporter: Reporter) extends Extension(reporter) {
+  abstract class Solver(val reporter: Reporter) extends Extension(reporter) {
     // This can be used by solvers to "see" the programs from which the
     // formulas come. (e.g. to set up some datastructures for the defined
     // ADTs, etc.) 

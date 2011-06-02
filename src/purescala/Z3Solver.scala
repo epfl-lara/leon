@@ -14,7 +14,7 @@ import scala.collection.mutable.{HashMap => MutableHashMap}
 import scala.collection.mutable.{Map => MutableMap}
 import scala.collection.mutable.{Set => MutableSet}
 
-class Z3Solver(val reporter: Reporter) extends Solver(reporter) with AbstractZ3Solver with Z3ModelReconstruction {
+class Z3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3Solver with Z3ModelReconstruction {
   import Settings.useBAPA
   import Settings.{useInstantiator,useFairInstantiator,useAnyInstantiator}
 
