@@ -115,9 +115,29 @@ object ListOperations {
       case Cons(x, xs) => concat0(xs, l2, Cons(x, l3))
     }) ensuring(content(_) == content(l1) ++ content(l2) ++ content(l3))
 
-    
     def curiousAndWrongMap(f : Int => Int, l : List) : List = (l match {
       case Nil() => Nil()
       case Cons(x, xs) => Cons(f(x), map(f, xs))
     }) ensuring(res => res == l)
+
+    /* TO TRY OUT */
+    /*
+      lemma app_Nil2 [simp]: "xs @ [] = xs"
+      apply(induct_tac xs)
+      apply(auto)
+      done
+      lemma app_assoc [simp]: "(xs @ ys) @ zs = xs @ (ys @ zs)"
+      apply(induct_tac xs)
+      apply(auto)
+      done
+      lemma rev_app [simp]: "rev(xs @ ys) = (rev ys) @ (rev xs)"
+      apply(induct_tac xs)
+      apply(auto)
+      done
+      theorem rev_rev [simp]: "rev(rev xs) = xs"
+      apply(induct_tac xs)
+      apply(auto)
+      done
+      end
+    */
 }

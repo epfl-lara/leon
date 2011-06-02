@@ -10,4 +10,10 @@ object Functions {
     val g = if (a > 5) f else h
     (f(a) == 42 && h(a) == 42) || h(a + 1) == 43
   } holds
+
+  def plus42(a : Int) : Int = a + 42
+
+  def usesSpecFun(a : Int) : Boolean = {
+    someFunction(plus42, a)
+  }
 }
