@@ -120,6 +120,19 @@ object ListOperations {
       case Cons(x, xs) => Cons(f(x), map(f, xs))
     }) ensuring(res => res == l)
 
+    def rev(l: List) : List = (l match {
+      case Nil() => Nil()
+      case Cons(x, xs) => append(rev(xs), Cons(x, Nil()))
+    })
+
+    // @induct
+    // def rev_app(xs: List, ys: List): Boolean = {
+    //   rev(append(xs, ys)) == append(rev(ys), rev(xs))
+    // } ensuring (x => appendAssoc(xs, ys) && nilAppend(xs) && nilAppend(ys) && x)
+
+    // def rev_app(xs: List, ys: List) : Boolean {
+    //   
+    // }
     /* TO TRY OUT */
     /*
       lemma app_Nil2 [simp]: "xs @ [] = xs"

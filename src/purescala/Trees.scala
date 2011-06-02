@@ -332,7 +332,7 @@ object Trees {
   case class ListAt(list: Expr, index: Expr) extends Expr 
 
   /* Function operations */
-  case class AnonymousFunction(entries: Seq[(Seq[Expr],Expr)], elseValue: Expr) extends Expr with Terminal
+  case class AnonymousFunction(entries: Seq[(Seq[Expr],Expr)], elseValue: Expr) extends Expr
   case class AnonymousFunctionInvocation(id: Identifier, args: Seq[Expr]) extends Expr
 
   /* Constraint programming */
@@ -670,6 +670,7 @@ object Trees {
       case u @ UnaryOperator(a,_) => compute(u, rec(a))
       case i @ IfExpr(a1,a2,a3) => compute(i, combine(combine(rec(a1), rec(a2)), rec(a3)))
       case m @ MatchExpr(scrut, cses) => compute(m, (scrut +: cses.flatMap(_.expressions)).map(rec(_)).reduceLeft(combine))
+      case a @ AnonymousFunction(es, ev) => compute(a, (es.flatMap(e => e._1 ++ Seq(e._2)) ++ Seq(ev)).map(rec(_)).reduceLeft(combine))
       case t: Terminal => compute(t, convert(t))
       case unhandled => scala.sys.error("Non-terminal case should be handled in treeCatamorphism: " + unhandled)
     }
