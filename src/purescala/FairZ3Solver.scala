@@ -537,9 +537,8 @@ class FairZ3Solver(val reporter: Reporter) extends Solver(reporter) with Abstrac
           }
         }
         case (Some(true), m) => { // SAT
-          println("MODEL IS: " + m)
+          // println("MODEL IS: " + m)
           validatingStopwatch.start
-          println("VARS IN VC: " + varsInVC)
           val (trueModel, model) = validateAndDeleteModel(m, toCheckAgainstModels, varsInVC, evaluator)
           validatingStopwatch.stop
 
