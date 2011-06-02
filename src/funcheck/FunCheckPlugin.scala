@@ -33,6 +33,7 @@ class FunCheckPlugin(val global: Global, val actionAfterExtraction : Option[Prog
     "  -P:funcheck:testbounds=l:u     Lower and upper bounds for integers in recursive datatypes" + "\n" +
     "  -P:funcheck:timeout=N          Sets a timeout of N seconds" + "\n" +
     "  -P:funcheck:XP                 Enable weird transformations and other bug-producing features" + "\n" +
+    "  -P:funcheck:BV                 Use bit-vectors for integers" + "\n" +
     "  -P:funcheck:prune              Use additional SMT queries to rule out some unrollings" + "\n" +
     "  -P:funcheck:cores              Use UNSAT cores in the unrolling/refinement step" + "\n" +
     "  -P:funcheck:quickcheck         Use QuickCheck-like random search in parrallel with Z3" + "\n" +
@@ -53,8 +54,9 @@ class FunCheckPlugin(val global: Global, val actionAfterExtraction : Option[Prog
         case "bapa"       =>                     purescala.Settings.useBAPA = true
         case "impure"     =>                     purescala.Settings.impureTestcases = true
         case "XP"         =>                     purescala.Settings.experimental = true
-        case "prune"     =>                      purescala.Settings.pruneBranches = true
-        case "cores"     =>                      purescala.Settings.useCores = true
+        case "BV"         =>                     purescala.Settings.bitvectorBitwidth = Some(32)
+        case "prune"      =>                     purescala.Settings.pruneBranches = true
+        case "cores"      =>                     purescala.Settings.useCores = true
         case "quickcheck" =>                     purescala.Settings.useQuickCheck = true
         case "noLuckyTests" =>                   purescala.Settings.luckyTest = false
         case s if s.startsWith("unrolling=") =>  purescala.Settings.unrollingLevel = try { s.substring("unrolling=".length, s.length).toInt } catch { case _ => 0 }
