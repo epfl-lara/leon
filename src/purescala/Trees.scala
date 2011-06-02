@@ -332,7 +332,7 @@ object Trees {
   case class ListAt(list: Expr, index: Expr) extends Expr 
 
   /* Function operations */
-  case class AnonymousFunction(entries: Seq[(Seq[Expr],Expr)], elseValue: Expr) extends Expr
+  case class AnonymousFunction(entries: Seq[(Seq[Expr],Expr)], elseValue: Expr) extends Expr with Terminal
   case class AnonymousFunctionInvocation(id: Identifier, args: Seq[Expr]) extends Expr
 
   /* Constraint programming */
