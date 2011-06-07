@@ -449,8 +449,8 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       }
     }
 
-    val timer : Option[Timer] = Settings.solverTimeout.map(t => new Timer(stopCallback, t))
-    timer.foreach(_.start())
+    //val timer : Option[Timer] = Settings.solverTimeout.map(t => new Timer(stopCallback, t))
+    //timer.foreach(_.start())
 
     var definitiveAnswer : Option[Boolean] = None
     var definitiveModel : Map[Identifier,Expr] = Map.empty
@@ -458,7 +458,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       foundDefinitiveAnswer = true
       definitiveAnswer = answer
       definitiveModel = model
-      timer.foreach(t => t.halt)
+      //timer.foreach(t => t.halt)
     }
 
     if (neverInitialized) {
@@ -733,31 +733,34 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   private def validateAndDeleteModel(model: Z3Model, formula: Expr, variables: Set[Identifier], evaluator: Option[(Map[Identifier,Expr])=>Boolean]) : (Boolean, Map[Identifier,Expr]) = {
     import Evaluator._
 
-    val asMap = modelToMap(model, variables)
-    model.delete
+    if(!forceStop) {
+      val asMap = modelToMap(model, variables)
+      model.delete
+      lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
+      val evalResult = eval(asMap, formula, evaluator)
 
-    lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
-    val evalResult = eval(asMap, formula, evaluator)
-
-    evalResult match {
-      case OK(BooleanLiteral(true)) => {
-        reporter.info("- Model validated:")
-        reporter.info(modelAsString)
-        (true, asMap)
+      evalResult match {
+        case OK(BooleanLiteral(true)) => {
+          reporter.info("- Model validated:")
+          reporter.info(modelAsString)
+          (true, asMap)
+        }
+        case RuntimeError(msg) => {
+          reporter.info("- Model leads to runtime error: " + msg)
+          reporter.error(modelAsString)
+          (true, asMap)
+        }
+        case OK(BooleanLiteral(false)) => {
+          reporter.info("- Invalid model.")
+          (false, asMap)
+        }
+        case other => {
+          reporter.error("Something went wrong. While evaluating the model, we got this: " + other)
+          (false, asMap)
+        }
       }
-      case RuntimeError(msg) => {
-        reporter.info("- Model leads to runtime error: " + msg)
-        reporter.error(modelAsString)
-        (true, asMap)
-      }
-      case OK(BooleanLiteral(false)) => {
-        reporter.info("- Invalid model.")
-        (false, asMap)
-      }
-      case other => {
-        reporter.error("Something went wrong. While evaluating the model, we got this: " + other)
-        (false, asMap)
-      }
+    } else {
+      (false, Map.empty)
     }
   }
 

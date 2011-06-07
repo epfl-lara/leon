@@ -20,8 +20,8 @@ import scala.sys.error
 class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends Solver(reporter) {
   require(nbTrial.forall(i => i >= 0))
 
-  val description = "Solver applying random testing"
-  override val shortDescription = "random"
+  val description = "Solver applying random testing (QuickCheck-like)"
+  override val shortDescription = "QC"
 
   private val startingBound = 2
   private var bound = startingBound
