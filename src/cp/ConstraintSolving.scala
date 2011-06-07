@@ -1,8 +1,9 @@
 package cp
 
-import cp.Terms._
-import purescala.{QuietReporter,DefaultReporter}
+import Terms._
 import Definitions.{UnsatisfiableConstraintException,UnknownConstraintException}
+
+import purescala.{QuietReporter,DefaultReporter}
 import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.Definitions._
@@ -16,7 +17,82 @@ object ConstraintSolving {
   private def newSolver(program : Program) = {
     val s = new FairZ3Solver(newReporter())
     s.setProgram(program)
+    s.restartZ3
     s
+  }
+
+  object GlobalContext {
+    private var solver: FairZ3Solver = null
+    private var lastModel: Option[Map[Identifier,Expr]] = None
+    private var isInconsistent: Boolean = false
+    private var alreadyAsserted: Set[Expr] = Set.empty[Expr]
+    private var toNegateForNextModel: Seq[(Seq[Identifier], Seq[Expr])] = Seq.empty
+
+    def restart(): Unit = {
+      solver.restartZ3
+      lastModel = None
+      isInconsistent = false
+      alreadyAsserted = Set.empty[Expr]
+      toNegateForNextModel = Seq.empty
+    }
+
+    def initializeIfNeeded(p: Program): Unit = {
+      if (solver == null)
+        solver = newSolver(p)
+    }
+
+    def assertConstraint(expr: Expr): Boolean = {
+      if (!alreadyAsserted.contains(expr)) {
+        alreadyAsserted = alreadyAsserted + expr
+        // println("asserting in global context: " + expr)
+        solver.decideWithModel(expr, false) match {
+          case (Some(false), model) =>
+            lastModel = Some(model)
+            true
+          case _ =>
+            isInconsistent = true
+            false
+        }
+      } else {
+        checkConsistency()
+      }
+      
+    }
+
+    /** Returns true iff the solver did not already return UNSAT and there is
+     * still a model */
+    def checkConsistency(): Boolean = {
+      !isInconsistent && (lastModel match {
+        case Some(m) => true
+        case None =>
+          assertConstraint(BooleanLiteral(true))
+      })
+    }
+
+    def findValues(ids: Seq[Identifier]): Seq[Expr] = {
+      if (!checkConsistency())
+        sys.error("how did we end up here?")
+      else lastModel match {
+        case Some(m) =>
+          ids.map(modelValue(_, m))
+        case None =>
+          sys.error("this should not have happened.")
+      }
+    }
+
+    def registerAsForced(ids: Seq[Identifier], values: Seq[Expr]): Unit = {
+      toNegateForNextModel = (ids, values) +: toNegateForNextModel
+    }
+
+    def assertModelNegation(): Unit = {
+      if (!toNegateForNextModel.isEmpty) {
+        val equalities: Seq[Expr] = toNegateForNextModel.flatMap{
+          case (ids, values) => ((ids map (i => Variable(i))) zip values) map { case (i, v) => Equals(i, v) }
+        }
+        toNegateForNextModel = Seq.empty
+        assertConstraint(Not(And(equalities)))
+      }
+    }
   }
 
   /** Return interpretation of the constant in model if it exists, the simplest
@@ -38,7 +114,6 @@ object ConstraintSolving {
 
     val (freshOutputIDs, expr) = combineConstraint(constraint)
 
-    solver.restartZ3
     val (outcome, model) = solver.decideWithModel(expr, false, evaluator(constraint, freshOutputIDs))
 
     outcome match {
@@ -185,7 +260,6 @@ object ConstraintSolving {
   /** Returns an iterator of interpretations for each identifier in the specified set */
   private def solutionsIterator(program : Program, predicate : Expr, outputVariables : Seq[Identifier], evaluator : Option[(Map[Identifier,Expr]) => Boolean] = None) : Iterator[Map[Identifier, Expr]] = {
     val solver = newSolver(program)
-    solver.restartZ3
 
     new Iterator[Map[Identifier, Expr]] {
 

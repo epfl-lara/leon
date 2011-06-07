@@ -1,12 +1,14 @@
 package cp
 
 import Serialization._
+import Definitions.{UnsatisfiableConstraintException,UnknownConstraintException}
+import ConstraintSolving._
+import LTrees._
+
 import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.Common._
-import Definitions.{UnsatisfiableConstraintException,UnknownConstraintException}
-import ConstraintSolving._
 
 object Terms {
   /** Terms are functions with domain T (which can be a tuple) and range R */
@@ -31,6 +33,10 @@ object Terms {
 
     def findAll(implicit asConstraint: (Term[T,R]) => Term[T,Boolean]) : Iterator[T] = {
       findAllExprSeq(asConstraint(this)).map(convertingFunction(_))
+    }
+
+    def lazyFindAll(implicit asConstraint: (Term[T,R]) => Constraint[T]): LStream[T] = {
+      new LStream(asConstraint(this))
     }
   }
 
@@ -1340,7 +1346,7 @@ object Terms {
 
     val outputVarTypes = typesOf(constraint)
 
-    val freshOutputIDs = outputVarTypes.zipWithIndex.map{ case (t, idx) => FreshIdentifier("x" + idx).setType(t) }
+    val freshOutputIDs = outputVarTypes.zipWithIndex.map{ case (t, idx) => FreshIdentifier("x" + idx, true).setType(t) }
     val deBruijnIndices = outputVarTypes.zipWithIndex.map{ case (t, idx) => DeBruijnIndex(idx).setType(t) }
     val exprWithFreshIDs = replace((deBruijnIndices zip (freshOutputIDs map (Variable(_)))).toMap, expr)
 

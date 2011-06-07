@@ -340,6 +340,11 @@ object Trees {
     val fixedType = BooleanType
   }
 
+  case class LogicalVariable(val id: Identifier, val solver: Extensions.Solver, var pushed: Seq[Expr]) extends Expr with Terminal {
+    override def getType = id.getType
+    override def setType(tt: TypeTree) = { id.setType(tt); this }
+  }
+
   object UnaryOperator {
     def unapply(expr: Expr) : Option[(Expr,(Expr)=>Expr)] = expr match {
       case Not(t) => Some((t,Not(_)))
