@@ -15,11 +15,15 @@ object LTrees {
 
     val (consts, exprWithConsts) = combineConstraint(constraint)
     private var assertQueue: Seq[Expr] = Seq.empty
+    private var shouldCleanup = false
 
     // assert the associated constraint
     import ConstraintSolving.GlobalContext
     GlobalContext.initializeIfNeeded(constraint.program)
-    GlobalContext.restart()
+    if (!GlobalContext.isActive()) {
+      GlobalContext.activate()
+      shouldCleanup = true
+    }
     GlobalContext.assertConstraint(exprWithConsts)
 
     def enqueue(expr: Expr): Unit = {
@@ -42,8 +46,14 @@ object LTrees {
     private def lStream(): Stream[L[T]] = {
       if (isStillSat())
         Stream.cons(new L[T](this, consts), lStream())
-      else
+      else {
+        if (shouldCleanup) {
+          println("cleaning up")
+          GlobalContext.restart()
+          GlobalContext.deactivate()
+        }
         Stream.empty
+      }
     }
 
     def flatMap [B, That] (f: (L[T]) ⇒ GenTraversableOnce[B])(implicit bf: CanBuildFrom[Traversable[L[T]], B, That]): That = {
@@ -61,6 +71,7 @@ object LTrees {
     def withFilter (p: (L[T]) ⇒ Boolean): FilterMonadic[L[T], Traversable[L[T]]] = {
       lStream().withFilter(p)
     }
+
   }
 
   implicit def lexpr2bool[T](l: LExpr[T]): Boolean = {

@@ -27,8 +27,10 @@ object ConstraintSolving {
     private var isInconsistent: Boolean = false
     private var alreadyAsserted: Set[Expr] = Set.empty[Expr]
     private var toNegateForNextModel: Seq[(Seq[Identifier], Seq[Expr])] = Seq.empty
+    private var active: Boolean = false
 
     def restart(): Unit = {
+      println("restart called")
       solver.restartZ3
       lastModel = None
       isInconsistent = false
@@ -41,10 +43,14 @@ object ConstraintSolving {
         solver = newSolver(p)
     }
 
+    def isActive(): Boolean = active
+    def activate(): Unit = { active = true }
+    def deactivate(): Unit = { active = false }
+
     def assertConstraint(expr: Expr): Boolean = {
       if (!alreadyAsserted.contains(expr)) {
         alreadyAsserted = alreadyAsserted + expr
-        // println("asserting in global context: " + expr)
+        println("asserting in global context: " + expr)
         solver.decideWithModel(expr, false) match {
           case (Some(false), model) =>
             lastModel = Some(model)
@@ -56,7 +62,6 @@ object ConstraintSolving {
       } else {
         checkConsistency()
       }
-      
     }
 
     /** Returns true iff the solver did not already return UNSAT and there is
