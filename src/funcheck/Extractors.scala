@@ -321,13 +321,6 @@ trait Extractors {
       }
     }
 
-//     object ExAnonymousFunctionInvocation {
-//       def unapply(tree: Apply): Option[(Ident,List[Tree])] = tree match {
-//         case a @ Apply(Select(i @ Ident(_), applyName), args) if applyName.toString == "apply" => Some((i, args))
-//         case _ => None
-//       }
-//     }
-// 
     // used for case classes selectors.
     object ExParameterlessMethodCall {
       def unapply(tree: Select): Option[(Tree,Name)] = tree match {
