@@ -23,8 +23,9 @@ trait CodeExtraction extends Extractors {
   } catch {
     case _ => null
   }
-  private lazy val optionClassSym = definitions.getClass("scala.Option")
-  private lazy val someClassSym   = definitions.getClass("scala.Some")
+  private lazy val optionClassSym     = definitions.getClass("scala.Option")
+  private lazy val someClassSym       = definitions.getClass("scala.Some")
+  private lazy val function1TraitSym  = definitions.getClass("scala.Function1")
 
   def isSetTraitSym(sym : Symbol) : Boolean = {
     sym == setTraitSym || sym.tpe.toString.startsWith("scala.Predef.Set")
@@ -40,6 +41,10 @@ trait CodeExtraction extends Extractors {
 
   def isOptionClassSym(sym : Symbol) : Boolean = {
     sym == optionClassSym || sym == someClassSym
+  }
+
+  def isFunction1TraitSym(sym : Symbol) : Boolean = {
+    sym == function1TraitSym
   }
 
   private val varSubsts: scala.collection.mutable.Map[Symbol,Function0[Expr]] =
@@ -831,17 +836,6 @@ trait CodeExtraction extends Extractors {
           }
         }
       }
-      case ExMapApply(m,f) => {
-        val rm = rec(m)
-        val rf = rec(f)
-        MapGet(rm, rf).setType(rm.getType match {
-          case MapType(_,toType) => toType
-          case _ => {
-            if (!silent) unit.error(tree.pos, "apply on non-map expression")
-            throw ImpureCodeEncounteredException(tree)
-          }
-        })
-      }
       case ExMapIsDefinedAt(m,k) => {
         val rm = rec(m)
         val rk = rec(k)
@@ -852,6 +846,29 @@ trait CodeExtraction extends Extractors {
         val rl = rec(t1)
         val rr = rec(t2)
         MultisetPlus(rl, rr).setType(rl.getType)
+      }
+      case ExApply(lhs,args) => {
+        val rlhs = rec(lhs)
+        val rargs = args map rec
+        rlhs.getType match {
+          case MapType(_,tt) => 
+            assert(rargs.size == 1)
+            MapGet(rlhs, rargs.head).setType(tt)
+          case FunctionType(fts, tt) => {
+            rlhs match {
+              case Variable(id) =>
+                AnonymousFunctionInvocation(id, rargs).setType(tt)
+              case _ => {
+                if (!silent) unit.error(tree.pos, "apply on non-variable or non-map expression")
+                throw ImpureCodeEncounteredException(tree)
+              }
+            }
+          }
+          case _ => {
+            if (!silent) unit.error(tree.pos, "apply on unexpected type")
+            throw ImpureCodeEncounteredException(tree)
+          }
+        }
       }
       case ExIfThenElse(t1,t2,t3) => {
         val r1 = rec(t1)
@@ -940,8 +957,8 @@ trait CodeExtraction extends Extractors {
       case TypeRef(_, sym, btt :: Nil) if isMultisetTraitSym(sym) => MultisetType(rec(btt))
       case TypeRef(_, sym, btt :: Nil) if isOptionClassSym(sym) => OptionType(rec(btt))
       case TypeRef(_, sym, List(ftt,ttt)) if isMapTraitSym(sym) => MapType(rec(ftt),rec(ttt))
+      case TypeRef(_, sym, ftt :: ttt :: Nil) if isFunction1TraitSym(sym) => FunctionType(List(rec(ftt)), rec(ttt))
       case TypeRef(_, sym, Nil) if classesToClasses.keySet.contains(sym) => classDefToClassType(classesToClasses(sym))
-
       case _ => {
         if(!silent) {
           unit.error(NoPosition, "Could not extract type as PureScala. [" + tr + "]")

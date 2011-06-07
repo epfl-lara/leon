@@ -531,9 +531,9 @@ trait Extractors {
       }
     }
 
-    object ExMapApply {
-      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
-        case Apply(Select(lhs, n), List(rhs)) if (n.toString == "apply") => Some((lhs, rhs))
+    object ExApply {
+      def unapply(tree: Apply): Option[(Tree,List[Tree])] = tree match {
+        case Apply(Select(lhs, n), rhs) if (n.toString == "apply") => Some((lhs, rhs))
         case _ => None
       }
     }
