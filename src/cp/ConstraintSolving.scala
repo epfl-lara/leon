@@ -30,7 +30,7 @@ object ConstraintSolving {
     private var active: Boolean = false
 
     def restart(): Unit = {
-      println("restart called")
+      // println("restart called")
       solver.restartZ3
       lastModel = None
       isInconsistent = false
@@ -50,7 +50,7 @@ object ConstraintSolving {
     def assertConstraint(expr: Expr): Boolean = {
       if (!alreadyAsserted.contains(expr)) {
         alreadyAsserted = alreadyAsserted + expr
-        println("asserting in global context: " + expr)
+        // println("asserting in global context: " + expr)
         solver.decideWithModel(expr, false) match {
           case (Some(false), model) =>
             lastModel = Some(model)

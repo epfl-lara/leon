@@ -48,7 +48,6 @@ object LTrees {
         Stream.cons(new L[T](this, consts), lStream())
       else {
         if (shouldCleanup) {
-          println("cleaning up")
           GlobalContext.restart()
           GlobalContext.deactivate()
         }
