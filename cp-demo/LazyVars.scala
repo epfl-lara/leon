@@ -6,7 +6,6 @@ object LazyVars {
   def chooseInt(lower: Int, upper: Int) = ((x: Int) => x >= lower && x <= upper).lazyFindAll
 
   def main(args: Array[String]): Unit = {
-    /*
     for {
       x <- chooseInt(0, 5)
       y <- chooseInt(3, 6)
@@ -16,12 +15,13 @@ object LazyVars {
       val j: Int = y
       println(i, j)
     }
-    */
+
+    println("...")
 
     for {
       x <- NonnegativeInt
       y <- NonnegativeInt // replace these with Stream.from(0) and the code will loop forever without printing anything
-      if y < 100 && y < 200 && y === 5
+      if x > y && x < 10
     } {
       val i: Int = x
       val j: Int = y
