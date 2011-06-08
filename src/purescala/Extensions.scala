@@ -88,20 +88,26 @@ object Extensions {
       } else {
         (new Z3Solver(extensionsReporter))
       })
-  
-      val qcs : Solver = (if(Settings.useQuickCheck) {
-        new ParallelSolver(extensionsReporter, new RandomSolver(extensionsReporter), z3s)
-      } else {
-        z3s
-      })
-
-      qcs :: Nil
+      z3s :: Nil
     } else {
       Nil
     }
+
+
     allLoaded = defaultExtensions ++ loaded
     analysisExtensions = allLoaded.filter(_.isInstanceOf[Analyser]).map(_.asInstanceOf[Analyser])
-    solverExtensions = allLoaded.filter(_.isInstanceOf[Solver]).map(_.asInstanceOf[Solver])
+
+    val solverExtensions0 = allLoaded.filter(_.isInstanceOf[Solver]).map(_.asInstanceOf[Solver])
+    val solverExtensions1 = if(Settings.useQuickCheck) new RandomSolver(extensionsReporter) +: solverExtensions0 else solverExtensions0
+    val solverExtensions2 = if(Settings.useParallel) new ParallelSolver(solverExtensions1: _*) +: solverExtensions1 else solverExtensions1
+    val solverExtensions3 = 
+      if(Settings.solverTimeout == None) {
+        solverExtensions2 
+      } else {
+        val t = Settings.solverTimeout.get 
+        solverExtensions2.map(s => new TimeoutSolver(s, t))
+      }
+    solverExtensions = solverExtensions3
     loaded
   }
 

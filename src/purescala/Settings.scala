@@ -23,6 +23,7 @@ object Settings {
   var solverTimeout : Option[Int] = None
   var luckyTest : Boolean = true
   var useQuickCheck : Boolean = false
+  var useParallel : Boolean = false
   // When this is None, use real integers
   var bitvectorBitwidth : Option[Int] = None
 }

@@ -14,14 +14,7 @@ class Analysis(val program: Program, val reporter: Reporter = Settings.reporter)
 
   val trivialSolver = new TrivialSolver(reporter) // This one you can't disable :D
 
-  val solverExtensions0: Seq[Solver] = trivialSolver +: loadedSolverExtensions
-  val solverExtensions = 
-    if(Settings.solverTimeout == None) {
-      solverExtensions0 
-    } else {
-      val t = Settings.solverTimeout.get 
-      solverExtensions0.map(s => new TimeoutSolver(s, t))
-    }
+  val solverExtensions: Seq[Solver] = trivialSolver +: loadedSolverExtensions
 
   solverExtensions.foreach(_.setProgram(program))
 

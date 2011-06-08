@@ -16,7 +16,7 @@ import scala.actors.Actor._
 
 import scala.concurrent.Lock
 
-class ParallelSolver(reporter: Reporter, solvers: Solver*) extends Solver(reporter) {
+class ParallelSolver(solvers: Solver*) extends Solver(solvers(0).reporter) {
   private val nbSolvers = solvers.size
   require(nbSolvers >= 2)
 
