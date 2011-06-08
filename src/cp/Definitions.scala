@@ -2,6 +2,7 @@ package cp
 
 object Definitions {
   import Terms._
+  import LTrees._
 
   class spec extends StaticAnnotation
 
@@ -19,6 +20,9 @@ object Definitions {
   implicit def func2term7[T1,T2,T3,T4,T5,T6,T7,R](func : (T1,T2,T3,T4,T5,T6,T7) => R) : Term7[T1,T2,T3,T4,T5,T6,T7,R] = throw new NotImplementedException
   implicit def func2term8[T1,T2,T3,T4,T5,T6,T7,T8,R](func : (T1,T2,T3,T4,T5,T6,T7,T8) => R) : Term8[T1,T2,T3,T4,T5,T6,T7,T8,R] = throw new NotImplementedException
   implicit def func2term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R](func : (T1,T2,T3,T4,T5,T6,T7,T8,T9) => R) : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R] = throw new NotImplementedException
+
+  implicit def int2lexpr(i: Int): LIntLiteral = LIntLiteral(i)
+  implicit def boolean2lexpr(b: Boolean): LBooleanLiteral = LBooleanLiteral(b)
 
   def distinct[A](args: A*) : Boolean = {
     args.toList.distinct.size == args.size

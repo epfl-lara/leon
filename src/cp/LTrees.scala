@@ -74,7 +74,7 @@ object LTrees {
   }
 
   implicit def lexpr2bool[T](l: LExpr[T]): Boolean = {
-    val toAssert = constraint(l)
+    val toAssert = lexprToExpr(l)
     // println("asserting within implicit call: " + toAssert)
     GlobalContext.assertConstraint(toAssert)
     GlobalContext.checkConsistency()
@@ -84,21 +84,58 @@ object LTrees {
     l.force()
   }
 
-  def constraint(lexpr: LExpr[_]): Expr = lexpr match {
-    case LLessThan(l, r) => LessThan(constraint(l), constraint(r))
-    case l @ L(ids) => assert(ids.size == 1); Variable(ids.head)
+  def lexprToExpr(lexpr: LExpr[_]): Expr = lexpr match {
+    case LEquals(l, r) => Equals(lexprToExpr(l), lexprToExpr(r))
     case LIntLiteral(i) => IntLiteral(i)
+    case LBooleanLiteral(b) => BooleanLiteral(b)
+    case LPlus(l, r) => Plus(lexprToExpr(l), lexprToExpr(r))
+    case LMinus(l, r) => Minus(lexprToExpr(l), lexprToExpr(r))
+    case LTimes(l, r) => Times(lexprToExpr(l), lexprToExpr(r))
+    case LDivision(l, r) => Division(lexprToExpr(l), lexprToExpr(r))
+    case LLessThan(l, r) => LessThan(lexprToExpr(l), lexprToExpr(r))
+    case LGreaterThan(l, r) => GreaterThan(lexprToExpr(l), lexprToExpr(r))
+    case LLessEquals(l, r) => LessEquals(lexprToExpr(l), lexprToExpr(r))
+    case LGreaterEquals(l, r) => GreaterEquals(lexprToExpr(l), lexprToExpr(r))
+    case LAnd(l, r) => And(lexprToExpr(l), lexprToExpr(r))
+    case LOr(l, r) => Or(lexprToExpr(l), lexprToExpr(r))
+    case LNot(l) => Not(lexprToExpr(l))
+    case L(ids) => assert(ids.size == 1); Variable(ids.head)
   }
 
   sealed trait LExpr[T] {
+    def ===(x: LExpr[T]): LExpr[Boolean] = LEquals(this, x)
+
+    def +(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Int] = LPlus(this, x)
+    def -(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Int] = LMinus(this, x)
+    def *(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Int] = LTimes(this, x)
+    def /(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Int] = LDivision(this, x)
     def <(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Boolean] = LLessThan(this, x)
-    def <(x: Int)(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Boolean] = LLessThan(this, LIntLiteral(x))
+    def >(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Boolean] = LGreaterThan(this, x)
+    def <=(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Boolean] = LLessEquals(this, x)
+    def >=(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Boolean] = LGreaterEquals(this, x)
+
     def &&(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Boolean]): LExpr[Boolean] = LAnd(this, x)
+    def ||(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Boolean]): LExpr[Boolean] = LOr(this, x)
+    def unary_!(implicit ev: LExpr[T] => LExpr[Boolean]): LExpr[Boolean] = LNot(this)
   }
 
-  case class LLessThan(lhs: LExpr[Int], rhs: LExpr[Int]) extends LExpr[Boolean]
-  case class LAnd(lhs: LExpr[Boolean], rhs: LExpr[Boolean]) extends LExpr[Boolean]
+  case class LEquals[T](lhs: LExpr[T], rhs: LExpr[T]) extends LExpr[Boolean]
+  /* Literals */
   case class LIntLiteral(i: Int) extends LExpr[Int]
+  case class LBooleanLiteral(b: Boolean) extends LExpr[Boolean]
+  /* Arithmetic */
+  case class LPlus(lhs: LExpr[Int], rhs: LExpr[Int]) extends LExpr[Int]
+  case class LMinus(lhs: LExpr[Int], rhs: LExpr[Int]) extends LExpr[Int]
+  case class LTimes(lhs: LExpr[Int], rhs: LExpr[Int]) extends LExpr[Int]
+  case class LDivision(lhs: LExpr[Int], rhs: LExpr[Int]) extends LExpr[Int]
+  case class LLessThan(lhs: LExpr[Int], rhs: LExpr[Int]) extends LExpr[Boolean]
+  case class LGreaterThan(lhs: LExpr[Int], rhs: LExpr[Int]) extends LExpr[Boolean]
+  case class LLessEquals(lhs: LExpr[Int], rhs: LExpr[Int]) extends LExpr[Boolean]
+  case class LGreaterEquals(lhs: LExpr[Int], rhs: LExpr[Int]) extends LExpr[Boolean]
+  /* Propositional logic */
+  case class LAnd(lhs: LExpr[Boolean], rhs: LExpr[Boolean]) extends LExpr[Boolean]
+  case class LOr(lhs: LExpr[Boolean], rhs: LExpr[Boolean]) extends LExpr[Boolean]
+  case class LNot(lexpr: LExpr[Boolean]) extends LExpr[Boolean]
 
   /* L for Lazy, L for Logic */
   object L {

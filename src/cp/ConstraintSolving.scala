@@ -50,7 +50,7 @@ object ConstraintSolving {
     def assertConstraint(expr: Expr): Boolean = {
       if (!alreadyAsserted.contains(expr)) {
         alreadyAsserted = alreadyAsserted + expr
-        // println("asserting in global context: " + expr)
+        println("asserting in global context: " + expr)
         solver.decideWithModel(expr, false) match {
           case (Some(false), model) =>
             lastModel = Some(model)
