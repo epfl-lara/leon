@@ -1,10 +1,5 @@
 package purescala
 
-//TODO: improve type error? Actually this is weird it does not seem to have any error of type anymore..
-//TODO: Model leads to runtype error
-
-//TODO: Halt must be "thread safe", initialize externalrunning from the solve method is not really correct
-
 import Common._
 import Definitions._
 import Extensions._
@@ -23,11 +18,6 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
   val description = "Solver applying random testing (QuickCheck-like)"
   override val shortDescription = "QC"
 
-  private val startingBound = 2
-  private var bound = startingBound
-  private val startingThreshold = 20
-  private var threshold = startingThreshold
-
   private val random = new Random()
 
   private def randomType(): TypeTree = {
@@ -38,7 +28,10 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
   }
 
   private def randomValue(t: TypeTree, size: Int): Expr = t match {
-    case Int32Type => IntLiteral(size - random.nextInt(2*size + 1))
+    case Int32Type => {
+      val s = if(size < Int.MaxValue) size + 1 else size
+      IntLiteral(random.nextInt(s))
+    }
     case BooleanType => BooleanLiteral(random.nextBoolean())
     case AbstractClassType(acd) => {
       val children = acd.knownChildren
@@ -56,7 +49,8 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
       }
     }
     case CaseClassType(cd) => {
-      CaseClass(cd, cd.fields.map(f => randomValue(f.getType, size - 1))) 
+      val nbFields = cd.fields.size
+      CaseClass(cd, cd.fields.map(f => randomValue(f.getType, size / nbFields))) 
     }
     case AnyType => randomValue(randomType(), size)
     case Untyped => error("I don't know what to do")
@@ -72,67 +66,72 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
 
   private var externalRunning = true
 
+  def halt() {
+    externalRunning = false
+  }
+
   def solve(expression: Expr) : Option[Boolean] = {
     val vars = variablesOf(expression)
+    val nbVars = vars.size
+
     var running = true
     externalRunning = true
-    threshold = startingThreshold
-    bound = startingBound
+
+    //bound starts at 1 since it allows to test value like 0, 1, and Leaf of class hierarchy
+    var bound = 1
+    val maxBound = Int.MaxValue
+    //the threashold depends on the number of variable and the actual range given by the bound
+    val thresholdStep = nbVars * 4
+    var threshold = thresholdStep
 
     var result: Option[Boolean] = None
-
-    var i = 0
+    var iteration = 0
     while(running && externalRunning) {
 
       nbTrial match {
-        case Some(n) => running &&= (i < n)
+        case Some(n) => running &&= (iteration < n)
         case None => ()
       }
 
-      if(i > threshold) {
-        threshold *= 2
-        bound *= 2
+      if(iteration > threshold && bound != maxBound) {
+        if(bound * 4 < bound) //this is an overflow
+          bound = maxBound
+        else
+          bound *= 2 //exponential growth
+        threshold += thresholdStep
       }
 
       val var2val: Map[Identifier, Expr] = Map(vars.map(v => (v, randomValue(v.getType, bound))).toList: _*)
-
-      //println("trying with : " + var2val)
+      reporter.info("Trying with: " + var2val)
 
       val evalResult = eval(var2val, expression, None)
       evalResult match {
         case OK(BooleanLiteral(true)) => {
-          //reporter.info("Example tried but formula was true")
+          //continue trying
         }
         case OK(BooleanLiteral(false)) => {
-          //reporter.info("Example tried and formula was false")
+          reporter.info("Found counter example to formula: " + var2val)
           result = Some(false)
           running = false
         }
+        /* in any of the following case, simply continue with another assignement */
         case InfiniteComputation() => {
-          reporter.info("Model seems to lead to divergent computation.")
-          result = None
-          running = false
+          //reporter.info("Model seems to lead to divergent computation.")
         }
         case RuntimeError(msg) => {
-          reporter.info("Model leads to runtime error: " + msg)
+          //reporter.info("Model leads to runtime error: " + msg)
         }
         case t @ TypeError(_,_) => {
-          reporter.info("Type error in model evaluation.\n" + t.msg)
+          //reporter.info("Type error in model evaluation.\n" + t.msg)
         }
         case _ => {
-          reporter.info("    -> candidate model discarded.")
-          result = None
-          running = false
+          //reporter.info("    -> candidate model discarded.")
         }
       }
 
-      i += 1
+      iteration += 1
     }
     result
-  }
-
-  def halt() {
-    externalRunning = false
   }
 
 }

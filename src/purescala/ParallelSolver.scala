@@ -12,6 +12,7 @@ import TypeTrees._
 import Evaluator._
 
 import scala.actors.Actor
+import scala.actors.DaemonActor
 import scala.actors.Actor._
 
 import scala.concurrent.Lock
@@ -27,7 +28,7 @@ class ParallelSolver(solvers: Solver*) extends Solver(solvers(0).reporter) {
   case class Solve(expr: Expr)
   case class Result(res: Option[Boolean])
 
-  class SolverRunner(s: Solver) extends Actor {
+  class SolverRunner(s: Solver) extends DaemonActor {
 
     /*
     val that = this
@@ -61,7 +62,7 @@ class ParallelSolver(solvers: Solver*) extends Solver(solvers(0).reporter) {
     }
   }
 
-  class Coordinator extends Actor {
+  class Coordinator extends DaemonActor {
 
     def act(): Unit = {
       while(true) {
