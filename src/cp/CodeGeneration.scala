@@ -37,17 +37,10 @@ trait CodeGeneration {
   private lazy val cpPackage                      = definitions.getModule("cp")
 
   private lazy val runtimeMethodsModule           = definitions.getModule("cp.RuntimeMethods")
-  private lazy val chooseExecFunction             = definitions.getMember(runtimeMethodsModule, "chooseExec")
-  private lazy val chooseMinimizingExecFunction   = definitions.getMember(runtimeMethodsModule, "chooseMinimizingExec")
-  private lazy val chooseMaximizingExecFunction   = definitions.getMember(runtimeMethodsModule, "chooseMaximizingExec")
-  private lazy val findMinimizingExecFunction     = definitions.getMember(runtimeMethodsModule, "findMinimizingExec")
-  private lazy val findMaximizingExecFunction     = definitions.getMember(runtimeMethodsModule, "findMaximizingExec")
-  private lazy val findExecFunction               = definitions.getMember(runtimeMethodsModule, "findExec")
-  private lazy val findAllExecFunction            = definitions.getMember(runtimeMethodsModule, "findAllExec")
-  private lazy val findAllMinimizingExecFunction  = definitions.getMember(runtimeMethodsModule, "findAllMinimizingExec")
   private lazy val inputVarFunction               = definitions.getMember(runtimeMethodsModule, "inputVar")
   private lazy val skipCounterFunction            = definitions.getMember(runtimeMethodsModule, "skipCounter")
   private lazy val copySettingsFunction           = definitions.getMember(runtimeMethodsModule, "copySettings")
+  private lazy val variableFromLFunction          = definitions.getMember(runtimeMethodsModule, "variableFromL")
 
   private lazy val converterClass                 = definitions.getClass("cp.Converter")
 
@@ -245,12 +238,14 @@ trait CodeGeneration {
       (DEF(methodSym) === matchExpr, methodSym)
     }
 
-    def inputVarValues(serializedInputVarList : Serialized, inputVars : Seq[Identifier], scalaToExprSym : Symbol) : Tree = {
+    /* Generates list of values that will replace the specified serialized input variables in a constraint */
+    def inputVarValues(serializedInputVarList : Serialized, inputVars : Seq[Identifier], lVars : Seq[Identifier], scalaToExprSym : Symbol) : Tree = {
       val inputVarTrees = inputVars.map((iv: Identifier) => scalaToExprSym APPLY variablesToTrees(Variable(iv))).toList
-      (scalaPackage DOT collectionModule DOT immutableModule DOT definitions.ListModule DOT listModuleApplyFunction) APPLY (inputVarTrees)
+      val lvarConversionTrees = lVars.map((lid: Identifier) => variableFromLFunction APPLY reverseLvarSubsts(Variable(lid))).toList
+      (scalaPackage DOT collectionModule DOT immutableModule DOT definitions.ListModule DOT listModuleApplyFunction) APPLY (inputVarTrees ::: lvarConversionTrees)
     }
 
-    def newBaseTerm(exprToScalaSym : Symbol, serializedProg : Serialized, serializedInputVarList : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Tree, function : Function, typeTreeList : List[Tree], arity : Int) : Tree = {
+    def newBaseTerm(exprToScalaSym : Symbol, serializedProg : Serialized, serializedInputVarList : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Tree, function : Tree, typeTreeList : List[Tree], arity : Int) : Tree = {
       TypeApply(
         Ident(termModules(arity)), typeTreeList) APPLY(
         newConverter(exprToScalaSym),

@@ -108,7 +108,7 @@ object ConstraintSolving {
   }
 
   private def evaluator(constraint : Term[_,Boolean], ids : Seq[Identifier]) : Option[(Map[Identifier,Expr])=>Boolean] = {
-    if (cp.Settings.useScalaEvaluator) {
+    if (cp.Settings.useScalaEvaluator && constraint.evaluator != null) {
       Some((m : Map[Identifier,Expr]) => constraint.evaluator(ids.map(modelValue(_, m))))
     } else None
   }

@@ -65,7 +65,7 @@ object Utils {
   val convertingFunction = converterOf(this).exprSeq2scala%d[%s] _
   type t2c = (%s) => %s
   val scalaFunction : %s => %s
-  val evaluator : (Seq[Expr]) => R = (s : Seq[Expr]) => scalaFunction(%s)
+  lazy val evaluator : (Seq[Expr]) => R = (s : Seq[Expr]) => scalaFunction(%s)
 
   override def apply(%s) : R = scalaFunction(%s)
 

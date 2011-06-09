@@ -11,11 +11,13 @@ object LazyVars {
       y <- chooseInt(3, 6)
       if y < x
     } {
+      println(((a: Int) => a > x).solve)
       val i: Int = x
       val j: Int = y
       println(i, j)
     }
 
+    /*
     println("...")
 
     for {
@@ -27,5 +29,6 @@ object LazyVars {
       val j: Int = y
       println(i, j)
     }
+    */
   }
 }

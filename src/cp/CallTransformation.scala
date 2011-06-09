@@ -18,8 +18,24 @@ trait CallTransformation
   import global._
   import CODE._
 
-  private lazy val cpPackage = definitions.getModule("cp")
-  private lazy val cpDefinitionsModule = definitions.getModule("cp.Definitions")
+  private lazy val cpPackage            = definitions.getModule("cp")
+  private lazy val cpDefinitionsModule  = definitions.getModule("cp.Definitions")
+  private lazy val lstreamClass         = definitions.getClass("cp.LTrees.LStream")
+  private lazy val withFilter2Function  = definitions.getMember(lstreamClass, "withFilter2")
+  private lazy val lClassSym            = definitions.getClass("cp.LTrees.L")
+
+  private def isLSym(sym: Symbol): Boolean = {
+    sym == lClassSym
+  }
+
+  private def isLStreamSym(sym: Symbol): Boolean = {
+    sym == lstreamClass
+  }
+
+  private def hasLStreamType(tr: Tree): Boolean = tr.tpe match {
+    case TypeRef(_, sym, _) if isLStreamSym(sym) => true
+    case _ => false
+  }
 
   val purescalaReporter = purescala.Settings.reporter
 
@@ -30,7 +46,11 @@ trait CallTransformation
       case Apply(TypeApply(Select(Select(cpIdent, definitionsName), func2termName), typeTreeList), List(function: Function)) if 
         (definitionsName.toString == "Definitions" && func2termName.toString.matches("func2term\\d")) => {
         val Function(funValDefs, funBody) = function
-        extracted += (function.pos -> extractFunction(unit, funValDefs, funBody))
+        extracted += (function.pos -> extractStandardConstraint(unit, funValDefs, funBody))
+      }
+      case Apply(Select(lhs, withFilterName), List(predicate: Function)) if withFilterName.toString == "withFilter" && hasLStreamType(lhs) => {
+        val Function(funValDefs, funBody) = predicate
+        extracted += (predicate.pos -> extractConstraintWithLVars(unit, funValDefs, funBody))
       }
       case _ => 
     }
@@ -66,19 +86,25 @@ trait CallTransformation
           val serializedExpr = serialize(matchToIfThenElse(b))
 
           // compute input variables
-          val inputVars : Seq[Identifier] = variablesOf(b).filter(!outputVars.contains(_)).toSeq
+          val nonOutputIdentifiers : Seq[Identifier] = variablesOf(b).filter(!outputVars.contains(_)).toSeq
+          val reverseLVars = reverseLvarSubsts
+          val (lvarIdentifiers, inputIdentifiers) = nonOutputIdentifiers.partition(id => reverseLVars.isDefinedAt(Variable(id)))
 
-          purescalaReporter.info("Input variables  : " + inputVars.mkString(", "))
+          purescalaReporter.info("Input variables  : " + inputIdentifiers.mkString(", "))
           purescalaReporter.info("Output variables : " + outputVars.mkString(", "))
 
-          // serialize list of input "Variable"s
-          val serializedInputVarList = serialize(inputVars map (iv => Variable(iv)))
+          // list of input "Variables" to concatenate with list of L variables
+          val inputVars = inputIdentifiers map (iv => Variable(iv))
+          val lVars     = lvarIdentifiers map (lv => Variable(lv))
+
+          // serialize list of all non-output "Variable"s
+          val serializedInputVarList = serialize(inputVars ++ lVars)
 
           // serialize outputVars sequence
           val serializedOutputVars = serialize(outputVars)
 
           // sequence of input values
-          val inputVarValues : Tree = codeGen.inputVarValues(serializedInputVarList, inputVars, scalaToExprSym)
+          val inputVarValues : Tree = codeGen.inputVarValues(serializedInputVarList, inputIdentifiers, lvarIdentifiers, scalaToExprSym)
 
           Some((serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, outputVars.size))
       }
@@ -95,6 +121,30 @@ trait CallTransformation
             case Some((serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, arity)) => {
               // create constraint instance
               val code = codeGen.newBaseTerm(exprToScalaSym, serializedProg, serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, function, typeTreeList, arity)
+
+              typer.typed(atOwner(currentOwner) {
+                code
+              })
+            }
+            case None => super.transform(tree)
+          }
+        }
+        case Apply(Select(lhs, withFilterName), List(predicate: Function)) if withFilterName.toString == "withFilter" && hasLStreamType(lhs) => {
+          val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
+
+          val Function(funValDefs, _) = predicate
+          assert(funValDefs.size == 1)
+          val constraintParamType = TypeTree(funValDefs.head.tpt.tpe match {
+            case TypeRef(_, sym, List(paramTpe)) if isLSym(sym) => paramTpe
+            case errorType => sys.error("unexpected type for withFilter predicate parameter: " + errorType)
+          })
+          val typeTreeList = List(constraintParamType, TypeTree(definitions.BooleanClass.tpe))
+
+          transformHelper(tree, predicate, codeGen) match {
+            case Some((serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, arity)) => {
+              // create constraint instance
+              val termCode = codeGen.newBaseTerm(exprToScalaSym, serializedProg, serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, NULL, typeTreeList, arity)
+              val code = (lhs DOT withFilter2Function) APPLY (Function(funValDefs,termCode) setSymbol predicate.symbol)
 
               typer.typed(atOwner(currentOwner) {
                 code

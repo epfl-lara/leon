@@ -71,6 +71,9 @@ object LTrees {
       lStream().withFilter(p)
     }
 
+    def withFilter2(p: (L[T]) => Constraint[T]): FilterMonadic[L[T], Traversable[L[T]]] = {
+      throw new Exception()
+    }
   }
 
   implicit def lexpr2bool[T](l: LExpr[T]): Boolean = {
@@ -109,7 +112,7 @@ object LTrees {
     def -(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Int] = LMinus(this, x)
     def *(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Int] = LTimes(this, x)
     def /(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Int] = LDivision(this, x)
-    def <(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Boolean] = LLessThan(this, x)
+    // def <(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Boolean] = LLessThan(this, x)
     def >(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Boolean] = LGreaterThan(this, x)
     def <=(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Boolean] = LLessEquals(this, x)
     def >=(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Boolean] = LGreaterEquals(this, x)

@@ -6,6 +6,8 @@ object RuntimeMethods {
   import Terms._
   import Definitions.UnsatisfiableConstraintException
   import Definitions.UnknownConstraintException
+  import LTrees._
+
   import purescala.Definitions._
   import purescala.Trees._
   import purescala.Common._
@@ -111,5 +113,11 @@ object RuntimeMethods {
   
   def inputVar(inputVarList : List[Variable], varName : String) : Variable = {
     inputVarList.find(_.id.name == varName).getOrElse(scala.sys.error("Could not find input variable '" + varName + "' in list " + inputVarList))
+  }
+
+  def variableFromL[T](l: L[T]): Variable = {
+    val ids = l.ids
+    assert(ids.size == 1)
+    Variable(ids.head)
   }
 }
