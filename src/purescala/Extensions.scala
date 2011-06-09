@@ -106,7 +106,7 @@ object Extensions {
 
     val solverExtensions0 = allLoaded.filter(_.isInstanceOf[Solver]).map(_.asInstanceOf[Solver])
     val solverExtensions1 = if(Settings.useQuickCheck) new RandomSolver(extensionsReporter) +: solverExtensions0 else solverExtensions0
-    val solverExtensions2 = if(Settings.useParallel) new ParallelSolver(solverExtensions1: _*) +: solverExtensions1 else solverExtensions1
+    val solverExtensions2 = if(Settings.useParallel) Seq(new ParallelSolver(solverExtensions1: _*)) else solverExtensions1
     val solverExtensions3 = 
       if(Settings.solverTimeout == None) {
         solverExtensions2 
