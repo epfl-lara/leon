@@ -49,10 +49,6 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3Solve
     program = prog
   }
 
-  def halt() {
-    scala.sys.error("Halt not supported")
-  }
-
   private def restartZ3: Unit = {
     if (neverInitialized) {
       neverInitialized = false

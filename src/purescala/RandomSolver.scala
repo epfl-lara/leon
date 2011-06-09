@@ -64,19 +64,11 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
     case f : FunctionType => error("I don't know what to do")
   }
 
-  private var externalRunning = true
-
-  def halt() {
-    externalRunning = false
-  }
-
   def solve(expression: Expr) : Option[Boolean] = {
     val vars = variablesOf(expression)
     val nbVars = vars.size
 
-    var running = true
-    externalRunning = true
-
+    var stop = false
     //bound starts at 1 since it allows to test value like 0, 1, and Leaf of class hierarchy
     var bound = 1
     val maxBound = Int.MaxValue
@@ -86,10 +78,10 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
 
     var result: Option[Boolean] = None
     var iteration = 0
-    while(running && externalRunning) {
+    while(!forceStop && !stop) {
 
       nbTrial match {
-        case Some(n) => running &&= (iteration < n)
+        case Some(n) => stop &&= (iteration < n)
         case None => ()
       }
 
@@ -112,7 +104,7 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
         case OK(BooleanLiteral(false)) => {
           reporter.info("Found counter example to formula: " + var2val)
           result = Some(false)
-          running = false
+          stop = true
         }
         /* in any of the following case, simply continue with another assignement */
         case InfiniteComputation() => {

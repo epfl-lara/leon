@@ -1,8 +1,5 @@
 package purescala
 
-//TODO: what if we call halt before solve is started in every solvers
-//TODO: stopping the FairZ3Solver seems to cause an error because model is not correct
-
 import Common._
 import Definitions._
 import Extensions._
@@ -26,9 +23,11 @@ class ParallelSolver(solvers: Solver*) extends Solver(solvers(0).reporter) {
   override val superseeds : Seq[String] = solvers.map(_.shortDescription).toSeq
 
   case class Solve(expr: Expr)
+  case object Init
+  case object Ready
   case class Result(res: Option[Boolean])
 
-  class SolverRunner(s: Solver) extends DaemonActor {
+  private class SolverRunner(s: Solver) extends DaemonActor {
 
     /*
     val that = this
@@ -51,6 +50,11 @@ class ParallelSolver(solvers: Solver*) extends Solver(solvers(0).reporter) {
     def act(): Unit = {
       while(true) {
         receive {
+          case Init => {
+            reporter.info("Init solver " + s.shortDescription)
+            s.init 
+            coordinator ! Ready
+          }
           case Solve(expr) => {
             reporter.info("Starting solver " + s.shortDescription)
             val res = s.solve(expr)
@@ -62,15 +66,24 @@ class ParallelSolver(solvers: Solver*) extends Solver(solvers(0).reporter) {
     }
   }
 
-  class Coordinator extends DaemonActor {
+  private class Coordinator extends DaemonActor {
 
     def act(): Unit = {
       while(true) {
         receive {
           case s@Solve(expr) => {
+            var nbResponses = 0
+
+            solverRunners.foreach(_ ! Init)
+            while(nbResponses < nbSolvers) {
+              receive {
+                case Ready => nbResponses += 1
+              }
+            }
+
+            nbResponses = 0
             solverRunners.foreach(_ ! s)
             var result: Option[Boolean] = None
-            var nbResponses = 0
 
             while(nbResponses < nbSolvers) {
               receive {
@@ -101,7 +114,7 @@ class ParallelSolver(solvers: Solver*) extends Solver(solvers(0).reporter) {
     result
   }
 
-  def halt() {
+  override def halt() {
     solvers.foreach(_.halt)
   }
 

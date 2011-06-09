@@ -14,6 +14,7 @@ class Timer(callback : () => Unit, maxSecs : Int) extends Thread {
       if(asMillis < (System.currentTimeMillis - startTime)) {
         exceeded = true
       }
+      Thread.sleep(100) //is needed on my (regis) machine, if not here, the loop does not stop when halt is called.
     }
     if(exceeded && keepRunning) {
       callback()

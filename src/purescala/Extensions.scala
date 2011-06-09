@@ -17,14 +17,21 @@ object Extensions {
 
     // Returns Some(true) if valid, Some(false) if invalid,
     // None if unknown.
+    // should halt as soon as possible with any result (Unknown is ok) as soon as forceStop is true
     def solve(expression: Expr) : Option[Boolean]
 
     def isUnsat(expression: Expr) : Option[Boolean] = solve(negate(expression))
     def superseeds : Seq[String] = Nil
 
-    //once this is called, the solver should halt and return a value (probably Unknown) from the
-    //solve method as soon as possible
-    def halt() : Unit
+    private var _forceStop = false
+    def halt() : Unit = {
+      _forceStop = true
+    }
+    def init() : Unit = {
+      _forceStop = false
+    }
+    protected def forceStop = _forceStop
+
   }
   
   abstract class Analyser(reporter: Reporter) extends Extension(reporter) {

@@ -11,7 +11,7 @@ import scala.sys.error
 class TimeoutSolver(solver : Solver, timeout : Int) extends Solver(solver.reporter) {
 
   val description = solver.description + ", with timeout"
-  override val shortDescription = solver.shortDescription
+  override val shortDescription = solver.shortDescription + "+t"
 
   override def setProgram(prog: Program): Unit = {
     solver.setProgram(prog)
@@ -25,7 +25,10 @@ class TimeoutSolver(solver : Solver, timeout : Int) extends Solver(solver.report
     res
   }
 
-  def halt() {
+  override def init() {
+    solver.init
+  }
+  override def halt() {
     solver.halt
   }
 

@@ -19,7 +19,4 @@ class TrivialSolver(reporter: Reporter) extends Solver(reporter) {
     case _ => None
   }
 
-  def halt() {
-    //nothing to do
-  }
 }

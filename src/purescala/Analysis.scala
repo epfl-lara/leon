@@ -98,6 +98,7 @@ class Analysis(val program: Program, val reporter: Reporter = Settings.reporter)
           superseeded = superseeded ++ Set(se.superseeds: _*)
 
           val t1 = System.nanoTime
+          se.init()
           val solverResult = se.solve(vc)
           val t2 = System.nanoTime
           val dt = ((t2 - t1) / 1000000) / 1000.0

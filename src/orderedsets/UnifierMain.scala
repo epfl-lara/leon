@@ -26,11 +26,6 @@ class UnifierMain(reporter: Reporter) extends Solver(reporter) {
 
   var program: Program = null
 
-  //TODO
-  def halt() {
-    error("TODO halt in multiset Solver")
-  }
-
   override def setProgram(p: Program) = program = p
 
   // checks for V-A-L-I-D-I-T-Y !
