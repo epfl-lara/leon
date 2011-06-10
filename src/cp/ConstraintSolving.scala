@@ -27,7 +27,6 @@ object ConstraintSolving {
     private var isInconsistent: Boolean = false
     private var alreadyAsserted: Set[Expr] = Set.empty[Expr]
     private var toNegateForNextModel: Seq[(Seq[Identifier], Seq[Expr])] = Seq.empty
-    private var active: Boolean = false
 
     def restart(): Unit = {
       // println("restart called")
@@ -42,10 +41,6 @@ object ConstraintSolving {
       if (solver == null)
         solver = newSolver(p)
     }
-
-    def isActive(): Boolean = active
-    def activate(): Unit = { active = true }
-    def deactivate(): Unit = { active = false }
 
     def assertConstraint(expr: Expr): Boolean = {
       if (!alreadyAsserted.contains(expr)) {

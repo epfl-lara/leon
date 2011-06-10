@@ -126,22 +126,15 @@ object Terms {
     lazy val evaluator : (Seq[Expr]) => R = (s : Seq[Expr]) => scalaFunction(converter.expr2scala(s(0)).asInstanceOf[T1])
   
     override def apply(x_0 : T1) : R = scalaFunction(x_0)
-
-    def customize(generator : Iterator[T1])(implicit asBooleanFunction : (T1 => R) => (T1 => Boolean)) : Term1[T1,Boolean] = {
-      new Term[T1,Boolean](program, expr, types, converter) with Term1[T1,Boolean] {
-        val scalaFunction : (T1) => Boolean = Term1.this.scalaFunction
-        override def findAll(implicit asConstraint: (Term[T1,Boolean]) => Term[T1,Boolean]) : Iterator[T1] = generator.filter(scalaFunction(_))
-      }
-    }
   
     def ||(other : Term1[T1,Boolean])(implicit asBoolean : (R) => Boolean) : Term1[T1,Boolean] = 
-      Term1(this.program, Or(this.expr, other.expr), (x_0 : T1) => this.scalaFunction(x_0) || other.scalaFunction(x_0), this.types, this.converter)
+      Term1(this.program, Or(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1) => this.scalaFunction(x_0) || other.scalaFunction(x_0), this.types, this.converter)
   
     def &&(other : Term1[T1,Boolean])(implicit asBoolean : (R) => Boolean) : Term1[T1,Boolean] = 
-      Term1(this.program, And(this.expr, other.expr), (x_0 : T1) => this.scalaFunction(x_0) && other.scalaFunction(x_0), this.types, this.converter)
+      Term1(this.program, And(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1) => this.scalaFunction(x_0) && other.scalaFunction(x_0), this.types, this.converter)
   
     def unary_!(implicit asBoolean : (R) => Boolean) : Term1[T1,Boolean] = 
-      Term1(this.program, Not(this.expr), (x_0 : T1) => ! this.scalaFunction(x_0), this.types, this.converter)
+      Term1(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1) => ! this.scalaFunction(x_0), this.types, this.converter)
   
     def minimizing(minFunc : Term1[T1,Int])(implicit asConstraint : t2c) : MinConstraint1[T1] = {
       MinConstraint1[T1](asConstraint(this), minFunc)
@@ -149,47 +142,47 @@ object Terms {
   
     def compose0[A1](other : Term1[A1, T1]) : Term1[A1, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 1, 1)
-      Term1(this.program, newExpr, (x_0 : A1) => this.scalaFunction(other.scalaFunction(x_0)), newTypes, this.converter)
+      Term1(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1) => this.scalaFunction(other.scalaFunction(x_0)), newTypes, this.converter)
     }
     
     def compose0[A1, A2](other : Term2[A1, A2, T1]) : Term2[A1, A2, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 2, 1)
-      Term2(this.program, newExpr, (x_0 : A1, x_1 : A2) => this.scalaFunction(other.scalaFunction(x_0, x_1)), newTypes, this.converter)
+      Term2(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2) => this.scalaFunction(other.scalaFunction(x_0, x_1)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3](other : Term3[A1, A2, A3, T1]) : Term3[A1, A2, A3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 3, 1)
-      Term3(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2)), newTypes, this.converter)
+      Term3(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T1]) : Term4[A1, A2, A3, A4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 4, 1)
-      Term4(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3)), newTypes, this.converter)
+      Term4(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4, A5](other : Term5[A1, A2, A3, A4, A5, T1]) : Term5[A1, A2, A3, A4, A5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 5, 1)
-      Term5(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4)), newTypes, this.converter)
+      Term5(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4, A5, A6](other : Term6[A1, A2, A3, A4, A5, A6, T1]) : Term6[A1, A2, A3, A4, A5, A6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 6, 1)
-      Term6(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5)), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4, A5, A6, A7](other : Term7[A1, A2, A3, A4, A5, A6, A7, T1]) : Term7[A1, A2, A3, A4, A5, A6, A7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 7, 1)
-      Term7(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : A7) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6)), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : A7) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4, A5, A6, A7, A8](other : Term8[A1, A2, A3, A4, A5, A6, A7, A8, T1]) : Term8[A1, A2, A3, A4, A5, A6, A7, A8, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 8, 1)
-      Term8(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : A7, x_7 : A8) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, x_7)), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : A7, x_7 : A8) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, x_7)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4, A5, A6, A7, A8, A9](other : Term9[A1, A2, A3, A4, A5, A6, A7, A8, A9, T1]) : Term9[A1, A2, A3, A4, A5, A6, A7, A8, A9, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 9, 1)
-      Term9(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : A7, x_7 : A8, x_8 : A9) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8)), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : A7, x_7 : A8, x_8 : A9) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8)), newTypes, this.converter)
     }
   }
   
@@ -202,13 +195,13 @@ object Terms {
     override def apply(x_0 : T1, x_1 : T2) : R = scalaFunction(x_0, x_1)
   
     def ||(other : Term2[T1,T2,Boolean])(implicit asBoolean : (R) => Boolean) : Term2[T1,T2,Boolean] = 
-      Term2(this.program, Or(this.expr, other.expr), (x_0 : T1,x_1 : T2) => this.scalaFunction(x_0,x_1) || other.scalaFunction(x_0,x_1), this.types, this.converter)
+      Term2(this.program, Or(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2) => this.scalaFunction(x_0,x_1) || other.scalaFunction(x_0,x_1), this.types, this.converter)
   
     def &&(other : Term2[T1,T2,Boolean])(implicit asBoolean : (R) => Boolean) : Term2[T1,T2,Boolean] = 
-      Term2(this.program, And(this.expr, other.expr), (x_0 : T1,x_1 : T2) => this.scalaFunction(x_0,x_1) && other.scalaFunction(x_0,x_1), this.types, this.converter)
+      Term2(this.program, And(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2) => this.scalaFunction(x_0,x_1) && other.scalaFunction(x_0,x_1), this.types, this.converter)
   
     def unary_!(implicit asBoolean : (R) => Boolean) : Term2[T1,T2,Boolean] = 
-      Term2(this.program, Not(this.expr), (x_0 : T1,x_1 : T2) => ! this.scalaFunction(x_0,x_1), this.types, this.converter)
+      Term2(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1,x_1 : T2) => ! this.scalaFunction(x_0,x_1), this.types, this.converter)
   
     def minimizing(minFunc : Term2[T1,T2,Int])(implicit asConstraint : t2c) : MinConstraint2[T1,T2] = {
       MinConstraint2[T1,T2](asConstraint(this), minFunc)
@@ -216,82 +209,82 @@ object Terms {
   
     def compose0[A1](other : Term1[A1, T1]) : Term2[A1, T2, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 1, 2)
-      Term2(this.program, newExpr, (x_0 : A1, x_1 : T2) => this.scalaFunction(other.scalaFunction(x_0), x_1), newTypes, this.converter)
+      Term2(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : T2) => this.scalaFunction(other.scalaFunction(x_0), x_1), newTypes, this.converter)
     }
     
     def compose1[A1](other : Term1[A1, T2]) : Term2[T1, A1, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 1, 2)
-      Term2(this.program, newExpr, (x_0 : T1, x_1 : A1) => this.scalaFunction(x_0, other.scalaFunction(x_1)), newTypes, this.converter)
+      Term2(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1) => this.scalaFunction(x_0, other.scalaFunction(x_1)), newTypes, this.converter)
     }
     
     def compose0[A1, A2](other : Term2[A1, A2, T1]) : Term3[A1, A2, T2, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 2, 2)
-      Term3(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : T2) => this.scalaFunction(other.scalaFunction(x_0, x_1), x_2), newTypes, this.converter)
+      Term3(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : T2) => this.scalaFunction(other.scalaFunction(x_0, x_1), x_2), newTypes, this.converter)
     }
     
     def compose1[A1, A2](other : Term2[A1, A2, T2]) : Term3[T1, A1, A2, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 2, 2)
-      Term3(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2)), newTypes, this.converter)
+      Term3(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3](other : Term3[A1, A2, A3, T1]) : Term4[A1, A2, A3, T2, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 3, 2)
-      Term4(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : T2) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2), x_3), newTypes, this.converter)
+      Term4(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : T2) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2), x_3), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3](other : Term3[A1, A2, A3, T2]) : Term4[T1, A1, A2, A3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 3, 2)
-      Term4(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3)), newTypes, this.converter)
+      Term4(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T1]) : Term5[A1, A2, A3, A4, T2, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 4, 2)
-      Term5(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : T2) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3), x_4), newTypes, this.converter)
+      Term5(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : T2) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3), x_4), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T2]) : Term5[T1, A1, A2, A3, A4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 4, 2)
-      Term5(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4)), newTypes, this.converter)
+      Term5(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4, A5](other : Term5[A1, A2, A3, A4, A5, T1]) : Term6[A1, A2, A3, A4, A5, T2, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 5, 2)
-      Term6(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : T2) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4), x_5), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : T2) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4), x_5), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3, A4, A5](other : Term5[A1, A2, A3, A4, A5, T2]) : Term6[T1, A1, A2, A3, A4, A5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 5, 2)
-      Term6(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5)), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4, A5, A6](other : Term6[A1, A2, A3, A4, A5, A6, T1]) : Term7[A1, A2, A3, A4, A5, A6, T2, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 6, 2)
-      Term7(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : T2) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5), x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : T2) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5), x_6), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3, A4, A5, A6](other : Term6[A1, A2, A3, A4, A5, A6, T2]) : Term7[T1, A1, A2, A3, A4, A5, A6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 6, 2)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : A6) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5, x_6)), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : A6) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5, x_6)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4, A5, A6, A7](other : Term7[A1, A2, A3, A4, A5, A6, A7, T1]) : Term8[A1, A2, A3, A4, A5, A6, A7, T2, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 7, 2)
-      Term8(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : A7, x_7 : T2) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6), x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : A7, x_7 : T2) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6), x_7), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3, A4, A5, A6, A7](other : Term7[A1, A2, A3, A4, A5, A6, A7, T2]) : Term8[T1, A1, A2, A3, A4, A5, A6, A7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 7, 2)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : A6, x_7 : A7) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5, x_6, x_7)), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : A6, x_7 : A7) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5, x_6, x_7)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4, A5, A6, A7, A8](other : Term8[A1, A2, A3, A4, A5, A6, A7, A8, T1]) : Term9[A1, A2, A3, A4, A5, A6, A7, A8, T2, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 8, 2)
-      Term9(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : A7, x_7 : A8, x_8 : T2) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, x_7), x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : A7, x_7 : A8, x_8 : T2) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, x_7), x_8), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3, A4, A5, A6, A7, A8](other : Term8[A1, A2, A3, A4, A5, A6, A7, A8, T2]) : Term9[T1, A1, A2, A3, A4, A5, A6, A7, A8, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 8, 2)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : A6, x_7 : A7, x_8 : A8) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8)), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : A6, x_7 : A7, x_8 : A8) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8)), newTypes, this.converter)
     }
   }
   
@@ -304,13 +297,13 @@ object Terms {
     override def apply(x_0 : T1, x_1 : T2, x_2 : T3) : R = scalaFunction(x_0, x_1, x_2)
   
     def ||(other : Term3[T1,T2,T3,Boolean])(implicit asBoolean : (R) => Boolean) : Term3[T1,T2,T3,Boolean] = 
-      Term3(this.program, Or(this.expr, other.expr), (x_0 : T1,x_1 : T2,x_2 : T3) => this.scalaFunction(x_0,x_1,x_2) || other.scalaFunction(x_0,x_1,x_2), this.types, this.converter)
+      Term3(this.program, Or(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3) => this.scalaFunction(x_0,x_1,x_2) || other.scalaFunction(x_0,x_1,x_2), this.types, this.converter)
   
     def &&(other : Term3[T1,T2,T3,Boolean])(implicit asBoolean : (R) => Boolean) : Term3[T1,T2,T3,Boolean] = 
-      Term3(this.program, And(this.expr, other.expr), (x_0 : T1,x_1 : T2,x_2 : T3) => this.scalaFunction(x_0,x_1,x_2) && other.scalaFunction(x_0,x_1,x_2), this.types, this.converter)
+      Term3(this.program, And(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3) => this.scalaFunction(x_0,x_1,x_2) && other.scalaFunction(x_0,x_1,x_2), this.types, this.converter)
   
     def unary_!(implicit asBoolean : (R) => Boolean) : Term3[T1,T2,T3,Boolean] = 
-      Term3(this.program, Not(this.expr), (x_0 : T1,x_1 : T2,x_2 : T3) => ! this.scalaFunction(x_0,x_1,x_2), this.types, this.converter)
+      Term3(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3) => ! this.scalaFunction(x_0,x_1,x_2), this.types, this.converter)
   
     def minimizing(minFunc : Term3[T1,T2,T3,Int])(implicit asConstraint : t2c) : MinConstraint3[T1,T2,T3] = {
       MinConstraint3[T1,T2,T3](asConstraint(this), minFunc)
@@ -318,107 +311,107 @@ object Terms {
   
     def compose0[A1](other : Term1[A1, T1]) : Term3[A1, T2, T3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 1, 3)
-      Term3(this.program, newExpr, (x_0 : A1, x_1 : T2, x_2 : T3) => this.scalaFunction(other.scalaFunction(x_0), x_1, x_2), newTypes, this.converter)
+      Term3(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : T2, x_2 : T3) => this.scalaFunction(other.scalaFunction(x_0), x_1, x_2), newTypes, this.converter)
     }
     
     def compose1[A1](other : Term1[A1, T2]) : Term3[T1, A1, T3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 1, 3)
-      Term3(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : T3) => this.scalaFunction(x_0, other.scalaFunction(x_1), x_2), newTypes, this.converter)
+      Term3(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : T3) => this.scalaFunction(x_0, other.scalaFunction(x_1), x_2), newTypes, this.converter)
     }
     
     def compose2[A1](other : Term1[A1, T3]) : Term3[T1, T2, A1, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 1, 3)
-      Term3(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2)), newTypes, this.converter)
+      Term3(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2)), newTypes, this.converter)
     }
     
     def compose0[A1, A2](other : Term2[A1, A2, T1]) : Term4[A1, A2, T2, T3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 2, 3)
-      Term4(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : T2, x_3 : T3) => this.scalaFunction(other.scalaFunction(x_0, x_1), x_2, x_3), newTypes, this.converter)
+      Term4(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : T2, x_3 : T3) => this.scalaFunction(other.scalaFunction(x_0, x_1), x_2, x_3), newTypes, this.converter)
     }
     
     def compose1[A1, A2](other : Term2[A1, A2, T2]) : Term4[T1, A1, A2, T3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 2, 3)
-      Term4(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : T3) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2), x_3), newTypes, this.converter)
+      Term4(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : T3) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2), x_3), newTypes, this.converter)
     }
     
     def compose2[A1, A2](other : Term2[A1, A2, T3]) : Term4[T1, T2, A1, A2, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 2, 3)
-      Term4(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3)), newTypes, this.converter)
+      Term4(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3](other : Term3[A1, A2, A3, T1]) : Term5[A1, A2, A3, T2, T3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 3, 3)
-      Term5(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : T2, x_4 : T3) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2), x_3, x_4), newTypes, this.converter)
+      Term5(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : T2, x_4 : T3) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2), x_3, x_4), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3](other : Term3[A1, A2, A3, T2]) : Term5[T1, A1, A2, A3, T3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 3, 3)
-      Term5(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : T3) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3), x_4), newTypes, this.converter)
+      Term5(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : T3) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3), x_4), newTypes, this.converter)
     }
     
     def compose2[A1, A2, A3](other : Term3[A1, A2, A3, T3]) : Term5[T1, T2, A1, A2, A3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 3, 3)
-      Term5(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4)), newTypes, this.converter)
+      Term5(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T1]) : Term6[A1, A2, A3, A4, T2, T3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 4, 3)
-      Term6(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : T2, x_5 : T3) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3), x_4, x_5), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : T2, x_5 : T3) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3), x_4, x_5), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T2]) : Term6[T1, A1, A2, A3, A4, T3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 4, 3)
-      Term6(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : T3) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4), x_5), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : T3) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4), x_5), newTypes, this.converter)
     }
     
     def compose2[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T3]) : Term6[T1, T2, A1, A2, A3, A4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 4, 3)
-      Term6(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5)), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4, A5](other : Term5[A1, A2, A3, A4, A5, T1]) : Term7[A1, A2, A3, A4, A5, T2, T3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 5, 3)
-      Term7(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : T2, x_6 : T3) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4), x_5, x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : T2, x_6 : T3) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4), x_5, x_6), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3, A4, A5](other : Term5[A1, A2, A3, A4, A5, T2]) : Term7[T1, A1, A2, A3, A4, A5, T3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 5, 3)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : T3) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5), x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : T3) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5), x_6), newTypes, this.converter)
     }
     
     def compose2[A1, A2, A3, A4, A5](other : Term5[A1, A2, A3, A4, A5, T3]) : Term7[T1, T2, A1, A2, A3, A4, A5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 5, 3)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : A5) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5, x_6)), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : A5) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5, x_6)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4, A5, A6](other : Term6[A1, A2, A3, A4, A5, A6, T1]) : Term8[A1, A2, A3, A4, A5, A6, T2, T3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 6, 3)
-      Term8(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : T2, x_7 : T3) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5), x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : T2, x_7 : T3) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5), x_6, x_7), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3, A4, A5, A6](other : Term6[A1, A2, A3, A4, A5, A6, T2]) : Term8[T1, A1, A2, A3, A4, A5, A6, T3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 6, 3)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : A6, x_7 : T3) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5, x_6), x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : A6, x_7 : T3) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5, x_6), x_7), newTypes, this.converter)
     }
     
     def compose2[A1, A2, A3, A4, A5, A6](other : Term6[A1, A2, A3, A4, A5, A6, T3]) : Term8[T1, T2, A1, A2, A3, A4, A5, A6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 6, 3)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : A5, x_7 : A6) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5, x_6, x_7)), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : A5, x_7 : A6) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5, x_6, x_7)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4, A5, A6, A7](other : Term7[A1, A2, A3, A4, A5, A6, A7, T1]) : Term9[A1, A2, A3, A4, A5, A6, A7, T2, T3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 7, 3)
-      Term9(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : A7, x_7 : T2, x_8 : T3) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6), x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : A7, x_7 : T2, x_8 : T3) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6), x_7, x_8), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3, A4, A5, A6, A7](other : Term7[A1, A2, A3, A4, A5, A6, A7, T2]) : Term9[T1, A1, A2, A3, A4, A5, A6, A7, T3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 7, 3)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : A6, x_7 : A7, x_8 : T3) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5, x_6, x_7), x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : A6, x_7 : A7, x_8 : T3) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5, x_6, x_7), x_8), newTypes, this.converter)
     }
     
     def compose2[A1, A2, A3, A4, A5, A6, A7](other : Term7[A1, A2, A3, A4, A5, A6, A7, T3]) : Term9[T1, T2, A1, A2, A3, A4, A5, A6, A7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 7, 3)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : A5, x_7 : A6, x_8 : A7) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5, x_6, x_7, x_8)), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : A5, x_7 : A6, x_8 : A7) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5, x_6, x_7, x_8)), newTypes, this.converter)
     }
   }
   
@@ -431,13 +424,13 @@ object Terms {
     override def apply(x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4) : R = scalaFunction(x_0, x_1, x_2, x_3)
   
     def ||(other : Term4[T1,T2,T3,T4,Boolean])(implicit asBoolean : (R) => Boolean) : Term4[T1,T2,T3,T4,Boolean] = 
-      Term4(this.program, Or(this.expr, other.expr), (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4) => this.scalaFunction(x_0,x_1,x_2,x_3) || other.scalaFunction(x_0,x_1,x_2,x_3), this.types, this.converter)
+      Term4(this.program, Or(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4) => this.scalaFunction(x_0,x_1,x_2,x_3) || other.scalaFunction(x_0,x_1,x_2,x_3), this.types, this.converter)
   
     def &&(other : Term4[T1,T2,T3,T4,Boolean])(implicit asBoolean : (R) => Boolean) : Term4[T1,T2,T3,T4,Boolean] = 
-      Term4(this.program, And(this.expr, other.expr), (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4) => this.scalaFunction(x_0,x_1,x_2,x_3) && other.scalaFunction(x_0,x_1,x_2,x_3), this.types, this.converter)
+      Term4(this.program, And(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4) => this.scalaFunction(x_0,x_1,x_2,x_3) && other.scalaFunction(x_0,x_1,x_2,x_3), this.types, this.converter)
   
     def unary_!(implicit asBoolean : (R) => Boolean) : Term4[T1,T2,T3,T4,Boolean] = 
-      Term4(this.program, Not(this.expr), (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4) => ! this.scalaFunction(x_0,x_1,x_2,x_3), this.types, this.converter)
+      Term4(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4) => ! this.scalaFunction(x_0,x_1,x_2,x_3), this.types, this.converter)
   
     def minimizing(minFunc : Term4[T1,T2,T3,T4,Int])(implicit asConstraint : t2c) : MinConstraint4[T1,T2,T3,T4] = {
       MinConstraint4[T1,T2,T3,T4](asConstraint(this), minFunc)
@@ -445,122 +438,122 @@ object Terms {
   
     def compose0[A1](other : Term1[A1, T1]) : Term4[A1, T2, T3, T4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 1, 4)
-      Term4(this.program, newExpr, (x_0 : A1, x_1 : T2, x_2 : T3, x_3 : T4) => this.scalaFunction(other.scalaFunction(x_0), x_1, x_2, x_3), newTypes, this.converter)
+      Term4(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : T2, x_2 : T3, x_3 : T4) => this.scalaFunction(other.scalaFunction(x_0), x_1, x_2, x_3), newTypes, this.converter)
     }
     
     def compose1[A1](other : Term1[A1, T2]) : Term4[T1, A1, T3, T4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 1, 4)
-      Term4(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : T3, x_3 : T4) => this.scalaFunction(x_0, other.scalaFunction(x_1), x_2, x_3), newTypes, this.converter)
+      Term4(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : T3, x_3 : T4) => this.scalaFunction(x_0, other.scalaFunction(x_1), x_2, x_3), newTypes, this.converter)
     }
     
     def compose2[A1](other : Term1[A1, T3]) : Term4[T1, T2, A1, T4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 1, 4)
-      Term4(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : T4) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2), x_3), newTypes, this.converter)
+      Term4(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : T4) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2), x_3), newTypes, this.converter)
     }
     
     def compose3[A1](other : Term1[A1, T4]) : Term4[T1, T2, T3, A1, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 1, 4)
-      Term4(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3)), newTypes, this.converter)
+      Term4(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3)), newTypes, this.converter)
     }
     
     def compose0[A1, A2](other : Term2[A1, A2, T1]) : Term5[A1, A2, T2, T3, T4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 2, 4)
-      Term5(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : T2, x_3 : T3, x_4 : T4) => this.scalaFunction(other.scalaFunction(x_0, x_1), x_2, x_3, x_4), newTypes, this.converter)
+      Term5(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : T2, x_3 : T3, x_4 : T4) => this.scalaFunction(other.scalaFunction(x_0, x_1), x_2, x_3, x_4), newTypes, this.converter)
     }
     
     def compose1[A1, A2](other : Term2[A1, A2, T2]) : Term5[T1, A1, A2, T3, T4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 2, 4)
-      Term5(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : T3, x_4 : T4) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2), x_3, x_4), newTypes, this.converter)
+      Term5(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : T3, x_4 : T4) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2), x_3, x_4), newTypes, this.converter)
     }
     
     def compose2[A1, A2](other : Term2[A1, A2, T3]) : Term5[T1, T2, A1, A2, T4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 2, 4)
-      Term5(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : T4) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3), x_4), newTypes, this.converter)
+      Term5(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : T4) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3), x_4), newTypes, this.converter)
     }
     
     def compose3[A1, A2](other : Term2[A1, A2, T4]) : Term5[T1, T2, T3, A1, A2, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 2, 4)
-      Term5(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4)), newTypes, this.converter)
+      Term5(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3](other : Term3[A1, A2, A3, T1]) : Term6[A1, A2, A3, T2, T3, T4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 3, 4)
-      Term6(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : T2, x_4 : T3, x_5 : T4) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2), x_3, x_4, x_5), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : T2, x_4 : T3, x_5 : T4) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2), x_3, x_4, x_5), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3](other : Term3[A1, A2, A3, T2]) : Term6[T1, A1, A2, A3, T3, T4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 3, 4)
-      Term6(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : T3, x_5 : T4) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3), x_4, x_5), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : T3, x_5 : T4) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3), x_4, x_5), newTypes, this.converter)
     }
     
     def compose2[A1, A2, A3](other : Term3[A1, A2, A3, T3]) : Term6[T1, T2, A1, A2, A3, T4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 3, 4)
-      Term6(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : T4) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4), x_5), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : T4) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4), x_5), newTypes, this.converter)
     }
     
     def compose3[A1, A2, A3](other : Term3[A1, A2, A3, T4]) : Term6[T1, T2, T3, A1, A2, A3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 3, 4)
-      Term6(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5)), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T1]) : Term7[A1, A2, A3, A4, T2, T3, T4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 4, 4)
-      Term7(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : T2, x_5 : T3, x_6 : T4) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3), x_4, x_5, x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : T2, x_5 : T3, x_6 : T4) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3), x_4, x_5, x_6), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T2]) : Term7[T1, A1, A2, A3, A4, T3, T4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 4, 4)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : T3, x_6 : T4) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4), x_5, x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : T3, x_6 : T4) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4), x_5, x_6), newTypes, this.converter)
     }
     
     def compose2[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T3]) : Term7[T1, T2, A1, A2, A3, A4, T4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 4, 4)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : T4) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5), x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : T4) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5), x_6), newTypes, this.converter)
     }
     
     def compose3[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T4]) : Term7[T1, T2, T3, A1, A2, A3, A4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 4, 4)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : A4) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5, x_6)), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : A4) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5, x_6)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4, A5](other : Term5[A1, A2, A3, A4, A5, T1]) : Term8[A1, A2, A3, A4, A5, T2, T3, T4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 5, 4)
-      Term8(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : T2, x_6 : T3, x_7 : T4) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4), x_5, x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : T2, x_6 : T3, x_7 : T4) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4), x_5, x_6, x_7), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3, A4, A5](other : Term5[A1, A2, A3, A4, A5, T2]) : Term8[T1, A1, A2, A3, A4, A5, T3, T4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 5, 4)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : T3, x_7 : T4) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5), x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : T3, x_7 : T4) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5), x_6, x_7), newTypes, this.converter)
     }
     
     def compose2[A1, A2, A3, A4, A5](other : Term5[A1, A2, A3, A4, A5, T3]) : Term8[T1, T2, A1, A2, A3, A4, A5, T4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 5, 4)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : A5, x_7 : T4) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5, x_6), x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : A5, x_7 : T4) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5, x_6), x_7), newTypes, this.converter)
     }
     
     def compose3[A1, A2, A3, A4, A5](other : Term5[A1, A2, A3, A4, A5, T4]) : Term8[T1, T2, T3, A1, A2, A3, A4, A5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 5, 4)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : A4, x_7 : A5) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5, x_6, x_7)), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : A4, x_7 : A5) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5, x_6, x_7)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4, A5, A6](other : Term6[A1, A2, A3, A4, A5, A6, T1]) : Term9[A1, A2, A3, A4, A5, A6, T2, T3, T4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 6, 4)
-      Term9(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : T2, x_7 : T3, x_8 : T4) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5), x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : T2, x_7 : T3, x_8 : T4) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5), x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3, A4, A5, A6](other : Term6[A1, A2, A3, A4, A5, A6, T2]) : Term9[T1, A1, A2, A3, A4, A5, A6, T3, T4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 6, 4)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : A6, x_7 : T3, x_8 : T4) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5, x_6), x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : A6, x_7 : T3, x_8 : T4) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5, x_6), x_7, x_8), newTypes, this.converter)
     }
     
     def compose2[A1, A2, A3, A4, A5, A6](other : Term6[A1, A2, A3, A4, A5, A6, T3]) : Term9[T1, T2, A1, A2, A3, A4, A5, A6, T4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 6, 4)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : A5, x_7 : A6, x_8 : T4) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5, x_6, x_7), x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : A5, x_7 : A6, x_8 : T4) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5, x_6, x_7), x_8), newTypes, this.converter)
     }
     
     def compose3[A1, A2, A3, A4, A5, A6](other : Term6[A1, A2, A3, A4, A5, A6, T4]) : Term9[T1, T2, T3, A1, A2, A3, A4, A5, A6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 6, 4)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : A4, x_7 : A5, x_8 : A6) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5, x_6, x_7, x_8)), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : A4, x_7 : A5, x_8 : A6) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5, x_6, x_7, x_8)), newTypes, this.converter)
     }
   }
   
@@ -573,13 +566,13 @@ object Terms {
     override def apply(x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5) : R = scalaFunction(x_0, x_1, x_2, x_3, x_4)
   
     def ||(other : Term5[T1,T2,T3,T4,T5,Boolean])(implicit asBoolean : (R) => Boolean) : Term5[T1,T2,T3,T4,T5,Boolean] = 
-      Term5(this.program, Or(this.expr, other.expr), (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4) || other.scalaFunction(x_0,x_1,x_2,x_3,x_4), this.types, this.converter)
+      Term5(this.program, Or(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4) || other.scalaFunction(x_0,x_1,x_2,x_3,x_4), this.types, this.converter)
   
     def &&(other : Term5[T1,T2,T3,T4,T5,Boolean])(implicit asBoolean : (R) => Boolean) : Term5[T1,T2,T3,T4,T5,Boolean] = 
-      Term5(this.program, And(this.expr, other.expr), (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4) && other.scalaFunction(x_0,x_1,x_2,x_3,x_4), this.types, this.converter)
+      Term5(this.program, And(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4) && other.scalaFunction(x_0,x_1,x_2,x_3,x_4), this.types, this.converter)
   
     def unary_!(implicit asBoolean : (R) => Boolean) : Term5[T1,T2,T3,T4,T5,Boolean] = 
-      Term5(this.program, Not(this.expr), (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5) => ! this.scalaFunction(x_0,x_1,x_2,x_3,x_4), this.types, this.converter)
+      Term5(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5) => ! this.scalaFunction(x_0,x_1,x_2,x_3,x_4), this.types, this.converter)
   
     def minimizing(minFunc : Term5[T1,T2,T3,T4,T5,Int])(implicit asConstraint : t2c) : MinConstraint5[T1,T2,T3,T4,T5] = {
       MinConstraint5[T1,T2,T3,T4,T5](asConstraint(this), minFunc)
@@ -587,127 +580,127 @@ object Terms {
   
     def compose0[A1](other : Term1[A1, T1]) : Term5[A1, T2, T3, T4, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 1, 5)
-      Term5(this.program, newExpr, (x_0 : A1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5) => this.scalaFunction(other.scalaFunction(x_0), x_1, x_2, x_3, x_4), newTypes, this.converter)
+      Term5(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5) => this.scalaFunction(other.scalaFunction(x_0), x_1, x_2, x_3, x_4), newTypes, this.converter)
     }
     
     def compose1[A1](other : Term1[A1, T2]) : Term5[T1, A1, T3, T4, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 1, 5)
-      Term5(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : T3, x_3 : T4, x_4 : T5) => this.scalaFunction(x_0, other.scalaFunction(x_1), x_2, x_3, x_4), newTypes, this.converter)
+      Term5(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : T3, x_3 : T4, x_4 : T5) => this.scalaFunction(x_0, other.scalaFunction(x_1), x_2, x_3, x_4), newTypes, this.converter)
     }
     
     def compose2[A1](other : Term1[A1, T3]) : Term5[T1, T2, A1, T4, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 1, 5)
-      Term5(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : T4, x_4 : T5) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2), x_3, x_4), newTypes, this.converter)
+      Term5(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : T4, x_4 : T5) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2), x_3, x_4), newTypes, this.converter)
     }
     
     def compose3[A1](other : Term1[A1, T4]) : Term5[T1, T2, T3, A1, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 1, 5)
-      Term5(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : T5) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3), x_4), newTypes, this.converter)
+      Term5(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : T5) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3), x_4), newTypes, this.converter)
     }
     
     def compose4[A1](other : Term1[A1, T5]) : Term5[T1, T2, T3, T4, A1, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 4, 1, 5)
-      Term5(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4)), newTypes, this.converter)
+      Term5(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4)), newTypes, this.converter)
     }
     
     def compose0[A1, A2](other : Term2[A1, A2, T1]) : Term6[A1, A2, T2, T3, T4, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 2, 5)
-      Term6(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : T2, x_3 : T3, x_4 : T4, x_5 : T5) => this.scalaFunction(other.scalaFunction(x_0, x_1), x_2, x_3, x_4, x_5), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : T2, x_3 : T3, x_4 : T4, x_5 : T5) => this.scalaFunction(other.scalaFunction(x_0, x_1), x_2, x_3, x_4, x_5), newTypes, this.converter)
     }
     
     def compose1[A1, A2](other : Term2[A1, A2, T2]) : Term6[T1, A1, A2, T3, T4, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 2, 5)
-      Term6(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : T3, x_4 : T4, x_5 : T5) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2), x_3, x_4, x_5), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : T3, x_4 : T4, x_5 : T5) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2), x_3, x_4, x_5), newTypes, this.converter)
     }
     
     def compose2[A1, A2](other : Term2[A1, A2, T3]) : Term6[T1, T2, A1, A2, T4, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 2, 5)
-      Term6(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : T4, x_5 : T5) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3), x_4, x_5), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : T4, x_5 : T5) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3), x_4, x_5), newTypes, this.converter)
     }
     
     def compose3[A1, A2](other : Term2[A1, A2, T4]) : Term6[T1, T2, T3, A1, A2, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 2, 5)
-      Term6(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : T5) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4), x_5), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : T5) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4), x_5), newTypes, this.converter)
     }
     
     def compose4[A1, A2](other : Term2[A1, A2, T5]) : Term6[T1, T2, T3, T4, A1, A2, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 4, 2, 5)
-      Term6(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5)), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3](other : Term3[A1, A2, A3, T1]) : Term7[A1, A2, A3, T2, T3, T4, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 3, 5)
-      Term7(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : T2, x_4 : T3, x_5 : T4, x_6 : T5) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2), x_3, x_4, x_5, x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : T2, x_4 : T3, x_5 : T4, x_6 : T5) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2), x_3, x_4, x_5, x_6), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3](other : Term3[A1, A2, A3, T2]) : Term7[T1, A1, A2, A3, T3, T4, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 3, 5)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : T3, x_5 : T4, x_6 : T5) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3), x_4, x_5, x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : T3, x_5 : T4, x_6 : T5) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3), x_4, x_5, x_6), newTypes, this.converter)
     }
     
     def compose2[A1, A2, A3](other : Term3[A1, A2, A3, T3]) : Term7[T1, T2, A1, A2, A3, T4, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 3, 5)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : T4, x_6 : T5) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4), x_5, x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : T4, x_6 : T5) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4), x_5, x_6), newTypes, this.converter)
     }
     
     def compose3[A1, A2, A3](other : Term3[A1, A2, A3, T4]) : Term7[T1, T2, T3, A1, A2, A3, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 3, 5)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : T5) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5), x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : T5) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5), x_6), newTypes, this.converter)
     }
     
     def compose4[A1, A2, A3](other : Term3[A1, A2, A3, T5]) : Term7[T1, T2, T3, T4, A1, A2, A3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 4, 3, 5)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : A3) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5, x_6)), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : A3) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5, x_6)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T1]) : Term8[A1, A2, A3, A4, T2, T3, T4, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 4, 5)
-      Term8(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : T2, x_5 : T3, x_6 : T4, x_7 : T5) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3), x_4, x_5, x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : T2, x_5 : T3, x_6 : T4, x_7 : T5) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3), x_4, x_5, x_6, x_7), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T2]) : Term8[T1, A1, A2, A3, A4, T3, T4, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 4, 5)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : T3, x_6 : T4, x_7 : T5) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4), x_5, x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : T3, x_6 : T4, x_7 : T5) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4), x_5, x_6, x_7), newTypes, this.converter)
     }
     
     def compose2[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T3]) : Term8[T1, T2, A1, A2, A3, A4, T4, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 4, 5)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : T4, x_7 : T5) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5), x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : T4, x_7 : T5) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5), x_6, x_7), newTypes, this.converter)
     }
     
     def compose3[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T4]) : Term8[T1, T2, T3, A1, A2, A3, A4, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 4, 5)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : A4, x_7 : T5) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5, x_6), x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : A4, x_7 : T5) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5, x_6), x_7), newTypes, this.converter)
     }
     
     def compose4[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T5]) : Term8[T1, T2, T3, T4, A1, A2, A3, A4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 4, 4, 5)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : A3, x_7 : A4) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5, x_6, x_7)), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : A3, x_7 : A4) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5, x_6, x_7)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4, A5](other : Term5[A1, A2, A3, A4, A5, T1]) : Term9[A1, A2, A3, A4, A5, T2, T3, T4, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 5, 5)
-      Term9(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : T2, x_6 : T3, x_7 : T4, x_8 : T5) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4), x_5, x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : T2, x_6 : T3, x_7 : T4, x_8 : T5) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4), x_5, x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3, A4, A5](other : Term5[A1, A2, A3, A4, A5, T2]) : Term9[T1, A1, A2, A3, A4, A5, T3, T4, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 5, 5)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : T3, x_7 : T4, x_8 : T5) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5), x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : T3, x_7 : T4, x_8 : T5) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5), x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose2[A1, A2, A3, A4, A5](other : Term5[A1, A2, A3, A4, A5, T3]) : Term9[T1, T2, A1, A2, A3, A4, A5, T4, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 5, 5)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : A5, x_7 : T4, x_8 : T5) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5, x_6), x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : A5, x_7 : T4, x_8 : T5) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5, x_6), x_7, x_8), newTypes, this.converter)
     }
     
     def compose3[A1, A2, A3, A4, A5](other : Term5[A1, A2, A3, A4, A5, T4]) : Term9[T1, T2, T3, A1, A2, A3, A4, A5, T5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 5, 5)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : A4, x_7 : A5, x_8 : T5) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5, x_6, x_7), x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : A4, x_7 : A5, x_8 : T5) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5, x_6, x_7), x_8), newTypes, this.converter)
     }
     
     def compose4[A1, A2, A3, A4, A5](other : Term5[A1, A2, A3, A4, A5, T5]) : Term9[T1, T2, T3, T4, A1, A2, A3, A4, A5, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 4, 5, 5)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : A3, x_7 : A4, x_8 : A5) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5, x_6, x_7, x_8)), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : A3, x_7 : A4, x_8 : A5) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5, x_6, x_7, x_8)), newTypes, this.converter)
     }
   }
   
@@ -720,13 +713,13 @@ object Terms {
     override def apply(x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6) : R = scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5)
   
     def ||(other : Term6[T1,T2,T3,T4,T5,T6,Boolean])(implicit asBoolean : (R) => Boolean) : Term6[T1,T2,T3,T4,T5,T6,Boolean] = 
-      Term6(this.program, Or(this.expr, other.expr), (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5) || other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5), this.types, this.converter)
+      Term6(this.program, Or(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5) || other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5), this.types, this.converter)
   
     def &&(other : Term6[T1,T2,T3,T4,T5,T6,Boolean])(implicit asBoolean : (R) => Boolean) : Term6[T1,T2,T3,T4,T5,T6,Boolean] = 
-      Term6(this.program, And(this.expr, other.expr), (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5) && other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5), this.types, this.converter)
+      Term6(this.program, And(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5) && other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5), this.types, this.converter)
   
     def unary_!(implicit asBoolean : (R) => Boolean) : Term6[T1,T2,T3,T4,T5,T6,Boolean] = 
-      Term6(this.program, Not(this.expr), (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6) => ! this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5), this.types, this.converter)
+      Term6(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6) => ! this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5), this.types, this.converter)
   
     def minimizing(minFunc : Term6[T1,T2,T3,T4,T5,T6,Int])(implicit asConstraint : t2c) : MinConstraint6[T1,T2,T3,T4,T5,T6] = {
       MinConstraint6[T1,T2,T3,T4,T5,T6](asConstraint(this), minFunc)
@@ -734,122 +727,122 @@ object Terms {
   
     def compose0[A1](other : Term1[A1, T1]) : Term6[A1, T2, T3, T4, T5, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 1, 6)
-      Term6(this.program, newExpr, (x_0 : A1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6) => this.scalaFunction(other.scalaFunction(x_0), x_1, x_2, x_3, x_4, x_5), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6) => this.scalaFunction(other.scalaFunction(x_0), x_1, x_2, x_3, x_4, x_5), newTypes, this.converter)
     }
     
     def compose1[A1](other : Term1[A1, T2]) : Term6[T1, A1, T3, T4, T5, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 1, 6)
-      Term6(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6) => this.scalaFunction(x_0, other.scalaFunction(x_1), x_2, x_3, x_4, x_5), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6) => this.scalaFunction(x_0, other.scalaFunction(x_1), x_2, x_3, x_4, x_5), newTypes, this.converter)
     }
     
     def compose2[A1](other : Term1[A1, T3]) : Term6[T1, T2, A1, T4, T5, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 1, 6)
-      Term6(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : T4, x_4 : T5, x_5 : T6) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2), x_3, x_4, x_5), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : T4, x_4 : T5, x_5 : T6) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2), x_3, x_4, x_5), newTypes, this.converter)
     }
     
     def compose3[A1](other : Term1[A1, T4]) : Term6[T1, T2, T3, A1, T5, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 1, 6)
-      Term6(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : T5, x_5 : T6) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3), x_4, x_5), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : T5, x_5 : T6) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3), x_4, x_5), newTypes, this.converter)
     }
     
     def compose4[A1](other : Term1[A1, T5]) : Term6[T1, T2, T3, T4, A1, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 4, 1, 6)
-      Term6(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : T6) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4), x_5), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : T6) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4), x_5), newTypes, this.converter)
     }
     
     def compose5[A1](other : Term1[A1, T6]) : Term6[T1, T2, T3, T4, T5, A1, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 5, 1, 6)
-      Term6(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5)), newTypes, this.converter)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5)), newTypes, this.converter)
     }
     
     def compose0[A1, A2](other : Term2[A1, A2, T1]) : Term7[A1, A2, T2, T3, T4, T5, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 2, 6)
-      Term7(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : T2, x_3 : T3, x_4 : T4, x_5 : T5, x_6 : T6) => this.scalaFunction(other.scalaFunction(x_0, x_1), x_2, x_3, x_4, x_5, x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : T2, x_3 : T3, x_4 : T4, x_5 : T5, x_6 : T6) => this.scalaFunction(other.scalaFunction(x_0, x_1), x_2, x_3, x_4, x_5, x_6), newTypes, this.converter)
     }
     
     def compose1[A1, A2](other : Term2[A1, A2, T2]) : Term7[T1, A1, A2, T3, T4, T5, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 2, 6)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : T3, x_4 : T4, x_5 : T5, x_6 : T6) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2), x_3, x_4, x_5, x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : T3, x_4 : T4, x_5 : T5, x_6 : T6) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2), x_3, x_4, x_5, x_6), newTypes, this.converter)
     }
     
     def compose2[A1, A2](other : Term2[A1, A2, T3]) : Term7[T1, T2, A1, A2, T4, T5, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 2, 6)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : T4, x_5 : T5, x_6 : T6) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3), x_4, x_5, x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : T4, x_5 : T5, x_6 : T6) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3), x_4, x_5, x_6), newTypes, this.converter)
     }
     
     def compose3[A1, A2](other : Term2[A1, A2, T4]) : Term7[T1, T2, T3, A1, A2, T5, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 2, 6)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : T5, x_6 : T6) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4), x_5, x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : T5, x_6 : T6) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4), x_5, x_6), newTypes, this.converter)
     }
     
     def compose4[A1, A2](other : Term2[A1, A2, T5]) : Term7[T1, T2, T3, T4, A1, A2, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 4, 2, 6)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : T6) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5), x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : T6) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5), x_6), newTypes, this.converter)
     }
     
     def compose5[A1, A2](other : Term2[A1, A2, T6]) : Term7[T1, T2, T3, T4, T5, A1, A2, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 5, 2, 6)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : A2) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5, x_6)), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : A2) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5, x_6)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3](other : Term3[A1, A2, A3, T1]) : Term8[A1, A2, A3, T2, T3, T4, T5, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 3, 6)
-      Term8(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : T2, x_4 : T3, x_5 : T4, x_6 : T5, x_7 : T6) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2), x_3, x_4, x_5, x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : T2, x_4 : T3, x_5 : T4, x_6 : T5, x_7 : T6) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2), x_3, x_4, x_5, x_6, x_7), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3](other : Term3[A1, A2, A3, T2]) : Term8[T1, A1, A2, A3, T3, T4, T5, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 3, 6)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : T3, x_5 : T4, x_6 : T5, x_7 : T6) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3), x_4, x_5, x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : T3, x_5 : T4, x_6 : T5, x_7 : T6) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3), x_4, x_5, x_6, x_7), newTypes, this.converter)
     }
     
     def compose2[A1, A2, A3](other : Term3[A1, A2, A3, T3]) : Term8[T1, T2, A1, A2, A3, T4, T5, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 3, 6)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : T4, x_6 : T5, x_7 : T6) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4), x_5, x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : T4, x_6 : T5, x_7 : T6) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4), x_5, x_6, x_7), newTypes, this.converter)
     }
     
     def compose3[A1, A2, A3](other : Term3[A1, A2, A3, T4]) : Term8[T1, T2, T3, A1, A2, A3, T5, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 3, 6)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : T5, x_7 : T6) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5), x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : T5, x_7 : T6) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5), x_6, x_7), newTypes, this.converter)
     }
     
     def compose4[A1, A2, A3](other : Term3[A1, A2, A3, T5]) : Term8[T1, T2, T3, T4, A1, A2, A3, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 4, 3, 6)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : A3, x_7 : T6) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5, x_6), x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : A3, x_7 : T6) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5, x_6), x_7), newTypes, this.converter)
     }
     
     def compose5[A1, A2, A3](other : Term3[A1, A2, A3, T6]) : Term8[T1, T2, T3, T4, T5, A1, A2, A3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 5, 3, 6)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : A2, x_7 : A3) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5, x_6, x_7)), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : A2, x_7 : A3) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5, x_6, x_7)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T1]) : Term9[A1, A2, A3, A4, T2, T3, T4, T5, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 4, 6)
-      Term9(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : T2, x_5 : T3, x_6 : T4, x_7 : T5, x_8 : T6) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3), x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : T2, x_5 : T3, x_6 : T4, x_7 : T5, x_8 : T6) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3), x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T2]) : Term9[T1, A1, A2, A3, A4, T3, T4, T5, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 4, 6)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : T3, x_6 : T4, x_7 : T5, x_8 : T6) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4), x_5, x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : T3, x_6 : T4, x_7 : T5, x_8 : T6) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4), x_5, x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose2[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T3]) : Term9[T1, T2, A1, A2, A3, A4, T4, T5, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 4, 6)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : T4, x_7 : T5, x_8 : T6) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5), x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : T4, x_7 : T5, x_8 : T6) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5), x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose3[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T4]) : Term9[T1, T2, T3, A1, A2, A3, A4, T5, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 4, 6)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : A4, x_7 : T5, x_8 : T6) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5, x_6), x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : A4, x_7 : T5, x_8 : T6) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5, x_6), x_7, x_8), newTypes, this.converter)
     }
     
     def compose4[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T5]) : Term9[T1, T2, T3, T4, A1, A2, A3, A4, T6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 4, 4, 6)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : A3, x_7 : A4, x_8 : T6) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5, x_6, x_7), x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : A3, x_7 : A4, x_8 : T6) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5, x_6, x_7), x_8), newTypes, this.converter)
     }
     
     def compose5[A1, A2, A3, A4](other : Term4[A1, A2, A3, A4, T6]) : Term9[T1, T2, T3, T4, T5, A1, A2, A3, A4, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 5, 4, 6)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : A2, x_7 : A3, x_8 : A4) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5, x_6, x_7, x_8)), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : A2, x_7 : A3, x_8 : A4) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5, x_6, x_7, x_8)), newTypes, this.converter)
     }
   }
   
@@ -862,13 +855,13 @@ object Terms {
     override def apply(x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7) : R = scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6)
   
     def ||(other : Term7[T1,T2,T3,T4,T5,T6,T7,Boolean])(implicit asBoolean : (R) => Boolean) : Term7[T1,T2,T3,T4,T5,T6,T7,Boolean] = 
-      Term7(this.program, Or(this.expr, other.expr), (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6) || other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6), this.types, this.converter)
+      Term7(this.program, Or(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6) || other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6), this.types, this.converter)
   
     def &&(other : Term7[T1,T2,T3,T4,T5,T6,T7,Boolean])(implicit asBoolean : (R) => Boolean) : Term7[T1,T2,T3,T4,T5,T6,T7,Boolean] = 
-      Term7(this.program, And(this.expr, other.expr), (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6) && other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6), this.types, this.converter)
+      Term7(this.program, And(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6) && other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6), this.types, this.converter)
   
     def unary_!(implicit asBoolean : (R) => Boolean) : Term7[T1,T2,T3,T4,T5,T6,T7,Boolean] = 
-      Term7(this.program, Not(this.expr), (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7) => ! this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6), this.types, this.converter)
+      Term7(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7) => ! this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6), this.types, this.converter)
   
     def minimizing(minFunc : Term7[T1,T2,T3,T4,T5,T6,T7,Int])(implicit asConstraint : t2c) : MinConstraint7[T1,T2,T3,T4,T5,T6,T7] = {
       MinConstraint7[T1,T2,T3,T4,T5,T6,T7](asConstraint(this), minFunc)
@@ -876,107 +869,107 @@ object Terms {
   
     def compose0[A1](other : Term1[A1, T1]) : Term7[A1, T2, T3, T4, T5, T6, T7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 1, 7)
-      Term7(this.program, newExpr, (x_0 : A1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7) => this.scalaFunction(other.scalaFunction(x_0), x_1, x_2, x_3, x_4, x_5, x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7) => this.scalaFunction(other.scalaFunction(x_0), x_1, x_2, x_3, x_4, x_5, x_6), newTypes, this.converter)
     }
     
     def compose1[A1](other : Term1[A1, T2]) : Term7[T1, A1, T3, T4, T5, T6, T7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 1, 7)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7) => this.scalaFunction(x_0, other.scalaFunction(x_1), x_2, x_3, x_4, x_5, x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7) => this.scalaFunction(x_0, other.scalaFunction(x_1), x_2, x_3, x_4, x_5, x_6), newTypes, this.converter)
     }
     
     def compose2[A1](other : Term1[A1, T3]) : Term7[T1, T2, A1, T4, T5, T6, T7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 1, 7)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2), x_3, x_4, x_5, x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2), x_3, x_4, x_5, x_6), newTypes, this.converter)
     }
     
     def compose3[A1](other : Term1[A1, T4]) : Term7[T1, T2, T3, A1, T5, T6, T7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 1, 7)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : T5, x_5 : T6, x_6 : T7) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3), x_4, x_5, x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : T5, x_5 : T6, x_6 : T7) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3), x_4, x_5, x_6), newTypes, this.converter)
     }
     
     def compose4[A1](other : Term1[A1, T5]) : Term7[T1, T2, T3, T4, A1, T6, T7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 4, 1, 7)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : T6, x_6 : T7) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4), x_5, x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : T6, x_6 : T7) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4), x_5, x_6), newTypes, this.converter)
     }
     
     def compose5[A1](other : Term1[A1, T6]) : Term7[T1, T2, T3, T4, T5, A1, T7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 5, 1, 7)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : T7) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5), x_6), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : T7) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5), x_6), newTypes, this.converter)
     }
     
     def compose6[A1](other : Term1[A1, T7]) : Term7[T1, T2, T3, T4, T5, T6, A1, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 6, 1, 7)
-      Term7(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : A1) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, other.scalaFunction(x_6)), newTypes, this.converter)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : A1) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, other.scalaFunction(x_6)), newTypes, this.converter)
     }
     
     def compose0[A1, A2](other : Term2[A1, A2, T1]) : Term8[A1, A2, T2, T3, T4, T5, T6, T7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 2, 7)
-      Term8(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : T2, x_3 : T3, x_4 : T4, x_5 : T5, x_6 : T6, x_7 : T7) => this.scalaFunction(other.scalaFunction(x_0, x_1), x_2, x_3, x_4, x_5, x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : T2, x_3 : T3, x_4 : T4, x_5 : T5, x_6 : T6, x_7 : T7) => this.scalaFunction(other.scalaFunction(x_0, x_1), x_2, x_3, x_4, x_5, x_6, x_7), newTypes, this.converter)
     }
     
     def compose1[A1, A2](other : Term2[A1, A2, T2]) : Term8[T1, A1, A2, T3, T4, T5, T6, T7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 2, 7)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : T3, x_4 : T4, x_5 : T5, x_6 : T6, x_7 : T7) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2), x_3, x_4, x_5, x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : T3, x_4 : T4, x_5 : T5, x_6 : T6, x_7 : T7) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2), x_3, x_4, x_5, x_6, x_7), newTypes, this.converter)
     }
     
     def compose2[A1, A2](other : Term2[A1, A2, T3]) : Term8[T1, T2, A1, A2, T4, T5, T6, T7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 2, 7)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : T4, x_5 : T5, x_6 : T6, x_7 : T7) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3), x_4, x_5, x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : T4, x_5 : T5, x_6 : T6, x_7 : T7) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3), x_4, x_5, x_6, x_7), newTypes, this.converter)
     }
     
     def compose3[A1, A2](other : Term2[A1, A2, T4]) : Term8[T1, T2, T3, A1, A2, T5, T6, T7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 2, 7)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : T5, x_6 : T6, x_7 : T7) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4), x_5, x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : T5, x_6 : T6, x_7 : T7) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4), x_5, x_6, x_7), newTypes, this.converter)
     }
     
     def compose4[A1, A2](other : Term2[A1, A2, T5]) : Term8[T1, T2, T3, T4, A1, A2, T6, T7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 4, 2, 7)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : T6, x_7 : T7) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5), x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : T6, x_7 : T7) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5), x_6, x_7), newTypes, this.converter)
     }
     
     def compose5[A1, A2](other : Term2[A1, A2, T6]) : Term8[T1, T2, T3, T4, T5, A1, A2, T7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 5, 2, 7)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : A2, x_7 : T7) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5, x_6), x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : A2, x_7 : T7) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5, x_6), x_7), newTypes, this.converter)
     }
     
     def compose6[A1, A2](other : Term2[A1, A2, T7]) : Term8[T1, T2, T3, T4, T5, T6, A1, A2, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 6, 2, 7)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : A1, x_7 : A2) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, other.scalaFunction(x_6, x_7)), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : A1, x_7 : A2) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, other.scalaFunction(x_6, x_7)), newTypes, this.converter)
     }
     
     def compose0[A1, A2, A3](other : Term3[A1, A2, A3, T1]) : Term9[A1, A2, A3, T2, T3, T4, T5, T6, T7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 3, 7)
-      Term9(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : T2, x_4 : T3, x_5 : T4, x_6 : T5, x_7 : T6, x_8 : T7) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2), x_3, x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : T2, x_4 : T3, x_5 : T4, x_6 : T5, x_7 : T6, x_8 : T7) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2), x_3, x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose1[A1, A2, A3](other : Term3[A1, A2, A3, T2]) : Term9[T1, A1, A2, A3, T3, T4, T5, T6, T7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 3, 7)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : T3, x_5 : T4, x_6 : T5, x_7 : T6, x_8 : T7) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3), x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : T3, x_5 : T4, x_6 : T5, x_7 : T6, x_8 : T7) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3), x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose2[A1, A2, A3](other : Term3[A1, A2, A3, T3]) : Term9[T1, T2, A1, A2, A3, T4, T5, T6, T7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 3, 7)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : T4, x_6 : T5, x_7 : T6, x_8 : T7) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4), x_5, x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : T4, x_6 : T5, x_7 : T6, x_8 : T7) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4), x_5, x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose3[A1, A2, A3](other : Term3[A1, A2, A3, T4]) : Term9[T1, T2, T3, A1, A2, A3, T5, T6, T7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 3, 7)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : T5, x_7 : T6, x_8 : T7) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5), x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : T5, x_7 : T6, x_8 : T7) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5), x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose4[A1, A2, A3](other : Term3[A1, A2, A3, T5]) : Term9[T1, T2, T3, T4, A1, A2, A3, T6, T7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 4, 3, 7)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : A3, x_7 : T6, x_8 : T7) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5, x_6), x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : A3, x_7 : T6, x_8 : T7) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5, x_6), x_7, x_8), newTypes, this.converter)
     }
     
     def compose5[A1, A2, A3](other : Term3[A1, A2, A3, T6]) : Term9[T1, T2, T3, T4, T5, A1, A2, A3, T7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 5, 3, 7)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : A2, x_7 : A3, x_8 : T7) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5, x_6, x_7), x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : A2, x_7 : A3, x_8 : T7) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5, x_6, x_7), x_8), newTypes, this.converter)
     }
     
     def compose6[A1, A2, A3](other : Term3[A1, A2, A3, T7]) : Term9[T1, T2, T3, T4, T5, T6, A1, A2, A3, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 6, 3, 7)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : A1, x_7 : A2, x_8 : A3) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, other.scalaFunction(x_6, x_7, x_8)), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : A1, x_7 : A2, x_8 : A3) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, other.scalaFunction(x_6, x_7, x_8)), newTypes, this.converter)
     }
   }
   
@@ -989,13 +982,13 @@ object Terms {
     override def apply(x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8) : R = scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, x_7)
   
     def ||(other : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean])(implicit asBoolean : (R) => Boolean) : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean] = 
-      Term8(this.program, Or(this.expr, other.expr), (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7,x_7 : T8) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7) || other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7), this.types, this.converter)
+      Term8(this.program, Or(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7,x_7 : T8) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7) || other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7), this.types, this.converter)
   
     def &&(other : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean])(implicit asBoolean : (R) => Boolean) : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean] = 
-      Term8(this.program, And(this.expr, other.expr), (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7,x_7 : T8) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7) && other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7), this.types, this.converter)
+      Term8(this.program, And(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7,x_7 : T8) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7) && other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7), this.types, this.converter)
   
     def unary_!(implicit asBoolean : (R) => Boolean) : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean] = 
-      Term8(this.program, Not(this.expr), (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7,x_7 : T8) => ! this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7), this.types, this.converter)
+      Term8(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7,x_7 : T8) => ! this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7), this.types, this.converter)
   
     def minimizing(minFunc : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Int])(implicit asConstraint : t2c) : MinConstraint8[T1,T2,T3,T4,T5,T6,T7,T8] = {
       MinConstraint8[T1,T2,T3,T4,T5,T6,T7,T8](asConstraint(this), minFunc)
@@ -1003,82 +996,82 @@ object Terms {
   
     def compose0[A1](other : Term1[A1, T1]) : Term8[A1, T2, T3, T4, T5, T6, T7, T8, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 1, 8)
-      Term8(this.program, newExpr, (x_0 : A1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8) => this.scalaFunction(other.scalaFunction(x_0), x_1, x_2, x_3, x_4, x_5, x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8) => this.scalaFunction(other.scalaFunction(x_0), x_1, x_2, x_3, x_4, x_5, x_6, x_7), newTypes, this.converter)
     }
     
     def compose1[A1](other : Term1[A1, T2]) : Term8[T1, A1, T3, T4, T5, T6, T7, T8, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 1, 8)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8) => this.scalaFunction(x_0, other.scalaFunction(x_1), x_2, x_3, x_4, x_5, x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8) => this.scalaFunction(x_0, other.scalaFunction(x_1), x_2, x_3, x_4, x_5, x_6, x_7), newTypes, this.converter)
     }
     
     def compose2[A1](other : Term1[A1, T3]) : Term8[T1, T2, A1, T4, T5, T6, T7, T8, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 1, 8)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2), x_3, x_4, x_5, x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2), x_3, x_4, x_5, x_6, x_7), newTypes, this.converter)
     }
     
     def compose3[A1](other : Term1[A1, T4]) : Term8[T1, T2, T3, A1, T5, T6, T7, T8, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 1, 8)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3), x_4, x_5, x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3), x_4, x_5, x_6, x_7), newTypes, this.converter)
     }
     
     def compose4[A1](other : Term1[A1, T5]) : Term8[T1, T2, T3, T4, A1, T6, T7, T8, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 4, 1, 8)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : T6, x_6 : T7, x_7 : T8) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4), x_5, x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : T6, x_6 : T7, x_7 : T8) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4), x_5, x_6, x_7), newTypes, this.converter)
     }
     
     def compose5[A1](other : Term1[A1, T6]) : Term8[T1, T2, T3, T4, T5, A1, T7, T8, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 5, 1, 8)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : T7, x_7 : T8) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5), x_6, x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : T7, x_7 : T8) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5), x_6, x_7), newTypes, this.converter)
     }
     
     def compose6[A1](other : Term1[A1, T7]) : Term8[T1, T2, T3, T4, T5, T6, A1, T8, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 6, 1, 8)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : A1, x_7 : T8) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, other.scalaFunction(x_6), x_7), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : A1, x_7 : T8) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, other.scalaFunction(x_6), x_7), newTypes, this.converter)
     }
     
     def compose7[A1](other : Term1[A1, T8]) : Term8[T1, T2, T3, T4, T5, T6, T7, A1, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 7, 1, 8)
-      Term8(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : A1) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, other.scalaFunction(x_7)), newTypes, this.converter)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : A1) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, other.scalaFunction(x_7)), newTypes, this.converter)
     }
     
     def compose0[A1, A2](other : Term2[A1, A2, T1]) : Term9[A1, A2, T2, T3, T4, T5, T6, T7, T8, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 2, 8)
-      Term9(this.program, newExpr, (x_0 : A1, x_1 : A2, x_2 : T2, x_3 : T3, x_4 : T4, x_5 : T5, x_6 : T6, x_7 : T7, x_8 : T8) => this.scalaFunction(other.scalaFunction(x_0, x_1), x_2, x_3, x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : T2, x_3 : T3, x_4 : T4, x_5 : T5, x_6 : T6, x_7 : T7, x_8 : T8) => this.scalaFunction(other.scalaFunction(x_0, x_1), x_2, x_3, x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose1[A1, A2](other : Term2[A1, A2, T2]) : Term9[T1, A1, A2, T3, T4, T5, T6, T7, T8, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 2, 8)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : T3, x_4 : T4, x_5 : T5, x_6 : T6, x_7 : T7, x_8 : T8) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2), x_3, x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : T3, x_4 : T4, x_5 : T5, x_6 : T6, x_7 : T7, x_8 : T8) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2), x_3, x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose2[A1, A2](other : Term2[A1, A2, T3]) : Term9[T1, T2, A1, A2, T4, T5, T6, T7, T8, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 2, 8)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : T4, x_5 : T5, x_6 : T6, x_7 : T7, x_8 : T8) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3), x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : T4, x_5 : T5, x_6 : T6, x_7 : T7, x_8 : T8) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3), x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose3[A1, A2](other : Term2[A1, A2, T4]) : Term9[T1, T2, T3, A1, A2, T5, T6, T7, T8, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 2, 8)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : T5, x_6 : T6, x_7 : T7, x_8 : T8) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4), x_5, x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : T5, x_6 : T6, x_7 : T7, x_8 : T8) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4), x_5, x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose4[A1, A2](other : Term2[A1, A2, T5]) : Term9[T1, T2, T3, T4, A1, A2, T6, T7, T8, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 4, 2, 8)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : T6, x_7 : T7, x_8 : T8) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5), x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : T6, x_7 : T7, x_8 : T8) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5), x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose5[A1, A2](other : Term2[A1, A2, T6]) : Term9[T1, T2, T3, T4, T5, A1, A2, T7, T8, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 5, 2, 8)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : A2, x_7 : T7, x_8 : T8) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5, x_6), x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : A2, x_7 : T7, x_8 : T8) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5, x_6), x_7, x_8), newTypes, this.converter)
     }
     
     def compose6[A1, A2](other : Term2[A1, A2, T7]) : Term9[T1, T2, T3, T4, T5, T6, A1, A2, T8, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 6, 2, 8)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : A1, x_7 : A2, x_8 : T8) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, other.scalaFunction(x_6, x_7), x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : A1, x_7 : A2, x_8 : T8) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, other.scalaFunction(x_6, x_7), x_8), newTypes, this.converter)
     }
     
     def compose7[A1, A2](other : Term2[A1, A2, T8]) : Term9[T1, T2, T3, T4, T5, T6, T7, A1, A2, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 7, 2, 8)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : A1, x_8 : A2) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, other.scalaFunction(x_7, x_8)), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : A1, x_8 : A2) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, other.scalaFunction(x_7, x_8)), newTypes, this.converter)
     }
   }
   
@@ -1091,13 +1084,13 @@ object Terms {
     override def apply(x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8, x_8 : T9) : R = scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8)
   
     def ||(other : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean])(implicit asBoolean : (R) => Boolean) : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean] = 
-      Term9(this.program, Or(this.expr, other.expr), (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7,x_7 : T8,x_8 : T9) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7,x_8) || other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7,x_8), this.types, this.converter)
+      Term9(this.program, Or(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7,x_7 : T8,x_8 : T9) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7,x_8) || other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7,x_8), this.types, this.converter)
   
     def &&(other : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean])(implicit asBoolean : (R) => Boolean) : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean] = 
-      Term9(this.program, And(this.expr, other.expr), (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7,x_7 : T8,x_8 : T9) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7,x_8) && other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7,x_8), this.types, this.converter)
+      Term9(this.program, And(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7,x_7 : T8,x_8 : T9) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7,x_8) && other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7,x_8), this.types, this.converter)
   
     def unary_!(implicit asBoolean : (R) => Boolean) : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean] = 
-      Term9(this.program, Not(this.expr), (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7,x_7 : T8,x_8 : T9) => ! this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7,x_8), this.types, this.converter)
+      Term9(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7,x_7 : T8,x_8 : T9) => ! this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7,x_8), this.types, this.converter)
   
     def minimizing(minFunc : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Int])(implicit asConstraint : t2c) : MinConstraint9[T1,T2,T3,T4,T5,T6,T7,T8,T9] = {
       MinConstraint9[T1,T2,T3,T4,T5,T6,T7,T8,T9](asConstraint(this), minFunc)
@@ -1105,47 +1098,47 @@ object Terms {
   
     def compose0[A1](other : Term1[A1, T1]) : Term9[A1, T2, T3, T4, T5, T6, T7, T8, T9, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 1, 9)
-      Term9(this.program, newExpr, (x_0 : A1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8, x_8 : T9) => this.scalaFunction(other.scalaFunction(x_0), x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8, x_8 : T9) => this.scalaFunction(other.scalaFunction(x_0), x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose1[A1](other : Term1[A1, T2]) : Term9[T1, A1, T3, T4, T5, T6, T7, T8, T9, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 1, 9)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : A1, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8, x_8 : T9) => this.scalaFunction(x_0, other.scalaFunction(x_1), x_2, x_3, x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8, x_8 : T9) => this.scalaFunction(x_0, other.scalaFunction(x_1), x_2, x_3, x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose2[A1](other : Term1[A1, T3]) : Term9[T1, T2, A1, T4, T5, T6, T7, T8, T9, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 1, 9)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8, x_8 : T9) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2), x_3, x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8, x_8 : T9) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2), x_3, x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose3[A1](other : Term1[A1, T4]) : Term9[T1, T2, T3, A1, T5, T6, T7, T8, T9, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 1, 9)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8, x_8 : T9) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3), x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8, x_8 : T9) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3), x_4, x_5, x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose4[A1](other : Term1[A1, T5]) : Term9[T1, T2, T3, T4, A1, T6, T7, T8, T9, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 4, 1, 9)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : T6, x_6 : T7, x_7 : T8, x_8 : T9) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4), x_5, x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : T6, x_6 : T7, x_7 : T8, x_8 : T9) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4), x_5, x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose5[A1](other : Term1[A1, T6]) : Term9[T1, T2, T3, T4, T5, A1, T7, T8, T9, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 5, 1, 9)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : T7, x_7 : T8, x_8 : T9) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5), x_6, x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : T7, x_7 : T8, x_8 : T9) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5), x_6, x_7, x_8), newTypes, this.converter)
     }
     
     def compose6[A1](other : Term1[A1, T7]) : Term9[T1, T2, T3, T4, T5, T6, A1, T8, T9, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 6, 1, 9)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : A1, x_7 : T8, x_8 : T9) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, other.scalaFunction(x_6), x_7, x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : A1, x_7 : T8, x_8 : T9) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, other.scalaFunction(x_6), x_7, x_8), newTypes, this.converter)
     }
     
     def compose7[A1](other : Term1[A1, T8]) : Term9[T1, T2, T3, T4, T5, T6, T7, A1, T9, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 7, 1, 9)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : A1, x_8 : T9) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, other.scalaFunction(x_7), x_8), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : A1, x_8 : T9) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, other.scalaFunction(x_7), x_8), newTypes, this.converter)
     }
     
     def compose8[A1](other : Term1[A1, T9]) : Term9[T1, T2, T3, T4, T5, T6, T7, T8, A1, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 8, 1, 9)
-      Term9(this.program, newExpr, (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8, x_8 : A1) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, x_7, other.scalaFunction(x_8)), newTypes, this.converter)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8, x_8 : A1) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, x_7, other.scalaFunction(x_8)), newTypes, this.converter)
     }
   }
   

@@ -10,6 +10,7 @@ object RuntimeMethods {
 
   import purescala.Definitions._
   import purescala.Trees._
+  import purescala.TypeTrees._
   import purescala.Common._
   import purescala.{DefaultReporter,QuietReporter}
   import purescala.FairZ3Solver
@@ -119,5 +120,28 @@ object RuntimeMethods {
     val ids = l.ids
     assert(ids.size == 1)
     Variable(ids.head)
+  }
+
+  def isSet(a: Any): Boolean = a.isInstanceOf[Set[_]]
+  def isMap(a: Any): Boolean = a.isInstanceOf[Map[_,_]]
+  def isFunction(a: Any): Boolean = a.isInstanceOf[Function1[_,_]]
+
+  def toScalaMap(e: Expr, e2s: (Expr) => Any): Map[_,_] = e match {
+    case FiniteMap(ss) => (ss.map{
+      case SingletonMap(k, v) => (e2s(k), e2s(v))
+    }).toMap
+    case _ => sys.error("Trying to convert " + e + " to a Scala map")
+  }
+
+  def toScalaSet(e: Expr, e2s: (Expr) => Any): Set[_] = e match {
+    case FiniteSet(es) => es.map(e => e2s(e)).toSet
+    case _ => sys.error("Trying to convert " + e + " to a Scala set")
+  }
+
+  def toScalaFunction(e: Expr, e2s: (Expr) => Any): Any = (e, e.getType) match {
+    case (AnonymousFunction(es, ev), FunctionType(fts, tt)) => {
+      throw new Exception("TODO")
+    }
+    case _ => sys.error("Trying to convert " + e + " to a Scala set")
   }
 }

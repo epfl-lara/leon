@@ -41,6 +41,9 @@ trait CodeGeneration {
   private lazy val skipCounterFunction            = definitions.getMember(runtimeMethodsModule, "skipCounter")
   private lazy val copySettingsFunction           = definitions.getMember(runtimeMethodsModule, "copySettings")
   private lazy val variableFromLFunction          = definitions.getMember(runtimeMethodsModule, "variableFromL")
+  private lazy val isSetFunction                  = definitions.getMember(runtimeMethodsModule, "isSet")
+  private lazy val toScalaMapFunction             = definitions.getMember(runtimeMethodsModule, "toScalaMap")
+  private lazy val toScalaSetFunction             = definitions.getMember(runtimeMethodsModule, "toScalaSet")
 
   private lazy val converterClass                 = definitions.getClass("cp.Converter")
 
@@ -72,6 +75,10 @@ trait CodeGeneration {
   private lazy val andClass                       = definitions.getClass("purescala.Trees.And")
   private lazy val equalsClass                    = definitions.getClass("purescala.Trees.Equals")
   private lazy val finiteSetClass                 = definitions.getClass("purescala.Trees.FiniteSet")
+  private lazy val finiteSetModule                = definitions.getModule("purescala.Trees.FiniteSet")
+  private lazy val finiteMapClass                 = definitions.getClass("purescala.Trees.FiniteMap")
+  private lazy val finiteMapModule                = definitions.getModule("purescala.Trees.FiniteMap")
+  private lazy val singletonMapClass              = definitions.getClass("purescala.Trees.SingletonMap")
 
   private def termModules(arity : Int)            = definitions.getModule("cp.Terms.Term" + arity)
 
@@ -125,6 +132,8 @@ trait CodeGeneration {
       // the following is for the recursive method
       val intSym        = methodSym.newValue(NoPosition, unit.fresh.newName("value")).setInfo(definitions.IntClass.tpe)
       val booleanSym    = methodSym.newValue(NoPosition, unit.fresh.newName("value")).setInfo(definitions.BooleanClass.tpe)
+      val finiteMapSym  = methodSym.newValue(NoPosition, unit.fresh.newName("map")).setInfo(finiteMapClass.tpe)
+      val finiteSetSym  = methodSym.newValue(NoPosition, unit.fresh.newName("set")).setInfo(finiteSetClass.tpe)
 
       val ccdBinderSym  = methodSym.newValue(NoPosition, unit.fresh.newName("ccd")).setInfo(caseClassDefClass.tpe)
       val argsBinderSym = methodSym.newValue(NoPosition, unit.fresh.newName("args")).setInfo(typeRef(NoPrefix, definitions.SeqClass, List(exprClass.tpe)))
@@ -158,9 +167,21 @@ trait CodeGeneration {
             }))
       }).toList
 
+      def anonymousFunctionFromMethod(methodSymbol: Symbol, argType: Type): Tree = {
+        val anonFunSym = methodSymbol.newValue(NoPosition, nme.ANON_FUN_NAME) setInfo (methodSymbol.tpe)
+        val argValue = anonFunSym.newValue(NoPosition, unit.fresh.newName("x")) setInfo (argType)
+        val anonFun = Function(
+          List(ValDef(argValue, EmptyTree)),
+          methodSym APPLY ID(argValue)
+        ) setSymbol anonFunSym 
+        anonFun
+      }
+
       val matchExpr = (methodSym ARG 0) MATCH ( List(
-        CASE((intLiteralModule) APPLY (intSym BIND WILD()))         ==> ID(intSym) ,
-        CASE((booleanLiteralModule) APPLY (booleanSym BIND WILD())) ==> ID(booleanSym)) :::
+        CASE((intLiteralModule) APPLY (intSym BIND WILD()))         ==> ID(intSym),
+        CASE((booleanLiteralModule) APPLY (booleanSym BIND WILD())) ==> ID(booleanSym),
+        CASE(finiteMapSym BIND ((finiteMapModule) APPLY (WILD())))  ==> (toScalaMapFunction APPLY (ID(finiteMapSym), anonymousFunctionFromMethod(methodSym, exprClass.tpe))),
+        CASE(finiteSetSym BIND ((finiteSetModule) APPLY (WILD())))  ==> (toScalaSetFunction APPLY (ID(finiteSetSym), anonymousFunctionFromMethod(methodSym, exprClass.tpe)))) :::
         caseClassMatchCases :::
         List(DEFAULT                                                ==> THROW(exceptionClass, LIT("Cannot convert FunCheck expression to Scala term"))) : _*
       )
@@ -184,6 +205,7 @@ trait CodeGeneration {
       // TODO how to declare this type Set[_] 
       val setType     = typeRef(NoPrefix, setClass, List(WildcardType))
       val setSym     = methodSym.newValue(NoPosition, unit.fresh.newName("value")).setInfo(setType)
+      val setSymAlt = methodSym.newValue(NoPosition, unit.fresh.newName("set")).setInfo(definitions.AnyClass.tpe)
 
       // anonymous function for mapping set to FiniteSet expression
       // val anonFunSym = methodSym.newValue(NoPosition, nme.ANON_FUN_NAME) setInfo (methodSym.tpe)
@@ -229,7 +251,9 @@ trait CodeGeneration {
 
       val matchExpr = (methodSym ARG 0) MATCH ( List(
         CASE(intSym     BIND Typed(WILD(), TypeTree(definitions.IntClass.tpe)))     ==> NEW(ID(intLiteralClass), ID(intSym)) ,
-        CASE(booleanSym BIND Typed(WILD(), TypeTree(definitions.BooleanClass.tpe))) ==> NEW(ID(booleanLiteralClass), ID(booleanSym))/*,
+        CASE(booleanSym BIND Typed(WILD(), TypeTree(definitions.BooleanClass.tpe))) ==> NEW(ID(booleanLiteralClass), ID(booleanSym))
+        //(CASE(setSymAlt) IF (isSetFunction APPLY (ID(setSymAlt))))                  ==> NEW(ID(finiteSetClass), 
+        /*,
         CASE(setSym     BIND Typed(WILD(), TypeTree(setType)))                      ==> NEW(ID(finiteSetClass), NEW(ID(intLiteralClass), LIT(42)), TypeApply(setSym DOT setToSeqFunction DOT seqMapFunction, List(TypeTree(exprClass.tpe))) APPLY anonFun)*/) :::
         caseClassMatchCases :::
         List(DEFAULT                                                                ==> THROW(exceptionClass, LIT("Cannot convert Scala term to FunCheck expression"))) : _*

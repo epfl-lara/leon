@@ -13,46 +13,37 @@ object LTrees {
     import scala.collection._
     import scala.collection.generic._
 
-    val (consts, exprWithConsts) = combineConstraint(constraint)
-    private var assertQueue: Seq[Expr] = Seq.empty
-    private var shouldCleanup = false
-
-    // assert the associated constraint
     import ConstraintSolving.GlobalContext
     GlobalContext.initializeIfNeeded(constraint.program)
-    if (!GlobalContext.isActive()) {
-      GlobalContext.activate()
-      shouldCleanup = true
-    }
-    GlobalContext.assertConstraint(exprWithConsts)
 
-    def enqueue(expr: Expr): Unit = {
-      assertQueue = expr +: assertQueue
-    }
+    private var liveSet: Set[Expr] = Set.empty
+    private var deadSet: Set[Expr] = Set.empty
 
-    def assertEnqueued(): Unit = {
-      if (!assertQueue.isEmpty) {
-        GlobalContext.assertConstraint(And(assertQueue))
-        assertQueue = Seq.empty
-      }
-    }
+    private var liveGuards: Map[Expr,Expr] = Map.empty
+
+    private var previouslyReturned: Seq[Expr] = Seq.empty
 
     def isStillSat(): Boolean = {
-      assertEnqueued()
-      GlobalContext.assertModelNegation()
-      GlobalContext.checkConsistency()
+      val (newConsts, newExpr) = combineConstraint(constraint)
+
+      // do it first for enumeration of one L var:
+      assert(newConsts.size == 1)
+      val newConst = newConsts.head
+      val newGuard = FreshIdentifier("live_" + newConst)
+
+      val toAssert = Implies(Variable(newGuard), newExpr)
+      GlobalContext.assertConstraint(toAssert)
+
+      sys.error("not implemented")
     }
 
     private def lStream(): Stream[L[T]] = {
-      if (isStillSat())
-        Stream.cons(new L[T](this, consts), lStream())
-      else {
-        if (shouldCleanup) {
-          GlobalContext.restart()
-          GlobalContext.deactivate()
-        }
-        Stream.empty
-      }
+      // if (isStillSat())
+      //   Stream.cons(new L[T](this, consts), lStream())
+      // else {
+      //   Stream.empty
+      // }
+      throw new Exception()
     }
 
     def flatMap [B, That] (f: (L[T]) ⇒ GenTraversableOnce[B])(implicit bf: CanBuildFrom[Traversable[L[T]], B, That]): That = {
