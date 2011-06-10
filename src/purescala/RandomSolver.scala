@@ -35,7 +35,7 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
     case BooleanType => BooleanLiteral(random.nextBoolean())
     case AbstractClassType(acd) => {
       val children = acd.knownChildren
-      if(size <= 0 || random.nextInt(size) == 1) {
+      if(size <= 0 || random.nextInt(size) == 0) {
         val terminalChildren = children.filter{ 
           case CaseClassDef(_, _, fields) => fields.isEmpty
           case _ => false
