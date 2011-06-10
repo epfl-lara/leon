@@ -35,7 +35,7 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
     case BooleanType => BooleanLiteral(random.nextBoolean())
     case AbstractClassType(acd) => {
       val children = acd.knownChildren
-      if(size <= 0) {
+      if(size <= 0 || random.nextInt(size) == 1) {
         val terminalChildren = children.filter{ 
           case CaseClassDef(_, _, fields) => fields.isEmpty
           case _ => false
@@ -45,7 +45,16 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
         else
           CaseClass(terminalChildren(random.nextInt(terminalChildren.size)).asInstanceOf[CaseClassDef], Seq())
       } else {
-        randomValue(classDefToClassType(children(random.nextInt(children.size))), size)
+        val nonTerminalChildren = children.filter{ 
+          case CaseClassDef(_, _, fields) => !fields.isEmpty
+          case _ => false
+        }
+        if(nonTerminalChildren.isEmpty) {
+          randomValue(classDefToClassType(children(random.nextInt(children.size))), size)
+        } else
+          randomValue(classDefToClassType(
+            nonTerminalChildren(
+              random.nextInt(nonTerminalChildren.size))), size)
       }
     }
     case CaseClassType(cd) => {
@@ -94,7 +103,7 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
       }
 
       val var2val: Map[Identifier, Expr] = Map(vars.map(v => (v, randomValue(v.getType, bound))).toList: _*)
-      reporter.info("Trying with: " + var2val)
+      //reporter.info("Trying with: " + var2val)
 
       val evalResult = eval(var2val, expression, None)
       evalResult match {
