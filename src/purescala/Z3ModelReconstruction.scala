@@ -32,7 +32,7 @@ trait Z3ModelReconstruction {
               val singletons = map.map(e => (e, z3.getASTKind(e._2))).collect {
                 case ((index, value), Z3AppAST(someCons, arg :: Nil)) if someCons == mapRangeSomeConstructors(vt) => SingletonMap(fromZ3Formula(index), fromZ3Formula(arg))
               }
-              if (singletons.isEmpty) Some(EmptyMap(kt, vt)) else Some(FiniteMap(singletons.toSeq))
+              (if (singletons.isEmpty) Some(EmptyMap(kt, vt)) else Some(FiniteMap(singletons.toSeq))).map(_.setType(expectedType))
           }
         }
         case funType @ FunctionType(fts, tt) => model.eval(z3ID) match {
@@ -44,7 +44,7 @@ trait Z3ModelReconstruction {
                 case ((key, value), Z3AppAST(cons, args)) if cons == funDomainConstructors(funType) => (args map fromZ3Formula, fromZ3Formula(value))
               }
               val elseValue = fromZ3Formula(ev)
-              Some(AnonymousFunction(entries, elseValue))
+              Some(AnonymousFunction(entries, elseValue).setType(expectedType))
           }
         }
         case other => model.eval(z3ID) match {
