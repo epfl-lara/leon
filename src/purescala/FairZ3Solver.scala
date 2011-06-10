@@ -187,14 +187,15 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     //println("indexMap: " + indexMap)
 
     def typeToSortRef(tt: TypeTree): ADTSortReference = tt match {
-      case BooleanType => RegularSort(boolSort)
-      case Int32Type => RegularSort(intSort)
+      // case BooleanType => RegularSort(boolSort)
+      // case Int32Type => RegularSort(intSort)
       case AbstractClassType(d) => RecursiveType(indexMap(d))
       case CaseClassType(d) => indexMap.get(d) match {
         case Some(i) => RecursiveType(i)
         case None => RecursiveType(indexMap(d.parent.get))
       }
-      case _ => throw UntranslatableTypeException("Can't handle type " + tt)
+      // case _ => throw UntranslatableTypeException("Can't handle type " + tt)
+      case _ => RegularSort(typeToSort(tt))
     }
 
     val childrenLists: Seq[List[CaseClassDef]] = roots.map(_ match {
