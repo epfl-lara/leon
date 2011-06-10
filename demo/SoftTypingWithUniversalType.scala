@@ -47,10 +47,10 @@ object Implicit {
   def listSize(u : U) : U = {
     require(isIntList(u))
 
-    u match {
-      case UNil() => UInt(0)
-      case UCons(_, t) => UInt(1 + listSize(t))
-    }
+    (u match {
+      case UNil() => 0
+      case UCons(_, t) => 1 + listSize(t)
+    }) : U // weird type hint... alternatively, build a UInt explicitly.
 
   } ensuring(res => isInt(res) && res >= 0)
 
