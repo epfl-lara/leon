@@ -424,7 +424,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     }
   }
 
-  def decideWithModel(vc: Expr, forValidity: Boolean, evaluator: Option[(Map[Identifier,Expr])=> Boolean] = None): (Option[Boolean], Map[Identifier,Expr]) = {
+  def decideWithModel(vc: Expr, forValidity: Boolean, evaluator: Option[(Map[Identifier,Expr]) => Boolean] = None, assumptions: Option[Set[Expr]] = None): (Option[Boolean], Map[Identifier,Expr]) = {
     val initializationStopwatch = new Stopwatch("init",               false)
     val blocking2Z3Stopwatch    = new Stopwatch("blocking-set-to-z3", false)
     val z3SearchStopwatch       = new Stopwatch("z3-search-1",        false)
@@ -435,6 +435,19 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     val decideTopLevelSw        = new Stopwatch("top-level",          false).start
 
     // println("Deciding : " + vc)
+    assumptions match {
+      case Some(set) => {
+        if (Settings.useCores)
+          throw new Exception("Use of cores while checking assumptions is not supported")
+        if (set.exists(e => e match {
+          case Variable(_) => false
+          case Not(Variable(_)) => false
+          case _ => true
+        }))
+          throw new Exception("assumptions may only be boolean literals")
+      }
+      case None =>
+    } 
 
     initializationStopwatch.start
 
@@ -494,6 +507,9 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     // println("CC : " + cc)
     z3.assertCnstr(cc)
 
+    // these are the optional sequence of assumption literals
+    val assumptionsAsZ3: Option[Seq[Z3AST]] = assumptions.map(set => set.toSeq.map(toZ3Formula(z3, _).get))
+
     blockingSet ++= Set(guards.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
 
     var iterationsLeft : Int = if(Settings.unrollingLevel > 0) Settings.unrollingLevel else 16121984
@@ -521,7 +537,10 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         z3.checkAssumptions(blockingSetAsZ3 : _*)
       } else {
         z3SearchStopwatch.start
-        val (a, m) = z3.checkAndGetModel()
+        val (a, m, _) = assumptionsAsZ3 match {
+          case Some(as) => z3.checkAssumptions(as: _*)
+          case None => val res = z3.checkAndGetModel(); (res._1, res._2, Seq.empty[Z3AST])
+        }
         z3SearchStopwatch.stop
         (a, m, Seq.empty[Z3AST])
       }
@@ -583,7 +602,10 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           if (Settings.luckyTest && !forceStop) {
             // we need the model to perform the additional test
             secondZ3SearchStopwatch.start
-            val (result2,m2) = z3.checkAndGetModel()
+            val (result2,m2) = assumptionsAsZ3 match {
+              case Some(as) => val res = z3.checkAssumptions(as: _*); (res._1, res._2)
+              case None => z3.checkAndGetModel()
+            }
             secondZ3SearchStopwatch.stop
 
             if (result2 == Some(false)) {
@@ -600,7 +622,10 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           } else {
             // only checking will suffice
             secondZ3SearchStopwatch.start
-            val result2 = z3.check()
+            val result2 = assumptionsAsZ3 match {
+              case Some(as) => val res = z3.checkAssumptions(as: _*); res._1
+              case None => z3.check()
+            }
             secondZ3SearchStopwatch.stop
 
             if (result2 == Some(false)) {
