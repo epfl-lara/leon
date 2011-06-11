@@ -23,76 +23,79 @@ object ConstraintSolving {
 
   object GlobalContext {
     private var solver: FairZ3Solver = null
-    private var lastModel: Option[Map[Identifier,Expr]] = None
-    private var isInconsistent: Boolean = false
-    private var alreadyAsserted: Set[Expr] = Set.empty[Expr]
-    private var toNegateForNextModel: Seq[(Seq[Identifier], Seq[Expr])] = Seq.empty
-
-    def restart(): Unit = {
-      // println("restart called")
-      solver.restartZ3
-      lastModel = None
-      isInconsistent = false
-      alreadyAsserted = Set.empty[Expr]
-      toNegateForNextModel = Seq.empty
-    }
+    private var lastModel: Map[Identifier,Expr] = null
+    // private var alreadyAsserted: Set[(Expr, Set[Expr])] = Set.empty[Expr]
+    // private var toNegateForNextModel: Seq[(Seq[Identifier], Seq[Expr])] = Seq.empty
 
     def initializeIfNeeded(p: Program): Unit = {
       if (solver == null)
         solver = newSolver(p)
     }
 
+    def checkAssumptions(expr: Expr, assumptions: Set[Expr]): Boolean = {
+      println("Checking assumptions")
+      println("To check: " + expr)
+      println("Assumpt.: " + assumptions)
+      solver.decideWithModel(expr, false, assumptions = Some(assumptions)) match {
+        case (Some(false), model) =>
+          lastModel = model
+          true
+        case _ =>
+          false
+      }
+    }
+
+    // def restart(): Unit = {
+    //   // println("restart called")
+    //   solver.restartZ3
+    //   lastModel = None
+    //   isInconsistent = false
+    //   alreadyAsserted = Set.empty[Expr]
+    //   toNegateForNextModel = Seq.empty
+    // }
+
     def assertConstraint(expr: Expr): Boolean = {
-      if (!alreadyAsserted.contains(expr)) {
-        alreadyAsserted = alreadyAsserted + expr
-        // println("asserting in global context: " + expr)
-        solver.decideWithModel(expr, false) match {
-          case (Some(false), model) =>
-            lastModel = Some(model)
-            true
-          case _ =>
-            isInconsistent = true
-            false
-        }
-      } else {
-        checkConsistency()
+      println("Asserting constraint: " +expr)
+      solver.decideWithModel(expr, false) match {
+        case (Some(false), model) =>
+          lastModel = model
+          true
+        case _ =>
+          println("UNSAT encountered in global context.")
+          lastModel = null
+          false
       }
     }
 
     /** Returns true iff the solver did not already return UNSAT and there is
      * still a model */
-    def checkConsistency(): Boolean = {
-      !isInconsistent && (lastModel match {
-        case Some(m) => true
-        case None =>
-          assertConstraint(BooleanLiteral(true))
-      })
-    }
+    // def checkConsistency(): Boolean = {
+    //   !isInconsistent && (lastModel match {
+    //     case Some(m) => true
+    //     case None =>
+    //       assertConstraint(BooleanLiteral(true))
+    //   })
+    // }
 
     def findValues(ids: Seq[Identifier]): Seq[Expr] = {
-      if (!checkConsistency())
-        sys.error("how did we end up here?")
-      else lastModel match {
-        case Some(m) =>
-          ids.map(modelValue(_, m))
-        case None =>
-          sys.error("this should not have happened.")
-      }
+      if (lastModel == null)
+        sys.error("Attempting to find values for " + ids.mkString(", ") + " while model is null.")
+      ids.map(modelValue(_, lastModel))
     }
 
-    def registerAsForced(ids: Seq[Identifier], values: Seq[Expr]): Unit = {
-      toNegateForNextModel = (ids, values) +: toNegateForNextModel
-    }
+    // def registerAsForced(ids: Seq[Identifier], values: Seq[Expr]): Unit = {
+    //   toNegateForNextModel = (ids, values) +: toNegateForNextModel
+    // }
 
-    def assertModelNegation(): Unit = {
-      if (!toNegateForNextModel.isEmpty) {
-        val equalities: Seq[Expr] = toNegateForNextModel.flatMap{
-          case (ids, values) => ((ids map (i => Variable(i))) zip values) map { case (i, v) => Equals(i, v) }
-        }
-        toNegateForNextModel = Seq.empty
-        assertConstraint(Not(And(equalities)))
-      }
-    }
+    // def assertModelNegation(): Unit = {
+    //   if (!toNegateForNextModel.isEmpty) {
+    //     val equalities: Seq[Expr] = toNegateForNextModel.flatMap{
+    //       case (ids, values) => ((ids map (i => Variable(i))) zip values) map { case (i, v) => Equals(i, v) }
+    //     }
+    //     toNegateForNextModel = Seq.empty
+    //     assertConstraint(Not(And(equalities)))
+    //   }
+    // }
   }
 
   /** Return interpretation of the constant in model if it exists, the simplest

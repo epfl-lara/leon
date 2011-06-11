@@ -8,128 +8,97 @@ import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.Common._
 
+import scala.collection.generic.FilterMonadic
+import scala.collection.generic.CanBuildFrom
+import scala.collection.GenTraversableOnce
+
 object LTrees {
   class LStream[T](val constraint: Constraint[T]) extends scala.collection.generic.FilterMonadic[L[T], Traversable[L[T]]] {
-    import scala.collection._
-    import scala.collection.generic._
 
     import ConstraintSolving.GlobalContext
     GlobalContext.initializeIfNeeded(constraint.program)
 
-    private var liveSet: Set[Expr] = Set.empty
-    private var deadSet: Set[Expr] = Set.empty
+    private var liveSet: Set[Identifier] = Set.empty
+    private var deadSet: Set[Identifier] = Set.empty
 
-    private var liveGuards: Map[Expr,Expr] = Map.empty
+    private var guards: Map[Seq[Identifier],Identifier] = Map.empty
 
-    private var previouslyReturned: Seq[Expr] = Seq.empty
+    private var previouslyReturned: Seq[Seq[Identifier]] = Seq.empty
 
-    def isStillSat(): Boolean = {
+    def markAsForced(ids: Seq[Identifier], values: Seq[Expr]): Unit = {
+      val guard = guards(ids)
+
+      // remove from live set
+      assert(liveSet.contains(guard))
+      liveSet = liveSet - guard
+      deadSet = deadSet + guard
+
+      // assert not live
+      val noMoreLive = Not(Variable(guard))
+      // assert value
+      val haveValues = And((ids zip values) map {
+        case (i, v) => Equals(Variable(i), v)
+      })
+
+      if (! GlobalContext.assertConstraint(And(noMoreLive, haveValues)))
+        throw new Exception("assertion of dead literals and forced values returned UNSAT")
+    }
+
+    private def isStillSat(): Option[Seq[Identifier]] = {
       val (newConsts, newExpr) = combineConstraint(constraint)
 
       // do it first for enumeration of one L var:
       assert(newConsts.size == 1)
-      val newConst = newConsts.head
-      val newGuard = FreshIdentifier("live_" + newConst)
+      val newGuard = FreshIdentifier("live", true).setType(BooleanType)
 
-      val toAssert = Implies(Variable(newGuard), newExpr)
-      GlobalContext.assertConstraint(toAssert)
+      liveSet = liveSet + newGuard
+      guards = guards + (newConsts -> newGuard)
 
-      sys.error("not implemented")
+      // for all previous sequences of returned identifiers, assert that the new sequence is distinct from them
+      val differentFromPrevious = And(previouslyReturned map (ps => Not(And((ps zip newConsts) map { case (p, n) => Equals(Variable(p), Variable(n)) }))))
+      val toAssert = Implies(Variable(newGuard), And(newExpr, differentFromPrevious))
+      if (GlobalContext.checkAssumptions(toAssert, liveSet map (Variable(_)))) {
+        previouslyReturned = newConsts +: previouslyReturned
+        assert(GlobalContext.assertConstraint(differentFromPrevious))
+        Some(newConsts)
+      } else {
+        None
+      }
     }
 
-    private def lStream(): Stream[L[T]] = {
-      // if (isStillSat())
-      //   Stream.cons(new L[T](this, consts), lStream())
-      // else {
-      //   Stream.empty
-      // }
-      throw new Exception()
+    private def underlyingStream(): Stream[L[T]] = {
+      isStillSat() match {
+        case Some(newIDs) =>
+          Stream.cons(new L[T](this, newIDs), underlyingStream())
+        case None =>
+          Stream.empty
+      }
     }
 
     def flatMap [B, That] (f: (L[T]) ⇒ GenTraversableOnce[B])(implicit bf: CanBuildFrom[Traversable[L[T]], B, That]): That = {
-      lStream().flatMap(f)
+      underlyingStream().flatMap(f)
     }
 
     def foreach [U] (f: (L[T]) ⇒ U): Unit = {
-      lStream().foreach(f)
+      underlyingStream().foreach(f)
     }
 
     def map [B, That] (f: (L[T]) ⇒ B)(implicit bf: CanBuildFrom[Traversable[L[T]], B, That]): That = {
-      lStream().map(f)
+      underlyingStream().map(f)
     }
 
     def withFilter (p: (L[T]) ⇒ Boolean): FilterMonadic[L[T], Traversable[L[T]]] = {
-      lStream().withFilter(p)
+      underlyingStream().withFilter(p)
     }
 
-    def withFilter2(p: (L[T]) => Constraint[T]): FilterMonadic[L[T], Traversable[L[T]]] = {
+    def withFilter2(p: (L[T]) => Constraint[T]): LStream[T] = {
       throw new Exception()
     }
-  }
-
-  implicit def lexpr2bool[T](l: LExpr[T]): Boolean = {
-    val toAssert = lexprToExpr(l)
-    // println("asserting within implicit call: " + toAssert)
-    GlobalContext.assertConstraint(toAssert)
-    GlobalContext.checkConsistency()
   }
 
   implicit def force[T](l : L[T]): T = {
     l.force()
   }
-
-  def lexprToExpr(lexpr: LExpr[_]): Expr = lexpr match {
-    case LEquals(l, r) => Equals(lexprToExpr(l), lexprToExpr(r))
-    case LIntLiteral(i) => IntLiteral(i)
-    case LBooleanLiteral(b) => BooleanLiteral(b)
-    case LPlus(l, r) => Plus(lexprToExpr(l), lexprToExpr(r))
-    case LMinus(l, r) => Minus(lexprToExpr(l), lexprToExpr(r))
-    case LTimes(l, r) => Times(lexprToExpr(l), lexprToExpr(r))
-    case LDivision(l, r) => Division(lexprToExpr(l), lexprToExpr(r))
-    case LLessThan(l, r) => LessThan(lexprToExpr(l), lexprToExpr(r))
-    case LGreaterThan(l, r) => GreaterThan(lexprToExpr(l), lexprToExpr(r))
-    case LLessEquals(l, r) => LessEquals(lexprToExpr(l), lexprToExpr(r))
-    case LGreaterEquals(l, r) => GreaterEquals(lexprToExpr(l), lexprToExpr(r))
-    case LAnd(l, r) => And(lexprToExpr(l), lexprToExpr(r))
-    case LOr(l, r) => Or(lexprToExpr(l), lexprToExpr(r))
-    case LNot(l) => Not(lexprToExpr(l))
-    case L(ids) => assert(ids.size == 1); Variable(ids.head)
-  }
-
-  sealed trait LExpr[T] {
-    def ===(x: LExpr[T]): LExpr[Boolean] = LEquals(this, x)
-
-    def +(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Int] = LPlus(this, x)
-    def -(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Int] = LMinus(this, x)
-    def *(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Int] = LTimes(this, x)
-    def /(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Int] = LDivision(this, x)
-    // def <(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Boolean] = LLessThan(this, x)
-    def >(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Boolean] = LGreaterThan(this, x)
-    def <=(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Boolean] = LLessEquals(this, x)
-    def >=(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Int]): LExpr[Boolean] = LGreaterEquals(this, x)
-
-    def &&(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Boolean]): LExpr[Boolean] = LAnd(this, x)
-    def ||(x: LExpr[T])(implicit ev: LExpr[T] => LExpr[Boolean]): LExpr[Boolean] = LOr(this, x)
-    def unary_!(implicit ev: LExpr[T] => LExpr[Boolean]): LExpr[Boolean] = LNot(this)
-  }
-
-  case class LEquals[T](lhs: LExpr[T], rhs: LExpr[T]) extends LExpr[Boolean]
-  /* Literals */
-  case class LIntLiteral(i: Int) extends LExpr[Int]
-  case class LBooleanLiteral(b: Boolean) extends LExpr[Boolean]
-  /* Arithmetic */
-  case class LPlus(lhs: LExpr[Int], rhs: LExpr[Int]) extends LExpr[Int]
-  case class LMinus(lhs: LExpr[Int], rhs: LExpr[Int]) extends LExpr[Int]
-  case class LTimes(lhs: LExpr[Int], rhs: LExpr[Int]) extends LExpr[Int]
-  case class LDivision(lhs: LExpr[Int], rhs: LExpr[Int]) extends LExpr[Int]
-  case class LLessThan(lhs: LExpr[Int], rhs: LExpr[Int]) extends LExpr[Boolean]
-  case class LGreaterThan(lhs: LExpr[Int], rhs: LExpr[Int]) extends LExpr[Boolean]
-  case class LLessEquals(lhs: LExpr[Int], rhs: LExpr[Int]) extends LExpr[Boolean]
-  case class LGreaterEquals(lhs: LExpr[Int], rhs: LExpr[Int]) extends LExpr[Boolean]
-  /* Propositional logic */
-  case class LAnd(lhs: LExpr[Boolean], rhs: LExpr[Boolean]) extends LExpr[Boolean]
-  case class LOr(lhs: LExpr[Boolean], rhs: LExpr[Boolean]) extends LExpr[Boolean]
-  case class LNot(lexpr: LExpr[Boolean]) extends LExpr[Boolean]
 
   /* L for Lazy, L for Logic */
   object L {
@@ -138,18 +107,23 @@ object LTrees {
     }
   }
 
-  class L[T](lStream: LStream[T], val ids: Seq[Identifier]) extends LExpr[T] {
+  class L[T](lStream: LStream[T], val ids: Seq[Identifier]) extends {
     import ConstraintSolving.GlobalContext
 
-    private def modelNegation(vs: Seq[Expr]): Expr = {
-      Not(And(((ids map (i => Variable(i))) zip vs) map { case (i, v) => Equals(i, v) }))
-    }
+    // private def modelNegation(vs: Seq[Expr]): Expr = {
+    //   Not(And(((ids map (i => Variable(i))) zip vs) map { case (i, v) => Equals(i, v) }))
+    // }
 
-    def force(): T = {
-      val model = GlobalContext.findValues(ids)
-      val toRet = lStream.constraint.convertingFunction(model)
-      GlobalContext.registerAsForced(ids, model)
-      toRet
+    var cache: Option[T] = None
+
+    def force(): T = cache match {
+      case Some(value) => value
+      case None =>
+        val model = GlobalContext.findValues(ids)
+        val toRet = lStream.constraint.convertingFunction(model)
+        lStream.markAsForced(ids, model)
+        cache = Some(toRet)
+        toRet
     }
   }
 }
