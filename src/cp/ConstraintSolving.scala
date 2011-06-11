@@ -21,21 +21,41 @@ object ConstraintSolving {
     s
   }
 
+  private val DEBUG = false
+
   object GlobalContext {
     private var solver: FairZ3Solver = null
     private var lastModel: Map[Identifier,Expr] = null
+
+    private var liveSet: Set[Identifier] = Set.empty
     // private var alreadyAsserted: Set[(Expr, Set[Expr])] = Set.empty[Expr]
     // private var toNegateForNextModel: Seq[(Seq[Identifier], Seq[Expr])] = Seq.empty
+
+    def kill(id: Identifier): Unit = {
+      liveSet = liveSet - id
+    }
+
+    def isAlive(id: Identifier): Boolean = {
+      liveSet.contains(id)
+    }
+
+    def addLive(id: Identifier): Unit = {
+      liveSet = liveSet + id
+    }
 
     def initializeIfNeeded(p: Program): Unit = {
       if (solver == null)
         solver = newSolver(p)
     }
 
-    def checkAssumptions(expr: Expr, assumptions: Set[Expr]): Boolean = {
-      println("Checking assumptions")
-      println("To check: " + expr)
-      println("Assumpt.: " + assumptions)
+    def checkAssumptions(expr: Expr) : Boolean = checkAssumptions(expr, liveSet map (Variable(_)))
+    private def checkAssumptions(expr: Expr, assumptions: Set[Expr]): Boolean = {
+      if (DEBUG) {
+        println("Checking assumptions: " + expr)
+        println("live set: " + liveSet)
+      }
+      // println("To check: " + expr)
+      // println("Assumpt.: " + assumptions)
       solver.decideWithModel(expr, false, assumptions = Some(assumptions)) match {
         case (Some(false), model) =>
           lastModel = model
@@ -55,7 +75,8 @@ object ConstraintSolving {
     // }
 
     def assertConstraint(expr: Expr): Boolean = {
-      println("Asserting constraint: " +expr)
+      if (DEBUG)
+        println("Asserting constraint: " +expr)
       solver.decideWithModel(expr, false) match {
         case (Some(false), model) =>
           lastModel = model

@@ -36,7 +36,7 @@ object Terms {
     }
 
     def lazyFindAll(implicit asConstraint: (Term[T,R]) => Constraint[T]): LStream[T] = {
-      new LStream(asConstraint(this))
+      new LStream((l: L[T]) => asConstraint(this))
     }
   }
 

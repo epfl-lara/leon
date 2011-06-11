@@ -13,64 +13,94 @@ import scala.collection.generic.CanBuildFrom
 import scala.collection.GenTraversableOnce
 
 object LTrees {
-  class LStream[T](val constraint: Constraint[T]) extends scala.collection.generic.FilterMonadic[L[T], Traversable[L[T]]] {
+  class LStream[T](val constraint: (L[T]) => Constraint[T]) extends scala.collection.generic.FilterMonadic[L[T], Traversable[L[T]]] {
 
     import ConstraintSolving.GlobalContext
-    GlobalContext.initializeIfNeeded(constraint.program)
-
-    private var liveSet: Set[Identifier] = Set.empty
-    private var deadSet: Set[Identifier] = Set.empty
-
     private var guards: Map[Seq[Identifier],Identifier] = Map.empty
-
     private var previouslyReturned: Seq[Seq[Identifier]] = Seq.empty
 
-    def markAsForced(ids: Seq[Identifier], values: Seq[Expr]): Unit = {
-      val guard = guards(ids)
+    private var forcedQueue: Seq[Seq[Identifier]] = Seq.empty
 
-      // remove from live set
-      assert(liveSet.contains(guard))
-      liveSet = liveSet - guard
-      deadSet = deadSet + guard
+    // we don't have this until we first instantiate a constraint
+    private var convertingFunction: (Seq[Expr]) => T = null
 
-      // assert not live
-      val noMoreLive = Not(Variable(guard))
+    def convert(s: Seq[Expr]): T = convertingFunction(s)
+
+    def enqueueAsForced(ids: Seq[Identifier], values: Seq[Expr]): Unit = {
       // assert value
       val haveValues = And((ids zip values) map {
         case (i, v) => Equals(Variable(i), v)
       })
 
-      if (! GlobalContext.assertConstraint(And(noMoreLive, haveValues)))
-        throw new Exception("assertion of dead literals and forced values returned UNSAT")
+      if (! GlobalContext.assertConstraint(haveValues))
+        throw new Exception("assertion of forced values returned UNSAT")
+      forcedQueue = ids +: forcedQueue
     }
 
-    private def isStillSat(): Option[Seq[Identifier]] = {
-      val (newConsts, newExpr) = combineConstraint(constraint)
+    def removeGuard(ids: Seq[Identifier]): Unit = {
+      val guard = guards(ids)
+
+      // remove from live set
+      assert(GlobalContext.isAlive(guard))
+      GlobalContext.kill(guard)
+
+      // assert not live
+      val noMoreLive = Not(Variable(guard))
+
+      if (! GlobalContext.assertConstraint(noMoreLive))
+        throw new Exception("assertion of dead literals returned UNSAT")
+    }
+
+    private def isStillSat(newConsts: Seq[Identifier], newExpr: Expr): Boolean = {
+      
+      for (ids <- forcedQueue) {
+        removeGuard(ids)
+      }
+      forcedQueue = Seq.empty
 
       // do it first for enumeration of one L var:
       assert(newConsts.size == 1)
       val newGuard = FreshIdentifier("live", true).setType(BooleanType)
 
-      liveSet = liveSet + newGuard
+      GlobalContext.addLive(newGuard)
       guards = guards + (newConsts -> newGuard)
 
       // for all previous sequences of returned identifiers, assert that the new sequence is distinct from them
       val differentFromPrevious = And(previouslyReturned map (ps => Not(And((ps zip newConsts) map { case (p, n) => Equals(Variable(p), Variable(n)) }))))
       val toAssert = Implies(Variable(newGuard), And(newExpr, differentFromPrevious))
-      if (GlobalContext.checkAssumptions(toAssert, liveSet map (Variable(_)))) {
+      if (GlobalContext.checkAssumptions(toAssert)) {
         previouslyReturned = newConsts +: previouslyReturned
         assert(GlobalContext.assertConstraint(differentFromPrevious))
-        Some(newConsts)
+        true
       } else {
-        None
+        removeGuard(newConsts)
+        false
       }
     }
 
     private def underlyingStream(): Stream[L[T]] = {
-      isStillSat() match {
-        case Some(newIDs) =>
-          Stream.cons(new L[T](this, newIDs), underlyingStream())
-        case None =>
+
+      // currently works for only LStreams generating one L
+      val placeHolders = Seq(FreshIdentifier("placeholder", true).setType(BottomType))
+      val candidateL = new L[T](this, placeHolders)
+      val instantiatedCnstr = constraint(candidateL)
+
+      // now that we have a Constraint, we can perform some actions such as:
+      GlobalContext.initializeIfNeeded(instantiatedCnstr.program)
+      convertingFunction = instantiatedCnstr.convertingFunction
+
+      val (newConsts, newExpr) = combineConstraint(instantiatedCnstr)
+      val typedPlaceHolders = (newConsts zip placeHolders) map {
+        case (cst, ph) => FreshIdentifier("fresh", true).setType(cst.getType)
+      }
+      // println("types : " + typedPlaceHolders.map(_.getType))
+      val subst1 = ((newConsts map (Variable(_))) zip (typedPlaceHolders map (Variable(_)))).toMap
+      val subst2 = ((placeHolders map (Variable(_))) zip (typedPlaceHolders map (Variable(_)))).toMap
+      val replacedExpr = replace(subst1 ++ subst2, newExpr)
+
+      if (isStillSat(typedPlaceHolders, replacedExpr)) {
+          Stream.cons(new L[T](this, typedPlaceHolders), underlyingStream())
+      } else {
           Stream.empty
       }
     }
@@ -92,7 +122,7 @@ object LTrees {
     }
 
     def withFilter2(p: (L[T]) => Constraint[T]): LStream[T] = {
-      throw new Exception()
+      new LStream[T]((l: L[T]) => this.constraint(l).asInstanceOf[Constraint1[T]] && p(l).asInstanceOf[Constraint1[T]])
     }
   }
 
@@ -120,8 +150,8 @@ object LTrees {
       case Some(value) => value
       case None =>
         val model = GlobalContext.findValues(ids)
-        val toRet = lStream.constraint.convertingFunction(model)
-        lStream.markAsForced(ids, model)
+        val toRet = lStream.convert(model)
+        lStream.enqueueAsForced(ids, model)
         cache = Some(toRet)
         toRet
     }
