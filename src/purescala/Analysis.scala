@@ -28,7 +28,7 @@ class Analysis(val program: Program, val reporter: Reporter = Settings.reporter)
       if(funDef.hasImplementation) {
         reporter.info("Creating template for " + funDef.id + "...") 
 
-        val t : FunctionTemplate = FunctionTemplate.mkTemplate(funDef, program)
+        val t : FunctionTemplate = FunctionTemplate.mkTemplate(funDef)
         reporter.info("The template : " + t)
       } else {
         reporter.info("Skipping template creating for " + funDef.id + " as it doesn't have a known implementation.")
