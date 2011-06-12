@@ -38,6 +38,7 @@ class FunCheckPlugin(val global: Global, val actionAfterExtraction : Option[Prog
     "  -P:funcheck:cores              Use UNSAT cores in the unrolling/refinement step" + "\n" +
     "  -P:funcheck:quickcheck         Use QuickCheck-like random search" + "\n" +
     "  -P:funcheck:parallel           Run all solvers in parallel" + "\n" +
+    "  -P:funcheck:templates          Use new ``FunctionTemplate'' technique" + "\n" +
     "  -P:funcheck:noLuckyTests       Do not perform additional tests to potentially find models early"
   )
 
@@ -60,6 +61,7 @@ class FunCheckPlugin(val global: Global, val actionAfterExtraction : Option[Prog
         case "cores"      =>                     purescala.Settings.useCores = true
         case "quickcheck" =>                     purescala.Settings.useQuickCheck = true
         case "parallel"   =>                     purescala.Settings.useParallel = true
+        case "templates"  =>                     purescala.Settings.useTemplates = true
         case "noLuckyTests" =>                   purescala.Settings.luckyTest = false
         case s if s.startsWith("unrolling=") =>  purescala.Settings.unrollingLevel = try { s.substring("unrolling=".length, s.length).toInt } catch { case _ => 0 }
         case s if s.startsWith("functions=") =>  purescala.Settings.functionsToAnalyse = Set(splitList(s.substring("functions=".length, s.length)): _*)

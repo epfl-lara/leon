@@ -74,7 +74,11 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     prepareSorts
     prepareFunctions
 
-    unrollingBank = new UnrollingBank
+    unrollingBank = if(Settings.useTemplates) {
+      new NewUnrollingBank
+    } else {
+      new UnrollingBank
+    }
     blockingSet = Set.empty
     toCheckAgainstModels = BooleanLiteral(true)
     varsInVC = Set.empty
@@ -488,17 +492,8 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     varsInVC ++= variablesOf(expandedVC)
 
     reporter.info(" - Initial unrolling...")
-    val (basis, clauses, guards) = unrollingBank.closeUnrollings(expandedVC)
-    // println("Here is what we want to check against models : " + toCheckAgainstModels)
-    // println("New basis: " + e)
-    // println("Bunch of clauses:\n" + se.map(_.toString).mkString("\n"))
-    // println("Bunch of blocking bools: " + sib.map(_.toString).mkString(", "))
+    val (clauses, guards) = unrollingBank.initialUnrolling(expandedVC)
 
-    // println("Basis : " + basis)
-    val bb = toZ3Formula(z3, basis).get
-    // println("Base : " + bb)
-    z3.assertCnstr(bb)
-    // println(toZ3Formula(z3, basis).get)
     // for(clause <- clauses) {
     //   println("we're getting a new clause " + clause)
     //   z3.assertCnstr(toZ3Formula(z3, clause).get)
@@ -1136,7 +1131,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       !filtered.isEmpty
     }
 
-    def wasUnrolledBefore(functionInvocation : FunctionInvocation) : Boolean = {
+    private def wasUnrolledBefore(functionInvocation : FunctionInvocation) : Boolean = {
       everythingEverUnrolled(functionInvocation)
     }
 
@@ -1144,7 +1139,12 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       everythingEverUnrolled += functionInvocation
     }
 
-    def closeUnrollings(formula : Expr) : (Expr, Seq[Expr], Seq[(Identifier,Boolean)]) = {
+    def initialUnrolling(formula : Expr) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
+      val (e,s,ss) = closeUnrollings(formula)
+      (e +: s, ss)
+    }
+
+    private def closeUnrollings(formula : Expr) : (Expr, Seq[Expr], Seq[(Identifier,Boolean)]) = {
       var (basis, clauses, ite2Bools) = clausifyITE(formula)
 
       var unrolledNow : Set[FunctionInvocation] = Set.empty
@@ -1210,6 +1210,8 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
 
     // takes in a conjunction and returns a new conjunction, where all
     // non-recursive function calls are "defined" and "contracted"
+    // NEVER USED !!!
+    /*
     def expandAllNonRecursive(exprs: List[Expr]) : List[Expr] = {
       val todo : MutableSet[FunctionInvocation] = MutableSet.empty
       val todo2 : MutableSet[FunctionInvocation] = MutableSet.empty
@@ -1235,7 +1237,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       }
 
       resulting
-    }
+    }*/
 
     // Returns between 0 and 2 tautologies with respect to the interpretation of
     // the function and its postcondition.
@@ -1284,13 +1286,23 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       }
     }
 
-    private var invocations : List[FunctionInvocation] = Nil
+    // Old junk?
+    /*private var invocations : List[FunctionInvocation] = Nil
 
     def addInvocation(blocker: Identifier, polarity: Boolean, invocation: FunctionInvocation) : Unit = {
       invocations = invocation :: invocations
+    }*/
+  }
+
+  class NewUnrollingBank extends UnrollingBank {
+    // This is called just once, for the "initial unrolling".
+    override def initialUnrolling(formula : Expr) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
+      sys.error("Not implemented.")
     }
 
-
+    override def unlock(id: Identifier, polarity: Boolean) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
+      sys.error("Not implemented.")
+    }
   }
 }
 

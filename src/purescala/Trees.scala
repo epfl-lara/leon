@@ -693,6 +693,19 @@ object Trees {
     treeCatamorphism(convert, combine, compute, expr)
   }
 
+  def containsFunctionCalls(expr : Expr) : Boolean = {
+    def convert(t : Expr) : Boolean = t match {
+      case f : FunctionInvocation => true
+      case _ => false
+    }
+    def combine(c1 : Boolean, c2 : Boolean) : Boolean = c1 || c2
+    def compute(t : Expr, c : Boolean) = t match {
+      case f : FunctionInvocation => true
+      case _ => c
+    }
+    treeCatamorphism(convert, combine, compute, expr)
+  }
+
   def topLevelFunctionCallsOf(expr: Expr, barring : Set[FunDef] = Set.empty) : Set[FunctionInvocation] = {
     def convert(t: Expr) : Set[FunctionInvocation] = t match {
       case f @ FunctionInvocation(fd, _) if(!barring(fd)) => Set(f)

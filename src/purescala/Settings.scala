@@ -26,4 +26,5 @@ object Settings {
   var useParallel : Boolean = false
   // When this is None, use real integers
   var bitvectorBitwidth : Option[Int] = None
+  var useTemplates : Boolean = false
 }
