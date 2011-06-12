@@ -110,6 +110,7 @@ object RuntimeMethods {
     purescala.Settings.solverTimeout        = recovered.solverTimeout
 
     Settings.useScalaEvaluator              = recovered.useScalaEvaluator
+    Settings.verbose                        = recovered.verbose
   }
   
   def inputVar(inputVarList : List[Variable], varName : String) : Variable = {

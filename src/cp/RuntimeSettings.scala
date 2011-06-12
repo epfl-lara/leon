@@ -14,6 +14,8 @@ class RuntimeSettings extends Serializable {
   var solverTimeout : Option[Int] = purescala.Settings.solverTimeout 
   var luckyTest : Boolean = purescala.Settings.luckyTest 
 
+  /* when you add a new parameter here, remember to add it to copySettings in
+   * RuntimeMethods */
   var useScalaEvaluator : Boolean = Settings.useScalaEvaluator
   var verbose : Boolean = Settings.verbose
 }

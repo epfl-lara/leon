@@ -32,8 +32,7 @@ object LTrees {
         case (i, v) => Equals(Variable(i), v)
       })
 
-      if (! GlobalContext.assertConstraint(haveValues))
-        throw new Exception("assertion of forced values returned UNSAT")
+      GlobalContext.enqueueAssert(haveValues)
       forcedQueue = ids +: forcedQueue
     }
 
@@ -47,8 +46,7 @@ object LTrees {
       // assert not live
       val noMoreLive = Not(Variable(guard))
 
-      if (! GlobalContext.assertConstraint(noMoreLive))
-        throw new Exception("assertion of dead literals returned UNSAT")
+      GlobalContext.enqueueAssert(noMoreLive)
     }
 
     private def isStillSat(newConsts: Seq[Identifier], newExpr: Expr): Boolean = {
@@ -69,8 +67,9 @@ object LTrees {
       val differentFromPrevious = And(previouslyReturned map (ps => Not(And((ps zip newConsts) map { case (p, n) => Equals(Variable(p), Variable(n)) }))))
       val toAssert = Implies(Variable(newGuard), And(newExpr, differentFromPrevious))
       if (GlobalContext.checkAssumptions(toAssert)) {
+        if (!previouslyReturned.isEmpty)
+          assert(GlobalContext.assertConstraint(differentFromPrevious))
         previouslyReturned = newConsts +: previouslyReturned
-        assert(GlobalContext.assertConstraint(differentFromPrevious))
         true
       } else {
         removeGuard(newConsts)
@@ -79,6 +78,9 @@ object LTrees {
     }
 
     private def underlyingStream(): Stream[L[T]] = {
+
+      // set of tricks to overcome circular dependency between creation of L's
+      // and Constraints
 
       // currently works for only LStreams generating one L
       val placeHolders = Seq(FreshIdentifier("placeholder", true).setType(BottomType))

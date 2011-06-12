@@ -7,22 +7,29 @@ object LazyVars {
   def chooseInt(lower: Int, upper: Int) = ((x: Int) => x >= lower && x <= upper).lazyFindAll
 
   def main(args: Array[String]): Unit = {
-    // for {
-    //   x <- chooseInt(0, 5)
-    //   y <- chooseInt(1, 3)
-    //   if x > y
-    // } {
-    //   val a: Int = x
-    //   val b: Int = y
-    //   println(a, b)
-    // }
-
+    f1()
     println("...")
+    f2()
+  }
 
+  def f1() {
+    for {
+      x <- chooseInt(0, 5)
+      y <- chooseInt(1, 3)
+      if x > y
+    } {
+      val a: Int = x
+      val b: Int = y
+      println(a, b)
+    }
+  }
+
+  def f2() {
+    // will loop forever if Scala Stream.from(0) is used instead.
     for {
       x <- NonnegativeInt
       if x < 3
-      y <- NonnegativeInt // replace these with Stream.from(0) and the code will loop forever without printing anything
+      y <- NonnegativeInt
       if x > y
     } {
       val i: Int = x

@@ -21,15 +21,14 @@ object ConstraintSolving {
     s
   }
 
-  private val DEBUG = false
+  private val DEBUG = true
 
   object GlobalContext {
     private var solver: FairZ3Solver = null
     private var lastModel: Map[Identifier,Expr] = null
 
     private var liveSet: Set[Identifier] = Set.empty
-    // private var alreadyAsserted: Set[(Expr, Set[Expr])] = Set.empty[Expr]
-    // private var toNegateForNextModel: Seq[(Seq[Identifier], Seq[Expr])] = Seq.empty
+    private var toAssertQueue: Seq[Expr] = Seq.empty
 
     def kill(id: Identifier): Unit = {
       liveSet = liveSet - id
@@ -51,12 +50,16 @@ object ConstraintSolving {
     def checkAssumptions(expr: Expr) : Boolean = checkAssumptions(expr, liveSet map (Variable(_)))
     private def checkAssumptions(expr: Expr, assumptions: Set[Expr]): Boolean = {
       if (DEBUG) {
-        println("Checking assumptions: " + expr)
-        println("live set: " + liveSet)
+        println("  - Checking assumptions: " + expr)
+        println("  - live set: " + liveSet)
+        if (! toAssertQueue.isEmpty)
+          println("  - Will also assert enqueued expressions: " + toAssertQueue)
       }
-      // println("To check: " + expr)
-      // println("Assumpt.: " + assumptions)
-      solver.decideWithModel(expr, false, assumptions = Some(assumptions)) match {
+
+      val toCheck = And(expr +: toAssertQueue)
+      toAssertQueue = Seq.empty
+
+      solver.decideWithModel(toCheck, false, assumptions = Some(assumptions)) match {
         case (Some(false), model) =>
           lastModel = model
           true
@@ -75,8 +78,15 @@ object ConstraintSolving {
     // }
 
     def assertConstraint(expr: Expr): Boolean = {
-      if (DEBUG)
-        println("Asserting constraint: " +expr)
+      if (DEBUG) {
+        println("  - Asserting constraint: " +expr)
+        if (! toAssertQueue.isEmpty)
+          println("  - Will also assert enqueued expressions: " + toAssertQueue)
+      }
+
+      val toAssert = And(expr +: toAssertQueue)
+      toAssertQueue = Seq.empty
+
       solver.decideWithModel(expr, false) match {
         case (Some(false), model) =>
           lastModel = model
@@ -86,6 +96,10 @@ object ConstraintSolving {
           lastModel = null
           false
       }
+    }
+
+    def enqueueAssert(expr: Expr): Unit = {
+      toAssertQueue = expr +: toAssertQueue
     }
 
     /** Returns true iff the solver did not already return UNSAT and there is
@@ -318,6 +332,7 @@ object ConstraintSolving {
               nextModel = Some(Some(completeModel))
               val newModelEqualities = And(outputVariables.map(ov => Equals(Variable(ov), completeModel(ov))))
               toCheck = negate(newModelEqualities)
+              // toCheck = And(toCheck, negate(newModelEqualities))
               // accumulate negations of models in evaluator
               // toUseAsEvaluator = toUseAsEvaluator.map(e => ((m : Map[Identifier,Expr]) => e(m) && !m.forall{ case (k,v) => completeModel.get(k) == Some(v) }))
               true
@@ -357,6 +372,7 @@ object ConstraintSolving {
 
               val newModelEqualities = And(outputVariables.map(ov => Equals(Variable(ov), completeModel(ov))))
               toCheck = negate(newModelEqualities)
+              // toCheck = And(toCheck, negate(newModelEqualities))
               // accumulate negations of models in evaluator
               // toUseAsEvaluator = toUseAsEvaluator.map(e => ((m : Map[Identifier,Expr]) => e(m) && !m.forall(p => completeModel.get(p._1) == Some(p._2))))
               completeModel

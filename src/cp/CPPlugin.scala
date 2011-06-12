@@ -51,7 +51,7 @@ class CPPlugin(val global: Global) extends Plugin {
         case "cores"     =>                      purescala.Settings.useCores = true
         case "noLuckyTests" =>                   purescala.Settings.luckyTest = false
         case "scalaEval" =>                      cp.Settings.useScalaEvaluator = true
-        case "verbose  " =>                      cp.Settings.verbose = true
+        case "verbose"   =>                      cp.Settings.verbose = true
         case s if s.startsWith("unrolling=") =>  purescala.Settings.unrollingLevel = try { s.substring("unrolling=".length, s.length).toInt } catch { case _ => 0 }
         case s if s.startsWith("functions=") =>  purescala.Settings.functionsToAnalyse = Set(splitList(s.substring("functions=".length, s.length)): _*)
         case s if s.startsWith("extensions=") => purescala.Settings.extensionNames = splitList(s.substring("extensions=".length, s.length))
