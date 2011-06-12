@@ -68,15 +68,15 @@ object AmortizedQueue {
     }
   }
 
-  @induct
-  def propEnqueue(rear : List, front : List, list : List, elem : Int) : Boolean = {
-    require(isAmortized(Queue(front, rear)))
-    val queue = Queue(front, rear)
-    if (asList(queue) == list) {
-      asList(enqueue(queue, elem)) == concat(list, Cons(elem, Nil()))
-    } else
-      true
-  } holds
+  // @induct
+  // def propEnqueue(rear : List, front : List, list : List, elem : Int) : Boolean = {
+  //   require(isAmortized(Queue(front, rear)))
+  //   val queue = Queue(front, rear)
+  //   if (asList(queue) == list) {
+  //     asList(enqueue(queue, elem)) == concat(list, Cons(elem, Nil()))
+  //   } else
+  //     true
+  // } holds
 
   @induct
   def propFront(queue : AbsQueue, list : List, elem : Int) : Boolean = {
