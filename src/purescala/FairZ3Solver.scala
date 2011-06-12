@@ -494,10 +494,12 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     reporter.info(" - Initial unrolling...")
     val (clauses, guards) = unrollingBank.initialUnrolling(expandedVC)
 
-    // for(clause <- clauses) {
-    //   println("we're getting a new clause " + clause)
+    for(clause <- clauses) {
+      //println("we're getting a new clause " + clause)
     //   z3.assertCnstr(toZ3Formula(z3, clause).get)
-    // }
+    }
+
+    //println("The blocking guards: " + guards)
     val cc = toZ3Formula(z3, And(clauses)).get
     // println("CC : " + cc)
     z3.assertCnstr(cc)
@@ -560,7 +562,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           }
         }
         case (Some(true), m) => { // SAT
-          // println("MODEL IS: " + m)
+          //println("MODEL IS: " + m)
           validatingStopwatch.start
           val (trueModel, model) = validateAndDeleteModel(m, toCheckAgainstModels, varsInVC, evaluator)
           validatingStopwatch.stop
@@ -708,10 +710,11 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
             reporter.info(" - more unrollings")
             for((id,polarity) <- toReleaseAsPairs) {
               val (newClauses,newBlockers) = unrollingBank.unlock(id, !polarity)
-              // for(clause <- newClauses) {
-              //   println("we're getting a new clause " + clause)
+                //println("Unlocked : " + (id, !polarity))
+               for(clause <- newClauses) {
+                 //println("we're getting a new clause " + clause)
               //   z3.assertCnstr(toZ3Formula(z3, clause).get)
-              // }
+               }
 
               for(ncl <- newClauses) {
                 z3.assertCnstr(toZ3Formula(z3, ncl).get)
@@ -1295,14 +1298,70 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   }
 
   class NewUnrollingBank extends UnrollingBank {
-    // This is called just once, for the "initial unrolling".
-    override def initialUnrolling(formula : Expr) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
-      sys.error("Not implemented.")
+    private val blockMap : MutableMap[(Identifier,Boolean),Set[FunctionInvocation]] = MutableMap.empty
+    private def registerBlocked(id: Identifier, pol: Boolean, fi: FunctionInvocation) : Boolean = 
+      registerBlocked(id,pol,Set(fi))
+    private def registerBlocked(id: Identifier, pol: Boolean, fis: Set[FunctionInvocation]) : Boolean = {
+      val filtered = fis.filter(i => {
+        val FunctionInvocation(fd, _) = i
+        !axiomatizedFunctions(fd)
+      })
+
+      if(!filtered.isEmpty) {
+        val pair = (id, pol)
+        val alreadyBlocked = blockMap.get(pair)
+        alreadyBlocked match {
+          case None => blockMap(pair) = filtered
+          case Some(prev) => blockMap(pair) = prev ++ filtered
+        }
+        true
+      } else {
+        false
+      }
     }
 
-    override def unlock(id: Identifier, polarity: Boolean) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
-      sys.error("Not implemented.")
+    private def treatFunctionInvocationSet(sVar : Identifier, pol : Boolean, fis : Set[FunctionInvocation]) : (Seq[Expr],Seq[(Identifier,Boolean)]) = {
+      val allBlocks : MutableSet[(Identifier,Boolean)] = MutableSet.empty
+      var allNewExprs : Seq[Expr] = Seq.empty
+
+      for(fi <- fis) {
+        val temp = FunctionTemplate.mkTemplate(fi.funDef)
+        val (newExprs,newBlocks) = temp.instantiate(sVar, pol, fi.args)
+
+        for(((i,p),fis) <- newBlocks) {
+          if(registerBlocked(i,p,fis)) {
+            allBlocks += ((i,p))
+          }
+        }
+        allNewExprs = allNewExprs ++ newExprs
+      }
+      (allNewExprs, allBlocks.toSeq)
+    }
+
+    // This is called just once, for the "initial unrolling".
+    override def initialUnrolling(formula : Expr) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
+      val fi = functionCallsOf(formula)
+      if(fi.isEmpty) {
+        (Seq(formula), Seq.empty)
+      } else {
+        val startingVar : Identifier = FreshIdentifier("start", true).setType(BooleanType)
+
+        val result = treatFunctionInvocationSet(startingVar, true, functionCallsOf(formula))
+        reporter.info(result)
+        (Variable(startingVar) +: formula +: result._1, result._2)
+      }
+    }
+
+    override def unlock(id: Identifier, pol: Boolean) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
+      if(!blockMap.isDefinedAt((id,pol))) {
+        (Seq.empty,Seq.empty)
+      } else {
+        val copy = blockMap((id,pol))
+        blockMap((id,pol)) = Set.empty
+        treatFunctionInvocationSet(id, pol, copy)
+      }
     }
   }
+
 }
 
