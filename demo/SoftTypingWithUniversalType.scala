@@ -23,7 +23,7 @@ object Implicit {
     require(isInt(u))
     u match {
       case UInt(i) => i
-      case _ => 0
+      //case _ => 0
     }
   }
 
@@ -36,11 +36,12 @@ object Implicit {
     require(isIntSet(u))
     u match {
       case UIntSet(s) => s
-      case _ => Set.empty[Int]
+      //case _ => Set.empty[Int]
     }
   }
 
   def sum(u1 : U, u2 : U) : U = {
+    require(isInt(u1) && isInt(u2))
     (u1 : Int) + u2
   } 
 

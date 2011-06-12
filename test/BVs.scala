@@ -6,7 +6,7 @@ object BVs {
   def size(l : List) : Int = {
     l match {
       case Nil() => 0
-      case Cons(_, xs) => 1 + size(xs)
+      case Cons(_, xs) => 1 + /* for "small" counter examples: */ 2 * size(xs)
     }
   } ensuring(_ >= 0) // smallest counter-example is a list of size Integer.MAX_VALUE, could take a while to find it :)
 
