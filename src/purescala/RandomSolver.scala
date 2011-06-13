@@ -40,9 +40,13 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
           case CaseClassDef(_, _, fields) => fields.isEmpty
           case _ => false
         }
-        if(terminalChildren.isEmpty) 
-          error("We got a problem")
-        else
+        if(terminalChildren.isEmpty) { //Then we need to filter children with no adt as fields
+          val terminalChildren2 = children.filter{ 
+            case CaseClassDef(_, _, fields) => fields.forall(f => !f.getType.isInstanceOf[AbstractClassType])
+            case _ => false
+          }
+          CaseClass(terminalChildren2(random.nextInt(terminalChildren2.size)).asInstanceOf[CaseClassDef], Seq())
+        } else
           CaseClass(terminalChildren(random.nextInt(terminalChildren.size)).asInstanceOf[CaseClassDef], Seq())
       } else {
         val nonTerminalChildren = children.filter{ 
@@ -62,15 +66,15 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
       CaseClass(cd, cd.fields.map(f => randomValue(f.getType, size / nbFields))) 
     }
     case AnyType => randomValue(randomType(), size)
+    case SetType(base) => EmptySet(base)
+    case MultisetType(base) => EmptyMultiset(base)
     case Untyped => error("I don't know what to do")
     case BottomType => error("I don't know what to do")
     case ListType(base) => error("I don't know what to do")
-    case SetType(base) => error("I don't know what to do")
     case TupleType(bases) => error("I don't know what to do")
-    case MultisetType(base) => error("I don't know what to do")
     case MapType(from, to) => error("I don't know what to do")
     case OptionType(base) => error("I don't know what to do")
-    case f : FunctionType => error("I don't know what to do")
+    case f: FunctionType => error("I don't know what to do")
   }
 
   def solve(expression: Expr) : Option[Boolean] = {
