@@ -1288,13 +1288,6 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         (newClauses, newBlockers.toSeq)
       }
     }
-
-    // Old junk?
-    /*private var invocations : List[FunctionInvocation] = Nil
-
-    def addInvocation(blocker: Identifier, polarity: Boolean, invocation: FunctionInvocation) : Unit = {
-      invocations = invocation :: invocations
-    }*/
   }
 
   class NewUnrollingBank extends UnrollingBank {
@@ -1338,7 +1331,9 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       (allNewExprs, allBlocks.toSeq)
     }
 
-    // This is called just once, for the "initial unrolling".
+    // This is called just once, for the "initial unrolling".  FIXME: TODO:
+    // Wouldn't it be better/more uniform to pretend the initial formula is a
+    // function and generate a template for it?
     override def initialUnrolling(formula : Expr) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
       val fi = functionCallsOf(formula)
       if(fi.isEmpty) {
@@ -1362,6 +1357,5 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       }
     }
   }
-
 }
 

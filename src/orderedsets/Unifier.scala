@@ -2,6 +2,8 @@ package orderedsets
 
 import scala.{Symbol => ScalaSymbol}
 
+import sys.error
+
 object ExampleUnifier extends Unifier[String, String] {
 
   // Tests and Examples
