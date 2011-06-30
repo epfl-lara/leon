@@ -4,57 +4,36 @@ cd ../../..
 
 ts=`date +%F-%R`
 demoFolder="cp-demo"
+cc="./cp-compile"
+rc="./cp-run"
 
 #classes=( "RedBlackTree" "SortedList" )
 
-if [ "$#" -lt "3" ]
+if [ "$#" -lt "4" ]
 then
-  echo "Please provide a class name and bounds for problem size"
+  echo "Please provide a file name, main class name and bounds for problem size"
   exit 1
 fi
 
-class=${1}
-base=${2}
-limit=${3}
+filename=${1}
+mainclass=${2}
+base=${3}
+limit=${4}
 
-evalFolder="eval/cp/data/${ts}-${class}"
+evalFolder="eval/cp/data/${ts}-${mainclass}"
 
 mkdir -p ${evalFolder}
 
-evalFileBase=${evalFolder}/${class}-${ts}-CAV
-./cp CAV ${demoFolder}/${class}.scala || (echo "Could not compile..." && exit 1)
+evalFileBase=${evalFolder}/${mainclass}-${ts}
+${cc} axioms scalaEval ${filename} || (echo "Could not compile..." && exit 1)
 
 for (( i=${base}; i<=${limit}; i++ ))
 do
   currentFile=${evalFileBase}-${i}
-  ./cp-runner ${class} $i | tee -a ${currentFile}
+  ${rc} ${mainclass} $i | tee -a ${currentFile}
   cd eval/cp/scripts
   ./generate-graph ../../../${currentFile}
   cd ../../..
 done
 
-evalFileBase=${evalFolder}/${class}-${ts}-CAV-axioms
-./cp CAV axioms ${demoFolder}/${class}.scala || (echo "Could not compile..." && exit 1)
-
-for (( i=${base}; i<=${limit}; i++ ))
-do
-  currentFile=${evalFileBase}-${i}
-  ./cp-runner ${class} $i | tee -a ${currentFile}
-  cd eval/cp/scripts
-  ./generate-graph ../../../${currentFile}
-  cd ../../..
-done
-
-evalFileBase=${evalFolder}/${class}-${ts}-CAV-axioms-scalaEval
-./cp CAV axioms scalaEval ${demoFolder}/${class}.scala || (echo "Could not compile..." && exit 1)
-
-for (( i=${base}; i<=${limit}; i++ ))
-do
-  currentFile=${evalFileBase}-${i}
-  ./cp-runner ${class} $i | tee -a ${currentFile}
-  cd eval/cp/scripts
-  ./generate-graph ../../../${currentFile}
-  cd ../../..
-done
-
-mv eval/cp/graphs/${class}-${ts}-* ${evalFolder}
+mv eval/cp/graphs/${mainclass}-${ts}-* ${evalFolder}

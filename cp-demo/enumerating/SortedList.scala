@@ -44,7 +44,8 @@ object SortedList {
   def main(args : Array[String]) : Unit = {
     val len = if (args.isEmpty) 3 else args(0).toInt
 
-    f2(len)
+    f1(len)
+    // f2(len)
     // f3(len)
     // f4()
   }

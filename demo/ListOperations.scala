@@ -73,11 +73,24 @@ object ListOperations {
     def append(l1 : List, l2 : List) : List = (l1 match {
       case Nil() => l2
       case Cons(x,xs) => Cons(x, append(xs, l2))
-    }) ensuring(content(_) == content(l1) ++ content(l2))
+    }) // ensuring(content(_) == content(l1) ++ content(l2))
 
     def map(f : Int => Int, l : List) : List = l match {
       case Nil() => Nil()
       case Cons(x, xs) => Cons(f(x), map(f, xs))
+    }
+
+    def definedForAll(m: Map[Int,Int], l: List): Boolean = l match {
+      case Nil() => true
+      case Cons(x, xs) => m.isDefinedAt(x) && definedForAll(m, xs)
+    }
+
+    def map2(m : Map[Int,Int], l : List) : List = {
+      //require(definedForAll(m, l))
+      l match {
+        case Nil() => Nil()
+        case Cons(x, xs) => Cons(m(x), map2(m, xs))
+      }
     }
 
     @induct
@@ -88,7 +101,7 @@ object ListOperations {
     @induct
     def nilAppend(l : List) : Boolean = (append(l, Nil()) == l) holds
 
-    @induct
+    // @induct
     def appendAssoc(xs : List, ys : List, zs : List) : Boolean =
       (append(append(xs, ys), zs) == append(xs, append(ys, zs))) holds
 
