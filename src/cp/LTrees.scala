@@ -29,8 +29,6 @@ object LTrees {
     // we don't have this until we first instantiate a constraint
     private var convertingFunction: (Seq[Expr]) => T = null
 
-    def convert(s: Seq[Expr]): T = convertingFunction(s)
-
     def enqueueAsForced(ids: Seq[Identifier], values: Seq[Expr]): Unit = {
       // assert value
       val haveValues = And((ids zip values) map {
@@ -82,6 +80,12 @@ object LTrees {
       }
     }
 
+    private def handler(): LHandler[T] = new LHandler[T] {
+      def convert(s: Seq[Expr]): T = convertingFunction(s)
+      def enqueueAsForced(ids: Seq[Identifier], values: Seq[Expr]): Unit =
+        this.enqueueAsForced(ids, values)
+    }
+
     private def underlyingStream(): Stream[L[T]] = {
 
       // set of tricks to overcome circular dependency between creation of L's
@@ -89,7 +93,7 @@ object LTrees {
 
       // currently works for only LStreams generating one L
       val placeHolders = Seq(FreshIdentifier("placeholder", true).setType(BottomType))
-      val candidateL = new L[T](this, placeHolders)
+      val candidateL = new L[T](handler(), placeHolders)
       val instantiatedCnstr = constraint(candidateL)
 
       // now that we have a Constraint, we can perform some actions such as:
@@ -106,7 +110,7 @@ object LTrees {
       val replacedExpr = replace(subst1 ++ subst2, newExpr)
 
       if (isStillSat(typedPlaceHolders, replacedExpr)) {
-          Stream.cons(new L[T](this, typedPlaceHolders), underlyingStream())
+          Stream.cons(new L[T](handler(), typedPlaceHolders), underlyingStream())
       } else {
           Stream.empty
       }
@@ -140,7 +144,7 @@ object LTrees {
     }
   }
 
-  class L[T](lStream: LStream[T], val ids: Seq[Identifier]) extends {
+  class L[T](handler: LHandler[T], val ids: Seq[Identifier]) extends {
     import ConstraintSolving.GlobalContext
 
     var cache: Option[T] = None
@@ -149,8 +153,8 @@ object LTrees {
       case Some(value) => value
       case None =>
         val model = GlobalContext.findValues(ids)
-        val toRet = lStream.convert(model)
-        lStream.enqueueAsForced(ids, model)
+        val toRet = handler.convert(model)
+        handler.enqueueAsForced(ids, model)
         cache = Some(toRet)
         toRet
     }

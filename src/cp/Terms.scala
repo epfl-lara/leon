@@ -36,7 +36,40 @@ object Terms {
     }
 
     def lazySolve(implicit asConstraint: (Term[T,R]) => Constraint[T]): L[T] = {
-      throw new Exception("TODO")
+      def removeGuard(g: Identifier): Unit = {
+        GlobalContext.kill(g)
+        val noMoreLive = Not(Variable(g))
+        GlobalContext.enqueueAssert(noMoreLive)
+      }
+
+      val constraint = asConstraint(this)
+      val (newConsts, newExpr) = combineConstraint(constraint)
+
+      GlobalContext.initializeIfNeeded(constraint.program)
+
+      val newGuard = FreshIdentifier("live", true).setType(BooleanType)
+      GlobalContext.addLive(newGuard)
+
+      val toAssert = Implies(Variable(newGuard), newExpr)
+      if (GlobalContext.checkAssumptions(toAssert)) {
+        // we can return an L value
+        val handler = new LHandler[T] {
+          def convert(s: Seq[Expr]): T = convertingFunction(s)
+          def enqueueAsForced(ids: Seq[Identifier], values: Seq[Expr]): Unit = {
+            val haveValues = And((ids zip values) map {
+              case (i, v) => Equals(Variable(i), v)
+            })
+            GlobalContext.enqueueAssert(haveValues)
+            removeGuard(newGuard)
+          }
+        }
+
+        new L[T](handler, newConsts)
+      } else {
+        // constraint is not satisfiable, remove guard from context
+        removeGuard(newGuard)
+        throw new UnsatisfiableConstraintException
+      }
     }
 
     def lazyFindAll(implicit asConstraint: (Term[T,R]) => Constraint[T]): LStream[T] = {

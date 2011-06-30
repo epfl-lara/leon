@@ -21,7 +21,7 @@ object ConstraintSolving {
     s
   }
 
-  private val DEBUG = true
+  private val DEBUG = false
 
   object GlobalContext {
     private var solver: FairZ3Solver = null

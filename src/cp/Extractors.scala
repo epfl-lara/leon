@@ -365,8 +365,9 @@ trait Extractors {
     object ExForceCall {
       def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
         case Apply(
-          TypeApply(Select(Select(cpIdent, ltreesName), forceName), List(typeTree)),
-          List(arg)) if ltreesName.toString == "LTrees" && forceName.toString == "force" =>
+          TypeApply(Select(Select(cpIdent, definitionsName), forceName), List(typeTree)),
+          List(arg)) if definitionsName.toString == "Definitions" && 
+                        forceName.toString == "force" =>
             Some((typeTree, arg))
         case _ => None
       }
