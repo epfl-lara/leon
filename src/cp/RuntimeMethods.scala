@@ -108,6 +108,8 @@ object RuntimeMethods {
     purescala.Settings.useCores             = recovered.useCores
     purescala.Settings.pruneBranches        = recovered.pruneBranches
     purescala.Settings.solverTimeout        = recovered.solverTimeout
+    purescala.Settings.bitvectorBitwidth    = recovered.bitvectorBitwidth
+    purescala.Settings.useTemplates         = recovered.useTemplates
 
     Settings.useScalaEvaluator              = recovered.useScalaEvaluator
     Settings.verbose                        = recovered.verbose

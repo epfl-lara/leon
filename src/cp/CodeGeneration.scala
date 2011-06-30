@@ -44,6 +44,7 @@ trait CodeGeneration {
   private lazy val isSetFunction                  = definitions.getMember(runtimeMethodsModule, "isSet")
   private lazy val toScalaMapFunction             = definitions.getMember(runtimeMethodsModule, "toScalaMap")
   private lazy val toScalaSetFunction             = definitions.getMember(runtimeMethodsModule, "toScalaSet")
+  private lazy val toScalaFunctionFunction        = definitions.getMember(runtimeMethodsModule, "toScalaFunction")
 
   private lazy val converterClass                 = definitions.getClass("cp.Converter")
 

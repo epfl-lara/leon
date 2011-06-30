@@ -13,6 +13,8 @@ class RuntimeSettings extends Serializable {
   var pruneBranches : Boolean = purescala.Settings.pruneBranches 
   var solverTimeout : Option[Int] = purescala.Settings.solverTimeout 
   var luckyTest : Boolean = purescala.Settings.luckyTest 
+  var bitvectorBitwidth : Option[Int] = purescala.Settings.bitvectorBitwidth
+  var useTemplates : Boolean = purescala.Settings.useTemplates
 
   /* when you add a new parameter here, remember to add it to copySettings in
    * RuntimeMethods */
