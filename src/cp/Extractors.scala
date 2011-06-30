@@ -14,6 +14,7 @@ trait Extractors {
   private lazy val mapTraitSym = definitions.getClass("scala.collection.immutable.Map")
   private lazy val multisetTraitSym = definitions.getClass("scala.collection.immutable.Multiset")
   private lazy val optionClassSym = definitions.getClass("scala.Option")
+  private lazy val lClassSym = definitions.getClass("cp.LTrees.L")
 
   object StructuralExtractors {
     object ScalaPredef {
@@ -367,6 +368,15 @@ trait Extractors {
           TypeApply(Select(Select(cpIdent, ltreesName), forceName), List(typeTree)),
           List(arg)) if ltreesName.toString == "LTrees" && forceName.toString == "force" =>
             Some((typeTree, arg))
+        case _ => None
+      }
+    }
+
+    // extracts a tree typed as L, returns parameter type tree and tree itself
+    object ExLTyped {
+      def unapply(tree: Tree): Option[(Type,Tree)] = tree.tpe match {
+        case TypeRef(_, sym, List(t)) if sym == lClassSym =>
+          Some((t, tree))
         case _ => None
       }
     }

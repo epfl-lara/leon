@@ -682,6 +682,12 @@ trait CodeExtraction extends Extractors {
     }
 
     def rec(tr: Tree): Expr = tr match {
+      case ExLTyped(tpe, ltree) => {
+        val pstpe = scalaType2PureScala(unit, silent)(tpe)
+        val newID = FreshIdentifier("lvar", true).setType(pstpe)
+        lvarSubsts(ltree) = (() => Variable(newID))
+        Variable(newID)
+      }
       case ExValDef(vs, tpt, bdy, rst) => {
         val binderTpe = scalaType2PureScala(unit, silent)(tpt.tpe)
         val newID = FreshIdentifier(vs.name.toString).setType(binderTpe)
