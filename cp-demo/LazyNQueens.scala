@@ -14,18 +14,18 @@ object LazyNQueens {
 
       // different from previous
       for (j <- 0 until i) {
-        c = c && ((x: Int) => x != (cols(j)))
+        c = c && ((x: Int) => x != cols(j))
       }
 
       // not on a same diagonal as previous
       for (j <- 0 until i) {
-        c = c && ((x: Int) => x - (cols(j)) != i - j && x - (cols(j)) != j - i)
+        c = c && ((x: Int) => x - cols(j) != i - j && x - cols(j) != j - i)
       }
 
       cols(i) = c.lazySolve
     }
 
     for (c <- cols)
-      println(c.force())
+      println(c.value)
   }
 }

@@ -21,6 +21,10 @@ object Definitions {
   implicit def func2term8[T1,T2,T3,T4,T5,T6,T7,T8,R](func : (T1,T2,T3,T4,T5,T6,T7,T8) => R) : Term8[T1,T2,T3,T4,T5,T6,T7,T8,R] = throw new NotImplementedException
   implicit def func2term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R](func : (T1,T2,T3,T4,T5,T6,T7,T8,T9) => R) : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R] = throw new NotImplementedException
 
+  implicit def force[T](l : L[T]): T = {
+    l.value
+  }
+
   def distinct[A](args: A*) : Boolean = {
     args.toList.distinct.size == args.size
   }

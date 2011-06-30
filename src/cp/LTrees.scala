@@ -13,6 +13,11 @@ import scala.collection.generic.CanBuildFrom
 import scala.collection.GenTraversableOnce
 
 object LTrees {
+  trait LHandler[T] {
+    def convert(s: Seq[Expr]): T
+    def enqueueAsForced(ids: Seq[Identifier], values: Seq[Expr]): Unit
+  }
+
   class LStream[T](val constraint: (L[T]) => Constraint[T]) extends scala.collection.generic.FilterMonadic[L[T], Traversable[L[T]]] {
 
     import ConstraintSolving.GlobalContext
@@ -128,10 +133,6 @@ object LTrees {
     }
   }
 
-  implicit def force[T](l : L[T]): T = {
-    l.force()
-  }
-
   /* L for Lazy, L for Logic */
   object L {
     def unapply(l: L[_]): Option[Seq[Identifier]] = {
@@ -144,7 +145,7 @@ object LTrees {
 
     var cache: Option[T] = None
 
-    def force(): T = cache match {
+    def value: T = cache match {
       case Some(value) => value
       case None =>
         val model = GlobalContext.findValues(ids)

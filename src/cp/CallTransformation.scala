@@ -46,7 +46,7 @@ trait CallTransformation
       case Apply(TypeApply(Select(Select(cpIdent, definitionsName), func2termName), typeTreeList), List(function: Function)) if 
         (definitionsName.toString == "Definitions" && func2termName.toString.matches("func2term\\d")) => {
         val Function(funValDefs, funBody) = function
-        extracted += (function.pos -> extractStandardConstraint(unit, funValDefs, funBody))
+        extracted += (function.pos -> extractFunction(unit, funValDefs, funBody))
       }
       case Apply(Select(lhs, withFilterName), List(predicate: Function)) if withFilterName.toString == "withFilter" && hasLStreamType(lhs) => {
         val Function(funValDefs, funBody) = predicate

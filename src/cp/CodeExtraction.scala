@@ -567,7 +567,7 @@ trait CodeExtraction extends Extractors {
   // }
 
   /* Extract an anonymous function that can contain L variables */
-  def extractStandardConstraint(unit: CompilationUnit, params: Seq[ValDef], body: Tree): FunDef = {
+  def extractFunction(unit: CompilationUnit, params: Seq[ValDef], body: Tree): FunDef = {
     def st2ps(tree: Type): purescala.TypeTrees.TypeTree = {
       try {
         scalaType2PureScala(unit, false)(tree)
