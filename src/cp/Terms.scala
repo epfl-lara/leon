@@ -35,6 +35,10 @@ object Terms {
       findAllExprSeq(asConstraint(this)).map(convertingFunction(_))
     }
 
+    def lazySolve(implicit asConstraint: (Term[T,R]) => Constraint[T]): L[T] = {
+      throw new Exception("TODO")
+    }
+
     def lazyFindAll(implicit asConstraint: (Term[T,R]) => Constraint[T]): LStream[T] = {
       new LStream((l: L[T]) => asConstraint(this))
     }

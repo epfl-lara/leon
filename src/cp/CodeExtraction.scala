@@ -566,7 +566,7 @@ trait CodeExtraction extends Extractors {
   //   Program(programName, topLevelObjDef)
   // }
 
-  /* Extract a constraint without L variables */
+  /* Extract an anonymous function that can contain L variables */
   def extractStandardConstraint(unit: CompilationUnit, params: Seq[ValDef], body: Tree): FunDef = {
     def st2ps(tree: Type): purescala.TypeTrees.TypeTree = {
       try {
@@ -588,14 +588,14 @@ trait CodeExtraction extends Extractors {
 
     stopIfErrors
 
-    val bodyAttempt = try { Some(scala2PureScala(unit, false, true, false)(realBody)) } catch { case ImpureCodeEncounteredException(_) => None }
+    val bodyAttempt = try { Some(scala2PureScala(unit, false, true, true)(realBody)) } catch { case ImpureCodeEncounteredException(_) => None }
     fd.body = bodyAttempt
 
     fd
   }
 
-  /* Extract a constraint with L variables */
-  def extractConstraintWithLVars(unit: CompilationUnit, params: Seq[ValDef], body: Tree): FunDef = {
+  /* Extract the predicate in a `withFilter' call */
+  def extractWithFilterPredicate(unit: CompilationUnit, params: Seq[ValDef], body: Tree): FunDef = {
     def st2ps(tree: Type): purescala.TypeTrees.TypeTree = {
       try {
         scalaType2PureScala(unit, false)(tree)

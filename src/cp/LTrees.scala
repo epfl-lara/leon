@@ -142,10 +142,6 @@ object LTrees {
   class L[T](lStream: LStream[T], val ids: Seq[Identifier]) extends {
     import ConstraintSolving.GlobalContext
 
-    // private def modelNegation(vs: Seq[Expr]): Expr = {
-    //   Not(And(((ids map (i => Variable(i))) zip vs) map { case (i, v) => Equals(i, v) }))
-    // }
-
     var cache: Option[T] = None
 
     def force(): T = cache match {

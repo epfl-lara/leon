@@ -50,7 +50,7 @@ trait CallTransformation
       }
       case Apply(Select(lhs, withFilterName), List(predicate: Function)) if withFilterName.toString == "withFilter" && hasLStreamType(lhs) => {
         val Function(funValDefs, funBody) = predicate
-        extracted += (predicate.pos -> extractConstraintWithLVars(unit, funValDefs, funBody))
+        extracted += (predicate.pos -> extractWithFilterPredicate(unit, funValDefs, funBody))
       }
       case _ => 
     }
