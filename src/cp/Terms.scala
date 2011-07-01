@@ -72,6 +72,15 @@ object Terms {
       }
     }
 
+    def lazyFind(implicit asConstraint: (Term[T,R]) => Term[T,Boolean]): Option[L[T]] = {
+      try {
+        Some(this.lazySolve)
+      } catch {
+        case e: UnsatisfiableConstraintException => None
+        case e: UnknownConstraintException => None
+      }
+    }
+
     def lazyFindAll(implicit asConstraint: (Term[T,R]) => Constraint[T]): LStream[T] = {
       new LStream((l: L[T]) => asConstraint(this))
     }
