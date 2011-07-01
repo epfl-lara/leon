@@ -59,8 +59,6 @@ object LTrees {
       }
       forcedQueue = Seq.empty
 
-      // do it first for enumeration of one L var:
-      assert(newConsts.size == 1)
       val newGuard = FreshIdentifier("live", true).setType(BooleanType)
 
       GlobalContext.addLive(newGuard)
@@ -101,8 +99,8 @@ object LTrees {
       convertingFunction = instantiatedCnstr.convertingFunction
 
       val (newConsts, newExpr) = combineConstraint(instantiatedCnstr)
-      val typedPlaceHolders = (newConsts zip placeHolders) map {
-        case (cst, ph) => FreshIdentifier("fresh", true).setType(cst.getType)
+      val typedPlaceHolders = newConsts map {
+        case cst => FreshIdentifier("fresh", true).setType(cst.getType)
       }
       // println("types : " + typedPlaceHolders.map(_.getType))
       val subst1 = ((newConsts map (Variable(_))) zip (typedPlaceHolders map (Variable(_)))).toMap

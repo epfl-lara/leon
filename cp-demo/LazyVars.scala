@@ -7,9 +7,7 @@ object LazyVars {
   def chooseInt(lower: Int, upper: Int) = ((x: Int) => x >= lower && x <= upper).lazyFindAll
 
   def main(args: Array[String]): Unit = {
-    f1()
-    println("...")
-    f2()
+    f3()
   }
 
   def f1() {
@@ -35,6 +33,15 @@ object LazyVars {
       val i: Int = x
       val j: Int = y
       println(i, j)
+    }
+  }
+
+  def f3() {
+    for {
+      i <- chooseInt(0, 3)
+      pair <- ((x: Int, y: Int) => x > 0 && y == 2 * x && x <= i).lazyFindAll
+    } {
+      println("i, (a, b):" + i.value + ", " + pair.value)
     }
   }
 }
