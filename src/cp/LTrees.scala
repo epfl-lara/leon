@@ -29,7 +29,7 @@ object LTrees {
     // we don't have this until we first instantiate a constraint
     private var convertingFunction: (Seq[Expr]) => T = null
 
-    def enqueueAsForced(ids: Seq[Identifier], values: Seq[Expr]): Unit = {
+    def enqueueAsForcedInStream(ids: Seq[Identifier], values: Seq[Expr]): Unit = {
       // assert value
       val haveValues = And((ids zip values) map {
         case (i, v) => Equals(Variable(i), v)
@@ -83,7 +83,7 @@ object LTrees {
     private def handler(): LHandler[T] = new LHandler[T] {
       def convert(s: Seq[Expr]): T = convertingFunction(s)
       def enqueueAsForced(ids: Seq[Identifier], values: Seq[Expr]): Unit =
-        this.enqueueAsForced(ids, values)
+        enqueueAsForcedInStream(ids, values)
     }
 
     private def underlyingStream(): Stream[L[T]] = {
