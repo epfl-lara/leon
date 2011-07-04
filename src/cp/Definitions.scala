@@ -25,6 +25,18 @@ object Definitions {
     l.value
   }
 
+  implicit def forceLTuple[T](ltuple: LTuple[T]): T = ltuple.value
+
+  implicit def ltuple2tuple1[T1](ltuple: LTuple1[T1]): L[T1] = ltuple._1
+  implicit def ltuple2tuple2[T1,T2](ltuple: LTuple2[T1,T2]): (L[T1],L[T2]) = (ltuple._1,ltuple._2)
+  implicit def ltuple2tuple3[T1,T2,T3](ltuple: LTuple3[T1,T2,T3]): (L[T1],L[T2],L[T3]) = (ltuple._1,ltuple._2,ltuple._3)
+  implicit def ltuple2tuple4[T1,T2,T3,T4](ltuple: LTuple4[T1,T2,T3,T4]): (L[T1],L[T2],L[T3],L[T4]) = (ltuple._1,ltuple._2,ltuple._3,ltuple._4)
+  implicit def ltuple2tuple5[T1,T2,T3,T4,T5](ltuple: LTuple5[T1,T2,T3,T4,T5]): (L[T1],L[T2],L[T3],L[T4],L[T5]) = (ltuple._1,ltuple._2,ltuple._3,ltuple._4,ltuple._5)
+  implicit def ltuple2tuple6[T1,T2,T3,T4,T5,T6](ltuple: LTuple6[T1,T2,T3,T4,T5,T6]): (L[T1],L[T2],L[T3],L[T4],L[T5],L[T6]) = (ltuple._1,ltuple._2,ltuple._3,ltuple._4,ltuple._5,ltuple._6)
+  implicit def ltuple2tuple7[T1,T2,T3,T4,T5,T6,T7](ltuple: LTuple7[T1,T2,T3,T4,T5,T6,T7]): (L[T1],L[T2],L[T3],L[T4],L[T5],L[T6],L[T7]) = (ltuple._1,ltuple._2,ltuple._3,ltuple._4,ltuple._5,ltuple._6,ltuple._7)
+  implicit def ltuple2tuple8[T1,T2,T3,T4,T5,T6,T7,T8](ltuple: LTuple8[T1,T2,T3,T4,T5,T6,T7,T8]): (L[T1],L[T2],L[T3],L[T4],L[T5],L[T6],L[T7],L[T8]) = (ltuple._1,ltuple._2,ltuple._3,ltuple._4,ltuple._5,ltuple._6,ltuple._7,ltuple._8)
+  implicit def ltuple2tuple9[T1,T2,T3,T4,T5,T6,T7,T8,T9](ltuple: LTuple9[T1,T2,T3,T4,T5,T6,T7,T8,T9]): (L[T1],L[T2],L[T3],L[T4],L[T5],L[T6],L[T7],L[T8],L[T9]) = (ltuple._1,ltuple._2,ltuple._3,ltuple._4,ltuple._5,ltuple._6,ltuple._7,ltuple._8,ltuple._9)
+
   def distinct[A](args: A*) : Boolean = {
     args.toList.distinct.size == args.size
   }
