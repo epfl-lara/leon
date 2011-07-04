@@ -127,7 +127,7 @@ object ExprComp {
     val vs = EStack()
     val acc = EProgram()
     run(compile(e, acc), vs) == Ok(NStack(eval(e), vs))
-  } holds
+  } //holds
 
 
 //this induction should work (at least on paper it goes ok)

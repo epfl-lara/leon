@@ -494,10 +494,10 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     reporter.info(" - Initial unrolling...")
     val (clauses, guards) = unrollingBank.initialUnrolling(expandedVC)
 
-    for(clause <- clauses) {
-      //println("we're getting a new clause " + clause)
+    //for(clause <- clauses) {
+    //println("we're getting a new clause " + clause)
     //   z3.assertCnstr(toZ3Formula(z3, clause).get)
-    }
+    //}
 
     //println("The blocking guards: " + guards)
     val cc = toZ3Formula(z3, And(clauses)).get
@@ -598,12 +598,14 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
             
           if (Settings.luckyTest && !forceStop) {
             // we need the model to perform the additional test
+            reporter.info(" - Running search without blocked literals (w/ lucky test)")
             secondZ3SearchStopwatch.start
             val (result2,m2) = assumptionsAsZ3 match {
               case Some(as) => val res = z3.checkAssumptions(as: _*); (res._1, res._2)
               case None => z3.checkAndGetModel()
             }
             secondZ3SearchStopwatch.stop
+            reporter.info(" - Finished search without blocked literals")
 
             if (result2 == Some(false)) {
               foundAnswer(Some(true))
@@ -618,12 +620,14 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
             }
           } else {
             // only checking will suffice
+            reporter.info(" - Running search without blocked literals (w/o lucky test)")
             secondZ3SearchStopwatch.start
             val result2 = assumptionsAsZ3 match {
               case Some(as) => val res = z3.checkAssumptions(as: _*); res._1
               case None => z3.check()
             }
             secondZ3SearchStopwatch.stop
+            reporter.info(" - Finished search without blocked literals")
 
             if (result2 == Some(false)) {
               foundAnswer(Some(true))
