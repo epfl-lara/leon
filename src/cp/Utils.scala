@@ -33,6 +33,15 @@ object Utils {
   MinConstraint%d[%s](asConstraint(this), minFunc)
 }""" format (intTraitName, curriedImplicit2Constraint, arity, traitArgParamsString, arity, traitArgParamsString)
 
+        val createLCalls = (1 to arity) map (i => """createL[T%d](constraint, constants(%d), guards(%d))""" format (i, i - 1, i - 1))
+        val createLCallsString = createLCalls.mkString(",")
+        val lazySolveMethod =
+"""def lazySolve(implicit asConstraint: (%s) => Constraint%d[%s]): LTuple%d[%s] = {
+  val constraint = asConstraint(this)
+  val (constants, guards) = constantsAndGuards(constraint)
+  new LTuple%d[%s](%s)
+}""" format (traitName, arity, traitArgParamsString, arity, traitArgParamsString, arity, traitArgParamsString, createLCallsString)
+
         val composeMethods = (for (arityF <- 1 to (maxArity - arity + 1)) yield {
           for (index <- 0 until arity) yield {
             val fParams = (1 to arityF).map("A" + _)
@@ -78,13 +87,15 @@ object Utils {
 %s
 
 %s
+
+%s
 }""" format (traitName, termClassParamTuple, "R", arity, traitParams.mkString(","), 
   arity, traitArgParamsString, 
   traitName, booleanTraitName, 
   termClassParamTuple, "R", 
   evaluatorArgs.mkString(","),
   applyParams.mkString(", "), applyArgs.mkString(", "), 
-  indent(orMethod), indent(andMethod), indent(notMethod), indent(minimizingMethod), indent(composeMethods))
+  indent(orMethod), indent(andMethod), indent(notMethod), indent(minimizingMethod), indent(lazySolveMethod), indent(composeMethods))
         
         termTraitString
       }
@@ -191,7 +202,31 @@ object Utils {
     }
   }
 
+  object GenerateLTuples {
+    def apply(maxArity: Int): String = {
+      val classes = for (arity <- 1 to maxArity) yield {
+        val typeParams = (1 to arity) map ("T" + _)
+        val typeParamString = typeParams.mkString(",")
+        val arguments = (1 to arity) map (i => "l%d: L[T%d]" format (i, i))
+        val argumentString = arguments.mkString(",")
+        val componentMethods = (1 to arity) map (i => "def _%d: L[T%d] = l%d" format (i, i, i))
+        val componentMethodString = componentMethods.mkString("\n")
+        val valueMethodParams = (1 to arity) map (i => "_%d.value" format (i))
+        val valueMethodParamString = valueMethodParams.mkString(",")
+        val valueMethod = "def value: (%s) = (%s)" format (typeParamString, valueMethodParamString)
+"""class LTuple%d[%s](%s) extends LTuple[(%s)] {
+%s
+%s
+}""" format (arity, typeParamString, argumentString, typeParamString, indent(componentMethodString), indent(valueMethod))
+      }
+
+      classes.mkString("\n\n")
+    }
+  }
+
   def main(args: Array[String]) : Unit = {
+    if (args.size != 1)
+      throw new Exception("Enter an arity for code generation")
     val termTraits = GenerateTerms(args(0).toInt)
     val termObjects = GenerateTermObjects(args(0).toInt)
     val minConstraintsClasses = GenerateMinConstraintClasses(args(0).toInt)
@@ -199,7 +234,10 @@ object Utils {
 
     val converterMethods = GenerateConverterMethods(args(0).toInt)
 
+    val ltupleClasses = GenerateLTuples(args(0).toInt)
+
     val everything = Seq(typeAliases, termTraits, termObjects, minConstraintsClasses).mkString("\n\n")
-    println(indent(everything))
+    // println(indent(everything))
+    println(indent(ltupleClasses))
   }
 }

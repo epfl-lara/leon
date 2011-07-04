@@ -13,11 +13,126 @@ import scala.collection.generic.CanBuildFrom
 import scala.collection.GenTraversableOnce
 
 object LTrees {
+  /** Handler for converting values from Expr to Scala and reporting forced
+   * values */
   trait LHandler[T] {
     def convert(s: Seq[Expr]): T
     def enqueueAsForced(ids: Seq[Identifier], values: Seq[Expr]): Unit
   }
 
+  /* Symbolic variables */
+  object L {
+    def unapply(l: L[_]): Option[Seq[Identifier]] = {
+      if (l == null) None else Some(l.ids)
+    }
+  }
+
+  class L[T](handler: LHandler[T], val ids: Seq[Identifier]) extends {
+    import ConstraintSolving.GlobalContext
+
+    var cache: Option[T] = None
+
+    def value: T = cache match {
+      case Some(value) => value
+      case None =>
+        val model = GlobalContext.findValues(ids)
+        val toRet = handler.convert(model)
+        handler.enqueueAsForced(ids, model)
+        cache = Some(toRet)
+        toRet
+    }
+  }
+
+  trait LTuple[T] {
+    /* Forces this tuple to have a value */
+    def value: T
+  }
+
+  /** GENERATED CODE ***/
+
+  class LTuple1[T1](l1: L[T1]) extends LTuple[(T1)] {
+    def _1: L[T1] = l1
+    def value: (T1) = (_1.value)
+  }
+  
+  class LTuple2[T1,T2](l1: L[T1],l2: L[T2]) extends LTuple[(T1,T2)] {
+    def _1: L[T1] = l1
+    def _2: L[T2] = l2
+    def value: (T1,T2) = (_1.value,_2.value)
+  }
+  
+  class LTuple3[T1,T2,T3](l1: L[T1],l2: L[T2],l3: L[T3]) extends LTuple[(T1,T2,T3)] {
+    def _1: L[T1] = l1
+    def _2: L[T2] = l2
+    def _3: L[T3] = l3
+    def value: (T1,T2,T3) = (_1.value,_2.value,_3.value)
+  }
+  
+  class LTuple4[T1,T2,T3,T4](l1: L[T1],l2: L[T2],l3: L[T3],l4: L[T4]) extends LTuple[(T1,T2,T3,T4)] {
+    def _1: L[T1] = l1
+    def _2: L[T2] = l2
+    def _3: L[T3] = l3
+    def _4: L[T4] = l4
+    def value: (T1,T2,T3,T4) = (_1.value,_2.value,_3.value,_4.value)
+  }
+  
+  class LTuple5[T1,T2,T3,T4,T5](l1: L[T1],l2: L[T2],l3: L[T3],l4: L[T4],l5: L[T5]) extends LTuple[(T1,T2,T3,T4,T5)] {
+    def _1: L[T1] = l1
+    def _2: L[T2] = l2
+    def _3: L[T3] = l3
+    def _4: L[T4] = l4
+    def _5: L[T5] = l5
+    def value: (T1,T2,T3,T4,T5) = (_1.value,_2.value,_3.value,_4.value,_5.value)
+  }
+  
+  class LTuple6[T1,T2,T3,T4,T5,T6](l1: L[T1],l2: L[T2],l3: L[T3],l4: L[T4],l5: L[T5],l6: L[T6]) extends LTuple[(T1,T2,T3,T4,T5,T6)] {
+    def _1: L[T1] = l1
+    def _2: L[T2] = l2
+    def _3: L[T3] = l3
+    def _4: L[T4] = l4
+    def _5: L[T5] = l5
+    def _6: L[T6] = l6
+    def value: (T1,T2,T3,T4,T5,T6) = (_1.value,_2.value,_3.value,_4.value,_5.value,_6.value)
+  }
+  
+  class LTuple7[T1,T2,T3,T4,T5,T6,T7](l1: L[T1],l2: L[T2],l3: L[T3],l4: L[T4],l5: L[T5],l6: L[T6],l7: L[T7]) extends LTuple[(T1,T2,T3,T4,T5,T6,T7)] {
+    def _1: L[T1] = l1
+    def _2: L[T2] = l2
+    def _3: L[T3] = l3
+    def _4: L[T4] = l4
+    def _5: L[T5] = l5
+    def _6: L[T6] = l6
+    def _7: L[T7] = l7
+    def value: (T1,T2,T3,T4,T5,T6,T7) = (_1.value,_2.value,_3.value,_4.value,_5.value,_6.value,_7.value)
+  }
+  
+  class LTuple8[T1,T2,T3,T4,T5,T6,T7,T8](l1: L[T1],l2: L[T2],l3: L[T3],l4: L[T4],l5: L[T5],l6: L[T6],l7: L[T7],l8: L[T8]) extends LTuple[(T1,T2,T3,T4,T5,T6,T7,T8)] {
+    def _1: L[T1] = l1
+    def _2: L[T2] = l2
+    def _3: L[T3] = l3
+    def _4: L[T4] = l4
+    def _5: L[T5] = l5
+    def _6: L[T6] = l6
+    def _7: L[T7] = l7
+    def _8: L[T8] = l8
+    def value: (T1,T2,T3,T4,T5,T6,T7,T8) = (_1.value,_2.value,_3.value,_4.value,_5.value,_6.value,_7.value,_8.value)
+  }
+  
+  class LTuple9[T1,T2,T3,T4,T5,T6,T7,T8,T9](l1: L[T1],l2: L[T2],l3: L[T3],l4: L[T4],l5: L[T5],l6: L[T6],l7: L[T7],l8: L[T8],l9: L[T9]) extends LTuple[(T1,T2,T3,T4,T5,T6,T7,T8,T9)] {
+    def _1: L[T1] = l1
+    def _2: L[T2] = l2
+    def _3: L[T3] = l3
+    def _4: L[T4] = l4
+    def _5: L[T5] = l5
+    def _6: L[T6] = l6
+    def _7: L[T7] = l7
+    def _8: L[T8] = l8
+    def _9: L[T9] = l9
+    def value: (T1,T2,T3,T4,T5,T6,T7,T8,T9) = (_1.value,_2.value,_3.value,_4.value,_5.value,_6.value,_7.value,_8.value,_9.value)
+  }
+  /** END OF GENERATED CODE ***/
+
+  /** A stream for symbolic variables */
   class LStream[T](val constraint: (L[T]) => Constraint[T]) extends scala.collection.generic.FilterMonadic[L[T], Traversable[L[T]]] {
 
     import ConstraintSolving.GlobalContext
@@ -135,26 +250,4 @@ object LTrees {
     }
   }
 
-  /* L for Lazy, L for Logic */
-  object L {
-    def unapply(l: L[_]): Option[Seq[Identifier]] = {
-      if (l == null) None else Some(l.ids)
-    }
-  }
-
-  class L[T](handler: LHandler[T], val ids: Seq[Identifier]) extends {
-    import ConstraintSolving.GlobalContext
-
-    var cache: Option[T] = None
-
-    def value: T = cache match {
-      case Some(value) => value
-      case None =>
-        val model = GlobalContext.findValues(ids)
-        val toRet = handler.convert(model)
-        handler.enqueueAsForced(ids, model)
-        cache = Some(toRet)
-        toRet
-    }
-  }
 }
