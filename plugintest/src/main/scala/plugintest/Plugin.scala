@@ -13,7 +13,7 @@ class TestPlugin(val global : Global) extends Plugin {
   override val optionsHelp : Option[String] = None
 
   val components = List[PluginComponent](new Component(global))
-  val descriptions : List[String]("tests with ``MyAny''")
+  val descriptions : List[String] = List("tests with ``MyAny''")
 }
 
 class Component(val global : Global) extends PluginComponent {
@@ -25,10 +25,11 @@ class Component(val global : Global) extends PluginComponent {
   val phaseName = "test!"
 
   def newPhase(previous : Phase) = new PluginPhase(previous)
-}
 
-class PluginPhase(previous : Phase) extends StdPhase(previous) {
-  def apply(unit : CompilationUnit) : Unit = {
-    println("Phase ran !")
+  class PluginPhase(previous : Phase) extends StdPhase(previous) {
+    def apply(unit : CompilationUnit) : Unit = {
+      println("Phase ran !")
+    }
   }
 }
+
