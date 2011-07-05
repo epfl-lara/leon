@@ -7,13 +7,7 @@ object LazyVars {
   def chooseInt(lower: Int, upper: Int) = ((x: Int) => x >= lower && x <= upper).lazyFindAll
 
   def main(args: Array[String]): Unit = {
-    f1()
-    println
-    f2()
-    println
-    f3()
-    println
-    // f5()
+    f5()
   }
 
   def f1() {
@@ -52,18 +46,21 @@ object LazyVars {
   }
 
   def f4() {
-    val p = ((x: Int, y: Int) => x > 0 && y == 2 * x && x <= 5).lazySolve
-    val other = ((z: Int) => z == p._1 + p._2).lazySolve
+    val (x, y) = ((x: Int, y: Int) => x > 0 && y == 2 * x && x <= 5).lazySolve
+    val other = ((z: Int) => z == x + y).lazySolve
     println("x + y: " + other.value)
-    val x = p._1
-    val y = p._2
     println("x: " + x.value)
     println("y: " + y.value)
   }
 
   def f5() {
     val p = ((x: Int, y: Int) => x > 0 && y == 2 * x && x <= 5).lazySolve
-    val scalaPair: (Int, Int) = p
+    val scalaPair = p.value
     println("scala pair: " + scalaPair)
+  }
+
+  def f6() {
+    val s = ((s: Int) => s > 0 && s < 42).lazySolve
+    println(s.value)
   }
 }

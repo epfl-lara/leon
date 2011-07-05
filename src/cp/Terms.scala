@@ -35,19 +35,6 @@ object Terms {
       findAllExprSeq(asConstraint(this)).map(convertingFunction(_))
     }
 
-    def lazySolve(implicit asConstraint: (Term[T,R]) => Constraint[T]): LTuple[T] = {
-      throw new Exception()
-    }
-
-    def lazyFind(implicit asConstraint: (Term[T,R]) => Term[T,Boolean]): Option[LTuple[T]] = {
-      try {
-        Some(this.lazySolve)
-      } catch {
-        case e: UnsatisfiableConstraintException => None
-        case e: UnknownConstraintException => None
-      }
-    }
-
     def lazyFindAll(implicit asConstraint: (Term[T,R]) => Constraint[T]): LIterator[T] = {
       new LIterator((l: L[T]) => asConstraint(this))
     }
@@ -193,13 +180,11 @@ object Terms {
       MinConstraint1[T1](asConstraint(this), minFunc)
     }
   
-    def lazySolve(implicit asConstraint: (Term1[T1,R]) => Constraint1[T1]): LTuple1[T1] = {
+    def lazySolve(implicit asConstraint: (Term1[T1,R]) => Constraint1[T1]): (L[T1]) = {
       val constraint = asConstraint(this)
       val (constants, guards) = constantsAndGuards(constraint)
-      new LTuple1[T1](createL[T1](constraint, constants(0), guards(0)))
+      (createL[T1](constraint, constants(0), guards(0)))
     }
-
-    // def lazyFindAll(implicit asConstraint: (Term1[T1,R]) => Constraint1[T1]): LStream
   
     def compose0[A1](other : Term1[A1, T1]) : Term1[A1, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 1, 1)
@@ -268,10 +253,10 @@ object Terms {
       MinConstraint2[T1,T2](asConstraint(this), minFunc)
     }
   
-    def lazySolve(implicit asConstraint: (Term2[T1,T2,R]) => Constraint2[T1,T2]): LTuple2[T1,T2] = {
+    def lazySolve(implicit asConstraint: (Term2[T1,T2,R]) => Constraint2[T1,T2]): (L[T1],L[T2]) = {
       val constraint = asConstraint(this)
       val (constants, guards) = constantsAndGuards(constraint)
-      new LTuple2[T1,T2](createL[T1](constraint, constants(0), guards(0)),createL[T2](constraint, constants(1), guards(1)))
+      (createL[T1](constraint, constants(0), guards(0)),createL[T2](constraint, constants(1), guards(1)))
     }
   
     def compose0[A1](other : Term1[A1, T1]) : Term2[A1, T2, R] = {
@@ -376,10 +361,10 @@ object Terms {
       MinConstraint3[T1,T2,T3](asConstraint(this), minFunc)
     }
   
-    def lazySolve(implicit asConstraint: (Term3[T1,T2,T3,R]) => Constraint3[T1,T2,T3]): LTuple3[T1,T2,T3] = {
+    def lazySolve(implicit asConstraint: (Term3[T1,T2,T3,R]) => Constraint3[T1,T2,T3]): (L[T1],L[T2],L[T3]) = {
       val constraint = asConstraint(this)
       val (constants, guards) = constantsAndGuards(constraint)
-      new LTuple3[T1,T2,T3](createL[T1](constraint, constants(0), guards(0)),createL[T2](constraint, constants(1), guards(1)),createL[T3](constraint, constants(2), guards(2)))
+      (createL[T1](constraint, constants(0), guards(0)),createL[T2](constraint, constants(1), guards(1)),createL[T3](constraint, constants(2), guards(2)))
     }
   
     def compose0[A1](other : Term1[A1, T1]) : Term3[A1, T2, T3, R] = {
@@ -509,10 +494,10 @@ object Terms {
       MinConstraint4[T1,T2,T3,T4](asConstraint(this), minFunc)
     }
   
-    def lazySolve(implicit asConstraint: (Term4[T1,T2,T3,T4,R]) => Constraint4[T1,T2,T3,T4]): LTuple4[T1,T2,T3,T4] = {
+    def lazySolve(implicit asConstraint: (Term4[T1,T2,T3,T4,R]) => Constraint4[T1,T2,T3,T4]): (L[T1],L[T2],L[T3],L[T4]) = {
       val constraint = asConstraint(this)
       val (constants, guards) = constantsAndGuards(constraint)
-      new LTuple4[T1,T2,T3,T4](createL[T1](constraint, constants(0), guards(0)),createL[T2](constraint, constants(1), guards(1)),createL[T3](constraint, constants(2), guards(2)),createL[T4](constraint, constants(3), guards(3)))
+      (createL[T1](constraint, constants(0), guards(0)),createL[T2](constraint, constants(1), guards(1)),createL[T3](constraint, constants(2), guards(2)),createL[T4](constraint, constants(3), guards(3)))
     }
   
     def compose0[A1](other : Term1[A1, T1]) : Term4[A1, T2, T3, T4, R] = {
@@ -657,10 +642,10 @@ object Terms {
       MinConstraint5[T1,T2,T3,T4,T5](asConstraint(this), minFunc)
     }
   
-    def lazySolve(implicit asConstraint: (Term5[T1,T2,T3,T4,T5,R]) => Constraint5[T1,T2,T3,T4,T5]): LTuple5[T1,T2,T3,T4,T5] = {
+    def lazySolve(implicit asConstraint: (Term5[T1,T2,T3,T4,T5,R]) => Constraint5[T1,T2,T3,T4,T5]): (L[T1],L[T2],L[T3],L[T4],L[T5]) = {
       val constraint = asConstraint(this)
       val (constants, guards) = constantsAndGuards(constraint)
-      new LTuple5[T1,T2,T3,T4,T5](createL[T1](constraint, constants(0), guards(0)),createL[T2](constraint, constants(1), guards(1)),createL[T3](constraint, constants(2), guards(2)),createL[T4](constraint, constants(3), guards(3)),createL[T5](constraint, constants(4), guards(4)))
+      (createL[T1](constraint, constants(0), guards(0)),createL[T2](constraint, constants(1), guards(1)),createL[T3](constraint, constants(2), guards(2)),createL[T4](constraint, constants(3), guards(3)),createL[T5](constraint, constants(4), guards(4)))
     }
   
     def compose0[A1](other : Term1[A1, T1]) : Term5[A1, T2, T3, T4, T5, R] = {
@@ -810,10 +795,10 @@ object Terms {
       MinConstraint6[T1,T2,T3,T4,T5,T6](asConstraint(this), minFunc)
     }
   
-    def lazySolve(implicit asConstraint: (Term6[T1,T2,T3,T4,T5,T6,R]) => Constraint6[T1,T2,T3,T4,T5,T6]): LTuple6[T1,T2,T3,T4,T5,T6] = {
+    def lazySolve(implicit asConstraint: (Term6[T1,T2,T3,T4,T5,T6,R]) => Constraint6[T1,T2,T3,T4,T5,T6]): (L[T1],L[T2],L[T3],L[T4],L[T5],L[T6]) = {
       val constraint = asConstraint(this)
       val (constants, guards) = constantsAndGuards(constraint)
-      new LTuple6[T1,T2,T3,T4,T5,T6](createL[T1](constraint, constants(0), guards(0)),createL[T2](constraint, constants(1), guards(1)),createL[T3](constraint, constants(2), guards(2)),createL[T4](constraint, constants(3), guards(3)),createL[T5](constraint, constants(4), guards(4)),createL[T6](constraint, constants(5), guards(5)))
+      (createL[T1](constraint, constants(0), guards(0)),createL[T2](constraint, constants(1), guards(1)),createL[T3](constraint, constants(2), guards(2)),createL[T4](constraint, constants(3), guards(3)),createL[T5](constraint, constants(4), guards(4)),createL[T6](constraint, constants(5), guards(5)))
     }
   
     def compose0[A1](other : Term1[A1, T1]) : Term6[A1, T2, T3, T4, T5, T6, R] = {
@@ -958,10 +943,10 @@ object Terms {
       MinConstraint7[T1,T2,T3,T4,T5,T6,T7](asConstraint(this), minFunc)
     }
   
-    def lazySolve(implicit asConstraint: (Term7[T1,T2,T3,T4,T5,T6,T7,R]) => Constraint7[T1,T2,T3,T4,T5,T6,T7]): LTuple7[T1,T2,T3,T4,T5,T6,T7] = {
+    def lazySolve(implicit asConstraint: (Term7[T1,T2,T3,T4,T5,T6,T7,R]) => Constraint7[T1,T2,T3,T4,T5,T6,T7]): (L[T1],L[T2],L[T3],L[T4],L[T5],L[T6],L[T7]) = {
       val constraint = asConstraint(this)
       val (constants, guards) = constantsAndGuards(constraint)
-      new LTuple7[T1,T2,T3,T4,T5,T6,T7](createL[T1](constraint, constants(0), guards(0)),createL[T2](constraint, constants(1), guards(1)),createL[T3](constraint, constants(2), guards(2)),createL[T4](constraint, constants(3), guards(3)),createL[T5](constraint, constants(4), guards(4)),createL[T6](constraint, constants(5), guards(5)),createL[T7](constraint, constants(6), guards(6)))
+      (createL[T1](constraint, constants(0), guards(0)),createL[T2](constraint, constants(1), guards(1)),createL[T3](constraint, constants(2), guards(2)),createL[T4](constraint, constants(3), guards(3)),createL[T5](constraint, constants(4), guards(4)),createL[T6](constraint, constants(5), guards(5)),createL[T7](constraint, constants(6), guards(6)))
     }
   
     def compose0[A1](other : Term1[A1, T1]) : Term7[A1, T2, T3, T4, T5, T6, T7, R] = {
@@ -1091,10 +1076,10 @@ object Terms {
       MinConstraint8[T1,T2,T3,T4,T5,T6,T7,T8](asConstraint(this), minFunc)
     }
   
-    def lazySolve(implicit asConstraint: (Term8[T1,T2,T3,T4,T5,T6,T7,T8,R]) => Constraint8[T1,T2,T3,T4,T5,T6,T7,T8]): LTuple8[T1,T2,T3,T4,T5,T6,T7,T8] = {
+    def lazySolve(implicit asConstraint: (Term8[T1,T2,T3,T4,T5,T6,T7,T8,R]) => Constraint8[T1,T2,T3,T4,T5,T6,T7,T8]): (L[T1],L[T2],L[T3],L[T4],L[T5],L[T6],L[T7],L[T8]) = {
       val constraint = asConstraint(this)
       val (constants, guards) = constantsAndGuards(constraint)
-      new LTuple8[T1,T2,T3,T4,T5,T6,T7,T8](createL[T1](constraint, constants(0), guards(0)),createL[T2](constraint, constants(1), guards(1)),createL[T3](constraint, constants(2), guards(2)),createL[T4](constraint, constants(3), guards(3)),createL[T5](constraint, constants(4), guards(4)),createL[T6](constraint, constants(5), guards(5)),createL[T7](constraint, constants(6), guards(6)),createL[T8](constraint, constants(7), guards(7)))
+      (createL[T1](constraint, constants(0), guards(0)),createL[T2](constraint, constants(1), guards(1)),createL[T3](constraint, constants(2), guards(2)),createL[T4](constraint, constants(3), guards(3)),createL[T5](constraint, constants(4), guards(4)),createL[T6](constraint, constants(5), guards(5)),createL[T7](constraint, constants(6), guards(6)),createL[T8](constraint, constants(7), guards(7)))
     }
   
     def compose0[A1](other : Term1[A1, T1]) : Term8[A1, T2, T3, T4, T5, T6, T7, T8, R] = {
@@ -1199,10 +1184,10 @@ object Terms {
       MinConstraint9[T1,T2,T3,T4,T5,T6,T7,T8,T9](asConstraint(this), minFunc)
     }
   
-    def lazySolve(implicit asConstraint: (Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R]) => Constraint9[T1,T2,T3,T4,T5,T6,T7,T8,T9]): LTuple9[T1,T2,T3,T4,T5,T6,T7,T8,T9] = {
+    def lazySolve(implicit asConstraint: (Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R]) => Constraint9[T1,T2,T3,T4,T5,T6,T7,T8,T9]): (L[T1],L[T2],L[T3],L[T4],L[T5],L[T6],L[T7],L[T8],L[T9]) = {
       val constraint = asConstraint(this)
       val (constants, guards) = constantsAndGuards(constraint)
-      new LTuple9[T1,T2,T3,T4,T5,T6,T7,T8,T9](createL[T1](constraint, constants(0), guards(0)),createL[T2](constraint, constants(1), guards(1)),createL[T3](constraint, constants(2), guards(2)),createL[T4](constraint, constants(3), guards(3)),createL[T5](constraint, constants(4), guards(4)),createL[T6](constraint, constants(5), guards(5)),createL[T7](constraint, constants(6), guards(6)),createL[T8](constraint, constants(7), guards(7)),createL[T9](constraint, constants(8), guards(8)))
+      (createL[T1](constraint, constants(0), guards(0)),createL[T2](constraint, constants(1), guards(1)),createL[T3](constraint, constants(2), guards(2)),createL[T4](constraint, constants(3), guards(3)),createL[T5](constraint, constants(4), guards(4)),createL[T6](constraint, constants(5), guards(5)),createL[T7](constraint, constants(6), guards(6)),createL[T8](constraint, constants(7), guards(7)),createL[T9](constraint, constants(8), guards(8)))
     }
   
     def compose0[A1](other : Term1[A1, T1]) : Term9[A1, T2, T3, T4, T5, T6, T7, T8, T9, R] = {

@@ -35,12 +35,14 @@ object Utils {
 
         val createLCalls = (1 to arity) map (i => """createL[T%d](constraint, constants(%d), guards(%d))""" format (i, i - 1, i - 1))
         val createLCallsString = createLCalls.mkString(",")
+        val lvarTypes = traitArgParams map ("L[" + _ + "]")
+        val lvarTypeString = lvarTypes.mkString(",")
         val lazySolveMethod =
-"""def lazySolve(implicit asConstraint: (%s) => Constraint%d[%s]): LTuple%d[%s] = {
+"""def lazySolve(implicit asConstraint: (%s) => Constraint%d[%s]): (%s) = {
   val constraint = asConstraint(this)
   val (constants, guards) = constantsAndGuards(constraint)
-  new LTuple%d[%s](%s)
-}""" format (traitName, arity, traitArgParamsString, arity, traitArgParamsString, arity, traitArgParamsString, createLCallsString)
+  (%s)
+}""" format (traitName, arity, traitArgParamsString, lvarTypeString, createLCallsString)
 
         val composeMethods = (for (arityF <- 1 to (maxArity - arity + 1)) yield {
           for (index <- 0 until arity) yield {
@@ -237,7 +239,7 @@ object Utils {
     val ltupleClasses = GenerateLTuples(args(0).toInt)
 
     val everything = Seq(typeAliases, termTraits, termObjects, minConstraintsClasses).mkString("\n\n")
-    // println(indent(everything))
-    println(indent(ltupleClasses))
+    println(indent(everything))
+    // println(indent(ltupleClasses))
   }
 }
