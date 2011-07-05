@@ -7,7 +7,9 @@ object LazyVars {
   def chooseInt(lower: Int, upper: Int) = ((x: Int) => x >= lower && x <= upper).lazyFindAll
 
   def main(args: Array[String]): Unit = {
-    f5()
+    f1()
+    f2()
+    f3()
   }
 
   def f1() {
