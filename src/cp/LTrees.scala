@@ -133,7 +133,7 @@ object LTrees {
   /** END OF GENERATED CODE ***/
 
   /** A stream for symbolic variables */
-  class LStream[T](val constraint: (L[T]) => Constraint[T]) extends scala.collection.generic.FilterMonadic[L[T], Traversable[L[T]]] {
+  class LIterator[T](val constraint: (L[T]) => Constraint[T]) extends Iterator[L[T]] {
 
     import ConstraintSolving.GlobalContext
     private var guards: Map[Seq[Identifier],Identifier] = Map.empty
@@ -199,12 +199,13 @@ object LTrees {
         enqueueAsForcedInStream(ids, values)
     }
 
+    private var underlying = underlyingStream()
+
     private def underlyingStream(): Stream[L[T]] = {
 
       // set of tricks to overcome circular dependency between creation of L's
       // and Constraints
 
-      // currently works for only LStreams generating one L
       val placeHolders = Seq(FreshIdentifier("placeholder", true).setType(BottomType))
       val candidateL = new L[T](handler(), placeHolders)
       val instantiatedCnstr = constraint(candidateL)
@@ -229,24 +230,15 @@ object LTrees {
       }
     }
 
-    def flatMap [B, That] (f: (L[T]) ⇒ GenTraversableOnce[B])(implicit bf: CanBuildFrom[Traversable[L[T]], B, That]): That = {
-      underlyingStream().flatMap(f)
+    def hasNext: Boolean = !underlying.isEmpty
+    def next: L[T] = {
+      val toRet = underlying.head
+      underlying = underlying.tail
+      toRet
     }
 
-    def foreach [U] (f: (L[T]) ⇒ U): Unit = {
-      underlyingStream().foreach(f)
-    }
-
-    def map [B, That] (f: (L[T]) ⇒ B)(implicit bf: CanBuildFrom[Traversable[L[T]], B, That]): That = {
-      underlyingStream().map(f)
-    }
-
-    def withFilter (p: (L[T]) ⇒ Boolean): FilterMonadic[L[T], Traversable[L[T]]] = {
-      underlyingStream().withFilter(p)
-    }
-
-    def withFilter2(p: (L[T]) => Constraint[T]): LStream[T] = {
-      new LStream[T]((l: L[T]) => this.constraint(l).asInstanceOf[Constraint1[T]] && p(l).asInstanceOf[Constraint1[T]])
+    def withFilter2(p: (L[T]) => Constraint[T]): LIterator[T] = {
+      new LIterator[T]((l: L[T]) => this.constraint(l).asInstanceOf[Constraint1[T]] && p(l).asInstanceOf[Constraint1[T]])
     }
   }
 

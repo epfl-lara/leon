@@ -20,20 +20,20 @@ trait CallTransformation
 
   private lazy val cpPackage            = definitions.getModule("cp")
   private lazy val cpDefinitionsModule  = definitions.getModule("cp.Definitions")
-  private lazy val lstreamClass         = definitions.getClass("cp.LTrees.LStream")
-  private lazy val withFilter2Function  = definitions.getMember(lstreamClass, "withFilter2")
+  private lazy val lIteratorClass       = definitions.getClass("cp.LTrees.LIterator")
+  private lazy val withFilter2Function  = definitions.getMember(lIteratorClass, "withFilter2")
   private lazy val lClassSym            = definitions.getClass("cp.LTrees.L")
 
   private def isLSym(sym: Symbol): Boolean = {
     sym == lClassSym
   }
 
-  private def isLStreamSym(sym: Symbol): Boolean = {
-    sym == lstreamClass
+  private def isLIterator(sym: Symbol): Boolean = {
+    sym == lIteratorClass
   }
 
-  private def hasLStreamType(tr: Tree): Boolean = tr.tpe match {
-    case TypeRef(_, sym, _) if isLStreamSym(sym) => true
+  private def hasLIteratorType(tr: Tree): Boolean = tr.tpe match {
+    case TypeRef(_, sym, _) if isLIterator(sym) => true
     case _ => false
   }
 
@@ -48,7 +48,7 @@ trait CallTransformation
         val Function(funValDefs, funBody) = function
         extracted += (function.pos -> extractFunction(unit, funValDefs, funBody))
       }
-      case Apply(Select(lhs, withFilterName), List(predicate: Function)) if withFilterName.toString == "withFilter" && hasLStreamType(lhs) => {
+      case Apply(Select(lhs, withFilterName), List(predicate: Function)) if withFilterName.toString == "withFilter" && hasLIteratorType(lhs) => {
         val Function(funValDefs, funBody) = predicate
         extracted += (predicate.pos -> extractWithFilterPredicate(unit, funValDefs, funBody))
       }
@@ -129,7 +129,7 @@ trait CallTransformation
             case None => super.transform(tree)
           }
         }
-        case Apply(Select(lhs, withFilterName), List(predicate: Function)) if withFilterName.toString == "withFilter" && hasLStreamType(lhs) => {
+        case Apply(Select(lhs, withFilterName), List(predicate: Function)) if withFilterName.toString == "withFilter" && hasLIteratorType(lhs) => {
           val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
 
           val Function(funValDefs, _) = predicate

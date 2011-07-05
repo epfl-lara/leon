@@ -13,6 +13,7 @@ object LazyVars {
     println
     f3()
     println
+    // f5()
   }
 
   def f1() {
@@ -58,5 +59,11 @@ object LazyVars {
     val y = p._2
     println("x: " + x.value)
     println("y: " + y.value)
+  }
+
+  def f5() {
+    val p = ((x: Int, y: Int) => x > 0 && y == 2 * x && x <= 5).lazySolve
+    val scalaPair: (Int, Int) = p
+    println("scala pair: " + scalaPair)
   }
 }

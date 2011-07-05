@@ -48,8 +48,8 @@ object Terms {
       }
     }
 
-    def lazyFindAll(implicit asConstraint: (Term[T,R]) => Constraint[T]): LStream[T] = {
-      new LStream((l: L[T]) => asConstraint(this))
+    def lazyFindAll(implicit asConstraint: (Term[T,R]) => Constraint[T]): LIterator[T] = {
+      new LIterator((l: L[T]) => asConstraint(this))
     }
   }
 
@@ -198,6 +198,8 @@ object Terms {
       val (constants, guards) = constantsAndGuards(constraint)
       new LTuple1[T1](createL[T1](constraint, constants(0), guards(0)))
     }
+
+    // def lazyFindAll(implicit asConstraint: (Term1[T1,R]) => Constraint1[T1]): LStream
   
     def compose0[A1](other : Term1[A1, T1]) : Term1[A1, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 1, 1)
