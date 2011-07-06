@@ -139,6 +139,8 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         case Int32Type => RegularSort(intSort)
         case AbstractClassType(d) => RegularSort(adtSorts(d))
         case CaseClassType(d) => RegularSort(adtSorts(d))
+        case SetType(d) => RegularSort(setSorts(d))
+        case mt @ MapType(d,r) => RegularSort(mapSorts(mt))
         case _ => throw UntranslatableTypeException("Can't handle type " + tt)
       }
 
@@ -1083,7 +1085,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
             }
             // case OpAsArray => {
             //   assert(argsSize == 0)
-            //   
+            //   throw new Exception()
             // }
             case other => {
               System.err.println("Don't know what to do with this declKind : " + other)
