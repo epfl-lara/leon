@@ -148,16 +148,19 @@ trait CodeGeneration {
             New(TypeTree(scalaSym.tpe), List({
               (ccd.fields.zipWithIndex map {
                 case (VarDecl(id, tpe), idx) =>
-                  val typeArg = tpe match {
-                    case purescala.TypeTrees.BooleanType => definitions.BooleanClass
-                    case purescala.TypeTrees.Int32Type => definitions.IntClass
-                    case c : purescala.TypeTrees.ClassType => reverseClassesToClasses(c.classDef)
-                    case _ => scala.sys.error("Cannot generate method using type : " + tpe)
+                  def typeArg(t: purescala.TypeTrees.TypeTree): Type = t match {
+                    case purescala.TypeTrees.BooleanType => definitions.BooleanClass.tpe
+                    case purescala.TypeTrees.Int32Type => definitions.IntClass.tpe
+                    case c : purescala.TypeTrees.ClassType => reverseClassesToClasses(c.classDef).tpe
+                    case purescala.TypeTrees.SetType(dt) => {
+                      typeRef(NoPrefix, setClass, List(typeArg(dt)))
+                    }
+                    case _ => scala.sys.error("Cannot generate method using type : " + t)
                   }
                   Apply(
                     TypeApply(
                       Ident(castMethodSym), 
-                      List(TypeTree(typeArg.tpe))
+                      List(TypeTree(typeArg(tpe)))
                     ), 
                     List(
                        // cast hack to make typer happy :(

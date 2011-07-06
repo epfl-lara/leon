@@ -39,11 +39,11 @@ trait AbstractZ3Solver {
   protected[purescala] var funDomainSelectors: Map[TypeTree, Seq[Z3FuncDecl]]
 
   protected[purescala] var exprToZ3Id : Map[Expr,Z3AST]
-  protected[purescala] def fromZ3Formula(tree : Z3AST) : Expr
+  protected[purescala] def fromZ3Formula(model: Z3Model, tree : Z3AST, expectedType: Option[TypeTree]) : Expr
 
-  protected[purescala] def softFromZ3Formula(tree : Z3AST) : Option[Expr] = {
+  protected[purescala] def softFromZ3Formula(model: Z3Model, tree : Z3AST, expectedType: TypeTree) : Option[Expr] = {
     try {
-      Some(fromZ3Formula(tree))
+      Some(fromZ3Formula(model, tree, Some(expectedType)))
     } catch {
       case e: CantTranslateException => None
     }

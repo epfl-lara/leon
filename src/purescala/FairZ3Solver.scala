@@ -653,7 +653,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
                 blockingSet
               } else {
                 // reporter.info(" - Will only unroll literals from core")
-                core.map(ast => fromZ3Formula(ast) match {
+                core.map(ast => fromZ3Formula(m, ast, Some(BooleanType)) match {
                   case n @ Not(Variable(_)) => n
                   case v @ Variable(_) => v
                   case _ => scala.sys.error("Impossible element extracted from core: " + ast)
@@ -1007,107 +1007,136 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     }
   }
 
-  protected[purescala] def fromZ3Formula(tree : Z3AST) : Expr = {
-    def rec(t: Z3AST) : Expr = z3.getASTKind(t) match {
-      case Z3AppAST(decl, args) => {
-        val argsSize = args.size
-        if(argsSize == 0 && z3IdToExpr.isDefinedAt(t)) {
-          val toRet = z3IdToExpr(t)
-          // println("Map says I should replace " + t + " by " + toRet)
-          toRet
-        } else if(isKnownDecl(decl)) {
-          val fd = functionDeclToDef(decl)
-          assert(fd.args.size == argsSize)
-          FunctionInvocation(fd, args.map(rec(_)))
-        } else if(argsSize == 1 && reverseADTTesters.isDefinedAt(decl)) {
-          CaseClassInstanceOf(reverseADTTesters(decl), rec(args(0)))
-        } else if(argsSize == 1 && reverseADTFieldSelectors.isDefinedAt(decl)) {
-          val (ccd, fid) = reverseADTFieldSelectors(decl)
-          CaseClassSelector(ccd, rec(args(0)), fid)
-        } else if(reverseADTConstructors.isDefinedAt(decl)) {
-          val ccd = reverseADTConstructors(decl)
-          assert(argsSize == ccd.fields.size)
-          CaseClass(ccd, args.map(rec(_)))
-        } else {
-          import Z3DeclKind._
-          val rargs = args.map(rec(_))
-          z3.getDeclKind(decl) match {
-            case OpTrue => BooleanLiteral(true)
-            case OpFalse => BooleanLiteral(false)
-            case OpEq => Equals(rargs(0), rargs(1))
-            case OpITE => {
-              assert(argsSize == 3)
-              val r0 = rargs(0)
-              val r1 = rargs(1)
-              val r2 = rargs(2)
-              try {
-                IfExpr(r0, r1, r2).setType(leastUpperBound(r1.getType, r2.getType))
-              } catch {
-                case e => {
-                  println("I was asking for lub because of this.")
-                  println(t)
-                  println("which was translated as")
-                  println(IfExpr(r0,r1,r2))
-                  throw e
+  protected[purescala] def fromZ3Formula(model: Z3Model, tree : Z3AST, expectedType: Option[TypeTree] = None) : Expr = {
+    def rec(t: Z3AST, expType: Option[TypeTree] = None) : Expr = expType match {
+      case Some(MapType(kt,vt)) => 
+        model.getArrayValue(t) match {
+          case None => throw new CantTranslateException(t)
+          case Some((map, elseValue)) => 
+            val singletons = map.map(e => (e, z3.getASTKind(e._2))).collect {
+              case ((index, value), Z3AppAST(someCons, arg :: Nil)) if someCons == mapRangeSomeConstructors(vt) => SingletonMap(rec(index, Some(kt)), rec(arg, Some(vt)))
+            }
+            (if (singletons.isEmpty) EmptyMap(kt, vt) else FiniteMap(singletons.toSeq)).setType(expType.get)
+        }
+      case funType @ Some(FunctionType(fts, tt)) =>
+        model.getArrayValue(t) match {
+          case None => throw new CantTranslateException(t)
+          case Some((es, ev)) =>
+            val entries: Seq[(Seq[Expr], Expr)] = es.toSeq.map(e => (e, z3.getASTKind(e._1))).collect {
+              case ((key, value), Z3AppAST(cons, args)) if cons == funDomainConstructors(funType.get) => ((args zip fts) map (p => rec(p._1, Some(p._2))), rec(value, Some(tt)))
+            }
+            val elseValue = rec(ev, Some(tt))
+            AnonymousFunction(entries, elseValue).setType(expType.get)
+        }
+      case Some(SetType(dt)) => 
+        model.getSetValue(t) match {
+          case None => throw new CantTranslateException(t)
+          case Some(set) => {
+            val elems = set.map(e => rec(e, Some(dt)))
+            (if (elems.isEmpty) EmptySet(dt) else FiniteSet(elems.toSeq)).setType(expType.get)
+          }
+        }
+      case other => 
+        z3.getASTKind(t) match {
+          case Z3AppAST(decl, args) => {
+            val argsSize = args.size
+            if(argsSize == 0 && z3IdToExpr.isDefinedAt(t)) {
+              val toRet = z3IdToExpr(t)
+              // println("Map says I should replace " + t + " by " + toRet)
+              toRet
+            } else if(isKnownDecl(decl)) {
+              val fd = functionDeclToDef(decl)
+              assert(fd.args.size == argsSize)
+              FunctionInvocation(fd, (args zip fd.args).map(p => rec(p._1,Some(p._2.tpe))))
+            } else if(argsSize == 1 && reverseADTTesters.isDefinedAt(decl)) {
+              CaseClassInstanceOf(reverseADTTesters(decl), rec(args(0)))
+            } else if(argsSize == 1 && reverseADTFieldSelectors.isDefinedAt(decl)) {
+              val (ccd, fid) = reverseADTFieldSelectors(decl)
+              CaseClassSelector(ccd, rec(args(0)), fid)
+            } else if(reverseADTConstructors.isDefinedAt(decl)) {
+              val ccd = reverseADTConstructors(decl)
+              assert(argsSize == ccd.fields.size)
+              CaseClass(ccd, (args zip ccd.fields).map(p => rec(p._1, Some(p._2.tpe))))
+            } else {
+              import Z3DeclKind._
+              val rargs = args.map(rec(_))
+              z3.getDeclKind(decl) match {
+                case OpTrue => BooleanLiteral(true)
+                case OpFalse => BooleanLiteral(false)
+                case OpEq => Equals(rargs(0), rargs(1))
+                case OpITE => {
+                  assert(argsSize == 3)
+                  val r0 = rargs(0)
+                  val r1 = rargs(1)
+                  val r2 = rargs(2)
+                  try {
+                    IfExpr(r0, r1, r2).setType(leastUpperBound(r1.getType, r2.getType))
+                  } catch {
+                    case e => {
+                      println("I was asking for lub because of this.")
+                      println(t)
+                      println("which was translated as")
+                      println(IfExpr(r0,r1,r2))
+                      throw e
+                    }
+                  }
+                }
+                case OpAnd => And(rargs)
+                case OpOr => Or(rargs)
+                case OpIff => Iff(rargs(0), rargs(1))
+                case OpXor => Not(Iff(rargs(0), rargs(1)))
+                case OpNot => Not(rargs(0))
+                case OpImplies => Implies(rargs(0), rargs(1))
+                case OpLE => LessEquals(rargs(0), rargs(1))
+                case OpGE => GreaterEquals(rargs(0), rargs(1))
+                case OpLT => LessThan(rargs(0), rargs(1))
+                case OpGT => GreaterThan(rargs(0), rargs(1))
+                case OpAdd => {
+                  assert(argsSize == 2)
+                  Plus(rargs(0), rargs(1))
+                }
+                case OpSub => {
+                  assert(argsSize == 2)
+                  Minus(rargs(0), rargs(1))
+                }
+                case OpUMinus => UMinus(rargs(0))
+                case OpMul => {
+                  assert(argsSize == 2)
+                  Times(rargs(0), rargs(1))
+                }
+                case OpDiv => {
+                  assert(argsSize == 2)
+                  Division(rargs(0), rargs(1))
+                }
+                case OpIDiv => {
+                  assert(argsSize == 2)
+                  Division(rargs(0), rargs(1))
+                }
+                case OpAsArray => {
+                  assert(argsSize == 0)
+                  throw new Exception("encountered OpAsArray")
+                }
+                case other => {
+                  System.err.println("Don't know what to do with this declKind : " + other)
+                  System.err.println("The arguments are : " + args)
+                  throw new CantTranslateException(t)
                 }
               }
             }
-            case OpAnd => And(rargs)
-            case OpOr => Or(rargs)
-            case OpIff => Iff(rargs(0), rargs(1))
-            case OpXor => Not(Iff(rargs(0), rargs(1)))
-            case OpNot => Not(rargs(0))
-            case OpImplies => Implies(rargs(0), rargs(1))
-            case OpLE => LessEquals(rargs(0), rargs(1))
-            case OpGE => GreaterEquals(rargs(0), rargs(1))
-            case OpLT => LessThan(rargs(0), rargs(1))
-            case OpGT => GreaterThan(rargs(0), rargs(1))
-            case OpAdd => {
-              assert(argsSize == 2)
-              Plus(rargs(0), rargs(1))
-            }
-            case OpSub => {
-              assert(argsSize == 2)
-              Minus(rargs(0), rargs(1))
-            }
-            case OpUMinus => UMinus(rargs(0))
-            case OpMul => {
-              assert(argsSize == 2)
-              Times(rargs(0), rargs(1))
-            }
-            case OpDiv => {
-              assert(argsSize == 2)
-              Division(rargs(0), rargs(1))
-            }
-            case OpIDiv => {
-              assert(argsSize == 2)
-              Division(rargs(0), rargs(1))
-            }
-            // case OpAsArray => {
-            //   assert(argsSize == 0)
-            //   throw new Exception()
-            // }
-            case other => {
-              System.err.println("Don't know what to do with this declKind : " + other)
-              System.err.println("The arguments are : " + args)
-              throw new CantTranslateException(t)
-            }
+          }
+
+          case Z3NumeralAST(Some(v)) => IntLiteral(v)
+          case other @ _ => {
+            System.err.println("Don't know what this is " + other) 
+            System.err.println("REVERSE FUNCTION MAP:")
+            System.err.println(reverseFunctionMap.toSeq.mkString("\n"))
+            System.err.println("REVERSE CONS MAP:")
+            System.err.println(reverseADTConstructors.toSeq.mkString("\n"))
+            throw new CantTranslateException(t)
           }
         }
-      }
-
-      case Z3NumeralAST(Some(v)) => IntLiteral(v)
-      case other @ _ => {
-        System.err.println("Don't know what this is " + other) 
-        System.err.println("REVERSE FUNCTION MAP:")
-        System.err.println(reverseFunctionMap.toSeq.mkString("\n"))
-        System.err.println("REVERSE CONS MAP:")
-        System.err.println(reverseADTConstructors.toSeq.mkString("\n"))
-        throw new CantTranslateException(t)
-      }
     }
-
-    rec(tree)
+    rec(tree, expectedType)
   }
 
   // This remembers everything that was unrolled, which literal is blocking

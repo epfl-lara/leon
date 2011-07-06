@@ -88,7 +88,7 @@ class Instantiator(val z3Solver: Z3Solver) extends Z3Theory(z3Solver.z3, "Instan
       seen += ast
     }
 
-    val aps = fromZ3Formula(ast)
+    val aps = fromZ3Formula(null,ast)
     val fis : Set[FunctionInvocation] = if(allFunctions) {
       functionCallsOf(aps)
     } else {

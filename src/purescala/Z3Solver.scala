@@ -690,7 +690,7 @@ class Z3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3Solve
     }
   }
 
-  protected[purescala] def fromZ3Formula(tree : Z3AST) : Expr = {
+  protected[purescala] def fromZ3Formula(model: Z3Model, tree : Z3AST, expectedType: Option[TypeTree] = None) : Expr = {
     def rec(t: Z3AST) : Expr = z3.getASTKind(t) match {
       case Z3AppAST(decl, args) => {
         val argsSize = args.size
