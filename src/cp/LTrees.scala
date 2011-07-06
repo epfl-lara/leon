@@ -16,7 +16,7 @@ object LTrees {
   /** Handler for converting values from Expr to Scala and reporting forced
    * values */
   trait LHandler[T] {
-    val converter: Converter
+    def convert(s: Seq[Expr]): T
     def enqueueAsForced(ids: Seq[Identifier], values: Seq[Expr]): Unit
   }
 
@@ -36,7 +36,7 @@ object LTrees {
       case Some(value) => value
       case None =>
         val model = GlobalContext.findValues(ids)
-        val toRet = handler.converter.exprSeq2scala1[T](model)
+        val toRet = handler.convert(model)
         handler.enqueueAsForced(ids, model)
         cache = Some(toRet)
         toRet
@@ -132,40 +132,8 @@ object LTrees {
   }
   /** END OF GENERATED CODE ***/
 
-  def dummyL[T]: L[T] = new L[T](null, Seq(FreshIdentifier("dummy", true).setType(BottomType)))
-  def dummyTuple1[T1]: Tuple1[L[T1]] = Tuple1(dummyL[T1])
-  def dummyTuple2[T1,T2]: (L[T1],L[T2]) = (dummyL[T1],dummyL[T2])
-  def dummyTuple3[T1,T2,T3]: (L[T1],L[T2],L[T3]) = (dummyL[T1],dummyL[T2],dummyL[T3])
-  def dummyTuple4[T1,T2,T3,T4]: (L[T1],L[T2],L[T3],L[T4]) = (dummyL[T1],dummyL[T2],dummyL[T3],dummyL[T4])
-  def dummyTuple5[T1,T2,T3,T4,T5]: (L[T1],L[T2],L[T3],L[T4],L[T5]) = (dummyL[T1],dummyL[T2],dummyL[T3],dummyL[T4],dummyL[T5])
-  def dummyTuple6[T1,T2,T3,T4,T5,T6]: (L[T1],L[T2],L[T3],L[T4],L[T5],L[T6]) = (dummyL[T1],dummyL[T2],dummyL[T3],dummyL[T4],dummyL[T5],dummyL[T6])
-  def dummyTuple7[T1,T2,T3,T4,T5,T6,T7]: (L[T1],L[T2],L[T3],L[T4],L[T5],L[T6],L[T7]) = (dummyL[T1],dummyL[T2],dummyL[T3],dummyL[T4],dummyL[T5],dummyL[T6],dummyL[T7])
-  def dummyTuple8[T1,T2,T3,T4,T5,T6,T7,T8]: (L[T1],L[T2],L[T3],L[T4],L[T5],L[T6],L[T7],L[T8]) = (dummyL[T1],dummyL[T2],dummyL[T3],dummyL[T4],dummyL[T5],dummyL[T6],dummyL[T7],dummyL[T8])
-  def dummyTuple9[T1,T2,T3,T4,T5,T6,T7,T8,T9]: (L[T1],L[T2],L[T3],L[T4],L[T5],L[T6],L[T7],L[T8],L[T9]) = (dummyL[T1],dummyL[T2],dummyL[T3],dummyL[T4],dummyL[T5],dummyL[T6],dummyL[T7],dummyL[T8],dummyL[T9])
-
-  class LIterator1[T1](val constraintGivenTuple: (L[T1]) => Constraint1[T1]) extends LIterator[T1,(L[T1])] {
-    val dummyTuple: Tuple1[L[T1]] = dummyTuple1[T1]
-    val constraint: Constraint[T1] = constraintGivenTuple(dummyTuple._1)
-
-    def withFilter2(p: (L[T1]) => Constraint[T1]): LIterator1[T1] = {
-      new LIterator1[T1]((l: L[T1]) => this.constraintGivenTuple(l).asInstanceOf[Constraint1[T1]] && p(l).asInstanceOf[Constraint1[T1]])
-    }
-  }
-
-  class LIterator2[T1,T2](val constraintGivenTuple: ((L[T1], L[T2])) => Constraint2[T1,T2]) extends LIterator[(T1,T2),(L[T1],L[T2])] {
-    val dummyTuple: (L[T1],L[T2]) = dummyTuple2[T1,T2]
-    val constraint: Constraint[(T1,T2)] = constraintGivenTuple(dummyTuple)
-
-    def withFilter2(p: ((L[T1],L[T2])) => Constraint[(T1,T2)]): LIterator2[T1,T2] = {
-      new LIterator2[T1,T2]((t: (L[T1],L[T2])) => this.constraintGivenTuple(t).asInstanceOf[Constraint2[T1,T2]] && p(t).asInstanceOf[Constraint2[T1,T2]])
-    }
-  }
-
-  /** A lazy iterator for symbolic variables. S denotes the Scala value type
-   * (which can be a tuple) and T denotes the corresponding L tuple type. */
-  abstract class LIterator[S,T] extends Iterator[T] {
-    val dummyTuple: Product
-    val constraint: Constraint[S]
+  /** A stream for symbolic variables */
+  class LIterator[T](val constraint: (L[T]) => Constraint[T]) extends Iterator[L[T]] {
 
     import ConstraintSolving.GlobalContext
     private var guards: Map[Seq[Identifier],Identifier] = Map.empty
@@ -174,7 +142,7 @@ object LTrees {
     private var forcedQueue: Seq[Seq[Identifier]] = Seq.empty
 
     // we don't have this until we first instantiate a constraint
-    // private var convertingFunction: (Seq[Expr]) => T = null
+    private var convertingFunction: (Seq[Expr]) => T = null
 
     def enqueueAsForcedInStream(ids: Seq[Identifier], values: Seq[Expr]): Unit = {
       // assert value
@@ -226,7 +194,7 @@ object LTrees {
     }
 
     private def handler(): LHandler[T] = new LHandler[T] {
-      val converter: Converter = constraint.converter
+      def convert(s: Seq[Expr]): T = convertingFunction(s)
       def enqueueAsForced(ids: Seq[Identifier], values: Seq[Expr]): Unit =
         enqueueAsForcedInStream(ids, values)
     }
@@ -238,18 +206,15 @@ object LTrees {
       // set of tricks to overcome circular dependency between creation of L's
       // and Constraints
 
-      val placeHolders: Seq[Identifier] = (for (l <- dummyTuple.productIterator) yield {
-        assert(l.isInstanceOf[L[_]])
-        val castedL = l.asInstanceOf[L[_]]
-        assert(castedL.ids.size == 1)
-        castedL.ids.head
-      }).toSeq
+      val placeHolders = Seq(FreshIdentifier("placeholder", true).setType(BottomType))
+      val candidateL = new L[T](handler(), placeHolders)
+      val instantiatedCnstr = constraint(candidateL)
 
       // now that we have a Constraint, we can perform some actions such as:
-      GlobalContext.initializeIfNeeded(constraint.program)
-      // convertingFunction = constraint.convertingFunction
+      GlobalContext.initializeIfNeeded(instantiatedCnstr.program)
+      convertingFunction = instantiatedCnstr.convertingFunction
 
-      val (newConsts, newExpr) = combineConstraint(constraint)
+      val (newConsts, newExpr) = combineConstraint(instantiatedCnstr)
       val typedPlaceHolders = newConsts map {
         case cst => FreshIdentifier("fresh", true).setType(cst.getType)
       }
@@ -266,16 +231,15 @@ object LTrees {
     }
 
     def hasNext: Boolean = !underlying.isEmpty
-    def next: T = {
+    def next: L[T] = {
       val toRet = underlying.head
       underlying = underlying.tail
-      // toRet
-      throw new Exception()
+      toRet
     }
 
-    def withFilter2(p: (T) => Constraint[S]): LIterator[S,T] /*= {
+    def withFilter2(p: (L[T]) => Constraint[T]): LIterator[T] = {
       new LIterator[T]((l: L[T]) => this.constraint(l).asInstanceOf[Constraint1[T]] && p(l).asInstanceOf[Constraint1[T]])
-    }*/
+    }
   }
 
 }

@@ -35,9 +35,9 @@ object Terms {
       findAllExprSeq(asConstraint(this)).map(convertingFunction(_))
     }
 
-    // def lazyFindAll(implicit asConstraint: (Term[T,R]) => Constraint[T]): LIterator[T] = {
-    //   new LIterator((l: L[T]) => asConstraint(this))
-    // }
+    def lazyFindAll(implicit asConstraint: (Term[T,R]) => Constraint[T]): LIterator[T] = {
+      new LIterator((l: L[T]) => asConstraint(this))
+    }
   }
 
   def removeGuard(g: Identifier): Unit = {
@@ -48,7 +48,7 @@ object Terms {
 
   def createL[T](constraint: Constraint[_], constant: Identifier, guard: Identifier): L[T] = {
     val handler = new LHandler[T] {
-      val converter: Converter = constraint.converter
+      def convert(s: Seq[Expr]): T = constraint.converter.exprSeq2scala1[T](s)
       def enqueueAsForced(ids: Seq[Identifier], values: Seq[Expr]): Unit = {
         val haveValues = And((ids zip values) map {
           case (i, v) => Equals(Variable(i), v)
@@ -184,10 +184,6 @@ object Terms {
       val constraint = asConstraint(this)
       val (constants, guards) = constantsAndGuards(constraint)
       (createL[T1](constraint, constants(0), guards(0)))
-    }
-
-    def lazyFindAll(implicit asConstraint: (Term1[T1,R]) => Constraint1[T1]): LIterator1[T1] = {
-      new LIterator1((l: L[T1]) => asConstraint(this))
     }
   
     def compose0[A1](other : Term1[A1, T1]) : Term1[A1, R] = {
