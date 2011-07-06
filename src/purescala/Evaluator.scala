@@ -34,9 +34,9 @@ object Evaluator {
 
     def rec(ctx: EvaluationContext, expr: Expr) : Expr = if(left <= 0) {
       throw InfiniteComputationEx()
-    } else { val ret = {
-      println("Step on : " + expr)
-      println(ctx)
+    } else {
+      // println("Step on : " + expr)
+      // println(ctx)
       left -= 1
       expr match {
         case Variable(id) => {
@@ -127,9 +127,9 @@ object Evaluator {
           val rv = rec(ctx,re)
 
           (lv,rv) match {
-            case (FiniteSet(el1),FiniteSet(el2)) => println("(el1, el2): " + (el1, el2)); BooleanLiteral(el1.toSet == el2.toSet)
+            case (FiniteSet(el1),FiniteSet(el2)) => BooleanLiteral(el1.toSet == el2.toSet)
             case (FiniteMap(el1),FiniteMap(el2)) => BooleanLiteral(el1.toSet == el2.toSet)
-            case _ => println("just equals check "); BooleanLiteral(lv == rv)
+            case _ => BooleanLiteral(lv == rv)
           }
         }
         case CaseClass(cd, args) => CaseClass(cd, args.map(rec(ctx,_)))
@@ -278,7 +278,7 @@ object Evaluator {
           throw RuntimeErrorEx("unhandled case in Evaluator") 
         }
       }
-    }; println("ret: " + ret); ret }
+    }
 
     evaluator match {
       case Some(evalFun) =>
