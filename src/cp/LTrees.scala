@@ -136,7 +136,6 @@ object LTrees {
   class LIterator[T](val constraint: (L[T]) => Constraint[T]) extends Iterator[L[T]] {
 
     import ConstraintSolving.GlobalContext
-    private var guards: Map[Seq[Identifier],Identifier] = Map.empty
     private var previouslyReturned: Seq[Seq[Identifier]] = Seq.empty
 
     private var forcedQueue: Seq[Seq[Identifier]] = Seq.empty
@@ -155,7 +154,7 @@ object LTrees {
     }
 
     def removeGuard(ids: Seq[Identifier]): Unit = {
-      val guard = guards(ids)
+      val guard = GlobalContext.getGuard(ids)
 
       // remove from live set
       assert(GlobalContext.isAlive(guard))
@@ -167,25 +166,34 @@ object LTrees {
       GlobalContext.enqueueAssert(noMoreLive)
     }
 
-    private def isStillSat(newConsts: Seq[Identifier], newExpr: Expr): Boolean = {
+    private def isStillSat(newConsts: Seq[Identifier], newExpr: Expr, otherGuards: Set[Identifier]): Boolean = {
+      println("in isStillSat: ")
+      println("newConsts: " + newConsts)
+      println("newExpr: " + newExpr)
+      println("otherGuards: " + otherGuards)
       
       for (ids <- forcedQueue) {
+        println("removing from forced queue: " + ids)
         removeGuard(ids)
       }
       forcedQueue = Seq.empty
 
       val newGuard = FreshIdentifier("live", true).setType(BooleanType)
 
-      GlobalContext.addLive(newGuard)
-      guards = guards + (newConsts -> newGuard)
+      GlobalContext.addGuard(newConsts, newGuard)
+
+      val allGuardsForConstraint = (otherGuards ++ Set(newGuard)).toList
 
       // for all previous sequences of returned identifiers, assert that the new sequence is distinct from them
       val differentFromPrevious = And(previouslyReturned map (ps => Not(And((ps zip newConsts) map { case (p, n) => Equals(Variable(p), Variable(n)) }))))
       val toAssert = Implies(Variable(newGuard), And(newExpr, differentFromPrevious))
+      // val toAssert = Implies(Or(allGuardsForConstraint map (Variable(_))), And(newExpr, differentFromPrevious))
+      println("will assert: " + toAssert)
       if (GlobalContext.checkAssumptions(toAssert)) {
         if (!previouslyReturned.isEmpty)
           assert(GlobalContext.assertConstraint(differentFromPrevious))
         previouslyReturned = newConsts +: previouslyReturned
+        GlobalContext.enqueueAssert(Implies(Or(allGuardsForConstraint map (Variable(_))), And(newExpr, differentFromPrevious)))
         true
       } else {
         removeGuard(newConsts)
@@ -224,7 +232,9 @@ object LTrees {
       val subst2 = ((placeHolders map (Variable(_))) zip (typedPlaceHolders map (Variable(_)))).toMap
       val replacedExpr = replace(subst1 ++ subst2, newExpr)
 
-      if (isStillSat(typedPlaceHolders, replacedExpr)) {
+      val otherGuards = instantiatedCnstr.lVars.map(lv => GlobalContext.getGuard(lv.ids))
+
+      if (isStillSat(typedPlaceHolders, replacedExpr, otherGuards)) {
           Stream.cons(new L[T](handler(), typedPlaceHolders), underlyingStream())
       } else {
           Stream.empty
@@ -236,9 +246,12 @@ object LTrees {
         underlying = underlyingStream()
       else
         underlying = underlying.tail
-      !underlying.isEmpty
+      val toRet = !underlying.isEmpty
+      println("hasNext?" + (if (toRet) "yes" else "no"))
+      toRet
     }
     def next: L[T] = {
+      println("next!")
       underlying.head
     }
 

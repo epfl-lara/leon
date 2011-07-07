@@ -21,7 +21,7 @@ object ConstraintSolving {
     s
   }
 
-  private val DEBUG = false
+  private val DEBUG = true
   private def printDebug(msg: String): Unit = if (DEBUG) println(msg)
 
   object GlobalContext {
@@ -30,6 +30,13 @@ object ConstraintSolving {
 
     private var liveSet: Set[Identifier] = Set.empty
     private var toAssertQueue: Seq[Expr] = Seq.empty
+
+    private var guards: Map[Seq[Identifier],Identifier] = Map.empty
+    def getGuard(ids: Seq[Identifier]): Identifier = guards(ids)
+    def addGuard(ids: Seq[Identifier], guard: Identifier): Unit = {
+      guards = guards + (ids -> guard)
+      addLive(guard)
+    }
 
     def kill(id: Identifier): Unit = {
       printDebug("  - Removing from live set: " + id)
