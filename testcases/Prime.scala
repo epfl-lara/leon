@@ -1,0 +1,51 @@
+object Prime {
+  // an attempt at defining isPrime in PureScala...
+
+  // for positive numbers only
+  def isPrime(i : Int) : Boolean = {
+    (i >= 2 && noneDivides(2, i))
+  }
+
+  def noneDivides(start : Int, number : Int) : Boolean = {
+    if(start == number) {
+      true
+    } else {
+      !divides(start, number) && noneDivides(start + 1, number)
+    }
+  }
+
+  // for positive numbers only
+  def divides(i : Int, j : Int) : Boolean = {
+    val result = i == j || (i < j && ((j / i) * i == j))
+    result
+  }
+
+  // no a problem
+  def allTheseArePrime() : Boolean = {
+    isPrime(2) && isPrime(31) && isPrime(2) && isPrime(17) && isPrime(53)
+  } ensuring(res => res)
+
+  // Can't seem to get that one to work in reasonable time
+  //  def findTwoLargePrimes(x : Int, y : Int) : Boolean = {
+  //    x > 200 && y > x && isPrime(x) && isPrime(y)
+  //  } ensuring(res => !res)
+
+  // Seems to work with lucky tests only :)
+  def findLargePrime(x : Int) : Boolean = {
+    x > 200 && isPrime(x)
+  } ensuring(res => !res)
+
+  // Just for testing.
+  def main(args : Array[String]) : Unit = {
+    def test(n : Int) : Unit = {
+      println("Is " + n + " prime ? -> " + isPrime(n))
+    }
+    test(119)
+    test(31)
+    test(1)
+    test(2)
+    test(0)
+
+    println(allTheseArePrime)
+  }
+}
