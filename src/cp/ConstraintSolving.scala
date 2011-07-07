@@ -21,7 +21,8 @@ object ConstraintSolving {
     s
   }
 
-  private val DEBUG = false
+  private val DEBUG = true
+  private def printDebug(msg: String): Unit = if (DEBUG) println(msg)
 
   object GlobalContext {
     private var solver: FairZ3Solver = null
@@ -31,6 +32,7 @@ object ConstraintSolving {
     private var toAssertQueue: Seq[Expr] = Seq.empty
 
     def kill(id: Identifier): Unit = {
+      printDebug("  - Removing from live set: " + id)
       liveSet = liveSet - id
     }
 
@@ -39,6 +41,7 @@ object ConstraintSolving {
     }
 
     def addLive(id: Identifier): Unit = {
+      printDebug("  - Adding to live set: " + id)
       liveSet = liveSet + id
     }
 
@@ -49,21 +52,22 @@ object ConstraintSolving {
 
     def checkAssumptions(expr: Expr) : Boolean = checkAssumptions(expr, liveSet map (Variable(_)))
     private def checkAssumptions(expr: Expr, assumptions: Set[Expr]): Boolean = {
-      if (DEBUG) {
-        println("  - Checking assumptions: " + expr)
-        println("  - live set: " + liveSet)
-        if (! toAssertQueue.isEmpty)
-          println("  - Will also assert enqueued expressions: " + toAssertQueue)
-      }
+      printDebug("  - Checking assumptions: " + expr)
+      printDebug("  - live set: " + liveSet)
+      if (! toAssertQueue.isEmpty)
+        printDebug("  - Will also assert enqueued expressions: " + toAssertQueue)
 
       val toCheck = And(expr +: toAssertQueue)
       toAssertQueue = Seq.empty
+      printDebug("  - To check: " + toCheck)
 
       solver.decideWithModel(toCheck, false, assumptions = Some(assumptions)) match {
         case (Some(false), model) =>
+          printDebug("  - SAT: " + model)
           lastModel = model
           true
         case _ =>
+          printDebug("  - UNSAT")
           false
       }
     }
@@ -78,11 +82,9 @@ object ConstraintSolving {
     // }
 
     def assertConstraint(expr: Expr): Boolean = {
-      if (DEBUG) {
-        println("  - Asserting constraint: " +expr)
-        if (! toAssertQueue.isEmpty)
-          println("  - Will also assert enqueued expressions: " + toAssertQueue)
-      }
+      printDebug("  - Asserting constraint: " +expr)
+      if (! toAssertQueue.isEmpty)
+        printDebug("  - Will also assert enqueued expressions: " + toAssertQueue)
 
       val toAssert = And(expr +: toAssertQueue)
       toAssertQueue = Seq.empty

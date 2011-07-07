@@ -199,7 +199,7 @@ object LTrees {
         enqueueAsForcedInStream(ids, values)
     }
 
-    private var underlying = underlyingStream()
+    private var underlying: Stream[L[T]] = null
 
     private def underlyingStream(): Stream[L[T]] = {
 
@@ -230,11 +230,15 @@ object LTrees {
       }
     }
 
-    def hasNext: Boolean = !underlying.isEmpty
+    def hasNext: Boolean = { 
+      if (underlying == null)
+        underlying = underlyingStream()
+      else
+        underlying = underlying.tail
+      !underlying.isEmpty
+    }
     def next: L[T] = {
-      val toRet = underlying.head
-      underlying = underlying.tail
-      toRet
+      underlying.head
     }
 
     def withFilter2(p: (L[T]) => Constraint[T]): LIterator[T] = {
