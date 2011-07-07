@@ -70,7 +70,7 @@ trait CallTransformation
 
     val extractedFunDefs : Map[Position,FunDef] = funDefMap(unit)
 
-    private def transformHelper(tree : Tree, function : Function, codeGen : CodeGenerator) : Option[(Serialized, Serialized, Serialized, Tree, Int)] = {
+    private def transformHelper(tree : Tree, function : Function, codeGen : CodeGenerator) : Option[(Serialized, Serialized, Serialized, Serialized, Tree, Tree, Tree, Int)] = {
       val Function(funValDefs, funBody) = function
 
       val fd = extractedFunDefs(function.pos)
@@ -93,20 +93,24 @@ trait CallTransformation
           purescalaReporter.info("Input variables  : " + inputIdentifiers.mkString(", "))
           purescalaReporter.info("Output variables : " + outputVars.mkString(", "))
 
-          // list of input "Variables" to concatenate with list of L variables
+          // list of input "Variables" and list of L "Variables"
           val inputVars = inputIdentifiers map (iv => Variable(iv))
           val lVars     = lvarIdentifiers map (lv => Variable(lv))
 
-          // serialize list of all non-output "Variable"s
-          val serializedInputVarList = serialize(inputVars ++ lVars)
+          // serialize the above
+          val serializedInputVarList  = serialize(inputVars)
+          val serializedLVarList      = serialize(lVars)
 
           // serialize outputVars sequence
           val serializedOutputVars = serialize(outputVars)
 
           // sequence of input values
-          val inputVarValues : Tree = codeGen.inputVarValues(serializedInputVarList, inputIdentifiers, lvarIdentifiers, scalaToExprSym)
+          val inputVarValues : Tree = codeGen.inputVarValues(serializedInputVarList, inputIdentifiers, scalaToExprSym)
+          val lVarValues     : Tree = codeGen.lVarValues(serializedLVarList, lvarIdentifiers, scalaToExprSym)
 
-          Some((serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, outputVars.size))
+          val actualLVars    : Tree = codeGen.lVars(lvarIdentifiers)
+
+          Some((serializedInputVarList, serializedLVarList, serializedOutputVars, serializedExpr, inputVarValues, lVarValues, actualLVars, outputVars.size))
       }
     }
 
@@ -118,9 +122,9 @@ trait CallTransformation
           val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
 
           transformHelper(tree, function, codeGen) match {
-            case Some((serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, arity)) => {
+            case Some((serializedInputVarList, serializedLVarList, serializedOutputVars, serializedExpr, inputVarValues, lVarValues, actualLVars, arity)) => {
               // create constraint instance
-              val code = codeGen.newBaseTerm(exprToScalaSym, serializedProg, serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, function, typeTreeList, arity)
+              val code = codeGen.newBaseTerm(exprToScalaSym, serializedProg, serializedInputVarList, serializedLVarList, serializedOutputVars, serializedExpr, inputVarValues, lVarValues, actualLVars, function, typeTreeList, arity)
 
               typer.typed(atOwner(currentOwner) {
                 code
@@ -141,9 +145,9 @@ trait CallTransformation
           val typeTreeList = List(constraintParamType, TypeTree(definitions.BooleanClass.tpe))
 
           transformHelper(tree, predicate, codeGen) match {
-            case Some((serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, arity)) => {
+            case Some((serializedInputVarList, serializedLVarList, serializedOutputVars, serializedExpr, inputVarValues, lVarValues, actualLVars, arity)) => {
               // create constraint instance
-              val termCode = codeGen.newBaseTerm(exprToScalaSym, serializedProg, serializedInputVarList, serializedOutputVars, serializedExpr, inputVarValues, NULL, typeTreeList, arity)
+              val termCode = codeGen.newBaseTerm(exprToScalaSym, serializedProg, serializedInputVarList, serializedLVarList, serializedOutputVars, serializedExpr, inputVarValues, lVarValues, actualLVars, NULL, typeTreeList, arity)
               val code = (lhs DOT withFilter2Function) APPLY (Function(funValDefs,termCode) setSymbol predicate.symbol)
 
               typer.typed(atOwner(currentOwner) {

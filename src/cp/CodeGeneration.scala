@@ -267,21 +267,38 @@ trait CodeGeneration {
     }
 
     /* Generates list of values that will replace the specified serialized input variables in a constraint */
-    def inputVarValues(serializedInputVarList : Serialized, inputVars : Seq[Identifier], lVars : Seq[Identifier], scalaToExprSym : Symbol) : Tree = {
-      val inputVarTrees = inputVars.map((iv: Identifier) => scalaToExprSym APPLY variablesToTrees(Variable(iv))).toList
-      val lvarConversionTrees = lVars.map((lid: Identifier) => variableFromLFunction APPLY reverseLvarSubsts(Variable(lid))).toList
-      (scalaPackage DOT collectionModule DOT immutableModule DOT definitions.ListModule DOT listModuleApplyFunction) APPLY (inputVarTrees ::: lvarConversionTrees)
+    def inputVarValues(serializedInputVarList : Serialized, inputVars : Seq[Identifier], scalaToExprSym : Symbol) : Tree = {
+      val inputVarTrees = inputVars.map((iv: Identifier) => scalaToExprSym APPLY variablesToTrees(Variable(iv)))
+      listFromElements(inputVarTrees)
     }
 
-    def newBaseTerm(exprToScalaSym : Symbol, serializedProg : Serialized, serializedInputVarList : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Tree, function : Tree, typeTreeList : List[Tree], arity : Int) : Tree = {
+    /* Generates list of values that will replace the specified serialized L variables in a constraint */
+    def lVarValues(serializedLVarList : Serialized, lVars : Seq[Identifier], scalaToExprSym : Symbol) : Tree = {
+      val lvarConversionTrees = lVars.map((lid: Identifier) => variableFromLFunction APPLY reverseLvarSubsts(Variable(lid)))
+      listFromElements(lvarConversionTrees)
+    }
+
+    def lVars(ids: Seq[Identifier]) : Tree = {
+      val lvarTrees = ids.map(id => reverseLvarSubsts(Variable(id)))
+      listFromElements(lvarTrees)
+    }
+
+    def listFromElements(elems: Seq[Tree]): Tree = {
+      (scalaPackage DOT collectionModule DOT immutableModule DOT definitions.ListModule DOT listModuleApplyFunction) APPLY (elems.toList)
+    }
+
+    def newBaseTerm(exprToScalaSym : Symbol, serializedProg : Serialized, serializedInputVarList : Serialized, serializedLVarList : Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Tree, lVarValues : Tree, lVars : Tree, function : Tree, typeTreeList : List[Tree], arity : Int) : Tree = {
       TypeApply(
         Ident(termModules(arity)), typeTreeList) APPLY(
         newConverter(exprToScalaSym),
         newSerialized(serializedProg),
         newSerialized(serializedInputVarList),
+        newSerialized(serializedLVarList),
         newSerialized(serializedOutputVars),
         newSerialized(serializedExpr),
         inputVarValues,
+        lVarValues,
+        lVars,
         function
       )
     }

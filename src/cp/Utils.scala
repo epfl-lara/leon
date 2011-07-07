@@ -21,11 +21,11 @@ object Utils {
         val anonFunArgs = (0 until arity).map(i => "x_%d" format (i))
         val anonFunArgsString = anonFunArgs.mkString(",")
         val orMethod = """def ||(other : %s)%s : %s = 
-  Term%d(this.program, Or(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (%s) => this.scalaFunction(%s) || other.scalaFunction(%s), this.types, this.converter)""" format (booleanTraitName, curriedImplicit2Boolean, booleanTraitName, arity, anonFunParamString, anonFunArgsString, anonFunArgsString)
+  Term%d(this.program, Or(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (%s) => this.scalaFunction(%s) || other.scalaFunction(%s), this.types, this.converter, this.lVars ++ other.lVars)""" format (booleanTraitName, curriedImplicit2Boolean, booleanTraitName, arity, anonFunParamString, anonFunArgsString, anonFunArgsString)
         val andMethod = """def &&(other : %s)%s : %s = 
-  Term%d(this.program, And(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (%s) => this.scalaFunction(%s) && other.scalaFunction(%s), this.types, this.converter)""" format (booleanTraitName, curriedImplicit2Boolean, booleanTraitName, arity, anonFunParamString, anonFunArgsString, anonFunArgsString)
+  Term%d(this.program, And(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (%s) => this.scalaFunction(%s) && other.scalaFunction(%s), this.types, this.converter, this.lVars ++ other.lVars)""" format (booleanTraitName, curriedImplicit2Boolean, booleanTraitName, arity, anonFunParamString, anonFunArgsString, anonFunArgsString)
         val notMethod = """def unary_!%s : %s = 
-  Term%d(this.program, Not(this.expr), if (this.scalaFunction == null) null else (%s) => ! this.scalaFunction(%s), this.types, this.converter)""" format (curriedImplicit2Boolean, booleanTraitName, arity, anonFunParamString, anonFunArgsString)
+  Term%d(this.program, Not(this.expr), if (this.scalaFunction == null) null else (%s) => ! this.scalaFunction(%s), this.types, this.converter, this.lVars)""" format (curriedImplicit2Boolean, booleanTraitName, arity, anonFunParamString, anonFunArgsString)
         
         val intTraitName = "Term%d%s" format (arity, (traitArgParams ++ Seq("Int")).mkString("[", ",", "]"))
         val minimizingMethod = 
@@ -61,7 +61,7 @@ object Utils {
             val s2 =
 """def compose%d[%s](other : Term%d[%s]) : Term%d[%s] = {
   val (newExpr, newTypes) = Terms.compose(other, this, %d, %d, %d)
-  Term%d(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (%s) => this.scalaFunction(%s), newTypes, this.converter)
+  Term%d(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (%s) => this.scalaFunction(%s), newTypes, this.converter, this.lVars ++ other.lVars)
 }""" format (index, fParams.mkString(", "), arityF, fTermParams.mkString(", "), resultTermArity, resultTermParams.mkString(", "), index, arityF, arity, resultTermArity, scalaFunctionParams.mkString(", "), thisFunctionParams.mkString(", "))
 
             s2
@@ -119,15 +119,15 @@ object Utils {
         val booleanTermTraitName = "Term%d%s" format (arity, (argParams ++ Seq("Boolean")).mkString("[", ",", "]"))
         val objectString =
 """object Term%d {
-  def apply%s(conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr], scalaExpr : %s => %s) = {
-    val (converter, program, expr, types) = Term.processArgs(conv, serializedProg, serializedInputVars, serializedOutputVars, serializedExpr, inputVarValues)
-    new %s(program, expr, types, converter) with %s {
+  def apply%s(conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedLVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr], lVarValues : Seq[Expr], lVars : Seq[L[_]], scalaExpr : %s => %s) = {
+    val (converter, program, expr, types) = Term.processArgs(conv, serializedProg, serializedInputVars, serializedLVars, serializedOutputVars, serializedExpr, inputVarValues, lVarValues)
+    new %s(program, expr, types, converter, lVars.toSet) with %s {
       val scalaFunction = scalaExpr
     }
   }
   
-  def apply%s(program : Program, expr : Expr, scalaExpr : %s => %s, types : Seq[TypeTree], converter : Converter) =
-    new %s(program, expr, types, converter) with %s {
+  def apply%s(program : Program, expr : Expr, scalaExpr : %s => %s, types : Seq[TypeTree], converter : Converter, lVars: Set[L[_]]) =
+    new %s(program, expr, types, converter, lVars) with %s {
       val scalaFunction = scalaExpr
     }
 }""" format (arity, applyParamString, argParamTuple, "R", termClassName, termTraitName, applyParamString, argParamTuple, "R", termClassName, termTraitName)

@@ -21,7 +21,7 @@ object ConstraintSolving {
     s
   }
 
-  private val DEBUG = true
+  private val DEBUG = false
   private def printDebug(msg: String): Unit = if (DEBUG) println(msg)
 
   object GlobalContext {

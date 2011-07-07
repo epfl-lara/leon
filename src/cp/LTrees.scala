@@ -209,6 +209,7 @@ object LTrees {
       val placeHolders = Seq(FreshIdentifier("placeholder", true).setType(BottomType))
       val candidateL = new L[T](handler(), placeHolders)
       val instantiatedCnstr = constraint(candidateL)
+      // println("l vars in constraint: " + instantiatedCnstr.lVars)
 
       // now that we have a Constraint, we can perform some actions such as:
       GlobalContext.initializeIfNeeded(instantiatedCnstr.program)
