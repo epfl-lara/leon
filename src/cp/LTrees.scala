@@ -217,7 +217,6 @@ object LTrees {
       val placeHolders = Seq(FreshIdentifier("placeholder", true).setType(BottomType))
       val candidateL = new L[T](handler(), placeHolders)
       val instantiatedCnstr = constraint(candidateL)
-      // println("l vars in constraint: " + instantiatedCnstr.lVars)
 
       // now that we have a Constraint, we can perform some actions such as:
       GlobalContext.initializeIfNeeded(instantiatedCnstr.program)
@@ -232,7 +231,10 @@ object LTrees {
       val subst2 = ((placeHolders map (Variable(_))) zip (typedPlaceHolders map (Variable(_)))).toMap
       val replacedExpr = replace(subst1 ++ subst2, newExpr)
 
-      val otherGuards = instantiatedCnstr.lVars.map(lv => GlobalContext.getGuard(lv.ids))
+      println("l vars in constraint: " + (instantiatedCnstr.lVars map (_.ids)))
+      val nonSyntheticLVars = instantiatedCnstr.lVars.map(_.ids) -- Set(placeHolders)
+      println("non-synthetic l vars: " + nonSyntheticLVars)
+      val otherGuards = nonSyntheticLVars.map(ids => GlobalContext.getGuard(ids))
 
       if (isStillSat(typedPlaceHolders, replacedExpr, otherGuards)) {
           Stream.cons(new L[T](handler(), typedPlaceHolders), underlyingStream())
