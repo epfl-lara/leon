@@ -11,18 +11,59 @@ object Definitions {
   final class UnsatisfiableConstraintException extends Exception
   final class UnknownConstraintException extends Exception
 
-  implicit def func2term0[R](func : () => R) : Term0[R] = throw new NotImplementedException
-  implicit def func2term1[T1,R](func : T1 => R) : Term1[T1,R] = throw new NotImplementedException
-  implicit def func2term2[T1,T2,R](func : (T1,T2) => R) : Term2[T1,T2,R] = throw new NotImplementedException
-  implicit def func2term3[T1,T2,T3,R](func : (T1,T2,T3) => R) : Term3[T1,T2,T3,R] = throw new NotImplementedException
-  implicit def func2term4[T1,T2,T3,T4,R](func : (T1,T2,T3,T4) => R) : Term4[T1,T2,T3,T4,R] = throw new NotImplementedException
-  implicit def func2term5[T1,T2,T3,T4,T5,R](func : (T1,T2,T3,T4,T5) => R) : Term5[T1,T2,T3,T4,T5,R] = throw new NotImplementedException
-  implicit def func2term6[T1,T2,T3,T4,T5,T6,R](func : (T1,T2,T3,T4,T5,T6) => R) : Term6[T1,T2,T3,T4,T5,T6,R] = throw new NotImplementedException
-  implicit def func2term7[T1,T2,T3,T4,T5,T6,T7,R](func : (T1,T2,T3,T4,T5,T6,T7) => R) : Term7[T1,T2,T3,T4,T5,T6,T7,R] = throw new NotImplementedException
-  implicit def func2term8[T1,T2,T3,T4,T5,T6,T7,T8,R](func : (T1,T2,T3,T4,T5,T6,T7,T8) => R) : Term8[T1,T2,T3,T4,T5,T6,T7,T8,R] = throw new NotImplementedException
-  implicit def func2term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R](func : (T1,T2,T3,T4,T5,T6,T7,T8,T9) => R) : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R] = throw new NotImplementedException
+  def assuming(cond: Constraint0)(block: => Unit): Unit = {
+    for (u <- cond.lazyFindAll) {
+      block
+    }
+  }
 
-  implicit def force[T](l : L[T]): T = {
+  def when[A](cond: Constraint0)(block: => A): When[A] = {
+    var v: Option[A] = None
+    for (i <- cond.lazyFindAll)
+      v = Some(block)
+    new When(v)
+  }
+
+  final class When[A](val thenResult: Option[A]) {
+    def otherwise(elseBlock: => A): A = thenResult match {
+      case None => elseBlock
+      case Some(tr) => tr
+    }
+  }
+
+  implicit def when2value[A](w: When[A]): A = w.thenResult match {
+    case Some(tr) => tr
+    case None => throw new Exception("Cannot find value for result of `when'")
+  }
+
+  def cif[A](cond: Constraint0)(block: => A): CIf[A] = new CIf(cond, block)
+
+  final class CIf[A](cond: Constraint0, ifBlock: => A) {
+    def celse(elseBlock: => A): A = {
+      var enteredIf = false
+      for (u <- cond.lazyFindAll) {
+        enteredIf = true
+      }
+      if (enteredIf)
+        ifBlock
+      else
+        elseBlock
+    }
+  }
+
+  implicit def boolean2constraint0(b: Boolean): Constraint0 = throw new NotImplementedException
+  implicit def func2term0[R](func: () => R): Term0[R] = throw new NotImplementedException
+  implicit def func2term1[T1,R](func: T1 => R): Term1[T1,R] = throw new NotImplementedException
+  implicit def func2term2[T1,T2,R](func: (T1,T2) => R): Term2[T1,T2,R] = throw new NotImplementedException
+  implicit def func2term3[T1,T2,T3,R](func: (T1,T2,T3) => R): Term3[T1,T2,T3,R] = throw new NotImplementedException
+  implicit def func2term4[T1,T2,T3,T4,R](func: (T1,T2,T3,T4) => R): Term4[T1,T2,T3,T4,R] = throw new NotImplementedException
+  implicit def func2term5[T1,T2,T3,T4,T5,R](func: (T1,T2,T3,T4,T5) => R): Term5[T1,T2,T3,T4,T5,R] = throw new NotImplementedException
+  implicit def func2term6[T1,T2,T3,T4,T5,T6,R](func: (T1,T2,T3,T4,T5,T6) => R): Term6[T1,T2,T3,T4,T5,T6,R] = throw new NotImplementedException
+  implicit def func2term7[T1,T2,T3,T4,T5,T6,T7,R](func: (T1,T2,T3,T4,T5,T6,T7) => R): Term7[T1,T2,T3,T4,T5,T6,T7,R] = throw new NotImplementedException
+  implicit def func2term8[T1,T2,T3,T4,T5,T6,T7,T8,R](func: (T1,T2,T3,T4,T5,T6,T7,T8) => R): Term8[T1,T2,T3,T4,T5,T6,T7,T8,R] = throw new NotImplementedException
+  implicit def func2term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R](func: (T1,T2,T3,T4,T5,T6,T7,T8,T9) => R): Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R] = throw new NotImplementedException
+
+  implicit def force[T](l: L[T]): T = {
     l.value
   }
 
@@ -45,7 +86,7 @@ object Definitions {
   implicit def tupleOfL2lTuple8[T1,T2,T3,T4,T5,T6,T7,T8](lt: (L[T1],L[T2],L[T3],L[T4],L[T5],L[T6],L[T7],L[T8])): LTuple8[T1,T2,T3,T4,T5,T6,T7,T8] = new LTuple8(lt._1,lt._2,lt._3,lt._4,lt._5,lt._6,lt._7,lt._8)
   implicit def tupleOfL2lTuple9[T1,T2,T3,T4,T5,T6,T7,T8,T9](lt: (L[T1],L[T2],L[T3],L[T4],L[T5],L[T6],L[T7],L[T8],L[T9])): LTuple9[T1,T2,T3,T4,T5,T6,T7,T8,T9] = new LTuple9(lt._1,lt._2,lt._3,lt._4,lt._5,lt._6,lt._7,lt._8,lt._9)
 
-  def distinct[A](args: A*) : Boolean = {
+  def distinct[A](args: A*): Boolean = {
     args.toList.distinct.size == args.size
   }
 }

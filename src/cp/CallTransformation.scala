@@ -54,6 +54,9 @@ trait CallTransformation
         val Function(funValDefs, funBody) = predicate
         extracted += (predicate.pos -> extractWithFilterPredicate(unit, funValDefs, funBody))
       }
+      case Apply(Select(lhs, boolean2constraint0Name), List(b: Tree)) if boolean2constraint0Name.toString == "boolean2constraint0" => {
+        extracted += (b.pos -> extractFunction(unit, Nil, b))
+      }
       case _ => 
     }
     new ForeachTreeTraverser(extractFunDefs).traverse(unit.body)
@@ -72,9 +75,7 @@ trait CallTransformation
 
     val extractedFunDefs : Map[Position,FunDef] = funDefMap(unit)
 
-    private def transformHelper(tree : Tree, function : Function, codeGen : CodeGenerator) : Option[(Serialized, Serialized, Serialized, Serialized, Tree, Tree, Tree, Int)] = {
-      val Function(funValDefs, funBody) = function
-
+    private def transformHelper(tree : Tree, function : Tree, codeGen : CodeGenerator) : Option[(Serialized, Serialized, Serialized, Serialized, Tree, Tree, Tree, Int)] = {
       val fd = extractedFunDefs(function.pos)
       val outputVars : Seq[Identifier] = fd.args.map(_.id)
       
@@ -82,7 +83,7 @@ trait CallTransformation
       purescalaReporter.info(fd)
 
       fd.body match {
-        case None => purescalaReporter.error("Could not extract function: " + funBody); None
+        case None => purescalaReporter.error("Could not extract : " + function); None
         case Some(b) =>
           // serialize expression
           val serializedExpr = serialize(matchToIfThenElse(b))
@@ -119,7 +120,7 @@ trait CallTransformation
     override def transform(tree: Tree) : Tree = {
       tree match {
         /** Transform implicit conversions to terms into instantiation of base terms */
-        case Apply(TypeApply(Select(Select(cpIdent, definitionsName), func2termName), typeTreeList), List(function: Function)) if 
+        case Apply(TypeApply(Select(Select(cpIdent, definitionsName), func2termName), typeTreeList), List(function: Tree)) if 
           (definitionsName.toString == "Definitions" && func2termName.toString.matches("func2term\\d")) => {
           val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
 
@@ -127,6 +128,22 @@ trait CallTransformation
             case Some((serializedInputVarList, serializedLVarList, serializedOutputVars, serializedExpr, inputVarValues, lVarValues, actualLVars, arity)) => {
               // create constraint instance
               val code = codeGen.newBaseTerm(exprToScalaSym, serializedProg, serializedInputVarList, serializedLVarList, serializedOutputVars, serializedExpr, inputVarValues, lVarValues, actualLVars, function, typeTreeList, arity)
+
+              typer.typed(atOwner(currentOwner) {
+                code
+              })
+            }
+            case None => super.transform(tree)
+          }
+        }
+        case Apply(Select(Select(cpIdent, definitionsName), boolean2constraint0Name), List(function: Tree)) if 
+          (definitionsName.toString == "Definitions" && boolean2constraint0Name.toString.matches("boolean2constraint0")) => {
+          val codeGen = new CodeGenerator(unit, currentOwner, tree.pos)
+
+          transformHelper(tree, function, codeGen) match {
+            case Some((serializedInputVarList, serializedLVarList, serializedOutputVars, serializedExpr, inputVarValues, lVarValues, actualLVars, arity)) => {
+              // create constraint instance
+              val code = codeGen.newBaseTerm(exprToScalaSym, serializedProg, serializedInputVarList, serializedLVarList, serializedOutputVars, serializedExpr, inputVarValues, lVarValues, actualLVars, NULL, List(TypeTree(definitions.BooleanClass.tpe)), arity)
 
               typer.typed(atOwner(currentOwner) {
                 code

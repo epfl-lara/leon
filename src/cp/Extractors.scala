@@ -375,10 +375,13 @@ trait Extractors {
 
     // extracts a tree typed as L, returns parameter type tree and tree itself
     object ExLTyped {
-      def unapply(tree: Tree): Option[(Type,Tree)] = tree.tpe match {
-        case TypeRef(_, sym, List(t)) if sym == lClassSym =>
-          Some((t, tree))
-        case _ => None
+      def unapply(tree: Tree): Option[(Type,Tree)] = {
+        val tpe = if (tree.symbol == null) tree.tpe else tree.symbol.tpe
+        tpe match {
+          case TypeRef(_, sym, List(t)) if sym == lClassSym =>
+            Some((t, tree))
+          case _ => None
+        }
       }
     }
 
