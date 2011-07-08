@@ -37,7 +37,9 @@ trait CallTransformation
     case _ => false
   }
 
-  val purescalaReporter = purescala.Settings.reporter
+  val purescalaReporter = 
+    if (Settings.verbose) purescala.Settings.reporter 
+    else new purescala.QuietReporter
 
   /** extract predicates and functions beforehand so the stored last used ID value is valid */
   def funDefMap(unit: CompilationUnit) : Map[Position,FunDef] = {

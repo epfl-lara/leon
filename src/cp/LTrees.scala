@@ -41,6 +41,11 @@ object LTrees {
         cache = Some(toRet)
         toRet
     }
+
+    override def toString: String = cache match {
+      case Some(v) => "L[" + v.toString + "]"
+      case None => "L[" + ids.mkString(",") + "]"
+    }
   }
 
   trait LTuple[T] {
@@ -224,7 +229,7 @@ object LTrees {
 
       val (newConsts, newExpr) = combineConstraint(instantiatedCnstr)
       val typedPlaceHolders = newConsts map {
-        case cst => FreshIdentifier("fresh", true).setType(cst.getType)
+        case cst => FreshIdentifier(cst.name, true).setType(cst.getType)
       }
       // println("types : " + typedPlaceHolders.map(_.getType))
       val subst1 = ((newConsts map (Variable(_))) zip (typedPlaceHolders map (Variable(_)))).toMap

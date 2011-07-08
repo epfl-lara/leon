@@ -33,20 +33,27 @@ class CPComponent(val global: Global, val pluginInstance: CPPlugin)
       //global ref to freshName creator
       fresh = unit.fresh
 
-      println("Starting CP phase")
+      if (Settings.verbose)
+        println("Starting CP phase")
 
       val prog: purescala.Definitions.Program = extractCode(unit)
 
-      println("Analyzing specification functions")
-      val analysis = new purescala.Analysis(prog)
+      if (Settings.verbose)
+        println("Analyzing specification functions")
+      val analysisReporter = 
+        if (Settings.verbose) new purescala.DefaultReporter 
+        else new purescala.QuietReporter
+      val analysis = new purescala.Analysis(prog, analysisReporter)
       analysis.analyse
 
-      println("Finished analysis, starting transformation")
+      if (Settings.verbose)
+        println("Finished analysis, starting transformation")
 
       val serializedProg = serialize(prog)
 
       transformCalls(unit, prog, serializedProg)
-      println("Finished transformation")
+      if (Settings.verbose)
+        println("Finished transformation")
     }
   }
 }
