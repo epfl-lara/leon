@@ -11,6 +11,7 @@ object Definitions {
   final class UnsatisfiableConstraintException extends Exception
   final class UnknownConstraintException extends Exception
 
+  implicit def func2term0[R](func : () => R) : Term0[R] = throw new NotImplementedException
   implicit def func2term1[T1,R](func : T1 => R) : Term1[T1,R] = throw new NotImplementedException
   implicit def func2term2[T1,T2,R](func : (T1,T2) => R) : Term2[T1,T2,R] = throw new NotImplementedException
   implicit def func2term3[T1,T2,T3,R](func : (T1,T2,T3) => R) : Term3[T1,T2,T3,R] = throw new NotImplementedException

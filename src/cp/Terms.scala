@@ -142,6 +142,7 @@ object Terms {
   /** GENERATED CODE: */
   /** Type aliases for terms with boolean and integer range */
   type Constraint[T] = Term[T,Boolean]
+  type Constraint0 = Term0[Boolean]
   type Constraint1[T1] = Term1[T1,Boolean]
   type Constraint2[T1,T2] = Term2[T1,T2,Boolean]
   type Constraint3[T1,T2,T3] = Term3[T1,T2,T3,Boolean]
@@ -152,6 +153,7 @@ object Terms {
   type Constraint8[T1,T2,T3,T4,T5,T6,T7,T8] = Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean]
   type Constraint9[T1,T2,T3,T4,T5,T6,T7,T8,T9] = Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean]
   type IntTerm[T] = Term[T,Int]
+  type IntTerm0[T1] = Term0[Int]
   type IntTerm1[T1] = Term1[T1,Int]
   type IntTerm2[T1,T2] = Term2[T1,T2,Int]
   type IntTerm3[T1,T2,T3] = Term3[T1,T2,T3,Int]
@@ -162,6 +164,15 @@ object Terms {
   type IntTerm8[T1,T2,T3,T4,T5,T6,T7,T8] = Term8[T1,T2,T3,T4,T5,T6,T7,T8,Int]
   type IntTerm9[T1,T2,T3,T4,T5,T6,T7,T8,T9] = Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Int]
   
+  trait Term0[R] extends Term[Unit,R] with Function0[R] {
+    val convertingFunction = converterOf(this).exprSeq2scala0 _
+    type t2c = (Term0[R]) => Term0[Boolean]
+    val scalaFunction : () => R
+    lazy val evaluator : (Seq[Expr]) => R = (s : Seq[Expr]) => scalaFunction()
+
+    override def apply() : R = scalaFunction()
+  }
+
   trait Term1[T1,R] extends Term[(T1),R] with Function1[T1,R] {
     val convertingFunction = converterOf(this).exprSeq2scala1[T1] _
     type t2c = (Term1[T1,R]) => Term1[T1,Boolean]
@@ -1237,6 +1248,20 @@ object Terms {
       val (newExpr, newTypes) = Terms.compose(other, this, 8, 1, 9)
       Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8, x_8 : A1) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, x_7, other.scalaFunction(x_8)), newTypes, this.converter, this.lVars ++ other.lVars)
     }
+  }
+  
+  object Term0 {
+    def apply[R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedLVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr], lVarValues : Seq[Expr], lVars : Seq[L[_]], scalaExpr : () => R) = {
+      val (converter, program, expr, types) = Term.processArgs(conv, serializedProg, serializedInputVars, serializedLVars, serializedOutputVars, serializedExpr, inputVarValues, lVarValues)
+      new Term[Unit,R](program, expr, types, converter, lVars.toSet) with Term0[R] {
+        val scalaFunction = scalaExpr
+      }
+    }
+    
+    def apply[R](program : Program, expr : Expr, scalaExpr : () => R, types : Seq[TypeTree], converter : Converter, lVars: Set[L[_]]) =
+      new Term[Unit,R](program, expr, types, converter, lVars) with Term0[R] {
+        val scalaFunction = scalaExpr
+      }
   }
   
   object Term1 {
