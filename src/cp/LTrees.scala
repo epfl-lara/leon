@@ -167,13 +167,13 @@ object LTrees {
     }
 
     private def isStillSat(newConsts: Seq[Identifier], newExpr: Expr, otherGuards: Set[Identifier]): Boolean = {
-      println("in isStillSat: ")
-      println("newConsts: " + newConsts)
-      println("newExpr: " + newExpr)
-      println("otherGuards: " + otherGuards)
+      // println("in isStillSat: ")
+      // println("newConsts: " + newConsts)
+      // println("newExpr: " + newExpr)
+      // println("otherGuards: " + otherGuards)
       
       for (ids <- forcedQueue) {
-        println("removing from forced queue: " + ids)
+        // println("removing from forced queue: " + ids)
         removeGuard(ids)
       }
       forcedQueue = Seq.empty
@@ -188,7 +188,7 @@ object LTrees {
       val differentFromPrevious = And(previouslyReturned map (ps => Not(And((ps zip newConsts) map { case (p, n) => Equals(Variable(p), Variable(n)) }))))
       val toAssert = Implies(Variable(newGuard), And(newExpr, differentFromPrevious))
       // val toAssert = Implies(Or(allGuardsForConstraint map (Variable(_))), And(newExpr, differentFromPrevious))
-      println("will assert: " + toAssert)
+      // println("will assert: " + toAssert)
       if (GlobalContext.checkAssumptions(toAssert)) {
         if (!previouslyReturned.isEmpty)
           assert(GlobalContext.assertConstraint(differentFromPrevious))
@@ -231,9 +231,9 @@ object LTrees {
       val subst2 = ((placeHolders map (Variable(_))) zip (typedPlaceHolders map (Variable(_)))).toMap
       val replacedExpr = replace(subst1 ++ subst2, newExpr)
 
-      println("l vars in constraint: " + (instantiatedCnstr.lVars map (_.ids)))
+      // println("l vars in constraint: " + (instantiatedCnstr.lVars map (_.ids)))
       val nonSyntheticLVars = instantiatedCnstr.lVars.map(_.ids) -- Set(placeHolders)
-      println("non-synthetic l vars: " + nonSyntheticLVars)
+      // println("non-synthetic l vars: " + nonSyntheticLVars)
       val otherGuards = nonSyntheticLVars.map(ids => GlobalContext.getGuard(ids))
 
       if (isStillSat(typedPlaceHolders, replacedExpr, otherGuards)) {
@@ -243,17 +243,21 @@ object LTrees {
       }
     }
 
+    private var needEvaluation = true
     def hasNext: Boolean = { 
-      if (underlying == null)
+      if (underlying == null) {
         underlying = underlyingStream()
-      else
+        needEvaluation = false
+      }
+      if (needEvaluation) {
+        needEvaluation = false
         underlying = underlying.tail
+      }
       val toRet = !underlying.isEmpty
-      println("hasNext?" + (if (toRet) "yes" else "no"))
       toRet
     }
     def next: L[T] = {
-      println("next!")
+      needEvaluation = true
       underlying.head
     }
 
