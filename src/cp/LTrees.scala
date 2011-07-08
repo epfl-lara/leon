@@ -229,7 +229,7 @@ object LTrees {
 
       val (newConsts, newExpr) = combineConstraint(instantiatedCnstr)
       val typedPlaceHolders = newConsts map {
-        case cst => FreshIdentifier(cst.name, true).setType(cst.getType)
+        case cst => FreshIdentifier("?", true).setType(cst.getType)
       }
       // println("types : " + typedPlaceHolders.map(_.getType))
       val subst1 = ((newConsts map (Variable(_))) zip (typedPlaceHolders map (Variable(_)))).toMap
