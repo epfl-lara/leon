@@ -66,7 +66,7 @@ object Terms {
     GlobalContext.initializeIfNeeded(constraint.program)
 
     val newGuards = newConsts map (nc => FreshIdentifier("live", true).setType(BooleanType))
-    newGuards foreach GlobalContext.addLive
+    (newConsts zip newGuards) map { case (nc, ng) => GlobalContext.addGuard(List(nc), ng) }
 
     val toAssert = Implies(Or(newGuards map (ng => Variable(ng))), newExpr)
     if (GlobalContext.checkAssumptions(toAssert)) {
