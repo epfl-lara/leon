@@ -50,4 +50,57 @@ object PaperExamples extends App {
 
   p("inverse of(4,5,3,4): ", inverse(4,5,3,4))
   p("inverse of(4,5,3,0): ", inverse(4,5,3,0))
+
+  def satSolve(problem : Seq[Seq[Int]]) = {
+    problem.map(l => l.map(i => {
+      val id = scala.math.abs(i)
+      val isPos = i > 0
+      ((m : Map[Int,Boolean]) => m(id) == isPos).c
+    }).reduceLeft(_ || _)).reduceLeft(_ && _).find
+  }
+
+  println("satSolve(something sat)", satSolve(List(List(-1, 2, 3), List(1, -2, 4), List(-3, -4))))
+  println("satSolve(something unsat)", satSolve(List(List(1, 2), List(1, -2), List(-1, 2), List(-1, -2))))
+
+
+  @spec object SendMoreMoney {
+    sealed abstract class Letter
+    case class D() extends Letter
+    case class E() extends Letter
+    case class M() extends Letter
+    case class N() extends Letter
+    case class O() extends Letter
+    case class R() extends Letter
+    case class S() extends Letter
+    case class Y() extends Letter
+    val letters : List[Letter] = List(D(), E(), M(), N(), O(), R(), S(), Y())
+
+    def run : Unit = {
+      val m = ((m : Map[Letter,Int]) => true).lazySolve
+      for(l <- letters) {
+        assuming(m(l) >= 0 && m(l) <= 9) {
+          println("OK for " + l)
+        }
+
+      }
+      // simpler, crashes too:
+      //assuming(m(S()) >= 0 && m(S()) <= 9) {
+      //  println("OK for " + S())
+      //}
+
+      //println("A solution : " + m.value)
+
+      // functional-style, crashed because of if
+//      for(m <- ((m: Map[Letter,Int]) => 
+//        1000 * m(S()) + 100 * m(E()) + 10 * m(N()) + m(D()) +
+//        1000 * m(M()) + 100 * m(O()) + 10 * m(R()) + m(E()) ==
+//        10000 * m(M()) + 1000 * m(O()) + 100 * m(N()) + 10 * m(E()) + m(Y())).c.lazyFindAll if(
+//          m(S()) >= 0 && m(S()) <= 9)
+//        ){
+//        println(m)
+//      }
+    }
+  }
+
+  SendMoreMoney.run
 }
