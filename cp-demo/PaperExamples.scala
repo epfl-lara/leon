@@ -55,7 +55,8 @@ object PaperExamples extends App {
     problem.map(l => l.map(i => {
       val id = scala.math.abs(i)
       val isPos = i > 0
-      ((m : Map[Int,Boolean]) => m(id) == isPos).c
+      val c : Constraint1[Map[Int,Boolean]] = ((m : Map[Int,Boolean]) => m(id) == isPos)
+      c
     }).reduceLeft(_ || _)).reduceLeft(_ && _).find
   }
 
@@ -81,26 +82,50 @@ object PaperExamples extends App {
         assuming(m(l) >= 0 && m(l) <= 9) {
           println("OK for " + l)
         }
+        // we need this too because S and M occur as most significant digits
+        if (l == S() || l == M())
+          assuming(m(l) >= 1) {
+           println(l + " greater than 0  OK")
+         }
+
+        assuming( 
+                             1000 * m(S()) + 100 * m(E()) + 10 * m(N()) + m(D()) +
+                             1000 * m(M()) + 100 * m(O()) + 10 * m(R()) + m(E()) ==
+            10000 * m(M()) + 1000 * m(O()) + 100 * m(N()) + 10 * m(E()) + m(Y())) {
+          println("OK for sum")
+        }
+
+        assuming(distinct(m(S()), m(E()), m(N()), m(D()), m(M()), m(O()), m(R()), m(Y()))) {
+          println("OK for distinct")
+        }
 
       }
-      // simpler, crashes too:
-      //assuming(m(S()) >= 0 && m(S()) <= 9) {
-      //  println("OK for " + S())
-      //}
 
-      //println("A solution : " + m.value)
+      println("A solution : " + m.value)
 
       // functional-style, crashed because of if
-//      for(m <- ((m: Map[Letter,Int]) => 
-//        1000 * m(S()) + 100 * m(E()) + 10 * m(N()) + m(D()) +
-//        1000 * m(M()) + 100 * m(O()) + 10 * m(R()) + m(E()) ==
-//        10000 * m(M()) + 1000 * m(O()) + 100 * m(N()) + 10 * m(E()) + m(Y())).c.lazyFindAll if(
-//          m(S()) >= 0 && m(S()) <= 9)
-//        ){
-//        println(m)
-//      }
+      val c : Constraint1[Map[Letter,Int]] = ((m: Map[Letter,Int]) => 
+        1000 * m(S()) + 100 * m(E()) + 10 * m(N()) + m(D()) +
+        1000 * m(M()) + 100 * m(O()) + 10 * m(R()) + m(E()) ==
+        10000 * m(M()) + 1000 * m(O()) + 100 * m(N()) + 10 * m(E()) + m(Y()))
+
+      // this works too but I guess we should avoid enumerating maps
+      // for(m <- c.lazyFindAll if(
+      //     m(S()) >= 1 && m(S()) <= 9 &&
+      //     m(E()) >= 0 && m(E()) <= 9 &&
+      //     m(N()) >= 0 && m(N()) <= 9 &&
+      //     m(D()) >= 0 && m(D()) <= 9 &&
+      //     m(M()) >= 1 && m(M()) <= 9 &&
+      //     m(O()) >= 0 && m(O()) <= 9 &&
+      //     m(R()) >= 0 && m(R()) <= 9 &&
+      //     m(Y()) >= 0 && m(Y()) <= 9 &&
+      //     distinct(m(S()), m(E()), m(N()), m(D()), m(M()), m(O()), m(R()), m(Y()))
+      //   )){
+      //   println("###" + m.value)
+      //   }
     }
   }
+
 
   SendMoreMoney.run
 }
