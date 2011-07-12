@@ -63,6 +63,19 @@ object PaperExamples extends App {
   println("satSolve(something sat)", satSolve(List(List(-1, 2, 3), List(1, -2, 4), List(-3, -4))))
   println("satSolve(something unsat)", satSolve(List(List(1, 2), List(1, -2), List(-1, 2), List(-1, -2))))
 
+  @spec def divides(i : Int, j : Int) : Boolean = i * (j / i) == j
+  @spec def noneDivides(from : Int, j : Int) : Boolean = {
+    if(from == j) {
+      true
+    } else {
+      !divides(from, j) && noneDivides(from+1, j)
+    }
+  }
+  @spec def isPrime(i : Int) : Boolean = (i >= 2 && noneDivides(2, i))
+
+  val primes = (isPrime(_:Int)) minimizing((x:Int) => x) findAll
+
+  primes.take(25).foreach(println(_))
 
   @spec object SendMoreMoney {
     sealed abstract class Letter
