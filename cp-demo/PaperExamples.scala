@@ -93,30 +93,41 @@ object PaperExamples extends App {
     val letters : List[Letter] = List(D(), E(), M(), N(), O(), R(), S(), Y())
 
     def run : Unit = {
-      val anyInt = ((n : Int) => true)
+      val anyInt : Constraint1[Int] = ((n : Int) => true)
 
       val letters @ Seq(s,e,n,d,m,o,r,y) = Seq.fill(8)(anyInt.lazySolve)
+      // val s : L[Int] = anyInt.lazySolve
+      // val e : L[Int] = anyInt.lazySolve
+      // val n : L[Int] = anyInt.lazySolve
+      // val d : L[Int] = anyInt.lazySolve
+      // val m : L[Int] = anyInt.lazySolve
+      // val o : L[Int] = anyInt.lazySolve
+      // val r : L[Int] = anyInt.lazySolve
+      // val y : L[Int] = anyInt.lazySolve
+      // val letters : Seq[L[Int]] = Seq(s,e,n,d,m,o,r,y)
 
       for(l <- letters) {
-        when(l >= 0 && l <= 0) {
+        when(l >= 0 && l <= 9) {
           ;
         } otherwise {
           println("Couldn't constrain letter.")
         }
       }
 
-      //assuming(distinct(s,e,n,d,m,o,r,y)) {
-      assuming(
-                  s != e && s != n && s != d && s != m && s != o && s != r && s != y &&
-        e != s &&           e != n && e != d && e != m && e != o && e != r && e != y &&
-        n != s && n != e &&           n != d && n != m && n != o && n != r && n != y &&
-        d != s && d != e && d != n &&           d != m && d != o && d != r && d != y &&
-        m != s && m != e && m != n && m != d &&           m != o && m != r && m != y &&
-        o != s && o != e && o != n && o != d && o != m &&           o != r && o != y &&
-        r != s && r != e && r != n && r != d && r != m && r != o &&           r != y &&
-        y != s && y != e && y != n && y != d && y != m && y != o && y != r             )
-      {
+      when(distinct[Int](s,e,n,d,m,o,r,y)) {
+      // assuming(
+      //             s != e && s != n && s != d && s != m && s != o && s != r && s != y &&
+      //   e != s &&           e != n && e != d && e != m && e != o && e != r && e != y &&
+      //   n != s && n != e &&           n != d && n != m && n != o && n != r && n != y &&
+      //   d != s && d != e && d != n &&           d != m && d != o && d != r && d != y &&
+      //   m != s && m != e && m != n && m != d &&           m != o && m != r && m != y &&
+      //   o != s && o != e && o != n && o != d && o != m &&           o != r && o != y &&
+      //   r != s && r != e && r != n && r != d && r != m && r != o &&           r != y &&
+      //   y != s && y != e && y != n && y != d && y != m && y != o && y != r             )
+      // {
         println("Letters now have distinct values.")
+      } otherwise {
+        println("Couldn't make it happen :(")
       }
 
       val solution = letters.map(_.value)
