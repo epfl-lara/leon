@@ -13,6 +13,7 @@ import purescala.Common._
 object Terms {
   /** Terms are functions with domain T (which can be a tuple) and range R */
   abstract class Term[T,R](val program : Program, val expr : Expr, val types : Seq[TypeTree], val converter : Converter, val lVars: Set[L[_]]) {
+    self => 
     /** The converting function defines how Expr values returned by the solver
      * will be converted back to Scala values */
     val convertingFunction : (Seq[Expr] => T)
@@ -38,6 +39,8 @@ object Terms {
     def lazyFindAll(implicit asConstraint: (Term[T,R]) => Constraint[T]): LIterator[T] = {
       new LIterator((l: L[T]) => asConstraint(this))
     }
+
+    def c(implicit isBoolean : R =:= Boolean) : self.type = this
   }
 
   def removeGuard(g: Identifier): Unit = {
