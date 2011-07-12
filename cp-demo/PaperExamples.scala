@@ -60,8 +60,10 @@ object PaperExamples extends App {
     }).reduceLeft(_ || _)).reduceLeft(_ && _).find
   }
 
-  println("satSolve(something sat)", satSolve(List(List(-1, 2, 3), List(1, -2, 4), List(-3, -4))))
-  println("satSolve(something unsat)", satSolve(List(List(1, 2), List(1, -2), List(-1, 2), List(-1, -2))))
+  println("satSolve(p)", satSolve(Seq(Seq(1,-2,-3), Seq(2,3,4), Seq(-1,-4))))
+  println("satSolve(Seq(Seq(1,2), Seq(-1), Seq(-2)))", satSolve(Seq(Seq(1,2), Seq(-1), Seq(-2))))
+//  println("satSolve(something sat)", satSolve(List(List(-1, 2, 3), List(1, -2, 4), List(-3, -4))))
+//  println("satSolve(something unsat)", satSolve(List(List(1, 2), List(1, -2), List(-1, 2), List(-1, -2))))
 
   @spec def divides(i : Int, j : Int) : Boolean = i * (j / i) == j
   @spec def noneDivides(from : Int, j : Int) : Boolean = {
@@ -140,6 +142,71 @@ object PaperExamples extends App {
     }
   }
 
-
   SendMoreMoney.run
+
+  object Graphs {
+    @spec sealed abstract class List
+    @spec case class Cons(head : Int, tail : List) extends List
+    @spec case class Nil() extends List
+
+    @spec sealed abstract class OptInt
+    @spec case class IntSome(value : Int) extends OptInt
+    @spec case class None() extends OptInt
+
+    @spec def contains(l : List, e : Int) : Boolean = l match {
+      case Nil() => false
+      case Cons(x,xs) => x == e || contains(xs,e)
+    }
+
+    //type Graph = Map[Int,List]
+    @spec def hasEdge(g : Map[Int,List], src : Int, dst : Int) : Boolean = {
+      if(g.isDefinedAt(src)) contains(g(src), dst) else false
+    }
+
+    @spec def validPath(g : Map[Int,List], path : List) : Boolean = path match {
+      case Nil() => true
+      case Cons(x, Nil()) => true
+//      case Cons(x, xs @ Cons(y, _)) if (x == y) => validPath(g, xs)
+      case Cons(x, xs @ Cons(y, _)) => hasEdge(g, x, y) && validPath(g, xs)
+    }
+
+    @spec def length(l : List) : Int = (l match {
+      case Nil() => 0
+      case Cons(_,xs) => 1 + length(xs)
+    }) ensuring(_ >= 0)
+
+    @spec def head(l : List) : OptInt = l match {
+      case Nil() => None()
+      case Cons(x,_) => IntSome(x)
+    }
+
+    @spec def tail(l : List) : OptInt = l match {
+      case Nil() => None()
+      case Cons(x,Nil()) => IntSome(x)
+      case Cons(x,xs) => tail(xs)
+    }
+
+    def paths(g : Map[Int,List], src : Int, dst : Int) = {
+      ((path : List) => 
+        head(path) == IntSome(src) &&
+        tail(path) == IntSome(dst) &&
+        validPath(g, path)).minimizing(length(_ : List)).findAll
+    }
+
+    def run : Unit = {
+      def mkList(vals : Int*) : List = vals.foldRight[List](Nil())((v,l) => Cons(v,l))
+      val graph : Map[Int,List] = Map(
+        1 -> mkList(2,3),
+        2 -> mkList(3),
+        3 -> mkList(4),
+        4 -> mkList(1))
+
+      // That crashes somehow...
+      //p("Paths from 1 to 4, in order of length", paths(graph, 1, 4).toList)
+
+      ((g : Map[Int,List], p : List) => validPath(g, p) && length(p) == 10).find
+    }
+  }
+
+  Graphs.run
 }
