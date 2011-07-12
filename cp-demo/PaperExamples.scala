@@ -1,5 +1,6 @@
 import cp.Definitions._
 import cp.Terms._
+import cp.LTrees._
 
 object PaperExamples extends App {
   def p(str : String, a : =>Any) : Unit = {
@@ -92,53 +93,59 @@ object PaperExamples extends App {
     val letters : List[Letter] = List(D(), E(), M(), N(), O(), R(), S(), Y())
 
     def run : Unit = {
-      val m = ((m : Map[Letter,Int]) => true).lazySolve
+      val anyInt = ((n : Int) => true)
+
+      val letters @ Seq(s,e,n,d,m,o,r,y) = Seq.fill(8)(anyInt.lazySolve)
+
       for(l <- letters) {
-        assuming(m(l) >= 0 && m(l) <= 9) {
-          println("OK for " + l)
-        }
-
-        // we need this too because S and M occur as most significant digits
-        if (l == S() || l == M()) assuming(m(l) >= 1) {
-          println(l + " greater than 0  OK")
+        when(l >= 0 && l <= 0) {
+          ;
+        } otherwise {
+          println("Couldn't constrain letter.")
         }
       }
 
-      assuming( 
-                           1000 * m(S()) + 100 * m(E()) + 10 * m(N()) + m(D()) +
-                           1000 * m(M()) + 100 * m(O()) + 10 * m(R()) + m(E()) ==
-          10000 * m(M()) + 1000 * m(O()) + 100 * m(N()) + 10 * m(E()) + m(Y())) {
-        println("OK for sum")
+      //assuming(distinct(s,e,n,d,m,o,r,y)) {
+      assuming(
+                  s != e && s != n && s != d && s != m && s != o && s != r && s != y &&
+        e != s &&           e != n && e != d && e != m && e != o && e != r && e != y &&
+        n != s && n != e &&           n != d && n != m && n != o && n != r && n != y &&
+        d != s && d != e && d != n &&           d != m && d != o && d != r && d != y &&
+        m != s && m != e && m != n && m != d &&           m != o && m != r && m != y &&
+        o != s && o != e && o != n && o != d && o != m &&           o != r && o != y &&
+        r != s && r != e && r != n && r != d && r != m && r != o &&           r != y &&
+        y != s && y != e && y != n && y != d && y != m && y != o && y != r             )
+      {
+        println("Letters now have distinct values.")
       }
 
-      assuming(distinct(m(S()), m(E()), m(N()), m(D()), m(M()), m(O()), m(R()), m(Y()))) {
-        println("OK for distinct")
-      }
-      
-      println("A solution : " + m.value)
-    
+      val solution = letters.map(_.value)
+      p("s,e,n,d,m,o,r,y", solution)
 
-
-      // functional-style, crashed because of if
-      // val c : Constraint1[Map[Letter,Int]] = ((m: Map[Letter,Int]) => 
-      //   1000 * m(S()) + 100 * m(E()) + 10 * m(N()) + m(D()) +
-      //   1000 * m(M()) + 100 * m(O()) + 10 * m(R()) + m(E()) ==
-      //   10000 * m(M()) + 1000 * m(O()) + 100 * m(N()) + 10 * m(E()) + m(Y()))
-
-      // this works too but I guess we should avoid enumerating maps
-      // for(m <- c.lazyFindAll if(
-      //     m(S()) >= 1 && m(S()) <= 9 &&
-      //     m(E()) >= 0 && m(E()) <= 9 &&
-      //     m(N()) >= 0 && m(N()) <= 9 &&
-      //     m(D()) >= 0 && m(D()) <= 9 &&
-      //     m(M()) >= 1 && m(M()) <= 9 &&
-      //     m(O()) >= 0 && m(O()) <= 9 &&
-      //     m(R()) >= 0 && m(R()) <= 9 &&
-      //     m(Y()) >= 0 && m(Y()) <= 9 &&
-      //     distinct(m(S()), m(E()), m(N()), m(D()), m(M()), m(O()), m(R()), m(Y()))
-      //   )){
-      //   println("###" + m.value)
+      // val m = ((m : Map[Letter,Int]) => true).lazySolve
+      // for(l <- letters) {
+      //   assuming(m(l) >= 0 && m(l) <= 9) {
+      //     println("OK for " + l)
       //   }
+
+      //   // we need this too because S and M occur as most significant digits
+      //   if (l == S() || l == M()) assuming(m(l) >= 1) {
+      //     println(l + " greater than 0  OK")
+      //   }
+      // }
+
+      // assuming( 
+      //                      1000 * m(S()) + 100 * m(E()) + 10 * m(N()) + m(D()) +
+      //                      1000 * m(M()) + 100 * m(O()) + 10 * m(R()) + m(E()) ==
+      //     10000 * m(M()) + 1000 * m(O()) + 100 * m(N()) + 10 * m(E()) + m(Y())) {
+      //   println("OK for sum")
+      // }
+
+      // assuming(distinct(m(S()), m(E()), m(N()), m(D()), m(M()), m(O()), m(R()), m(Y()))) {
+      //   println("OK for distinct")
+      // }
+      // 
+      // println("A solution : " + m.value)
     }
   }
 
@@ -208,5 +215,5 @@ object PaperExamples extends App {
     }
   }
 
-  Graphs.run
+  //Graphs.run
 }
