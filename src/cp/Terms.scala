@@ -41,6 +41,7 @@ object Terms {
     }
 
     def c(implicit isBoolean : R =:= Boolean) : self.type = this
+    def i(implicit isInt : R =:= Int) : self.type = this
   }
 
   def removeGuard(g: Identifier): Unit = {
@@ -189,6 +190,9 @@ object Terms {
   
     def &&(other : Term1[T1,Boolean])(implicit asBoolean : (R) => Boolean) : Term1[T1,Boolean] = 
       Term1(this.program, And(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1) => this.scalaFunction(x_0) && other.scalaFunction(x_0), this.types, this.converter, this.lVars ++ other.lVars)
+
+    def +(other : Term1[T1,Int])(implicit isInt : R =:= Int) : Term1[T1,Int] = 
+      Term1(this.program, Plus(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1) => this.scalaFunction(x_0) + other.scalaFunction(x_0), this.types, this.converter, this.lVars ++ other.lVars)
   
     def unary_!(implicit asBoolean : (R) => Boolean) : Term1[T1,Boolean] = 
       Term1(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1) => ! this.scalaFunction(x_0), this.types, this.converter, this.lVars)
