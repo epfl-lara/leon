@@ -80,83 +80,45 @@ object PaperExamples extends App {
 
   primes.take(25).foreach(println(_))
 
-  @spec object SendMoreMoney {
-    sealed abstract class Letter
-    case class D() extends Letter
-    case class E() extends Letter
-    case class M() extends Letter
-    case class N() extends Letter
-    case class O() extends Letter
-    case class R() extends Letter
-    case class S() extends Letter
-    case class Y() extends Letter
-    val letters : List[Letter] = List(D(), E(), M(), N(), O(), R(), S(), Y())
+  object SendMoreMoney {
+    def asserting(c : Constraint0) : Unit = {
+      var entered = false
+      for(i <- c.lazyFindAll) {
+        entered = true
+      }
+      if(!entered) { throw new Exception("Asserting failed.") }
+    }
 
     def run : Unit = {
       val anyInt : Constraint1[Int] = ((n : Int) => true)
 
       val letters @ Seq(s,e,n,d,m,o,r,y) = Seq.fill(8)(anyInt.lazySolve)
-      // val s : L[Int] = anyInt.lazySolve
-      // val e : L[Int] = anyInt.lazySolve
-      // val n : L[Int] = anyInt.lazySolve
-      // val d : L[Int] = anyInt.lazySolve
-      // val m : L[Int] = anyInt.lazySolve
-      // val o : L[Int] = anyInt.lazySolve
-      // val r : L[Int] = anyInt.lazySolve
-      // val y : L[Int] = anyInt.lazySolve
-      // val letters : Seq[L[Int]] = Seq(s,e,n,d,m,o,r,y)
 
       for(l <- letters) {
-        when(l >= 0 && l <= 9) {
-          ;
-        } otherwise {
-          println("Couldn't constrain letter.")
-        }
+        asserting(l >= 0 && l <= 9) 
       }
+
+      asserting(s >= 1)
+      asserting(m >= 1) 
 
       when(distinct[Int](s,e,n,d,m,o,r,y)) {
-      // assuming(
-      //             s != e && s != n && s != d && s != m && s != o && s != r && s != y &&
-      //   e != s &&           e != n && e != d && e != m && e != o && e != r && e != y &&
-      //   n != s && n != e &&           n != d && n != m && n != o && n != r && n != y &&
-      //   d != s && d != e && d != n &&           d != m && d != o && d != r && d != y &&
-      //   m != s && m != e && m != n && m != d &&           m != o && m != r && m != y &&
-      //   o != s && o != e && o != n && o != d && o != m &&           o != r && o != y &&
-      //   r != s && r != e && r != n && r != d && r != m && r != o &&           r != y &&
-      //   y != s && y != e && y != n && y != d && y != m && y != o && y != r             )
-      // {
         println("Letters now have distinct values.")
       } otherwise {
-        println("Couldn't make it happen :(")
+        println("Letters can't have distinct values.")
       }
 
-      val solution = letters.map(_.value)
-      p("s,e,n,d,m,o,r,y", solution)
+      val fstLine = anyInt.lazySolve
+      val sndLine = anyInt.lazySolve
+      val total = anyInt.lazySolve
 
-      // val m = ((m : Map[Letter,Int]) => true).lazySolve
-      // for(l <- letters) {
-      //   assuming(m(l) >= 0 && m(l) <= 9) {
-      //     println("OK for " + l)
-      //   }
-
-      //   // we need this too because S and M occur as most significant digits
-      //   if (l == S() || l == M()) assuming(m(l) >= 1) {
-      //     println(l + " greater than 0  OK")
-      //   }
-      // }
-
-      // assuming( 
-      //                      1000 * m(S()) + 100 * m(E()) + 10 * m(N()) + m(D()) +
-      //                      1000 * m(M()) + 100 * m(O()) + 10 * m(R()) + m(E()) ==
-      //     10000 * m(M()) + 1000 * m(O()) + 100 * m(N()) + 10 * m(E()) + m(Y())) {
-      //   println("OK for sum")
-      // }
-
-      // assuming(distinct(m(S()), m(E()), m(N()), m(D()), m(M()), m(O()), m(R()), m(Y()))) {
-      //   println("OK for distinct")
-      // }
-      // 
-      // println("A solution : " + m.value)
+      asserting(fstLine == 1000*s + 100*e + 10*n + d)
+      asserting(sndLine == 1000*m + 100*o + 10*r + e)
+      asserting(total   == 10000*m + 1000*o + 100*n + 10*e + y)
+      when(total == fstLine + sndLine) {
+        println("The puzzle has a solution : " + letters.map(_.value))
+      } otherwise {
+        println("The puzzle has no solution.")
+      }
     }
   }
 
