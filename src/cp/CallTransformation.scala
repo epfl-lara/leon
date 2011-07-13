@@ -50,6 +50,11 @@ trait CallTransformation
         val Function(funValDefs, funBody) = function
         extracted += (function.pos -> extractFunction(unit, funValDefs, funBody))
       }
+      case Apply(TypeApply(Select(Select(cpIdent, definitionsName), func2termName), typeTreeList), List(Block(Nil, function: Function))) if 
+        (definitionsName.toString == "Definitions" && func2termName.toString.matches("func2term\\d")) => {
+        val Function(funValDefs, funBody) = function
+        extracted += (function.pos -> extractFunction(unit, funValDefs, funBody))
+      }
       case Apply(Select(lhs, withFilterName), List(predicate: Function)) if withFilterName.toString == "withFilter" && hasLIteratorType(lhs) => {
         val Function(funValDefs, funBody) = predicate
         extracted += (predicate.pos -> extractWithFilterPredicate(unit, funValDefs, funBody))

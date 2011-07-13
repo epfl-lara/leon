@@ -55,8 +55,8 @@ object PaperExamples extends App {
         c*y+d*u == 1).find
   
     def boundedUnimodular(m : Int) = {
-      boundedQ(m) &&
-      ((a : Int, b : Int, c : Int, d : Int) => isUnimodular(a,b,c,d)) // TODO would be great if we could write this as isUnimodular _ :)
+      boundedQ(m) && (isUnimodular _)
+      // ((a : Int, b : Int, c : Int, d : Int) => isUnimodular(a,b,c,d)) // TODO would be great if we could write this as isUnimodular _ :)
     }
   
     def action : Unit = {
@@ -211,7 +211,7 @@ object PaperExamples extends App {
     }
 
     def action : Unit = {
-      (1 to 7).foreach(i => {
+      (1 to 3).foreach(i => {
         val num = ((t : Tree) => validTree(t) && valuesWithin(t,i) && size(t) == i).findAll.size
         p("# of RBTs with " + i + " distinct els", num)
       })
