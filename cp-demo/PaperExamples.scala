@@ -134,6 +134,91 @@ object PaperExamples extends App {
   }
   Primes.run
 
+  object RedBlackTrees extends Demo {
+    val name = "red-black trees"
+
+    @spec sealed abstract class Color
+    @spec case class Red() extends Color
+    @spec case class Black() extends Color
+    
+    @spec sealed abstract class Tree
+    @spec case class Node(c : Color, l : Tree, v : Int, r : Tree) extends Tree
+    @spec case class Leaf() extends Tree
+
+    @spec sealed abstract class OptionInt
+    @spec case class SomeInt(v : Int) extends OptionInt
+    @spec case class NoneInt() extends OptionInt
+
+    @spec def size(t : Tree) : Int = (t match {
+      case Leaf() => 0
+      case Node(_, l, _, r) => 1 + size(l) + size(r)
+    }) ensuring(_ >= 0)
+
+    @spec def blackBalanced(t : Tree) : Boolean = t match {
+      case Node(_,l,_,r) => blackBalanced(l) && blackBalanced(r) && blackHeight(l) == blackHeight(r)
+      case Leaf() => true
+    }
+
+    @spec def isBlack(t: Tree) : Boolean = t match {
+      case Leaf() => true
+      case Node(Black(),_,_,_) => true
+      case _ => false
+    }
+  
+    @spec def redNodesHaveBlackChildren(t: Tree) : Boolean = t match {
+      case Leaf() => true
+      case Node(Black(), l, _, r) => redNodesHaveBlackChildren(l) && redNodesHaveBlackChildren(r)
+      case Node(Red(), l, _, r) => isBlack(l) && isBlack(r) && redNodesHaveBlackChildren(l) && redNodesHaveBlackChildren(r)
+    }
+
+    @spec def blackHeight(t : Tree) : Int = t match {
+      case Leaf() => 0
+      case Node(Black(), l, _, _) => blackHeight(l) + 1
+      case Node(Red(), l, _, _) => blackHeight(l)
+    }
+
+    @spec def validColoring(t : Tree) : Boolean = {
+      isBlack(t) && redNodesHaveBlackChildren(t) && blackBalanced(t) 
+    }
+
+    @spec def valuesWithin(t : Tree, bound : Int) : Boolean = t match {
+      case Leaf() => true
+      case Node(_,l,v,r) => 0 < v && v <= bound && valuesWithin(l,bound) && valuesWithin(r,bound)
+    }
+
+    @spec def orderedKeys(t : Tree) : Boolean = orderedKeys(t, NoneInt(), NoneInt())
+
+    @spec def orderedKeys(t : Tree, min : OptionInt, max : OptionInt) : Boolean = t match {
+      case Leaf() => true
+      case Node(c,a,v,b) =>
+        val minOK = 
+          min match {
+            case SomeInt(minVal) =>
+              v > minVal
+            case NoneInt() => true
+          }
+        val maxOK =
+          max match {
+            case SomeInt(maxVal) =>
+              v < maxVal
+            case NoneInt() => true
+          }
+        minOK && maxOK && orderedKeys(a, min, SomeInt(v)) && orderedKeys(b, SomeInt(v), max)
+    }
+
+    @spec def validTree(t : Tree) : Boolean = {
+      validColoring(t) && orderedKeys(t) 
+    }
+
+    def action : Unit = {
+      (1 to 7).foreach(i => {
+        val num = ((t : Tree) => validTree(t) && valuesWithin(t,i) && size(t) == i).findAll.size
+        p("# of RBTs with " + i + " distinct els", num)
+      })
+    }
+  }
+  RedBlackTrees.run
+
   object SendMoreMoney extends Demo {
     val name = "SEND+MORE=MONEY"
 
