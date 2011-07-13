@@ -78,9 +78,13 @@ object ListMethods {
     println(lists.mkString("\n"))
 
     // println("Here is its last element: " + last(l))
+    Timer.go
     val lastElems = lists.map(l => last(l))
+    val measured = Timer.stop
     println("last elements:")
     println(lastElems)
+    println("measured:" + measured)
+    println("average :" + (measured / nbLists))
 
     // val added = lists.map(appendElem(_, 42))
     // println("Here are those lists with 42 added to them:")
@@ -90,3 +94,18 @@ object ListMethods {
     // println("Here is the previous list, this time sorted: " + sorted)
   }
 }
+
+object Timer {
+  var start: Long = 0L
+  var end: Long = 0L
+  def go = {
+    start = System.currentTimeMillis
+  }
+  def stop = {
+    end = System.currentTimeMillis
+    val measured = (end - start) / 1000.0
+    println("Measured time: " + measured + " s")
+    measured
+  }
+}
+
