@@ -68,16 +68,23 @@ object ListMethods {
 
     // val l = ((l : List) => size(l) == bound).solve
     // val lists = for (i <- 1 to nbLists) yield ((l : List) => size(l) == bound).solve
-    val lists = ((l : List) => size(l) == bound && valuesWithin(l, 0, bound - 1)).findAll.toList
+    // val lists = ((l : List) => size(l) == bound && valuesWithin(l, 0, bound - 1)).findAll.toList
+    
+    val random = new scala.util.Random()
+    def randomList(s: Int): List = if (s <= 0) Nil() else Cons(random.nextInt(10), randomList(s - 1))
 
+    val lists = (1 to nbLists) map (i => randomList(bound))
     println("Here are lists:")
     println(lists.mkString("\n"))
 
     // println("Here is its last element: " + last(l))
+    val lastElems = lists.map(l => last(l))
+    println("last elements:")
+    println(lastElems)
 
-    val added = lists.map(appendElem(_, 42))
-    println("Here are those lists with 42 added to them:")
-    println(added.mkString("\n"))
+    // val added = lists.map(appendElem(_, 42))
+    // println("Here are those lists with 42 added to them:")
+    // println(added.mkString("\n"))
 
     // val sorted = sort(added)
     // println("Here is the previous list, this time sorted: " + sorted)
