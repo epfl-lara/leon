@@ -12,7 +12,7 @@ object Calendar extends App {
 
   println("Year : %d, day : %d" format (year, day))
 
-  /* alternate version with intermediate "leapDaysUntil" variables
+  /* alternate version with intermediate "leapDaysUntil" variables */
 
   def yearAndDay(totalDays : Int, originYear : Int) : (Int, Int) = {
     val (y, d, _, _) = ((year : Int, day : Int, lduYear : Int, lduOrigin : Int) => totalDays == (year - originYear) * 365 + lduYear - lduOrigin + day &&
@@ -22,7 +22,7 @@ object Calendar extends App {
     
     (y, d)
   }
-  */
+  println("Second version: " + yearAndDay(totalDays, originYear))
     
 }
 
