@@ -68,6 +68,45 @@ object Utils {
           }
         }).flatten.mkString("\n\n")
 
+        val productMethods = (for (otherArity <- 1 to (maxArity - arity)) yield {
+          val productArity = arity + otherArity
+
+          val thisParams = (1 to arity).map("T" + _)
+
+          val otherParams = (1 to otherArity).map("A" + _)
+          val otherParamsString = otherParams.mkString(",")
+
+          val otherTermParams = otherParams ++ Seq("Boolean")
+          val otherTermParamsString = otherTermParams.mkString(",")
+
+          val resultParams = thisParams ++ otherParams
+          val resultTermParams = resultParams ++ Seq("Boolean")
+          val resultTermParamsString = resultTermParams.mkString(",")
+
+          val scalaFunctionParams = resultParams.zipWithIndex.map{ case (p, i) => "x_%d : %s" format (i, p) }
+          val scalaFunctionParamsString = scalaFunctionParams.mkString(", ")
+
+          val thisScalaFunctionArgs = (0 until arity).map("x_" + _)
+          val thisScalaFunctionArgsString = thisScalaFunctionArgs.mkString(", ")
+
+          val otherScalaFunctionArgs = (arity until productArity).map("x_" + _)
+          val otherScalaFunctionArgsString = otherScalaFunctionArgs.mkString(", ")
+
+          val thisApplication = "this.scalaFunction(%s)" format (thisScalaFunctionArgsString)
+          val otherApplication = "other.scalaFunction(%s)" format (otherScalaFunctionArgsString)
+
+          val scalaFunction = "(%s) => %s && %s" format (scalaFunctionParamsString, thisApplication, otherApplication)
+
+          val methodString =
+"""def product%d[%s](other: Term%d[%s])(implicit isBoolean: R =:= Boolean): Term%d[%s] = {
+  val (newExpr, newTypes) = Terms.product(this, other)
+  Term%d(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else %s, newTypes, this.converter, this.lVars ++ other.lVars)
+}
+""" format (otherArity, otherParamsString, otherArity, otherTermParamsString, productArity, resultTermParamsString, productArity, scalaFunction)
+
+          methodString
+        }).mkString("\n\n")
+
         val (applyParams, applyArgs) = traitArgParams.zipWithIndex.map{ case (p, i) => ("x_%d : %s" format (i, p), "x_%d" format (i)) }.unzip
 
         val evaluatorArgs = traitArgParams.zipWithIndex.map{ case (p, i) => "converter.expr2scala(s(%d)).asInstanceOf[%s]" format (i, p) }
@@ -91,13 +130,15 @@ object Utils {
 %s
 
 %s
+
+%s
 }""" format (traitName, termClassParamTuple, "R", arity, traitParams.mkString(","), 
   arity, traitArgParamsString, 
   traitName, booleanTraitName, 
   termClassParamTuple, "R", 
   evaluatorArgs.mkString(","),
   applyParams.mkString(", "), applyArgs.mkString(", "), 
-  indent(orMethod), indent(andMethod), indent(notMethod), indent(minimizingMethod), indent(lazySolveMethod), indent(composeMethods))
+  indent(orMethod), indent(andMethod), indent(notMethod), indent(minimizingMethod), indent(lazySolveMethod), indent(composeMethods), indent(productMethods))
         
         termTraitString
       }
@@ -169,11 +210,11 @@ object Utils {
       booleanTerms = "type Constraint[T] = Term[T,Boolean]" :: booleanTerms
       intTerms = "type IntTerm[T] = Term[T,Int]" :: intTerms
 
-      for (arity <- 1 to maxArity) {
+      for (arity <- 0 to maxArity) {
         val params = (1 to arity) map ("T" + _)
         val paramWithBooleanString = (params ++ Seq("Boolean")).mkString("[", ",", "]")
         val paramWithIntString = (params ++ Seq("Int")).mkString("[", ",", "]")
-        val paramString = params.mkString("[", ",", "]")
+        val paramString = if (arity == 0) "" else params.mkString("[", ",", "]")
         val boolType = "type Constraint%d%s = Term%d%s" format (arity, paramString, arity, paramWithBooleanString)
         val intType = "type IntTerm%d%s = Term%d%s" format (arity, paramString, arity, paramWithIntString)
 

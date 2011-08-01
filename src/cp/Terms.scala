@@ -143,6 +143,15 @@ object Terms {
   }
   */
 
+  trait Term0[R] extends Term[Unit,R] with Function0[R] {
+    val convertingFunction = converterOf(this).exprSeq2scala0 _
+    type t2c = (Term0[R]) => Term0[Boolean]
+    val scalaFunction : () => R
+    lazy val evaluator : (Seq[Expr]) => R = (s : Seq[Expr]) => scalaFunction()
+
+    override def apply() : R = scalaFunction()
+  }
+
   /** GENERATED CODE: */
   /** Type aliases for terms with boolean and integer range */
   type Constraint[T] = Term[T,Boolean]
@@ -157,7 +166,7 @@ object Terms {
   type Constraint8[T1,T2,T3,T4,T5,T6,T7,T8] = Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean]
   type Constraint9[T1,T2,T3,T4,T5,T6,T7,T8,T9] = Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean]
   type IntTerm[T] = Term[T,Int]
-  type IntTerm0[T1] = Term0[Int]
+  type IntTerm0 = Term0[Int]
   type IntTerm1[T1] = Term1[T1,Int]
   type IntTerm2[T1,T2] = Term2[T1,T2,Int]
   type IntTerm3[T1,T2,T3] = Term3[T1,T2,T3,Int]
@@ -168,15 +177,6 @@ object Terms {
   type IntTerm8[T1,T2,T3,T4,T5,T6,T7,T8] = Term8[T1,T2,T3,T4,T5,T6,T7,T8,Int]
   type IntTerm9[T1,T2,T3,T4,T5,T6,T7,T8,T9] = Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Int]
   
-  trait Term0[R] extends Term[Unit,R] with Function0[R] {
-    val convertingFunction = converterOf(this).exprSeq2scala0 _
-    type t2c = (Term0[R]) => Term0[Boolean]
-    val scalaFunction : () => R
-    lazy val evaluator : (Seq[Expr]) => R = (s : Seq[Expr]) => scalaFunction()
-
-    override def apply() : R = scalaFunction()
-  }
-
   trait Term1[T1,R] extends Term[(T1),R] with Function1[T1,R] {
     val convertingFunction = converterOf(this).exprSeq2scala1[T1] _
     type t2c = (Term1[T1,R]) => Term1[T1,Boolean]
@@ -190,9 +190,6 @@ object Terms {
   
     def &&(other : Term1[T1,Boolean])(implicit asBoolean : (R) => Boolean) : Term1[T1,Boolean] = 
       Term1(this.program, And(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1) => this.scalaFunction(x_0) && other.scalaFunction(x_0), this.types, this.converter, this.lVars ++ other.lVars)
-
-    def +(other : Term1[T1,Int])(implicit isInt : R =:= Int) : Term1[T1,Int] = 
-      Term1(this.program, Plus(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1) => this.scalaFunction(x_0) + other.scalaFunction(x_0), this.types, this.converter, this.lVars ++ other.lVars)
   
     def unary_!(implicit asBoolean : (R) => Boolean) : Term1[T1,Boolean] = 
       Term1(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1) => ! this.scalaFunction(x_0), this.types, this.converter, this.lVars)
@@ -251,10 +248,52 @@ object Terms {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 9, 1)
       Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : A7, x_7 : A8, x_8 : A9) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8)), newTypes, this.converter, this.lVars ++ other.lVars)
     }
-
+  
     def product1[A1](other: Term1[A1,Boolean])(implicit isBoolean: R =:= Boolean): Term2[T1,A1,Boolean] = {
       val (newExpr, newTypes) = Terms.product(this, other)
-      Term2(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0: T1, x_1: A1) => this.scalaFunction(x_0) && other.scalaFunction(x_1), newTypes, this.converter, this.lVars ++ other.lVars)
+      Term2(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1) => this.scalaFunction(x_0) && other.scalaFunction(x_1), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product2[A1,A2](other: Term2[A1,A2,Boolean])(implicit isBoolean: R =:= Boolean): Term3[T1,A1,A2,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term3(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2) => this.scalaFunction(x_0) && other.scalaFunction(x_1, x_2), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product3[A1,A2,A3](other: Term3[A1,A2,A3,Boolean])(implicit isBoolean: R =:= Boolean): Term4[T1,A1,A2,A3,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term4(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3) => this.scalaFunction(x_0) && other.scalaFunction(x_1, x_2, x_3), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product4[A1,A2,A3,A4](other: Term4[A1,A2,A3,A4,Boolean])(implicit isBoolean: R =:= Boolean): Term5[T1,A1,A2,A3,A4,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term5(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4) => this.scalaFunction(x_0) && other.scalaFunction(x_1, x_2, x_3, x_4), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product5[A1,A2,A3,A4,A5](other: Term5[A1,A2,A3,A4,A5,Boolean])(implicit isBoolean: R =:= Boolean): Term6[T1,A1,A2,A3,A4,A5,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5) => this.scalaFunction(x_0) && other.scalaFunction(x_1, x_2, x_3, x_4, x_5), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product6[A1,A2,A3,A4,A5,A6](other: Term6[A1,A2,A3,A4,A5,A6,Boolean])(implicit isBoolean: R =:= Boolean): Term7[T1,A1,A2,A3,A4,A5,A6,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : A6) => this.scalaFunction(x_0) && other.scalaFunction(x_1, x_2, x_3, x_4, x_5, x_6), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product7[A1,A2,A3,A4,A5,A6,A7](other: Term7[A1,A2,A3,A4,A5,A6,A7,Boolean])(implicit isBoolean: R =:= Boolean): Term8[T1,A1,A2,A3,A4,A5,A6,A7,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : A6, x_7 : A7) => this.scalaFunction(x_0) && other.scalaFunction(x_1, x_2, x_3, x_4, x_5, x_6, x_7), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product8[A1,A2,A3,A4,A5,A6,A7,A8](other: Term8[A1,A2,A3,A4,A5,A6,A7,A8,Boolean])(implicit isBoolean: R =:= Boolean): Term9[T1,A1,A2,A3,A4,A5,A6,A7,A8,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : A6, x_7 : A7, x_8 : A8) => this.scalaFunction(x_0) && other.scalaFunction(x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8), newTypes, this.converter, this.lVars ++ other.lVars)
     }
   }
   
@@ -363,6 +402,47 @@ object Terms {
     def compose1[A1, A2, A3, A4, A5, A6, A7, A8](other : Term8[A1, A2, A3, A4, A5, A6, A7, A8, T2]) : Term9[T1, A1, A2, A3, A4, A5, A6, A7, A8, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 1, 8, 2)
       Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : A1, x_2 : A2, x_3 : A3, x_4 : A4, x_5 : A5, x_6 : A6, x_7 : A7, x_8 : A8) => this.scalaFunction(x_0, other.scalaFunction(x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8)), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+  
+    def product1[A1](other: Term1[A1,Boolean])(implicit isBoolean: R =:= Boolean): Term3[T1,T2,A1,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term3(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1) => this.scalaFunction(x_0, x_1) && other.scalaFunction(x_2), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product2[A1,A2](other: Term2[A1,A2,Boolean])(implicit isBoolean: R =:= Boolean): Term4[T1,T2,A1,A2,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term4(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2) => this.scalaFunction(x_0, x_1) && other.scalaFunction(x_2, x_3), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product3[A1,A2,A3](other: Term3[A1,A2,A3,Boolean])(implicit isBoolean: R =:= Boolean): Term5[T1,T2,A1,A2,A3,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term5(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3) => this.scalaFunction(x_0, x_1) && other.scalaFunction(x_2, x_3, x_4), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product4[A1,A2,A3,A4](other: Term4[A1,A2,A3,A4,Boolean])(implicit isBoolean: R =:= Boolean): Term6[T1,T2,A1,A2,A3,A4,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4) => this.scalaFunction(x_0, x_1) && other.scalaFunction(x_2, x_3, x_4, x_5), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product5[A1,A2,A3,A4,A5](other: Term5[A1,A2,A3,A4,A5,Boolean])(implicit isBoolean: R =:= Boolean): Term7[T1,T2,A1,A2,A3,A4,A5,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : A5) => this.scalaFunction(x_0, x_1) && other.scalaFunction(x_2, x_3, x_4, x_5, x_6), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product6[A1,A2,A3,A4,A5,A6](other: Term6[A1,A2,A3,A4,A5,A6,Boolean])(implicit isBoolean: R =:= Boolean): Term8[T1,T2,A1,A2,A3,A4,A5,A6,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : A5, x_7 : A6) => this.scalaFunction(x_0, x_1) && other.scalaFunction(x_2, x_3, x_4, x_5, x_6, x_7), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product7[A1,A2,A3,A4,A5,A6,A7](other: Term7[A1,A2,A3,A4,A5,A6,A7,Boolean])(implicit isBoolean: R =:= Boolean): Term9[T1,T2,A1,A2,A3,A4,A5,A6,A7,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : A5, x_7 : A6, x_8 : A7) => this.scalaFunction(x_0, x_1) && other.scalaFunction(x_2, x_3, x_4, x_5, x_6, x_7, x_8), newTypes, this.converter, this.lVars ++ other.lVars)
     }
   }
   
@@ -496,6 +576,41 @@ object Terms {
     def compose2[A1, A2, A3, A4, A5, A6, A7](other : Term7[A1, A2, A3, A4, A5, A6, A7, T3]) : Term9[T1, T2, A1, A2, A3, A4, A5, A6, A7, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 2, 7, 3)
       Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : A1, x_3 : A2, x_4 : A3, x_5 : A4, x_6 : A5, x_7 : A6, x_8 : A7) => this.scalaFunction(x_0, x_1, other.scalaFunction(x_2, x_3, x_4, x_5, x_6, x_7, x_8)), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+  
+    def product1[A1](other: Term1[A1,Boolean])(implicit isBoolean: R =:= Boolean): Term4[T1,T2,T3,A1,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term4(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1) => this.scalaFunction(x_0, x_1, x_2) && other.scalaFunction(x_3), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product2[A1,A2](other: Term2[A1,A2,Boolean])(implicit isBoolean: R =:= Boolean): Term5[T1,T2,T3,A1,A2,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term5(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2) => this.scalaFunction(x_0, x_1, x_2) && other.scalaFunction(x_3, x_4), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product3[A1,A2,A3](other: Term3[A1,A2,A3,Boolean])(implicit isBoolean: R =:= Boolean): Term6[T1,T2,T3,A1,A2,A3,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3) => this.scalaFunction(x_0, x_1, x_2) && other.scalaFunction(x_3, x_4, x_5), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product4[A1,A2,A3,A4](other: Term4[A1,A2,A3,A4,Boolean])(implicit isBoolean: R =:= Boolean): Term7[T1,T2,T3,A1,A2,A3,A4,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : A4) => this.scalaFunction(x_0, x_1, x_2) && other.scalaFunction(x_3, x_4, x_5, x_6), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product5[A1,A2,A3,A4,A5](other: Term5[A1,A2,A3,A4,A5,Boolean])(implicit isBoolean: R =:= Boolean): Term8[T1,T2,T3,A1,A2,A3,A4,A5,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : A4, x_7 : A5) => this.scalaFunction(x_0, x_1, x_2) && other.scalaFunction(x_3, x_4, x_5, x_6, x_7), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product6[A1,A2,A3,A4,A5,A6](other: Term6[A1,A2,A3,A4,A5,A6,Boolean])(implicit isBoolean: R =:= Boolean): Term9[T1,T2,T3,A1,A2,A3,A4,A5,A6,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : A4, x_7 : A5, x_8 : A6) => this.scalaFunction(x_0, x_1, x_2) && other.scalaFunction(x_3, x_4, x_5, x_6, x_7, x_8), newTypes, this.converter, this.lVars ++ other.lVars)
     }
   }
   
@@ -644,6 +759,35 @@ object Terms {
     def compose3[A1, A2, A3, A4, A5, A6](other : Term6[A1, A2, A3, A4, A5, A6, T4]) : Term9[T1, T2, T3, A1, A2, A3, A4, A5, A6, R] = {
       val (newExpr, newTypes) = Terms.compose(other, this, 3, 6, 4)
       Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : A1, x_4 : A2, x_5 : A3, x_6 : A4, x_7 : A5, x_8 : A6) => this.scalaFunction(x_0, x_1, x_2, other.scalaFunction(x_3, x_4, x_5, x_6, x_7, x_8)), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+  
+    def product1[A1](other: Term1[A1,Boolean])(implicit isBoolean: R =:= Boolean): Term5[T1,T2,T3,T4,A1,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term5(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1) => this.scalaFunction(x_0, x_1, x_2, x_3) && other.scalaFunction(x_4), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product2[A1,A2](other: Term2[A1,A2,Boolean])(implicit isBoolean: R =:= Boolean): Term6[T1,T2,T3,T4,A1,A2,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2) => this.scalaFunction(x_0, x_1, x_2, x_3) && other.scalaFunction(x_4, x_5), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product3[A1,A2,A3](other: Term3[A1,A2,A3,Boolean])(implicit isBoolean: R =:= Boolean): Term7[T1,T2,T3,T4,A1,A2,A3,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : A3) => this.scalaFunction(x_0, x_1, x_2, x_3) && other.scalaFunction(x_4, x_5, x_6), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product4[A1,A2,A3,A4](other: Term4[A1,A2,A3,A4,Boolean])(implicit isBoolean: R =:= Boolean): Term8[T1,T2,T3,T4,A1,A2,A3,A4,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : A3, x_7 : A4) => this.scalaFunction(x_0, x_1, x_2, x_3) && other.scalaFunction(x_4, x_5, x_6, x_7), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product5[A1,A2,A3,A4,A5](other: Term5[A1,A2,A3,A4,A5,Boolean])(implicit isBoolean: R =:= Boolean): Term9[T1,T2,T3,T4,A1,A2,A3,A4,A5,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : A3, x_7 : A4, x_8 : A5) => this.scalaFunction(x_0, x_1, x_2, x_3) && other.scalaFunction(x_4, x_5, x_6, x_7, x_8), newTypes, this.converter, this.lVars ++ other.lVars)
     }
   }
   
@@ -798,6 +942,29 @@ object Terms {
       val (newExpr, newTypes) = Terms.compose(other, this, 4, 5, 5)
       Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : A1, x_5 : A2, x_6 : A3, x_7 : A4, x_8 : A5) => this.scalaFunction(x_0, x_1, x_2, x_3, other.scalaFunction(x_4, x_5, x_6, x_7, x_8)), newTypes, this.converter, this.lVars ++ other.lVars)
     }
+  
+    def product1[A1](other: Term1[A1,Boolean])(implicit isBoolean: R =:= Boolean): Term6[T1,T2,T3,T4,T5,A1,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term6(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4) && other.scalaFunction(x_5), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product2[A1,A2](other: Term2[A1,A2,Boolean])(implicit isBoolean: R =:= Boolean): Term7[T1,T2,T3,T4,T5,A1,A2,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : A2) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4) && other.scalaFunction(x_5, x_6), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product3[A1,A2,A3](other: Term3[A1,A2,A3,Boolean])(implicit isBoolean: R =:= Boolean): Term8[T1,T2,T3,T4,T5,A1,A2,A3,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : A2, x_7 : A3) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4) && other.scalaFunction(x_5, x_6, x_7), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product4[A1,A2,A3,A4](other: Term4[A1,A2,A3,A4,Boolean])(implicit isBoolean: R =:= Boolean): Term9[T1,T2,T3,T4,T5,A1,A2,A3,A4,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : A2, x_7 : A3, x_8 : A4) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4) && other.scalaFunction(x_5, x_6, x_7, x_8), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
   }
   
   trait Term6[T1,T2,T3,T4,T5,T6,R] extends Term[(T1,T2,T3,T4,T5,T6),R] with Function6[T1,T2,T3,T4,T5,T6,R] {
@@ -946,6 +1113,23 @@ object Terms {
       val (newExpr, newTypes) = Terms.compose(other, this, 5, 4, 6)
       Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : A1, x_6 : A2, x_7 : A3, x_8 : A4) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, other.scalaFunction(x_5, x_6, x_7, x_8)), newTypes, this.converter, this.lVars ++ other.lVars)
     }
+  
+    def product1[A1](other: Term1[A1,Boolean])(implicit isBoolean: R =:= Boolean): Term7[T1,T2,T3,T4,T5,T6,A1,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term7(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : A1) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5) && other.scalaFunction(x_6), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product2[A1,A2](other: Term2[A1,A2,Boolean])(implicit isBoolean: R =:= Boolean): Term8[T1,T2,T3,T4,T5,T6,A1,A2,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : A1, x_7 : A2) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5) && other.scalaFunction(x_6, x_7), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product3[A1,A2,A3](other: Term3[A1,A2,A3,Boolean])(implicit isBoolean: R =:= Boolean): Term9[T1,T2,T3,T4,T5,T6,A1,A2,A3,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : A1, x_7 : A2, x_8 : A3) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5) && other.scalaFunction(x_6, x_7, x_8), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
   }
   
   trait Term7[T1,T2,T3,T4,T5,T6,T7,R] extends Term[(T1,T2,T3,T4,T5,T6,T7),R] with Function7[T1,T2,T3,T4,T5,T6,T7,R] {
@@ -1079,6 +1263,17 @@ object Terms {
       val (newExpr, newTypes) = Terms.compose(other, this, 6, 3, 7)
       Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : A1, x_7 : A2, x_8 : A3) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, other.scalaFunction(x_6, x_7, x_8)), newTypes, this.converter, this.lVars ++ other.lVars)
     }
+  
+    def product1[A1](other: Term1[A1,Boolean])(implicit isBoolean: R =:= Boolean): Term8[T1,T2,T3,T4,T5,T6,T7,A1,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term8(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : A1) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6) && other.scalaFunction(x_7), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
+    
+    
+    def product2[A1,A2](other: Term2[A1,A2,Boolean])(implicit isBoolean: R =:= Boolean): Term9[T1,T2,T3,T4,T5,T6,T7,A1,A2,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : A1, x_8 : A2) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6) && other.scalaFunction(x_7, x_8), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
   }
   
   trait Term8[T1,T2,T3,T4,T5,T6,T7,T8,R] extends Term[(T1,T2,T3,T4,T5,T6,T7,T8),R] with Function8[T1,T2,T3,T4,T5,T6,T7,T8,R] {
@@ -1187,6 +1382,11 @@ object Terms {
       val (newExpr, newTypes) = Terms.compose(other, this, 7, 2, 8)
       Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : A1, x_8 : A2) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, other.scalaFunction(x_7, x_8)), newTypes, this.converter, this.lVars ++ other.lVars)
     }
+  
+    def product1[A1](other: Term1[A1,Boolean])(implicit isBoolean: R =:= Boolean): Term9[T1,T2,T3,T4,T5,T6,T7,T8,A1,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8, x_8 : A1) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, x_7) && other.scalaFunction(x_8), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
   }
   
   trait Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R] extends Term[(T1,T2,T3,T4,T5,T6,T7,T8,T9),R] with Function9[T1,T2,T3,T4,T5,T6,T7,T8,T9,R] {
@@ -1260,20 +1460,8 @@ object Terms {
       val (newExpr, newTypes) = Terms.compose(other, this, 8, 1, 9)
       Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1, x_1 : T2, x_2 : T3, x_3 : T4, x_4 : T5, x_5 : T6, x_6 : T7, x_7 : T8, x_8 : A1) => this.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, x_7, other.scalaFunction(x_8)), newTypes, this.converter, this.lVars ++ other.lVars)
     }
-  }
   
-  object Term0 {
-    def apply[R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedLVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr], lVarValues : Seq[Expr], lVars : Seq[L[_]], scalaExpr : () => R) = {
-      val (converter, program, expr, types) = Term.processArgs(conv, serializedProg, serializedInputVars, serializedLVars, serializedOutputVars, serializedExpr, inputVarValues, lVarValues)
-      new Term[Unit,R](program, expr, types, converter, lVars.toSet) with Term0[R] {
-        val scalaFunction = scalaExpr
-      }
-    }
     
-    def apply[R](program : Program, expr : Expr, scalaExpr : () => R, types : Seq[TypeTree], converter : Converter, lVars: Set[L[_]]) =
-      new Term[Unit,R](program, expr, types, converter, lVars) with Term0[R] {
-        val scalaFunction = scalaExpr
-      }
   }
   
   object Term1 {
