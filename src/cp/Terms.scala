@@ -251,6 +251,11 @@ object Terms {
       val (newExpr, newTypes) = Terms.compose(other, this, 0, 9, 1)
       Term9(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : A1, x_1 : A2, x_2 : A3, x_3 : A4, x_4 : A5, x_5 : A6, x_6 : A7, x_7 : A8, x_8 : A9) => this.scalaFunction(other.scalaFunction(x_0, x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8)), newTypes, this.converter, this.lVars ++ other.lVars)
     }
+
+    def product1[A1](other: Term1[A1,Boolean])(implicit isBoolean: R =:= Boolean): Term2[T1,A1,Boolean] = {
+      val (newExpr, newTypes) = Terms.product(this, other)
+      Term2(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0: T1, x_1: A1) => this.scalaFunction(x_0) && other.scalaFunction(x_1), newTypes, this.converter, this.lVars ++ other.lVars)
+    }
   }
   
   trait Term2[T1,T2,R] extends Term[(T1,T2),R] with Function2[T1,T2,R] {
@@ -1450,6 +1455,24 @@ object Terms {
     val newExpr   = replace(Map(indexToReplace -> renamedExprF), renamedExprG)
     val newTypes  = g.types.take(index) ++ f.types ++ g.types.drop(index + 1)
     assert(newTypes.size == nf + ng - 1)
+    (newExpr, newTypes)
+  }
+
+  /** Compute the product expression for f x g */
+  private def product(f: Term[_,_], g: Term[_,_]): (Expr, Seq[TypeTree]) = {
+    val deBruijnF = f.types.zipWithIndex.map{ case (t,i) => DeBruijnIndex(i).setType(t) }
+    val deBruijnG = g.types.zipWithIndex.map{ case (t,i) => DeBruijnIndex(i).setType(t) }
+
+    val nf = deBruijnF.size
+    val ng = deBruijnG.size
+
+    val substG: Map[Expr,Expr] = deBruijnG.map{ case d @ DeBruijnIndex(i) => (d, DeBruijnIndex(i + nf).setType(d.getType)) }.toMap
+
+    val renamedExprG = replace(substG, g.expr)
+    
+    val newExpr = And(f.expr, renamedExprG)
+    val newTypes = f.types ++ g.types
+
     (newExpr, newTypes)
   }
 
