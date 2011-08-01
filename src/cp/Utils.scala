@@ -98,11 +98,11 @@ object Utils {
           val scalaFunction = "(%s) => %s && %s" format (scalaFunctionParamsString, thisApplication, otherApplication)
 
           val methodString =
-"""def product%d[%s](other: Term%d[%s])(implicit isBoolean: R =:= Boolean): Term%d[%s] = {
+"""def product[%s](other: Term%d[%s])(implicit isBoolean: R =:= Boolean): Term%d[%s] = {
   val (newExpr, newTypes) = Terms.product(this, other)
   Term%d(this.program, newExpr, if (this.scalaFunction == null || other.scalaFunction == null) null else %s, newTypes, this.converter, this.lVars ++ other.lVars)
 }
-""" format (otherArity, otherParamsString, otherArity, otherTermParamsString, productArity, resultTermParamsString, productArity, scalaFunction)
+""" format (otherParamsString, otherArity, otherTermParamsString, productArity, resultTermParamsString, productArity, scalaFunction)
 
           methodString
         }).mkString("\n\n")
