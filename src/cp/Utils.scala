@@ -14,7 +14,9 @@ object Utils {
         val termClassParamTuple = traitArgParams.mkString("(", ",", ")")
         val traitName = "Term%d%s" format (arity, traitParamsString)
         val booleanTraitName = "Term%d%s" format (arity, (traitArgParams ++ Seq("Boolean")).mkString("[", ",", "]"))
+        val intTraitName = "Term%d%s" format (arity, (traitArgParams ++ Seq("Int")).mkString("[", ",", "]"))
         val curriedImplicit2Boolean = "(implicit asBoolean : (R) => Boolean)"
+        val curriedImplicit2Int = "(implicit asInt : (R) => Int)"
         val curriedImplicit2Constraint = "(implicit asConstraint : t2c)"
         val anonFunParams = traitArgParams.zipWithIndex.map{ case (p, i) => "x_%d : %s" format (i, p) }
         val anonFunParamString = anonFunParams.mkString(",")
@@ -26,8 +28,9 @@ object Utils {
   Term%d(this.program, And(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (%s) => this.scalaFunction(%s) && other.scalaFunction(%s), this.types, this.converter, this.lVars ++ other.lVars)""" format (booleanTraitName, curriedImplicit2Boolean, booleanTraitName, arity, anonFunParamString, anonFunArgsString, anonFunArgsString)
         val notMethod = """def unary_!%s : %s = 
   Term%d(this.program, Not(this.expr), if (this.scalaFunction == null) null else (%s) => ! this.scalaFunction(%s), this.types, this.converter, this.lVars)""" format (curriedImplicit2Boolean, booleanTraitName, arity, anonFunParamString, anonFunArgsString)
+        val plusMethod = """def +(other : %s)%s : %s =
+  Term%d(this.program, Plus(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (%s) => this.scalaFunction(%s) + other.scalaFunction(%s), this.types, this.converter, this.lVars ++ other.lVars)""" format (intTraitName, curriedImplicit2Int, intTraitName, arity, anonFunParamString, anonFunArgsString, anonFunArgsString)
         
-        val intTraitName = "Term%d%s" format (arity, (traitArgParams ++ Seq("Int")).mkString("[", ",", "]"))
         val minimizingMethod = 
 """def minimizing(minFunc : %s)%s : MinConstraint%d[%s] = {
   MinConstraint%d[%s](asConstraint(this), minFunc)
@@ -132,13 +135,15 @@ object Utils {
 %s
 
 %s
+
+%s
 }""" format (traitName, termClassParamTuple, "R", arity, traitParams.mkString(","), 
   arity, traitArgParamsString, 
   traitName, booleanTraitName, 
   termClassParamTuple, "R", 
   evaluatorArgs.mkString(","),
   applyParams.mkString(", "), applyArgs.mkString(", "), 
-  indent(orMethod), indent(andMethod), indent(notMethod), indent(minimizingMethod), indent(lazySolveMethod), indent(composeMethods), indent(productMethods))
+  indent(orMethod), indent(andMethod), indent(notMethod), indent(plusMethod), indent(minimizingMethod), indent(lazySolveMethod), indent(composeMethods), indent(productMethods))
         
         termTraitString
       }

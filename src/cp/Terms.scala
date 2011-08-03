@@ -143,6 +143,7 @@ object Terms {
   }
   */
 
+  // TODO trait and object of arity 0 to be generated too
   trait Term0[R] extends Term[Unit,R] with Function0[R] {
     val convertingFunction = converterOf(this).exprSeq2scala0 _
     type t2c = (Term0[R]) => Term0[Boolean]
@@ -150,6 +151,20 @@ object Terms {
     lazy val evaluator : (Seq[Expr]) => R = (s : Seq[Expr]) => scalaFunction()
 
     override def apply() : R = scalaFunction()
+  }
+  
+  object Term0 {
+    def apply[R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedLVars: Serialized, serializedOutputVars : Serialized,                serializedExpr : Serialized, inputVarValues : Seq[Expr], lVarValues : Seq[Expr], lVars : Seq[L[_]], scalaExpr : () => R) = {
+      val (converter, program, expr, types) = Term.processArgs(conv, serializedProg, serializedInputVars, serializedLVars, serializedOutputVars, serializedExpr,                inputVarValues, lVarValues)
+      new Term[Unit,R](program, expr, types, converter, lVars.toSet) with Term0[R] {
+        val scalaFunction = scalaExpr
+      }
+    }
+  
+    def apply[R](program : Program, expr : Expr, scalaExpr : () => R, types : Seq[TypeTree], converter : Converter, lVars: Set[L[_]]) =
+      new Term[Unit,R](program, expr, types, converter, lVars) with Term0[R] {
+        val scalaFunction = scalaExpr
+      }
   }
 
   /** GENERATED CODE: */
@@ -193,6 +208,9 @@ object Terms {
   
     def unary_!(implicit asBoolean : (R) => Boolean) : Term1[T1,Boolean] = 
       Term1(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1) => ! this.scalaFunction(x_0), this.types, this.converter, this.lVars)
+  
+    def +(other : Term1[T1,Int])(implicit asInt : (R) => Int) : Term1[T1,Int] =
+      Term1(this.program, Plus(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1) => this.scalaFunction(x_0) + other.scalaFunction(x_0), this.types, this.converter, this.lVars ++ other.lVars)
   
     def minimizing(minFunc : Term1[T1,Int])(implicit asConstraint : t2c) : MinConstraint1[T1] = {
       MinConstraint1[T1](asConstraint(this), minFunc)
@@ -313,6 +331,9 @@ object Terms {
   
     def unary_!(implicit asBoolean : (R) => Boolean) : Term2[T1,T2,Boolean] = 
       Term2(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1,x_1 : T2) => ! this.scalaFunction(x_0,x_1), this.types, this.converter, this.lVars)
+  
+    def +(other : Term2[T1,T2,Int])(implicit asInt : (R) => Int) : Term2[T1,T2,Int] =
+      Term2(this.program, Plus(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2) => this.scalaFunction(x_0,x_1) + other.scalaFunction(x_0,x_1), this.types, this.converter, this.lVars ++ other.lVars)
   
     def minimizing(minFunc : Term2[T1,T2,Int])(implicit asConstraint : t2c) : MinConstraint2[T1,T2] = {
       MinConstraint2[T1,T2](asConstraint(this), minFunc)
@@ -462,6 +483,9 @@ object Terms {
   
     def unary_!(implicit asBoolean : (R) => Boolean) : Term3[T1,T2,T3,Boolean] = 
       Term3(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3) => ! this.scalaFunction(x_0,x_1,x_2), this.types, this.converter, this.lVars)
+  
+    def +(other : Term3[T1,T2,T3,Int])(implicit asInt : (R) => Int) : Term3[T1,T2,T3,Int] =
+      Term3(this.program, Plus(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3) => this.scalaFunction(x_0,x_1,x_2) + other.scalaFunction(x_0,x_1,x_2), this.types, this.converter, this.lVars ++ other.lVars)
   
     def minimizing(minFunc : Term3[T1,T2,T3,Int])(implicit asConstraint : t2c) : MinConstraint3[T1,T2,T3] = {
       MinConstraint3[T1,T2,T3](asConstraint(this), minFunc)
@@ -630,6 +654,9 @@ object Terms {
   
     def unary_!(implicit asBoolean : (R) => Boolean) : Term4[T1,T2,T3,T4,Boolean] = 
       Term4(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4) => ! this.scalaFunction(x_0,x_1,x_2,x_3), this.types, this.converter, this.lVars)
+  
+    def +(other : Term4[T1,T2,T3,T4,Int])(implicit asInt : (R) => Int) : Term4[T1,T2,T3,T4,Int] =
+      Term4(this.program, Plus(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4) => this.scalaFunction(x_0,x_1,x_2,x_3) + other.scalaFunction(x_0,x_1,x_2,x_3), this.types, this.converter, this.lVars ++ other.lVars)
   
     def minimizing(minFunc : Term4[T1,T2,T3,T4,Int])(implicit asConstraint : t2c) : MinConstraint4[T1,T2,T3,T4] = {
       MinConstraint4[T1,T2,T3,T4](asConstraint(this), minFunc)
@@ -808,6 +835,9 @@ object Terms {
     def unary_!(implicit asBoolean : (R) => Boolean) : Term5[T1,T2,T3,T4,T5,Boolean] = 
       Term5(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5) => ! this.scalaFunction(x_0,x_1,x_2,x_3,x_4), this.types, this.converter, this.lVars)
   
+    def +(other : Term5[T1,T2,T3,T4,T5,Int])(implicit asInt : (R) => Int) : Term5[T1,T2,T3,T4,T5,Int] =
+      Term5(this.program, Plus(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4) + other.scalaFunction(x_0,x_1,x_2,x_3,x_4), this.types, this.converter, this.lVars ++ other.lVars)
+  
     def minimizing(minFunc : Term5[T1,T2,T3,T4,T5,Int])(implicit asConstraint : t2c) : MinConstraint5[T1,T2,T3,T4,T5] = {
       MinConstraint5[T1,T2,T3,T4,T5](asConstraint(this), minFunc)
     }
@@ -984,6 +1014,9 @@ object Terms {
     def unary_!(implicit asBoolean : (R) => Boolean) : Term6[T1,T2,T3,T4,T5,T6,Boolean] = 
       Term6(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6) => ! this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5), this.types, this.converter, this.lVars)
   
+    def +(other : Term6[T1,T2,T3,T4,T5,T6,Int])(implicit asInt : (R) => Int) : Term6[T1,T2,T3,T4,T5,T6,Int] =
+      Term6(this.program, Plus(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5) + other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5), this.types, this.converter, this.lVars ++ other.lVars)
+  
     def minimizing(minFunc : Term6[T1,T2,T3,T4,T5,T6,Int])(implicit asConstraint : t2c) : MinConstraint6[T1,T2,T3,T4,T5,T6] = {
       MinConstraint6[T1,T2,T3,T4,T5,T6](asConstraint(this), minFunc)
     }
@@ -1149,6 +1182,9 @@ object Terms {
     def unary_!(implicit asBoolean : (R) => Boolean) : Term7[T1,T2,T3,T4,T5,T6,T7,Boolean] = 
       Term7(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7) => ! this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6), this.types, this.converter, this.lVars)
   
+    def +(other : Term7[T1,T2,T3,T4,T5,T6,T7,Int])(implicit asInt : (R) => Int) : Term7[T1,T2,T3,T4,T5,T6,T7,Int] =
+      Term7(this.program, Plus(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6) + other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6), this.types, this.converter, this.lVars ++ other.lVars)
+  
     def minimizing(minFunc : Term7[T1,T2,T3,T4,T5,T6,T7,Int])(implicit asConstraint : t2c) : MinConstraint7[T1,T2,T3,T4,T5,T6,T7] = {
       MinConstraint7[T1,T2,T3,T4,T5,T6,T7](asConstraint(this), minFunc)
     }
@@ -1293,6 +1329,9 @@ object Terms {
     def unary_!(implicit asBoolean : (R) => Boolean) : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Boolean] = 
       Term8(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7,x_7 : T8) => ! this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7), this.types, this.converter, this.lVars)
   
+    def +(other : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Int])(implicit asInt : (R) => Int) : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Int] =
+      Term8(this.program, Plus(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7,x_7 : T8) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7) + other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7), this.types, this.converter, this.lVars ++ other.lVars)
+  
     def minimizing(minFunc : Term8[T1,T2,T3,T4,T5,T6,T7,T8,Int])(implicit asConstraint : t2c) : MinConstraint8[T1,T2,T3,T4,T5,T6,T7,T8] = {
       MinConstraint8[T1,T2,T3,T4,T5,T6,T7,T8](asConstraint(this), minFunc)
     }
@@ -1406,6 +1445,9 @@ object Terms {
     def unary_!(implicit asBoolean : (R) => Boolean) : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Boolean] = 
       Term9(this.program, Not(this.expr), if (this.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7,x_7 : T8,x_8 : T9) => ! this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7,x_8), this.types, this.converter, this.lVars)
   
+    def +(other : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Int])(implicit asInt : (R) => Int) : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Int] =
+      Term9(this.program, Plus(this.expr, other.expr), if (this.scalaFunction == null || other.scalaFunction == null) null else (x_0 : T1,x_1 : T2,x_2 : T3,x_3 : T4,x_4 : T5,x_5 : T6,x_6 : T7,x_7 : T8,x_8 : T9) => this.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7,x_8) + other.scalaFunction(x_0,x_1,x_2,x_3,x_4,x_5,x_6,x_7,x_8), this.types, this.converter, this.lVars ++ other.lVars)
+  
     def minimizing(minFunc : Term9[T1,T2,T3,T4,T5,T6,T7,T8,T9,Int])(implicit asConstraint : t2c) : MinConstraint9[T1,T2,T3,T4,T5,T6,T7,T8,T9] = {
       MinConstraint9[T1,T2,T3,T4,T5,T6,T7,T8,T9](asConstraint(this), minFunc)
     }
@@ -1463,7 +1505,7 @@ object Terms {
   
     
   }
-  
+
   object Term1 {
     def apply[T1,R](conv : Converter, serializedProg : Serialized, serializedInputVars: Serialized, serializedLVars: Serialized, serializedOutputVars : Serialized, serializedExpr : Serialized, inputVarValues : Seq[Expr], lVarValues : Seq[Expr], lVars : Seq[L[_]], scalaExpr : (T1) => R) = {
       val (converter, program, expr, types) = Term.processArgs(conv, serializedProg, serializedInputVars, serializedLVars, serializedOutputVars, serializedExpr, inputVarValues, lVarValues)
