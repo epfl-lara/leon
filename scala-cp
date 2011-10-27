@@ -1,0 +1,22 @@
+#!/bin/bash
+FUNCHECKCLASSPATH="/home/psuter/git-guru/funcheck/project/boot/scala-2.9.0-1/lib/scala-library.jar:/home/psuter/git-guru/funcheck/project/boot/scala-2.9.0-1/lib/scala-compiler.jar:/home/psuter/git-guru/funcheck/bin/purescala/purescala-definitions_2.9.0-1-1.0.jar:/home/psuter/git-guru/funcheck/bin/funcheck/funcheck-plugin_2.9.0-1-1.0.jar:/home/psuter/git-guru/funcheck/lib/z3.jar"
+
+FUNCHECKCLASSPATH=${FUNCHECKCLASSPATH}:"/localhome/psuter/scala/scala-29/lib/jline.jar"
+
+for f in "/home/psuter/git-guru/funcheck/bin/multisets-lib/multiset-placeholder-library_2.9.0-1-1.0.jar" "/home/psuter/git-guru/funcheck/bin/multisets/multiset-solver_2.9.0-1-1.0.jar" "/home/psuter/git-guru/funcheck/bin/orderedsets/ordered-sets-solver_2.9.0-1-1.0.jar" "/home/psuter/git-guru/funcheck/bin/setconstraints/type-inference-with-set-constraints_2.9.0-1-1.0.jar"; do
+  if [ -e ${f} ]
+  then
+    FUNCHECKCLASSPATH=${FUNCHECKCLASSPATH}:${f}
+  fi
+done
+
+SCALACCLASSPATH="/home/psuter/git-guru/funcheck/bin/multisets-lib/multiset-placeholder-library_2.9.0-1-1.0.jar:/home/psuter/git-guru/funcheck/bin/funcheck/funcheck-plugin_2.9.0-1-1.0.jar:/home/psuter/git-guru/funcheck/bin/purescala/purescala-definitions_2.9.0-1-1.0.jar:/home/psuter/git-guru/funcheck/bin/cp/constraint-programming-plugin_2.9.0-1-1.0.jar"
+
+mkdir -p out
+
+LD_LIBRARY_PATH=/home/psuter/git-guru/funcheck/lib-bin \
+java -Xmx1024M \
+    -Dscala.home=/home/psuter/git-guru/funcheck/project/boot/scala-2.9.0-1/ \
+    -Djline.terminal=scala.tools.jline.UnixTerminal \
+    -classpath ${FUNCHECKCLASSPATH} \
+  scala.tools.nsc.MainGenericRunner -Xplugin:/home/psuter/git-guru/funcheck/bin/cp/constraint-programming-plugin_2.9.0-1-1.0.jar -classpath ${SCALACCLASSPATH} $@
