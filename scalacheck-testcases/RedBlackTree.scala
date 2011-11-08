@@ -100,16 +100,26 @@ object RedBlackTree {
   def main(args: Array[String]): Unit = {
     val iter = (new Iterator[Tree] {
       private var counter = 0
-      def hasNext : Boolean = true || counter < 10
+      def hasNext : Boolean = counter < 1000
       def next : Tree = { counter += 1; genTree.sample.get }
     })
 
-    val s = scala.collection.mutable.Set[Int]()
+    val sizes = scala.collection.mutable.Map[Int, Int]()
+    var totalCount = 0
+    var rbtCount = 0
 
-    for (t <- iter if isRedBlackTree(t)) {
+    for (t <- iter) {
+      totalCount += 1
+      if (isRedBlackTree(t)) {
+        rbtCount += 1
+        val s = size(t)
+        sizes += ((s, sizes.getOrElse(s, 0) + 1))
+      }
       //println("Here is a tree : " + t)
-      s += (size(t))
-      println(s)
     }
+    println("rbt count: " + rbtCount)
+    println("total count: " + totalCount)
+    println("ratio of red-black trees: " + (rbtCount.toDouble / totalCount))
+    println("unique sizes of generated trees: " + sizes)
   }
 }
