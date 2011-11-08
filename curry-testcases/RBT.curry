@@ -42,4 +42,5 @@ isRBT t = (blackBalanced t) && (redNodesHaveBlackChildren t)
 
 valuesWithin :: Tree -> Int -> Bool
 valuesWithin Empty _ = True
-valuesWithin (Node _ v l r) bound = 0 <= v && v <= bound && (valuesWithin l bound) && (valuesWithin r bound)
+valuesWithin (Node _ v l r) bound =
+  0 <= v && v <= bound && (valuesWithin l bound) && (valuesWithin r bound)
