@@ -159,15 +159,31 @@ object RedBlackTreeMethods {
     println("Initial trees:")
     println(someTrees.map(treeString(_)).mkString("\n---------\n"))
 
+    val beforeAdd = System.currentTimeMillis
     val treesWith42 = someTrees.map(addDeclarative(42, _))
+    val afterAdd  = System.currentTimeMillis
+
+
     println("New trees with added element:")
     println(treesWith42.map(treeString(_)).mkString("\n---------\n"))
 
+    val beforeRemove = System.currentTimeMillis
     val treesWithout42 = treesWith42.map(removeDeclarative(42, _))
+    val afterRemove  = System.currentTimeMillis
+
     println("New trees with removed element:")
     println(treesWithout42.map(treeString(_)).mkString("\n---------\n"))
 
     Stopwatch.printSummary
+
+    println("Tree size : " + bound + " (running on " + nbTrees + " trees)")
+    val addTime = (afterAdd - beforeAdd).toDouble / (nbTrees * 1000.0d)
+    val remTime = (afterRemove - beforeRemove).toDouble / (nbTrees * 1000.0d)
+    println("Adding took   (on avg.) : " + addTime + " seconds.")
+    println("Removing took (on avg.) : " + remTime + " seconds.")
+
+    // LaTeX-friendly line
+    println("%2d & %1.2f & %1.2f".format(bound, addTime, remTime))
   }
 
   /** Printing trees */
