@@ -3,7 +3,7 @@ import cp.Terms._
 import cp.LTrees._
 
 // This file contains examples from the paper:
-//     A.S. Köksal, V. Kuncak, P.Suter, "Constraints as Control", POPL 2012
+//     A.S. Köksal, V. Kuncak, P. Suter, "Constraints as Control", POPL 2012
 //   as well as some more.
 // The file should be compiled and run with Scala 2.9+ along with the Kaplan
 // plugin.
