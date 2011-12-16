@@ -1,3 +1,5 @@
+Yay! We moved to Git!
+
 To clean and compile everything:
 
 > sbt clean package all
