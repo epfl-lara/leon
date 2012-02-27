@@ -25,7 +25,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   private val z3cfg = new Z3Config(
     "MODEL" -> true,
     "MBQI" -> false,
-    "SOFT_TIMEOUT" -> 100,
+    // "SOFT_TIMEOUT" -> 100,
     "TYPE_CHECK" -> true,
     "WELL_SORTED_CHECK" -> true
     )
