@@ -135,8 +135,8 @@ class Context(formula: Formula, reporter: Reporter) {
     z3.checkAndGetModel() match {
       case (None, _) => Z3Failure(new Exception("There was an error with Z3."))
       case (Some(true), model) => {
-        def boolAssigns(sym: Symbol) = model.evalAsBool(sym).getOrElse(false)
-        def intAssigns(sym: Symbol) = model.evalAsInt(sym).getOrElse(0)
+        def boolAssigns(sym: Symbol) = model.evalAs[Boolean](sym).getOrElse(false)
+        def intAssigns(sym: Symbol) = model.evalAs[Int](sym).getOrElse(0)
         def delete() {model.delete}
         Z3Sat(delete, boolAssigns, intAssigns)
       }

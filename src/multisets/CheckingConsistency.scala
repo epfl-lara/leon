@@ -325,7 +325,7 @@ object CheckingConsistency {
 
     val out = res match {
       case Some(false) => (false, Map.empty[String,Int]) 
-      case Some(true) => (true, Map.empty[String,Int] ++ varMap.map(p => (p._1, model.evalAsInt(p._2).get)))
+      case Some(true) => (true, Map.empty[String,Int] ++ varMap.map(p => (p._1, model.evalAs[Int](p._2).get)))
       case None => error("There was an error with Z3.")
     }
     out
