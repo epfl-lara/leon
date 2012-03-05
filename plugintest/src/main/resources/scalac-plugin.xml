@@ -1,4 +1,0 @@
-<plugin>
-    <name>plugintest</name>
-    <classname>plugintest.TestPlugin</classname>
-</plugin>

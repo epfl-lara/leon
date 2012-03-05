@@ -1,1 +1,0 @@
-./scalac-funcheck -P:funcheck:nodefaults -P:funcheck:extensions=multisets.Main testcases/MultiExample.scala
