@@ -43,16 +43,9 @@ object Leon extends Build {
     }
   }
 
-  // private val nameKey = SettingKey[String]("name", "Name of the project")
-  // private val scalaVersionKey = SettingKey[String]("scalaVersion", "Scala Version")
-  // private val versionKey = SettingKey[String]("version", "Version")
-
   object LeonProject {
     val settings = Seq(
-      scriptTask /*,
-      nameKey := "Scala Readability",
-      scalaVersionKey := "2.9.1",
-      versionKey := "1.0.0" */
+      scriptTask
     )
   }
 
