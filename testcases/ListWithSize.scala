@@ -1,6 +1,6 @@
 import scala.collection.immutable.Set
-import funcheck.Annotations._
-import funcheck.Utils._
+import leon.Annotations._
+import leon.Utils._
 
 object ListWithSize {
     sealed abstract class List

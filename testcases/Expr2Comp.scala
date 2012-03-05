@@ -1,5 +1,5 @@
-import funcheck.Utils._
-import funcheck.Annotations._
+import leon.Utils._
+import leon.Annotations._
 
 object ExprComp {
   // Lists
@@ -111,7 +111,7 @@ object ExprComp {
 
   def main(args : Array[String]) = {
     val e1 = Binary(Constant(100), Times(), Binary(Constant(3), Plus(), Constant(5)))
-    // thanks to funcheck:
+    // thanks to Leon:
     val e = Binary(Binary(Binary(Binary(Constant(75), Plus(), Constant(69)), Times(), Binary(Constant(73), Plus(), Constant(71))), Times(), Binary(Binary(Constant(70), Plus(), Constant(77)), Times(), Binary(Constant(68), Plus(), Constant(66)))), Plus(), Binary(Constant(1), Plus(), Binary(Constant(0), Times(), Binary(Constant(65), Plus(), Constant(72)))))
     val acc = EProgram()
     val vs = Cons(42,Nil())

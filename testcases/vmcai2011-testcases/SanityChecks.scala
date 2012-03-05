@@ -2,7 +2,7 @@ import scala.collection.immutable.Set
 
 object SanityChecks {
   // These are just to provide some "uninterpreted function symbols"
-  // Use the option -P:funcheck:tolerant to avoid warnings about it.
+  // Use the option -P:leon:tolerant to avoid warnings about it.
   def f1(x: Int) : Int =           { throw new Exception("Not implemented") }
   def f2(s: Set[Int]) : Set[Int] = { throw new Exception("Not implemented") }
   def f3(x: Int) : Set[Int] =      { throw new Exception("Not implemented") }

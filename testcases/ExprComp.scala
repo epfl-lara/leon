@@ -1,5 +1,5 @@
-import funcheck.Utils._
-import funcheck.Annotations._
+import leon.Utils._
+import leon.Annotations._
 
 object ExprComp {
 

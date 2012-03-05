@@ -9,7 +9,7 @@ object IntOperations {
 
     // The body of the following function is not in PureScala
     // It will still get extracted, with "unknown body".
-    // To disable the warnings, run with -P:funcheck:tolerant
+    // To disable the warnings, run with -P:leon:tolerant
     // (if it has a postcondition, you'll still get warnings
     // about the impossibility of verifying them)
     def factorial(v: Int) : Int = {

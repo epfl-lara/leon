@@ -1,6 +1,6 @@
 import scala.collection.immutable.Set
-import funcheck.Annotations._
-import funcheck.Utils._
+import leon.Annotations._
+import leon.Utils._
 
 // Ongoing work: take Chapter 2 of Daniel Jackson's book,
 // adapt the addressbook example from there.

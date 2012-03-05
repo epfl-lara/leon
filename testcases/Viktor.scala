@@ -1,4 +1,4 @@
-import funcheck.Utils._
+import leon.Utils._
 
 object Viktor {
   def transitive(x: Boolean, y: Boolean, z: Boolean) : Boolean = {

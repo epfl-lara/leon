@@ -1,6 +1,6 @@
 import scala.collection.immutable.Set
-import funcheck.Utils._
-import funcheck.Annotations._
+import leon.Utils._
+import leon.Annotations._
 
 object VerySimple {
     sealed abstract class List

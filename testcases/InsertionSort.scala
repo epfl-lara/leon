@@ -1,5 +1,5 @@
 import scala.collection.immutable.Set
-import funcheck.Utils._
+import leon.Utils._
 
 object InsertionSort {
   sealed abstract class List

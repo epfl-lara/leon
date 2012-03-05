@@ -4,13 +4,13 @@ version := "2.0"
 
 organization := "ch.epfl.lara"
 
-scalaVersion := "2.9.0-1"
+scalaVersion := "2.9.1-1"
 
 scalacOptions += "-deprecation"
 
 scalacOptions += "-unchecked"
 
-libraryDependencies += "org.scala-lang" % "scala-compiler" % "2.9.0-1"
+libraryDependencies += "org.scala-lang" % "scala-compiler" % "2.9.1-1"
 
 unmanagedBase <<= baseDirectory { base => base / "unmanaged" }
 
