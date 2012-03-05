@@ -5,12 +5,12 @@
 #
 # The creator of this repository is psuter.
 
-thisrepo="projects/leon-kaplan"
+thisrepo="projects/leon-2.0"
 
 tail -2 "$0" | ssh git@laragit.epfl.ch setperms ${thisrepo}
 
 exit $_
 
 # **Do not** add new lines after the following two!
-WRITERS kuncak psuter koeksal rblanc 
-READERS megard @lara
+WRITERS kuncak psuter rblanc 
+READERS @lara

@@ -1,2 +1,7 @@
-bin
 *.swp
+bin
+leon
+project/boot
+project/build
+project/target
+target
