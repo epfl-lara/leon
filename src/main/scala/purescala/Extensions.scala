@@ -90,16 +90,11 @@ object Extensions {
     }
     // these extensions are always loaded, unless specified otherwise
     val defaultExtensions: Seq[Extension] = if(Settings.runDefaultExtensions) {
-      val z3s : Solver = (if(Settings.useFairInstantiator) {
-        (new FairZ3Solver(extensionsReporter))
-      } else {
-        (new Z3Solver(extensionsReporter))
-      })
-      z3s :: Nil
+      val z3 : Solver = new FairZ3Solver(extensionsReporter)
+      z3 :: Nil
     } else {
       Nil
     }
-
 
     allLoaded = defaultExtensions ++ loaded
     analysisExtensions = allLoaded.filter(_.isInstanceOf[Analyser]).map(_.asInstanceOf[Analyser])
