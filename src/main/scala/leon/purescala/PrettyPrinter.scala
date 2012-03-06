@@ -135,6 +135,7 @@ object PrettyPrinter {
     case Minus(l,r) => ppBinary(sb, l, r, " - ", lvl)
     case Times(l,r) => ppBinary(sb, l, r, " * ", lvl)
     case Division(l,r) => ppBinary(sb, l, r, " / ", lvl)
+    case Modulo(l,r) => ppBinary(sb, l, r, " % ", lvl)
     case LessThan(l,r) => ppBinary(sb, l, r, " < ", lvl)
     case GreaterThan(l,r) => ppBinary(sb, l, r, " > ", lvl)
     case LessEquals(l,r) => ppBinary(sb, l, r, " \u2264 ", lvl)      // \leq

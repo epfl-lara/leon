@@ -903,6 +903,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         case Minus(l, r) => if(USEBV) z3.mkBVSub(rec(l), rec(r)) else z3.mkSub(rec(l), rec(r))
         case Times(l, r) => if(USEBV) z3.mkBVMul(rec(l), rec(r)) else z3.mkMul(rec(l), rec(r))
         case Division(l, r) => if(USEBV) z3.mkBVSdiv(rec(l), rec(r)) else z3.mkDiv(rec(l), rec(r))
+        case Modulo(l, r) => if(USEBV) sys.error("I don't know what to do here!") else z3.mkMod(rec(l), rec(r))
         case UMinus(e) => if(USEBV) z3.mkBVNeg(rec(e)) else z3.mkUnaryMinus(rec(e))
         case LessThan(l, r) => if(USEBV) z3.mkBVSlt(rec(l), rec(r)) else z3.mkLT(rec(l), rec(r))
         case LessEquals(l, r) => if(USEBV) z3.mkBVSle(rec(l), rec(r)) else z3.mkLE(rec(l), rec(r))
@@ -1111,6 +1112,10 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
                 case OpIDiv => {
                   assert(argsSize == 2)
                   Division(rargs(0), rargs(1))
+                }
+                case OpMod => {
+                  assert(argsSize == 2)
+                  Modulo(rargs(0), rargs(1))
                 }
                 case OpAsArray => {
                   assert(argsSize == 0)

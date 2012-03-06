@@ -261,6 +261,9 @@ object Trees {
   case class Division(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     val fixedType = Int32Type
   }
+  case class Modulo(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+    val fixedType = Int32Type
+  }
   case class LessThan(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     val fixedType = BooleanType
   }
@@ -367,6 +370,7 @@ object Trees {
       case Minus(t1,t2) => Some((t1,t2,Minus))
       case Times(t1,t2) => Some((t1,t2,Times))
       case Division(t1,t2) => Some((t1,t2,Division))
+      case Modulo(t1,t2) => Some((t1,t2,Modulo))
       case LessThan(t1,t2) => Some((t1,t2,LessThan))
       case GreaterThan(t1,t2) => Some((t1,t2,GreaterThan))
       case LessEquals(t1,t2) => Some((t1,t2,LessEquals))

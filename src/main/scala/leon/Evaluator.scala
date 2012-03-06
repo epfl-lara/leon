@@ -167,6 +167,10 @@ object Evaluator {
           case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 / i2)
           case (le,re) => throw TypeErrorEx(TypeError(le, Int32Type))
         }
+        case Modulo(l,r) => (rec(ctx,l), rec(ctx,r)) match {
+          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 % i2)
+          case (le,re) => throw TypeErrorEx(TypeError(le, Int32Type))
+        }
         case LessThan(l,r) => (rec(ctx,l), rec(ctx,r)) match {
           case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 < i2)
           case (le,re) => throw TypeErrorEx(TypeError(le, Int32Type))

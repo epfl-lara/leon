@@ -315,6 +315,13 @@ trait Extractors {
       }
     }
 
+    object ExMod {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n == nme.MOD) => Some((lhs,rhs))
+        case _ => None
+      }
+    }
+
     object ExLocalCall {
       def unapply(tree: Apply): Option[(Symbol,String,List[Tree])] = tree match {
         case a @ Apply(Select(This(_), nme), args) => Some((a.symbol, nme.toString, args))
