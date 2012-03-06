@@ -402,6 +402,7 @@ trait CodeExtraction extends Extractors {
       case ExMinus(l, r) => Minus(rec(l), rec(r)).setType(Int32Type)
       case ExTimes(l, r) => Times(rec(l), rec(r)).setType(Int32Type)
       case ExDiv(l, r) => Division(rec(l), rec(r)).setType(Int32Type)
+      case ExMod(l, r) => Modulo(rec(l), rec(r)).setType(Int32Type)
       case ExEquals(l, r) => {
         val rl = rec(l)
         val rr = rec(r)
