@@ -34,7 +34,7 @@ object Leon extends Build {
         fw.write(scalaHomeDir)
         fw.write("\" -Dscala.usejavacp=true ")
         fw.write("scala.tools.nsc.MainGenericRunner -classpath ${SCALACLASSPATH} ")
-        fw.write("leon.plugin.Main $@" + nl)
+        fw.write("leon.Main $@" + nl)
         fw.close
         scriptFile.setExecutable(true)
       } catch {

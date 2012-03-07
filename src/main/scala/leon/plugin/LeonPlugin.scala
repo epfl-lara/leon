@@ -19,28 +19,28 @@ class LeonPlugin(val global: Global, val actionAfterExtraction : Option[Program=
 
   /** The help message displaying the options for that plugin. */
   override val optionsHelp: Option[String] = Some(
-    "  -P:leon:uniqid             When pretty-printing purescala trees, show identifiers IDs" + "\n" +
-    "  -P:leon:with-code          Allows the compiler to keep running after the static analysis" + "\n" +
-    "  -P:leon:parse              Checks only whether the program is valid PureScala" + "\n" +
-    "  -P:leon:extensions=ex1:... Specifies a list of qualified class names of extensions to be loaded" + "\n" +
-    "  -P:leon:nodefaults         Runs only the analyses provided by the extensions" + "\n" +
-    "  -P:leon:functions=fun1:... Only generates verification conditions for the specified functions" + "\n" +
-    "  -P:leon:unrolling=[0,1,2]  Unrolling depth for recursive functions" + "\n" + 
-    "  -P:leon:axioms             Generate simple forall axioms for recursive functions when possible" + "\n" + 
-    "  -P:leon:tolerant           Silently extracts non-pure function bodies as ''unknown''" + "\n" +
-    "  -P:leon:bapa               Use BAPA Z3 extension (incompatible with many other things)" + "\n" +
-    "  -P:leon:impure             Generate testcases only for impure functions" + "\n" +
-    "  -P:leon:testcases=[1,2]    Number of testcases to generate per function" + "\n" +
-    "  -P:leon:testbounds=l:u     Lower and upper bounds for integers in recursive datatypes" + "\n" +
-    "  -P:leon:timeout=N          Sets a timeout of N seconds" + "\n" +
-    "  -P:leon:XP                 Enable weird transformations and other bug-producing features" + "\n" +
-    "  -P:leon:BV                 Use bit-vectors for integers" + "\n" +
-    "  -P:leon:prune              Use additional SMT queries to rule out some unrollings" + "\n" +
-    "  -P:leon:cores              Use UNSAT cores in the unrolling/refinement step" + "\n" +
-    "  -P:leon:quickcheck         Use QuickCheck-like random search" + "\n" +
-    "  -P:leon:parallel           Run all solvers in parallel" + "\n" +
-    "  -P:leon:templates          Use new ``FunctionTemplate'' technique" + "\n" +
-    "  -P:leon:noLuckyTests       Do not perform additional tests to potentially find models early"
+    "  --uniqid             When pretty-printing purescala trees, show identifiers IDs" + "\n" +
+    "  --with-code          Allows the compiler to keep running after the static analysis" + "\n" +
+    "  --parse              Checks only whether the program is valid PureScala" + "\n" +
+    "  --extensions=ex1:... Specifies a list of qualified class names of extensions to be loaded" + "\n" +
+    "  --nodefaults         Runs only the analyses provided by the extensions" + "\n" +
+    "  --functions=fun1:... Only generates verification conditions for the specified functions" + "\n" +
+    "  --unrolling=[0,1,2]  Unrolling depth for recursive functions" + "\n" + 
+    "  --axioms             Generate simple forall axioms for recursive functions when possible" + "\n" + 
+    "  --tolerant           Silently extracts non-pure function bodies as ''unknown''" + "\n" +
+    "  --bapa               Use BAPA Z3 extension (incompatible with many other things)" + "\n" +
+    "  --impure             Generate testcases only for impure functions" + "\n" +
+    "  --testcases=[1,2]    Number of testcases to generate per function" + "\n" +
+    "  --testbounds=l:u     Lower and upper bounds for integers in recursive datatypes" + "\n" +
+    "  --timeout=N          Sets a timeout of N seconds" + "\n" +
+    "  --XP                 Enable weird transformations and other bug-producing features" + "\n" +
+    "  --BV                 Use bit-vectors for integers" + "\n" +
+    "  --prune              Use additional SMT queries to rule out some unrollings" + "\n" +
+    "  --cores              Use UNSAT cores in the unrolling/refinement step" + "\n" +
+    "  --quickcheck         Use QuickCheck-like random search" + "\n" +
+    "  --parallel           Run all solvers in parallel" + "\n" +
+    "  --templates          Use new ``FunctionTemplate'' technique" + "\n" +
+    "  --noLuckyTests       Do not perform additional tests to potentially find models early"
   )
 
   /** Processes the command-line options. */
@@ -70,7 +70,7 @@ class LeonPlugin(val global: Global, val actionAfterExtraction : Option[Program=
         case s if s.startsWith("testbounds=") => leon.Settings.testBounds = try { val l = splitList(s.substring("testBounds=".length, s.length)).map(_.toInt); if (l.size != 2) (0, 3) else (l(0), l(1)) } catch { case _ => (0, 3) }
         case s if s.startsWith("timeout=") => leon.Settings.solverTimeout = try { Some(s.substring("timeout=".length, s.length).toInt) } catch { case _ => None }
         case s if s.startsWith("testcases=") =>  leon.Settings.nbTestcases = try { s.substring("testcases=".length, s.length).toInt } catch { case _ => 1 }
-        case _ => error("Invalid option: " + option)
+        case _ => error("Invalid option: " + option + "\nValid options are:\n" + optionsHelp.get)
       }
     }
   }

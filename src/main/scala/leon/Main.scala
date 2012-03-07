@@ -1,7 +1,6 @@
 package leon
-package plugin
 
-import scala.tools.nsc.{Global,Settings,SubComponent,CompilerCommand}
+import scala.tools.nsc.{Global,Settings=>NSCSettings,SubComponent,CompilerCommand}
 
 import purescala.Definitions.Program
 
@@ -26,7 +25,7 @@ object Main {
   }
 
   def run(args: Array[String], reporter: Reporter = new DefaultReporter, classPath : Option[Seq[String]] = None) : Unit = {
-    val settings = new Settings
+    val settings = new NSCSettings
     classPath.foreach(s => settings.classpath.tryToSet(s.toList))
     runWithSettings(args, settings, s => reporter.info(s), Some(p => defaultAction(p, reporter)))
   }
@@ -36,7 +35,7 @@ object Main {
     analysis.analyse
   }
 
-  private def runWithSettings(args : Array[String], settings : Settings, printerFunction : String=>Unit, actionOnProgram : Option[Program=>Unit] = None) : Unit = {
+  private def runWithSettings(args : Array[String], settings : NSCSettings, printerFunction : String=>Unit, actionOnProgram : Option[Program=>Unit] = None) : Unit = {
     val (leonOptions, nonLeonOptions) = args.toList.partition(_.startsWith("--"))
     val command = new CompilerCommand(nonLeonOptions, settings) {
       override val cmdName = "leon"
@@ -58,8 +57,8 @@ object Main {
 
 /** This class is a compiler that will be used for running the plugin in
  * standalone mode. Original version courtesy of D. Zufferey. */
-class PluginRunner(settings : Settings, reportingFunction : String => Unit, actionOnProgram : Option[Program=>Unit]) extends Global(settings, new SimpleReporter(settings, reportingFunction)) {
-  val leonPlugin = new LeonPlugin(this, actionOnProgram)
+class PluginRunner(settings : NSCSettings, reportingFunction : String => Unit, actionOnProgram : Option[Program=>Unit]) extends Global(settings, new plugin.SimpleReporter(settings, reportingFunction)) {
+  val leonPlugin = new plugin.LeonPlugin(this, actionOnProgram)
 
   protected def myAddToPhasesSet(sub : SubComponent, descr : String) : Unit = {
     phasesSet += sub
