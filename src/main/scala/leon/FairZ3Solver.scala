@@ -74,11 +74,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     prepareSorts
     prepareFunctions
 
-    unrollingBank = if(Settings.useTemplates) {
-      new NewUnrollingBank
-    } else {
-      new UnrollingBank
-    }
+    unrollingBank = new UnrollingBank
     blockingSet = Set.empty
     toCheckAgainstModels = BooleanLiteral(true)
     varsInVC = Set.empty
@@ -1144,193 +1140,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     rec(tree, expectedType)
   }
 
-  // This remembers everything that was unrolled, which literal is blocking
-  // which calls, etc.
-  class UnrollingBank {
-    private val everythingEverUnrolled : MutableSet[FunctionInvocation] = MutableSet.empty
-
-    // stores the invocations that boolean literals are guarding.
-    private val blocked : MutableMap[(Identifier,Boolean),Set[FunctionInvocation]] = MutableMap.empty
-    
-    // Returns whether some invocations were actually blocked in the end.
-    private def registerBlocked(blockingAtom : Identifier, polarity : Boolean, invocations : Set[FunctionInvocation]) : Boolean = {
-      val filtered = invocations.filter(i => {
-        val FunctionInvocation(fd, _) = i
-        if(axiomatizedFunctions(fd)) {
-          reporter.info("I'm not registering " + i + " as blocked because it's axiomatized.")
-          false
-        } else {
-          true
-        }
-      })
-
-      val pair = (blockingAtom, polarity)
-      val alreadyBlocked = blocked.get(pair)
-      alreadyBlocked match {
-        case None => blocked(pair) = filtered
-        case Some(prev) => blocked(pair) = prev ++ filtered
-      }
-
-      !filtered.isEmpty
-    }
-
-    private def wasUnrolledBefore(functionInvocation : FunctionInvocation) : Boolean = {
-      everythingEverUnrolled(functionInvocation)
-    }
-
-    private def registerAsUnrolled(functionInvocation : FunctionInvocation) : Unit = {
-      everythingEverUnrolled += functionInvocation
-    }
-
-    def initialUnrolling(formula : Expr) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
-      val (e,s,ss) = closeUnrollings(formula)
-      (e +: s, ss)
-    }
-
-    private def closeUnrollings(formula : Expr) : (Expr, Seq[Expr], Seq[(Identifier,Boolean)]) = {
-      var (basis, clauses, ite2Bools) = clausifyITE(formula)
-
-      var unrolledNow : Set[FunctionInvocation] = Set.empty
-      var stillToUnroll : Set[FunctionInvocation] = Set.empty
-      var treatedClauses : List[Expr] = Nil
-      var blockers : List[(Identifier,Boolean)] = Nil
-
-      stillToUnroll = stillToUnroll ++ topLevelFunctionCallsOf(basis, axiomatizedFunctions)
-      do {
-        // We go through each clause and figure out what must be enrolled and
-        // what must be blocked. We register everything.
-        for(clause <- clauses) {
-          clause match {
-            case Iff(Variable(_), cond) => {
-              stillToUnroll = stillToUnroll ++ topLevelFunctionCallsOf(cond, axiomatizedFunctions)
-            }
-            case Implies(v @ Variable(id), then) => {
-              val calls = topLevelFunctionCallsOf(then, axiomatizedFunctions)
-              if(!calls.isEmpty) {
-                assert(!blocked.isDefinedAt((id,true)))
-                if(registerBlocked(id, true, calls)) //blocked((id,true)) = calls
-                  blockers = (id,true) :: blockers
-              }
-            }
-            case Implies(Not(v @ Variable(id)), elze) => {
-              val calls = topLevelFunctionCallsOf(elze, axiomatizedFunctions)
-              if(!calls.isEmpty) {
-                assert(!blocked.isDefinedAt((id,false)))
-                if(registerBlocked(id, false, calls)) //blocked((id,false)) = calls
-                  blockers = (id,false) :: blockers
-              }
-            }
-            case _ => scala.sys.error("Who added this as a clause? " + clause)
-          }
-          treatedClauses = clause :: treatedClauses
-        }
-
-        clauses = Nil
-
-        while(!stillToUnroll.isEmpty) {
-          val copy = stillToUnroll
-          stillToUnroll = Set.empty
-
-          for(stu <- (copy -- unrolledNow) if !wasUnrolledBefore(stu)) {
-            // println("unrolling " + stu)
-            val unrolled : Seq[Expr] = unroll(stu) // that's between 0 and two formulas
-            registerAsUnrolled(stu)
-            unrolledNow = unrolledNow + stu
-            
-            for(formula <- unrolled) {
-              val (basis2, clauses2, _) = clausifyITE(formula)
-              stillToUnroll = stillToUnroll ++ topLevelFunctionCallsOf(basis2, axiomatizedFunctions)
-              clauses = clauses2 ::: clauses
-              treatedClauses = basis2 :: treatedClauses
-            }
-          }
-        }
-        
-      } while(!clauses.isEmpty)
-
-      (basis, treatedClauses.reverse, blockers.reverse)
-    }
-
-    // takes in a conjunction and returns a new conjunction, where all
-    // non-recursive function calls are "defined" and "contracted"
-    // NEVER USED !!!
-    /*
-    def expandAllNonRecursive(exprs: List[Expr]) : List[Expr] = {
-      val todo : MutableSet[FunctionInvocation] = MutableSet.empty
-      val todo2 : MutableSet[FunctionInvocation] = MutableSet.empty
-      var resulting : List[Expr] = Nil
-
-      for(expr <- exprs) {
-        todo ++= allNonRecursiveFunctionCallsOf(expr, program)
-        resulting = expr :: resulting
-      }
-
-      while(!todo.isEmpty) {
-        todo2.clear
-        for(fi <- todo) if(!wasUnrolledBefore(fi)) {
-          registerAsUnrolled(fi)
-          val ur = unroll(fi)
-          resulting = ur ::: resulting
-          for(u <- ur) {
-            todo2 ++= allNonRecursiveFunctionCallsOf(u, program)
-          }
-        }
-        todo.clear
-        todo ++= todo2
-      }
-
-      resulting
-    }*/
-
-    // Returns between 0 and 2 tautologies with respect to the interpretation of
-    // the function and its postcondition.
-    private def unroll(functionInvocation: FunctionInvocation) : List[Expr] = {
-      val FunctionInvocation(fd, args) = functionInvocation
-      val postExpr = if(fd.hasPostcondition) {
-        val post = expandLets(matchToIfThenElse(fd.postcondition.get))
-        val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*) + (ResultVariable() -> functionInvocation)
-        val newBody = replace(substMap, post)
-        List(newBody)
-      } else Nil
-    
-      val bodyExpr = if(fd.hasBody) {
-        val body = expandLets(matchToIfThenElse(fd.body.get))
-        val substMap = Map[Expr,Expr]((fd.args.map(_.toVariable) zip args) : _*)
-        val newBody = replace(substMap, body)
-        List(Equals(functionInvocation, newBody))
-      } else Nil
-
-      postExpr ::: bodyExpr
-    }
-
-    // if polarity == true, means that we used to have !id in the blocking set,
-    // and that now it's gone. As a result, we need to unroll everything that
-    // id is guarding. Similarly for polarity == false
-    def unlock(id: Identifier, polarity: Boolean) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
-      if(!blocked.isDefinedAt((id,polarity))) {
-        (Seq.empty,Seq.empty)
-      } else {
-        var newBlockers : Set[(Identifier,Boolean)] = Set.empty
-        var newClauses : List[Expr] = Nil
-
-        val blockedSet = blocked((id,polarity))
-
-        for(functionInvocation <- blockedSet) {
-          // TODO this is probably where the unrolling of the recursive call
-          // should actually occur, rather than delegating that to
-          // closeUnrollings.
-          // reporter.info("Unlocking : " + functionInvocation)
-          val (_, clauses, blockers) = closeUnrollings(functionInvocation)
-          newClauses = newClauses ++ clauses
-          newBlockers = newBlockers ++ blockers
-        }
-
-        (newClauses, newBlockers.toSeq)
-      }
-    }
-  }
-
-  class NewUnrollingBank extends UnrollingBank {
+  class UnrollingBank { 
     private val blockMap : MutableMap[(Identifier,Boolean),Set[FunctionInvocation]] = MutableMap.empty
     private def registerBlocked(id: Identifier, pol: Boolean, fi: FunctionInvocation) : Boolean = 
       registerBlocked(id,pol,Set(fi))
@@ -1374,7 +1184,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     // This is called just once, for the "initial unrolling".  FIXME: TODO:
     // Wouldn't it be better/more uniform to pretend the initial formula is a
     // function and generate a template for it?
-    override def initialUnrolling(formula : Expr) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
+    def initialUnrolling(formula : Expr) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
       val fi = functionCallsOf(formula)
       if(fi.isEmpty) {
         (Seq(formula), Seq.empty)
@@ -1387,7 +1197,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       }
     }
 
-    override def unlock(id: Identifier, pol: Boolean) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
+    def unlock(id: Identifier, pol: Boolean) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
       if(!blockMap.isDefinedAt((id,pol))) {
         (Seq.empty,Seq.empty)
       } else {
