@@ -1,0 +1,4 @@
+<plugin>
+    <name>leon</name>
+    <classname>leon.plugin.LeonPlugin</classname>
+</plugin>
