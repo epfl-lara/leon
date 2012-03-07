@@ -28,12 +28,10 @@ class Analysis(val program: Program, val reporter: Reporter = Settings.reporter)
   // conditions are generated and passed to all solvers. Otherwise, only the
   // Analysis extensions are run on the program.
   def analyse : Unit = {
-    // to save some time...
-    if(Settings.useTemplates) {
-      for(funDef <- program.definedFunctions if funDef.hasImplementation) {
-        // this gets cached :D
-        FunctionTemplate.mkTemplate(funDef)
-      }
+    // We generate all function templates in advance.
+    for(funDef <- program.definedFunctions if funDef.hasImplementation) {
+      // this gets cached :D
+      FunctionTemplate.mkTemplate(funDef)
     }
 
     if(solverExtensions.size > 1) {

@@ -39,7 +39,6 @@ class LeonPlugin(val global: Global, val actionAfterExtraction : Option[Program=
     "  -P:leon:cores              Use UNSAT cores in the unrolling/refinement step" + "\n" +
     "  -P:leon:quickcheck         Use QuickCheck-like random search" + "\n" +
     "  -P:leon:parallel           Run all solvers in parallel" + "\n" +
-    "  -P:leon:templates          Use new ``FunctionTemplate'' technique" + "\n" +
     "  -P:leon:noLuckyTests       Do not perform additional tests to potentially find models early"
   )
 
@@ -62,7 +61,6 @@ class LeonPlugin(val global: Global, val actionAfterExtraction : Option[Program=
         case "cores"      =>                     leon.Settings.useCores = true
         case "quickcheck" =>                     leon.Settings.useQuickCheck = true
         case "parallel"   =>                     leon.Settings.useParallel = true
-        case "templates"  =>                     leon.Settings.useTemplates = true
         case "noLuckyTests" =>                   leon.Settings.luckyTest = false
         case s if s.startsWith("unrolling=") =>  leon.Settings.unrollingLevel = try { s.substring("unrolling=".length, s.length).toInt } catch { case _ => 0 }
         case s if s.startsWith("functions=") =>  leon.Settings.functionsToAnalyse = Set(splitList(s.substring("functions=".length, s.length)): _*)
