@@ -1139,7 +1139,7 @@ object Trees {
   /** Rewrites all map accesses with additional error conditions. */
   def mapGetWithChecks(expr: Expr) : Expr = {
     val toRet = if (mapGetConverterCache.isDefinedAt(expr)) {
-      matchConverterCache(expr)
+      mapGetConverterCache(expr)
     } else {
       val converted = convertMapGet(expr)
       mapGetConverterCache(expr) = converted
