@@ -17,6 +17,10 @@ object Trees {
     self: Expr =>
   }
 
+  case class Block(exprs: Seq[Expr]) extends Expr
+  case class Assignment(v: Variable, expr: Expr) extends Expr
+  case class While(cond: Expr, body: Expr) extends Expr
+
   /* This describes computational errors (unmatched case, taking min of an
    * empty set, division by zero, etc.). It should always be typed according to
    * the expected type. */
