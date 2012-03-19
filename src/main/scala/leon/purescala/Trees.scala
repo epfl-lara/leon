@@ -694,12 +694,19 @@ object Trees {
 
   def flattenBlocks(expr: Expr): Expr = {
     def applyToTree(expr: Expr): Option[Expr] = expr match {
-      case Block(exprs) => Some(
-        Block(exprs.flatMap{
+      case Block(exprs) => {
+        val nexprs = exprs.flatMap{
           case Block(es2) => es2
+          case Skip => Seq()
           case e2 => Seq(e2)
-        })
-      )
+        }
+        val fexpr = nexprs match {
+          case Seq() => Skip
+          case Seq(e) => e
+          case es => Block(es)
+        }
+        Some(fexpr)
+      }
       case _ => None
     }
     searchAndReplaceDFS(applyToTree)(expr)
