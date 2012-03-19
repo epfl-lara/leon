@@ -377,7 +377,8 @@ trait CodeExtraction extends Extractors {
         varSubsts(vs) = (() => Variable(newID))
         val restTree = rec(rst)
         varSubsts.remove(vs)
-        PBlock(Seq(Assignment(newID, valTree), restTree)).setType(UnitType)
+        val blockType = restTree.getType
+        PBlock(Seq(Assignment(newID, valTree), restTree)).setType(blockType)
       }
 
       case ExAssign(sym, rhs, rst) => varSubsts.get(sym) match {

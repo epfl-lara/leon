@@ -705,7 +705,7 @@ object Trees {
         val fexpr = nexprs match {
           case Seq() => Skip
           case Seq(e) => e
-          case es => Block(es)
+          case es => Block(es).setType(es.last.getType)
         }
         Some(fexpr)
       }
