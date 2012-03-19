@@ -18,7 +18,7 @@ object Trees {
   }
 
   case class Block(exprs: Seq[Expr]) extends Expr
-  case object Skip extends Expr
+  case object Skip extends Expr with Terminal
   case class Assignment(varId: Identifier, expr: Expr) extends Expr
   case class While(cond: Expr, body: Expr) extends Expr
 
@@ -363,6 +363,7 @@ object Trees {
       case SetMax(s) => Some((s,SetMax))
       case CaseClassSelector(cd, e, sel) => Some((e, CaseClassSelector(cd, _, sel)))
       case CaseClassInstanceOf(cd, e) => Some((e, CaseClassInstanceOf(cd, _)))
+      case Assignment(id, e) => Some((e, Assignment(id, _)))
       case _ => None
     }
   }
@@ -399,6 +400,7 @@ object Trees {
       case MapIsDefinedAt(t1,t2) => Some((t1,t2, MapIsDefinedAt))
       case Concat(t1,t2) => Some((t1,t2,Concat))
       case ListAt(t1,t2) => Some((t1,t2,ListAt))
+      case While(t1, t2) => Some((t1,t2,While))
       case _ => None
     }
   }
@@ -414,6 +416,7 @@ object Trees {
       case FiniteMap(args) => Some((args, (as : Seq[Expr]) => FiniteMap(as.asInstanceOf[Seq[SingletonMap]])))
       case FiniteMultiset(args) => Some((args, FiniteMultiset))
       case Distinct(args) => Some((args, Distinct))
+      case Block(args) => Some((args, Block))
       case _ => None
     }
   }
