@@ -18,7 +18,9 @@ object Trees {
   }
 
   case class Block(exprs: Seq[Expr]) extends Expr
-  case object Skip extends Expr with Terminal
+  case object Skip extends Expr with Terminal with FixedType {
+    val fixedType = UnitType
+  }
   case class Assignment(varId: Identifier, expr: Expr) extends Expr
   case class While(cond: Expr, body: Expr) extends Expr
 

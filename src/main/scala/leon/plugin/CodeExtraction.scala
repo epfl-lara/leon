@@ -377,17 +377,16 @@ trait CodeExtraction extends Extractors {
         varSubsts(vs) = (() => Variable(newID))
         val restTree = rec(rst)
         varSubsts.remove(vs)
-        PBlock(Seq(Assignment(newID, valTree), restTree))
+        PBlock(Seq(Assignment(newID, valTree), restTree)).setType(UnitType)
       }
-
-      case ExUnitLiteral() => Skip
 
       case ExAssign(sym, rhs, rst) => varSubsts.get(sym) match {
         case Some(fun) => {
           val Variable(id) = fun()
           val rhsTree = rec(rhs)
           val restTree = rec(rst)
-          PBlock(Seq(Assignment(id, rhsTree), restTree)) 
+          val blockType = restTree.getType
+          PBlock(Seq(Assignment(id, rhsTree).setType(id.getType), restTree)).setType(blockType)
         }
         case None => {
           unit.error(tr.pos, "Undeclared variable.")
@@ -398,11 +397,14 @@ trait CodeExtraction extends Extractors {
         val condTree = rec(cond)
         val bodyTree = rec(body)
         val rstTree = rec(rst)
-        PBlock(Seq(While(condTree, bodyTree), rstTree))
+        val blockType = rstTree.getType
+        PBlock(Seq(While(condTree, bodyTree).setType(UnitType), rstTree)).setType(blockType)
       }
 
       case ExInt32Literal(v) => IntLiteral(v).setType(Int32Type)
       case ExBooleanLiteral(v) => BooleanLiteral(v).setType(BooleanType)
+      case ExUnitLiteral() => Skip
+
       case ExTyped(e,tpt) => rec(e)
       case ExIdentifier(sym,tpt) => varSubsts.get(sym) match {
         case Some(fun) => fun()
