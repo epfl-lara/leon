@@ -70,11 +70,48 @@ trait Extractors {
     object ExValDef {
       /** Extracts val's in the head of blocks. */
       def unapply(tree: Block): Option[(Symbol,Tree,Tree,Tree)] = tree match {
-        case Block((vd @ ValDef(_, _, tpt, rhs)) :: rest, expr) => 
+        case Block((vd @ ValDef(mods, _, tpt, rhs)) :: rest, expr) if !mods.isMutable => 
           if(rest.isEmpty)
             Some((vd.symbol, tpt, rhs, expr))
           else
             Some((vd.symbol, tpt, rhs, Block(rest, expr)))
+        case _ => None
+      }
+    }
+    object ExVarDef {
+      /** Extracts var's in the head of blocks. */
+      def unapply(tree: Block): Option[(Symbol,Tree,Tree,Tree)] = tree match {
+        case Block((vd @ ValDef(mods, _, tpt, rhs)) :: rest, expr) if mods.isMutable => 
+          if(rest.isEmpty)
+            Some((vd.symbol, tpt, rhs, expr))
+          else
+            Some((vd.symbol, tpt, rhs, Block(rest, expr)))
+        case _ => None
+      }
+    }
+
+    object ExAssign {
+      def unapply(tree: Block): Option[(Symbol,Tree,Tree)] = tree match {
+        case Block(Assign(id@Ident(_), rhs) :: rest, expr) =>
+          if(rest.isEmpty)
+            Some((id.symbol, rhs, expr))
+          else
+            Some((id.symbol, rhs, Block(rest, expr)))
+        case _ => None
+      }
+    }
+
+    object ExWhile {
+      def unapply(tree: Block): Option[(Tree,Tree,Tree)] = tree match {
+        case Block(
+          (label@LabelDef(_, _, If(cond, Block(body, jump@Apply(_, _)), unit@Literal(_)))) :: 
+            rest, 
+          expr) if label.symbol == jump.symbol && unit.symbol == null =>
+            println("while body is: " + Block(body, unit))
+            if(rest.isEmpty)
+                Some((cond, Block(body, unit), expr))
+            else
+                Some((cond, Block(body, unit), Block(rest, expr)))
         case _ => None
       }
     }
@@ -172,6 +209,13 @@ trait Extractors {
       def unapply(tree: Literal): Option[Int] = tree match {
         case Literal(c @ Constant(i)) if c.tpe == IntClass.tpe => Some(c.intValue)
         case _ => None
+      }
+    }
+
+    object ExUnitLiteral {
+      def unapply(tree: Literal): Boolean = tree match {
+        case Literal(c @ Constant(_)) if c.tpe == UnitClass.tpe => true
+        case _ => false
       }
     }
 

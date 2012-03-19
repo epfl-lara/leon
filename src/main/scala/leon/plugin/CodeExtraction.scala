@@ -5,7 +5,7 @@ import scala.tools.nsc._
 import scala.tools.nsc.plugins._
 
 import purescala.Definitions._
-import purescala.Trees._
+import purescala.Trees.{Block => PBlock, _}
 import purescala.TypeTrees._
 import purescala.Common._
 
@@ -295,7 +295,9 @@ trait CodeExtraction extends Extractors {
     }
 
     //Program(programName, ObjectDef("Object", Nil, Nil))
-    Program(programName, topLevelObjDef)
+    val res = Program(programName, topLevelObjDef)
+    println("Extracted program: " + res)
+    res
   }
 
   /** An exception thrown when non-purescala compatible code is encountered. */
@@ -367,6 +369,38 @@ trait CodeExtraction extends Extractors {
         varSubsts.remove(vs)
         Let(newID, valTree, restTree)
       }
+      case ExVarDef(vs, tpt, bdy, rst) => {
+        val binderTpe = scalaType2PureScala(unit, silent)(tpt.tpe)
+        val newID = FreshIdentifier(vs.name.toString).setType(binderTpe)
+        val oldSubsts = varSubsts
+        val valTree = rec(bdy)
+        varSubsts(vs) = (() => Variable(newID))
+        val restTree = rec(rst)
+        varSubsts.remove(vs)
+        PBlock(Seq(Assignment(newID, valTree), restTree))
+      }
+
+      case ExUnitLiteral() => Skip
+
+      case ExAssign(sym, rhs, rst) => varSubsts.get(sym) match {
+        case Some(fun) => {
+          val Variable(id) = fun()
+          val rhsTree = rec(rhs)
+          val restTree = rec(rst)
+          PBlock(Seq(Assignment(id, rhsTree), restTree)) 
+        }
+        case None => {
+          unit.error(tr.pos, "Undeclared variable.")
+          throw ImpureCodeEncounteredException(tr)
+        }
+      }
+      case ExWhile(cond, body, rst) => {
+        val condTree = rec(cond)
+        val bodyTree = rec(body)
+        val rstTree = rec(rst)
+        PBlock(Seq(While(condTree, bodyTree), rstTree))
+      }
+
       case ExInt32Literal(v) => IntLiteral(v).setType(Int32Type)
       case ExBooleanLiteral(v) => BooleanLiteral(v).setType(BooleanType)
       case ExTyped(e,tpt) => rec(e)

@@ -82,6 +82,18 @@ object PrettyPrinter {
     case BooleanLiteral(v) => sb.append(v)
     case StringLiteral(s) => sb.append("\"" + s + "\"")
 
+    case Block(exprs) => {
+      ppNary(sb, exprs, "{", "; ", "}", lvl)
+    }
+    case Assignment(lhs, rhs) => ppBinary(sb, lhs.toVariable, rhs, " = ", lvl)
+    case Skip => sb.append("()")
+    case While(cond, body) => {
+      sb.append("while(")
+      pp(cond, sb, lvl)
+      sb.append(")\n")
+      pp(body, sb, lvl)
+    }
+
     case OptionSome(a) => {
       var nsb = sb
       nsb.append("Some(")
