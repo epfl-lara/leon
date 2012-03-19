@@ -83,14 +83,22 @@ object PrettyPrinter {
     case StringLiteral(s) => sb.append("\"" + s + "\"")
 
     case Block(exprs) => {
-      ppNary(sb, exprs, "{", "; ", "}", lvl)
+      sb.append("{\n")
+      exprs.foreach(e => {
+        ind(sb, lvl+1)
+        pp(e, sb, lvl+1)
+        sb.append("\n")
+      })
+      ind(sb, lvl)
+      sb.append("}")
+      sb
     }
     case Assignment(lhs, rhs) => ppBinary(sb, lhs.toVariable, rhs, " = ", lvl)
     case Skip => sb.append("()")
     case While(cond, body) => {
       sb.append("while(")
       pp(cond, sb, lvl)
-      sb.append(")\n")
+      sb.append(") ")
       pp(body, sb, lvl)
     }
 

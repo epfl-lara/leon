@@ -55,7 +55,7 @@ trait CodeExtraction extends Extractors {
   private val defsToDefs: scala.collection.mutable.Map[Symbol,FunDef] =
     scala.collection.mutable.Map.empty[Symbol,FunDef]
 
-  def extractCode(unit: CompilationUnit): Program = { 
+  def extractCode(unit: CompilationUnit): Program = {
     import scala.collection.mutable.HashMap
 
     def s2ps(tree: Tree): Expr = toPureScala(unit)(tree) match {
@@ -273,7 +273,7 @@ trait CodeExtraction extends Extractors {
       }
       
       val bodyAttempt = try {
-        Some(scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies)(realBody))
+        Some(flattenBlocks(scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies)(realBody)))
       } catch {
         case e: ImpureCodeEncounteredException => None
       }

@@ -692,6 +692,19 @@ object Trees {
     rec(expression)
   }
 
+  def flattenBlocks(expr: Expr): Expr = {
+    def applyToTree(expr: Expr): Option[Expr] = expr match {
+      case Block(exprs) => Some(
+        Block(exprs.flatMap{
+          case Block(es2) => es2
+          case e2 => Seq(e2)
+        })
+      )
+      case _ => None
+    }
+    searchAndReplaceDFS(applyToTree)(expr)
+  }
+
   def variablesOf(expr: Expr) : Set[Identifier] = {
     def convert(t: Expr) : Set[Identifier] = t match {
       case Variable(i) => Set(i)
