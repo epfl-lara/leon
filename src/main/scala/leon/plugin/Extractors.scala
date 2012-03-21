@@ -11,6 +11,7 @@ trait Extractors {
   import global._
   import global.definitions._
 
+  protected lazy val tuple2Sym: Symbol = definitions.getClass("scala.Tuple2")
   private lazy val setTraitSym = definitions.getClass("scala.collection.immutable.Set")
   private lazy val mapTraitSym = definitions.getClass("scala.collection.immutable.Map")
   private lazy val multisetTraitSym = definitions.getClass("scala.collection.immutable.Multiset")
@@ -23,6 +24,19 @@ trait Extractors {
         case Select(Select(This(scalaName),predefName),symName)
           if("scala".equals(scalaName.toString) && "Predef".equals(predefName.toString)) =>
             Some(symName.toString)
+        case _ => None
+      }
+    }
+
+    object ExTuple {
+      def unapply(tree: Apply): Option[(Seq[Type], Seq[Tree])] = tree match {
+        case Apply(
+          Select(New(tupleType), _),
+          List(e1, e2)
+        ) if tupleType.symbol == tuple2Sym => tupleType.tpe match {
+            case TypeRef(_, sym, List(t1, t2)) => Some((Seq(t1, t2), Seq(e1, e2)))
+            case _ => None
+          }
         case _ => None
       }
     }
@@ -40,6 +54,26 @@ trait Extractors {
             ensuringName),
           (Function((vd @ ValDef(_, _, _, EmptyTree)) :: Nil, contractBody)) :: Nil)
           if("ensuring".equals(ensuringName.toString)) => Some((body, vd.symbol, contractBody))
+        case _ => None
+      }
+    }
+
+    object ExTupleExtract {
+      def unapply(tree: Select) : Option[(Tree,Int)] = tree match {
+        case Select(lhs, n) => {
+          val methodName = n.toString
+          if(methodName.head == '_') {
+            val indexString = methodName.tail
+            try {
+              val index = indexString.toInt
+              if(index > 0) {
+                Some((lhs, index)) 
+              } else None
+            } catch {
+              case _ => None
+            }
+          } else None
+        }
         case _ => None
       }
     }
