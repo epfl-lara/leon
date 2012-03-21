@@ -10,6 +10,8 @@ import scala.collection.mutable.{Set => MutableSet}
 class Analysis(val program: Program, val reporter: Reporter = Settings.reporter) {
   Extensions.loadAll(reporter)
 
+  println(ImperativeCodeElimination(program))
+
   val analysisExtensions: Seq[Analyser] = loadedAnalysisExtensions
 
   val trivialSolver = new TrivialSolver(reporter) // This one you can't disable :D

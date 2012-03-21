@@ -38,6 +38,15 @@ object Trees {
       setType(et)
   }
 
+  case class Tuple(exprs: Seq[Expr]) extends Expr
+  case class LetTuple(binders: Seq[Identifier], value: Expr, body: Expr) extends Expr {
+    binders.foreach(_.markAsLetBinder)
+    val et = body.getType
+    if(et != Untyped)
+      setType(et)
+  }
+
+
   /* Control flow */
   case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr with FixedType with ScalacPositional {
     val fixedType = funDef.returnType
