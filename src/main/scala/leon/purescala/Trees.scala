@@ -36,6 +36,8 @@ object Trees {
   }
   case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr 
 
+  case class Tuple(exprs: Seq[Expr]) extends Expr
+
   object MatchExpr {
     def apply(scrutinee: Expr, cases: Seq[MatchCase]) : MatchExpr = {
       scrutinee.getType match {
