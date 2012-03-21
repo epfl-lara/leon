@@ -81,7 +81,12 @@ object PrettyPrinter {
     case IntLiteral(v) => sb.append(v)
     case BooleanLiteral(v) => sb.append(v)
     case StringLiteral(s) => sb.append("\"" + s + "\"")
-
+    case Tuple(exprs) => ppNary(sb, exprs, "(", ", ", ")", lvl)
+    case TupleSelect(t, i) => {
+      pp(t, sb, lvl)
+      sb.append("._" + i)
+      sb
+    }
     case OptionSome(a) => {
       var nsb = sb
       nsb.append("Some(")
@@ -297,6 +302,7 @@ object PrettyPrinter {
       nsb.append(" => ")
       pp(tt, nsb, lvl)
     }
+    case TupleType(tpes) => ppNaryType(sb, tpes, "(", ", ", ")", lvl)
     case c: ClassType => sb.append(c.classDef.id)
     case _ => sb.append("Type?")
   }
