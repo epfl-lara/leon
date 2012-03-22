@@ -356,6 +356,33 @@ trait CodeExtraction extends Extractors {
       }
     }
 
+    def extractFunSig(nameStr: String, params: Seq[ValDef], tpt: Tree): FunDef = {
+      val newParams = params.map(p => {
+        val ptpe =  scalaType2PureScala(unit, silent) (p.tpt.tpe)
+        val newID = FreshIdentifier(p.name.toString).setType(ptpe)
+        varSubsts(p.symbol) = (() => Variable(newID))
+        VarDecl(newID, ptpe)
+      })
+      new FunDef(FreshIdentifier(nameStr), scalaType2PureScala(unit, silent)(tpt.tpe), newParams)
+    }
+
+    def extractFunDef(funDef: FunDef, body: Tree): FunDef = {
+      var realBody = body
+      var reqCont: Option[Expr] = None
+      var ensCont: Option[Expr] = None
+      
+      val bodyAttempt = try {
+        Some(scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies)(realBody))
+      } catch {
+        case e: ImpureCodeEncounteredException => None
+      }
+
+      funDef.body = bodyAttempt
+      funDef.precondition = reqCont
+      funDef.postcondition = ensCont
+      funDef
+    }
+
     def rec(tr: Tree): Expr = tr match {
       case ExValDef(vs, tpt, bdy, rst) => {
         val binderTpe = scalaType2PureScala(unit, silent)(tpt.tpe)
@@ -366,6 +393,19 @@ trait CodeExtraction extends Extractors {
         val restTree = rec(rst)
         varSubsts.remove(vs)
         Let(newID, valTree, restTree)
+      }
+      case dd @ ExLocalFunctionDef(n, p, t, b, rest) => {
+        val funDef = extractFunSig(n, p, t).setPosInfo(dd.pos.line, dd.pos.column)
+        val funDefWithBody = extractFunDef(funDef, b)
+        println("got let def: " + funDefWithBody)
+        println(funDef)
+        defsToDefs += (dd.symbol -> funDefWithBody)
+        println(defsToDefs)
+        val letRest = rec(rest)
+        defsToDefs.remove(dd.symbol)
+        val res = LetDef(funDefWithBody, letRest)
+        println("LetDef: " + res)
+        res
       }
       case ExInt32Literal(v) => IntLiteral(v).setType(Int32Type)
       case ExBooleanLiteral(v) => BooleanLiteral(v).setType(BooleanType)
@@ -588,6 +628,8 @@ trait CodeExtraction extends Extractors {
         IfExpr(r1, r2, r3).setType(leastUpperBound(r2.getType, r3.getType))
       }
       case lc @ ExLocalCall(sy,nm,ar) => {
+        println("Got local call with: " + sy + ": " + nm)
+        println(defsToDefs)
         if(defsToDefs.keysIterator.find(_ == sy).isEmpty) {
           if(!silent)
             unit.error(tr.pos, "Invoking an invalid function.")

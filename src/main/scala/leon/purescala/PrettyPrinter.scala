@@ -71,6 +71,13 @@ object PrettyPrinter {
     case Let(b,d,e) => {
         pp(e, pp(d, sb.append("(let (" + b + " := "), lvl).append(") in "), lvl).append(")")
     }
+    case LetDef(fd,e) => {
+      sb.append("{")
+      pp(fd, sb, lvl)
+      pp(e, sb, lvl)
+      sb.append("}")
+      sb
+    }
     case And(exprs) => ppNary(sb, exprs, "(", " \u2227 ", ")", lvl)            // \land
     case Or(exprs) => ppNary(sb, exprs, "(", " \u2228 ", ")", lvl)             // \lor
     case Not(Equals(l, r)) => ppBinary(sb, l, r, " \u2260 ", lvl)    // \neq

@@ -150,6 +150,18 @@ trait Extractors {
         case _ => None
       }
     }
+
+    object ExLocalFunctionDef {
+      def unapply(tree: Block): Option[(String,Seq[ValDef],Tree,Tree,Tree)] = tree match {
+        case Block((dd @ DefDef(_, name, tparams, vparamss, tpt, rhs)) :: rest, expr) if(tparams.isEmpty && vparamss.size == 1 && name != nme.CONSTRUCTOR) => {
+          if(rest.isEmpty)
+            Some((name.toString, vparamss(0), tpt, rhs, expr))
+          else
+            Some((name.toString, vparamss(0), tpt, rhs, Block(rest, expr)))
+        } 
+        case _ => None
+      }
+    }
   }
 
   object ExpressionExtractors {
@@ -325,6 +337,7 @@ trait Extractors {
     object ExLocalCall {
       def unapply(tree: Apply): Option[(Symbol,String,List[Tree])] = tree match {
         case a @ Apply(Select(This(_), nme), args) => Some((a.symbol, nme.toString, args))
+        case a @ Apply(Ident(nme), args) => Some((a.symbol, nme.toString, args))
         case _ => None
       }
     }
