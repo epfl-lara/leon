@@ -74,6 +74,8 @@ object PrettyPrinter {
     case LetDef(fd,e) => {
       sb.append("{")
       pp(fd, sb, lvl)
+      sb.append("\n")
+      ind(sb, lvl)
       pp(e, sb, lvl)
       sb.append("}")
       sb

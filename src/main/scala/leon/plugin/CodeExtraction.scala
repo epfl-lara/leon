@@ -394,13 +394,10 @@ trait CodeExtraction extends Extractors {
         varSubsts.remove(vs)
         Let(newID, valTree, restTree)
       }
-      case dd @ ExLocalFunctionDef(n, p, t, b, rest) => {
+      case dd @ ExLocalFunctionDef(sy,n, p, t, b, rest) => {
         val funDef = extractFunSig(n, p, t).setPosInfo(dd.pos.line, dd.pos.column)
         val funDefWithBody = extractFunDef(funDef, b)
-        println("got let def: " + funDefWithBody)
-        println(funDef)
-        defsToDefs += (dd.symbol -> funDefWithBody)
-        println(defsToDefs)
+        defsToDefs += (sy -> funDefWithBody)
         val letRest = rec(rest)
         defsToDefs.remove(dd.symbol)
         val res = LetDef(funDefWithBody, letRest)
