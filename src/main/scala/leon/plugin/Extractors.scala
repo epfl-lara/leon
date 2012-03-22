@@ -12,6 +12,9 @@ trait Extractors {
   import global.definitions._
 
   protected lazy val tuple2Sym: Symbol = definitions.getClass("scala.Tuple2")
+  protected lazy val tuple3Sym: Symbol = definitions.getClass("scala.Tuple3")
+  protected lazy val tuple4Sym: Symbol = definitions.getClass("scala.Tuple4")
+  protected lazy val tuple5Sym: Symbol = definitions.getClass("scala.Tuple5")
   private lazy val setTraitSym = definitions.getClass("scala.collection.immutable.Set")
   private lazy val mapTraitSym = definitions.getClass("scala.collection.immutable.Map")
   private lazy val multisetTraitSym = definitions.getClass("scala.collection.immutable.Multiset")
@@ -37,23 +40,28 @@ trait Extractors {
             case TypeRef(_, sym, List(t1, t2)) => Some((Seq(t1, t2), Seq(e1, e2)))
             case _ => None
           }
-        case _ => None
-      }
-    }
 
-    object ExEnsuredExpression {
-      /** Extracts the 'ensuring' contract from an expression. */
-      def unapply(tree: Apply): Option[(Tree,Symbol,Tree)] = tree match {
         case Apply(
-          Select(
-            Apply(
-              TypeApply(
-                ScalaPredef("any2Ensuring"),
-                TypeTree() :: Nil),
-              body :: Nil),
-            ensuringName),
-          (Function((vd @ ValDef(_, _, _, EmptyTree)) :: Nil, contractBody)) :: Nil)
-          if("ensuring".equals(ensuringName.toString)) => Some((body, vd.symbol, contractBody))
+          Select(New(tupleType), _),
+          List(e1, e2, e3)
+        ) if tupleType.symbol == tuple3Sym => tupleType.tpe match {
+            case TypeRef(_, sym, List(t1, t2, t3)) => Some((Seq(t1, t2, t3), Seq(e1, e2, e3)))
+            case _ => None
+          }
+        case Apply(
+          Select(New(tupleType), _),
+          List(e1, e2, e3, e4)
+        ) if tupleType.symbol == tuple4Sym => tupleType.tpe match {
+            case TypeRef(_, sym, List(t1, t2, t3, t4)) => Some((Seq(t1, t2, t3, t4), Seq(e1, e2, e3, e4)))
+            case _ => None
+          }
+        case Apply(
+          Select(New(tupleType), _),
+          List(e1, e2, e3, e4, e5)
+        ) if tupleType.symbol == tuple5Sym => tupleType.tpe match {
+            case TypeRef(_, sym, List(t1, t2, t3, t4, t5)) => Some((Seq(t1, t2, t3, t4, t5), Seq(e1, e2, e3, e4, e5)))
+            case _ => None
+          }
         case _ => None
       }
     }
@@ -74,6 +82,23 @@ trait Extractors {
             }
           } else None
         }
+        case _ => None
+      }
+    }
+
+    object ExEnsuredExpression {
+      /** Extracts the 'ensuring' contract from an expression. */
+      def unapply(tree: Apply): Option[(Tree,Symbol,Tree)] = tree match {
+        case Apply(
+          Select(
+            Apply(
+              TypeApply(
+                ScalaPredef("any2Ensuring"),
+                TypeTree() :: Nil),
+              body :: Nil),
+            ensuringName),
+          (Function((vd @ ValDef(_, _, _, EmptyTree)) :: Nil, contractBody)) :: Nil)
+          if("ensuring".equals(ensuringName.toString)) => Some((body, vd.symbol, contractBody))
         case _ => None
       }
     }
