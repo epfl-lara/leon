@@ -342,6 +342,13 @@ trait Extractors {
         if(tree != null) Some((tree.selector, tree.cases)) else None
     }
 
+    object ExIsInstanceOf {
+      def unapply(tree: TypeApply) : Option[(Tree, Tree)] = tree match {
+        case TypeApply(Select(t, isInstanceOfName), typeTree :: Nil) if isInstanceOfName.toString == "isInstanceOf" => Some((typeTree, t))
+        case _ => None
+      }
+    }
+
     object ExSetMin {
       def unapply(tree: Apply) : Option[Tree] = tree match {
         case Apply(

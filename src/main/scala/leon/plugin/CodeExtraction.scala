@@ -603,6 +603,13 @@ trait CodeExtraction extends Extractors {
         MatchExpr(rs, rc).setType(rt).setPosInfo(pm.pos.line,pm.pos.column)
       }
 
+      case ExIsInstanceOf(tt, cc) => {
+        val ccRec = rec(cc)
+        val checkType = scalaType2PureScala(unit, silent)(tt.tpe)
+        val CaseClassType(cd) = checkType
+        CaseClassInstanceOf(cd, ccRec)
+      }
+
       // this one should stay after all others, cause it also catches UMinus
       // and Not, for instance.
       case ExParameterlessMethodCall(t,n) => {
