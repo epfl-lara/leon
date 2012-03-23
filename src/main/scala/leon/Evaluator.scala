@@ -51,6 +51,14 @@ object Evaluator {
             throw RuntimeErrorEx("No value for identifier " + id.name + " in context.")
           }
         }
+        case Tuple(ts) => {
+          val tsRec = ts.map(rec(ctx, _))
+          Tuple(tsRec)
+        }
+        case TupleSelect(t, i) => {
+          val Tuple(rs) = rec(ctx, t)
+          rs(i-1)
+        }
         case Let(i,e,b) => {
           val first = rec(ctx, e)
           rec(ctx + ((i -> first)), b)

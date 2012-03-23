@@ -53,6 +53,9 @@ object Trees {
   }
   case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr 
 
+  case class Tuple(exprs: Seq[Expr]) extends Expr
+  case class TupleSelect(tuple: Expr, index: Int) extends Expr
+
   object MatchExpr {
     def apply(scrutinee: Expr, cases: Seq[MatchCase]) : MatchExpr = {
       scrutinee.getType match {
@@ -375,6 +378,7 @@ object Trees {
       case CaseClassSelector(cd, e, sel) => Some((e, CaseClassSelector(cd, _, sel)))
       case CaseClassInstanceOf(cd, e) => Some((e, CaseClassInstanceOf(cd, _)))
       case Assignment(id, e) => Some((e, Assignment(id, _)))
+      case TupleSelect(t, i) => Some((t, TupleSelect(_, i)))
       case _ => None
     }
   }
@@ -428,6 +432,7 @@ object Trees {
       case FiniteMultiset(args) => Some((args, FiniteMultiset))
       case Distinct(args) => Some((args, Distinct))
       case Block(args) => Some((args, Block))
+      case Tuple(args) => Some((args, Tuple))
       case _ => None
     }
   }

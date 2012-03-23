@@ -28,6 +28,11 @@ trait CodeExtraction extends Extractors {
   private lazy val someClassSym       = definitions.getClass("scala.Some")
   private lazy val function1TraitSym  = definitions.getClass("scala.Function1")
 
+  def isTuple2(sym : Symbol) : Boolean = sym == tuple2Sym
+  def isTuple3(sym : Symbol) : Boolean = sym == tuple3Sym
+  def isTuple4(sym : Symbol) : Boolean = sym == tuple4Sym
+  def isTuple5(sym : Symbol) : Boolean = sym == tuple5Sym
+
   def isSetTraitSym(sym : Symbol) : Boolean = {
     sym == setTraitSym || sym.tpe.toString.startsWith("scala.Predef.Set")
   }
@@ -359,6 +364,20 @@ trait CodeExtraction extends Extractors {
     }
 
     def rec(tr: Tree): Expr = tr match {
+      case ExTuple(tpes, exprs) => {
+        // println("getting ExTuple with " + tpes + " and " + exprs)
+        val tupleType = TupleType(tpes.map(tpe => scalaType2PureScala(unit, silent)(tpe)))
+        val tupleExprs = exprs.map(e => rec(e))
+        Tuple(tupleExprs).setType(tupleType)
+      }
+      case ExTupleExtract(tuple, index) => {
+        val tupleExpr = rec(tuple)
+        val TupleType(tpes) = tupleExpr.getType
+        if(tpes.size < index)
+          throw ImpureCodeEncounteredException(tree)
+        else
+          TupleSelect(tupleExpr, index).setType(tpes(index-1))
+      }
       case ExValDef(vs, tpt, bdy, rst) => {
         val binderTpe = scalaType2PureScala(unit, silent)(tpt.tpe)
         val newID = FreshIdentifier(vs.name.toString).setType(binderTpe)
@@ -415,7 +434,7 @@ trait CodeExtraction extends Extractors {
         }
       }
       case ExSomeConstruction(tpe, arg) => {
-        println("Got Some !" + tpe + ":" + arg)
+        // println("Got Some !" + tpe + ":" + arg)
         val underlying = scalaType2PureScala(unit, silent)(tpe)
         OptionSome(rec(arg)).setType(OptionType(underlying))
       }
@@ -687,6 +706,10 @@ trait CodeExtraction extends Extractors {
       case TypeRef(_, sym, btt :: Nil) if isMultisetTraitSym(sym) => MultisetType(rec(btt))
       case TypeRef(_, sym, btt :: Nil) if isOptionClassSym(sym) => OptionType(rec(btt))
       case TypeRef(_, sym, List(ftt,ttt)) if isMapTraitSym(sym) => MapType(rec(ftt),rec(ttt))
+      case TypeRef(_, sym, List(t1,t2)) if isTuple2(sym) => TupleType(Seq(rec(t1),rec(t2)))
+      case TypeRef(_, sym, List(t1,t2,t3)) if isTuple3(sym) => TupleType(Seq(rec(t1),rec(t2),rec(t3)))
+      case TypeRef(_, sym, List(t1,t2,t3,t4)) if isTuple4(sym) => TupleType(Seq(rec(t1),rec(t2),rec(t3),rec(t4)))
+      case TypeRef(_, sym, List(t1,t2,t3,t4,t5)) if isTuple5(sym) => TupleType(Seq(rec(t1),rec(t2),rec(t3),rec(t4),rec(t5)))
       case TypeRef(_, sym, ftt :: ttt :: Nil) if isFunction1TraitSym(sym) => FunctionType(List(rec(ftt)), rec(ttt))
       case TypeRef(_, sym, Nil) if classesToClasses.keySet.contains(sym) => classDefToClassType(classesToClasses(sym))
       case _ => {
