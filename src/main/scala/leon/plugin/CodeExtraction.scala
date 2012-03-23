@@ -363,7 +363,7 @@ trait CodeExtraction extends Extractors {
 
     def rec(tr: Tree): Expr = tr match {
       case ExTuple(tpes, exprs) => {
-        println("getting ExTuple with " + tpes + " and " + exprs)
+        // println("getting ExTuple with " + tpes + " and " + exprs)
         val tupleType = TupleType(tpes.map(tpe => scalaType2PureScala(unit, silent)(tpe)))
         val tupleExprs = exprs.map(e => rec(e))
         Tuple(tupleExprs).setType(tupleType)
@@ -397,7 +397,7 @@ trait CodeExtraction extends Extractors {
         }
       }
       case ExSomeConstruction(tpe, arg) => {
-        println("Got Some !" + tpe + ":" + arg)
+        // println("Got Some !" + tpe + ":" + arg)
         val underlying = scalaType2PureScala(unit, silent)(tpe)
         OptionSome(rec(arg)).setType(OptionType(underlying))
       }

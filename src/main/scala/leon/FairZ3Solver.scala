@@ -175,6 +175,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   }
 
   case class UntranslatableTypeException(msg: String) extends Exception(msg)
+  // Prepares some of the Z3 sorts, but *not* the tuple sorts; these are created on-demand.
   private def prepareSorts: Unit = {
     import Z3Context.{ADTSortReference, RecursiveType, RegularSort}
     // NOTE THAT abstract classes that extend abstract classes are not
@@ -402,7 +403,8 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       case Some(s) => s
       case None => {
         val tpesSorts = tpes.map(typeToSort)
-        val (tupleSort, consTuple, projsTuple) = z3.mkTupleSort(tpes.map(_.toString).mkString("Tuple2(",", ", ")"), tpesSorts: _*)
+        val sortSymbol = z3.mkFreshStringSymbol("TupleSort")
+        val (tupleSort, consTuple, projsTuple) = z3.mkTupleSort(sortSymbol, tpesSorts: _*)
         tupleSorts += (tt -> tupleSort)
         tupleConstructors += (tt -> consTuple)
         tupleSelectors += (tt -> projsTuple)
@@ -859,11 +861,14 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       //println(ex)
       val recResult = (ex match {
         case tu@Tuple(args) => {
+          // This call is required, because the Z3 sort may not have been generated yet.
+          // If it has, it's just a map lookup and instant return.
           typeToSort(tu.getType)
           val constructor = tupleConstructors(tu.getType)
           constructor(args.map(rec(_)): _*)
         }
         case ts@TupleSelect(tu, i) => {
+          // See comment above for similar code.
           typeToSort(tu.getType)
           val selector = tupleSelectors(tu.getType)(i-1)
           selector(rec(tu))
