@@ -363,6 +363,33 @@ trait CodeExtraction extends Extractors {
       }
     }
 
+    def extractFunSig(nameStr: String, params: Seq[ValDef], tpt: Tree): FunDef = {
+      val newParams = params.map(p => {
+        val ptpe =  scalaType2PureScala(unit, silent) (p.tpt.tpe)
+        val newID = FreshIdentifier(p.name.toString).setType(ptpe)
+        varSubsts(p.symbol) = (() => Variable(newID))
+        VarDecl(newID, ptpe)
+      })
+      new FunDef(FreshIdentifier(nameStr), scalaType2PureScala(unit, silent)(tpt.tpe), newParams)
+    }
+
+    def extractFunDef(funDef: FunDef, body: Tree): FunDef = {
+      var realBody = body
+      var reqCont: Option[Expr] = None
+      var ensCont: Option[Expr] = None
+      
+      val bodyAttempt = try {
+        Some(scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies)(realBody))
+      } catch {
+        case e: ImpureCodeEncounteredException => None
+      }
+
+      funDef.body = bodyAttempt
+      funDef.precondition = reqCont
+      funDef.postcondition = ensCont
+      funDef
+    }
+
     def rec(tr: Tree): Expr = tr match {
       case ExTuple(tpes, exprs) => {
         // println("getting ExTuple with " + tpes + " and " + exprs)
@@ -421,6 +448,15 @@ trait CodeExtraction extends Extractors {
         PBlock(Seq(While(condTree, bodyTree).setType(UnitType), rstTree)).setType(blockType)
       }
 
+      case ExLocalFunctionDef(dd,n, p, t, b, rest) => {
+        val funDef = extractFunSig(n, p, t).setPosInfo(dd.pos.line, dd.pos.column)
+        defsToDefs += (dd.symbol -> funDef)
+        val funDefWithBody = extractFunDef(funDef, b)
+        val letRest = rec(rest)
+        defsToDefs.remove(dd.symbol)
+        val res = LetDef(funDefWithBody, letRest)
+        res
+      }
       case ExInt32Literal(v) => IntLiteral(v).setType(Int32Type)
       case ExBooleanLiteral(v) => BooleanLiteral(v).setType(BooleanType)
       case ExUnitLiteral() => Skip
@@ -644,6 +680,8 @@ trait CodeExtraction extends Extractors {
         IfExpr(r1, r2, r3).setType(leastUpperBound(r2.getType, r3.getType))
       }
       case lc @ ExLocalCall(sy,nm,ar) => {
+        println("Got local call with: " + sy + ": " + nm)
+        println(defsToDefs)
         if(defsToDefs.keysIterator.find(_ == sy).isEmpty) {
           if(!silent)
             unit.error(tr.pos, "Invoking an invalid function.")

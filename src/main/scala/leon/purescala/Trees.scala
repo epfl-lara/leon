@@ -45,6 +45,8 @@ object Trees {
       setType(et)
   }
 
+  case class LetDef(value: FunDef, body: Expr) extends Expr {
+
 
   /* Control flow */
   case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr with FixedType with ScalacPositional {
@@ -483,6 +485,11 @@ object Trees {
           else
             l
         }
+        case l @ LetDef(fd, b) => {
+          //TODO, not sure
+          fd.body = Some(rec(fd.getBody))
+          LetDef(fd, rec(b)).setType(l.getType)
+        }
         case n @ NAryOperator(args, recons) => {
           var change = false
           val rargs = args.map(a => {
@@ -565,6 +572,12 @@ object Trees {
         } else {
           l
         })
+      }
+      case l @ LetDef(fd,b) => {
+        //TODO: Not sure
+        fd.body = Some(rec(fd.getBody))
+        val rl = LetDef(fd, rec(b)).setType(l.getType)
+        applySubst(rl)
       }
       case n @ NAryOperator(args, recons) => {
         var change = false
@@ -689,6 +702,7 @@ object Trees {
   def treeCatamorphism[A](convert: Expr=>A, combine: (A,A)=>A, compute: (Expr,A)=>A, expression: Expr) : A = {
     def rec(expr: Expr) : A = expr match {
       case l @ Let(_, e, b) => compute(l, combine(rec(e), rec(b)))
+      case l @ LetDef(fd, b) => compute(l, combine(rec(fd.getBody), rec(b))) //TODO, still not sure about the semantic
       case n @ NAryOperator(args, _) => {
         if(args.size == 0)
           compute(n, convert(n))
@@ -806,6 +820,7 @@ object Trees {
 
   def allIdentifiers(expr: Expr) : Set[Identifier] = expr match {
     case l @ Let(binder, e, b) => allIdentifiers(e) ++ allIdentifiers(b) + binder
+    case l @ LetDef(fd, b) => allIdentifiers(fd.getBody) ++ allIdentifiers(b) + fd.id
     case n @ NAryOperator(args, _) =>
       (args map (Trees.allIdentifiers(_))).foldLeft(Set[Identifier]())((a, b) => a ++ b)
     case b @ BinaryOperator(a1,a2,_) => allIdentifiers(a1) ++ allIdentifiers(a2)
