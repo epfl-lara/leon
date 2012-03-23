@@ -5,7 +5,9 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-object FunctionHoisting {
+object FunctionHoisting extends Pass {
+
+  val description = "Hoist function at the top level"
 
   def apply(program: Program): Program = {
     val funDefs = program.definedFunctions
@@ -27,7 +29,7 @@ object FunctionHoisting {
     case l @ Let(i,e,b) => {
       val (re, s1) = hoist(e)
       val (rb, s2) = hoist(b)
-      (Let(i, re, rb).setType(l.getType), s1 ++ s2)
+      (Let(i, re, rb), s1 ++ s2)
     }
     case n @ NAryOperator(args, recons) => {
       val rargs = args.map(a => hoist(a))
@@ -46,7 +48,7 @@ object FunctionHoisting {
       val (r1, s1) = hoist(t1)
       val (r2, s2) = hoist(t2)
       val (r3, s3) = hoist(t3)
-      (IfExpr(r1, r2, r3), s1 ++ s2 ++ s3)
+      (IfExpr(r1, r2, r3).setType(i.getType), s1 ++ s2 ++ s3)
     }
     case m @ MatchExpr(scrut,cses) => sys.error("We'll see")//MatchExpr(rec(scrut), cses.map(inCase(_))).setType(m.getType).setPosInfo(m)
     case t if t.isInstanceOf[Terminal] => (t, Set())

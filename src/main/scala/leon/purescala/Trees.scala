@@ -45,8 +45,7 @@ object Trees {
       setType(et)
   }
 
-  case class LetDef(value: FunDef, body: Expr) extends Expr {
-
+  case class LetDef(value: FunDef, body: Expr) extends Expr
 
   /* Control flow */
   case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr with FixedType with ScalacPositional {

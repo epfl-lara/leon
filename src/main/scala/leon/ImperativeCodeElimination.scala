@@ -7,6 +7,8 @@ import purescala.TypeTrees._
 
 object ImperativeCodeElimination extends Pass {
 
+  val description = "Transform imperative constructs into purely functional code"
+
   def apply(pgm: Program): Program = {
     val allFuns = pgm.definedFunctions
     allFuns.foreach(fd => {

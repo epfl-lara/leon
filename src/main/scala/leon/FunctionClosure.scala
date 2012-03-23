@@ -5,7 +5,9 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-object FunctionClosure {
+object FunctionClosure extends Pass {
+
+  val description = "Closing function with its scoping variables"
 
   def apply(program: Program): Program = {
     val funDefs = program.definedFunctions

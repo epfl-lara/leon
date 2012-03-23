@@ -7,10 +7,11 @@ import purescala.TypeTrees._
 import Extensions._
 import scala.collection.mutable.{Set => MutableSet}
 
-class Analysis(val program: Program, val reporter: Reporter = Settings.reporter) {
+class Analysis(pgm : Program, val reporter: Reporter = Settings.reporter) {
   Extensions.loadAll(reporter)
 
-  println(ImperativeCodeElimination(program))
+  val passManager = new PassManager(Seq(FunctionClosure, FunctionHoisting))
+  val program = passManager.run(pgm)
 
   val analysisExtensions: Seq[Analyser] = loadedAnalysisExtensions
 
