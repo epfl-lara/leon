@@ -347,6 +347,24 @@ trait CodeExtraction extends Extractors {
           assert(args.size == cd.fields.size)
           CaseClassPattern(Some(newID), cd, args.map(pat2pat(_)))
         }
+        case a@Apply(fn, args) => {
+          val pst = scalaType2PureScala(unit, silent)(a.tpe)
+          pst match {
+            case TupleType(argsTpes) => {
+              println("Found tuple pattern match")
+              val patternIds: Seq[Identifier] = args.zipWithIndex.map{
+                case (b @ Bind(name, Ident(nme.WILDCARD)), i) => {
+                  val newID = FreshIdentifier(name.toString).setType(argsTpes(i))
+                  varSubsts(b.symbol) = (() => Variable(newID))
+                  newID
+                }
+                case _ => throw ImpureCodeEncounteredException(p)
+              }
+              TuplePattern(patternIds)
+            }
+            case _ => throw ImpureCodeEncounteredException(p)
+          }
+        }
         case _ => {
           if(!silent)
             unit.error(p.pos, "Unsupported pattern.")

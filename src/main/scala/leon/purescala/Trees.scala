@@ -47,6 +47,7 @@ object Trees {
           case CaseClassPattern(_, ccd, _) if ccd != c.classDef => false
           case _ => true
         }))
+        case t: TupleType => new MatchExpr(scrutinee, cases)
         case _ => scala.sys.error("Constructing match expression on non-class type.")
       }
     }
@@ -104,6 +105,11 @@ object Trees {
   //   		      extractor : ExtractorTypeDef, 
   //   		      subPatterns: Seq[Pattern]) extends Pattern // c @ Extractor(...,...)
   // We don't handle Seq stars for now.
+
+  case class TuplePattern(elementsBinders: Seq[Identifier]) extends Pattern {
+    val binder = None
+    val subPatterns = Seq.empty
+  }
 
   /* Propositional logic */
   object And {
@@ -940,7 +946,9 @@ object Trees {
       val MatchExpr(scrutinee, cases) = e
       val sType = scrutinee.getType
 
-      if(sType.isInstanceOf[AbstractClassType]) {
+      if(sType.isInstanceOf[TupleType]) {
+        None
+      } else if(sType.isInstanceOf[AbstractClassType]) {
         val cCD = sType.asInstanceOf[AbstractClassType].classDef
         if(cases.size == cCD.knownChildren.size && cases.forall(!_.hasGuard)) {
           var seen = Set.empty[ClassTypeDef]
@@ -1086,6 +1094,7 @@ object Trees {
           case None => together
         }
       }
+      case TuplePattern(ids) => ids.zipWithIndex.map{case (id, i) => (id, TupleSelect(in, i+1).setType(id.getType)) }.toMap
     }
 
     def conditionForPattern(in: Expr, pattern: Pattern) : Expr = pattern match {
@@ -1098,6 +1107,7 @@ object Trees {
         val together = And(subTests)
         And(CaseClassInstanceOf(ccd, in), together)
       }
+      case TuplePattern(ids) => BooleanLiteral(true)
     }
 
     def rewritePM(e: Expr) : Option[Expr] = e match {
