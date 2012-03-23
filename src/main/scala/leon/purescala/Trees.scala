@@ -38,7 +38,6 @@ object Trees {
       setType(et)
   }
 
-  case class Tuple(exprs: Seq[Expr]) extends Expr
   case class LetTuple(binders: Seq[Identifier], value: Expr, body: Expr) extends Expr {
     binders.foreach(_.markAsLetBinder)
     val et = body.getType
