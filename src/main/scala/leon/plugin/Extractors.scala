@@ -31,61 +31,6 @@ trait Extractors {
       }
     }
 
-    object ExTuple {
-      def unapply(tree: Apply): Option[(Seq[Type], Seq[Tree])] = tree match {
-        case Apply(
-          Select(New(tupleType), _),
-          List(e1, e2)
-        ) if tupleType.symbol == tuple2Sym => tupleType.tpe match {
-            case TypeRef(_, sym, List(t1, t2)) => Some((Seq(t1, t2), Seq(e1, e2)))
-            case _ => None
-          }
-
-        case Apply(
-          Select(New(tupleType), _),
-          List(e1, e2, e3)
-        ) if tupleType.symbol == tuple3Sym => tupleType.tpe match {
-            case TypeRef(_, sym, List(t1, t2, t3)) => Some((Seq(t1, t2, t3), Seq(e1, e2, e3)))
-            case _ => None
-          }
-        case Apply(
-          Select(New(tupleType), _),
-          List(e1, e2, e3, e4)
-        ) if tupleType.symbol == tuple4Sym => tupleType.tpe match {
-            case TypeRef(_, sym, List(t1, t2, t3, t4)) => Some((Seq(t1, t2, t3, t4), Seq(e1, e2, e3, e4)))
-            case _ => None
-          }
-        case Apply(
-          Select(New(tupleType), _),
-          List(e1, e2, e3, e4, e5)
-        ) if tupleType.symbol == tuple5Sym => tupleType.tpe match {
-            case TypeRef(_, sym, List(t1, t2, t3, t4, t5)) => Some((Seq(t1, t2, t3, t4, t5), Seq(e1, e2, e3, e4, e5)))
-            case _ => None
-          }
-        case _ => None
-      }
-    }
-
-    object ExTupleExtract {
-      def unapply(tree: Select) : Option[(Tree,Int)] = tree match {
-        case Select(lhs, n) => {
-          val methodName = n.toString
-          if(methodName.head == '_') {
-            val indexString = methodName.tail
-            try {
-              val index = indexString.toInt
-              if(index > 0) {
-                Some((lhs, index)) 
-              } else None
-            } catch {
-              case _ => None
-            }
-          } else None
-        }
-        case _ => None
-      }
-    }
-
     object ExEnsuredExpression {
       /** Extracts the 'ensuring' contract from an expression. */
       def unapply(tree: Apply): Option[(Tree,Symbol,Tree)] = tree match {
@@ -261,6 +206,61 @@ trait Extractors {
   }
 
   object ExpressionExtractors {
+    object ExTuple {
+      def unapply(tree: Apply): Option[(Seq[Type], Seq[Tree])] = tree match {
+        case Apply(
+          Select(New(tupleType), _),
+          List(e1, e2)
+        ) if tupleType.symbol == tuple2Sym => tupleType.tpe match {
+            case TypeRef(_, sym, List(t1, t2)) => Some((Seq(t1, t2), Seq(e1, e2)))
+            case _ => None
+          }
+
+        case Apply(
+          Select(New(tupleType), _),
+          List(e1, e2, e3)
+        ) if tupleType.symbol == tuple3Sym => tupleType.tpe match {
+            case TypeRef(_, sym, List(t1, t2, t3)) => Some((Seq(t1, t2, t3), Seq(e1, e2, e3)))
+            case _ => None
+          }
+        case Apply(
+          Select(New(tupleType), _),
+          List(e1, e2, e3, e4)
+        ) if tupleType.symbol == tuple4Sym => tupleType.tpe match {
+            case TypeRef(_, sym, List(t1, t2, t3, t4)) => Some((Seq(t1, t2, t3, t4), Seq(e1, e2, e3, e4)))
+            case _ => None
+          }
+        case Apply(
+          Select(New(tupleType), _),
+          List(e1, e2, e3, e4, e5)
+        ) if tupleType.symbol == tuple5Sym => tupleType.tpe match {
+            case TypeRef(_, sym, List(t1, t2, t3, t4, t5)) => Some((Seq(t1, t2, t3, t4, t5), Seq(e1, e2, e3, e4, e5)))
+            case _ => None
+          }
+        case _ => None
+      }
+    }
+
+    object ExTupleExtract {
+      def unapply(tree: Select) : Option[(Tree,Int)] = tree match {
+        case Select(lhs, n) => {
+          val methodName = n.toString
+          if(methodName.head == '_') {
+            val indexString = methodName.tail
+            try {
+              val index = indexString.toInt
+              if(index > 0) {
+                Some((lhs, index)) 
+              } else None
+            } catch {
+              case _ => None
+            }
+          } else None
+        }
+        case _ => None
+      }
+    }
+
     object ExIfThenElse {
       def unapply(tree: If): Option[(Tree,Tree,Tree)] = tree match {
         case If(t1,t2,t3) => Some((t1,t2,t3))
