@@ -17,12 +17,14 @@ object Trees {
     self: Expr =>
   }
 
-  case class Block(exprs: Seq[Expr]) extends Expr
-  case object Skip extends Expr with Terminal with FixedType {
+  case class Block(exprs: Seq[Expr], last: Expr) extends Expr
+  case class Assignment(varId: Identifier, expr: Expr) extends Expr with FixedType {
     val fixedType = UnitType
   }
-  case class Assignment(varId: Identifier, expr: Expr) extends Expr
-  case class While(cond: Expr, body: Expr) extends Expr
+  case class While(cond: Expr, body: Expr) extends Expr with FixedType {
+    val fixedType = UnitType
+  }
+
 
 
   /* This describes computational errors (unmatched case, taking min of an
@@ -254,6 +256,9 @@ object Trees {
     val fixedType = BooleanType
   }
   case class StringLiteral(value: String) extends Literal[String]
+  case object UnitLiteral extends Literal[Unit] with FixedType {
+    val fixedType = UnitType
+  }
 
   case class CaseClass(classDef: CaseClassDef, args: Seq[Expr]) extends Expr with FixedType {
     val fixedType = CaseClassType(classDef)
@@ -431,7 +436,7 @@ object Trees {
       case FiniteMap(args) => Some((args, (as : Seq[Expr]) => FiniteMap(as.asInstanceOf[Seq[SingletonMap]])))
       case FiniteMultiset(args) => Some((args, FiniteMultiset))
       case Distinct(args) => Some((args, Distinct))
-      case Block(args) => Some((args, Block))
+      case Block(args, rest) => Some((args :+ rest, exprs => Block(exprs.init, exprs.last)))
       case Tuple(args) => Some((args, Tuple))
       case _ => None
     }
@@ -722,16 +727,16 @@ object Trees {
 
   def flattenBlocks(expr: Expr): Expr = {
     def applyToTree(expr: Expr): Option[Expr] = expr match {
-      case Block(exprs) => {
-        val nexprs = exprs.flatMap{
-          case Block(es2) => es2
+      case Block(exprs, last) => {
+        val nexprs = (exprs :+ last).flatMap{
+          case Block(es2, el) => es2 :+ el
           case Skip => Seq()
           case e2 => Seq(e2)
         }
         val fexpr = nexprs match {
           case Seq() => Skip
           case Seq(e) => e
-          case es => Block(es).setType(es.last.getType)
+          case es => Block(es.init, es.last).setType(es.last.getType)
         }
         Some(fexpr)
       }

@@ -71,54 +71,6 @@ trait Extractors {
       }
     }
 
-    object ExValDef {
-      /** Extracts val's in the head of blocks. */
-      def unapply(tree: Block): Option[(Symbol,Tree,Tree,Tree)] = tree match {
-        case Block((vd @ ValDef(mods, _, tpt, rhs)) :: rest, expr) if !mods.isMutable => 
-          if(rest.isEmpty)
-            Some((vd.symbol, tpt, rhs, expr))
-          else
-            Some((vd.symbol, tpt, rhs, Block(rest, expr)))
-        case _ => None
-      }
-    }
-    object ExVarDef {
-      /** Extracts var's in the head of blocks. */
-      def unapply(tree: Block): Option[(Symbol,Tree,Tree,Tree)] = tree match {
-        case Block((vd @ ValDef(mods, _, tpt, rhs)) :: rest, expr) if mods.isMutable => 
-          if(rest.isEmpty)
-            Some((vd.symbol, tpt, rhs, expr))
-          else
-            Some((vd.symbol, tpt, rhs, Block(rest, expr)))
-        case _ => None
-      }
-    }
-
-    object ExAssign {
-      def unapply(tree: Block): Option[(Symbol,Tree,Tree)] = tree match {
-        case Block(Assign(id@Ident(_), rhs) :: rest, expr) =>
-          if(rest.isEmpty)
-            Some((id.symbol, rhs, expr))
-          else
-            Some((id.symbol, rhs, Block(rest, expr)))
-        case _ => None
-      }
-    }
-
-    object ExWhile {
-      def unapply(tree: Block): Option[(Tree,Tree,Tree)] = tree match {
-        case Block(
-          (label@LabelDef(_, _, If(cond, Block(body, jump@Apply(_, _)), unit@Literal(_)))) :: 
-            rest, 
-          expr) if label.symbol == jump.symbol && unit.symbol == null =>
-            println("while body is: " + Block(body, unit))
-            if(rest.isEmpty)
-                Some((cond, Block(body, unit), expr))
-            else
-                Some((cond, Block(body, unit), Block(rest, expr)))
-        case _ => None
-      }
-    }
 
     object ExObjectDef {
       /** Matches an object with no type parameters, and regardless of its
@@ -192,20 +144,52 @@ trait Extractors {
       }
     }
 
-    object ExLocalFunctionDef {
-      def unapply(tree: Block): Option[(DefDef,String,Seq[ValDef],Tree,Tree,Tree)] = tree match {
-        case Block((dd @ DefDef(_, name, tparams, vparamss, tpt, rhs)) :: rest, expr) if(tparams.isEmpty && vparamss.size == 1 && name != nme.CONSTRUCTOR) => {
-          if(rest.isEmpty)
-            Some((dd,name.toString, vparamss(0), tpt, rhs, expr))
-          else
-            Some((dd,name.toString, vparamss(0), tpt, rhs, Block(rest, expr)))
-        } 
-        case _ => None
-      }
-    }
   }
 
   object ExpressionExtractors {
+
+    //object ExLocalFunctionDef {
+    //  def unapply(tree: Block): Option[(DefDef,String,Seq[ValDef],Tree,Tree,Tree)] = tree match {
+    //    case Block((dd @ DefDef(_, name, tparams, vparamss, tpt, rhs)) :: rest, expr) if(tparams.isEmpty && vparamss.size == 1 && name != nme.CONSTRUCTOR) => {
+    //      if(rest.isEmpty)
+    //        Some((dd,name.toString, vparamss(0), tpt, rhs, expr))
+    //      else
+    //        Some((dd,name.toString, vparamss(0), tpt, rhs, Block(rest, expr)))
+    //    } 
+    //    case _ => None
+    //  }
+    //}
+
+    object ExValDef {
+      /** Extracts val's in the head of blocks. */
+      def unapply(tree: ValDef): Option[(Symbol,Tree,Tree)] = tree match {
+        case vd @ ValDef(mods, _, tpt, rhs) if !mods.isMutable => Some((vd.symbol, tpt, rhs))
+        case _ => None
+      }
+    }
+    object ExVarDef {
+      /** Extracts var's in the head of blocks. */
+      def unapply(tree: ValDef): Option[(Symbol,Tree,Tree)] = tree match {
+        case vd @ ValDef(mods, _, tpt, rhs) if mods.isMutable => Some((vd.symbol, tpt, rhs))
+        case _ => None
+      }
+    }
+
+    object ExAssign {
+      def unapply(tree: Assign): Option[(Symbol,Tree)] = tree match {
+        case Assign(id@Ident(_), rhs) => Some((id.symbol, rhs))
+        case _ => None
+      }
+    }
+
+    object ExWhile {
+      def unapply(tree: LabelDef): Option[(Tree,Tree)] = tree match {
+        case (label@LabelDef(
+                _, _, If(cond, Block(body, jump@Apply(_, _)), unit@Literal(_))))
+              if label.symbol == jump.symbol && unit.symbol == null => Some((cond, body))
+        case _ => None
+      }
+    }
     object ExTuple {
       def unapply(tree: Apply): Option[(Seq[Type], Seq[Tree])] = tree match {
         case Apply(

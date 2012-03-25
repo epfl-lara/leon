@@ -10,6 +10,7 @@ import scala.collection.mutable.{Set => MutableSet}
 class Analysis(pgm : Program, val reporter: Reporter = Settings.reporter) {
   Extensions.loadAll(reporter)
 
+  println("Analysis on program:\n" + pgm)
   val passManager = new PassManager(Seq(FunctionClosure, FunctionHoisting))
   val program = passManager.run(pgm)
 
