@@ -258,6 +258,7 @@ object Trees {
   case class StringLiteral(value: String) extends Literal[String]
   case object UnitLiteral extends Literal[Unit] with FixedType {
     val fixedType = UnitType
+    val value = ()
   }
 
   case class CaseClass(classDef: CaseClassDef, args: Seq[Expr]) extends Expr with FixedType {
@@ -730,11 +731,11 @@ object Trees {
       case Block(exprs, last) => {
         val nexprs = (exprs :+ last).flatMap{
           case Block(es2, el) => es2 :+ el
-          case Skip => Seq()
+          case UnitLiteral => Seq()
           case e2 => Seq(e2)
         }
         val fexpr = nexprs match {
-          case Seq() => Skip
+          case Seq() => UnitLiteral
           case Seq(e) => e
           case es => Block(es.init, es.last).setType(es.last.getType)
         }

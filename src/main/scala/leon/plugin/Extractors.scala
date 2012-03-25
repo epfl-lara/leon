@@ -185,8 +185,8 @@ trait Extractors {
     object ExWhile {
       def unapply(tree: LabelDef): Option[(Tree,Tree)] = tree match {
         case (label@LabelDef(
-                _, _, If(cond, Block(body, jump@Apply(_, _)), unit@Literal(_))))
-              if label.symbol == jump.symbol && unit.symbol == null => Some((cond, body))
+                _, _, If(cond, Block(body, jump@Apply(_, _)), unit@ExUnitLiteral())))
+              if label.symbol == jump.symbol && unit.symbol == null => Some((cond, Block(body, unit)))
         case _ => None
       }
     }
