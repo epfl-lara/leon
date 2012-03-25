@@ -391,6 +391,7 @@ trait CodeExtraction extends Extractors {
     def rec(tr: Tree): Expr = {
       
       val (nextExpr, rest) = tr match {
+        case Block(Block(e :: es1, l1) :: es2, l2) => (e, Some(Block(es1 ++ Seq(l1) ++ es2, l2)))
         case Block(e :: Nil, last) => (e, Some(last))
         case Block(e :: es, last) => (e, Some(Block(es, last)))
         case _ => (tr, None)
