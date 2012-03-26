@@ -60,23 +60,25 @@ object ImperativeCodeElimination extends Pass {
       case While(cond, body) => {
         val (_, bodyScope, bodyFun) = toFunction(body)
         val modifiedVars: Seq[Identifier] = bodyFun.keys.toSeq
-        val freshIds = modifiedVars.map(id => FreshIdentifier(id.name).setType(id.getType))
-        val freshVarDecls = freshIds.map(id => VarDecl(id, id.getType))
-        val var2fresh: Map[Expr, Expr] = modifiedVars.zip(freshIds).map(p => (p._1.toVariable, p._2.toVariable)).toMap
-        val tupleType = TupleType(freshIds.map(_.getType))
-        val funDef = new FunDef(FreshIdentifier("while"), tupleType, freshIds.map(id => VarDecl(id, id.getType)))
 
-        val freshCond = replace(var2fresh, cond)
-        val freshBody = bodyScope(FunctionInvocation(funDef, freshIds.map(_.toVariable)))
-        val newBody = IfExpr(freshCond, freshBody, Tuple(freshIds.map(_.toVariable))).setType(tupleType)
-        funDef.body = Some(newBody)
+        val whileFunVars = modifiedVars.map(id => FreshIdentifier(id.name).setType(id.getType))
+        val whileFunVarDecls = whileFunVars.map(id => VarDecl(id, id.getType))
+        val whileFunReturnType = if(whileFunVars.size == 1) whileFunVars.head.getType else TupleType(whileFunVars.map(_.getType))
+        val whileFunDef = new FunDef(FreshIdentifier("while"), whileFunReturnType, whileFunVarDecls)
+        
+        val modifiedVars2WhileFunVars: Map[Expr, Expr] = modifiedVars.zip(whileFunVars).map(p => (p._1.toVariable, p._2.toVariable)).toMap
+        val whileFunCond = replace(modifiedVars2WhileFunVars, cond)
+        val whileFunRecursiveCall = replace(modifiedVars2WhileFunVars, bodyScope(FunctionInvocation(whileFunDef, modifiedVars.map(id => bodyFun(id).toVariable))))
+        val whileFunBaseCase = (if(whileFunVars.size == 1) whileFunVars.head.toVariable else Tuple(whileFunVars.map(_.toVariable))).setType(whileFunReturnType)
+        val whileFunBody = IfExpr(whileFunCond, whileFunRecursiveCall, whileFunBaseCase)
+        whileFunDef.body = Some(whileFunBody)
 
         val finalVars = modifiedVars.map(id => FreshIdentifier(id.name).setType(id.getType))
         val finalScope = ((body: Expr) => {
-          val tupleId = FreshIdentifier("t").setType(tupleType)
+          val tupleId = FreshIdentifier("t").setType(whileFunReturnType)
           LetDef(
-            funDef,
-            Let(tupleId, FunctionInvocation(funDef, modifiedVars.map(_.toVariable)), finalVars.zipWithIndex.foldLeft(body)((b, id) => 
+            whileFunDef,
+            Let(tupleId, FunctionInvocation(whileFunDef, modifiedVars.map(_.toVariable)), finalVars.zipWithIndex.foldLeft(body)((b, id) => 
                 Let(id._1, 
                     TupleSelect(tupleId.toVariable, id._2 + 1).setType(id._1.getType), 
                     b))))
