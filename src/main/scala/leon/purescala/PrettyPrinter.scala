@@ -112,8 +112,10 @@ object PrettyPrinter {
     case While(cond, body) => {
       sb.append("while(")
       pp(cond, sb, lvl)
-      sb.append(") ")
-      pp(body, sb, lvl)
+      sb.append(")\n")
+      ind(sb, lvl+1)
+      pp(body, sb, lvl+1)
+      sb.append("\n")
     }
 
     case Tuple(exprs) => ppNary(sb, exprs, "(", ", ", ")", lvl)
