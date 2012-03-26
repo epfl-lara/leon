@@ -28,29 +28,43 @@ object ImperativeCodeElimination extends Pass {
         val scope = ((body: Expr) => Let(newId, e, body))
         (UnitLiteral, scope, Map(id -> newId))
       }
-      case IfExpr(cond, tExpr, eExpr) => {
-        val (_, tScope, tFun) = toFunction(tExpr)
-        val (_, eScope, eFun) = toFunction(eExpr)
+      case ite@IfExpr(cond, tExpr, eExpr) => {
+        val (tRes, tScope, tFun) = toFunction(tExpr)
+        val (eRes, eScope, eFun) = toFunction(eExpr)
+
         val modifiedVars: Seq[Identifier] = (tFun.keys ++ eFun.keys).toSeq
+        val resId = FreshIdentifier("res").setType(ite.getType)
         val freshIds = modifiedVars.map(id => FreshIdentifier(id.name).setType(id.getType))
-        val tupleType = TupleType(freshIds.map(_.getType))
-        val newTExpr = tScope(Tuple(modifiedVars.map(vId => tFun.get(vId) match {
+        val iteType = if(modifiedVars.isEmpty) resId.getType else TupleType(resId.getType +: freshIds.map(_.getType))
+
+        val thenVal = if(modifiedVars.isEmpty) tRes else Tuple(tRes +: modifiedVars.map(vId => tFun.get(vId) match {
           case Some(newId) => newId.toVariable
           case None => vId.toVariable
-        })).setType(tupleType))
-        val newEExpr = eScope(Tuple(modifiedVars.map(vId => eFun.get(vId) match {
+        }))
+        thenVal.setType(iteType)
+
+        val elseVal = if(modifiedVars.isEmpty) eRes else Tuple(eRes +: modifiedVars.map(vId => eFun.get(vId) match {
           case Some(newId) => newId.toVariable
           case None => vId.toVariable
-        })).setType(tupleType))
-        val newIfExpr = IfExpr(cond, newTExpr, newEExpr).setType(newTExpr.getType)
+        }))
+        elseVal.setType(iteType)
+
+        val iteExpr = IfExpr(cond, tScope(thenVal), eScope(elseVal)).setType(iteType)
+
         val scope = ((body: Expr) => {
-          val tupleId = FreshIdentifier("t").setType(TupleType(freshIds.map(_.getType)))
-          Let(tupleId, newIfExpr, freshIds.zipWithIndex.foldLeft(body)((b, id) => 
-                Let(id._1, 
-                    TupleSelect(tupleId.toVariable, id._2 + 1).setType(id._1.getType), 
-                    b)))
+          val tupleId = FreshIdentifier("t").setType(iteType)
+          Let(tupleId, iteExpr, 
+              if(freshIds.isEmpty)
+                Let(resId, tupleId.toVariable, body)
+              else
+                Let(resId, TupleSelect(tupleId.toVariable, 1),
+                  freshIds.zipWithIndex.foldLeft(body)((b, id) => 
+                    Let(id._1, 
+                      TupleSelect(tupleId.toVariable, id._2 + 2).setType(id._1.getType), 
+                      b))))
         })
-        (Tuple(freshIds.map(_.toVariable)), scope, Map(modifiedVars.zip(freshIds):_*))
+
+        (resId.toVariable, scope, Map(modifiedVars.zip(freshIds):_*))
       }
       case While(cond, body) => {
         val (_, bodyScope, bodyFun) = toFunction(body)
@@ -73,10 +87,15 @@ object ImperativeCodeElimination extends Pass {
           val tupleId = FreshIdentifier("t").setType(whileFunReturnType)
           LetDef(
             whileFunDef,
-            Let(tupleId, FunctionInvocation(whileFunDef, modifiedVars.map(_.toVariable)), finalVars.zipWithIndex.foldLeft(body)((b, id) => 
-                Let(id._1, 
-                    TupleSelect(tupleId.toVariable, id._2 + 1).setType(id._1.getType), 
-                    b))))
+            Let(tupleId, 
+                FunctionInvocation(whileFunDef, modifiedVars.map(_.toVariable)), 
+                if(finalVars.size == 1)
+                  Let(finalVars.head, tupleId.toVariable, body)
+                else
+                  finalVars.zipWithIndex.foldLeft(body)((b, id) => 
+                    Let(id._1, 
+                      TupleSelect(tupleId.toVariable, id._2 + 1).setType(id._1.getType), 
+                      b))))
         })
 
         (UnitLiteral, finalScope, modifiedVars.zip(finalVars).toMap)
