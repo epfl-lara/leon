@@ -82,6 +82,7 @@ object PrettyPrinter {
       sb.append("\n")
       pp(fd, sb, lvl)
       sb.append("\n")
+      sb.append("\n")
       ind(sb, lvl)
       pp(e, sb, lvl)
       sb
@@ -105,7 +106,7 @@ object PrettyPrinter {
         sb.append("\n")
       })
       ind(sb, lvl)
-      sb.append("}")
+      sb.append("}\n")
       sb
     }
     case Assignment(lhs, rhs) => ppBinary(sb, lhs.toVariable, rhs, " = ", lvl)
