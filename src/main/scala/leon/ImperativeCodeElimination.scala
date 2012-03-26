@@ -70,7 +70,7 @@ object ImperativeCodeElimination extends Pass {
         val whileFunCond = replace(modifiedVars2WhileFunVars, cond)
         val whileFunRecursiveCall = replace(modifiedVars2WhileFunVars, bodyScope(FunctionInvocation(whileFunDef, modifiedVars.map(id => bodyFun(id).toVariable))))
         val whileFunBaseCase = (if(whileFunVars.size == 1) whileFunVars.head.toVariable else Tuple(whileFunVars.map(_.toVariable))).setType(whileFunReturnType)
-        val whileFunBody = IfExpr(whileFunCond, whileFunRecursiveCall, whileFunBaseCase)
+        val whileFunBody = IfExpr(whileFunCond, whileFunRecursiveCall, whileFunBaseCase).setType(whileFunReturnType)
         whileFunDef.body = Some(whileFunBody)
 
         val finalVars = modifiedVars.map(id => FreshIdentifier(id.name).setType(id.getType))
