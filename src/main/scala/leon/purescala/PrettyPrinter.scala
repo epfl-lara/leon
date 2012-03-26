@@ -69,15 +69,21 @@ object PrettyPrinter {
     case Variable(id) => sb.append(id)
     case DeBruijnIndex(idx) => sb.append("_" + idx)
     case Let(b,d,e) => {
-        pp(e, pp(d, sb.append("(let (" + b + " := "), lvl).append(") in "), lvl).append(")")
+        //pp(e, pp(d, sb.append("(let (" + b + " := "), lvl).append(") in "), lvl).append(")")
+      sb.append("(let (" + b + " := ");
+      pp(d, sb, lvl)
+      sb.append(") in\n")
+      ind(sb, lvl+1)
+      pp(e, sb, lvl+1)
+      sb.append(")")
+      sb
     }
     case LetDef(fd,e) => {
-      sb.append("{")
+      sb.append("\n")
       pp(fd, sb, lvl)
       sb.append("\n")
       ind(sb, lvl)
       pp(e, sb, lvl)
-      sb.append("}")
       sb
     }
     case And(exprs) => ppNary(sb, exprs, "(", " \u2227 ", ")", lvl)            // \land
@@ -223,18 +229,27 @@ object PrettyPrinter {
       var nsb = sb
       nsb.append("if (")
       nsb = pp(c, nsb, lvl)
-      nsb.append(") {\n")
+      nsb.append(")\n")
       ind(nsb, lvl+1)
       nsb = pp(t, nsb, lvl+1)
       nsb.append("\n")
       ind(nsb, lvl)
-      nsb.append("} else {\n")
+      nsb.append("else\n")
       ind(nsb, lvl+1)
       nsb = pp(e, nsb, lvl+1)
-      nsb.append("\n")
-      ind(nsb, lvl)
-      nsb.append("}")
       nsb
+      //nsb.append(") {\n")
+      //ind(nsb, lvl+1)
+      //nsb = pp(t, nsb, lvl+1)
+      //nsb.append("\n")
+      //ind(nsb, lvl)
+      //nsb.append("} else {\n")
+      //ind(nsb, lvl+1)
+      //nsb = pp(e, nsb, lvl+1)
+      //nsb.append("\n")
+      //ind(nsb, lvl)
+      //nsb.append("}")
+      //nsb
     }
 
     case mex @ MatchExpr(s, csc) => {
