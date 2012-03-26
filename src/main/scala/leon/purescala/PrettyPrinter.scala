@@ -80,7 +80,7 @@ object PrettyPrinter {
     }
     case LetDef(fd,e) => {
       sb.append("\n")
-      pp(fd, sb, lvl)
+      pp(fd, sb, lvl+1)
       sb.append("\n")
       sb.append("\n")
       ind(sb, lvl)

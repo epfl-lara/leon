@@ -24,7 +24,10 @@ object FunctionHoisting extends Pass {
   private def hoist(expr: Expr): (Expr, Set[FunDef]) = expr match {
     case l @ LetDef(fd, rest) => {
       val (e, s) = hoist(rest)
-      (e, s + fd)
+      val (e2, s2) = hoist(fd.getBody)
+      fd.body = Some(e2)
+
+      (e, (s ++ s2) + fd)
     }
     case l @ Let(i,e,b) => {
       val (re, s1) = hoist(e)

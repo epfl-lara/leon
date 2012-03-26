@@ -12,13 +12,8 @@ object ImperativeCodeElimination extends Pass {
   def apply(pgm: Program): Program = {
     val allFuns = pgm.definedFunctions
     allFuns.foreach(fd => {
-      val (res, _, _) = toFunction(fd.getBody)
-      //val ((scope, fun), last) = fd.getBody match {
-      //  case Block(stmts, stmt) => (toFunction(Block(stmts.init, stmts.last)), stmt)
-      //  case _ => sys.error("not supported")
-      //}
-      //fd.body = Some(scope(replace(fun.map{case (i1, i2) => (i1.toVariable, i2.toVariable)}, last)))
-      fd.body = Some(res)
+      val (res, scope, _) = toFunction(fd.getBody)
+      fd.body = Some(scope(res))
     })
     pgm
   }
@@ -102,6 +97,14 @@ object ImperativeCodeElimination extends Pass {
       }
 
       //pure expression (that could still contain side effects as a subexpression)
+      case Let(id, e, b) => {
+        val (bodyRes, bodyScope, bodyFun) = toFunction(b)
+        (bodyRes, (b: Expr) => Let(id, e, bodyScope(b)), bodyFun)
+      }
+      case LetDef(fd, b) => {
+        val (bodyRes, bodyScope, bodyFun) = toFunction(b)
+        (bodyRes, (b: Expr) => LetDef(fd, bodyScope(b)), bodyFun)
+      }
       case n @ NAryOperator(args, recons) => {
         val (recArgs, scope, fun) = args.foldLeft((Seq[Expr](), (body: Expr) => body, Map[Identifier, Identifier]()))((acc, arg) => {
           val (accArgs, scope, fun) = acc
