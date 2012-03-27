@@ -55,14 +55,12 @@ object UnitElimination extends Pass {
         Tuple(newArgs.map(removeUnit)).setType(TupleType(newTpes))
       }
       case ts@TupleSelect(t, index) => {
-        println("Select Tuple: " + ts)
         val TupleType(tpes) = t.getType
         val selectionType = tpes(index-1)
         val (_, newIndex) = tpes.zipWithIndex.foldLeft((0,-1)){
           case ((nbUnit, newIndex), (tpe, i)) =>
             if(i == index-1) (nbUnit, index - nbUnit) else (if(tpe == UnitType) nbUnit + 1 else nbUnit, newIndex)
         }
-        println("new index = " + newIndex)
         TupleSelect(removeUnit(t), newIndex).setType(selectionType)
       }
       case Let(id, e, b) => {

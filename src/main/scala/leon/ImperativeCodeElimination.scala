@@ -84,12 +84,21 @@ object ImperativeCodeElimination extends Pass {
           val whileFunBaseCase = (if(whileFunVars.size == 1) whileFunVars.head.toVariable else Tuple(whileFunVars.map(_.toVariable))).setType(whileFunReturnType)
           val whileFunBody = IfExpr(whileFunCond, whileFunRecursiveCall, whileFunBaseCase).setType(whileFunReturnType)
           whileFunDef.body = Some(whileFunBody)
-          val trivialPostcondition: Option[Expr] = Some(Not(replace(whileFunVars.map(id => (id.toVariable, ResultVariable())).toMap, whileFunCond)))
+
+          val resVar = ResultVariable().setType(whileFunReturnType)
+          val whileFunVars2ResultVars: Map[Expr, Expr] = 
+            if(whileFunVars.size == 1) 
+              Map(whileFunVars.head.toVariable -> resVar)
+            else
+              whileFunVars.zipWithIndex.map{ case (v, i) => (v.toVariable, TupleSelect(resVar, i+1).setType(v.getType)) }.toMap
+          val modifiedVars2ResultVars: Map[Expr, Expr] = modifiedVars.map(v => (v.toVariable, modifiedVars2WhileFunVars(v.toVariable))).toMap
+
+          val trivialPostcondition: Option[Expr] = Some(Not(replace(whileFunVars2ResultVars, whileFunCond)))
           val invariantPrecondition: Option[Expr] = wh.invariant.map(expr => replace(modifiedVars2WhileFunVars, expr))
           whileFunDef.precondition = invariantPrecondition
           whileFunDef.postcondition = trivialPostcondition.map(expr => 
               And(expr, invariantPrecondition match { 
-                case Some(e) => replace(whileFunVars.map(id => (id.toVariable, ResultVariable())).toMap, e)
+                case Some(e) => replace(modifiedVars2ResultVars, e)
                 case None => BooleanLiteral(true)
               }))
 
