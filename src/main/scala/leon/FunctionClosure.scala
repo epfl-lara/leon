@@ -18,7 +18,7 @@ object FunctionClosure extends Pass {
   }
 
   private def functionClosure(expr: Expr, bindedVars: Set[Identifier]): Expr = expr match {
-    case l @ LetDef(FunDef(id, rt, varDecl, Some(funBody), _, _), rest) => {
+    case l @ LetDef(fd@FunDef(id, rt, varDecl, Some(funBody), _, _), rest) => {
       val vars = variablesOf(funBody)
       val capturedVars = vars.intersect(bindedVars).toSeq // this should be the variable used that are in the scope
       val freshVars: Map[Identifier, Identifier] = capturedVars.map(v => (v, FreshIdentifier(v.name).setType(v.getType))).toMap
@@ -27,6 +27,8 @@ object FunctionClosure extends Pass {
       val newVarDecls = varDecl ++ extraVarDecls
       val newFunId = FreshIdentifier(id.name)
       val newFunDef = new FunDef(newFunId, rt, newVarDecls)
+      newFunDef.precondition = fd.precondition.map(expr => replace(freshVars.map(p => (p._1.toVariable, p._2.toVariable)), expr))
+      newFunDef.postcondition = fd.postcondition.map(expr => replace(freshVars.map(p => (p._1.toVariable, p._2.toVariable)), expr))
       def substFunInvocInDef(expr: Expr): Option[Expr] = expr match {
         case FunctionInvocation(fd, args) if fd.id == id => Some(FunctionInvocation(newFunDef, args ++ extraVarDecls.map(_.id.toVariable)))
         case _ => None

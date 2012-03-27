@@ -20,6 +20,8 @@ object UnitElimination extends Pass {
     allFuns.foreach(fd => {
       if(fd.returnType != UnitType && fd.args.exists(vd => vd.tpe == UnitType)) {
         val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.returnType, fd.args.filterNot(vd => vd.tpe == UnitType))
+        freshFunDef.precondition = fd.precondition //TODO: maybe removing unit from the conditions as well..
+        freshFunDef.postcondition = fd.postcondition//TODO: maybe removing unit from the conditions as well..
         fun2FreshFun += (fd -> freshFunDef)
       } else {
         fun2FreshFun += (fd -> fd) //this will make the next step simpler
@@ -86,6 +88,8 @@ object UnitElimination extends Pass {
         else {
           val (newFd, rest) = if(fd.args.exists(vd => vd.tpe == UnitType)) {
             val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.returnType, fd.args.filterNot(vd => vd.tpe == UnitType))
+            freshFunDef.precondition = fd.precondition //TODO: maybe removing unit from the conditions as well..
+            freshFunDef.postcondition = fd.postcondition//TODO: maybe removing unit from the conditions as well..
             fun2FreshFun += (fd -> freshFunDef)
             freshFunDef.body = Some(removeUnit(fd.getBody))
             val restRec = removeUnit(b)

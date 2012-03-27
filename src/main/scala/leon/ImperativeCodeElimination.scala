@@ -66,7 +66,7 @@ object ImperativeCodeElimination extends Pass {
 
         (resId.toVariable, scope, modifiedVars.zip(freshIds).toMap)
       }
-      case While(cond, body) => {
+      case wh@While(cond, body) => {
         val (_, bodyScope, bodyFun) = toFunction(body)
         val modifiedVars: Seq[Identifier] = bodyFun.keys.toSeq
 
@@ -84,6 +84,14 @@ object ImperativeCodeElimination extends Pass {
           val whileFunBaseCase = (if(whileFunVars.size == 1) whileFunVars.head.toVariable else Tuple(whileFunVars.map(_.toVariable))).setType(whileFunReturnType)
           val whileFunBody = IfExpr(whileFunCond, whileFunRecursiveCall, whileFunBaseCase).setType(whileFunReturnType)
           whileFunDef.body = Some(whileFunBody)
+          val trivialPostcondition: Option[Expr] = Some(Not(replace(whileFunVars.map(id => (id.toVariable, ResultVariable())).toMap, whileFunCond)))
+          val invariantPrecondition: Option[Expr] = wh.invariant.map(expr => replace(modifiedVars2WhileFunVars, expr))
+          whileFunDef.precondition = invariantPrecondition
+          whileFunDef.postcondition = trivialPostcondition.map(expr => 
+              And(expr, invariantPrecondition match { 
+                case Some(e) => replace(whileFunVars.map(id => (id.toVariable, ResultVariable())).toMap, e)
+                case None => BooleanLiteral(true)
+              }))
 
           val finalVars = modifiedVars.map(id => FreshIdentifier(id.name).setType(id.getType))
           val finalScope = ((body: Expr) => {
@@ -150,8 +158,8 @@ object ImperativeCodeElimination extends Pass {
       case m @ MatchExpr(scrut, cses) => sys.error("not supported: " + expr)
       case _ => sys.error("not supported: " + expr)
     }
-    val codeRepresentation = res._2(Block(res._3.map{ case (id1, id2) => Assignment(id1, id2.toVariable)}.toSeq, res._1))
-    println("res of toFunction on: " + expr + " IS: " + codeRepresentation)
+    //val codeRepresentation = res._2(Block(res._3.map{ case (id1, id2) => Assignment(id1, id2.toVariable)}.toSeq, res._1))
+    //println("res of toFunction on: " + expr + " IS: " + codeRepresentation)
     res.asInstanceOf[(Expr, (Expr) => Expr, Map[Identifier, Identifier])]
   }
 
