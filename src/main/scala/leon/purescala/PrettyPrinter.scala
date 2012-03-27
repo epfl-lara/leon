@@ -110,7 +110,18 @@ object PrettyPrinter {
       sb
     }
     case Assignment(lhs, rhs) => ppBinary(sb, lhs.toVariable, rhs, " = ", lvl)
-    case While(cond, body) => {
+    case wh@While(cond, body) => {
+      wh.invariant match {
+        case Some(inv) => {
+          sb.append("\n")
+          ind(sb, lvl)
+          sb.append("@invariant: ")
+          pp(inv, sb, lvl)
+          sb.append("\n")
+          ind(sb, lvl)
+        }
+        case None =>
+      }
       sb.append("while(")
       pp(cond, sb, lvl)
       sb.append(")\n")
