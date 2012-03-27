@@ -466,6 +466,14 @@ trait CodeExtraction extends Extractors {
           val bodyTree = rec(body)
           While(condTree, bodyTree)
         }
+        case ExWhileWithInvariant(cond, body, inv) => {
+          val condTree = rec(cond)
+          val bodyTree = rec(body)
+          val invTree = rec(inv)
+          val w = While(condTree, bodyTree)
+          w.invariant = Some(invTree)
+          w
+        }
 
         case ExInt32Literal(v) => IntLiteral(v).setType(Int32Type)
         case ExBooleanLiteral(v) => BooleanLiteral(v).setType(BooleanType)

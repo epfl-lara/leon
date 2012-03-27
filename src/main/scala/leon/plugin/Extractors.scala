@@ -190,6 +190,16 @@ trait Extractors {
         case _ => None
       }
     }
+    object ExWhileWithInvariant {
+      def unapply(tree: Apply): Option[(Tree, Tree, Tree)] = tree match {
+        case Apply(
+          Select(
+            Apply(while2invariant, List(ExWhile(cond, body))),
+            invariantSym),
+          List(invariant)) if invariantSym.toString == "invariant" => Some((cond, body, invariant))
+        case _ => None
+      }
+    }
     object ExTuple {
       def unapply(tree: Apply): Option[(Seq[Type], Seq[Tree])] = tree match {
         case Apply(
