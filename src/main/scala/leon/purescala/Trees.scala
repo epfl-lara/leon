@@ -23,6 +23,10 @@ object Trees {
   }
   case class While(cond: Expr, body: Expr) extends Expr with FixedType {
     val fixedType = UnitType
+    var invariant: Option[Expr] = None
+
+    def getInvariant: Expr = invariant.get
+    def setInvariant(inv: Expr): Expr = { invariant = Some(inv); this }
   }
 
 
@@ -425,7 +429,7 @@ object Trees {
       case MapIsDefinedAt(t1,t2) => Some((t1,t2, MapIsDefinedAt))
       case Concat(t1,t2) => Some((t1,t2,Concat))
       case ListAt(t1,t2) => Some((t1,t2,ListAt))
-      case While(t1, t2) => Some((t1,t2,While))
+      case wh@While(t1, t2) => Some((t1,t2, (t1, t2) => While(t1, t2).setInvariant(wh.getInvariant)))
       case _ => None
     }
   }
