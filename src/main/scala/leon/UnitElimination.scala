@@ -92,8 +92,10 @@ object UnitElimination extends Pass {
             fun2FreshFun -= fd
             (freshFunDef, restRec)
           } else {
+            fun2FreshFun += (fd -> fd)
             fd.body = Some(removeUnit(fd.getBody))
             val restRec = removeUnit(b)
+            fun2FreshFun -= fd
             (fd, restRec)
           }
           LetDef(newFd, rest)
