@@ -91,14 +91,15 @@ object ImperativeCodeElimination extends Pass {
               Map(whileFunVars.head.toVariable -> resVar)
             else
               whileFunVars.zipWithIndex.map{ case (v, i) => (v.toVariable, TupleSelect(resVar, i+1).setType(v.getType)) }.toMap
-          val modifiedVars2ResultVars: Map[Expr, Expr] = modifiedVars.map(v => (v.toVariable, modifiedVars2WhileFunVars(v.toVariable))).toMap
+          val modifiedVars2ResultVars: Map[Expr, Expr] = modifiedVars.map(v => (v.toVariable, whileFunVars2ResultVars(modifiedVars2WhileFunVars(v.toVariable)))).toMap
 
           val trivialPostcondition: Option[Expr] = Some(Not(replace(whileFunVars2ResultVars, whileFunCond)))
           val invariantPrecondition: Option[Expr] = wh.invariant.map(expr => replace(modifiedVars2WhileFunVars, expr))
+          val invariantPostcondition: Option[Expr] = wh.invariant.map(expr => replace(modifiedVars2ResultVars, expr))
           whileFunDef.precondition = invariantPrecondition
           whileFunDef.postcondition = trivialPostcondition.map(expr => 
-              And(expr, invariantPrecondition match { 
-                case Some(e) => replace(modifiedVars2ResultVars, e)
+              And(expr, invariantPostcondition match { 
+                case Some(e) => e
                 case None => BooleanLiteral(true)
               }))
 
