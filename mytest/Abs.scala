@@ -13,9 +13,8 @@ object Abs {
           tabres = tabres.updated(k, -tab(k))
         else
           tabres = tabres.updated(k, tab(k))
-      } else {
+      } else
         tabres = tabres.updated(k, 0)
-      }
       k = k + 1
     }) invariant(k >= 0 && (if(j < k) tabres(j) >= 0 else true))
     tabres
