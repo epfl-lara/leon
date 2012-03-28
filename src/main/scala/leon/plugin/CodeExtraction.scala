@@ -427,7 +427,9 @@ trait CodeExtraction extends Extractors {
             case None => UnitLiteral
           }
           handleRest = false
-          Let(newID, valTree, restTree)
+          val res = Let(newID, valTree, restTree)
+          println(res + " with type: " + res.getType + " and restree type: " + restTree.getType)
+          res
         }
         case dd@ExFunctionDef(n, p, t, b) => {
           val funDef = extractFunSig(n, p, t).setPosInfo(dd.pos.line, dd.pos.column)

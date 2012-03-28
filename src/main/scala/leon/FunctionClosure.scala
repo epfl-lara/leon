@@ -21,7 +21,12 @@ object FunctionClosure extends Pass {
   }
 
   private def functionClosure(expr: Expr, bindedVars: Set[Identifier]): Expr = expr match {
-    case l @ LetDef(fd@FunDef(id, rt, varDecl, Some(funBody), _, _), rest) => {
+    case l @ LetDef(fd, rest) => {
+      val id = fd.id
+      val rt = fd.returnType
+      val varDecl = fd.args
+      val funBody = fd.getBody
+      val previousEnclosingPreconditions = enclosingPreconditions
       enclosingPreconditions = fd.precondition match {
         case Some(pre) => pre :: enclosingPreconditions
         case None => enclosingPreconditions
@@ -37,9 +42,10 @@ object FunctionClosure extends Pass {
       val newVarDecls = varDecl ++ extraVarDecls
       val newFunId = FreshIdentifier(id.name)
       val newFunDef = new FunDef(newFunId, rt, newVarDecls)
+      enclosingPreconditions = enclosingPreconditions.map(pre => replace(freshVarsExpr, pre)) //introduce the new variables name for the list of preconditions
       newFunDef.precondition = enclosingPreconditions match {
         case List() => None
-        case precs => Some(replace(freshVarsExpr, And(precs)))
+        case precs => Some(And(precs))
       }
       newFunDef.postcondition = fd.postcondition.map(expr => replace(freshVarsExpr, expr))
       def substFunInvocInDef(expr: Expr): Option[Expr] = expr match {
@@ -54,10 +60,7 @@ object FunctionClosure extends Pass {
         case _ => None
       }
       //need to remove the enclosing precondition before considering the rest
-      enclosingPreconditions = fd.precondition match {
-        case Some(_) => enclosingPreconditions.tail
-        case None => enclosingPreconditions
-      }
+      enclosingPreconditions = previousEnclosingPreconditions
       val recRest = functionClosure(rest, bindedVars)
       val recRest2 = searchAndReplaceDFS(substFunInvocInRest)(recRest)
       LetDef(newFunDef, recRest2).setType(l.getType)

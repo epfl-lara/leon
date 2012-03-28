@@ -17,7 +17,12 @@ object Trees {
     self: Expr =>
   }
 
-  case class Block(exprs: Seq[Expr], last: Expr) extends Expr
+  case class Block(exprs: Seq[Expr], last: Expr) extends Expr {
+    val t = last.getType
+    if(t != Untyped)
+      setType(t)
+  }
+
   case class Assignment(varId: Identifier, expr: Expr) extends Expr with FixedType {
     val fixedType = UnitType
   }
@@ -500,8 +505,10 @@ object Trees {
             l
         }
         case l @ LetDef(fd, b) => {
-          //TODO, not sure
-          fd.body = Some(rec(fd.getBody))
+          //TODO, not sure, see comment for the next LetDef
+          fd.body = fd.body.map(rec(_))
+          fd.precondition = fd.precondition.map(rec(_))
+          fd.postcondition = fd.postcondition.map(rec(_))
           LetDef(fd, rec(b)).setType(l.getType)
         }
         case n @ NAryOperator(args, recons) => {
@@ -588,8 +595,10 @@ object Trees {
         })
       }
       case l @ LetDef(fd,b) => {
-        //TODO: Not sure
-        fd.body = Some(rec(fd.getBody))
+        //TODO: Not sure: I actually need the replace to occurs even in the pre/post condition, hope this is correct
+        fd.body = fd.body.map(rec(_))
+        fd.precondition = fd.precondition.map(rec(_))
+        fd.postcondition = fd.postcondition.map(rec(_))
         val rl = LetDef(fd, rec(b)).setType(l.getType)
         applySubst(rl)
       }
