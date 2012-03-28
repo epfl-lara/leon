@@ -9,26 +9,39 @@ object FunctionClosure extends Pass {
 
   val description = "Closing function with its scoping variables"
 
+  private var enclosingPreconditions: List[Expr] = Nil
+
   def apply(program: Program): Program = {
     val funDefs = program.definedFunctions
-    funDefs.foreach(fd =>
+    funDefs.foreach(fd => {
+      enclosingPreconditions = fd.precondition.toList
       fd.body = Some(functionClosure(fd.getBody, fd.args.map(_.id).toSet))
-    )
+    })
     program
   }
 
   private def functionClosure(expr: Expr, bindedVars: Set[Identifier]): Expr = expr match {
     case l @ LetDef(fd@FunDef(id, rt, varDecl, Some(funBody), _, _), rest) => {
-      val vars = variablesOf(funBody)
+      enclosingPreconditions = fd.precondition match {
+        case Some(pre) => pre :: enclosingPreconditions
+        case None => enclosingPreconditions
+      }
+      val bodyVars: Set[Identifier] = variablesOf(funBody) 
+      val preconditionVars: Set[Identifier] = enclosingPreconditions.foldLeft(Set[Identifier]())((s, pre) => s ++ variablesOf(pre))
+      val vars = bodyVars ++ preconditionVars
       val capturedVars = vars.intersect(bindedVars).toSeq // this should be the variable used that are in the scope
       val freshVars: Map[Identifier, Identifier] = capturedVars.map(v => (v, FreshIdentifier(v.name).setType(v.getType))).toMap
-      val freshBody = replace(freshVars.map{ case (v1, v2) => (v1.toVariable, v2.toVariable) }, funBody)
+      val freshVarsExpr: Map[Expr, Expr] = freshVars.map(p => (p._1.toVariable, p._2.toVariable))
+      val freshBody = replace(freshVarsExpr, funBody)
       val extraVarDecls = freshVars.map{ case (_, v2) => VarDecl(v2, v2.getType) }
       val newVarDecls = varDecl ++ extraVarDecls
       val newFunId = FreshIdentifier(id.name)
       val newFunDef = new FunDef(newFunId, rt, newVarDecls)
-      newFunDef.precondition = fd.precondition.map(expr => replace(freshVars.map(p => (p._1.toVariable, p._2.toVariable)), expr))
-      newFunDef.postcondition = fd.postcondition.map(expr => replace(freshVars.map(p => (p._1.toVariable, p._2.toVariable)), expr))
+      newFunDef.precondition = enclosingPreconditions match {
+        case List() => None
+        case precs => Some(replace(freshVarsExpr, And(precs)))
+      }
+      newFunDef.postcondition = fd.postcondition.map(expr => replace(freshVarsExpr, expr))
       def substFunInvocInDef(expr: Expr): Option[Expr] = expr match {
         case FunctionInvocation(fd, args) if fd.id == id => Some(FunctionInvocation(newFunDef, args ++ extraVarDecls.map(_.id.toVariable)))
         case _ => None
@@ -39,6 +52,11 @@ object FunctionClosure extends Pass {
       def substFunInvocInRest(expr: Expr): Option[Expr] = expr match {
         case FunctionInvocation(fd, args) if fd.id == id => Some(FunctionInvocation(newFunDef, args ++ capturedVars.map(_.toVariable)))
         case _ => None
+      }
+      //need to remove the enclosing precondition before considering the rest
+      enclosingPreconditions = fd.precondition match {
+        case Some(_) => enclosingPreconditions.tail
+        case None => enclosingPreconditions
       }
       val recRest = functionClosure(rest, bindedVars)
       val recRest2 = searchAndReplaceDFS(substFunInvocInRest)(recRest)
