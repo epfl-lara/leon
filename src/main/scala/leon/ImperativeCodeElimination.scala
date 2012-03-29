@@ -132,8 +132,8 @@ object ImperativeCodeElimination extends Pass {
           (scope, accFun ++ rFun)
         })
         val (lastRes, lastScope, lastFun) = toFunction(expr)
-        (replace(fun.map{ case (i1, i2) => (i1.toVariable, i2.toVariable) }, lastRes),
-         (body: Expr) => scope(lastScope(body)),
+        (lastRes,
+         (body: Expr) => scope(replace(fun.map{ case (i1, i2) => (i1.toVariable, i2.toVariable) }, lastScope(body))),
          fun ++ lastFun)
       }
 
