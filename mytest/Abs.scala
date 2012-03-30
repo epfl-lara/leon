@@ -4,7 +4,8 @@ object Abs {
 
 
   def abs(tab: Map[Int, Int], size: Int, j: Int): Map[Int, Int] = ({
-    require(j >= 0 && j < size)
+    require(size <= 5 && /*)
+    require(*/isArray(tab, size) && j >= 0 && j < size)
     var k = 0
     var tabres = Map.empty[Int, Int]
     (while(k < size) {
@@ -18,10 +19,17 @@ object Abs {
   }) ensuring(res => res(j) >= 0)
 
   def isArray(a: Map[Int, Int], size: Int): Boolean = {
-    def rec(i: Int): Boolean = if(i >= size) true else {
-      if(a.isDefinedAt(i)) rec(i+1) else false
+    if(size < 0)
+      false
+    else
+      rec(a, size, 0)
+  }
+
+  def rec(a: Map[Int, Int], size: Int, i: Int): Boolean = {
+    require(i >= 0 && i <= size)
+    if(i >= size) true else { 
+      if(a.isDefinedAt(i)) rec(a, size, i+1) else false
     }
-    size > 0 && rec(0)
   }
 
 }
