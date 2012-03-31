@@ -150,7 +150,7 @@ object ImperativeCodeElimination extends Pass {
         val (recArgs, scope, fun) = args.foldLeft((Seq[Expr](), (body: Expr) => body, Map[Identifier, Identifier]()))((acc, arg) => {
           val (accArgs, scope, fun) = acc
           val (argVal, argScope, argFun) = toFunction(arg)
-          val argInScope = scope(replace(fun.map(ids => (ids._1.toVariable, ids._2.toVariable)), argVal))
+          val argInScope = scope(replaceNames(fun, argVal))
           (accArgs :+ argInScope, (body: Expr) => scope(argScope(body)), fun ++ argFun)
         })
         (recons(recArgs), scope, fun)
@@ -158,7 +158,12 @@ object ImperativeCodeElimination extends Pass {
       case b @ BinaryOperator(a1, a2, recons) => {
         val (argVal1, argScope1, argFun1) = toFunction(a1)
         val (argVal2, argScope2, argFun2) = toFunction(a2)
-        (recons(argVal1, argVal2), (body: Expr) => argScope1(argScope2(body)), argFun1 ++ argFun2)
+        val scope = (body: Expr) => {
+          val rhs = argScope2(replaceNames(argFun2, body))
+          val lhs = argScope1(replaceNames(argFun1, rhs))
+          lhs
+        }
+        (recons(replaceNames(argFun1, argVal1), replaceNames(argFun2, argVal2)), scope, argFun1 ++ argFun2)
       }
       case u @ UnaryOperator(a, recons) => {
         val (argVal, argScope, argFun) = toFunction(a)
@@ -172,5 +177,7 @@ object ImperativeCodeElimination extends Pass {
     //println("res of toFunction on: " + expr + " IS: " + codeRepresentation)
     res.asInstanceOf[(Expr, (Expr) => Expr, Map[Identifier, Identifier])]
   }
+
+  def replaceNames(fun: Map[Identifier, Identifier], expr: Expr) = replace(fun.map(ids => (ids._1.toVariable, ids._2.toVariable)), expr)
 
 }
