@@ -3,9 +3,8 @@ import leon.Utils._
 object Abs {
 
 
-  def abs(tab: Map[Int, Int], size: Int, j: Int): Map[Int, Int] = ({
-    require(size <= 5 && /*)
-    require(*/isArray(tab, size) && j >= 0 && j < size)
+  def abs(tab: Map[Int, Int], size: Int): Map[Int, Int] = ({
+    require(size <= 5 && isArray(tab, size))
     var k = 0
     var tabres = Map.empty[Int, Int]
     (while(k < size) {
@@ -14,9 +13,17 @@ object Abs {
       else
         tabres = tabres.updated(k, tab(k))
       k = k + 1
-    }) invariant(k >= 0 && k <= size && (if(j < k) tabres(j) >= 0 else true))
+    }) invariant(isArray(tabres, k) && k >= 0 && k <= size && isPositive(tabres, k))
     tabres
-  }) ensuring(res => res(j) >= 0)
+  }) ensuring(res => isArray(res, size) && isPositive(res, size))
+
+  def isPositive(a: Map[Int, Int], size: Int): Boolean = {
+    require(isArray(a, size))
+    def rec(i: Int): Boolean = if(i >= size) true else {
+      if(a(i) < 0) false else rec(i+1)
+    }
+    rec(0)
+  }
 
   def isArray(a: Map[Int, Int], size: Int): Boolean = {
     if(size < 0)
