@@ -486,16 +486,16 @@ trait CodeExtraction extends Extractors {
             throw ImpureCodeEncounteredException(tr)
           }
         }
-        case ExWhile(cond, body) => {
+        case wh@ExWhile(cond, body) => {
           val condTree = rec(cond)
           val bodyTree = rec(body)
-          While(condTree, bodyTree)
+          While(condTree, bodyTree).setPosInfo(wh.pos.line,wh.pos.column)
         }
-        case ExWhileWithInvariant(cond, body, inv) => {
+        case wh@ExWhileWithInvariant(cond, body, inv) => {
           val condTree = rec(cond)
           val bodyTree = rec(body)
           val invTree = rec(inv)
-          val w = While(condTree, bodyTree)
+          val w = While(condTree, bodyTree).setPosInfo(wh.pos.line,wh.pos.column)
           w.invariant = Some(invTree)
           w
         }

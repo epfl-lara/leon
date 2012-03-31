@@ -76,7 +76,7 @@ object ImperativeCodeElimination extends Pass {
           val whileFunVars = modifiedVars.map(id => FreshIdentifier(id.name).setType(id.getType))
           val whileFunVarDecls = whileFunVars.map(id => VarDecl(id, id.getType))
           val whileFunReturnType = if(whileFunVars.size == 1) whileFunVars.head.getType else TupleType(whileFunVars.map(_.getType))
-          val whileFunDef = new FunDef(FreshIdentifier("while"), whileFunReturnType, whileFunVarDecls)
+          val whileFunDef = new FunDef(FreshIdentifier("while"), whileFunReturnType, whileFunVarDecls).setPosInfo(wh)
           
           val modifiedVars2WhileFunVars: Map[Expr, Expr] = modifiedVars.zip(whileFunVars).map(p => (p._1.toVariable, p._2.toVariable)).toMap
           val whileFunCond = replace(modifiedVars2WhileFunVars, cond)

@@ -26,7 +26,7 @@ object Trees {
   case class Assignment(varId: Identifier, expr: Expr) extends Expr with FixedType {
     val fixedType = UnitType
   }
-  case class While(cond: Expr, body: Expr) extends Expr with FixedType {
+  case class While(cond: Expr, body: Expr) extends Expr with FixedType with ScalacPositional {
     val fixedType = UnitType
     var invariant: Option[Expr] = None
 

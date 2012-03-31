@@ -19,7 +19,7 @@ object UnitElimination extends Pass {
     //first introduce new signatures without Unit parameters
     allFuns.foreach(fd => {
       if(fd.returnType != UnitType && fd.args.exists(vd => vd.tpe == UnitType)) {
-        val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.returnType, fd.args.filterNot(vd => vd.tpe == UnitType))
+        val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.returnType, fd.args.filterNot(vd => vd.tpe == UnitType)).setPosInfo(fd)
         freshFunDef.precondition = fd.precondition //TODO: maybe removing unit from the conditions as well..
         freshFunDef.postcondition = fd.postcondition//TODO: maybe removing unit from the conditions as well..
         fun2FreshFun += (fd -> freshFunDef)
@@ -85,7 +85,7 @@ object UnitElimination extends Pass {
           removeUnit(b)
         else {
           val (newFd, rest) = if(fd.args.exists(vd => vd.tpe == UnitType)) {
-            val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.returnType, fd.args.filterNot(vd => vd.tpe == UnitType))
+            val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.returnType, fd.args.filterNot(vd => vd.tpe == UnitType)).setPosInfo(fd)
             freshFunDef.precondition = fd.precondition //TODO: maybe removing unit from the conditions as well..
             freshFunDef.postcondition = fd.postcondition//TODO: maybe removing unit from the conditions as well..
             fun2FreshFun += (fd -> freshFunDef)
