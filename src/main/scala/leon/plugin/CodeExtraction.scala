@@ -376,8 +376,31 @@ trait CodeExtraction extends Extractors {
       var reqCont: Option[Expr] = None
       var ensCont: Option[Expr] = None
       
+      realBody match {
+        case ExEnsuredExpression(body2, resSym, contract) => {
+          varSubsts(resSym) = (() => ResultVariable().setType(funDef.returnType))
+          val c1 = scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies) (contract)
+          // varSubsts.remove(resSym)
+          realBody = body2
+          ensCont = Some(c1)
+        }
+        case ExHoldsExpression(body2) => {
+          realBody = body2
+          ensCont = Some(ResultVariable().setType(BooleanType))
+        }
+        case _ => ;
+      }
+
+      realBody match {
+        case ExRequiredExpression(body3, contract) => {
+          realBody = body3
+          reqCont = Some(scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies) (contract))
+        }
+        case _ => ;
+      }
+      
       val bodyAttempt = try {
-        Some(scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies)(realBody))
+        Some(flattenBlocks(scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies)(realBody)))
       } catch {
         case e: ImpureCodeEncounteredException => None
       }

@@ -34,7 +34,7 @@ object Bubble {
   }) ensuring(res => sorted(res, size, 0, size-1))
 
   def sorted(a: Map[Int, Int], size: Int, l: Int, u: Int): Boolean = {
-    require(isArray(a, size) && l >= 0 && u < size && l <= u)
+    require(isArray(a, size) && size < 5 && l >= 0 && u < size && l <= u)
     var k = l
     var isSorted = true
     while(k <= u) {
@@ -46,27 +46,30 @@ object Bubble {
   }
   
   def partitioned(a: Map[Int, Int], size: Int, l1: Int, u1: Int, l2: Int, u2: Int): Boolean = {
-    require(l1 >= 0 && l1 <= u1 && u1 < l2 && l2 <= u2 && u2 < size && isArray(a, size))
+    require(l1 >= 0 && l1 <= u1 && u1 < l2 && l2 <= u2 && u2 < size && isArray(a, size) && size < 5)
     var i = l1
     var j = l2
     var isPartitionned = true
-    while(i <= u1) {
-      while(j <= u2) {
+    (while(i <= u1) {
+      j = l2
+      (while(j <= u2) {
         if(a(i) > a(j))
           isPartitionned = false
         j = j+1
-      }
+      }) invariant(j >= l2 && j+1 <= u2)
       i = i + 1
-    }
+    }) invariant(i >= l1 && i+1 <= u1)
     isPartitionned
   }
-
 
   def isArray(a: Map[Int, Int], size: Int): Boolean = {
     def rec(i: Int): Boolean = if(i >= size) true else {
       if(a.isDefinedAt(i)) rec(i+1) else false
     }
-    size > 0 && rec(0)
+    if(size <= 0)
+      false
+    else
+      rec(0)
   }
 
 }
