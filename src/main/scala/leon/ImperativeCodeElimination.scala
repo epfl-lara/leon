@@ -137,7 +137,7 @@ object ImperativeCodeElimination extends Pass {
          fun ++ lastFun)
       }
 
-      //pure expression (that could still contain side effects as a subexpression)
+      //pure expression (that could still contain side effects as a subexpression) (evaluation order is from left to right)
       case Let(id, e, b) => {
         val (bodyRes, bodyScope, bodyFun) = toFunction(b)
         (bodyRes, (b: Expr) => Let(id, e, bodyScope(b)), bodyFun)
@@ -147,11 +147,12 @@ object ImperativeCodeElimination extends Pass {
         (bodyRes, (b: Expr) => LetDef(fd, bodyScope(b)), bodyFun)
       }
       case n @ NAryOperator(args, recons) => {
-        val (recArgs, scope, fun) = args.foldLeft((Seq[Expr](), (body: Expr) => body, Map[Identifier, Identifier]()))((acc, arg) => {
+        val (recArgs, scope, fun) = args.foldRight((Seq[Expr](), (body: Expr) => body, Map[Identifier, Identifier]()))((arg, acc) => {
           val (accArgs, scope, fun) = acc
           val (argVal, argScope, argFun) = toFunction(arg)
-          val argInScope = scope(replaceNames(fun, argVal))
-          (accArgs :+ argInScope, (body: Expr) => scope(argScope(body)), fun ++ argFun)
+          val argInScope = replaceNames(argFun, argVal)
+          val newScope = (body: Expr) => argScope(replaceNames(argFun, scope(body)))
+          (argInScope +: accArgs, newScope, argFun ++ fun)
         })
         (recons(recArgs), scope, fun)
       }
@@ -167,10 +168,12 @@ object ImperativeCodeElimination extends Pass {
       }
       case u @ UnaryOperator(a, recons) => {
         val (argVal, argScope, argFun) = toFunction(a)
-        (recons(a), argScope, argFun)
+        (recons(replaceNames(argFun, argVal)), argScope, argFun)
       }
       case (t: Terminal) => (t, (body: Expr) => body, Map())
+
       case m @ MatchExpr(scrut, cses) => sys.error("not supported: " + expr)
+
       case _ => sys.error("not supported: " + expr)
     }
     //val codeRepresentation = res._2(Block(res._3.map{ case (id1, id2) => Assignment(id1, id2.toVariable)}.toSeq, res._1))
