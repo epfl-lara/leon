@@ -31,8 +31,8 @@ object Trees {
     var invariant: Option[Expr] = None
 
     def getInvariant: Expr = invariant.get
-    def setInvariant(inv: Expr): Expr = { invariant = Some(inv); this }
-    def setInvariant(inv: Option[Expr]): Expr = { invariant = inv; this }
+    def setInvariant(inv: Expr) = { invariant = Some(inv); this }
+    def setInvariant(inv: Option[Expr]) = { invariant = inv; this }
   }
 
 
@@ -435,7 +435,7 @@ object Trees {
       case MapIsDefinedAt(t1,t2) => Some((t1,t2, MapIsDefinedAt))
       case Concat(t1,t2) => Some((t1,t2,Concat))
       case ListAt(t1,t2) => Some((t1,t2,ListAt))
-      case wh@While(t1, t2) => Some((t1,t2, (t1, t2) => While(t1, t2).setInvariant(wh.invariant)))
+      case wh@While(t1, t2) => Some((t1,t2, (t1, t2) => While(t1, t2).setInvariant(wh.invariant).setPosInfo(wh)))
       case _ => None
     }
   }

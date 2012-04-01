@@ -179,7 +179,7 @@ object ImperativeCodeElimination extends Pass {
           val newScope = (body: Expr) => argScope(replaceNames(argFun, accScope(body)))
           (argVal +: accArgs, newScope, argFun ++ accFun)
         })
-        (recons(recArgs), scope, fun)
+        (recons(recArgs).setType(n.getType), scope, fun)
       }
       case b @ BinaryOperator(a1, a2, recons) => {
         val (argVal1, argScope1, argFun1) = toFunction(a1)
@@ -189,11 +189,11 @@ object ImperativeCodeElimination extends Pass {
           val lhs = argScope1(replaceNames(argFun1, rhs))
           lhs
         }
-        (recons(argVal1, argVal2), scope, argFun1 ++ argFun2)
+        (recons(argVal1, argVal2).setType(b.getType), scope, argFun1 ++ argFun2)
       }
       case u @ UnaryOperator(a, recons) => {
         val (argVal, argScope, argFun) = toFunction(a)
-        (recons(argVal), argScope, argFun)
+        (recons(argVal).setType(u.getType), argScope, argFun)
       }
       case (t: Terminal) => (t, (body: Expr) => body, Map())
 
