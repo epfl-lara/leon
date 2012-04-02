@@ -41,6 +41,15 @@ object UnitElimination extends Pass {
     Program(id, ObjectDef(objId, allClasses ++ newFuns, invariants))
   }
 
+  private def simplifyType(tpe: TypeTree): TypeTree = tpe match {
+    case TupleType(tpes) => tpes.map(simplifyType).filterNot{ case UnitType => true case _ => false } match {
+      case Seq() => UnitType
+      case Seq(tpe) => tpe
+      case tpes => TupleType(tpes)
+    }
+    case t => t
+  }
+
   //remove unit value as soon as possible, so expr should never be equal to a unit
   private def removeUnit(expr: Expr): Expr = {
     assert(expr.getType != UnitType)
