@@ -53,6 +53,8 @@ trait CodeExtraction extends Extractors {
     sym == function1TraitSym
   }
 
+  private val mutableVarSubsts: scala.collection.mutable.Map[Symbol,Function0[Expr]] =
+    scala.collection.mutable.Map.empty[Symbol,Function0[Expr]]
   private val varSubsts: scala.collection.mutable.Map[Symbol,Function0[Expr]] =
     scala.collection.mutable.Map.empty[Symbol,Function0[Expr]]
   private val classesToClasses: scala.collection.mutable.Map[Symbol,ClassTypeDef] =
@@ -438,7 +440,6 @@ trait CodeExtraction extends Extractors {
         case ExValDef(vs, tpt, bdy) => {
           val binderTpe = scalaType2PureScala(unit, silent)(tpt.tpe)
           val newID = FreshIdentifier(vs.name.toString).setType(binderTpe)
-          val oldSubsts = varSubsts
           val valTree = rec(bdy)
           val restTree = rest match {
             case Some(rst) => {
@@ -457,7 +458,10 @@ trait CodeExtraction extends Extractors {
         case dd@ExFunctionDef(n, p, t, b) => {
           val funDef = extractFunSig(n, p, t).setPosInfo(dd.pos.line, dd.pos.column)
           defsToDefs += (dd.symbol -> funDef)
+          val oldMutableVarSubst = mutableVarSubsts.toMap //take an immutable snapshot of the map
+          mutableVarSubsts.clear //reseting the visible mutable vars, we do not handle mutable variable closure in nested functions
           val funDefWithBody = extractFunDef(funDef, b)
+          mutableVarSubsts ++= oldMutableVarSubst
           val restTree = rest match {
             case Some(rst) => rec(rst)
             case None => UnitLiteral
@@ -469,13 +473,12 @@ trait CodeExtraction extends Extractors {
         case ExVarDef(vs, tpt, bdy) => {
           val binderTpe = scalaType2PureScala(unit, silent)(tpt.tpe)
           val newID = FreshIdentifier(vs.name.toString).setType(binderTpe)
-          val oldSubsts = varSubsts
           val valTree = rec(bdy)
-          varSubsts(vs) = (() => Variable(newID))
+          mutableVarSubsts += (vs -> (() => Variable(newID)))
           Assignment(newID, valTree)
         }
 
-        case ExAssign(sym, rhs) => varSubsts.get(sym) match {
+        case ExAssign(sym, rhs) => mutableVarSubsts.get(sym) match {
           case Some(fun) => {
             val Variable(id) = fun()
             val rhsTree = rec(rhs)
@@ -507,9 +510,12 @@ trait CodeExtraction extends Extractors {
         case ExTyped(e,tpt) => rec(e)
         case ExIdentifier(sym,tpt) => varSubsts.get(sym) match {
           case Some(fun) => fun()
-          case None => {
-            unit.error(tr.pos, "Unidentified variable.")
-            throw ImpureCodeEncounteredException(tr)
+          case None => mutableVarSubsts.get(sym) match {
+            case Some(fun) => fun()
+            case None => {
+              unit.error(tr.pos, "Unidentified variable.")
+              throw ImpureCodeEncounteredException(tr)
+            }
           }
         }
         case ExSomeConstruction(tpe, arg) => {
