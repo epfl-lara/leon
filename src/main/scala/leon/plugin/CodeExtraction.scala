@@ -459,7 +459,6 @@ trait CodeExtraction extends Extractors {
           }
           handleRest = false
           val res = Let(newID, valTree, restTree)
-          println(res + " with type: " + res.getType + " and restree type: " + restTree.getType)
           res
         }
         case dd@ExFunctionDef(n, p, t, b) => {
@@ -482,7 +481,18 @@ trait CodeExtraction extends Extractors {
           val newID = FreshIdentifier(vs.name.toString).setType(binderTpe)
           val valTree = rec(bdy)
           mutableVarSubsts += (vs -> (() => Variable(newID)))
-          Assignment(newID, valTree)
+          val restTree = rest match {
+            case Some(rst) => {
+              varSubsts(vs) = (() => Variable(newID))
+              val res = rec(rst)
+              varSubsts.remove(vs)
+              res
+            }
+            case None => UnitLiteral
+          }
+          handleRest = false
+          val res = LetVar(newID, valTree, restTree)
+          res
         }
 
         case ExAssign(sym, rhs) => mutableVarSubsts.get(sym) match {

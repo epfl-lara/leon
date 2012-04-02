@@ -47,6 +47,13 @@ object Trees {
     if(et != Untyped)
       setType(et)
   }
+  //same as let, buf for mutable variable declaration
+  case class LetVar(binder: Identifier, value: Expr, body: Expr) extends Expr {
+    binder.markAsLetBinder
+    val et = body.getType
+    if(et != Untyped)
+      setType(et)
+  }
 
   //case class LetTuple(binders: Seq[Identifier], value: Expr, body: Expr) extends Expr {
   //  binders.foreach(_.markAsLetBinder)
@@ -502,6 +509,14 @@ object Trees {
           else
             l
         }
+        case l @ LetVar(i,e,b) => {
+          val re = rec(e)
+          val rb = rec(b)
+          if(re != e || rb != b)
+            LetVar(i, re, rb).setType(l.getType)
+          else
+            l
+        }
         case l @ LetDef(fd, b) => {
           //TODO, not sure, see comment for the next LetDef
           fd.body = fd.body.map(rec(_))
@@ -588,6 +603,15 @@ object Trees {
         val rb = rec(b)
         applySubst(if(re != e || rb != b) {
           Let(i,re,rb).setType(l.getType)
+        } else {
+          l
+        })
+      }
+      case l @ LetVar(i,e,b) => {
+        val re = rec(e)
+        val rb = rec(b)
+        applySubst(if(re != e || rb != b) {
+          LetVar(i,re,rb).setType(l.getType)
         } else {
           l
         })
@@ -723,6 +747,7 @@ object Trees {
   def treeCatamorphism[A](convert: Expr=>A, combine: (A,A)=>A, compute: (Expr,A)=>A, expression: Expr) : A = {
     def rec(expr: Expr) : A = expr match {
       case l @ Let(_, e, b) => compute(l, combine(rec(e), rec(b)))
+      case l @ LetVar(_, e, b) => compute(l, combine(rec(e), rec(b)))
       case l @ LetDef(fd, b) => compute(l, combine(rec(fd.getBody), rec(b))) //TODO, still not sure about the semantic
       case n @ NAryOperator(args, _) => {
         if(args.size == 0)
@@ -768,6 +793,7 @@ object Trees {
       case Block(_, _) => false
       case Assignment(_, _) => false
       case While(_, _) => false
+      case LetVar(_, _, _) => false
       case _ => true
     }
     def combine(b1: Boolean, b2: Boolean) = b1 && b2
@@ -775,6 +801,7 @@ object Trees {
       case Block(_, _) => false
       case Assignment(_, _) => false
       case While(_, _) => false
+      case LetVar(_, _, _) => false
       case _ => true
     }
     treeCatamorphism(convert, combine, compute, expr)
@@ -859,6 +886,7 @@ object Trees {
 
   def allIdentifiers(expr: Expr) : Set[Identifier] = expr match {
     case l @ Let(binder, e, b) => allIdentifiers(e) ++ allIdentifiers(b) + binder
+    case l @ LetVar(binder, e, b) => allIdentifiers(e) ++ allIdentifiers(b) + binder
     case l @ LetDef(fd, b) => allIdentifiers(fd.getBody) ++ allIdentifiers(b) + fd.id
     case n @ NAryOperator(args, _) =>
       (args map (Trees.allIdentifiers(_))).foldLeft(Set[Identifier]())((a, b) => a ++ b)

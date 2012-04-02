@@ -78,6 +78,15 @@ object PrettyPrinter {
       sb.append(")")
       sb
     }
+    case LetVar(b,d,e) => {
+      sb.append("(letvar (" + b + " := ");
+      pp(d, sb, lvl)
+      sb.append(") in\n")
+      ind(sb, lvl+1)
+      pp(e, sb, lvl+1)
+      sb.append(")")
+      sb
+    }
     case LetDef(fd,e) => {
       sb.append("\n")
       pp(fd, sb, lvl+1)

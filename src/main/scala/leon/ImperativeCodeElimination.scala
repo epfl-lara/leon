@@ -9,6 +9,8 @@ object ImperativeCodeElimination extends Pass {
 
   val description = "Transform imperative constructs into purely functional code"
 
+  private var varInScope = Set[Identifier]()
+
   def apply(pgm: Program): Program = {
     val allFuns = pgm.definedFunctions
     allFuns.foreach(fd => {
@@ -24,7 +26,17 @@ object ImperativeCodeElimination extends Pass {
   //that should be introduced as such in the returned scope (the val already refers to the new names)
   private def toFunction(expr: Expr): (Expr, Expr => Expr, Map[Identifier, Identifier]) = {
     val res = expr match {
+      case LetVar(id, e, b) => {
+        val newId = FreshIdentifier(id.name).setType(id.getType)
+        val (rhsVal, rhsScope, rhsFun) = toFunction(e)
+        varInScope += id
+        val (bodyRes, bodyScope, bodyFun) = toFunction(b)
+        varInScope -= id
+        val scope = (body: Expr) => rhsScope(Let(newId, rhsVal, replaceNames(rhsFun + (id -> newId), bodyScope(body))))
+        (bodyRes, scope, (rhsFun + (id -> newId)) ++ bodyFun)
+      }
       case Assignment(id, e) => {
+        assert(varInScope.contains(id))
         val newId = FreshIdentifier(id.name).setType(id.getType)
         val (rhsVal, rhsScope, rhsFun) = toFunction(e)
         val scope = (body: Expr) => rhsScope(Let(newId, rhsVal, body))
@@ -36,7 +48,7 @@ object ImperativeCodeElimination extends Pass {
         val (tRes, tScope, tFun) = toFunction(tExpr)
         val (eRes, eScope, eFun) = toFunction(eExpr)
 
-        val modifiedVars: Seq[Identifier] = (tFun.keys ++ eFun.keys).toSeq
+        val modifiedVars: Seq[Identifier] = (tFun.keys ++ eFun.keys).toSet.intersect(varInScope).toSeq
         val resId = FreshIdentifier("res").setType(ite.getType)
         val freshIds = modifiedVars.map(id => FreshIdentifier(id.name).setType(id.getType))
         val iteType = if(modifiedVars.isEmpty) resId.getType else TupleType(resId.getType +: freshIds.map(_.getType))
@@ -72,12 +84,53 @@ object ImperativeCodeElimination extends Pass {
         (resId.toVariable, scope, cFun ++ modifiedVars.zip(freshIds).toMap)
       }
 
+      case m @ MatchExpr(scrut, cses) => {
+        val csesRhs = cses.map(_.rhs) //we can ignore pattern, and the guard is required to be pure
+        val (csesRes, csesScope, csesFun) = csesRhs.map(toFunction).unzip3
+        val (scrutRes, scrutScope, scrutFun) = toFunction(scrut)
+
+        val modifiedVars: Seq[Identifier] = csesFun.toSet.flatMap((m: Map[Identifier, Identifier]) => m.keys).intersect(varInScope).toSeq
+        val resId = FreshIdentifier("res").setType(m.getType)
+        val freshIds = modifiedVars.map(id => FreshIdentifier(id.name).setType(id.getType))
+        val matchType = if(modifiedVars.isEmpty) resId.getType else TupleType(resId.getType +: freshIds.map(_.getType))
+
+        val csesVals = csesRes.zip(csesFun).map{ 
+          case (cRes, cFun) => (if(modifiedVars.isEmpty) cRes else Tuple(cRes +: modifiedVars.map(vId => cFun.get(vId) match {
+            case Some(newId) => newId.toVariable
+            case None => vId.toVariable
+          }))).setType(matchType)
+        }
+
+        val newRhs = csesVals.zip(csesScope).map{ 
+          case (cVal, cScope) => replaceNames(scrutFun, cScope(cVal)).setType(matchType)
+        }
+        val matchExpr = MatchExpr(scrutRes, cses.zip(newRhs).map{
+          case (SimpleCase(pat, _), newRhs) => SimpleCase(pat, newRhs)
+          case (GuardedCase(pat, guard, _), newRhs) => GuardedCase(pat, replaceNames(scrutFun, guard), newRhs)
+        }).setType(matchType)
+
+        val scope = ((body: Expr) => {
+          val tupleId = FreshIdentifier("t").setType(matchType)
+          scrutScope(
+            Let(tupleId, matchExpr, 
+              if(freshIds.isEmpty)
+                Let(resId, tupleId.toVariable, body)
+              else
+                Let(resId, TupleSelect(tupleId.toVariable, 1),
+                  freshIds.zipWithIndex.foldLeft(body)((b, id) => 
+                    Let(id._1, 
+                      TupleSelect(tupleId.toVariable, id._2 + 2).setType(id._1.getType), 
+                      b)))))
+        })
+
+        (resId.toVariable, scope, scrutFun ++ modifiedVars.zip(freshIds).toMap)
+      }
       case wh@While(cond, body) => {
         val (condRes, condScope, condFun) = toFunction(cond)
         val (_, bodyScope, bodyFun) = toFunction(body)
         val condBodyFun = condFun ++ bodyFun
 
-        val modifiedVars: Seq[Identifier] = condBodyFun.keys.toSeq
+        val modifiedVars: Seq[Identifier] = condBodyFun.keys.toSet.intersect(varInScope).toSeq
 
         if(modifiedVars.isEmpty)
           (UnitLiteral, (b: Expr) => b, Map())
@@ -163,7 +216,7 @@ object ImperativeCodeElimination extends Pass {
         val (bindRes, bindScope, bindFun) = toFunction(e)
         val (bodyRes, bodyScope, bodyFun) = toFunction(b)
         (bodyRes, 
-         (b2: Expr) => bindScope(Let(id, replaceNames(bindFun, bindRes), bodyScope(b2))), 
+         (b2: Expr) => bindScope(Let(id, bindRes, replaceNames(bindFun, bodyScope(b2)))), 
          bindFun ++ bodyFun)
       }
       case LetDef(fd, b) => {
@@ -197,47 +250,6 @@ object ImperativeCodeElimination extends Pass {
       }
       case (t: Terminal) => (t, (body: Expr) => body, Map())
 
-      case m @ MatchExpr(scrut, cses) => {
-        val csesRhs = cses.map(_.rhs) //we can ignore pattern, and the guard is required to be pure
-        val (csesRes, csesScope, csesFun) = csesRhs.map(toFunction).unzip3
-        val (scrutRes, scrutScope, scrutFun) = toFunction(scrut)
-
-        val modifiedVars: Seq[Identifier] = csesFun.toSet.flatMap((m: Map[Identifier, Identifier]) => m.keys).toSeq
-        val resId = FreshIdentifier("res").setType(m.getType)
-        val freshIds = modifiedVars.map(id => FreshIdentifier(id.name).setType(id.getType))
-        val matchType = if(modifiedVars.isEmpty) resId.getType else TupleType(resId.getType +: freshIds.map(_.getType))
-
-        val csesVals = csesRes.zip(csesFun).map{ 
-          case (cRes, cFun) => (if(modifiedVars.isEmpty) cRes else Tuple(cRes +: modifiedVars.map(vId => cFun.get(vId) match {
-            case Some(newId) => newId.toVariable
-            case None => vId.toVariable
-          }))).setType(matchType)
-        }
-
-        val newRhs = csesVals.zip(csesScope).map{ 
-          case (cVal, cScope) => replaceNames(scrutFun, cScope(cVal)).setType(matchType)
-        }
-        val matchExpr = MatchExpr(scrutRes, cses.zip(newRhs).map{
-          case (SimpleCase(pat, _), newRhs) => SimpleCase(pat, newRhs)
-          case (GuardedCase(pat, guard, _), newRhs) => GuardedCase(pat, replaceNames(scrutFun, guard), newRhs)
-        }).setType(matchType)
-
-        val scope = ((body: Expr) => {
-          val tupleId = FreshIdentifier("t").setType(matchType)
-          scrutScope(
-            Let(tupleId, matchExpr, 
-              if(freshIds.isEmpty)
-                Let(resId, tupleId.toVariable, body)
-              else
-                Let(resId, TupleSelect(tupleId.toVariable, 1),
-                  freshIds.zipWithIndex.foldLeft(body)((b, id) => 
-                    Let(id._1, 
-                      TupleSelect(tupleId.toVariable, id._2 + 2).setType(id._1.getType), 
-                      b)))))
-        })
-
-        (resId.toVariable, scope, scrutFun ++ modifiedVars.zip(freshIds).toMap)
-      }
 
       case _ => sys.error("not supported: " + expr)
     }
