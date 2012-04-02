@@ -119,7 +119,15 @@ object UnitElimination extends Pass {
       }
       case v @ Variable(id) => if(id2FreshId.isDefinedAt(id)) Variable(id2FreshId(id)) else v
       case (t: Terminal) => t
-      case m @ MatchExpr(scrut, cses) => sys.error("not supported: " + expr)
+      case m @ MatchExpr(scrut, cses) => {
+        val scrutRec = removeUnit(scrut)
+        val csesRec = cses.map{
+          case SimpleCase(pat, rhs) => SimpleCase(pat, removeUnit(rhs))
+          case GuardedCase(pat, guard, rhs) => GuardedCase(pat, removeUnit(guard), removeUnit(rhs))
+        }
+        val tpe = csesRec.head.rhs.getType
+        MatchExpr(scrutRec, csesRec).setType(tpe)
+      }
       case _ => sys.error("not supported: " + expr)
     }
   }

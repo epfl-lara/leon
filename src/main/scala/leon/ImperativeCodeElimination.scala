@@ -197,13 +197,53 @@ object ImperativeCodeElimination extends Pass {
       }
       case (t: Terminal) => (t, (body: Expr) => body, Map())
 
-      case m @ MatchExpr(scrut, cses) => sys.error("not supported: " + expr)
+      case m @ MatchExpr(scrut, cses) => {
+        val csesRhs = cses.map(_.rhs) //we can ignore pattern, and the guard is required to be pure
+        val (csesRes, csesScope, csesFun) = csesRhs.map(toFunction).unzip3
+        val (scrutRes, scrutScope, scrutFun) = toFunction(scrut)
+
+        val modifiedVars: Seq[Identifier] = csesFun.toSet.flatMap((m: Map[Identifier, Identifier]) => m.keys).toSeq
+        val resId = FreshIdentifier("res").setType(m.getType)
+        val freshIds = modifiedVars.map(id => FreshIdentifier(id.name).setType(id.getType))
+        val matchType = if(modifiedVars.isEmpty) resId.getType else TupleType(resId.getType +: freshIds.map(_.getType))
+
+        val csesVals = csesRes.zip(csesFun).map{ 
+          case (cRes, cFun) => (if(modifiedVars.isEmpty) cRes else Tuple(cRes +: modifiedVars.map(vId => cFun.get(vId) match {
+            case Some(newId) => newId.toVariable
+            case None => vId.toVariable
+          }))).setType(matchType)
+        }
+
+        val newRhs = csesVals.zip(csesScope).map{ 
+          case (cVal, cScope) => replaceNames(scrutFun, cScope(cVal)).setType(matchType)
+        }
+        val matchExpr = MatchExpr(scrutRes, cses.zip(newRhs).map{
+          case (SimpleCase(pat, _), newRhs) => SimpleCase(pat, newRhs)
+          case (GuardedCase(pat, guard, _), newRhs) => GuardedCase(pat, replaceNames(scrutFun, guard), newRhs)
+        }).setType(matchType)
+
+        val scope = ((body: Expr) => {
+          val tupleId = FreshIdentifier("t").setType(matchType)
+          scrutScope(
+            Let(tupleId, matchExpr, 
+              if(freshIds.isEmpty)
+                Let(resId, tupleId.toVariable, body)
+              else
+                Let(resId, TupleSelect(tupleId.toVariable, 1),
+                  freshIds.zipWithIndex.foldLeft(body)((b, id) => 
+                    Let(id._1, 
+                      TupleSelect(tupleId.toVariable, id._2 + 2).setType(id._1.getType), 
+                      b)))))
+        })
+
+        (resId.toVariable, scope, scrutFun ++ modifiedVars.zip(freshIds).toMap)
+      }
 
       case _ => sys.error("not supported: " + expr)
     }
     //val codeRepresentation = res._2(Block(res._3.map{ case (id1, id2) => Assignment(id1, id2.toVariable)}.toSeq, res._1))
     //println("res of toFunction on: " + expr + " IS: " + codeRepresentation)
-    res.asInstanceOf[(Expr, (Expr) => Expr, Map[Identifier, Identifier])]
+    res.asInstanceOf[(Expr, (Expr) => Expr, Map[Identifier, Identifier])] //need cast because it seems that res first map type is _ <: Identifier instead of Identifier
   }
 
   def replaceNames(fun: Map[Identifier, Identifier], expr: Expr) = replace(fun.map(ids => (ids._1.toVariable, ids._2.toVariable)), expr)

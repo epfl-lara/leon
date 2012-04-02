@@ -53,7 +53,20 @@ object FunctionHoisting extends Pass {
       val (r3, s3) = hoist(t3)
       (IfExpr(r1, r2, r3).setType(i.getType), s1 ++ s2 ++ s3)
     }
-    case m @ MatchExpr(scrut,cses) => sys.error("We'll see")//MatchExpr(rec(scrut), cses.map(inCase(_))).setType(m.getType).setPosInfo(m)
+    case m @ MatchExpr(scrut,cses) => {
+      val (scrutRes, scrutSet) = hoist(scrut)
+      val (csesRes, csesSets) = cses.map{
+        case SimpleCase(pat, rhs) => {
+          val (r, s) = hoist(rhs)
+          (SimpleCase(pat, r), s)
+        }
+        case GuardedCase(pat, guard, rhs) => {
+          val (r, s) = hoist(rhs)
+          (GuardedCase(pat, guard, r), s)
+        }
+      }.unzip
+      (MatchExpr(scrutRes, csesRes).setType(m.getType), csesSets.toSet.flatten ++ scrutSet)
+    }
     case t if t.isInstanceOf[Terminal] => (t, Set())
     case unhandled => scala.sys.error("Non-terminal case should be handled in searchAndReplace: " + unhandled)
   }

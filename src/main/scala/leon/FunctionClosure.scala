@@ -112,7 +112,10 @@ object FunctionClosure extends Pass {
       pathConstraints = pathConstraints.tail
       IfExpr(rCond, rThen, rElze).setType(i.getType)
     }
-    case m @ MatchExpr(scrut,cses) => sys.error("Will see")//MatchExpr(rec(scrut), cses.map(inCase(_))).setType(m.getType).setPosInfo(m)
+    case m @ MatchExpr(scrut,cses) => {
+      //val rScrut = functionClosure(scrut, bindedVars)
+      m
+    }
     case t if t.isInstanceOf[Terminal] => t
     case unhandled => scala.sys.error("Non-terminal case should be handled in searchAndReplace: " + unhandled)
   }
