@@ -35,8 +35,6 @@ object Trees {
     def setInvariant(inv: Option[Expr]) = { invariant = inv; this }
   }
 
-
-
   /* This describes computational errors (unmatched case, taking min of an
    * empty set, division by zero, etc.). It should always be typed according to
    * the expected type. */
@@ -762,6 +760,24 @@ object Trees {
       case _ => None
     }
     searchAndReplaceDFS(applyToTree)(expr)
+  }
+
+  //checking whether the expr is pure, that is do not contains any non-pure construct: assign, while and blocks
+  def isPure(expr: Expr): Boolean = {
+    def convert(t: Expr) : Boolean = t match {
+      case Block(_, _) => false
+      case Assignment(_, _) => false
+      case While(_, _) => false
+      case _ => true
+    }
+    def combine(b1: Boolean, b2: Boolean) = b1 && b2
+    def compute(e: Expr, b: Boolean) = e match {
+      case Block(_, _) => false
+      case Assignment(_, _) => false
+      case While(_, _) => false
+      case _ => true
+    }
+    treeCatamorphism(convert, combine, compute, expr)
   }
 
   def variablesOf(expr: Expr) : Set[Identifier] = {

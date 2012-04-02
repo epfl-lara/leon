@@ -359,7 +359,14 @@ trait CodeExtraction extends Extractors {
       if(cd.guard == EmptyTree) {
         SimpleCase(pat2pat(cd.pat), rec(cd.body))
       } else {
-        GuardedCase(pat2pat(cd.pat), rec(cd.guard), rec(cd.body))
+        val recPattern = pat2pat(cd.pat)
+        val recGuard = rec(cd.guard)
+        val recBody = rec(cd.body)
+        if(!isPure(recGuard)) {
+          unit.error(cd.guard.pos, "Guard expression must be pure")
+          throw ImpureCodeEncounteredException(cd)
+        }
+        GuardedCase(recPattern, recGuard, recBody)
       }
     }
 

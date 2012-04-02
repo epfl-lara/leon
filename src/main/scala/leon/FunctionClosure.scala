@@ -112,7 +112,7 @@ object FunctionClosure extends Pass {
       pathConstraints = pathConstraints.tail
       IfExpr(rCond, rThen, rElze).setType(i.getType)
     }
-    case m @ MatchExpr(scrut,cses) => {
+    case m @ MatchExpr(scrut,cses) => { //TODO: will not work if there are actual nested function in cases
       //val rScrut = functionClosure(scrut, bindedVars)
       m
     }
