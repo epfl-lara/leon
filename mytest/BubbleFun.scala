@@ -1,5 +1,6 @@
 object BubbleFun {
 
+    // --------------------- sort ----------------------
 
     def sort(a: Map[Int,Int], size: Int): Map[Int,Int] = {
       val i = size - 1
@@ -28,6 +29,7 @@ object BubbleFun {
           sortNestedWhile(newSortedArray, (j + 1), sortedArray2, i, size, i2, sortedArray3, a)
         } else (sortedArray, j)
 
+    //  --------------------- sorted --------------------
 
     def sorted(a: Map[Int,Int], size: Int, l: Int, u: Int) : Boolean = {
       val t = sortedWhile(true, l, l, u, a, size, l)
@@ -43,22 +45,7 @@ object BubbleFun {
         } else (isSorted, k)
 
 
-    def isArray(a: Map[Int,Int], size: Int): Boolean = 
-      if((size <= 0))
-        false
-      else
-        isArrayRec(0, size, a)
-
-    def isArrayRec(i: Int, size: Int, a: Map[Int,Int]): Boolean = 
-      if (i >= size)
-        true
-      else {
-        if (a.isDefinedAt(i))
-          isArrayRec(i + 1, size, a)
-        else
-          false
-      }
-
+    // ------------- partitioned ------------------
 
     def partitioned(a: Map[Int,Int], size: Int, l1: Int, u1: Int, l2: Int, u2: Int) : Boolean = {
       val t = partitionedWhile(l2, true, l1, l1, size, u2, l2, l2, u1, l1, a)
@@ -86,6 +73,24 @@ object BubbleFun {
               isPartitionned), 
             j + 1, l1, u1, size, j2, u2, a, j3, l2, i2, i)
         } else (isPartitionned, j)
+
+    //------------ isArray -------------------
+
+    def isArray(a: Map[Int,Int], size: Int): Boolean = 
+      if((size <= 0))
+        false
+      else
+        isArrayRec(0, size, a)
+
+    def isArrayRec(i: Int, size: Int, a: Map[Int,Int]): Boolean = 
+      if (i >= size)
+        true
+      else {
+        if (a.isDefinedAt(i))
+          isArrayRec(i + 1, size, a)
+        else
+          false
+      }
 
 
 }
