@@ -30,9 +30,9 @@ object UnitElimination extends Pass {
 
     //then apply recursively to the bodies
     val newFuns = allFuns.flatMap(fd => if(fd.returnType == UnitType) Seq() else {
-      val body = fd.getBody
+      val newBody = fd.body.map(body => removeUnit(body))
       val newFd = fun2FreshFun(fd)
-      newFd.body = Some(removeUnit(body))
+      newFd.body = newBody
       Seq(newFd)
     })
 
@@ -98,13 +98,13 @@ object UnitElimination extends Pass {
             freshFunDef.precondition = fd.precondition //TODO: maybe removing unit from the conditions as well..
             freshFunDef.postcondition = fd.postcondition//TODO: maybe removing unit from the conditions as well..
             fun2FreshFun += (fd -> freshFunDef)
-            freshFunDef.body = Some(removeUnit(fd.getBody))
+            freshFunDef.body = fd.body.map(b => removeUnit(b))
             val restRec = removeUnit(b)
             fun2FreshFun -= fd
             (freshFunDef, restRec)
           } else {
             fun2FreshFun += (fd -> fd)
-            fd.body = Some(removeUnit(fd.getBody))
+            fd.body = fd.body.map(b => removeUnit(b))
             val restRec = removeUnit(b)
             fun2FreshFun -= fd
             (fd, restRec)

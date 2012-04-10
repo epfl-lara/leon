@@ -10,7 +10,7 @@ object Utils {
 
   implicit def any2IsValid(x: Boolean) : IsValid = new IsValid(x)
 
-  def epsilon[A](pred: (A) => Boolean): A
+  def epsilon[A](pred: (A) => Boolean): A = throw new RuntimeException("Implementation not supported")
 
   object InvariantFunction {
     def invariant(x: Boolean): Unit = ()

@@ -12,11 +12,11 @@ object FunctionHoisting extends Pass {
   def apply(program: Program): Program = {
     val funDefs = program.definedFunctions
     var topLevelFuns: Set[FunDef] = Set()
-    funDefs.foreach(fd => {
-      val (newBody, additionalTopLevelFun) = hoist(fd.getBody)
+    funDefs.foreach(fd => fd.body.map(body => {
+      val (newBody, additionalTopLevelFun) = hoist(body)
       fd.body = Some(newBody)
       topLevelFuns ++= additionalTopLevelFun
-    })
+    }))
     val Program(id, ObjectDef(objId, defs, invariants)) = program
     Program(id, ObjectDef(objId, defs ++ topLevelFuns, invariants))
   }
@@ -24,9 +24,14 @@ object FunctionHoisting extends Pass {
   private def hoist(expr: Expr): (Expr, Set[FunDef]) = expr match {
     case l @ LetDef(fd, rest) => {
       val (e, s) = hoist(rest)
-      val (e2, s2) = hoist(fd.getBody)
-      fd.body = Some(e2)
-
+      val s2 = fd.body match {
+        case Some(body) => {
+          val (e2, s2) = hoist(body)
+          fd.body = Some(e2)
+          s2
+        }
+        case None => Set()
+      }
       (e, (s ++ s2) + fd)
     }
     case l @ Let(i,e,b) => {

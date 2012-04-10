@@ -21,7 +21,7 @@ object FunctionClosure extends Pass {
     funDefs.foreach(fd => {
       enclosingPreconditions = fd.precondition.toList
       pathConstraints = fd.precondition.toList
-      fd.body = Some(functionClosure(fd.getBody, fd.args.map(_.id).toSet))
+      fd.body = fd.body.map(b => functionClosure(b, fd.args.map(_.id).toSet))
     })
     program
   }
@@ -32,11 +32,14 @@ object FunctionClosure extends Pass {
       val id = fd.id
       val rt = fd.returnType
       val varDecl = fd.args
-      val funBody = fd.getBody
       val precondition = fd.precondition
       val postcondition = fd.postcondition
 
-      val bodyVars: Set[Identifier] = variablesOf(funBody) ++ variablesOf(precondition.getOrElse(BooleanLiteral(true)))
+      val bodyVars: Set[Identifier] = (fd.body match {
+        case Some(body) => variablesOf(body) 
+        case None => Set()
+      }) ++ variablesOf(precondition.getOrElse(BooleanLiteral(true))) ++ variablesOf(postcondition.getOrElse(BooleanLiteral(true)))
+
       val capturedVars = bodyVars.intersect(bindedVars)// this should be the variable used that are in the scope
       val (constraints, allCapturedVars) = filterConstraints(capturedVars) //all relevant path constraints
       val capturedVarsWithConstraints = allCapturedVars.toSeq
@@ -61,13 +64,13 @@ object FunctionClosure extends Pass {
         case FunctionInvocation(fd, args) if fd.id == id => Some(FunctionInvocation(newFunDef, args ++ extraVarDecls.map(_.id.toVariable)))
         case _ => None
       }
-      val freshBody = replace(freshVarsExpr, funBody)
+      val freshBody = fd.body.map(b => replace(freshVarsExpr, b))
       val oldPathConstraints = pathConstraints
       pathConstraints = (precondition.getOrElse(BooleanLiteral(true)) :: pathConstraints).map(e => replace(freshVarsExpr, e))
-      val recBody = functionClosure(freshBody, bindedVars ++ newVarDecls.map(_.id))
+      val recBody = freshBody.map(b => functionClosure(b, bindedVars ++ newVarDecls.map(_.id)))
       pathConstraints = oldPathConstraints
-      val recBody2 = searchAndReplaceDFS(substFunInvocInDef)(recBody)
-      newFunDef.body = Some(recBody2)
+      val recBody2 = recBody.map(b => searchAndReplaceDFS(substFunInvocInDef)(b))
+      newFunDef.body = recBody2
 
       def substFunInvocInRest(expr: Expr): Option[Expr] = expr match {
         case FunctionInvocation(fd, args) if fd.id == id => Some(FunctionInvocation(newFunDef, args ++ capturedVarsWithConstraints.map(_.toVariable)))

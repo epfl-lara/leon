@@ -13,10 +13,10 @@ object ImperativeCodeElimination extends Pass {
 
   def apply(pgm: Program): Program = {
     val allFuns = pgm.definedFunctions
-    allFuns.foreach(fd => {
-      val (res, scope, _) = toFunction(fd.getBody)
+    allFuns.foreach(fd => fd.body.map(body => {
+      val (res, scope, _) = toFunction(body)
       fd.body = Some(scope(res))
-    })
+    }))
     pgm
   }
 
