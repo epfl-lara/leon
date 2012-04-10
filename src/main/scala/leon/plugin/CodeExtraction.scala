@@ -535,6 +535,17 @@ trait CodeExtraction extends Extractors {
             }
           }
         }
+        case epsi@ExEpsilonExpression(tpe, varSym, predBody) => {
+          val pstpe = scalaType2PureScala(unit, silent)(tpe)
+          val previousVarSubst: Option[Function0[Expr]] = varSubsts.get(varSym) //save the previous in case of nested epsilon
+          varSubsts(varSym) = (() => EpsilonVariable((epsi.pos.line, epsi.pos.column)).setType(pstpe))
+          val c1 = rec(predBody)
+          previousVarSubst match {
+            case Some(f) => varSubsts(varSym) = f
+            case None => varSubsts.remove(varSym)
+          }
+          Epsilon(c1).setType(pstpe).setPosInfo(epsi.pos.line, epsi.pos.column)
+        }
         case ExSomeConstruction(tpe, arg) => {
           // println("Got Some !" + tpe + ":" + arg)
           val underlying = scalaType2PureScala(unit, silent)(tpe)

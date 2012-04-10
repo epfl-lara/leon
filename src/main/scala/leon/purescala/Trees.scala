@@ -40,6 +40,8 @@ object Trees {
    * the expected type. */
   case class Error(description: String) extends Expr with Terminal with ScalacPositional
 
+  case class Epsilon(pred: Expr) extends Expr with ScalacPositional
+
   /* Like vals */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
     binder.markAsLetBinder
@@ -263,6 +265,8 @@ object Trees {
   // represents the result in post-conditions
   case class ResultVariable() extends Expr with Terminal
 
+  case class EpsilonVariable(pos: (Int, Int)) extends Expr with Terminal
+
   /* Literals */
   sealed abstract class Literal[T] extends Expr with Terminal {
     val value: T
@@ -404,6 +408,7 @@ object Trees {
       case CaseClassInstanceOf(cd, e) => Some((e, CaseClassInstanceOf(cd, _)))
       case Assignment(id, e) => Some((e, Assignment(id, _)))
       case TupleSelect(t, i) => Some((t, TupleSelect(_, i)))
+      case e@Epsilon(t) => Some((t, (expr: Expr) => Epsilon(expr).setType(e.getType).setPosInfo(e)))
       case _ => None
     }
   }

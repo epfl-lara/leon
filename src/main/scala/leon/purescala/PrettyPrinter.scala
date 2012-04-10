@@ -145,6 +145,15 @@ object PrettyPrinter {
       sb.append("._" + i)
       sb
     }
+
+    case e@Epsilon(pred) => {
+      var nsb = sb
+      nsb.append("epsilon(x" + e.posIntInfo._1 + "_" + e.posIntInfo._2 + ". ")
+      nsb = pp(pred, nsb, lvl)
+      nsb.append(")")
+      nsb
+    }
+
     case OptionSome(a) => {
       var nsb = sb
       nsb.append("Some(")
@@ -323,6 +332,7 @@ object PrettyPrinter {
     }
 
     case ResultVariable() => sb.append("#res")
+    case EpsilonVariable((row, col)) => sb.append("x" + row + "_" + col)
     case Not(expr) => ppUnary(sb, expr, "\u00AC(", ")", lvl)               // \neg
 
     case e @ Error(desc) => {
