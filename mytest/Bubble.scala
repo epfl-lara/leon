@@ -37,11 +37,11 @@ object Bubble {
     require(isArray(a, size) && size < 5 && l >= 0 && u < size && l <= u)
     var k = l
     var isSorted = true
-    while(k <= u) {
+    (while(k < u) {
       if(a(k) > a(k+1))
         isSorted = false
       k = k + 1
-    }
+    }) invariant(k <= u && k >= l)
     isSorted
   }
   
@@ -55,10 +55,10 @@ object Bubble {
       (while(j <= u2) {
         if(a(i) > a(j))
           isPartitionned = false
-        j = j+1
-      }) invariant(j >= l2 && j+1 <= u2)
+        j = j + 1
+      }) invariant(j >= l2 && i <= u1)
       i = i + 1
-    }) invariant(i >= l1 && i+1 <= u1)
+    }) invariant(i >= l1)
     isPartitionned
   }
 
@@ -66,7 +66,7 @@ object Bubble {
     def rec(i: Int): Boolean = if(i >= size) true else {
       if(a.isDefinedAt(i)) rec(i+1) else false
     }
-    if(size <= 0)
+    if(size < 0)
       false
     else
       rec(0)
