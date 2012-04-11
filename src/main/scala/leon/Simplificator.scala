@@ -19,4 +19,3 @@ object Simplificator extends Pass {
   }
 
 }
-
