@@ -10,17 +10,24 @@ object BubbleFun {
       t._2
     }) ensuring(res => isArray(res, size) && sorted(res, size, 0, size-1))
 
-    def sortWhile(j: Int, sortedArray: Map[Int,Int], i: Int, size: Int) : (Int, Map[Int,Int], Int) = {
-      require(i >= -1 && i < size && isArray(sortedArray, size) && size < 5)
+    def sortWhile(j: Int, sortedArray: Map[Int,Int], i: Int, size: Int) : (Int, Map[Int,Int], Int) = ({
+      require(i >= 0 && i < size && isArray(sortedArray, size) && size < 5 &&
+              sorted(sortedArray, size, i, size - 1) &&
+              partitioned(sortedArray, size, 0, i, i+1, size-1))
+
       if (i > 0) {
         val t = sortNestedWhile(sortedArray, 0, i, size)
         sortWhile(t._2, t._1, i - 1, size)
       } else (j, sortedArray, i)
-    }
+    }) ensuring(res => isArray(res._2, size) && 
+                       sorted(res._2, size, i, size - 1) &&
+                       partitioned(res._2, size, 0, i, i+1, size-1))
 
 
     def sortNestedWhile(sortedArray: Map[Int,Int], j: Int, i: Int, size: Int) : (Map[Int,Int], Int) = ({
-      require(j >= 0 && j <= i && i < size && isArray(sortedArray, size) && size < 5)
+      require(j >= 0 && j <= i && i < size && isArray(sortedArray, size) && size < 5 &&
+              sorted(sortedArray, size, i, size - 1) &&
+              partitioned(sortedArray, size, 0, i, i+1, size-1))
       if(j < i) {
         val newSortedArray = 
           if(sortedArray(j) > sortedArray(j + 1))
@@ -29,7 +36,9 @@ object BubbleFun {
             sortedArray
         sortNestedWhile(newSortedArray, j + 1, i, size)
       } else (sortedArray, j)
-    }) ensuring(res => isArray(res._1, size))
+    }) ensuring(res => isArray(res._1, size) &&
+                       sorted(res._1, size, i, size - 1) &&
+                       partitioned(res._1, size, 0, i, i+1, size-1))
 
 
 
@@ -51,10 +60,13 @@ object BubbleFun {
 
     // ------------- partitioned ------------------
     def partitioned(a: Map[Int,Int], size: Int, l1: Int, u1: Int, l2: Int, u2: Int) : Boolean = {
-      require(isArray(a, size) && size < 5 && l1 >= 0 && l1 <= u1 && u1 < l2 && l2 <= u2 && u2 < size)
-
-      val t = partitionedWhile(l2, true, l1, l1, size, u2, l2, u1, a)
-      t._2
+      require(isArray(a, size) && size < 5 && l1 >= 0 && l1 <= u1 && u1 < l2 && u2 < size)
+      if(l2 > u2) 
+        true
+      else {
+        val t = partitionedWhile(l2, true, l1, l1, size, u2, l2, u1, a)
+        t._2
+      }
     }
     def partitionedWhile(j: Int, isPartitionned: Boolean, i: Int, l1: Int, size: Int, u2: Int, l2: Int, u1: Int, a: Map[Int,Int]) : (Int, Boolean, Int) = {
       require(isArray(a, size) && size < 5 && l1 >= 0 && l1 <= u1 && u1 < l2 && l2 <= u2 && u2 < size && i >= l1)
@@ -80,7 +92,7 @@ object BubbleFun {
 
     //------------ isArray -------------------
     def isArray(a: Map[Int,Int], size: Int): Boolean = 
-      if(size < 0)
+      if(size <= 0)
         false
       else
         isArrayRec(0, size, a)
