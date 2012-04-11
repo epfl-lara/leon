@@ -90,9 +90,11 @@ object FunctionTemplate {
     cache(funDef)
   } else {
     val result = {
+      /*
       if(!funDef.hasImplementation) {
         sys.error("Cannot create a FunctionTemplate out of a function with no body.")
       }
+      */
   
       val condVars : MutableSet[Identifier] = MutableSet.empty
       val exprVars : MutableSet[Identifier] = MutableSet.empty
@@ -165,14 +167,22 @@ object FunctionTemplate {
       }
   
       // Treating the body first.
+      /*
       val body : Expr = if(KEEPLETS) {
         matchToIfThenElse(funDef.getImplementation) 
       } else {
         matchToIfThenElse(expandLets(funDef.getImplementation))
       }
+      */
+      val body : Option[Expr] = if(KEEPLETS) {
+        funDef.body.map(b => matchToIfThenElse(b))
+      } else {
+        funDef.body.map(b => matchToIfThenElse(expandLets(b)))
+      }
 
       val invocation : Expr = FunctionInvocation(funDef, funDef.args.map(_.toVariable))
   
+      /*
       val invocationEqualsBody : Expr = {
         val b : Expr = Equals(invocation, body)
         if(PREPENDPRECONDS && funDef.hasPrecondition) {
@@ -181,11 +191,22 @@ object FunctionTemplate {
           b
         }
       }
+      */
+      val invocationEqualsBody : Option[Expr] = body.map(body => {
+        val b : Expr = Equals(invocation, body)
+        if(PREPENDPRECONDS && funDef.hasPrecondition) {
+          Implies(prec.get, b)
+        } else {
+          b
+        }
+      })
   
       val activatingBool : Identifier = FreshIdentifier("a", true).setType(BooleanType)
   
-      val finalPred : Expr = rec(activatingBool, true, invocationEqualsBody)
-      storeGuarded(activatingBool, true, finalPred)
+      //val finalPred : Expr = rec(activatingBool, true, invocationEqualsBody)
+      val finalPred : Option[Expr] = invocationEqualsBody.map(expr => rec(activatingBool, true, expr))
+      //storeGuarded(activatingBool, true, finalPred)
+      finalPred.foreach(p => storeGuarded(activatingBool, true, p))
   
       // Now the postcondition.
       if(funDef.hasPostcondition) {
