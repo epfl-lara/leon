@@ -19,6 +19,7 @@ object Settings {
   var pruneBranches : Boolean = false
   var solverTimeout : Option[Int] = None
   var luckyTest : Boolean = true
+  var verifyModel : Boolean = true
   var useQuickCheck : Boolean = false
   var useParallel : Boolean = false
   // When this is None, use real integers
