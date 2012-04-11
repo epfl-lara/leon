@@ -10,26 +10,22 @@ object BubbleFun {
       t._2
     }) ensuring(res => isArray(res, size) && sorted(res, size, 0, size-1))
 
-    def sortWhile(
-      j: Int, sortedArray: Map[Int,Int], i: Int, a: Map[Int,Int], i2: Int, 
-      size: Int, sortedArray2 : Map[Int,Int]) : (Int, Map[Int,Int], Int) = 
-        if ((i > 0)) {
-          val t = sortNestedWhile(sortedArray, 0, sortedArray, i, size, i2, sortedArray2, a)
-          sortWhile(t._2, t._1, i - 1, a, i2, size, sortedArray2)
-        } else (j, sortedArray, i)
+    def sortWhile(j: Int, sortedArray: Map[Int,Int], i: Int, size: Int) : (Int, Map[Int,Int], Int) = 
+      if (i > 0) {
+        val t = sortNestedWhile(sortedArray, 0, i, size)
+        sortWhile(t._2, t._1, i - 1, size)
+      } else (j, sortedArray, i)
 
 
-    def sortNestedWhile(
-      sortedArray: Map[Int,Int], j: Int, sortedArray2 : Map[Int,Int], i: Int, 
-      size: Int, i2: Int, sortedArray3: Map[Int,Int], a: Map[Int,Int]) : (Map[Int,Int], Int) =
-        if(j < i) {
-          val newSortedArray = 
-            if(sortedArray(j) > sortedArray(j + 1))
-              sortedArray.updated(j, sortedArray(j + 1)).updated(j+1, sortedArray(j))
-            else
-              sortedArray
-          sortNestedWhile(newSortedArray, (j + 1), sortedArray2, i, size, i2, sortedArray3, a)
-        } else (sortedArray, j)
+    def sortNestedWhile(sortedArray: Map[Int,Int], j: Int, i: Int, size: Int) : (Map[Int,Int], Int) =
+      if(j < i) {
+        val newSortedArray = 
+          if(sortedArray(j) > sortedArray(j + 1))
+            sortedArray.updated(j, sortedArray(j + 1)).updated(j+1, sortedArray(j))
+          else
+            sortedArray
+        sortNestedWhile(newSortedArray, j + 1, i, size)
+      } else (sortedArray, j)
 
 
 
