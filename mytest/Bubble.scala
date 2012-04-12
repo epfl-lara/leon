@@ -1,5 +1,7 @@
 import leon.Utils._
 
+/* The calculus of Computation textbook */
+
 object Bubble {
 
   def sort(a: Map[Int, Int], size: Int): Map[Int, Int] = ({
