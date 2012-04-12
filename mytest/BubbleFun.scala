@@ -20,14 +20,17 @@ object BubbleFun {
         sortWhile(t._2, t._1, i - 1, size)
       } else (j, sortedArray, i)
     }) ensuring(res => isArray(res._2, size) && 
-                       sorted(res._2, size, i, size - 1) &&
-                       partitioned(res._2, size, 0, i, i+1, size-1))
+                       sorted(res._2, size, res._3, size - 1) &&
+                       partitioned(res._2, size, 0, res._3, res._3+1, size-1) &&
+                       res._3 >= 0 && res._3 <= 0
+               )
 
 
     def sortNestedWhile(sortedArray: Map[Int,Int], j: Int, i: Int, size: Int) : (Map[Int,Int], Int) = ({
       require(j >= 0 && j <= i && i < size && isArray(sortedArray, size) && size < 5 &&
               sorted(sortedArray, size, i, size - 1) &&
-              partitioned(sortedArray, size, 0, i, i+1, size-1))
+              partitioned(sortedArray, size, 0, i, i+1, size-1) &&
+              partitioned(sortedArray, size, 0, j-1, j, j))
       if(j < i) {
         val newSortedArray = 
           if(sortedArray(j) > sortedArray(j + 1))
@@ -38,8 +41,35 @@ object BubbleFun {
       } else (sortedArray, j)
     }) ensuring(res => isArray(res._1, size) &&
                        sorted(res._1, size, i, size - 1) &&
-                       partitioned(res._1, size, 0, i, i+1, size-1))
+                       partitioned(res._1, size, 0, i, i+1, size-1) &&
+                       partitioned(res._1, size, 0, res._2-1, res._2, res._2) &&
+                       res._2 >= i && res._2 >= 0 && res._2 <= i)
 
+
+    //some intermediate results
+    def lemma1(a: Map[Int, Int], size: Int, i: Int): Boolean = ({
+      require(isArray(a, size) && size < 5 && sorted(a, size, i, size-1) && partitioned(a, size, 0, i, i+1, size-1) && i >= 0 && i < size)
+      val t = sortNestedWhile(a, 0, i, size)
+      val newJ = t._2
+      i == newJ
+    }) ensuring(_ == true)
+    def lemma2(a: Map[Int, Int], size: Int, i: Int): Boolean = ({
+      require(isArray(a, size) && size < 5 && sorted(a, size, i, size-1) && partitioned(a, size, 0, i, i+1, size-1) && i >= 0 && i < size)
+      val t = sortNestedWhile(a, 0, i, size)
+      val newA = t._1
+      val newJ = t._2
+      partitioned(newA, size, 0, i-1, i, i)
+    }) ensuring(_ == true)
+    def lemma3(a: Map[Int, Int], size: Int, i: Int): Boolean = ({
+      require(partitioned(a, size, 0, i, i+1, size-1) && partitioned(a, size, 0, i-1, i, i) && isArray(a, size) && size < 5 && i >= 0 && i < size)
+      partitioned(a, size, 0, i-1, i, size-1)
+    }) ensuring(_ == true)
+    def lemma4(a: Map[Int, Int], size: Int, i: Int): Boolean = ({
+      require(isArray(a, size) && size < 5 && sorted(a, size, i, size-1) && partitioned(a, size, 0, i, i+1, size-1) && i >= 0 && i < size)
+      val t = sortNestedWhile(a, 0, i, size)
+      val newA = t._1
+      partitioned(newA, size, 0, i-1, i, size-1)
+    }) ensuring(_ == true)
 
 
     //  --------------------- sorted --------------------
@@ -60,8 +90,8 @@ object BubbleFun {
 
     // ------------- partitioned ------------------
     def partitioned(a: Map[Int,Int], size: Int, l1: Int, u1: Int, l2: Int, u2: Int) : Boolean = {
-      require(isArray(a, size) && size < 5 && l1 >= 0 && l1 <= u1 && u1 < l2 && u2 < size)
-      if(l2 > u2) 
+      require(isArray(a, size) && size < 5 && l1 >= 0 && u1 < l2 && u2 < size)
+      if(l2 > u2 || l1 > u1) 
         true
       else {
         val t = partitionedWhile(l2, true, l1, l1, size, u2, l2, u1, a)
