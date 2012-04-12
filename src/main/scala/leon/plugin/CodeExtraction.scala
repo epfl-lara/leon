@@ -746,8 +746,6 @@ trait CodeExtraction extends Extractors {
           IfExpr(r1, r2, r3).setType(leastUpperBound(r2.getType, r3.getType))
         }
         case lc @ ExLocalCall(sy,nm,ar) => {
-          println("Got local call with: " + sy + ": " + nm)
-          println(defsToDefs)
           if(defsToDefs.keysIterator.find(_ == sy).isEmpty) {
             if(!silent)
               unit.error(tr.pos, "Invoking an invalid function.")
@@ -801,7 +799,10 @@ trait CodeExtraction extends Extractors {
 
       if(handleRest) {
         rest match {
-          case Some(rst) => PBlock(Seq(psExpr), rec(rst))
+          case Some(rst) => {
+            val recRst = rec(rst)
+            PBlock(Seq(psExpr), recRst).setType(recRst.getType)
+          }
           case None => psExpr
         }
       } else {

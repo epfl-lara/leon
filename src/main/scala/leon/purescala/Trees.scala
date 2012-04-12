@@ -18,9 +18,9 @@ object Trees {
   }
 
   case class Block(exprs: Seq[Expr], last: Expr) extends Expr {
-    val t = last.getType
-    if(t != Untyped)
-      setType(t)
+    //val t = last.getType
+    //if(t != Untyped)
+     // setType(t)
   }
 
   case class Assignment(varId: Identifier, expr: Expr) extends Expr with FixedType {
