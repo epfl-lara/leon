@@ -8,7 +8,7 @@ object BubbleFun {
       val i = size - 1
       val t = sortWhile(0, a, i, size)
       t._2
-    }) ensuring(res => isArray(res, size) && sorted(res, size, 0, size-1) && content(res, size) == content(a, size))
+    }) ensuring(res => isArray(res, size) && sorted(res, size, 0, size-1) /*&& content(res, size) == content(a, size)*/)
 
     def sortWhile(j: Int, sortedArray: Map[Int,Int], i: Int, size: Int) : (Int, Map[Int,Int], Int) = ({
       require(i >= 0 && i < size && isArray(sortedArray, size) && size < 5 &&
@@ -22,7 +22,7 @@ object BubbleFun {
     }) ensuring(res => isArray(res._2, size) && 
                        sorted(res._2, size, res._3, size - 1) &&
                        partitioned(res._2, size, 0, res._3, res._3+1, size-1) &&
-                       res._3 >= 0 && res._3 <= 0 && content(res._2, size) == content(sortedArray, size)
+                       res._3 >= 0 && res._3 <= 0 /*&& content(res._2, size) == content(sortedArray, size)*/
                )
 
 
@@ -43,7 +43,7 @@ object BubbleFun {
                        sorted(res._1, size, i, size - 1) &&
                        partitioned(res._1, size, 0, i, i+1, size-1) &&
                        partitioned(res._1, size, 0, res._2-1, res._2, res._2) &&
-                       res._2 >= i && res._2 >= 0 && res._2 <= i && content(res._1, size) == content(sortedArray, size))
+                       res._2 >= i && res._2 >= 0 && res._2 <= i /*&& content(res._1, size) == content(sortedArray, size)*/)
 
 
     //some intermediate results

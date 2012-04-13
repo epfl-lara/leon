@@ -24,8 +24,8 @@ object Bubble {
             i < size &&
             isArray(sortedArray, size) && 
             partitioned(sortedArray, size, 0, i, i+1, size-1) &&
-            sorted(sortedArray, size, i, size-1) &&
-            partitioned(sortedArray, size, 0, j-1, j, j)
+            //partitioned(sortedArray, size, 0, j-1, j, j) &&
+            sorted(sortedArray, size, i, size-1)
           )
       i = i - 1
     }) invariant(
