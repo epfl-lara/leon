@@ -58,7 +58,7 @@ object FunctionClosure extends Pass {
       newFunDef.postcondition = postcondition.map(expr => replace(freshVarsExpr, expr))
 
       def substFunInvocInDef(expr: Expr): Option[Expr] = expr match {
-        case FunctionInvocation(fd, args) if fd.id == id => Some(FunctionInvocation(newFunDef, args ++ extraVarDecls.map(_.id.toVariable)))
+        case fi@FunctionInvocation(fd, args) if fd.id == id => Some(FunctionInvocation(newFunDef, args ++ extraVarDecls.map(_.id.toVariable)).setPosInfo(fi))
         case _ => None
       }
       val freshBody = replace(freshVarsExpr, funBody)
@@ -70,17 +70,13 @@ object FunctionClosure extends Pass {
       newFunDef.body = Some(recBody2)
 
       def substFunInvocInRest(expr: Expr): Option[Expr] = expr match {
-        case FunctionInvocation(fd, args) if fd.id == id => Some(FunctionInvocation(newFunDef, args ++ capturedVarsWithConstraints.map(_.toVariable)))
+        case fi@FunctionInvocation(fd, args) if fd.id == id => Some(FunctionInvocation(newFunDef, args ++ capturedVarsWithConstraints.map(_.toVariable)).setPosInfo(fi))
         case _ => None
       }
       val recRest = functionClosure(rest, bindedVars)
       val recRest2 = searchAndReplaceDFS(substFunInvocInRest)(recRest)
       LetDef(newFunDef, recRest2).setType(l.getType)
     }
-
-    //case fi @ FunctionInvocation(fd, args) => {
-
-    //}
     case l @ Let(i,e,b) => {
       val re = functionClosure(e, bindedVars)
       pathConstraints ::= Equals(Variable(i), re)

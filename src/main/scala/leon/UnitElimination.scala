@@ -135,7 +135,7 @@ object UnitElimination extends Pass {
           case GuardedCase(pat, guard, rhs) => GuardedCase(pat, removeUnit(guard), removeUnit(rhs))
         }
         val tpe = csesRec.head.rhs.getType
-        MatchExpr(scrutRec, csesRec).setType(tpe)
+        MatchExpr(scrutRec, csesRec).setType(tpe).setPosInfo(m)
       }
       case _ => sys.error("not supported: " + expr)
     }

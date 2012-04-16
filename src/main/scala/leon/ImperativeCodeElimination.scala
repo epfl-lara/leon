@@ -107,7 +107,7 @@ object ImperativeCodeElimination extends Pass {
         val matchExpr = MatchExpr(scrutRes, cses.zip(newRhs).map{
           case (SimpleCase(pat, _), newRhs) => SimpleCase(pat, newRhs)
           case (GuardedCase(pat, guard, _), newRhs) => GuardedCase(pat, replaceNames(scrutFun, guard), newRhs)
-        }).setType(matchType)
+        }).setType(matchType).setPosInfo(m)
 
         val scope = ((body: Expr) => {
           val tupleId = FreshIdentifier("t").setType(matchType)
