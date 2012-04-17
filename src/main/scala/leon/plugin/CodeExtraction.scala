@@ -606,8 +606,13 @@ trait CodeExtraction extends Extractors {
       case ExIsInstanceOf(tt, cc) => {
         val ccRec = rec(cc)
         val checkType = scalaType2PureScala(unit, silent)(tt.tpe)
-        val CaseClassType(cd) = checkType
-        CaseClassInstanceOf(cd, ccRec)
+        checkType match {
+          case CaseClassType(cd) => CaseClassInstanceOf(cd, ccRec)
+          case _ => {
+            unit.error(tr.pos, "isInstanceOf can only be used with a case class")
+            throw ImpureCodeEncounteredException(tr)
+          }
+        }
       }
 
       // this one should stay after all others, cause it also catches UMinus
