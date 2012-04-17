@@ -185,7 +185,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
         allPathConds.map(pc =>
           new VerificationCondition(
             withPrecIfDefined(pc._1),
-            function,
+            if(function.fromLoop) function.parent.get else function,
             VCKind.MapAccess,
             this.asInstanceOf[DefaultTactic]).setPosInfo(pc._2.asInstanceOf[Error])
         ).toSeq
