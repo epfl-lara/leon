@@ -716,13 +716,13 @@ trait CodeExtraction extends Extractors {
           val rr = rec(t2)
           MultisetPlus(rl, rr).setType(rl.getType)
         }
-        case ExApply(lhs,args) => {
+        case app@ExApply(lhs,args) => {
           val rlhs = rec(lhs)
           val rargs = args map rec
           rlhs.getType match {
             case MapType(_,tt) => 
               assert(rargs.size == 1)
-              MapGet(rlhs, rargs.head).setType(tt)
+              MapGet(rlhs, rargs.head).setType(tt).setPosInfo(app.pos.line, app.pos.column)
             case FunctionType(fts, tt) => {
               rlhs match {
                 case Variable(id) =>
