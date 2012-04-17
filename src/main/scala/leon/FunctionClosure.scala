@@ -48,6 +48,8 @@ object FunctionClosure extends Pass {
       val newVarDecls = varDecl ++ extraVarDecls
       val newFunId = FreshIdentifier(id.name)
       val newFunDef = new FunDef(newFunId, rt, newVarDecls).setPosInfo(fd)
+      newFunDef.fromLoop = fd.fromLoop
+      newFunDef.parent = fd.parent
 
       val freshPrecondition = precondition.map(expr => replace(freshVarsExpr, expr))
       val freshConstraints = constraints.map(expr => replace(freshVarsExpr, expr))
