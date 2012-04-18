@@ -78,8 +78,6 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
             expr2
           }
         }
-        println("generating post condtion with: " + functionDefinition.fromLoop)
-        println("for" + functionDefinition)
         if(functionDefinition.fromLoop)
           Seq(new VerificationCondition(theExpr, functionDefinition.parent.get, VCKind.InvariantPost, this.asInstanceOf[DefaultTactic]).setPosInfo(functionDefinition))
         else
