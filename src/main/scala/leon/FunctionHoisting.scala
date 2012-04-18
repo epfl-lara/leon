@@ -70,7 +70,7 @@ object FunctionHoisting extends Pass {
           (GuardedCase(pat, guard, r), s)
         }
       }.unzip
-      (MatchExpr(scrutRes, csesRes).setType(m.getType), csesSets.toSet.flatten ++ scrutSet)
+      (MatchExpr(scrutRes, csesRes).setType(m.getType).setPosInfo(m), csesSets.toSet.flatten ++ scrutSet)
     }
     case t if t.isInstanceOf[Terminal] => (t, Set())
     case unhandled => scala.sys.error("Non-terminal case should be handled in searchAndReplace: " + unhandled)

@@ -10,10 +10,12 @@ object ImperativeCodeElimination extends Pass {
   val description = "Transform imperative constructs into purely functional code"
 
   private var varInScope = Set[Identifier]()
+  private var parent: FunDef = null //the enclosing fundef
 
   def apply(pgm: Program): Program = {
     val allFuns = pgm.definedFunctions
     allFuns.foreach(fd => fd.body.map(body => {
+      parent = fd
       val (res, scope, _) = toFunction(body)
       fd.body = Some(scope(res))
     }))
@@ -107,7 +109,7 @@ object ImperativeCodeElimination extends Pass {
         val matchExpr = MatchExpr(scrutRes, cses.zip(newRhs).map{
           case (SimpleCase(pat, _), newRhs) => SimpleCase(pat, newRhs)
           case (GuardedCase(pat, guard, _), newRhs) => GuardedCase(pat, replaceNames(scrutFun, guard), newRhs)
-        }).setType(matchType)
+        }).setType(matchType).setPosInfo(m)
 
         val scope = ((body: Expr) => {
           val tupleId = FreshIdentifier("t").setType(matchType)
@@ -140,10 +142,12 @@ object ImperativeCodeElimination extends Pass {
           val whileFunVarDecls = whileFunVars.map(id => VarDecl(id, id.getType))
           val whileFunReturnType = if(whileFunVars.size == 1) whileFunVars.head.getType else TupleType(whileFunVars.map(_.getType))
           val whileFunDef = new FunDef(FreshIdentifier("while"), whileFunReturnType, whileFunVarDecls).setPosInfo(wh)
+          whileFunDef.fromLoop = true
+          whileFunDef.parent = Some(parent)
           
           val whileFunCond = condRes
           val whileFunRecursiveCall = replaceNames(condFun,
-            bodyScope(FunctionInvocation(whileFunDef, modifiedVars.map(id => condBodyFun(id).toVariable))))
+            bodyScope(FunctionInvocation(whileFunDef, modifiedVars.map(id => condBodyFun(id).toVariable)).setPosInfo(wh)))
           val whileFunBaseCase =
             (if(whileFunVars.size == 1) 
                 condFun.get(modifiedVars.head).getOrElse(whileFunVars.head).toVariable
@@ -182,7 +186,7 @@ object ImperativeCodeElimination extends Pass {
             LetDef(
               whileFunDef,
               Let(tupleId, 
-                  FunctionInvocation(whileFunDef, modifiedVars.map(_.toVariable)), 
+                  FunctionInvocation(whileFunDef, modifiedVars.map(_.toVariable)).setPosInfo(wh), 
                   if(finalVars.size == 1)
                     Let(finalVars.head, tupleId.toVariable, body)
                   else

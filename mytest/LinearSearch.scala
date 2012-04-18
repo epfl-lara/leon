@@ -1,5 +1,7 @@
 import leon.Utils._
 
+/* The calculus of Computation textbook */
+
 object LinearSearch {
 
   def linearSearch(a: Map[Int, Int], size: Int, c: Int): Boolean = ({

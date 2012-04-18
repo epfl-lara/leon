@@ -20,6 +20,8 @@ object UnitElimination extends Pass {
     allFuns.foreach(fd => {
       if(fd.returnType != UnitType && fd.args.exists(vd => vd.tpe == UnitType)) {
         val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.returnType, fd.args.filterNot(vd => vd.tpe == UnitType)).setPosInfo(fd)
+        freshFunDef.fromLoop = fd.fromLoop
+        freshFunDef.parent = fd.parent
         freshFunDef.precondition = fd.precondition //TODO: maybe removing unit from the conditions as well..
         freshFunDef.postcondition = fd.postcondition//TODO: maybe removing unit from the conditions as well..
         fun2FreshFun += (fd -> freshFunDef)
@@ -135,7 +137,7 @@ object UnitElimination extends Pass {
           case GuardedCase(pat, guard, rhs) => GuardedCase(pat, removeUnit(guard), removeUnit(rhs))
         }
         val tpe = csesRec.head.rhs.getType
-        MatchExpr(scrutRec, csesRec).setType(tpe)
+        MatchExpr(scrutRec, csesRec).setType(tpe).setPosInfo(m)
       }
       case _ => sys.error("not supported: " + expr)
     }

@@ -283,6 +283,11 @@ object Definitions {
     var precondition: Option[Expr] = None
     var postcondition: Option[Expr] = None
 
+    //true if this function has been generated from a while loop
+    var fromLoop = false
+    //the fundef where the loop was defined (if applies)
+    var parent: Option[FunDef] = None
+
     def hasImplementation : Boolean = body.isDefined
     def hasBody = hasImplementation
     def hasPrecondition : Boolean = precondition.isDefined

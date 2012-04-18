@@ -7,12 +7,8 @@ import purescala.TypeTrees._
 import Extensions._
 import scala.collection.mutable.{Set => MutableSet}
 
-class Analysis(pgm : Program, val reporter: Reporter = Settings.reporter) {
+class Analysis(val program : Program, val reporter: Reporter = Settings.reporter) {
   Extensions.loadAll(reporter)
-
-  println("Analysis on program:\n" + pgm)
-  val passManager = new PassManager(Seq(EpsilonElimination, ImperativeCodeElimination, UnitElimination, FunctionClosure, FunctionHoisting, Simplificator))
-  val program = passManager.run(pgm)
 
   val analysisExtensions: Seq[Analyser] = loadedAnalysisExtensions
 
@@ -75,6 +71,11 @@ class Analysis(pgm : Program, val reporter: Reporter = Settings.reporter) {
         allVCs ++= tactic.generatePostconditions(funDef).sortWith(vcSort)
         allVCs ++= tactic.generateMiscCorrectnessConditions(funDef).sortWith(vcSort)
       }
+      allVCs = allVCs.sortWith((vc1, vc2) => {
+        val id1 = vc1.funDef.id.name
+        val id2 = vc2.funDef.id.name
+        if(id1 != id2) id1 < id2 else vc1 < vc2
+      })
     }
 
     val notFound: Set[String] = Settings.functionsToAnalyse -- analysedFunctions

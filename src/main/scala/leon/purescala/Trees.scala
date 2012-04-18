@@ -18,9 +18,9 @@ object Trees {
   }
 
   case class Block(exprs: Seq[Expr], last: Expr) extends Expr {
-    val t = last.getType
-    if(t != Untyped)
-      setType(t)
+    //val t = last.getType
+    //if(t != Untyped)
+     // setType(t)
   }
 
   case class Assignment(varId: Identifier, expr: Expr) extends Expr with FixedType {
@@ -369,7 +369,7 @@ object Trees {
   case class SingletonMap(from: Expr, to: Expr) extends Expr 
   case class FiniteMap(singletons: Seq[SingletonMap]) extends Expr 
 
-  case class MapGet(map: Expr, key: Expr) extends Expr 
+  case class MapGet(map: Expr, key: Expr) extends Expr with ScalacPositional
   case class MapUnion(map1: Expr, map2: Expr) extends Expr 
   case class MapDifference(map: Expr, keys: Expr) extends Expr 
   case class MapIsDefinedAt(map: Expr, key: Expr) extends Expr with FixedType {
@@ -439,7 +439,7 @@ object Trees {
       case MultisetPlus(t1,t2) => Some((t1,t2,MultisetPlus))
       case MultisetDifference(t1,t2) => Some((t1,t2,MultisetDifference))
       case SingletonMap(t1,t2) => Some((t1,t2,SingletonMap))
-      case MapGet(t1,t2) => Some((t1,t2,MapGet))
+      case mg@MapGet(t1,t2) => Some((t1,t2, (t1, t2) => MapGet(t1, t2).setPosInfo(mg)))
       case MapUnion(t1,t2) => Some((t1,t2,MapUnion))
       case MapDifference(t1,t2) => Some((t1,t2,MapDifference))
       case MapIsDefinedAt(t1,t2) => Some((t1,t2, MapIsDefinedAt))
@@ -1284,7 +1284,7 @@ object Trees {
     def rewriteMapGet(e: Expr) : Option[Expr] = e match {
       case mg @ MapGet(m,k) => 
         val ida = MapIsDefinedAt(m, k)
-        Some(IfExpr(ida, mg, Error("key not found for map access").setType(mg.getType)).setType(mg.getType))
+        Some(IfExpr(ida, mg, Error("key not found for map access").setType(mg.getType).setPosInfo(mg)).setType(mg.getType))
       case _ => None
     }
 
