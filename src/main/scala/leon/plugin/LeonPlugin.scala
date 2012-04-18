@@ -64,11 +64,8 @@ class LeonPlugin(val global: Global, val actionAfterExtraction : Option[Program=
         case "quickcheck" =>                     leon.Settings.useQuickCheck = true
         case "parallel"   =>                     leon.Settings.useParallel = true
         case "noLuckyTests" =>                   leon.Settings.luckyTest = false
-<<<<<<< HEAD
         case "noverifymodel" =>                  leon.Settings.verifyModel = false
-=======
         case "verbose"    =>                     leon.Settings.verbose = true
->>>>>>> leon2
         case s if s.startsWith("unrolling=") =>  leon.Settings.unrollingLevel = try { s.substring("unrolling=".length, s.length).toInt } catch { case _ => 0 }
         case s if s.startsWith("functions=") =>  leon.Settings.functionsToAnalyse = Set(splitList(s.substring("functions=".length, s.length)): _*)
         case s if s.startsWith("extensions=") => leon.Settings.extensionNames = splitList(s.substring("extensions=".length, s.length))
