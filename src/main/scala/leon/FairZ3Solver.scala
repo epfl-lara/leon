@@ -1227,7 +1227,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         val startingVar : Identifier = FreshIdentifier("start", true).setType(BooleanType)
 
         val result = treatFunctionInvocationSet(startingVar, true, functionCallsOf(formula))
-        reporter.info(result)
+        //reporter.info(result)
         (Variable(startingVar) +: formula +: result._1, result._2)
       }
     }
