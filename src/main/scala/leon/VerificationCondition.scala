@@ -49,4 +49,7 @@ object VCKind extends Enumeration {
   val Postcondition = Value("postcond.")
   val ExhaustiveMatch = Value("match.")
   val MapAccess = Value("map acc.")
+  val InvariantInit = Value("inv init.")
+  val InvariantInd = Value("inv ind.")
+  val InvariantPost = Value("inv post.")
 }

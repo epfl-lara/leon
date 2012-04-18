@@ -31,7 +31,9 @@ object Main {
   }
 
   private def defaultAction(program: Program, reporter: Reporter) : Unit = {
-    val analysis = new Analysis(program, reporter)
+    val passManager = new PassManager(Seq(ImperativeCodeElimination, UnitElimination, FunctionClosure, FunctionHoisting, Simplificator))
+    val program2 = passManager.run(program)
+    val analysis = new Analysis(program2, reporter)
     analysis.analyse
   }
 

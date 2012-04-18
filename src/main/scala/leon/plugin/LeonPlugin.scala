@@ -39,7 +39,8 @@ class LeonPlugin(val global: Global, val actionAfterExtraction : Option[Program=
     "  --cores              Use UNSAT cores in the unrolling/refinement step" + "\n" +
     "  --quickcheck         Use QuickCheck-like random search" + "\n" +
     "  --parallel           Run all solvers in parallel" + "\n" +
-    "  --noLuckyTests       Do not perform additional tests to potentially find models early"
+    "  --noLuckyTests       Do not perform additional tests to potentially find models early" + "\n" +
+    "  --verbose            Print debugging informations"
   )
 
   /** Processes the command-line options. */
@@ -62,6 +63,7 @@ class LeonPlugin(val global: Global, val actionAfterExtraction : Option[Program=
         case "quickcheck" =>                     leon.Settings.useQuickCheck = true
         case "parallel"   =>                     leon.Settings.useParallel = true
         case "noLuckyTests" =>                   leon.Settings.luckyTest = false
+        case "verbose"    =>                     leon.Settings.verbose = true
         case s if s.startsWith("unrolling=") =>  leon.Settings.unrollingLevel = try { s.substring("unrolling=".length, s.length).toInt } catch { case _ => 0 }
         case s if s.startsWith("functions=") =>  leon.Settings.functionsToAnalyse = Set(splitList(s.substring("functions=".length, s.length)): _*)
         case s if s.startsWith("extensions=") => leon.Settings.extensionNames = splitList(s.substring("extensions=".length, s.length))

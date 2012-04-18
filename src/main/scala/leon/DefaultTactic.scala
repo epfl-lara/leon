@@ -78,7 +78,10 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
             expr2
           }
         }
-        Seq(new VerificationCondition(theExpr, functionDefinition, VCKind.Postcondition, this.asInstanceOf[DefaultTactic]))
+        if(functionDefinition.fromLoop)
+          Seq(new VerificationCondition(theExpr, functionDefinition.parent.get, VCKind.InvariantPost, this.asInstanceOf[DefaultTactic]).setPosInfo(functionDefinition))
+        else
+          Seq(new VerificationCondition(theExpr, functionDefinition, VCKind.Postcondition, this.asInstanceOf[DefaultTactic]))
       }
     }
   
@@ -107,11 +110,18 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
           val newBody : Expr = replace(substMap, prec)
           val newCall : Expr = (newLetIDs zip args).foldRight(newBody)((iap, e) => Let(iap._1, iap._2, e))
 
-          new VerificationCondition(
-            withPrecIfDefined(path, newCall),
-            function,
-            VCKind.Precondition,
-            this.asInstanceOf[DefaultTactic]).setPosInfo(fi)
+          if(fd.fromLoop)
+            new VerificationCondition(
+              withPrecIfDefined(path, newCall),
+              fd.parent.get,
+              if(fd == function) VCKind.InvariantInd else VCKind.InvariantInit,
+              this.asInstanceOf[DefaultTactic]).setPosInfo(fd)
+          else
+            new VerificationCondition(
+              withPrecIfDefined(path, newCall),
+              function,
+              VCKind.Precondition,
+              this.asInstanceOf[DefaultTactic]).setPosInfo(fi)
         }).toSeq
       } else {
         Seq.empty
@@ -141,7 +151,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
         allPathConds.map(pc => 
           new VerificationCondition(
             withPrecIfDefined(pc._1),
-            function,
+            if(function.fromLoop) function.parent.get else function,
             VCKind.ExhaustiveMatch,
             this.asInstanceOf[DefaultTactic]).setPosInfo(pc._2.asInstanceOf[Error])
         ).toSeq
@@ -173,7 +183,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
         allPathConds.map(pc =>
           new VerificationCondition(
             withPrecIfDefined(pc._1),
-            function,
+            if(function.fromLoop) function.parent.get else function,
             VCKind.MapAccess,
             this.asInstanceOf[DefaultTactic]).setPosInfo(pc._2.asInstanceOf[Error])
         ).toSeq
