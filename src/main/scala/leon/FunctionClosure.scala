@@ -115,7 +115,7 @@ object FunctionClosure extends Pass {
       m
     }
     case t if t.isInstanceOf[Terminal] => t
-    case unhandled => scala.sys.error("Non-terminal case should be handled in searchAndReplace: " + unhandled)
+    case unhandled => scala.sys.error("Non-terminal case should be handled in FunctionClosure: " + unhandled)
   }
 
   //filter the list of constraints, only keeping those relevant to the set of variables

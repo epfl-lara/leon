@@ -68,7 +68,7 @@ object FunctionHoisting extends Pass {
       (MatchExpr(scrutRes, csesRes).setType(m.getType).setPosInfo(m), csesSets.toSet.flatten ++ scrutSet)
     }
     case t if t.isInstanceOf[Terminal] => (t, Set())
-    case unhandled => scala.sys.error("Non-terminal case should be handled in searchAndReplace: " + unhandled)
+    case unhandled => scala.sys.error("Non-terminal case should be handled in FunctionHoisting: " + unhandled)
   }
 
 }
