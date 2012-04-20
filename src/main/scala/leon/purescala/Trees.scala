@@ -805,7 +805,7 @@ object Trees {
       case Assignment(_, _) => false
       case While(_, _) => false
       case LetVar(_, _, _) => false
-      case _ => true
+      case _ => b
     }
     treeCatamorphism(convert, combine, compute, expr)
   }
