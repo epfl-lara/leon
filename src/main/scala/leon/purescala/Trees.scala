@@ -144,10 +144,7 @@ object Trees {
   //   		      subPatterns: Seq[Pattern]) extends Pattern // c @ Extractor(...,...)
   // We don't handle Seq stars for now.
 
-  case class TuplePattern(elementsBinders: Seq[Identifier]) extends Pattern {
-    val binder = None
-    val subPatterns = Seq.empty
-  }
+  case class TuplePattern(binder: Option[Identifier], subPatterns: Seq[Pattern]) extends Pattern
 
   /* Propositional logic */
   object And {
@@ -1215,7 +1212,17 @@ object Trees {
           case None => together
         }
       }
-      case TuplePattern(ids) => ids.zipWithIndex.map{case (id, i) => (id, TupleSelect(in, i+1).setType(id.getType)) }.toMap
+      case TuplePattern(b, subps) => {
+        val TupleType(tpes) = in.getType
+        assert(tpes.size == subps.size)
+
+        val maps = subps.zipWithIndex.map{case (p, i) => mapForPattern(TupleSelect(in, i+1).setType(tpes(i)), p)}
+        val map = maps.foldLeft(Map.empty[Identifier,Expr])(_ ++ _)
+        b match {
+          case Some(id) => map + (id -> in)
+          case None => map
+        }
+      }
     }
 
     def conditionForPattern(in: Expr, pattern: Pattern) : Expr = pattern match {
@@ -1228,7 +1235,12 @@ object Trees {
         val together = And(subTests)
         And(CaseClassInstanceOf(ccd, in), together)
       }
-      case TuplePattern(ids) => BooleanLiteral(true)
+      case TuplePattern(_, subps) => {
+        val TupleType(tpes) = in.getType
+        assert(tpes.size == subps.size)
+        val subTests = subps.zipWithIndex.map{case (p, i) => conditionForPattern(TupleSelect(in, i+1).setType(tpes(i)), p)}
+        And(subTests)
+      }
     }
 
     def rewritePM(e: Expr) : Option[Expr] = e match {

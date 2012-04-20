@@ -295,6 +295,16 @@ object PrettyPrinter {
         }
         case WildcardPattern(None)     => sb.append("_")
         case WildcardPattern(Some(id)) => sb.append(id)
+        case TuplePattern(bndr, subPatterns) => {
+          bndr.foreach(b => sb.append(b + " @ "))
+          sb.append("(")
+          subPatterns.init.foreach(p => {
+            ppc(sb, p)
+            sb.append(", ")
+          })
+          ppc(sb, subPatterns.last)
+          sb.append(")")
+        }
         case _ => sb.append("Pattern?")
       }
 
