@@ -31,6 +31,7 @@ object Main {
   }
 
   private def defaultAction(program: Program, reporter: Reporter) : Unit = {
+    Logger.debug("Default action on program: " + program, 5, "main")
     val passManager = new PassManager(Seq(ImperativeCodeElimination, UnitElimination, FunctionClosure, FunctionHoisting, Simplificator))
     val program2 = passManager.run(program)
     val analysis = new Analysis(program2, reporter)

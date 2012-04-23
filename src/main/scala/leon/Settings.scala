@@ -23,5 +23,6 @@ object Settings {
   var useParallel : Boolean = false
   // When this is None, use real integers
   var bitvectorBitwidth : Option[Int] = None
-  var verbose : Boolean = false
+  var debugLevel: Int = 0
+  var debugTags: Set[String] = Set.empty
 }
