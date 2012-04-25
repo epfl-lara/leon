@@ -85,10 +85,11 @@ object Evaluator {
             }
           }
 
-          if(!fd.hasBody) {
+          if(!fd.hasBody && !context.isDefinedAt(fd.id)) {
             throw RuntimeErrorEx("Evaluation of function with unknown implementation.")
           }
-          val callResult = rec(frame, matchToIfThenElse(fd.body.get))
+          val body = fd.body.getOrElse(context(fd.id))
+          val callResult = rec(frame, matchToIfThenElse(body))
 
           if(fd.hasPostcondition) {
             val freshResID = FreshIdentifier("result").setType(fd.returnType)

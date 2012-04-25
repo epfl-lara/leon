@@ -781,19 +781,30 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     import Evaluator._
 
     val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
-    println(functionsModel.toList.map(p => p._1 + " -> " + {
-      val (cses, default) = p._2 
-      val ite = cses.foldLeft(fromZ3Formula(model, default))((expr, q) => IfExpr(
-                      And(
-                        q._1.zip(functionDeclToDef(p._1).args).map(a12 => Equals(fromZ3Formula(model, a12._1), Variable(a12._2.id)))
-                      ),
-                      fromZ3Formula(model, q._2),
-                      expr))
-      ite.toString
-    }).mkString("\n"))
+
+//    println(functionsModel.toList.map(p => p._1 + " -> " + {
+//      val (cses, default) = p._2 
+//      val ite = cses.foldLeft(fromZ3Formula(model, default))((expr, q) => IfExpr(
+//                      And(
+//                        q._1.zip(functionDeclToDef(p._1).args).map(a12 => Equals(fromZ3Formula(model, a12._1), Variable(a12._2.id)))
+//                      ),
+//                      fromZ3Formula(model, q._2),
+//                      expr))
+//
 
     if(!forceStop) {
-      val asMap = modelToMap(model, variables)
+      val functionsAsMap = functionsModel.map(p => {
+        val fd = functionDeclToDef(p._1)
+        val (cses, default) = p._2 
+        val ite = cses.foldLeft(fromZ3Formula(model, default))((expr, q) => IfExpr(
+                        And(
+                          q._1.zip(fd.args).map(a12 => Equals(fromZ3Formula(model, a12._1), Variable(a12._2.id)))
+                        ),
+                        fromZ3Formula(model, q._2),
+                        expr))
+        (fd.id, ite)
+      })
+      val asMap = modelToMap(model, variables) ++ functionsAsMap
       model.delete
       lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
       val evalResult = eval(asMap, formula, evaluator)
