@@ -808,7 +808,16 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           } else Seq()
         } else Seq()
       }).toMap
-      val asMap = modelToMap(model, variables) ++ functionsAsMap
+      val constantFunctionsAsMap: Map[Identifier, Expr] = model.getModelConstantInterpretations.flatMap(p => {
+        if(isKnownDecl(p._1)) {
+          val fd = functionDeclToDef(p._1)
+          if(!fd.hasImplementation) {
+            Seq((fd.id, fromZ3Formula(model, p._2, Some(fd.returnType))))
+          } else Seq()
+        } else Seq()
+      }).toMap
+      //val undefinedFunctionIds = functionMap.keys.filterNot(fd => fd.hasImplementation || !fd.args.isEmpty).map(_.id) 
+      val asMap = modelToMap(model, variables) ++ functionsAsMap ++ constantFunctionsAsMap
       model.delete
       lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
       val evalResult = eval(asMap, formula, evaluator)
