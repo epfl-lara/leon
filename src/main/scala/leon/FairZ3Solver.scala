@@ -827,6 +827,10 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           reporter.info("- Invalid model.")
           (false, asMap)
         }
+        case PostconditionViolationFunctionFromModel() => {
+          reporter.info("- Invalid Model: postcondition violation of a function that whose implementation was specified by the model")
+          (false, asMap)
+        }
         case other => {
           reporter.error("Something went wrong. While evaluating the model, we got this: " + other)
           (false, asMap)
