@@ -570,6 +570,10 @@ trait CodeExtraction extends Extractors {
             case Some(f) => varSubsts(varSym) = f
             case None => varSubsts.remove(varSym)
           }
+          if(containsEpsilon(c1)) {
+            unit.error(epsi.pos, "Usage of nested epsilon is not allowed.")
+            throw ImpureCodeEncounteredException(epsi)
+          }
           Epsilon(c1).setType(pstpe).setPosInfo(epsi.pos.line, epsi.pos.column)
         }
         case ExSomeConstruction(tpe, arg) => {
