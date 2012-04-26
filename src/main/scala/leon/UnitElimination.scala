@@ -24,6 +24,7 @@ object UnitElimination extends Pass {
         freshFunDef.parent = fd.parent
         freshFunDef.precondition = fd.precondition //TODO: maybe removing unit from the conditions as well..
         freshFunDef.postcondition = fd.postcondition//TODO: maybe removing unit from the conditions as well..
+        freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
         fun2FreshFun += (fd -> freshFunDef)
       } else {
         fun2FreshFun += (fd -> fd) //this will make the next step simpler
@@ -97,6 +98,9 @@ object UnitElimination extends Pass {
         else {
           val (newFd, rest) = if(fd.args.exists(vd => vd.tpe == UnitType)) {
             val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.returnType, fd.args.filterNot(vd => vd.tpe == UnitType)).setPosInfo(fd)
+            freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
+            freshFunDef.parent = fd.parent
+            freshFunDef.fromLoop = fd.fromLoop
             freshFunDef.precondition = fd.precondition //TODO: maybe removing unit from the conditions as well..
             freshFunDef.postcondition = fd.postcondition//TODO: maybe removing unit from the conditions as well..
             fun2FreshFun += (fd -> freshFunDef)

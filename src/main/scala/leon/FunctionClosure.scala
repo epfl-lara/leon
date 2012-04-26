@@ -52,6 +52,7 @@ object FunctionClosure extends Pass {
       val newFunDef = new FunDef(newFunId, rt, newVarDecls).setPosInfo(fd)
       newFunDef.fromLoop = fd.fromLoop
       newFunDef.parent = fd.parent
+      newFunDef.addAnnotation(fd.annotations.toSeq:_*)
 
       val freshPrecondition = precondition.map(expr => replace(freshVarsExpr, expr))
       val freshPostcondition = postcondition.map(expr => replace(freshVarsExpr, expr))
