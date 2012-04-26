@@ -41,7 +41,9 @@ class LeonPlugin(val global: Global, val actionAfterExtraction : Option[Program=
     "  --parallel           Run all solvers in parallel" + "\n" +
     "  --noLuckyTests       Do not perform additional tests to potentially find models early" + "\n" +
     "  --noverifymodel      Do not verify the correctness of models returned by Z3" + "\n" +
-    "  --verbose            Print debugging informations"
+    "  --verbose            Print debugging informations" + "\n" +
+    "  --debug=[1-5]        Debug level" + "\n" +
+    "  --tags=t1:...        Filter out debug information that are not of one of the given tags"
   )
 
   /** Processes the command-line options. */
@@ -66,6 +68,8 @@ class LeonPlugin(val global: Global, val actionAfterExtraction : Option[Program=
         case "noLuckyTests" =>                   leon.Settings.luckyTest = false
         case "noverifymodel" =>                  leon.Settings.verifyModel = false
         case "verbose"    =>                     leon.Settings.verbose = true
+        case s if s.startsWith("debug=") =>       leon.Settings.debugLevel = try { s.substring("debug=".length, s.length).toInt } catch { case _ => 0 }
+        case s if s.startsWith("tags=") =>       leon.Settings.debugTags = Set(splitList(s.substring("tags=".length, s.length)): _*)
         case s if s.startsWith("unrolling=") =>  leon.Settings.unrollingLevel = try { s.substring("unrolling=".length, s.length).toInt } catch { case _ => 0 }
         case s if s.startsWith("functions=") =>  leon.Settings.functionsToAnalyse = Set(splitList(s.substring("functions=".length, s.length)): _*)
         case s if s.startsWith("extensions=") => leon.Settings.extensionNames = splitList(s.substring("extensions=".length, s.length))
