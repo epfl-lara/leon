@@ -290,6 +290,11 @@ trait CodeExtraction extends Extractors {
           unit.error(realBody.pos, "Function precondtion should not contain nested function definition")
           throw ImpureCodeEncounteredException(realBody)
         })
+      ensCont.map(e => 
+        if(containsLetDef(e)) {
+          unit.error(realBody.pos, "Function postcondition should not contain nested function definition")
+          throw ImpureCodeEncounteredException(realBody)
+        })
       funDef.body = bodyAttempt
       funDef.precondition = reqCont
       funDef.postcondition = ensCont
@@ -438,6 +443,11 @@ trait CodeExtraction extends Extractors {
       reqCont.map(e => 
         if(containsLetDef(e)) {
           unit.error(realBody.pos, "Function precondtion should not contain nested function definition")
+          throw ImpureCodeEncounteredException(realBody)
+        })
+      ensCont.map(e => 
+        if(containsLetDef(e)) {
+          unit.error(realBody.pos, "Function postcondition should not contain nested function definition")
           throw ImpureCodeEncounteredException(realBody)
         })
       funDef.body = bodyAttempt

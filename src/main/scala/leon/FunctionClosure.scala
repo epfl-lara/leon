@@ -72,14 +72,11 @@ object FunctionClosure extends Pass {
       val recBody = freshBody.map(b =>
                       functionClosure(b, bindedVars ++ newVarDecls.map(_.id))
                     ).map(b => searchAndReplaceDFS(substFunInvocInDef)(b))
-      val recPostcondition = freshPostcondition.map(expr =>
-                               functionClosure(expr, bindedVars ++ newVarDecls.map(_.id))
-                             ).map(expr => searchAndReplaceDFS(substFunInvocInDef)(expr))
       pathConstraints = oldPathConstraints
 
       newFunDef.precondition = recPrecondition
       newFunDef.body = recBody
-      newFunDef.postcondition = recPostcondition
+      newFunDef.postcondition = freshPostcondition
 
       def substFunInvocInRest(expr: Expr): Option[Expr] = expr match {
         case fi@FunctionInvocation(fd, args) if fd.id == id => Some(FunctionInvocation(newFunDef, args ++ capturedVarsWithConstraints.map(_.toVariable)).setPosInfo(fi))
