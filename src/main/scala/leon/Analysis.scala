@@ -63,13 +63,11 @@ class Analysis(val program : Program, val reporter: Reporter = Settings.reporter
           defaultTactic
         }
 
-      def vcSort(vc1: VerificationCondition, vc2: VerificationCondition) : Boolean = (vc1 < vc2)
-
       if(funDef.body.isDefined) {
-        allVCs ++= tactic.generatePreconditions(funDef).sortWith(vcSort)
-        allVCs ++= tactic.generatePatternMatchingExhaustivenessChecks(funDef).sortWith(vcSort)
-        allVCs ++= tactic.generatePostconditions(funDef).sortWith(vcSort)
-        allVCs ++= tactic.generateMiscCorrectnessConditions(funDef).sortWith(vcSort)
+        allVCs ++= tactic.generatePreconditions(funDef)
+        allVCs ++= tactic.generatePatternMatchingExhaustivenessChecks(funDef)
+        allVCs ++= tactic.generatePostconditions(funDef)
+        allVCs ++= tactic.generateMiscCorrectnessConditions(funDef)
       }
       allVCs = allVCs.sortWith((vc1, vc2) => {
         val id1 = vc1.funDef.id.name
