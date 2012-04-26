@@ -8,7 +8,7 @@ class PassManager(passes: Seq[Pass]) {
     passes.foldLeft(program)((pgm, pass) => {
       Logger.debug("Running Pass: " + pass.description, 1, "passman")
       val newPgm = pass(pgm)
-      Logger.debug("Resulting program: " + newPgm, 5, "passman")
+      Logger.debug("Resulting program: " + newPgm, 3, "passman")
       newPgm
     })
   }

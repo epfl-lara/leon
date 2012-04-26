@@ -15,9 +15,11 @@ object ImperativeCodeElimination extends Pass {
   def apply(pgm: Program): Program = {
     val allFuns = pgm.definedFunctions
     allFuns.foreach(fd => fd.body.map(body => {
+      Logger.debug("Transforming to functional code the following function:\n" + fd, 5, "imperative")
       parent = fd
       val (res, scope, _) = toFunction(body)
       fd.body = Some(scope(res))
+      Logger.debug("Resulting functional code is:\n" + fd, 5, "imperative")
     }))
     pgm
   }
@@ -58,14 +60,12 @@ object ImperativeCodeElimination extends Pass {
         val thenVal = if(modifiedVars.isEmpty) tRes else Tuple(tRes +: modifiedVars.map(vId => tFun.get(vId) match {
           case Some(newId) => newId.toVariable
           case None => vId.toVariable
-        }))
-        thenVal.setType(iteType)
+        })).setType(iteType)
 
         val elseVal = if(modifiedVars.isEmpty) eRes else Tuple(eRes +: modifiedVars.map(vId => eFun.get(vId) match {
           case Some(newId) => newId.toVariable
           case None => vId.toVariable
-        }))
-        elseVal.setType(iteType)
+        })).setType(iteType)
 
         val iteExpr = IfExpr(cRes, replaceNames(cFun, tScope(thenVal)), replaceNames(cFun, eScope(elseVal))).setType(iteType)
 
@@ -97,14 +97,14 @@ object ImperativeCodeElimination extends Pass {
         val matchType = if(modifiedVars.isEmpty) resId.getType else TupleType(resId.getType +: freshIds.map(_.getType))
 
         val csesVals = csesRes.zip(csesFun).map{ 
-          case (cRes, cFun) => (if(modifiedVars.isEmpty) cRes else Tuple(cRes +: modifiedVars.map(vId => cFun.get(vId) match {
+          case (cRes, cFun) => if(modifiedVars.isEmpty) cRes else Tuple(cRes +: modifiedVars.map(vId => cFun.get(vId) match {
             case Some(newId) => newId.toVariable
             case None => vId.toVariable
-          }))).setType(matchType)
+          })).setType(matchType)
         }
 
         val newRhs = csesVals.zip(csesScope).map{ 
-          case (cVal, cScope) => replaceNames(scrutFun, cScope(cVal)).setType(matchType)
+          case (cVal, cScope) => replaceNames(scrutFun, cScope(cVal))
         }
         val matchExpr = MatchExpr(scrutRes, cses.zip(newRhs).map{
           case (SimpleCase(pat, _), newRhs) => SimpleCase(pat, newRhs)
