@@ -131,8 +131,8 @@ class InductionTactic(reporter: Reporter) extends DefaultTactic(reporter) {
               }
               case _ => scala.sys.error("Abstract class has non-case class subtype")
             }))
-            println("Induction tactic yields the following VCs:")
-            println(conditionsForEachChild.map(vc => vc.condition).mkString("\n"))
+            Logger.debug("Induction tactic yields the following VCs:\n" + 
+                        conditionsForEachChild.map(vc => vc.condition).mkString("\n"), 4, "induction")
             conditionsForEachChild
           }).toSeq
 
@@ -140,10 +140,6 @@ class InductionTactic(reporter: Reporter) extends DefaultTactic(reporter) {
         } else {
           Seq.empty
         }
-
-        // println("PRECS VCs FOR " + function.id.name)
-        // println(toRet.toList.map(vc => vc.posInfo + " -- " + vc.condition).mkString("\n\n"))
-
         toRet
       }
       case None => {
