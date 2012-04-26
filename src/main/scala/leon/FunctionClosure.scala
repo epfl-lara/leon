@@ -13,7 +13,6 @@ object FunctionClosure extends Pass {
 
   private var pathConstraints: List[Expr] = Nil
   private var newFunDefs: Map[FunDef, FunDef] = Map()
-  //private var 
 
   def apply(program: Program): Program = {
     newFunDefs = Map()
@@ -22,6 +21,7 @@ object FunctionClosure extends Pass {
       enclosingPreconditions = fd.precondition.toList
       pathConstraints = fd.precondition.toList
       fd.body = fd.body.map(b => functionClosure(b, fd.args.map(_.id).toSet))
+      fd.postcondition = fd.postcondition.map(b => functionClosure(b, fd.args.map(_.id).toSet))
     })
     program
   }
@@ -35,10 +35,9 @@ object FunctionClosure extends Pass {
       val precondition = fd.precondition
       val postcondition = fd.postcondition
 
-      val bodyVars: Set[Identifier] = (fd.body match {
-        case Some(body) => variablesOf(body) 
-        case None => Set()
-      }) ++ variablesOf(precondition.getOrElse(BooleanLiteral(true))) ++ variablesOf(postcondition.getOrElse(BooleanLiteral(true)))
+      val bodyVars: Set[Identifier] = variablesOf(fd.body.getOrElse(BooleanLiteral(true))) ++ 
+                                      variablesOf(precondition.getOrElse(BooleanLiteral(true))) ++ 
+                                      variablesOf(postcondition.getOrElse(BooleanLiteral(true)))
 
       val capturedVars = bodyVars.intersect(bindedVars)// this should be the variable used that are in the scope
       val (constraints, allCapturedVars) = filterConstraints(capturedVars) //all relevant path constraints
@@ -55,32 +54,38 @@ object FunctionClosure extends Pass {
       newFunDef.parent = fd.parent
 
       val freshPrecondition = precondition.map(expr => replace(freshVarsExpr, expr))
+      val freshPostcondition = postcondition.map(expr => replace(freshVarsExpr, expr))
+      val freshBody = fd.body.map(b => replace(freshVarsExpr, b))
       val freshConstraints = constraints.map(expr => replace(freshVarsExpr, expr))
-      newFunDef.precondition = freshConstraints match {
-        case List() => freshPrecondition
-        case precs => Some(And(freshPrecondition.getOrElse(BooleanLiteral(true)) +: precs))
-      }
-      newFunDef.postcondition = postcondition.map(expr => replace(freshVarsExpr, expr))
 
       def substFunInvocInDef(expr: Expr): Option[Expr] = expr match {
         case fi@FunctionInvocation(fd, args) if fd.id == id => Some(FunctionInvocation(newFunDef, args ++ extraVarDecls.map(_.id.toVariable)).setPosInfo(fi))
         case _ => None
       }
-      val freshBody = fd.body.map(b => replace(freshVarsExpr, b))
       val oldPathConstraints = pathConstraints
       pathConstraints = (precondition.getOrElse(BooleanLiteral(true)) :: pathConstraints).map(e => replace(freshVarsExpr, e))
-      val recBody = freshBody.map(b => functionClosure(b, bindedVars ++ newVarDecls.map(_.id)))
+      val recPrecondition = freshConstraints match { //Actually, we do not allow nested fundef in precondition
+        case List() => freshPrecondition
+        case precs => Some(And(freshPrecondition.getOrElse(BooleanLiteral(true)) +: precs))
+      }
+      val recBody = freshBody.map(b =>
+                      functionClosure(b, bindedVars ++ newVarDecls.map(_.id))
+                    ).map(b => searchAndReplaceDFS(substFunInvocInDef)(b))
+      val recPostcondition = freshPostcondition.map(expr =>
+                               functionClosure(expr, bindedVars ++ newVarDecls.map(_.id))
+                             ).map(expr => searchAndReplaceDFS(substFunInvocInDef)(expr))
       pathConstraints = oldPathConstraints
-      val recBody2 = recBody.map(b => searchAndReplaceDFS(substFunInvocInDef)(b))
-      newFunDef.body = recBody2
+
+      newFunDef.precondition = recPrecondition
+      newFunDef.body = recBody
+      newFunDef.postcondition = recPostcondition
 
       def substFunInvocInRest(expr: Expr): Option[Expr] = expr match {
         case fi@FunctionInvocation(fd, args) if fd.id == id => Some(FunctionInvocation(newFunDef, args ++ capturedVarsWithConstraints.map(_.toVariable)).setPosInfo(fi))
         case _ => None
       }
-      val recRest = functionClosure(rest, bindedVars)
-      val recRest2 = searchAndReplaceDFS(substFunInvocInRest)(recRest)
-      LetDef(newFunDef, recRest2).setType(l.getType)
+      val recRest = searchAndReplaceDFS(substFunInvocInRest)(functionClosure(rest, bindedVars))
+      LetDef(newFunDef, recRest).setType(l.getType)
     }
     case l @ Let(i,e,b) => {
       val re = functionClosure(e, bindedVars)
