@@ -40,6 +40,7 @@ class LeonPlugin(val global: Global, val actionAfterExtraction : Option[Program=
     "  --quickcheck         Use QuickCheck-like random search" + "\n" +
     "  --parallel           Run all solvers in parallel" + "\n" +
     "  --noLuckyTests       Do not perform additional tests to potentially find models early" + "\n" +
+    "  --noverifymodel      Do not verify the correctness of models returned by Z3" + "\n" +
     "  --verbose            Print debugging informations"
   )
 
@@ -63,6 +64,7 @@ class LeonPlugin(val global: Global, val actionAfterExtraction : Option[Program=
         case "quickcheck" =>                     leon.Settings.useQuickCheck = true
         case "parallel"   =>                     leon.Settings.useParallel = true
         case "noLuckyTests" =>                   leon.Settings.luckyTest = false
+        case "noverifymodel" =>                  leon.Settings.verifyModel = false
         case "verbose"    =>                     leon.Settings.verbose = true
         case s if s.startsWith("unrolling=") =>  leon.Settings.unrollingLevel = try { s.substring("unrolling=".length, s.length).toInt } catch { case _ => 0 }
         case s if s.startsWith("functions=") =>  leon.Settings.functionsToAnalyse = Set(splitList(s.substring("functions=".length, s.length)): _*)

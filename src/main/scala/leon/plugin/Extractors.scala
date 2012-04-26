@@ -160,6 +160,22 @@ trait Extractors {
     //  }
     //}
 
+
+    object ExEpsilonExpression {
+      def unapply(tree: Apply) : Option[(Type, Symbol, Tree)] = tree match {
+        case Apply(
+              TypeApply(Select(Select(funcheckIdent, utilsName), epsilonName), typeTree :: Nil),
+              Function((vd @ ValDef(_, _, _, EmptyTree)) :: Nil, predicateBody) :: Nil) => {
+          if (utilsName.toString == "Utils" && epsilonName.toString == "epsilon")
+            Some((typeTree.tpe, vd.symbol, predicateBody))
+          else 
+            None
+        }
+        case _ => None
+      }
+    }
+
+
     object ExValDef {
       /** Extracts val's in the head of blocks. */
       def unapply(tree: ValDef): Option[(Symbol,Tree,Tree)] = tree match {

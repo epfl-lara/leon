@@ -40,6 +40,8 @@ object Trees {
    * the expected type. */
   case class Error(description: String) extends Expr with Terminal with ScalacPositional
 
+  case class Epsilon(pred: Expr) extends Expr with ScalacPositional
+
   /* Like vals */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
     binder.markAsLetBinder
@@ -266,6 +268,8 @@ object Trees {
   // represents the result in post-conditions
   case class ResultVariable() extends Expr with Terminal
 
+  case class EpsilonVariable(pos: (Int, Int)) extends Expr with Terminal
+
   /* Literals */
   sealed abstract class Literal[T] extends Expr with Terminal {
     val value: T
@@ -407,6 +411,7 @@ object Trees {
       case CaseClassInstanceOf(cd, e) => Some((e, CaseClassInstanceOf(cd, _)))
       case Assignment(id, e) => Some((e, Assignment(id, _)))
       case TupleSelect(t, i) => Some((t, TupleSelect(_, i)))
+      case e@Epsilon(t) => Some((t, (expr: Expr) => Epsilon(expr).setType(e.getType).setPosInfo(e)))
       case _ => None
     }
   }
@@ -751,7 +756,10 @@ object Trees {
     def rec(expr: Expr) : A = expr match {
       case l @ Let(_, e, b) => compute(l, combine(rec(e), rec(b)))
       case l @ LetVar(_, e, b) => compute(l, combine(rec(e), rec(b)))
-      case l @ LetDef(fd, b) => compute(l, combine(rec(fd.getBody), rec(b))) //TODO, still not sure about the semantic
+      case l @ LetDef(fd, b) => {//TODO, still not sure about the semantic
+        val exprs: Seq[Expr] = fd.precondition.toSeq ++ fd.body.toSeq ++ fd.postcondition.toSeq ++ Seq(b)
+        compute(l, exprs.map(rec(_)).reduceLeft(combine))
+      }
       case n @ NAryOperator(args, _) => {
         if(args.size == 0)
           compute(n, convert(n))
@@ -806,6 +814,19 @@ object Trees {
       case While(_, _) => false
       case LetVar(_, _, _) => false
       case _ => b
+    }
+    treeCatamorphism(convert, combine, compute, expr)
+  }
+
+  def containsLetDef(expr: Expr): Boolean = {
+    def convert(t : Expr) : Boolean = t match {
+      case (l : LetDef) => true
+      case _ => false
+    }
+    def combine(c1 : Boolean, c2 : Boolean) : Boolean = c1 || c2
+    def compute(t : Expr, c : Boolean) = t match {
+      case (l : LetDef) => true
+      case _ => c
     }
     treeCatamorphism(convert, combine, compute, expr)
   }

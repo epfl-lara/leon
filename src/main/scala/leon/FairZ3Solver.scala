@@ -581,9 +581,11 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           }
         }
         case (Some(true), m) => { // SAT
-          //println("MODEL IS: " + m)
           validatingStopwatch.start
-          val (trueModel, model) = validateAndDeleteModel(m, toCheckAgainstModels, varsInVC, evaluator)
+          val (trueModel, model) = if(Settings.verifyModel)
+              validateAndDeleteModel(m, toCheckAgainstModels, varsInVC, evaluator)
+            else 
+              (true, modelToMap(m, varsInVC))
           validatingStopwatch.stop
 
           if (trueModel) {
@@ -779,7 +781,33 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     import Evaluator._
 
     if(!forceStop) {
-      val asMap = modelToMap(model, variables)
+
+      val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
+      val functionsAsMap: Map[Identifier, Expr] = functionsModel.flatMap(p => {
+        if(isKnownDecl(p._1)) {
+          val fd = functionDeclToDef(p._1)
+          if(!fd.hasImplementation) {
+            val (cses, default) = p._2 
+            val ite = cses.foldLeft(fromZ3Formula(model, default, Some(fd.returnType)))((expr, q) => IfExpr(
+                            And(
+                              q._1.zip(fd.args).map(a12 => Equals(fromZ3Formula(model, a12._1, Some(a12._2.tpe)), Variable(a12._2.id)))
+                            ),
+                            fromZ3Formula(model, q._2, Some(fd.returnType)),
+                            expr))
+            Seq((fd.id, ite))
+          } else Seq()
+        } else Seq()
+      }).toMap
+      val constantFunctionsAsMap: Map[Identifier, Expr] = model.getModelConstantInterpretations.flatMap(p => {
+        if(isKnownDecl(p._1)) {
+          val fd = functionDeclToDef(p._1)
+          if(!fd.hasImplementation) {
+            Seq((fd.id, fromZ3Formula(model, p._2, Some(fd.returnType))))
+          } else Seq()
+        } else Seq()
+      }).toMap
+
+      val asMap = modelToMap(model, variables) ++ functionsAsMap ++ constantFunctionsAsMap
       model.delete
       lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
       val evalResult = eval(asMap, formula, evaluator)
@@ -797,6 +825,10 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         }
         case OK(BooleanLiteral(false)) => {
           reporter.info("- Invalid model.")
+          (false, asMap)
+        }
+        case PostconditionViolationFunctionFromModel() => {
+          reporter.info("- Invalid Model: postcondition violation of a function that whose implementation was specified by the model")
           (false, asMap)
         }
         case other => {

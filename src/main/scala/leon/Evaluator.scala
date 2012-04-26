@@ -24,11 +24,16 @@ object Evaluator {
   case class InfiniteComputation() extends EvaluationResult {
     val finalResult = None
   }
+  case class PostconditionViolationFunctionFromModel() extends EvaluationResult {
+    val finalResult = None
+  }
+  
 
   def eval(context: EvaluationContext, expression: Expr, evaluator: Option[(EvaluationContext)=>Boolean], maxSteps: Int=500000) : EvaluationResult = {
     case class RuntimeErrorEx(msg: String) extends Exception
     case class InfiniteComputationEx() extends Exception
     case class TypeErrorEx(typeError: TypeError) extends Exception
+    case class PostconditionViolationFunctionFromModelEx() extends Exception
 
     var left: Int = maxSteps
 
@@ -85,16 +90,18 @@ object Evaluator {
             }
           }
 
-          if(!fd.hasBody) {
+          if(!fd.hasBody && !context.isDefinedAt(fd.id)) {
             throw RuntimeErrorEx("Evaluation of function with unknown implementation.")
           }
-          val callResult = rec(frame, matchToIfThenElse(fd.body.get))
+          val body = fd.body.getOrElse(context(fd.id))
+          val callResult = rec(frame, matchToIfThenElse(body))
 
           if(fd.hasPostcondition) {
             val freshResID = FreshIdentifier("result").setType(fd.returnType)
             val postBody = replace(Map(ResultVariable() -> Variable(freshResID)), matchToIfThenElse(fd.postcondition.get))
             rec(frame + ((freshResID -> callResult)), postBody) match {
               case BooleanLiteral(true) => ;
+              case BooleanLiteral(false) if !fd.hasImplementation => throw PostconditionViolationFunctionFromModelEx()
               case BooleanLiteral(false) => throw RuntimeErrorEx("Postcondition violation for " + fd.id.name + " reached in evaluation.")
               case other => throw TypeErrorEx(TypeError(other, BooleanType))
             }
@@ -306,6 +313,7 @@ object Evaluator {
           case RuntimeErrorEx(msg) => RuntimeError(msg)
           case InfiniteComputationEx() => InfiniteComputation()
           case TypeErrorEx(te) => te
+          case PostconditionViolationFunctionFromModelEx() => PostconditionViolationFunctionFromModel()
         }
     }
   }

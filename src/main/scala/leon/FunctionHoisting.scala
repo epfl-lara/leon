@@ -13,9 +13,23 @@ object FunctionHoisting extends Pass {
     val funDefs = program.definedFunctions
     var topLevelFuns: Set[FunDef] = Set()
     funDefs.foreach(fd => {
-      val (newBody, additionalTopLevelFun) = hoist(fd.getBody)
-      fd.body = Some(newBody)
-      topLevelFuns ++= additionalTopLevelFun
+      val s2 = fd.body match {
+        case Some(body) => {
+          val (e2, s2) = hoist(body)
+          fd.body = Some(e2)
+          s2
+        }
+        case None => Set()
+      }
+      val s4 = fd.postcondition match {
+        case Some(expr) => {
+          val (e4, s4) = hoist(expr)
+          fd.postcondition = Some(e4)
+          s4
+        }
+        case None => Set()
+      }
+      topLevelFuns ++= (s2 ++ s4)
     })
     val Program(id, ObjectDef(objId, defs, invariants)) = program
     Program(id, ObjectDef(objId, defs ++ topLevelFuns, invariants))
@@ -24,10 +38,23 @@ object FunctionHoisting extends Pass {
   private def hoist(expr: Expr): (Expr, Set[FunDef]) = expr match {
     case l @ LetDef(fd, rest) => {
       val (e, s) = hoist(rest)
-      val (e2, s2) = hoist(fd.getBody)
-      fd.body = Some(e2)
-
-      (e, (s ++ s2) + fd)
+      val s2 = fd.body match {
+        case Some(body) => {
+          val (e2, s2) = hoist(body)
+          fd.body = Some(e2)
+          s2
+        }
+        case None => Set()
+      }
+      val s4 = fd.postcondition match {
+        case Some(expr) => {
+          val (e4, s4) = hoist(expr)
+          fd.postcondition = Some(e4)
+          s4
+        }
+        case None => Set()
+      }
+      (e, (s ++ s2 ++ s4) + fd)
     }
     case l @ Let(i,e,b) => {
       val (re, s1) = hoist(e)
