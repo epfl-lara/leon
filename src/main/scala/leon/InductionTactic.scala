@@ -65,8 +65,8 @@ class InductionTactic(reporter: Reporter) extends DefaultTactic(reporter) {
               new VerificationCondition(Implies(CaseClassInstanceOf(ccd, argAsVar), conditionForChild), funDef, VCKind.Postcondition, this)
             case _ => scala.sys.error("Abstract class has non-case class subtype.")
           }))
-          println("Induction tactic yields the following VCs:")
-          println(conditionsForEachChild.map(vc => vc.condition).mkString("\n"))
+          Logger.debug("Induction tactic yields the following VCs:\n" + 
+                        conditionsForEachChild.map(vc => vc.condition).mkString("\n"), 4, "induction")
           conditionsForEachChild
         }
       case None =>
