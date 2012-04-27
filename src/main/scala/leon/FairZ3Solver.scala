@@ -827,8 +827,8 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           reporter.info("- Invalid model.")
           (false, asMap)
         }
-        case PostconditionViolationFunctionFromModel() => {
-          reporter.info("- Invalid Model: postcondition violation of a function that whose implementation was specified by the model")
+        case ImpossibleComputation() => {
+          reporter.info("- Invalid Model: the model could not be verified because of insufficient information.")
           (false, asMap)
         }
         case other => {

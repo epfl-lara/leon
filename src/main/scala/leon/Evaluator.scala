@@ -24,7 +24,7 @@ object Evaluator {
   case class InfiniteComputation() extends EvaluationResult {
     val finalResult = None
   }
-  case class PostconditionViolationFunctionFromModel() extends EvaluationResult {
+  case class ImpossibleComputation() extends EvaluationResult {
     val finalResult = None
   }
   
@@ -33,7 +33,7 @@ object Evaluator {
     case class RuntimeErrorEx(msg: String) extends Exception
     case class InfiniteComputationEx() extends Exception
     case class TypeErrorEx(typeError: TypeError) extends Exception
-    case class PostconditionViolationFunctionFromModelEx() extends Exception
+    case class ImpossibleComputationEx() extends Exception
 
     var left: Int = maxSteps
 
@@ -101,7 +101,7 @@ object Evaluator {
             val postBody = replace(Map(ResultVariable() -> Variable(freshResID)), matchToIfThenElse(fd.postcondition.get))
             rec(frame + ((freshResID -> callResult)), postBody) match {
               case BooleanLiteral(true) => ;
-              case BooleanLiteral(false) if !fd.hasImplementation => throw PostconditionViolationFunctionFromModelEx()
+              case BooleanLiteral(false) if !fd.hasImplementation => throw ImpossibleComputationEx()
               case BooleanLiteral(false) => throw RuntimeErrorEx("Postcondition violation for " + fd.id.name + " reached in evaluation.")
               case other => throw TypeErrorEx(TypeError(other, BooleanType))
             }
@@ -313,7 +313,7 @@ object Evaluator {
           case RuntimeErrorEx(msg) => RuntimeError(msg)
           case InfiniteComputationEx() => InfiniteComputation()
           case TypeErrorEx(te) => te
-          case PostconditionViolationFunctionFromModelEx() => PostconditionViolationFunctionFromModel()
+          case ImpossibleComputationEx() => ImpossibleComputation()
         }
     }
   }
