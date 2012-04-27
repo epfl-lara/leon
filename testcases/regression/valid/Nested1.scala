@@ -1,4 +1,4 @@
-object Nested2 {
+object Nested1 {
 
   def foo(i: Int): Int = {
     val n = 2

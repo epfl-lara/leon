@@ -1,4 +1,4 @@
-object While1 {
+object While3 {
 
   def foo(): Int = {
     var a = 0
@@ -11,5 +11,3 @@ object While1 {
   } ensuring(_ == 54)
 
 }
-
-// vim: set ts=4 sw=4 et:

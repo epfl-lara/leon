@@ -1,4 +1,4 @@
-object MyTuple4 {
+object MyTuple3 {
 
   def foo(): Int = {
     val t = ((2, 3), true)
@@ -6,5 +6,3 @@ object MyTuple4 {
   } ensuring( _ == 3)
 
 }
-
-// vim: set ts=4 sw=4 et:
