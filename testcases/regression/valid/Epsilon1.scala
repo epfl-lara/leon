@@ -6,8 +6,4 @@ object Epsilon1 {
     epsilon((y: Int) => y > x)
   } ensuring(_ >= x)
 
-  def greaterWrong(x: Int): Int = {
-    epsilon((y: Int) => y >= x)
-  } ensuring(_ > x)
-
 }

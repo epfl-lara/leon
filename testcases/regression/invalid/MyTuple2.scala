@@ -1,4 +1,4 @@
-object MyTuple4 {
+object MyTuple2 {
 
   abstract class A
   case class B(i: Int) extends A
@@ -9,6 +9,6 @@ object MyTuple4 {
     t match {
       case (B(x), C(y)) => x
     }
-  } ensuring( _ > 0)
+  } ensuring( _ == 3)
 
 }

@@ -22,8 +22,11 @@ object Epsilon4 {
   }
 
   //timeout, but this probably means that it is valid as expected
-  def property(lst: MyList): Boolean = (size(toList(toSet(lst))) <= size(lst)) holds
+  //def property(lst: MyList): Boolean = (size(toList(toSet(lst))) <= size(lst)) holds
 
-  def wrongProperty0(lst: MyList): Boolean = (size(toList(toSet(lst))) == size(lst)) holds
-  def wrongProperty1(lst: MyList): Boolean = (toList(toSet(lst)) == lst) holds
+  def propertyBase(lst: MyList): Boolean = ({
+    require(lst match { case MyNil() => true case _ => false})
+    size(toList(toSet(lst))) <= size(lst) 
+  }) holds
+
 }
