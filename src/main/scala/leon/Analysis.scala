@@ -151,6 +151,14 @@ class Analysis(val program : Program, val reporter: Reporter = Settings.reporter
       )
       reporter.info(summaryString)
 
+      if(Settings.simpleOutput) {
+        val outStr =
+          if(vcs.forall(_.status == "valid")) "valid" 
+          else if(vcs.exists(_.status == "invalid")) "invalid"
+          else "unknown"
+        println(outStr)
+      }
+
       // Printing summary for the evaluation section of paper:
       val writeSummary = false
       if (writeSummary) {
