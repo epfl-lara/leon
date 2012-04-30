@@ -39,7 +39,11 @@ class LeonPlugin(val global: Global, val actionAfterExtraction : Option[Program=
     "  --cores              Use UNSAT cores in the unrolling/refinement step" + "\n" +
     "  --quickcheck         Use QuickCheck-like random search" + "\n" +
     "  --parallel           Run all solvers in parallel" + "\n" +
-    "  --noLuckyTests       Do not perform additional tests to potentially find models early"
+    "  --noLuckyTests       Do not perform additional tests to potentially find models early" + "\n" +
+    "  --noverifymodel      Do not verify the correctness of models returned by Z3" + "\n" +
+    "  --debug=[1-5]        Debug level" + "\n" +
+    "  --tags=t1:...        Filter out debug information that are not of one of the given tags" + "\n" +
+    "  --oneline            Reduce the output to a single line: valid if all properties were valid, invalid if at least one is invalid, unknown else"
   )
 
   /** Processes the command-line options. */
@@ -47,21 +51,26 @@ class LeonPlugin(val global: Global, val actionAfterExtraction : Option[Program=
   override def processOptions(options: List[String], error: String => Unit) {
     for(option <- options) {
       option match {
-        case "with-code"  =>                     stopAfterAnalysis = false
-        case "uniqid"     =>                     leon.Settings.showIDs = true
-        case "parse"      =>                     stopAfterExtraction = true
-        case "tolerant"   =>                     silentlyTolerateNonPureBodies = true
-        case "nodefaults" =>                     leon.Settings.runDefaultExtensions = false
-        case "axioms"     =>                     leon.Settings.noForallAxioms = false
-        case "bapa"       =>                     leon.Settings.useBAPA = true
-        case "impure"     =>                     leon.Settings.impureTestcases = true
-        case "XP"         =>                     leon.Settings.experimental = true
-        case "BV"         =>                     leon.Settings.bitvectorBitwidth = Some(32)
-        case "prune"      =>                     leon.Settings.pruneBranches = true
-        case "cores"      =>                     leon.Settings.useCores = true
-        case "quickcheck" =>                     leon.Settings.useQuickCheck = true
-        case "parallel"   =>                     leon.Settings.useParallel = true
-        case "noLuckyTests" =>                   leon.Settings.luckyTest = false
+        case "with-code"     =>                     stopAfterAnalysis = false
+        case "uniqid"        =>                     leon.Settings.showIDs = true
+        case "parse"         =>                     stopAfterExtraction = true
+        case "tolerant"      =>                     silentlyTolerateNonPureBodies = true
+        case "nodefaults"    =>                     leon.Settings.runDefaultExtensions = false
+        case "axioms"        =>                     leon.Settings.noForallAxioms = false
+        case "bapa"          =>                     leon.Settings.useBAPA = true
+        case "impure"        =>                     leon.Settings.impureTestcases = true
+        case "XP"            =>                     leon.Settings.experimental = true
+        case "BV"            =>                     leon.Settings.bitvectorBitwidth = Some(32)
+        case "prune"         =>                     leon.Settings.pruneBranches = true
+        case "cores"         =>                     leon.Settings.useCores = true
+        case "quickcheck"    =>                     leon.Settings.useQuickCheck = true
+        case "parallel"      =>                     leon.Settings.useParallel = true
+        case "oneline"       =>                     leon.Settings.simpleOutput = true
+        case "noLuckyTests"  =>                     leon.Settings.luckyTest = false
+        case "noverifymodel" =>                     leon.Settings.verifyModel = false
+
+        case s if s.startsWith("debug=") =>       leon.Settings.debugLevel = try { s.substring("debug=".length, s.length).toInt } catch { case _ => 0 }
+        case s if s.startsWith("tags=") =>       leon.Settings.debugTags = Set(splitList(s.substring("tags=".length, s.length)): _*)
         case s if s.startsWith("unrolling=") =>  leon.Settings.unrollingLevel = try { s.substring("unrolling=".length, s.length).toInt } catch { case _ => 0 }
         case s if s.startsWith("functions=") =>  leon.Settings.functionsToAnalyse = Set(splitList(s.substring("functions=".length, s.length)): _*)
         case s if s.startsWith("extensions=") => leon.Settings.extensionNames = splitList(s.substring("extensions=".length, s.length))

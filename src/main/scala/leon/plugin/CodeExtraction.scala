@@ -5,7 +5,7 @@ import scala.tools.nsc._
 import scala.tools.nsc.plugins._
 
 import purescala.Definitions._
-import purescala.Trees._
+import purescala.Trees.{Block => PBlock, _}
 import purescala.TypeTrees._
 import purescala.Common._
 
@@ -53,6 +53,8 @@ trait CodeExtraction extends Extractors {
     sym == function1TraitSym
   }
 
+  private val mutableVarSubsts: scala.collection.mutable.Map[Symbol,Function0[Expr]] =
+    scala.collection.mutable.Map.empty[Symbol,Function0[Expr]]
   private val varSubsts: scala.collection.mutable.Map[Symbol,Function0[Expr]] =
     scala.collection.mutable.Map.empty[Symbol,Function0[Expr]]
   private val classesToClasses: scala.collection.mutable.Map[Symbol,ClassTypeDef] =
@@ -60,7 +62,7 @@ trait CodeExtraction extends Extractors {
   private val defsToDefs: scala.collection.mutable.Map[Symbol,FunDef] =
     scala.collection.mutable.Map.empty[Symbol,FunDef]
 
-  def extractCode(unit: CompilationUnit): Program = { 
+  def extractCode(unit: CompilationUnit): Program = {
     import scala.collection.mutable.HashMap
 
     def s2ps(tree: Tree): Expr = toPureScala(unit)(tree) match {
@@ -278,11 +280,21 @@ trait CodeExtraction extends Extractors {
       }
       
       val bodyAttempt = try {
-        Some(scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies)(realBody))
+        Some(flattenBlocks(scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies)(realBody)))
       } catch {
         case e: ImpureCodeEncounteredException => None
       }
 
+      reqCont.map(e => 
+        if(containsLetDef(e)) {
+          unit.error(realBody.pos, "Function precondtion should not contain nested function definition")
+          throw ImpureCodeEncounteredException(realBody)
+        })
+      ensCont.map(e => 
+        if(containsLetDef(e)) {
+          unit.error(realBody.pos, "Function postcondition should not contain nested function definition")
+          throw ImpureCodeEncounteredException(realBody)
+        })
       funDef.body = bodyAttempt
       funDef.precondition = reqCont
       funDef.postcondition = ensCont
@@ -347,6 +359,22 @@ trait CodeExtraction extends Extractors {
           assert(args.size == cd.fields.size)
           CaseClassPattern(Some(newID), cd, args.map(pat2pat(_)))
         }
+        case a@Apply(fn, args) => {
+          val pst = scalaType2PureScala(unit, silent)(a.tpe)
+          pst match {
+            case TupleType(argsTpes) => TuplePattern(None, args.map(pat2pat))
+            case _ => throw ImpureCodeEncounteredException(p)
+          }
+        }
+        case b @ Bind(name, a @ Apply(fn, args)) => {
+          val newID = FreshIdentifier(name.toString).setType(scalaType2PureScala(unit,silent)(b.symbol.tpe))
+          varSubsts(b.symbol) = (() => Variable(newID))
+          val pst = scalaType2PureScala(unit, silent)(a.tpe)
+          pst match {
+            case TupleType(argsTpes) => TuplePattern(Some(newID), args.map(pat2pat))
+            case _ => throw ImpureCodeEncounteredException(p)
+          }
+        }
         case _ => {
           if(!silent)
             unit.error(p.pos, "Unsupported pattern.")
@@ -357,304 +385,479 @@ trait CodeExtraction extends Extractors {
       if(cd.guard == EmptyTree) {
         SimpleCase(pat2pat(cd.pat), rec(cd.body))
       } else {
-        GuardedCase(pat2pat(cd.pat), rec(cd.guard), rec(cd.body))
+        val recPattern = pat2pat(cd.pat)
+        val recGuard = rec(cd.guard)
+        val recBody = rec(cd.body)
+        if(!isPure(recGuard)) {
+          unit.error(cd.guard.pos, "Guard expression must be pure")
+          throw ImpureCodeEncounteredException(cd)
+        }
+        GuardedCase(recPattern, recGuard, recBody)
       }
     }
 
-    def rec(tr: Tree): Expr = tr match {
-      case ExTuple(tpes, exprs) => {
-        // println("getting ExTuple with " + tpes + " and " + exprs)
-        val tupleType = TupleType(tpes.map(tpe => scalaType2PureScala(unit, silent)(tpe)))
-        val tupleExprs = exprs.map(e => rec(e))
-        Tuple(tupleExprs).setType(tupleType)
-      }
-      case ExTupleExtract(tuple, index) => {
-        val tupleExpr = rec(tuple)
-        val TupleType(tpes) = tupleExpr.getType
-        if(tpes.size < index)
-          throw ImpureCodeEncounteredException(tree)
-        else
-          TupleSelect(tupleExpr, index).setType(tpes(index-1))
-      }
-      case ExValDef(vs, tpt, bdy, rst) => {
-        val binderTpe = scalaType2PureScala(unit, silent)(tpt.tpe)
-        val newID = FreshIdentifier(vs.name.toString).setType(binderTpe)
-        val oldSubsts = varSubsts
-        val valTree = rec(bdy)
-        varSubsts(vs) = (() => Variable(newID))
-        val restTree = rec(rst)
-        varSubsts.remove(vs)
-        Let(newID, valTree, restTree)
-      }
-      case ExInt32Literal(v) => IntLiteral(v).setType(Int32Type)
-      case ExBooleanLiteral(v) => BooleanLiteral(v).setType(BooleanType)
-      case ExTyped(e,tpt) => rec(e)
-      case ExIdentifier(sym,tpt) => varSubsts.get(sym) match {
-        case Some(fun) => fun()
-        case None => {
-          unit.error(tr.pos, "Unidentified variable.")
-          throw ImpureCodeEncounteredException(tr)
+    def extractFunSig(nameStr: String, params: Seq[ValDef], tpt: Tree): FunDef = {
+      val newParams = params.map(p => {
+        val ptpe =  scalaType2PureScala(unit, silent) (p.tpt.tpe)
+        val newID = FreshIdentifier(p.name.toString).setType(ptpe)
+        varSubsts(p.symbol) = (() => Variable(newID))
+        VarDecl(newID, ptpe)
+      })
+      new FunDef(FreshIdentifier(nameStr), scalaType2PureScala(unit, silent)(tpt.tpe), newParams)
+    }
+
+    def extractFunDef(funDef: FunDef, body: Tree): FunDef = {
+      var realBody = body
+      var reqCont: Option[Expr] = None
+      var ensCont: Option[Expr] = None
+      
+      realBody match {
+        case ExEnsuredExpression(body2, resSym, contract) => {
+          varSubsts(resSym) = (() => ResultVariable().setType(funDef.returnType))
+          val c1 = scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies) (contract)
+          // varSubsts.remove(resSym)
+          realBody = body2
+          ensCont = Some(c1)
         }
-      }
-      case ExSomeConstruction(tpe, arg) => {
-        // println("Got Some !" + tpe + ":" + arg)
-        val underlying = scalaType2PureScala(unit, silent)(tpe)
-        OptionSome(rec(arg)).setType(OptionType(underlying))
-      }
-      case ExCaseClassConstruction(tpt, args) => {
-        val cctype = scalaType2PureScala(unit, silent)(tpt.tpe)
-        if(!cctype.isInstanceOf[CaseClassType]) {
-          if(!silent) {
-            unit.error(tr.pos, "Construction of a non-case class.")
-          }
-          throw ImpureCodeEncounteredException(tree)
+        case ExHoldsExpression(body2) => {
+          realBody = body2
+          ensCont = Some(ResultVariable().setType(BooleanType))
         }
-        val nargs = args.map(rec(_))
-        val cct = cctype.asInstanceOf[CaseClassType]
-        CaseClass(cct.classDef, nargs).setType(cct)
-      }
-      case ExAnd(l, r) => And(rec(l), rec(r)).setType(BooleanType)
-      case ExOr(l, r) => Or(rec(l), rec(r)).setType(BooleanType)
-      case ExNot(e) => Not(rec(e)).setType(BooleanType)
-      case ExUMinus(e) => UMinus(rec(e)).setType(Int32Type)
-      case ExPlus(l, r) => Plus(rec(l), rec(r)).setType(Int32Type)
-      case ExMinus(l, r) => Minus(rec(l), rec(r)).setType(Int32Type)
-      case ExTimes(l, r) => Times(rec(l), rec(r)).setType(Int32Type)
-      case ExDiv(l, r) => Division(rec(l), rec(r)).setType(Int32Type)
-      case ExMod(l, r) => Modulo(rec(l), rec(r)).setType(Int32Type)
-      case ExEquals(l, r) => {
-        val rl = rec(l)
-        val rr = rec(r)
-        ((rl.getType,rr.getType) match {
-          case (SetType(_), SetType(_)) => SetEquals(rl, rr)
-          case (BooleanType, BooleanType) => Iff(rl, rr)
-          case (_, _) => Equals(rl, rr)
-        }).setType(BooleanType) 
-      }
-      case ExNotEquals(l, r) => Not(Equals(rec(l), rec(r)).setType(BooleanType)).setType(BooleanType)
-      case ExGreaterThan(l, r) => GreaterThan(rec(l), rec(r)).setType(BooleanType)
-      case ExGreaterEqThan(l, r) => GreaterEquals(rec(l), rec(r)).setType(BooleanType)
-      case ExLessThan(l, r) => LessThan(rec(l), rec(r)).setType(BooleanType)
-      case ExLessEqThan(l, r) => LessEquals(rec(l), rec(r)).setType(BooleanType)
-      case ExFiniteSet(tt, args) => {
-        val underlying = scalaType2PureScala(unit, silent)(tt.tpe)
-        FiniteSet(args.map(rec(_))).setType(SetType(underlying))
-      }
-      case ExFiniteMultiset(tt, args) => {
-        val underlying = scalaType2PureScala(unit, silent)(tt.tpe)
-        FiniteMultiset(args.map(rec(_))).setType(MultisetType(underlying))
-      }
-      case ExEmptySet(tt) => {
-        val underlying = scalaType2PureScala(unit, silent)(tt.tpe)
-        EmptySet(underlying).setType(SetType(underlying))          
-      }
-      case ExEmptyMultiset(tt) => {
-        val underlying = scalaType2PureScala(unit, silent)(tt.tpe)
-        EmptyMultiset(underlying).setType(MultisetType(underlying))          
-      }
-      case ExEmptyMap(ft, tt) => {
-        val fromUnderlying = scalaType2PureScala(unit, silent)(ft.tpe)
-        val toUnderlying   = scalaType2PureScala(unit, silent)(tt.tpe)
-        EmptyMap(fromUnderlying, toUnderlying).setType(MapType(fromUnderlying, toUnderlying))
-      }
-      case ExSetMin(t) => {
-        val set = rec(t)
-        if(!set.getType.isInstanceOf[SetType]) {
-          if(!silent) unit.error(t.pos, "Min should be computed on a set.")
-          throw ImpureCodeEncounteredException(tree)
-        }
-        SetMin(set).setType(set.getType.asInstanceOf[SetType].base)
-      }
-      case ExSetMax(t) => {
-        val set = rec(t)
-        if(!set.getType.isInstanceOf[SetType]) {
-          if(!silent) unit.error(t.pos, "Max should be computed on a set.")
-          throw ImpureCodeEncounteredException(tree)
-        }
-        SetMax(set).setType(set.getType.asInstanceOf[SetType].base)
-      }
-      case ExUnion(t1,t2) => {
-        val rl = rec(t1)
-        val rr = rec(t2)
-        rl.getType match {
-          case s @ SetType(_) => SetUnion(rl, rr).setType(s)
-          case m @ MultisetType(_) => MultisetUnion(rl, rr).setType(m)
-          case _ => {
-            if(!silent) unit.error(tree.pos, "Union of non set/multiset expressions.")
-            throw ImpureCodeEncounteredException(tree)
-          }
-        }
-      }
-      case ExIntersection(t1,t2) => {
-        val rl = rec(t1)
-        val rr = rec(t2)
-        rl.getType match {
-          case s @ SetType(_) => SetIntersection(rl, rr).setType(s)
-          case m @ MultisetType(_) => MultisetIntersection(rl, rr).setType(m)
-          case _ => {
-            if(!silent) unit.error(tree.pos, "Intersection of non set/multiset expressions.")
-            throw ImpureCodeEncounteredException(tree)
-          }
-        }
-      }
-      case ExSetContains(t1,t2) => {
-        val rl = rec(t1)
-        val rr = rec(t2)
-        rl.getType match {
-          case s @ SetType(_) => ElementOfSet(rr, rl)
-          case _ => {
-            if(!silent) unit.error(tree.pos, ".contains on non set expression.")
-            throw ImpureCodeEncounteredException(tree)
-          }
-        }
-      }
-      case ExSetSubset(t1,t2) => {
-        val rl = rec(t1)
-        val rr = rec(t2)
-        rl.getType match {
-          case s @ SetType(_) => SubsetOf(rl, rr)
-          case _ => {
-            if(!silent) unit.error(tree.pos, "Subset on non set expression.")
-            throw ImpureCodeEncounteredException(tree)
-          }
-        }
-      }
-      case ExSetMinus(t1,t2) => {
-        val rl = rec(t1)
-        val rr = rec(t2)
-        rl.getType match {
-          case s @ SetType(_) => SetDifference(rl, rr).setType(s)
-          case m @ MultisetType(_) => MultisetDifference(rl, rr).setType(m)
-          case _ => {
-            if(!silent) unit.error(tree.pos, "Difference of non set/multiset expressions.")
-            throw ImpureCodeEncounteredException(tree)
-          }
-        }
-      } 
-      case ExSetCard(t) => {
-        val rt = rec(t)
-        rt.getType match {
-          case s @ SetType(_) => SetCardinality(rt)
-          case m @ MultisetType(_) => MultisetCardinality(rt)
-          case _ => {
-            if(!silent) unit.error(tree.pos, "Cardinality of non set/multiset expressions.")
-            throw ImpureCodeEncounteredException(tree)
-          }
-        }
-      }
-      case ExMultisetToSet(t) => {
-        val rt = rec(t)
-        rt.getType match {
-          case m @ MultisetType(u) => MultisetToSet(rt).setType(SetType(u))
-          case _ => {
-            if(!silent) unit.error(tree.pos, "toSet can only be applied to multisets.")
-            throw ImpureCodeEncounteredException(tree)
-          }
-        }
-      }
-      case ExMapUpdated(m,f,t) => {
-        val rm = rec(m)
-        val rf = rec(f)
-        val rt = rec(t)
-        val newSingleton = SingletonMap(rf, rt).setType(rm.getType)
-        rm.getType match {
-          case MapType(ft, tt) =>
-            MapUnion(rm, FiniteMap(Seq(newSingleton)).setType(rm.getType)).setType(rm.getType)
-          case _ => {
-            if (!silent) unit.error(tree.pos, "updated can only be applied to maps.")
-            throw ImpureCodeEncounteredException(tree)
-          }
-        }
-      }
-      case ExMapIsDefinedAt(m,k) => {
-        val rm = rec(m)
-        val rk = rec(k)
-        MapIsDefinedAt(rm, rk)
+        case _ => ;
       }
 
-      case ExPlusPlusPlus(t1,t2) => {
-        val rl = rec(t1)
-        val rr = rec(t2)
-        MultisetPlus(rl, rr).setType(rl.getType)
+      realBody match {
+        case ExRequiredExpression(body3, contract) => {
+          realBody = body3
+          reqCont = Some(scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies) (contract))
+        }
+        case _ => ;
       }
-      case ExApply(lhs,args) => {
-        val rlhs = rec(lhs)
-        val rargs = args map rec
-        rlhs.getType match {
-          case MapType(_,tt) => 
-            assert(rargs.size == 1)
-            MapGet(rlhs, rargs.head).setType(tt)
-          case FunctionType(fts, tt) => {
-            rlhs match {
-              case Variable(id) =>
-                AnonymousFunctionInvocation(id, rargs).setType(tt)
-              case _ => {
-                if (!silent) unit.error(tree.pos, "apply on non-variable or non-map expression")
-                throw ImpureCodeEncounteredException(tree)
-              }
+      
+      val bodyAttempt = try {
+        Some(flattenBlocks(scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies)(realBody)))
+      } catch {
+        case e: ImpureCodeEncounteredException => None
+      }
+
+      reqCont.map(e => 
+        if(containsLetDef(e)) {
+          unit.error(realBody.pos, "Function precondtion should not contain nested function definition")
+          throw ImpureCodeEncounteredException(realBody)
+        })
+      ensCont.map(e => 
+        if(containsLetDef(e)) {
+          unit.error(realBody.pos, "Function postcondition should not contain nested function definition")
+          throw ImpureCodeEncounteredException(realBody)
+        })
+      funDef.body = bodyAttempt
+      funDef.precondition = reqCont
+      funDef.postcondition = ensCont
+      funDef
+    }
+
+    def rec(tr: Tree): Expr = {
+      
+      val (nextExpr, rest) = tr match {
+        case Block(Block(e :: es1, l1) :: es2, l2) => (e, Some(Block(es1 ++ Seq(l1) ++ es2, l2)))
+        case Block(e :: Nil, last) => (e, Some(last))
+        case Block(e :: es, last) => (e, Some(Block(es, last)))
+        case _ => (tr, None)
+      }
+
+      var handleRest = true
+      val psExpr = nextExpr match {
+        case ExTuple(tpes, exprs) => {
+          val tupleType = TupleType(tpes.map(tpe => scalaType2PureScala(unit, silent)(tpe)))
+          val tupleExprs = exprs.map(e => rec(e))
+          Tuple(tupleExprs).setType(tupleType)
+        }
+        case ExTupleExtract(tuple, index) => {
+          val tupleExpr = rec(tuple)
+          val TupleType(tpes) = tupleExpr.getType
+          if(tpes.size < index)
+            throw ImpureCodeEncounteredException(tree)
+          else
+            TupleSelect(tupleExpr, index).setType(tpes(index-1))
+        }
+        case ExValDef(vs, tpt, bdy) => {
+          val binderTpe = scalaType2PureScala(unit, silent)(tpt.tpe)
+          val newID = FreshIdentifier(vs.name.toString).setType(binderTpe)
+          val valTree = rec(bdy)
+          val restTree = rest match {
+            case Some(rst) => {
+              varSubsts(vs) = (() => Variable(newID))
+              val res = rec(rst)
+              varSubsts.remove(vs)
+              res
             }
+            case None => UnitLiteral
           }
-          case _ => {
-            if (!silent) unit.error(tree.pos, "apply on unexpected type")
-            throw ImpureCodeEncounteredException(tree)
+          handleRest = false
+          val res = Let(newID, valTree, restTree)
+          res
+        }
+        case dd@ExFunctionDef(n, p, t, b) => {
+          val funDef = extractFunSig(n, p, t).setPosInfo(dd.pos.line, dd.pos.column)
+          defsToDefs += (dd.symbol -> funDef)
+          val oldMutableVarSubst = mutableVarSubsts.toMap //take an immutable snapshot of the map
+          mutableVarSubsts.clear //reseting the visible mutable vars, we do not handle mutable variable closure in nested functions
+          val funDefWithBody = extractFunDef(funDef, b)
+          mutableVarSubsts ++= oldMutableVarSubst
+          val restTree = rest match {
+            case Some(rst) => rec(rst)
+            case None => UnitLiteral
           }
+          defsToDefs.remove(dd.symbol)
+          handleRest = false
+          LetDef(funDefWithBody, restTree)
         }
-      }
-      case ExIfThenElse(t1,t2,t3) => {
-        val r1 = rec(t1)
-        val r2 = rec(t2)
-        val r3 = rec(t3)
-        IfExpr(r1, r2, r3).setType(leastUpperBound(r2.getType, r3.getType))
-      }
-      case lc @ ExLocalCall(sy,nm,ar) => {
-        if(defsToDefs.keysIterator.find(_ == sy).isEmpty) {
-          if(!silent)
-            unit.error(tr.pos, "Invoking an invalid function.")
-          throw ImpureCodeEncounteredException(tr)
-        }
-        val fd = defsToDefs(sy)
-        FunctionInvocation(fd, ar.map(rec(_))).setType(fd.returnType).setPosInfo(lc.pos.line,lc.pos.column) 
-      }
-      case pm @ ExPatternMatching(sel, cses) => {
-        val rs = rec(sel)
-        val rc = cses.map(rewriteCaseDef(_))
-        val rt: purescala.TypeTrees.TypeTree = rc.map(_.rhs.getType).reduceLeft(leastUpperBound(_,_))
-        MatchExpr(rs, rc).setType(rt).setPosInfo(pm.pos.line,pm.pos.column)
-      }
-
-      // this one should stay after all others, cause it also catches UMinus
-      // and Not, for instance.
-      case ExParameterlessMethodCall(t,n) => {
-        val selector = rec(t)
-        val selType = selector.getType
-
-        if(!selType.isInstanceOf[CaseClassType]) {
-          if(!silent)
-            unit.error(tr.pos, "Invalid method or field invocation (not purescala?)")
-          throw ImpureCodeEncounteredException(tr)
+        case ExVarDef(vs, tpt, bdy) => {
+          val binderTpe = scalaType2PureScala(unit, silent)(tpt.tpe)
+          val newID = FreshIdentifier(vs.name.toString).setType(binderTpe)
+          val valTree = rec(bdy)
+          mutableVarSubsts += (vs -> (() => Variable(newID)))
+          val restTree = rest match {
+            case Some(rst) => {
+              varSubsts(vs) = (() => Variable(newID))
+              val res = rec(rst)
+              varSubsts.remove(vs)
+              res
+            }
+            case None => UnitLiteral
+          }
+          handleRest = false
+          val res = LetVar(newID, valTree, restTree)
+          res
         }
 
-        val selDef: CaseClassDef = selType.asInstanceOf[CaseClassType].classDef
-
-        val fieldID = selDef.fields.find(_.id.name == n.toString) match {
+        case ExAssign(sym, rhs) => mutableVarSubsts.get(sym) match {
+          case Some(fun) => {
+            val Variable(id) = fun()
+            val rhsTree = rec(rhs)
+            Assignment(id, rhsTree)
+          }
           case None => {
-            if(!silent)
-              unit.error(tr.pos, "Invalid method or field invocation (not a case class arg?)")
+            unit.error(tr.pos, "Undeclared variable.")
             throw ImpureCodeEncounteredException(tr)
           }
-          case Some(vd) => vd.id
+        }
+        case wh@ExWhile(cond, body) => {
+          val condTree = rec(cond)
+          val bodyTree = rec(body)
+          While(condTree, bodyTree).setPosInfo(wh.pos.line,wh.pos.column)
+        }
+        case wh@ExWhileWithInvariant(cond, body, inv) => {
+          val condTree = rec(cond)
+          val bodyTree = rec(body)
+          val invTree = rec(inv)
+          val w = While(condTree, bodyTree).setPosInfo(wh.pos.line,wh.pos.column)
+          w.invariant = Some(invTree)
+          w
         }
 
-        CaseClassSelector(selDef, selector, fieldID).setType(fieldID.getType)
-      }
-  
-      // default behaviour is to complain :)
-      case _ => {
-        if(!silent) {
-          println(tr)
-          reporter.info(tr.pos, "Could not extract as PureScala.", true)
+        case ExInt32Literal(v) => IntLiteral(v).setType(Int32Type)
+        case ExBooleanLiteral(v) => BooleanLiteral(v).setType(BooleanType)
+        case ExUnitLiteral() => UnitLiteral
+
+        case ExTyped(e,tpt) => rec(e)
+        case ExIdentifier(sym,tpt) => varSubsts.get(sym) match {
+          case Some(fun) => fun()
+          case None => mutableVarSubsts.get(sym) match {
+            case Some(fun) => fun()
+            case None => {
+              unit.error(tr.pos, "Unidentified variable.")
+              throw ImpureCodeEncounteredException(tr)
+            }
+          }
         }
-        throw ImpureCodeEncounteredException(tree)
+        case epsi@ExEpsilonExpression(tpe, varSym, predBody) => {
+          val pstpe = scalaType2PureScala(unit, silent)(tpe)
+          val previousVarSubst: Option[Function0[Expr]] = varSubsts.get(varSym) //save the previous in case of nested epsilon
+          varSubsts(varSym) = (() => EpsilonVariable((epsi.pos.line, epsi.pos.column)).setType(pstpe))
+          val c1 = rec(predBody)
+          previousVarSubst match {
+            case Some(f) => varSubsts(varSym) = f
+            case None => varSubsts.remove(varSym)
+          }
+          if(containsEpsilon(c1)) {
+            unit.error(epsi.pos, "Usage of nested epsilon is not allowed.")
+            throw ImpureCodeEncounteredException(epsi)
+          }
+          Epsilon(c1).setType(pstpe).setPosInfo(epsi.pos.line, epsi.pos.column)
+        }
+        case ExSomeConstruction(tpe, arg) => {
+          // println("Got Some !" + tpe + ":" + arg)
+          val underlying = scalaType2PureScala(unit, silent)(tpe)
+          OptionSome(rec(arg)).setType(OptionType(underlying))
+        }
+        case ExCaseClassConstruction(tpt, args) => {
+          val cctype = scalaType2PureScala(unit, silent)(tpt.tpe)
+          if(!cctype.isInstanceOf[CaseClassType]) {
+            if(!silent) {
+              unit.error(tr.pos, "Construction of a non-case class.")
+            }
+            throw ImpureCodeEncounteredException(tree)
+          }
+          val nargs = args.map(rec(_))
+          val cct = cctype.asInstanceOf[CaseClassType]
+          CaseClass(cct.classDef, nargs).setType(cct)
+        }
+        case ExAnd(l, r) => And(rec(l), rec(r)).setType(BooleanType)
+        case ExOr(l, r) => Or(rec(l), rec(r)).setType(BooleanType)
+        case ExNot(e) => Not(rec(e)).setType(BooleanType)
+        case ExUMinus(e) => UMinus(rec(e)).setType(Int32Type)
+        case ExPlus(l, r) => Plus(rec(l), rec(r)).setType(Int32Type)
+        case ExMinus(l, r) => Minus(rec(l), rec(r)).setType(Int32Type)
+        case ExTimes(l, r) => Times(rec(l), rec(r)).setType(Int32Type)
+        case ExDiv(l, r) => Division(rec(l), rec(r)).setType(Int32Type)
+        case ExMod(l, r) => Modulo(rec(l), rec(r)).setType(Int32Type)
+        case ExEquals(l, r) => {
+          val rl = rec(l)
+          val rr = rec(r)
+          ((rl.getType,rr.getType) match {
+            case (SetType(_), SetType(_)) => SetEquals(rl, rr)
+            case (BooleanType, BooleanType) => Iff(rl, rr)
+            case (_, _) => Equals(rl, rr)
+          }).setType(BooleanType) 
+        }
+        case ExNotEquals(l, r) => Not(Equals(rec(l), rec(r)).setType(BooleanType)).setType(BooleanType)
+        case ExGreaterThan(l, r) => GreaterThan(rec(l), rec(r)).setType(BooleanType)
+        case ExGreaterEqThan(l, r) => GreaterEquals(rec(l), rec(r)).setType(BooleanType)
+        case ExLessThan(l, r) => LessThan(rec(l), rec(r)).setType(BooleanType)
+        case ExLessEqThan(l, r) => LessEquals(rec(l), rec(r)).setType(BooleanType)
+        case ExFiniteSet(tt, args) => {
+          val underlying = scalaType2PureScala(unit, silent)(tt.tpe)
+          FiniteSet(args.map(rec(_))).setType(SetType(underlying))
+        }
+        case ExFiniteMultiset(tt, args) => {
+          val underlying = scalaType2PureScala(unit, silent)(tt.tpe)
+          FiniteMultiset(args.map(rec(_))).setType(MultisetType(underlying))
+        }
+        case ExEmptySet(tt) => {
+          val underlying = scalaType2PureScala(unit, silent)(tt.tpe)
+          EmptySet(underlying).setType(SetType(underlying))          
+        }
+        case ExEmptyMultiset(tt) => {
+          val underlying = scalaType2PureScala(unit, silent)(tt.tpe)
+          EmptyMultiset(underlying).setType(MultisetType(underlying))          
+        }
+        case ExEmptyMap(ft, tt) => {
+          val fromUnderlying = scalaType2PureScala(unit, silent)(ft.tpe)
+          val toUnderlying   = scalaType2PureScala(unit, silent)(tt.tpe)
+          EmptyMap(fromUnderlying, toUnderlying).setType(MapType(fromUnderlying, toUnderlying))
+        }
+        case ExSetMin(t) => {
+          val set = rec(t)
+          if(!set.getType.isInstanceOf[SetType]) {
+            if(!silent) unit.error(t.pos, "Min should be computed on a set.")
+            throw ImpureCodeEncounteredException(tree)
+          }
+          SetMin(set).setType(set.getType.asInstanceOf[SetType].base)
+        }
+        case ExSetMax(t) => {
+          val set = rec(t)
+          if(!set.getType.isInstanceOf[SetType]) {
+            if(!silent) unit.error(t.pos, "Max should be computed on a set.")
+            throw ImpureCodeEncounteredException(tree)
+          }
+          SetMax(set).setType(set.getType.asInstanceOf[SetType].base)
+        }
+        case ExUnion(t1,t2) => {
+          val rl = rec(t1)
+          val rr = rec(t2)
+          rl.getType match {
+            case s @ SetType(_) => SetUnion(rl, rr).setType(s)
+            case m @ MultisetType(_) => MultisetUnion(rl, rr).setType(m)
+            case _ => {
+              if(!silent) unit.error(tree.pos, "Union of non set/multiset expressions.")
+              throw ImpureCodeEncounteredException(tree)
+            }
+          }
+        }
+        case ExIntersection(t1,t2) => {
+          val rl = rec(t1)
+          val rr = rec(t2)
+          rl.getType match {
+            case s @ SetType(_) => SetIntersection(rl, rr).setType(s)
+            case m @ MultisetType(_) => MultisetIntersection(rl, rr).setType(m)
+            case _ => {
+              if(!silent) unit.error(tree.pos, "Intersection of non set/multiset expressions.")
+              throw ImpureCodeEncounteredException(tree)
+            }
+          }
+        }
+        case ExSetContains(t1,t2) => {
+          val rl = rec(t1)
+          val rr = rec(t2)
+          rl.getType match {
+            case s @ SetType(_) => ElementOfSet(rr, rl)
+            case _ => {
+              if(!silent) unit.error(tree.pos, ".contains on non set expression.")
+              throw ImpureCodeEncounteredException(tree)
+            }
+          }
+        }
+        case ExSetSubset(t1,t2) => {
+          val rl = rec(t1)
+          val rr = rec(t2)
+          rl.getType match {
+            case s @ SetType(_) => SubsetOf(rl, rr)
+            case _ => {
+              if(!silent) unit.error(tree.pos, "Subset on non set expression.")
+              throw ImpureCodeEncounteredException(tree)
+            }
+          }
+        }
+        case ExSetMinus(t1,t2) => {
+          val rl = rec(t1)
+          val rr = rec(t2)
+          rl.getType match {
+            case s @ SetType(_) => SetDifference(rl, rr).setType(s)
+            case m @ MultisetType(_) => MultisetDifference(rl, rr).setType(m)
+            case _ => {
+              if(!silent) unit.error(tree.pos, "Difference of non set/multiset expressions.")
+              throw ImpureCodeEncounteredException(tree)
+            }
+          }
+        } 
+        case ExSetCard(t) => {
+          val rt = rec(t)
+          rt.getType match {
+            case s @ SetType(_) => SetCardinality(rt)
+            case m @ MultisetType(_) => MultisetCardinality(rt)
+            case _ => {
+              if(!silent) unit.error(tree.pos, "Cardinality of non set/multiset expressions.")
+              throw ImpureCodeEncounteredException(tree)
+            }
+          }
+        }
+        case ExMultisetToSet(t) => {
+          val rt = rec(t)
+          rt.getType match {
+            case m @ MultisetType(u) => MultisetToSet(rt).setType(SetType(u))
+            case _ => {
+              if(!silent) unit.error(tree.pos, "toSet can only be applied to multisets.")
+              throw ImpureCodeEncounteredException(tree)
+            }
+          }
+        }
+        case ExMapUpdated(m,f,t) => {
+          val rm = rec(m)
+          val rf = rec(f)
+          val rt = rec(t)
+          val newSingleton = SingletonMap(rf, rt).setType(rm.getType)
+          rm.getType match {
+            case MapType(ft, tt) =>
+              MapUnion(rm, FiniteMap(Seq(newSingleton)).setType(rm.getType)).setType(rm.getType)
+            case _ => {
+              if (!silent) unit.error(tree.pos, "updated can only be applied to maps.")
+              throw ImpureCodeEncounteredException(tree)
+            }
+          }
+        }
+        case ExMapIsDefinedAt(m,k) => {
+          val rm = rec(m)
+          val rk = rec(k)
+          MapIsDefinedAt(rm, rk)
+        }
+
+        case ExPlusPlusPlus(t1,t2) => {
+          val rl = rec(t1)
+          val rr = rec(t2)
+          MultisetPlus(rl, rr).setType(rl.getType)
+        }
+        case app@ExApply(lhs,args) => {
+          val rlhs = rec(lhs)
+          val rargs = args map rec
+          rlhs.getType match {
+            case MapType(_,tt) => 
+              assert(rargs.size == 1)
+              MapGet(rlhs, rargs.head).setType(tt).setPosInfo(app.pos.line, app.pos.column)
+            case FunctionType(fts, tt) => {
+              rlhs match {
+                case Variable(id) =>
+                  AnonymousFunctionInvocation(id, rargs).setType(tt)
+                case _ => {
+                  if (!silent) unit.error(tree.pos, "apply on non-variable or non-map expression")
+                  throw ImpureCodeEncounteredException(tree)
+                }
+              }
+            }
+            case _ => {
+              if (!silent) unit.error(tree.pos, "apply on unexpected type")
+              throw ImpureCodeEncounteredException(tree)
+            }
+          }
+        }
+        case ExIfThenElse(t1,t2,t3) => {
+          val r1 = rec(t1)
+          val r2 = rec(t2)
+          val r3 = rec(t3)
+          IfExpr(r1, r2, r3).setType(leastUpperBound(r2.getType, r3.getType))
+        }
+        case lc @ ExLocalCall(sy,nm,ar) => {
+          if(defsToDefs.keysIterator.find(_ == sy).isEmpty) {
+            if(!silent)
+              unit.error(tr.pos, "Invoking an invalid function.")
+            throw ImpureCodeEncounteredException(tr)
+          }
+          val fd = defsToDefs(sy)
+          FunctionInvocation(fd, ar.map(rec(_))).setType(fd.returnType).setPosInfo(lc.pos.line,lc.pos.column) 
+        }
+        case pm @ ExPatternMatching(sel, cses) => {
+          val rs = rec(sel)
+          val rc = cses.map(rewriteCaseDef(_))
+          val rt: purescala.TypeTrees.TypeTree = rc.map(_.rhs.getType).reduceLeft(leastUpperBound(_,_))
+          MatchExpr(rs, rc).setType(rt).setPosInfo(pm.pos.line,pm.pos.column)
+        }
+
+        // this one should stay after all others, cause it also catches UMinus
+        // and Not, for instance.
+        case ExParameterlessMethodCall(t,n) => {
+          val selector = rec(t)
+          val selType = selector.getType
+
+          if(!selType.isInstanceOf[CaseClassType]) {
+            if(!silent)
+              unit.error(tr.pos, "Invalid method or field invocation (not purescala?)")
+            throw ImpureCodeEncounteredException(tr)
+          }
+
+          val selDef: CaseClassDef = selType.asInstanceOf[CaseClassType].classDef
+
+          val fieldID = selDef.fields.find(_.id.name == n.toString) match {
+            case None => {
+              if(!silent)
+                unit.error(tr.pos, "Invalid method or field invocation (not a case class arg?)")
+              throw ImpureCodeEncounteredException(tr)
+            }
+            case Some(vd) => vd.id
+          }
+
+          CaseClassSelector(selDef, selector, fieldID).setType(fieldID.getType)
+        }
+    
+        // default behaviour is to complain :)
+        case _ => {
+          if(!silent) {
+            println(tr)
+            reporter.info(tr.pos, "Could not extract as PureScala.", true)
+          }
+          throw ImpureCodeEncounteredException(tree)
+        }
+      }
+
+      if(handleRest) {
+        rest match {
+          case Some(rst) => {
+            val recRst = rec(rst)
+            PBlock(Seq(psExpr), recRst).setType(recRst.getType)
+          }
+          case None => psExpr
+        }
+      } else {
+        psExpr
       }
     }
     rec(tree)

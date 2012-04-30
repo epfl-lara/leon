@@ -17,14 +17,54 @@ object Trees {
     self: Expr =>
   }
 
+  case class Block(exprs: Seq[Expr], last: Expr) extends Expr {
+    //val t = last.getType
+    //if(t != Untyped)
+     // setType(t)
+  }
+
+  case class Assignment(varId: Identifier, expr: Expr) extends Expr with FixedType {
+    val fixedType = UnitType
+  }
+  case class While(cond: Expr, body: Expr) extends Expr with FixedType with ScalacPositional {
+    val fixedType = UnitType
+    var invariant: Option[Expr] = None
+
+    def getInvariant: Expr = invariant.get
+    def setInvariant(inv: Expr) = { invariant = Some(inv); this }
+    def setInvariant(inv: Option[Expr]) = { invariant = inv; this }
+  }
+
   /* This describes computational errors (unmatched case, taking min of an
    * empty set, division by zero, etc.). It should always be typed according to
    * the expected type. */
   case class Error(description: String) extends Expr with Terminal with ScalacPositional
 
+  case class Epsilon(pred: Expr) extends Expr with ScalacPositional
+
   /* Like vals */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
     binder.markAsLetBinder
+    val et = body.getType
+    if(et != Untyped)
+      setType(et)
+  }
+  //same as let, buf for mutable variable declaration
+  case class LetVar(binder: Identifier, value: Expr, body: Expr) extends Expr {
+    binder.markAsLetBinder
+    val et = body.getType
+    if(et != Untyped)
+      setType(et)
+  }
+
+  //case class LetTuple(binders: Seq[Identifier], value: Expr, body: Expr) extends Expr {
+  //  binders.foreach(_.markAsLetBinder)
+  //  val et = body.getType
+  //  if(et != Untyped)
+  //    setType(et)
+  //}
+
+  case class LetDef(value: FunDef, body: Expr) extends Expr {
     val et = body.getType
     if(et != Untyped)
       setType(et)
@@ -47,6 +87,7 @@ object Trees {
           case CaseClassPattern(_, ccd, _) if ccd != c.classDef => false
           case _ => true
         }))
+        case t: TupleType => new MatchExpr(scrutinee, cases)
         case _ => scala.sys.error("Constructing match expression on non-class type.")
       }
     }
@@ -104,6 +145,8 @@ object Trees {
   //   		      extractor : ExtractorTypeDef, 
   //   		      subPatterns: Seq[Pattern]) extends Pattern // c @ Extractor(...,...)
   // We don't handle Seq stars for now.
+
+  case class TuplePattern(binder: Option[Identifier], subPatterns: Seq[Pattern]) extends Pattern
 
   /* Propositional logic */
   object And {
@@ -225,6 +268,8 @@ object Trees {
   // represents the result in post-conditions
   case class ResultVariable() extends Expr with Terminal
 
+  case class EpsilonVariable(pos: (Int, Int)) extends Expr with Terminal
+
   /* Literals */
   sealed abstract class Literal[T] extends Expr with Terminal {
     val value: T
@@ -237,6 +282,10 @@ object Trees {
     val fixedType = BooleanType
   }
   case class StringLiteral(value: String) extends Literal[String]
+  case object UnitLiteral extends Literal[Unit] with FixedType {
+    val fixedType = UnitType
+    val value = ()
+  }
 
   case class CaseClass(classDef: CaseClassDef, args: Seq[Expr]) extends Expr with FixedType {
     val fixedType = CaseClassType(classDef)
@@ -323,7 +372,7 @@ object Trees {
   case class SingletonMap(from: Expr, to: Expr) extends Expr 
   case class FiniteMap(singletons: Seq[SingletonMap]) extends Expr 
 
-  case class MapGet(map: Expr, key: Expr) extends Expr 
+  case class MapGet(map: Expr, key: Expr) extends Expr with ScalacPositional
   case class MapUnion(map1: Expr, map2: Expr) extends Expr 
   case class MapDifference(map: Expr, keys: Expr) extends Expr 
   case class MapIsDefinedAt(map: Expr, key: Expr) extends Expr with FixedType {
@@ -360,7 +409,9 @@ object Trees {
       case SetMax(s) => Some((s,SetMax))
       case CaseClassSelector(cd, e, sel) => Some((e, CaseClassSelector(cd, _, sel)))
       case CaseClassInstanceOf(cd, e) => Some((e, CaseClassInstanceOf(cd, _)))
+      case Assignment(id, e) => Some((e, Assignment(id, _)))
       case TupleSelect(t, i) => Some((t, TupleSelect(_, i)))
+      case e@Epsilon(t) => Some((t, (expr: Expr) => Epsilon(expr).setType(e.getType).setPosInfo(e)))
       case _ => None
     }
   }
@@ -391,12 +442,13 @@ object Trees {
       case MultisetPlus(t1,t2) => Some((t1,t2,MultisetPlus))
       case MultisetDifference(t1,t2) => Some((t1,t2,MultisetDifference))
       case SingletonMap(t1,t2) => Some((t1,t2,SingletonMap))
-      case MapGet(t1,t2) => Some((t1,t2,MapGet))
+      case mg@MapGet(t1,t2) => Some((t1,t2, (t1, t2) => MapGet(t1, t2).setPosInfo(mg)))
       case MapUnion(t1,t2) => Some((t1,t2,MapUnion))
       case MapDifference(t1,t2) => Some((t1,t2,MapDifference))
       case MapIsDefinedAt(t1,t2) => Some((t1,t2, MapIsDefinedAt))
       case Concat(t1,t2) => Some((t1,t2,Concat))
       case ListAt(t1,t2) => Some((t1,t2,ListAt))
+      case wh@While(t1, t2) => Some((t1,t2, (t1, t2) => While(t1, t2).setInvariant(wh.invariant).setPosInfo(wh)))
       case _ => None
     }
   }
@@ -412,6 +464,7 @@ object Trees {
       case FiniteMap(args) => Some((args, (as : Seq[Expr]) => FiniteMap(as.asInstanceOf[Seq[SingletonMap]])))
       case FiniteMultiset(args) => Some((args, FiniteMultiset))
       case Distinct(args) => Some((args, Distinct))
+      case Block(args, rest) => Some((args :+ rest, exprs => Block(exprs.init, exprs.last)))
       case Tuple(args) => Some((args, Tuple))
       case _ => None
     }
@@ -463,6 +516,21 @@ object Trees {
             Let(i, re, rb).setType(l.getType)
           else
             l
+        }
+        case l @ LetVar(i,e,b) => {
+          val re = rec(e)
+          val rb = rec(b)
+          if(re != e || rb != b)
+            LetVar(i, re, rb).setType(l.getType)
+          else
+            l
+        }
+        case l @ LetDef(fd, b) => {
+          //TODO, not sure, see comment for the next LetDef
+          fd.body = fd.body.map(rec(_))
+          fd.precondition = fd.precondition.map(rec(_))
+          fd.postcondition = fd.postcondition.map(rec(_))
+          LetDef(fd, rec(b)).setType(l.getType)
         }
         case n @ NAryOperator(args, recons) => {
           var change = false
@@ -546,6 +614,23 @@ object Trees {
         } else {
           l
         })
+      }
+      case l @ LetVar(i,e,b) => {
+        val re = rec(e)
+        val rb = rec(b)
+        applySubst(if(re != e || rb != b) {
+          LetVar(i,re,rb).setType(l.getType)
+        } else {
+          l
+        })
+      }
+      case l @ LetDef(fd,b) => {
+        //TODO: Not sure: I actually need the replace to occurs even in the pre/post condition, hope this is correct
+        fd.body = fd.body.map(rec(_))
+        fd.precondition = fd.precondition.map(rec(_))
+        fd.postcondition = fd.postcondition.map(rec(_))
+        val rl = LetDef(fd, rec(b)).setType(l.getType)
+        applySubst(rl)
       }
       case n @ NAryOperator(args, recons) => {
         var change = false
@@ -670,6 +755,11 @@ object Trees {
   def treeCatamorphism[A](convert: Expr=>A, combine: (A,A)=>A, compute: (Expr,A)=>A, expression: Expr) : A = {
     def rec(expr: Expr) : A = expr match {
       case l @ Let(_, e, b) => compute(l, combine(rec(e), rec(b)))
+      case l @ LetVar(_, e, b) => compute(l, combine(rec(e), rec(b)))
+      case l @ LetDef(fd, b) => {//TODO, still not sure about the semantic
+        val exprs: Seq[Expr] = fd.precondition.toSeq ++ fd.body.toSeq ++ fd.postcondition.toSeq ++ Seq(b)
+        compute(l, exprs.map(rec(_)).reduceLeft(combine))
+      }
       case n @ NAryOperator(args, _) => {
         if(args.size == 0)
           compute(n, convert(n))
@@ -686,6 +776,71 @@ object Trees {
     }
 
     rec(expression)
+  }
+
+  def flattenBlocks(expr: Expr): Expr = {
+    def applyToTree(expr: Expr): Option[Expr] = expr match {
+      case Block(exprs, last) => {
+        val nexprs = (exprs :+ last).flatMap{
+          case Block(es2, el) => es2 :+ el
+          case UnitLiteral => Seq()
+          case e2 => Seq(e2)
+        }
+        val fexpr = nexprs match {
+          case Seq() => UnitLiteral
+          case Seq(e) => e
+          case es => Block(es.init, es.last).setType(es.last.getType)
+        }
+        Some(fexpr)
+      }
+      case _ => None
+    }
+    searchAndReplaceDFS(applyToTree)(expr)
+  }
+
+  //checking whether the expr is pure, that is do not contains any non-pure construct: assign, while and blocks
+  def isPure(expr: Expr): Boolean = {
+    def convert(t: Expr) : Boolean = t match {
+      case Block(_, _) => false
+      case Assignment(_, _) => false
+      case While(_, _) => false
+      case LetVar(_, _, _) => false
+      case _ => true
+    }
+    def combine(b1: Boolean, b2: Boolean) = b1 && b2
+    def compute(e: Expr, b: Boolean) = e match {
+      case Block(_, _) => false
+      case Assignment(_, _) => false
+      case While(_, _) => false
+      case LetVar(_, _, _) => false
+      case _ => b
+    }
+    treeCatamorphism(convert, combine, compute, expr)
+  }
+
+  def containsEpsilon(expr: Expr): Boolean = {
+    def convert(t : Expr) : Boolean = t match {
+      case (l : Epsilon) => true
+      case _ => false
+    }
+    def combine(c1 : Boolean, c2 : Boolean) : Boolean = c1 || c2
+    def compute(t : Expr, c : Boolean) = t match {
+      case (l : Epsilon) => true
+      case _ => c
+    }
+    treeCatamorphism(convert, combine, compute, expr)
+  }
+  def containsLetDef(expr: Expr): Boolean = {
+    def convert(t : Expr) : Boolean = t match {
+      case (l : LetDef) => true
+      case _ => false
+    }
+    def combine(c1 : Boolean, c2 : Boolean) : Boolean = c1 || c2
+    def compute(t : Expr, c : Boolean) = t match {
+      case (l : LetDef) => true
+      case _ => c
+    }
+    treeCatamorphism(convert, combine, compute, expr)
   }
 
   def variablesOf(expr: Expr) : Set[Identifier] = {
@@ -767,6 +922,8 @@ object Trees {
 
   def allIdentifiers(expr: Expr) : Set[Identifier] = expr match {
     case l @ Let(binder, e, b) => allIdentifiers(e) ++ allIdentifiers(b) + binder
+    case l @ LetVar(binder, e, b) => allIdentifiers(e) ++ allIdentifiers(b) + binder
+    case l @ LetDef(fd, b) => allIdentifiers(fd.getBody) ++ allIdentifiers(b) + fd.id
     case n @ NAryOperator(args, _) =>
       (args map (Trees.allIdentifiers(_))).foldLeft(Set[Identifier]())((a, b) => a ++ b)
     case b @ BinaryOperator(a1,a2,_) => allIdentifiers(a1) ++ allIdentifiers(a2)
@@ -940,7 +1097,9 @@ object Trees {
       val MatchExpr(scrutinee, cases) = e
       val sType = scrutinee.getType
 
-      if(sType.isInstanceOf[AbstractClassType]) {
+      if(sType.isInstanceOf[TupleType]) {
+        None
+      } else if(sType.isInstanceOf[AbstractClassType]) {
         val cCD = sType.asInstanceOf[AbstractClassType].classDef
         if(cases.size == cCD.knownChildren.size && cases.forall(!_.hasGuard)) {
           var seen = Set.empty[ClassTypeDef]
@@ -1086,6 +1245,17 @@ object Trees {
           case None => together
         }
       }
+      case TuplePattern(b, subps) => {
+        val TupleType(tpes) = in.getType
+        assert(tpes.size == subps.size)
+
+        val maps = subps.zipWithIndex.map{case (p, i) => mapForPattern(TupleSelect(in, i+1).setType(tpes(i)), p)}
+        val map = maps.foldLeft(Map.empty[Identifier,Expr])(_ ++ _)
+        b match {
+          case Some(id) => map + (id -> in)
+          case None => map
+        }
+      }
     }
 
     def conditionForPattern(in: Expr, pattern: Pattern) : Expr = pattern match {
@@ -1097,6 +1267,12 @@ object Trees {
         val subTests = pairs.map(p => conditionForPattern(CaseClassSelector(ccd, in, p._1), p._2))
         val together = And(subTests)
         And(CaseClassInstanceOf(ccd, in), together)
+      }
+      case TuplePattern(_, subps) => {
+        val TupleType(tpes) = in.getType
+        assert(tpes.size == subps.size)
+        val subTests = subps.zipWithIndex.map{case (p, i) => conditionForPattern(TupleSelect(in, i+1).setType(tpes(i)), p)}
+        And(subTests)
       }
     }
 
@@ -1158,7 +1334,7 @@ object Trees {
     def rewriteMapGet(e: Expr) : Option[Expr] = e match {
       case mg @ MapGet(m,k) => 
         val ida = MapIsDefinedAt(m, k)
-        Some(IfExpr(ida, mg, Error("key not found for map access").setType(mg.getType)).setType(mg.getType))
+        Some(IfExpr(ida, mg, Error("key not found for map access").setType(mg.getType).setPosInfo(mg)).setType(mg.getType))
       case _ => None
     }
 

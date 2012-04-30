@@ -7,7 +7,7 @@ import purescala.TypeTrees._
 import Extensions._
 import scala.collection.mutable.{Set => MutableSet}
 
-class Analysis(val program: Program, val reporter: Reporter = Settings.reporter) {
+class Analysis(val program : Program, val reporter: Reporter = Settings.reporter) {
   Extensions.loadAll(reporter)
 
   val analysisExtensions: Seq[Analyser] = loadedAnalysisExtensions
@@ -63,14 +63,17 @@ class Analysis(val program: Program, val reporter: Reporter = Settings.reporter)
           defaultTactic
         }
 
-      def vcSort(vc1: VerificationCondition, vc2: VerificationCondition) : Boolean = (vc1 < vc2)
-
       if(funDef.body.isDefined) {
-        allVCs ++= tactic.generatePreconditions(funDef).sortWith(vcSort)
-        allVCs ++= tactic.generatePatternMatchingExhaustivenessChecks(funDef).sortWith(vcSort)
-        allVCs ++= tactic.generatePostconditions(funDef).sortWith(vcSort)
-        allVCs ++= tactic.generateMiscCorrectnessConditions(funDef).sortWith(vcSort)
+        allVCs ++= tactic.generatePreconditions(funDef)
+        allVCs ++= tactic.generatePatternMatchingExhaustivenessChecks(funDef)
+        allVCs ++= tactic.generatePostconditions(funDef)
+        allVCs ++= tactic.generateMiscCorrectnessConditions(funDef)
       }
+      allVCs = allVCs.sortWith((vc1, vc2) => {
+        val id1 = vc1.funDef.id.name
+        val id2 = vc2.funDef.id.name
+        if(id1 != id2) id1 < id2 else vc1 < vc2
+      })
     }
 
     val notFound: Set[String] = Settings.functionsToAnalyse -- analysedFunctions
@@ -147,6 +150,14 @@ class Analysis(val program: Program, val reporter: Reporter = Settings.reporter)
         VerificationCondition.infoFooter
       )
       reporter.info(summaryString)
+
+      if(Settings.simpleOutput) {
+        val outStr =
+          if(vcs.forall(_.status == "valid")) "valid" 
+          else if(vcs.exists(_.status == "invalid")) "invalid"
+          else "unknown"
+        println(outStr)
+      }
 
       // Printing summary for the evaluation section of paper:
       val writeSummary = false
