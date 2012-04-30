@@ -69,7 +69,32 @@ object PrettyPrinter {
     case Variable(id) => sb.append(id)
     case DeBruijnIndex(idx) => sb.append("_" + idx)
     case Let(b,d,e) => {
-        pp(e, pp(d, sb.append("(let (" + b + " := "), lvl).append(") in "), lvl).append(")")
+        //pp(e, pp(d, sb.append("(let (" + b + " := "), lvl).append(") in "), lvl).append(")")
+      sb.append("(let (" + b + " := ");
+      pp(d, sb, lvl)
+      sb.append(") in\n")
+      ind(sb, lvl+1)
+      pp(e, sb, lvl+1)
+      sb.append(")")
+      sb
+    }
+    case LetVar(b,d,e) => {
+      sb.append("(letvar (" + b + " := ");
+      pp(d, sb, lvl)
+      sb.append(") in\n")
+      ind(sb, lvl+1)
+      pp(e, sb, lvl+1)
+      sb.append(")")
+      sb
+    }
+    case LetDef(fd,e) => {
+      sb.append("\n")
+      pp(fd, sb, lvl+1)
+      sb.append("\n")
+      sb.append("\n")
+      ind(sb, lvl)
+      pp(e, sb, lvl)
+      sb
     }
     case And(exprs) => ppNary(sb, exprs, "(", " \u2227 ", ")", lvl)            // \land
     case Or(exprs) => ppNary(sb, exprs, "(", " \u2228 ", ")", lvl)             // \lor
@@ -81,6 +106,53 @@ object PrettyPrinter {
     case IntLiteral(v) => sb.append(v)
     case BooleanLiteral(v) => sb.append(v)
     case StringLiteral(s) => sb.append("\"" + s + "\"")
+    case UnitLiteral => sb.append("()")
+    case Block(exprs, last) => {
+      sb.append("{\n")
+      (exprs :+ last).foreach(e => {
+        ind(sb, lvl+1)
+        pp(e, sb, lvl+1)
+        sb.append("\n")
+      })
+      ind(sb, lvl)
+      sb.append("}\n")
+      sb
+    }
+    case Assignment(lhs, rhs) => ppBinary(sb, lhs.toVariable, rhs, " = ", lvl)
+    case wh@While(cond, body) => {
+      wh.invariant match {
+        case Some(inv) => {
+          sb.append("\n")
+          ind(sb, lvl)
+          sb.append("@invariant: ")
+          pp(inv, sb, lvl)
+          sb.append("\n")
+          ind(sb, lvl)
+        }
+        case None =>
+      }
+      sb.append("while(")
+      pp(cond, sb, lvl)
+      sb.append(")\n")
+      ind(sb, lvl+1)
+      pp(body, sb, lvl+1)
+      sb.append("\n")
+    }
+
+    case Tuple(exprs) => ppNary(sb, exprs, "(", ", ", ")", lvl)
+    case TupleSelect(t, i) => {
+      pp(t, sb, lvl)
+      sb.append("._" + i)
+      sb
+    }
+
+    case e@Epsilon(pred) => {
+      var nsb = sb
+      nsb.append("epsilon(x" + e.posIntInfo._1 + "_" + e.posIntInfo._2 + ". ")
+      nsb = pp(pred, nsb, lvl)
+      nsb.append(")")
+      nsb
+    }
 
     case OptionSome(a) => {
       var nsb = sb
@@ -189,18 +261,27 @@ object PrettyPrinter {
       var nsb = sb
       nsb.append("if (")
       nsb = pp(c, nsb, lvl)
-      nsb.append(") {\n")
+      nsb.append(")\n")
       ind(nsb, lvl+1)
       nsb = pp(t, nsb, lvl+1)
       nsb.append("\n")
       ind(nsb, lvl)
-      nsb.append("} else {\n")
+      nsb.append("else\n")
       ind(nsb, lvl+1)
       nsb = pp(e, nsb, lvl+1)
-      nsb.append("\n")
-      ind(nsb, lvl)
-      nsb.append("}")
       nsb
+      //nsb.append(") {\n")
+      //ind(nsb, lvl+1)
+      //nsb = pp(t, nsb, lvl+1)
+      //nsb.append("\n")
+      //ind(nsb, lvl)
+      //nsb.append("} else {\n")
+      //ind(nsb, lvl+1)
+      //nsb = pp(e, nsb, lvl+1)
+      //nsb.append("\n")
+      //ind(nsb, lvl)
+      //nsb.append("}")
+      //nsb
     }
 
     case mex @ MatchExpr(s, csc) => {
@@ -223,6 +304,16 @@ object PrettyPrinter {
         }
         case WildcardPattern(None)     => sb.append("_")
         case WildcardPattern(Some(id)) => sb.append(id)
+        case TuplePattern(bndr, subPatterns) => {
+          bndr.foreach(b => sb.append(b + " @ "))
+          sb.append("(")
+          subPatterns.init.foreach(p => {
+            ppc(sb, p)
+            sb.append(", ")
+          })
+          ppc(sb, subPatterns.last)
+          sb.append(")")
+        }
         case _ => sb.append("Pattern?")
       }
 
@@ -251,6 +342,7 @@ object PrettyPrinter {
     }
 
     case ResultVariable() => sb.append("#res")
+    case EpsilonVariable((row, col)) => sb.append("x" + row + "_" + col)
     case Not(expr) => ppUnary(sb, expr, "\u00AC(", ")", lvl)               // \neg
 
     case e @ Error(desc) => {
@@ -282,6 +374,7 @@ object PrettyPrinter {
 
   private def pp(tpe: TypeTree, sb: StringBuffer, lvl: Int): StringBuffer = tpe match {
     case Untyped => sb.append("???")
+    case UnitType => sb.append("Unit")
     case Int32Type => sb.append("Int")
     case BooleanType => sb.append("Boolean")
     case SetType(bt) => pp(bt, sb.append("Set["), lvl).append("]")
@@ -297,6 +390,7 @@ object PrettyPrinter {
       nsb.append(" => ")
       pp(tt, nsb, lvl)
     }
+    case TupleType(tpes) => ppNaryType(sb, tpes, "(", ", ", ")", lvl)
     case c: ClassType => sb.append(c.classDef.id)
     case _ => sb.append("Type?")
   }

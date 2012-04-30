@@ -63,6 +63,10 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     funDomainConstructors = Map.empty
     funDomainSelectors = Map.empty
 
+    tupleSorts = Map.empty
+    tupleConstructors = Map.empty
+    tupleSelectors = Map.empty
+
     mapRangeSorts.clear
     mapRangeSomeConstructors.clear
     mapRangeNoneConstructors.clear
@@ -97,6 +101,10 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   protected[leon] var funSorts: Map[TypeTree, Z3Sort] = Map.empty
   protected[leon] var funDomainConstructors: Map[TypeTree, Z3FuncDecl] = Map.empty
   protected[leon] var funDomainSelectors: Map[TypeTree, Seq[Z3FuncDecl]] = Map.empty
+
+  protected[leon] var tupleSorts: Map[TypeTree, Z3Sort] = Map.empty
+  protected[leon] var tupleConstructors: Map[TypeTree, Z3FuncDecl] = Map.empty
+  protected[leon] var tupleSelectors: Map[TypeTree, Seq[Z3FuncDecl]] = Map.empty
 
   private var intSetMinFun: Z3FuncDecl = null
   private var intSetMaxFun: Z3FuncDecl = null
@@ -167,6 +175,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   }
 
   case class UntranslatableTypeException(msg: String) extends Exception(msg)
+  // Prepares some of the Z3 sorts, but *not* the tuple sorts; these are created on-demand.
   private def prepareSorts: Unit = {
     import Z3Context.{ADTSortReference, RecursiveType, RegularSort}
     // NOTE THAT abstract classes that extend abstract classes are not
@@ -390,6 +399,18 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         funSort
       }
     }
+    case tt @ TupleType(tpes) => tupleSorts.get(tt) match {
+      case Some(s) => s
+      case None => {
+        val tpesSorts = tpes.map(typeToSort)
+        val sortSymbol = z3.mkFreshStringSymbol("TupleSort")
+        val (tupleSort, consTuple, projsTuple) = z3.mkTupleSort(sortSymbol, tpesSorts: _*)
+        tupleSorts += (tt -> tupleSort)
+        tupleConstructors += (tt -> consTuple)
+        tupleSelectors += (tt -> projsTuple)
+        tupleSort
+      }
+    }
     case other => fallbackSorts.get(other) match {
       case Some(s) => s
       case None => {
@@ -560,9 +581,11 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           }
         }
         case (Some(true), m) => { // SAT
-          //println("MODEL IS: " + m)
           validatingStopwatch.start
-          val (trueModel, model) = validateAndDeleteModel(m, toCheckAgainstModels, varsInVC, evaluator)
+          val (trueModel, model) = if(Settings.verifyModel)
+              validateAndDeleteModel(m, toCheckAgainstModels, varsInVC, evaluator)
+            else 
+              (true, modelToMap(m, varsInVC))
           validatingStopwatch.stop
 
           if (trueModel) {
@@ -758,7 +781,33 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     import Evaluator._
 
     if(!forceStop) {
-      val asMap = modelToMap(model, variables)
+
+      val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
+      val functionsAsMap: Map[Identifier, Expr] = functionsModel.flatMap(p => {
+        if(isKnownDecl(p._1)) {
+          val fd = functionDeclToDef(p._1)
+          if(!fd.hasImplementation) {
+            val (cses, default) = p._2 
+            val ite = cses.foldLeft(fromZ3Formula(model, default, Some(fd.returnType)))((expr, q) => IfExpr(
+                            And(
+                              q._1.zip(fd.args).map(a12 => Equals(fromZ3Formula(model, a12._1, Some(a12._2.tpe)), Variable(a12._2.id)))
+                            ),
+                            fromZ3Formula(model, q._2, Some(fd.returnType)),
+                            expr))
+            Seq((fd.id, ite))
+          } else Seq()
+        } else Seq()
+      }).toMap
+      val constantFunctionsAsMap: Map[Identifier, Expr] = model.getModelConstantInterpretations.flatMap(p => {
+        if(isKnownDecl(p._1)) {
+          val fd = functionDeclToDef(p._1)
+          if(!fd.hasImplementation) {
+            Seq((fd.id, fromZ3Formula(model, p._2, Some(fd.returnType))))
+          } else Seq()
+        } else Seq()
+      }).toMap
+
+      val asMap = modelToMap(model, variables) ++ functionsAsMap ++ constantFunctionsAsMap
       model.delete
       lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
       val evalResult = eval(asMap, formula, evaluator)
@@ -776,6 +825,10 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         }
         case OK(BooleanLiteral(false)) => {
           reporter.info("- Invalid model.")
+          (false, asMap)
+        }
+        case ImpossibleComputation() => {
+          reporter.info("- Invalid Model: the model could not be verified because of insufficient information.")
           (false, asMap)
         }
         case other => {
@@ -839,6 +892,19 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       //println("Stacking up call for:")
       //println(ex)
       val recResult = (ex match {
+        case tu@Tuple(args) => {
+          // This call is required, because the Z3 sort may not have been generated yet.
+          // If it has, it's just a map lookup and instant return.
+          typeToSort(tu.getType)
+          val constructor = tupleConstructors(tu.getType)
+          constructor(args.map(rec(_)): _*)
+        }
+        case ts@TupleSelect(tu, i) => {
+          // See comment above for similar code.
+          typeToSort(tu.getType)
+          val selector = tupleSelectors(tu.getType)(i-1)
+          selector(rec(tu))
+        }
         case Let(i, e, b) => {
           val re = rec(e)
           z3Vars = z3Vars + (i -> re)
@@ -944,6 +1010,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           case errorType => scala.sys.error("Unexpected type for singleton map: " + (ex, errorType))
         }
         case e @ EmptyMap(fromType, toType) => {
+          typeToSort(e.getType) //had to add this here because the mapRangeNoneConstructors was not yet constructed...
           val fromSort = typeToSort(fromType)
           val toSort = typeToSort(toType)
           z3.mkConstArray(fromSort, mapRangeNoneConstructors(toType)())
@@ -1192,7 +1259,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         val startingVar : Identifier = FreshIdentifier("start", true).setType(BooleanType)
 
         val result = treatFunctionInvocationSet(startingVar, true, functionCallsOf(formula))
-        reporter.info(result)
+        //reporter.info(result)
         (Variable(startingVar) +: formula +: result._1, result._2)
       }
     }

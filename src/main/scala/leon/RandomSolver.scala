@@ -10,8 +10,6 @@ import Evaluator._
 
 import scala.util.Random
 
-import scala.sys.error
-
 class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends Solver(reporter) {
   require(nbTrial.forall(i => i >= 0))
 
@@ -68,13 +66,14 @@ class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends 
     case AnyType => randomValue(randomType(), size)
     case SetType(base) => EmptySet(base)
     case MultisetType(base) => EmptyMultiset(base)
-    case Untyped => error("I don't know what to do")
-    case BottomType => error("I don't know what to do")
-    case ListType(base) => error("I don't know what to do")
-    case TupleType(bases) => error("I don't know what to do")
-    case MapType(from, to) => error("I don't know what to do")
-    case OptionType(base) => error("I don't know what to do")
-    case f: FunctionType => error("I don't know what to do")
+    case Untyped => sys.error("I don't know what to do")
+    case BottomType => sys.error("I don't know what to do")
+    case ListType(base) => sys.error("I don't know what to do")
+    case TupleType(bases) => sys.error("I don't know what to do")
+    case MapType(from, to) => sys.error("I don't know what to do")
+    case OptionType(base) => sys.error("I don't know what to do")
+    case f: FunctionType => sys.error("I don't know what to do")
+    case _ => sys.error("Unexpected type: " + t)
   }
 
   def solve(expression: Expr) : Option[Boolean] = {
