@@ -1,6 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 
-nbtests=$(ls -l testcases/regression/*valid/*.scala | wc -l)
+nbtests=$(ls -l testcases/regression/{valid,invalid,error}/*.scala | wc -l)
 nbsuccess=0
 failedtests=""
 
@@ -20,6 +20,17 @@ for f in testcases/regression/invalid/*.scala; do
   res=`./leon --timeout=5 --oneline "$f"`
   echo $res | tr [a-z] [A-Z]
   if [ $res = invalid ]; then
+    nbsuccess=$((nbsuccess + 1))
+  else
+    failedtests="$failedtests $f"
+  fi
+done
+
+for f in testcases/regression/error/*.scala; do
+  echo -n "Running $f, expecting ERROR, got: "
+  res=`./leon --timeout=5 --oneline "$f"`
+  echo $res | tr [a-z] [A-Z]
+  if [ $res = error ]; then
     nbsuccess=$((nbsuccess + 1))
   else
     failedtests="$failedtests $f"
