@@ -21,7 +21,10 @@ class AnalysisComponent(val global: Global, val pluginInstance: LeonPlugin)
   
   protected def stopIfErrors: Unit = {
     if(reporter.hasErrors) {
-      throw new Exception("There were errors.")
+      if(Settings.simpleOutput)
+        println("error")
+      sys.exit(1)
+      //throw new Exception("There were errors.")
     }
   }
 
