@@ -12,10 +12,12 @@ object SatFun {
   sealed abstract class VarList
   case class VarCons(head: Int, tail: VarList) extends VarList
   case class VarNil() extends VarList
+  case class VarLit(value: Boolean) extends VarList
 
   sealed abstract class ClauseList
   case class ClauseCons(head: VarList, tail: ClauseList) extends ClauseList
   case class ClauseNil() extends ClauseList
+  case class ClauseLit(value: Boolean) extends ClauseList
 
   def eval(formula: Formula, assignment: Map[Int, Boolean]): Boolean = formula match {
     case Var(n) => assignment(n)
@@ -27,18 +29,22 @@ object SatFun {
   def evalCnf(clauses: ClauseList, assignment: Map[Int, Boolean]): Boolean = clauses match {
     case ClauseCons(cl, cls) => evalClauseCnf(cl, assignment) && evalCnf(cls, assignment)
     case ClauseNil() => false
+    case ClauseLit(b) => b
   }
   def evalDnf(clauses: ClauseList, assignment: Map[Int, Boolean]): Boolean = clauses match {
     case ClauseCons(cl, cls) => evalClauseDnf(cl, assignment) || evalDnf(cls, assignment)
     case ClauseNil() => true
+    case ClauseLit(b) => b
   }
   def evalClauseCnf(clause: VarList, assignment: Map[Int, Boolean]): Boolean = clause match {
     case VarCons(v, vs) => (if(v < 0) assignment(-v) else assignment(v)) || evalClauseCnf(vs, assignment)
     case VarNil() => false
+    case VarLit(b) => b
   }
   def evalClauseDnf(clause: VarList, assignment: Map[Int, Boolean]): Boolean = clause match {
     case VarCons(v, vs) => (if(v < 0) assignment(-v) else assignment(v)) && evalClauseDnf(vs, assignment)
     case VarNil() => true
+    case VarLit(b) => b
   }
 
   def vars(formula: Formula): Set[Int] = formula match {
@@ -51,16 +57,19 @@ object SatFun {
   def concatClauses(cll1: ClauseList, cll2: ClauseList): ClauseList = cll1 match {
     case ClauseCons(cl, tail) => ClauseCons(cl, concatClauses(tail, cll2))
     case ClauseNil() => cll2
+    case cl@ClauseLit(_) => ClauseCons(cl, clls)
   }
 
   def concatVars(l1: VarList, l2: VarList): VarList = l1 match {
     case VarCons(v, vs) => VarCons(v, concatVars(vs, l2))
     case VarNil() => l2
+    case v@VarLit(_) => VarCons(v, vs)
   }
 
   def distributeClause(cl: VarList, cll: ClauseList): ClauseList = cll match {
     case ClauseCons(cl2, cl2s) => ClauseCons(concatVars(cl, cl2), distributeClause(cl, cl2s))
     case ClauseNil() => ClauseNil()
+    case cl@ClauseLit(b) => ClauseCons(cl, clls)
   }
 
   def distribute(cll1: ClauseList, cll2: ClauseList): ClauseList = cll1 match {
@@ -124,6 +133,37 @@ object SatFun {
     case ClauseNil() => false
   }
 
+
+  def substitute(formula: ClauseList, variable: Int, value: Boolean): ClauseList = formula match {
+    case ClauseNil() => ClauseNil()
+    case ClauseCons(cl, cls) => 
+  }
+
+  def substitute(vars: VarList, variable: Int, value: Boolean): VarList = vars match {
+    case VarNil() => VarNil()
+    case VarCons(v, vs) => if(v == variable) 
+  }
+
+  def choose(formula: ClauseList): Int = {
+    formula.head.head
+  }
+
+  def dpll(formula: ClauseList): Boolean = {
+
+  }
+
+
+  def main(args: Array[String]) {
+    val f1 = And(Var(1), Or(Var(1), Not(Var(2)), Var(3)), Var(2), Not(Var(3)))
+    val dnff1 = clauses2list(dnfNaive(f1))
+    val vars1 = vars(f1)
+    vars.foreach(v => {
+
+
+    })
+    println(f1 + " translated in dnf as:\n\t" + dnff1.mkString("\n\t"))
+  }
+
   //some non-leon functions to test the program with scala
   object False {
     def apply(): Formula = And(Var(1), Not(Var(1)))
@@ -152,16 +192,5 @@ object SatFun {
   def clauses2list(cll: ClauseList): List[List[Int]] = cll match {
     case ClauseCons(cl, cls) => clause2list(cl) :: clauses2list(cls)
     case ClauseNil() => Nil
-  }
-
-  def main(args: Array[String]) {
-    val f1 = And(Var(1), Or(Var(1), Not(Var(2)), Var(3)), Var(2), Not(Var(3)))
-    val dnff1 = clauses2list(dnfNaive(f1))
-    val vars1 = vars(f1)
-    vars.foreach(v => {
-
-
-    })
-    println(f1 + " translated in dnf as:\n\t" + dnff1.mkString("\n\t"))
   }
 }
