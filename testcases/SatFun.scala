@@ -1,5 +1,3 @@
-import scala.collection.Map
-
 object SatFun {
 
   sealed abstract class Formula
@@ -19,30 +17,41 @@ object SatFun {
   case class ClauseNil() extends ClauseList
   case class ClauseLit(value: Boolean) extends ClauseList
 
-  def eval(formula: Formula, assignment: Map[Int, Boolean]): Boolean = formula match {
-    case Var(n) => assignment(n)
-    case Not(f) => !eval(f, assignment)
-    case And(f1, f2) => eval(f1, assignment) && eval(f2, assignment)
-    case Or(f1, f2) => eval(f1, assignment) || eval(f2, assignment)
+  def eval(formula: Formula, trueVars: Set[Int]): Boolean = formula match {
+    case Var(n) => trueVars.contains(n)
+    case Not(f) => !eval(f, trueVars)
+    case And(f1, f2) => eval(f1, trueVars) && eval(f2, trueVars)
+    case Or(f1, f2) => eval(f1, trueVars) || eval(f2, trueVars)
   }
 
-  def evalCnf(clauses: ClauseList, assignment: Map[Int, Boolean]): Boolean = clauses match {
-    case ClauseCons(cl, cls) => evalClauseCnf(cl, assignment) && evalCnf(cls, assignment)
+  def evalCnf(clauses: ClauseList, trueVars: Set[Int]): Boolean = clauses match {
+    case ClauseCons(cl, cls) => evalClauseCnf(cl, trueVars) && evalCnf(cls, trueVars)
     case ClauseNil() => false
     case ClauseLit(b) => b
   }
-  def evalDnf(clauses: ClauseList, assignment: Map[Int, Boolean]): Boolean = clauses match {
-    case ClauseCons(cl, cls) => evalClauseDnf(cl, assignment) || evalDnf(cls, assignment)
+  def evalDnf(clauses: ClauseList, trueVars: Set[Int]): Boolean = clauses match {
+    case ClauseCons(cl, cls) => evalClauseDnf(cl, trueVars) || evalDnf(cls, trueVars)
     case ClauseNil() => true
     case ClauseLit(b) => b
   }
-  def evalClauseCnf(clause: VarList, assignment: Map[Int, Boolean]): Boolean = clause match {
-    case VarCons(v, vs) => (if(v < 0) assignment(-v) else assignment(v)) || evalClauseCnf(vs, assignment)
+  def evalClauseCnf(clause: VarList, trueVars: Set[Int]): Boolean = clause match {
+    case VarCons(v, vs) => (if(v < 0) trueVars.contains(-v) else trueVars.contains(v)) || evalClauseCnf(vs, trueVars)
+      if(v == 1) true
+      else if(v == -1) evalClauseCnf(vs, trueVars)
+      else if(v < -1) trueVars.contains(-v) || evalClauseCnf(vs, trueVars)
+      else if(v > 1) trueVars.contains(v) || evalClauseCnf(vs, trueVars)
+      else false
     case VarNil() => false
     case VarLit(b) => b
   }
-  def evalClauseDnf(clause: VarList, assignment: Map[Int, Boolean]): Boolean = clause match {
-    case VarCons(v, vs) => (if(v < 0) assignment(-v) else assignment(v)) && evalClauseDnf(vs, assignment)
+  def evalClauseDnf(clause: VarList, trueVars: Set[Int]): Boolean = clause match {
+    case VarCons(v, vs) => {
+      if(v == 1) evalClauseDnf(vs, trueVars)
+      else if(v == -1) false
+      else if(v < -1) trueVars.contains(-v) && evalClauseDnf(vs, trueVars)
+      else if(v > 1) trueVars.contains(v) && evalClauseDnf(vs, trueVars)
+      else false
+    }
     case VarNil() => true
     case VarLit(b) => b
   }
@@ -117,9 +126,9 @@ object SatFun {
     case Not(Var(n)) => ClauseCons(VarCons(-n, VarNil()), ClauseNil())
     case Var(n) => ClauseCons(VarCons(n, VarNil()), ClauseNil())
   }
-  def property1(formula: Formula, assignment: Map[Int, Boolean]): Boolean = {
+  def property1(formula: Formula, trueVars: Set[Int]): Boolean = {
     val dnfFormula = dnfNaive(formula)
-    eval(formula, assignment) == evalDnf(dnfFormula, assignment)
+    eval(formula, trueVars) == evalDnf(dnfFormula, trueVars)
   } ensuring(_ == true)
 
 
@@ -193,34 +202,34 @@ object SatFun {
 //  }
 
   //some non-leon functions to test the program with scala
-  object False {
-    def apply(): Formula = And(Var(1), Not(Var(1)))
-  }
-  object True {
-    def apply(): Formula = Or(Var(1), Not(Var(1)))
-  }
-  object Or {
-    def apply(fs: Formula*): Formula = fs match {
-      case Seq() => False()
-      case Seq(f) => f
-      case fs => fs.reduceLeft((f1, f2) => Or(f1, f2))
-    }
-  }
-  object And {
-    def apply(fs: Formula*): Formula = fs match {
-      case Seq() => True()
-      case Seq(f) => f
-      case fs => fs.reduceLeft((f1, f2) => And(f1, f2))
-    }
-  }
-  def clause2list(cl: VarList): List[Int] = cl match {
-    case VarCons(v, vs) => v :: clause2list(vs)
-    case VarNil() => Nil
-    case VarLit(b) => if(b) List(1) else List(-1)
-  }
-  def clauses2list(cll: ClauseList): List[List[Int]] = cll match {
-    case ClauseCons(cl, cls) => clause2list(cl) :: clauses2list(cls)
-    case ClauseNil() => Nil
-    case ClauseLit(b) => if(b) List(List(1)) else List(List(-1))
-  }
+//  object False {
+//    def apply(): Formula = And(Var(1), Not(Var(1)))
+//  }
+//  object True {
+//    def apply(): Formula = Or(Var(1), Not(Var(1)))
+//  }
+//  object Or {
+//    def apply(fs: Formula*): Formula = fs match {
+//      case Seq() => False()
+//      case Seq(f) => f
+//      case fs => fs.reduceLeft((f1, f2) => Or(f1, f2))
+//    }
+//  }
+//  object And {
+//    def apply(fs: Formula*): Formula = fs match {
+//      case Seq() => True()
+//      case Seq(f) => f
+//      case fs => fs.reduceLeft((f1, f2) => And(f1, f2))
+//    }
+//  }
+//  def clause2list(cl: VarList): List[Int] = cl match {
+//    case VarCons(v, vs) => v :: clause2list(vs)
+//    case VarNil() => Nil
+//    case VarLit(b) => if(b) List(1) else List(-1)
+//  }
+//  def clauses2list(cll: ClauseList): List[List[Int]] = cll match {
+//    case ClauseCons(cl, cls) => clause2list(cl) :: clauses2list(cls)
+//    case ClauseNil() => Nil
+//    case ClauseLit(b) => if(b) List(List(1)) else List(List(-1))
+//  }
 }
