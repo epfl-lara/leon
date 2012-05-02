@@ -130,6 +130,10 @@ object SatFun {
     val dnfFormula = dnfNaive(formula)
     eval(formula, trueVars) == evalDnf(dnfFormula, trueVars)
   } ensuring(_ == true)
+  def property2(formula: Formula, trueVars: Set[Int]): Boolean = {
+    val cnfFormula = cnfNaive(formula)
+    eval(formula, trueVars) == evalCnf(cnfFormula, trueVars)
+  } ensuring(_ == true)
 
 
   def vars(formula: Formula): Set[Int] = formula match {
