@@ -26,12 +26,12 @@ object SatFun {
 
   def evalCnf(clauses: ClauseList, trueVars: Set[Int]): Boolean = clauses match {
     case ClauseCons(cl, cls) => evalClauseCnf(cl, trueVars) && evalCnf(cls, trueVars)
-    case ClauseNil() => false
+    case ClauseNil() => true
     case ClauseLit(b) => b
   }
   def evalDnf(clauses: ClauseList, trueVars: Set[Int]): Boolean = clauses match {
     case ClauseCons(cl, cls) => evalClauseDnf(cl, trueVars) || evalDnf(cls, trueVars)
-    case ClauseNil() => true
+    case ClauseNil() => false
     case ClauseLit(b) => b
   }
   def evalClauseCnf(clause: VarList, trueVars: Set[Int]): Boolean = clause match {
