@@ -18,7 +18,7 @@ object SatFun {
   case class ClauseLit(value: Boolean) extends ClauseList
 
   def eval(formula: Formula, trueVars: Set[Int]): Boolean = formula match {
-    case Var(n) => trueVars.contains(n)
+    case Var(n) => if(n == 1) true else if(n == -1) false else trueVars.contains(n)
     case Not(f) => !eval(f, trueVars)
     case And(f1, f2) => eval(f1, trueVars) && eval(f2, trueVars)
     case Or(f1, f2) => eval(f1, trueVars) || eval(f2, trueVars)
