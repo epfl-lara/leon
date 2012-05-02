@@ -38,7 +38,7 @@ object SatFun {
     case VarCons(v, vs) => (if(v < 0) trueVars.contains(-v) else trueVars.contains(v)) || evalClauseCnf(vs, trueVars)
       if(v == 1) true
       else if(v == -1) evalClauseCnf(vs, trueVars)
-      else if(v < -1) trueVars.contains(-v) || evalClauseCnf(vs, trueVars)
+      else if(v < -1) !trueVars.contains(-v) || evalClauseCnf(vs, trueVars)
       else if(v > 1) trueVars.contains(v) || evalClauseCnf(vs, trueVars)
       else false
     case VarNil() => false
@@ -48,7 +48,7 @@ object SatFun {
     case VarCons(v, vs) => {
       if(v == 1) evalClauseDnf(vs, trueVars)
       else if(v == -1) false
-      else if(v < -1) trueVars.contains(-v) && evalClauseDnf(vs, trueVars)
+      else if(v < -1) !trueVars.contains(-v) && evalClauseDnf(vs, trueVars)
       else if(v > 1) trueVars.contains(v) && evalClauseDnf(vs, trueVars)
       else false
     }
