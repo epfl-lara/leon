@@ -35,7 +35,7 @@ object ArrayTransformation extends Pass {
       IfExpr(
         And(GreaterEquals(i, IntLiteral(0)), LessThan(i, length)),
         ArraySelect(TupleSelect(ar, 1), ir).setType(sel.getType),
-        Error("Array out of bound access").setType(sel.getType)
+        Error("Index out of bound").setType(sel.getType)
       ).setType(sel.getType)
     }
     case ArrayUpdate(a, i, v) => {
@@ -49,7 +49,7 @@ object ArrayTransformation extends Pass {
       IfExpr(
         And(GreaterEquals(i, IntLiteral(0)), LessThan(i, length)),
         Block(Seq(Assignment(id, Tuple(Seq(ArrayUpdated(array, i, v).setType(array.getType), length)).setType(TupleType(Seq(array.getType, Int32Type))))), IntLiteral(0)),
-        Error("Array out of bound access").setType(Int32Type)
+        Error("Index out of bound").setType(Int32Type)
       ).setType(Int32Type)
     }
 

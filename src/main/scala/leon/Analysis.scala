@@ -68,6 +68,7 @@ class Analysis(val program : Program, val reporter: Reporter = Settings.reporter
         allVCs ++= tactic.generatePatternMatchingExhaustivenessChecks(funDef)
         allVCs ++= tactic.generatePostconditions(funDef)
         allVCs ++= tactic.generateMiscCorrectnessConditions(funDef)
+        allVCs ++= tactic.generateArrayAccessChecks(funDef)
       }
       allVCs = allVCs.sortWith((vc1, vc2) => {
         val id1 = vc1.funDef.id.name

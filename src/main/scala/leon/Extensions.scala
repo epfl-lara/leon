@@ -46,6 +46,7 @@ object Extensions {
     def generatePreconditions(function: FunDef) : Seq[VerificationCondition]
     def generatePatternMatchingExhaustivenessChecks(function: FunDef) : Seq[VerificationCondition]
     def generateMiscCorrectnessConditions(function: FunDef) : Seq[VerificationCondition]
+    def generateArrayAccessChecks(function: FunDef) : Seq[VerificationCondition]
   }
 
   // The rest of the code is for dynamically loading extensions
