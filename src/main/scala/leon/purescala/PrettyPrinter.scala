@@ -269,6 +269,14 @@ object PrettyPrinter {
       sb.append(") = ")
       pp(v, sb, lvl)
     }
+    case ArrayUpdated(ar, i, v) => {
+      pp(ar, sb, lvl)
+      sb.append(".updated(")
+      pp(i, sb, lvl)
+      sb.append(", ")
+      pp(v, sb, lvl)
+      sb.append(")")
+    }
 
     case Distinct(exprs) => {
       var nsb = sb

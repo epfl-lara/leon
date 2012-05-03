@@ -809,7 +809,7 @@ trait CodeExtraction extends Extractors {
           val underlying = scalaType2PureScala(unit, silent)(baseType.tpe)
           val lengthRec = rec(length)
           val defaultValueRec = rec(defaultValue)
-          ArrayFill(lengthRec, defaultValueRec).setType(underlying)
+          ArrayFill(lengthRec, defaultValueRec).setType(ArrayType(underlying))
         }
         case ExIfThenElse(t1,t2,t3) => {
           val r1 = rec(t1)

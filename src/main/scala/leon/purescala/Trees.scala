@@ -382,7 +382,10 @@ object Trees {
   /* Array operations */
   case class ArrayFill(length: Expr, defaultValue: Expr) extends Expr
   case class ArraySelect(array: Expr, index: Expr) extends Expr
+  //the difference between ArrayUpdate and ArrayUpdated is that the former has a side effect while the latter is the function variant
+  //ArrayUpdate should be eliminated soon in the analysis while ArrayUpdated is keep all the way to the backend
   case class ArrayUpdate(array: Expr, index: Expr, newValue: Expr) extends Expr
+  case class ArrayUpdated(array: Expr, index: Expr, newValue: Expr) extends Expr 
 
   /* List operations */
   case class NilList(baseType: TypeTree) extends Expr with Terminal
@@ -471,6 +474,7 @@ object Trees {
       case FiniteMap(args) => Some((args, (as : Seq[Expr]) => FiniteMap(as.asInstanceOf[Seq[SingletonMap]])))
       case FiniteMultiset(args) => Some((args, FiniteMultiset))
       case ArrayUpdate(t1, t2, t3) => Some((Seq(t1,t2,t3), (as: Seq[Expr]) => ArrayUpdate(as(0), as(1), as(2))))
+      case ArrayUpdated(t1, t2, t3) => Some((Seq(t1,t2,t3), (as: Seq[Expr]) => ArrayUpdated(as(0), as(1), as(2))))
       case Distinct(args) => Some((args, Distinct))
       case Block(args, rest) => Some((args :+ rest, exprs => Block(exprs.init, exprs.last)))
       case Tuple(args) => Some((args, Tuple))
