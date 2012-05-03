@@ -31,7 +31,7 @@ object ArrayTransformation extends Pass {
     case sel@ArraySelect(a, i) => {
       val ar = transform(a)
       val ir = transform(i)
-      val length = TupleSelect(ar, 2)
+      val length = TupleSelect(ar, 2).setType(Int32Type)
       IfExpr(
         And(GreaterEquals(i, IntLiteral(0)), LessThan(i, length)),
         ArraySelect(TupleSelect(ar, 1), ir).setType(sel.getType),
@@ -43,12 +43,12 @@ object ArrayTransformation extends Pass {
       val ir = transform(i)
       val vr = transform(v)
       val Variable(id) = ar
-      val length = TupleSelect(ar, 2)
-      val array = TupleSelect(ar, 1)
+      val length = TupleSelect(ar, 2).setType(Int32Type)
+      val array = TupleSelect(ar, 1).setType(ArrayType(v.getType))
       //val Tuple(Seq(Variable(id), length)) = ar
       IfExpr(
         And(GreaterEquals(i, IntLiteral(0)), LessThan(i, length)),
-        Block(Seq(Assignment(id, Tuple(Seq(ArrayUpdated(array, i, v), length)).setType(TupleType(Seq(array.getType, Int32Type))))), IntLiteral(0)),
+        Block(Seq(Assignment(id, Tuple(Seq(ArrayUpdated(array, i, v).setType(array.getType), length)).setType(TupleType(Seq(array.getType, Int32Type))))), IntLiteral(0)),
         Error("Array out of bound access").setType(Int32Type)
       ).setType(Int32Type)
     }
