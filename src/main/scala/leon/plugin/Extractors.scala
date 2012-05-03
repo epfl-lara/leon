@@ -646,6 +646,14 @@ trait Extractors {
         case _ => None
       }
     }
+    object ExUpdate {
+      def unapply(tree: Apply): Option[(Tree, Tree, Tree)] = tree match {
+        case Apply(
+              Select(lhs, update),
+              index :: newValue :: Nil) if(update.toString == "update") => Some((lhs, index, newValue))
+        case _ => None
+      }
+    }
 
     object ExMapIsDefinedAt {
       def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
@@ -653,5 +661,27 @@ trait Extractors {
         case _ => None
       }
     }
+
+    object ExArrayFill {
+      def unapply(tree: Apply): Option[(Tree, Tree, Tree)] = tree match {
+        case Apply(
+               Apply(
+                 Apply(
+                   TypeApply(
+                     Select(Select(Ident(scala), arrayObject), fillMethod),
+                     baseType :: Nil
+                   ),
+                   length :: Nil
+                 ),
+                 defaultValue :: Nil
+               ),
+               manifest
+             ) if(scala.toString == "scala" &&
+                  arrayObject.toString == "Array" &&
+                  fillMethod.toString == "fill") => Some((baseType, length, defaultValue))
+        case _ => None
+      }
+    }
+
   }
 }

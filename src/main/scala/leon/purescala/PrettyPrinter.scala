@@ -249,6 +249,26 @@ object PrettyPrinter {
       nsb = ppNary(nsb, Seq(k), "(", ",", ")", lvl)
       nsb
     }
+    case ArrayFill(size, v) => {
+      sb.append("Array.fill(")
+      pp(size, sb, lvl)
+      sb.append(")(")
+      pp(v, sb, lvl)
+      sb.append(")")
+    }
+    case ArraySelect(ar, i) => {
+      pp(ar, sb, lvl)
+      sb.append("(")
+      pp(i, sb, lvl)
+      sb.append(")")
+    }
+    case ArrayUpdate(ar, i, v) => {
+      pp(ar, sb, lvl)
+      sb.append("(")
+      pp(i, sb, lvl)
+      sb.append(") = ")
+      pp(v, sb, lvl)
+    }
 
     case Distinct(exprs) => {
       var nsb = sb

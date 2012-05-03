@@ -28,6 +28,10 @@ trait CodeExtraction extends Extractors {
   private lazy val someClassSym       = definitions.getClass("scala.Some")
   private lazy val function1TraitSym  = definitions.getClass("scala.Function1")
 
+  private lazy val arraySym           = definitions.getClass("scala.Array")
+
+  def isArrayClassSym(sym: Symbol): Boolean = sym == arraySym
+
   def isTuple2(sym : Symbol) : Boolean = sym == tuple2Sym
   def isTuple3(sym : Symbol) : Boolean = sym == tuple3Sym
   def isTuple4(sym : Symbol) : Boolean = sym == tuple4Sym
@@ -784,11 +788,28 @@ trait CodeExtraction extends Extractors {
                 }
               }
             }
+            case ArrayType(bt) => {
+              assert(rargs.size == 1)
+              ArraySelect(rlhs, rargs.head).setType(bt)
+            }
             case _ => {
               if (!silent) unit.error(tree.pos, "apply on unexpected type")
               throw ImpureCodeEncounteredException(tree)
             }
           }
+        }
+        // for now update only happens with array. later it might have to be distinguish in function of the lhs
+        case ExUpdate(lhs, index, newValue) => { 
+          val lhsRec = rec(lhs)
+          val indexRec = rec(index)
+          val newValueRec = rec(newValue)
+          ArrayUpdate(lhsRec, indexRec, newValueRec).setType(newValueRec.getType)
+        }
+        case ExArrayFill(baseType, length, defaultValue) => {
+          val underlying = scalaType2PureScala(unit, silent)(baseType.tpe)
+          val lengthRec = rec(length)
+          val defaultValueRec = rec(defaultValue)
+          ArrayFill(lengthRec, defaultValueRec).setType(underlying)
         }
         case ExIfThenElse(t1,t2,t3) => {
           val r1 = rec(t1)
@@ -906,6 +927,7 @@ trait CodeExtraction extends Extractors {
       case TypeRef(_, sym, List(t1,t2,t3,t4)) if isTuple4(sym) => TupleType(Seq(rec(t1),rec(t2),rec(t3),rec(t4)))
       case TypeRef(_, sym, List(t1,t2,t3,t4,t5)) if isTuple5(sym) => TupleType(Seq(rec(t1),rec(t2),rec(t3),rec(t4),rec(t5)))
       case TypeRef(_, sym, ftt :: ttt :: Nil) if isFunction1TraitSym(sym) => FunctionType(List(rec(ftt)), rec(ttt))
+      case TypeRef(_, sym, btt :: Nil) if isArrayClassSym(sym) => ArrayType(rec(btt))
       case TypeRef(_, sym, Nil) if classesToClasses.keySet.contains(sym) => classDefToClassType(classesToClasses(sym))
       case _ => {
         if(!silent) {

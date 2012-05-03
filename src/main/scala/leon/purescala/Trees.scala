@@ -379,6 +379,11 @@ object Trees {
     val fixedType = BooleanType
   }
 
+  /* Array operations */
+  case class ArrayFill(length: Expr, defaultValue: Expr) extends Expr
+  case class ArraySelect(array: Expr, index: Expr) extends Expr
+  case class ArrayUpdate(array: Expr, index: Expr, newValue: Expr) extends Expr
+
   /* List operations */
   case class NilList(baseType: TypeTree) extends Expr with Terminal
   case class Cons(head: Expr, tail: Expr) extends Expr 
@@ -446,6 +451,8 @@ object Trees {
       case MapUnion(t1,t2) => Some((t1,t2,MapUnion))
       case MapDifference(t1,t2) => Some((t1,t2,MapDifference))
       case MapIsDefinedAt(t1,t2) => Some((t1,t2, MapIsDefinedAt))
+      case ArrayFill(t1, t2) => Some((t1, t2, ArrayFill))
+      case ArraySelect(t1, t2) => Some((t1, t2, ArraySelect))
       case Concat(t1,t2) => Some((t1,t2,Concat))
       case ListAt(t1,t2) => Some((t1,t2,ListAt))
       case wh@While(t1, t2) => Some((t1,t2, (t1, t2) => While(t1, t2).setInvariant(wh.invariant).setPosInfo(wh)))
@@ -463,6 +470,7 @@ object Trees {
       case FiniteSet(args) => Some((args, FiniteSet))
       case FiniteMap(args) => Some((args, (as : Seq[Expr]) => FiniteMap(as.asInstanceOf[Seq[SingletonMap]])))
       case FiniteMultiset(args) => Some((args, FiniteMultiset))
+      case ArrayUpdate(t1, t2, t3) => Some((Seq(t1,t2,t3), (as: Seq[Expr]) => ArrayUpdate(as(0), as(1), as(2))))
       case Distinct(args) => Some((args, Distinct))
       case Block(args, rest) => Some((args :+ rest, exprs => Block(exprs.init, exprs.last)))
       case Tuple(args) => Some((args, Tuple))

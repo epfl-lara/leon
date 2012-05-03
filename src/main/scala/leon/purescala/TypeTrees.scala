@@ -148,6 +148,7 @@ object TypeTrees {
   case class MapType(from: TypeTree, to: TypeTree) extends TypeTree
   case class OptionType(base: TypeTree) extends TypeTree
   case class FunctionType(from: List[TypeTree], to: TypeTree) extends TypeTree
+  case class ArrayType(base: TypeTree) extends TypeTree
 
   sealed abstract class ClassType extends TypeTree {
     val classDef: ClassTypeDef
