@@ -405,6 +405,7 @@ object PrettyPrinter {
     case UnitType => sb.append("Unit")
     case Int32Type => sb.append("Int")
     case BooleanType => sb.append("Boolean")
+    case ArrayType(bt) => pp(bt, sb.append("Array["), lvl).append("]")
     case SetType(bt) => pp(bt, sb.append("Set["), lvl).append("]")
     case MapType(ft,tt) => pp(tt, pp(ft, sb.append("Map["), lvl).append(","), lvl).append("]")
     case MultisetType(bt) => pp(bt, sb.append("Multiset["), lvl).append("]")

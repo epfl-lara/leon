@@ -13,34 +13,13 @@ object ArrayTransformation extends Pass {
 
     val allFuns = pgm.definedFunctions
     allFuns.foreach(fd => fd.body.map(body => {
-      val newBody = searchAndReplaceDFS{
-        case Let(i, v, b) => {println("let i: " + v.getType); v.getType match {
-          case ArrayType(_) => {
-            println("this is array type")
-            Some(LetVar(i, v, b))
-          }
-          case _ => None
-        }}
-        case sel@ArraySelect(ar, i) => {
-          Some(IfExpr(
-            And(GreaterEquals(i, i), LessThan(i, i)),
-            sel, 
-            Error("Array out of bound access").setType(sel.getType)
-          ).setType(sel.getType))
-        }
-        case ArrayUpdate(ar, i, v) => {
-          Some(IfExpr(
-            And(GreaterEquals(i, i), LessThan(i, i)),
-            Assignment(ar.asInstanceOf[Variable].id, ArrayUpdated(ar, i, v).setType(ar.getType)),
-            Error("Array out of bound access").setType(UnitType)
-          ).setType(UnitType))
-        }
-        case _ => None
-      }(body)
+      val newBody = transform(body)
       fd.body = Some(newBody)
     }))
     pgm
   }
+
+  private var id2id: Map[Identifier, Identifier] = Map()
 
   private def transform(expr: Expr): Expr = expr match {
     case fill@ArrayFill(length, default) => {
@@ -63,31 +42,45 @@ object ArrayTransformation extends Pass {
       val ar = transform(a)
       val ir = transform(i)
       val vr = transform(v)
+      val Variable(id) = ar
       val length = TupleSelect(ar, 2)
-      val  = Tuple
-      Some(IfExpr(
-        And(GreaterEquals(i, i), LessThan(i, i)),
-        Assignment(ar.asInstanceOf[Variable].id, ArrayUpdated(ar, i, v).setType(ar.getType)),
+      val array = TupleSelect(ar, 1)
+      //val Tuple(Seq(Variable(id), length)) = ar
+      IfExpr(
+        And(GreaterEquals(i, IntLiteral(0)), LessThan(i, length)),
+        Assignment(id, Tuple(Seq(ArrayUpdated(array, i, v), length)).setType(TupleType(Seq(array.getType, Int32Type)))),
         Error("Array out of bound access").setType(UnitType)
-      ).setType(UnitType))
+      ).setType(UnitType)
     }
 
-    case Let(i, v, b) => v.getType match {
-      case ArrayType(_) => Some(LetVar(i, v, b))
-      case _ => None
+    case Let(i, v, b) => {
+      val vr = transform(v)
+      v.getType match {
+        case ArrayType(_) => {
+          val freshIdentifier = FreshIdentifier("t").setType(vr.getType)
+          id2id += (i -> freshIdentifier)
+          val br = transform(b)
+          LetVar(freshIdentifier, vr, br)
+        }
+        case _ => {
+          val br = transform(b)
+          Let(i, vr, br)
+        }
+      }
     }
-    case LetVar(id, e, b) =>
+    //case LetVar(id, e, b) =>
 
-    case ite@IfExpr(cond, tExpr, eExpr) => 
+    //case ite@IfExpr(cond, tExpr, eExpr) => 
 
-    case m @ MatchExpr(scrut, cses) => 
-    case LetDef(fd, b) => 
+    //case m @ MatchExpr(scrut, cses) => 
+    //case LetDef(fd, b) => 
 
-    case n @ NAryOperator(args, recons) => {
-    case b @ BinaryOperator(a1, a2, recons) => 
-    case u @ UnaryOperator(a, recons) => 
+    case n @ NAryOperator(args, recons) => recons(args.map(transform)).setType(n.getType)
+    case b @ BinaryOperator(a1, a2, recons) => recons(transform(a1), transform(a2)).setType(b.getType)
+    case u @ UnaryOperator(a, recons) => recons(transform(a)).setType(u.getType)
 
-    case (t: Terminal) => 
+    case v @ Variable(id) => if(id2id.isDefinedAt(id)) Variable(id2id(id)) else v
+    case (t: Terminal) => t
     case unhandled => scala.sys.error("Non-terminal case should be handled in ArrayTransformation: " + unhandled)
 
   }
