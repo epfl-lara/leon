@@ -48,9 +48,9 @@ object ArrayTransformation extends Pass {
       //val Tuple(Seq(Variable(id), length)) = ar
       IfExpr(
         And(GreaterEquals(i, IntLiteral(0)), LessThan(i, length)),
-        Assignment(id, Tuple(Seq(ArrayUpdated(array, i, v), length)).setType(TupleType(Seq(array.getType, Int32Type)))),
-        Error("Array out of bound access").setType(UnitType)
-      ).setType(UnitType)
+        Block(Seq(Assignment(id, Tuple(Seq(ArrayUpdated(array, i, v), length)).setType(TupleType(Seq(array.getType, Int32Type))))), IntLiteral(0)),
+        Error("Array out of bound access").setType(Int32Type)
+      ).setType(Int32Type)
     }
 
     case Let(i, v, b) => {

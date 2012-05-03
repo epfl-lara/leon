@@ -59,6 +59,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     fallbackSorts = Map.empty
 
     mapSorts = Map.empty
+    arraySorts = Map.empty
     funSorts = Map.empty
     funDomainConstructors = Map.empty
     funDomainSelectors = Map.empty
@@ -97,6 +98,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   private var boolSort: Z3Sort = null
   private var setSorts: Map[TypeTree, Z3Sort] = Map.empty
   private var mapSorts: Map[TypeTree, Z3Sort] = Map.empty
+  private var arraySorts: Map[TypeTree, Z3Sort] = Map.empty
 
   protected[leon] var funSorts: Map[TypeTree, Z3Sort] = Map.empty
   protected[leon] var funDomainConstructors: Map[TypeTree, Z3FuncDecl] = Map.empty
@@ -384,6 +386,16 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         val ms = z3.mkArraySort(fromSort, toSort)
         mapSorts += ((mt, ms))
         ms
+      }
+    }
+    case at @ ArrayType(base) => arraySorts.get(at) match {
+      case Some(s) => s
+      case None => {
+        val fromSort = typeToSort(Int32Type)
+        val toSort = typeToSort(base)
+        val as = z3.mkArraySort(fromSort, toSort)
+        arraySorts += (at -> as)
+        as
       }
     }
     case ft @ FunctionType(fts, tt) => funSorts.get(ft) match {
@@ -1042,6 +1054,16 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         case MapIsDefinedAt(m,k) => m.getType match {
           case MapType(ft, tt) => z3.mkDistinct(z3.mkSelect(rec(m), rec(k)), mapRangeNoneConstructors(tt)())
           case errorType => scala.sys.error("Unexpected type for map: " + (ex, errorType))
+        }
+        case fill@ArrayFill(length, default) => {
+          val ArrayType(base) = fill.getType
+          z3.mkConstArray(typeToSort(base), rec(default))
+        }
+        case ArraySelect(ar, index) => {
+          z3.mkSelect(rec(ar), rec(index))
+        }
+        case ArrayUpdated(ar, index, newVal) => {
+          z3.mkStore(rec(ar), rec(index), rec(newVal))
         }
         case AnonymousFunctionInvocation(id, args) => id.getType match {
           case ft @ FunctionType(fts, tt) => {

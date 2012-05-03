@@ -15,11 +15,9 @@ object ImperativeCodeElimination extends Pass {
   def apply(pgm: Program): Program = {
     val allFuns = pgm.definedFunctions
     allFuns.foreach(fd => fd.body.map(body => {
-      Logger.debug("Transforming to functional code the following function:\n" + fd, 5, "imperative")
       parent = fd
       val (res, scope, _) = toFunction(body)
       fd.body = Some(scope(res))
-      Logger.debug("Resulting functional code is:\n" + fd, 5, "imperative")
     }))
     pgm
   }
