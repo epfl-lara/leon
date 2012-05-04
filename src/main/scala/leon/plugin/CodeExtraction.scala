@@ -518,6 +518,12 @@ trait CodeExtraction extends Extractors {
         }
         case ExVarDef(vs, tpt, bdy) => {
           val binderTpe = scalaType2PureScala(unit, silent)(tpt.tpe)
+          binderTpe match {
+            case ArrayType(_) => 
+              unit.error(tree.pos, "Cannot declare array variables, only val are alllowed")
+              throw ImpureCodeEncounteredException(tree)
+            case _ =>
+          }
           val newID = FreshIdentifier(vs.name.toString).setType(binderTpe)
           val valTree = rec(bdy)
           mutableVarSubsts += (vs -> (() => Variable(newID)))
@@ -801,6 +807,13 @@ trait CodeExtraction extends Extractors {
         // for now update only happens with array. later it might have to be distinguish in function of the lhs
         case update@ExUpdate(lhs, index, newValue) => { 
           val lhsRec = rec(lhs)
+          lhsRec match {
+            case Variable(_) =>
+            case _ => {
+              unit.error(tree.pos, "array update only works on variables")
+              throw ImpureCodeEncounteredException(tree)
+            }
+          }
           val indexRec = rec(index)
           val newValueRec = rec(newValue)
           ArrayUpdate(lhsRec, indexRec, newValueRec).setType(newValueRec.getType).setPosInfo(update.pos.line, update.pos.column)
