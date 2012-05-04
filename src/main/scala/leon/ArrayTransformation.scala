@@ -28,18 +28,18 @@ object ArrayTransformation extends Pass {
           })
           val freshFunName = FreshIdentifier(fd.id.name)
           val freshFunDef = new FunDef(freshFunName, transform(fd.returnType), newArgs)
+          fd2fd += (fd -> freshFunDef)
           freshFunDef.fromLoop = fd.fromLoop
           freshFunDef.parent = fd.parent
-          freshFunDef.precondition = fd.precondition.map(transform)
-          freshFunDef.postcondition = fd.postcondition.map(transform)
           freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
-          fd2fd += (fd -> freshFunDef)
           freshFunDef
         } else fd
       } else fd
     })
 
     allFuns.zip(newFuns).foreach{ case (ofd, nfd) => ofd.body.map(body => {
+      nfd.precondition = ofd.precondition.map(transform)
+      nfd.postcondition = ofd.postcondition.map(transform)
       val newBody = transform(body)
       nfd.body = Some(newBody)
     })}
@@ -76,7 +76,7 @@ object ArrayTransformation extends Pass {
       val ir = transform(i)
       val length = TupleSelect(ar, 2).setType(Int32Type)
       IfExpr(
-        And(GreaterEquals(i, IntLiteral(0)), LessThan(i, length)),
+        And(GreaterEquals(ir, IntLiteral(0)), LessThan(ir, length)),
         ArraySelect(TupleSelect(ar, 1), ir).setType(sel.getType).setPosInfo(sel),
         Error("Index out of bound").setType(sel.getType).setPosInfo(sel)
       ).setType(sel.getType)
@@ -88,14 +88,13 @@ object ArrayTransformation extends Pass {
       val Variable(id) = ar
       val length = TupleSelect(ar, 2).setType(Int32Type)
       val array = TupleSelect(ar, 1).setType(ArrayType(v.getType))
-      //val Tuple(Seq(Variable(id), length)) = ar
       IfExpr(
         And(GreaterEquals(i, IntLiteral(0)), LessThan(i, length)),
         Block(Seq(
           Assignment(
             id, 
             Tuple(Seq(
-              ArrayUpdated(array, i, v).setType(array.getType).setPosInfo(up),
+              ArrayUpdated(array, ir, vr).setType(array.getType).setPosInfo(up),
               length)
             ).setType(TupleType(Seq(array.getType, Int32Type))))),
           IntLiteral(0)),
@@ -162,12 +161,12 @@ object ArrayTransformation extends Pass {
             })
             val freshFunName = FreshIdentifier(fd.id.name)
             val freshFunDef = new FunDef(freshFunName, transform(fd.returnType), newArgs)
+            fd2fd += (fd -> freshFunDef)
             freshFunDef.fromLoop = fd.fromLoop
             freshFunDef.parent = fd.parent
             freshFunDef.precondition = fd.precondition.map(transform)
             freshFunDef.postcondition = fd.postcondition.map(transform)
             freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
-            fd2fd += (fd -> freshFunDef)
             freshFunDef
           } else fd
         val newBody = transform(body)
