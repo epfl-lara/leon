@@ -382,11 +382,11 @@ object Trees {
   /* Array operations */
   case class ArrayFill(length: Expr, defaultValue: Expr) extends Expr
   case class ArrayMake(defaultValue: Expr) extends Expr
-  case class ArraySelect(array: Expr, index: Expr) extends Expr
+  case class ArraySelect(array: Expr, index: Expr) extends Expr with ScalacPositional
   //the difference between ArrayUpdate and ArrayUpdated is that the former has a side effect while the latter is the function variant
   //ArrayUpdate should be eliminated soon in the analysis while ArrayUpdated is keep all the way to the backend
-  case class ArrayUpdate(array: Expr, index: Expr, newValue: Expr) extends Expr
-  case class ArrayUpdated(array: Expr, index: Expr, newValue: Expr) extends Expr 
+  case class ArrayUpdate(array: Expr, index: Expr, newValue: Expr) extends Expr with ScalacPositional
+  case class ArrayUpdated(array: Expr, index: Expr, newValue: Expr) extends Expr with ScalacPositional
   case class ArrayLength(array: Expr) extends Expr with FixedType {
     val fixedType = Int32Type
   }

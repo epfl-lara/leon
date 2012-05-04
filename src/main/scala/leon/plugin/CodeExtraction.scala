@@ -790,7 +790,7 @@ trait CodeExtraction extends Extractors {
             }
             case ArrayType(bt) => {
               assert(rargs.size == 1)
-              ArraySelect(rlhs, rargs.head).setType(bt)
+              ArraySelect(rlhs, rargs.head).setType(bt).setPosInfo(app.pos.line, app.pos.column)
             }
             case _ => {
               if (!silent) unit.error(tree.pos, "apply on unexpected type")
@@ -799,11 +799,11 @@ trait CodeExtraction extends Extractors {
           }
         }
         // for now update only happens with array. later it might have to be distinguish in function of the lhs
-        case ExUpdate(lhs, index, newValue) => { 
+        case update@ExUpdate(lhs, index, newValue) => { 
           val lhsRec = rec(lhs)
           val indexRec = rec(index)
           val newValueRec = rec(newValue)
-          ArrayUpdate(lhsRec, indexRec, newValueRec).setType(newValueRec.getType)
+          ArrayUpdate(lhsRec, indexRec, newValueRec).setType(newValueRec.getType).setPosInfo(update.pos.line, update.pos.column)
         }
         case ExArrayLength(t) => {
           val rt = rec(t)

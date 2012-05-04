@@ -73,11 +73,11 @@ object ArrayTransformation extends Pass {
       val length = TupleSelect(ar, 2).setType(Int32Type)
       IfExpr(
         And(GreaterEquals(i, IntLiteral(0)), LessThan(i, length)),
-        ArraySelect(TupleSelect(ar, 1), ir).setType(sel.getType),
-        Error("Index out of bound").setType(sel.getType)
+        ArraySelect(TupleSelect(ar, 1), ir).setType(sel.getType).setPosInfo(sel),
+        Error("Index out of bound").setType(sel.getType).setPosInfo(sel)
       ).setType(sel.getType)
     }
-    case ArrayUpdate(a, i, v) => {
+    case up@ArrayUpdate(a, i, v) => {
       val ar = transform(a)
       val ir = transform(i)
       val vr = transform(v)
@@ -87,8 +87,15 @@ object ArrayTransformation extends Pass {
       //val Tuple(Seq(Variable(id), length)) = ar
       IfExpr(
         And(GreaterEquals(i, IntLiteral(0)), LessThan(i, length)),
-        Block(Seq(Assignment(id, Tuple(Seq(ArrayUpdated(array, i, v).setType(array.getType), length)).setType(TupleType(Seq(array.getType, Int32Type))))), IntLiteral(0)),
-        Error("Index out of bound").setType(Int32Type)
+        Block(Seq(
+          Assignment(
+            id, 
+            Tuple(Seq(
+              ArrayUpdated(array, i, v).setType(array.getType).setPosInfo(up),
+              length)
+            ).setType(TupleType(Seq(array.getType, Int32Type))))),
+          IntLiteral(0)),
+        Error("Index out of bound").setType(Int32Type).setPosInfo(up)
       ).setType(Int32Type)
     }
     case ArrayLength(a) => {
