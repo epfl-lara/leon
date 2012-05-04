@@ -248,6 +248,39 @@ object Evaluator {
         case i @ IntLiteral(_) => i
         case b @ BooleanLiteral(_) => b
 
+        case f @ ArrayFill(length, default) => {
+          val rLength = rec(ctx, length)
+          val rDefault = rec(ctx, default)
+          assert(rLength.isInstanceOf[IntLiteral])
+          ArrayFill(rLength, rDefault)
+        }
+        case ArrayUpdated(a, i, v) => {
+          val ra = rec(ctx, a)
+          val ri = rec(ctx, i)
+          assert(ri.isInstanceOf[IntLiteral])
+          val rv = rec(ctx, v)
+          ArrayUpdated(ra, ri, rv)
+        }
+        case ArraySelect(a, i) => {
+          val IntLiteral(index) = rec(ctx, i)
+          var ra = rec(ctx, a)
+          var found = false
+          var result: Option[Expr] = None
+          while(!ra.isInstanceOf[ArrayFill] && !found) {
+            val ArrayUpdated(ra2, IntLiteral(i), v) = ra
+            if(index == i) {
+              result = Some(v)
+              found = true
+            } else {
+              ra = ra2
+            }
+          }
+          result match {
+            case Some(r) => r
+            case None => ra.asInstanceOf[ArrayFill].defaultValue
+          }
+        }
+
         case f @ FiniteMap(ss) => FiniteMap(ss.map(rec(ctx,_)).distinct.asInstanceOf[Seq[SingletonMap]]).setType(f.getType)
         case e @ EmptyMap(_,_) => e
         case s @ SingletonMap(f,t) => SingletonMap(rec(ctx,f), rec(ctx,t)).setType(s.getType)
