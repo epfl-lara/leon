@@ -21,7 +21,7 @@ object ArrayTransformation extends Pass {
         val args = fd.args
         if(args.exists(vd => containsArrayType(vd.tpe)) || containsArrayType(fd.returnType)) {
           val newArgs = args.map(vd => {
-            val freshId = FreshIdentifier(vd.id.name).setType(TupleType(Seq(vd.tpe, Int32Type)))
+            val freshId = FreshIdentifier(vd.id.name).setType(transform(vd.tpe))
             id2id += (vd.id -> freshId)
             val newTpe = transform(vd.tpe)
             VarDecl(freshId, newTpe)
@@ -154,7 +154,7 @@ object ArrayTransformation extends Pass {
         val newFd = 
           if(args.exists(vd => containsArrayType(vd.tpe)) || containsArrayType(fd.returnType)) {
             val newArgs = args.map(vd => {
-              val freshId = FreshIdentifier(vd.id.name).setType(TupleType(Seq(vd.tpe, Int32Type)))
+              val freshId = FreshIdentifier(vd.id.name).setType(transform(vd.tpe))
               id2id += (vd.id -> freshId)
               val newTpe = transform(vd.tpe)
               VarDecl(freshId, newTpe)
