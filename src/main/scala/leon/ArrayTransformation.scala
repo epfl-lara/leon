@@ -116,9 +116,23 @@ object ArrayTransformation extends Pass {
       LetVar(id, er, br)
     }
 
-    //case ite@IfExpr(cond, tExpr, eExpr) => 
+    case ite@IfExpr(c, t, e) => {
+      val rc = transform(c)
+      val rt = transform(t)
+      val re = transform(e)
+      IfExpr(rc, rt, re).setType(rt.getType)
+    }
 
-    //case m @ MatchExpr(scrut, cses) => 
+    case m @ MatchExpr(scrut, cses) => {
+      val scrutRec = transform(scrut)
+      val csesRec = cses.map{
+        case SimpleCase(pat, rhs) => SimpleCase(pat, transform(rhs))
+        case GuardedCase(pat, guard, rhs) => GuardedCase(pat, transform(guard), transform(rhs))
+      }
+      val tpe = csesRec.head.rhs.getType
+      MatchExpr(scrutRec, csesRec).setType(tpe).setPosInfo(m)
+    }
+
     //case LetDef(fd, b) => 
 
     case n @ NAryOperator(args, recons) => recons(args.map(transform)).setType(n.getType)

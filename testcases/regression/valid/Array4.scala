@@ -1,7 +1,15 @@
+import leon.Utils._
+
 object Array4 {
 
   def foo(a: Array[Int]): Int = {
-    a(2)
-  } ensuring(_ == 3)
+    var i = 0
+    var sum = 0
+    (while(i < a.length) {
+      sum = sum + a(i)
+      i = i + 1
+    }) invariant(i >= 0)
+    sum
+  }
 
 }
