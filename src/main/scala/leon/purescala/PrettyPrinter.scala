@@ -258,7 +258,7 @@ object PrettyPrinter {
       pp(size, sb, lvl)
       sb.append(")(")
       pp(v, sb, lvl)
-      sb.append(")#" + fill.getType)
+      sb.append(")")
     }
     case am@ArrayMake(v) => {
       sb.append("Array.make(")
@@ -269,7 +269,7 @@ object PrettyPrinter {
       pp(ar, sb, lvl)
       sb.append("(")
       pp(i, sb, lvl)
-      sb.append(")#" + sel.getType)
+      sb.append(")")
     }
     case up@ArrayUpdate(ar, i, v) => {
       pp(ar, sb, lvl)
@@ -284,7 +284,7 @@ object PrettyPrinter {
       pp(i, sb, lvl)
       sb.append(", ")
       pp(v, sb, lvl)
-      sb.append(")#" + up.getType)
+      sb.append(")")
     }
 
     case Distinct(exprs) => {

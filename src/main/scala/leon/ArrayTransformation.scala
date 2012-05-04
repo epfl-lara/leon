@@ -38,7 +38,6 @@ object ArrayTransformation extends Pass {
         } else fd
       } else fd
     })
-    println(newFuns)
 
     allFuns.zip(newFuns).foreach{ case (ofd, nfd) => ofd.body.map(body => {
       val newBody = transform(body)
