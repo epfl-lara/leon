@@ -19,7 +19,7 @@ object ArrayTransformation extends Pass {
     val newFuns: Seq[FunDef] = allFuns.map(fd => {
       if(fd.hasImplementation) {
         val args = fd.args
-        if(args.exists(vd => containsArrayType(vd.tpe))) {
+        if(args.exists(vd => containsArrayType(vd.tpe)) || containsArrayType(fd.returnType)) {
           val newArgs = args.map(vd => {
             val freshId = FreshIdentifier(vd.id.name).setType(TupleType(Seq(vd.tpe, Int32Type)))
             id2id += (vd.id -> freshId)
@@ -27,7 +27,7 @@ object ArrayTransformation extends Pass {
             VarDecl(freshId, newTpe)
           })
           val freshFunName = FreshIdentifier(fd.id.name)
-          val freshFunDef = new FunDef(freshFunName, fd.returnType, newArgs)
+          val freshFunDef = new FunDef(freshFunName, transform(fd.returnType), newArgs)
           freshFunDef.fromLoop = fd.fromLoop
           freshFunDef.parent = fd.parent
           freshFunDef.precondition = fd.precondition.map(transform)
@@ -69,7 +69,7 @@ object ArrayTransformation extends Pass {
       var rLength = transform(length)
       val rDefault = transform(default)
       val rFill = ArrayMake(rDefault).setType(fill.getType)
-      Tuple(Seq(rFill, length)).setType(TupleType(Seq(fill.getType, Int32Type)))
+      Tuple(Seq(rFill, rLength)).setType(TupleType(Seq(fill.getType, Int32Type)))
     }
     case sel@ArraySelect(a, i) => {
       val ar = transform(a)
@@ -126,6 +126,11 @@ object ArrayTransformation extends Pass {
       val br = transform(b)
       LetVar(id, er, br)
     }
+    case wh@While(c, e) => {
+      val newWh = While(transform(c), transform(e))
+      newWh.invariant = wh.invariant.map(i => transform(i))
+      newWh.setPosInfo(wh)
+    }
 
     case ite@IfExpr(c, t, e) => {
       val rc = transform(c)
@@ -148,7 +153,7 @@ object ArrayTransformation extends Pass {
         val body = fd.body.get
         val args = fd.args
         val newFd = 
-          if(args.exists(vd => containsArrayType(vd.tpe))) {
+          if(args.exists(vd => containsArrayType(vd.tpe)) || containsArrayType(fd.returnType)) {
             val newArgs = args.map(vd => {
               val freshId = FreshIdentifier(vd.id.name).setType(TupleType(Seq(vd.tpe, Int32Type)))
               id2id += (vd.id -> freshId)
@@ -156,7 +161,7 @@ object ArrayTransformation extends Pass {
               VarDecl(freshId, newTpe)
             })
             val freshFunName = FreshIdentifier(fd.id.name)
-            val freshFunDef = new FunDef(freshFunName, fd.returnType, newArgs)
+            val freshFunDef = new FunDef(freshFunName, transform(fd.returnType), newArgs)
             freshFunDef.fromLoop = fd.fromLoop
             freshFunDef.parent = fd.parent
             freshFunDef.precondition = fd.precondition.map(transform)
