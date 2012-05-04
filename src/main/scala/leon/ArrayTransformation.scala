@@ -30,8 +30,8 @@ object ArrayTransformation extends Pass {
           val freshFunDef = new FunDef(freshFunName, fd.returnType, newArgs)
           freshFunDef.fromLoop = fd.fromLoop
           freshFunDef.parent = fd.parent
-          freshFunDef.precondition = fd.precondition
-          freshFunDef.postcondition = fd.postcondition
+          freshFunDef.precondition = fd.precondition.map(transform)
+          freshFunDef.postcondition = fd.postcondition.map(transform)
           freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
           fd2fd += (fd -> freshFunDef)
           freshFunDef
@@ -160,8 +160,8 @@ object ArrayTransformation extends Pass {
             val freshFunDef = new FunDef(freshFunName, fd.returnType, newArgs)
             freshFunDef.fromLoop = fd.fromLoop
             freshFunDef.parent = fd.parent
-            freshFunDef.precondition = fd.precondition
-            freshFunDef.postcondition = fd.postcondition
+            freshFunDef.precondition = fd.precondition.map(transform)
+            freshFunDef.postcondition = fd.postcondition.map(transform)
             freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
             fd2fd += (fd -> freshFunDef)
             freshFunDef

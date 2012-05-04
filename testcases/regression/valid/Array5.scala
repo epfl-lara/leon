@@ -1,6 +1,6 @@
 import leon.Utils._
 
-object Array4 {
+object Array5 {
 
   def foo(a: Array[Int]): Int = {
     var i = 0
