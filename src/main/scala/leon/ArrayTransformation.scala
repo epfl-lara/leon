@@ -52,7 +52,10 @@ object ArrayTransformation extends Pass {
         Error("Index out of bound").setType(Int32Type)
       ).setType(Int32Type)
     }
-
+    case ArrayLength(a) => {
+      val ar = transform(a)
+      TupleSelect(ar, 2).setType(Int32Type)
+    }
     case Let(i, v, b) => {
       val vr = transform(v)
       v.getType match {
@@ -68,7 +71,11 @@ object ArrayTransformation extends Pass {
         }
       }
     }
-    //case LetVar(id, e, b) =>
+    case LetVar(id, e, b) => {
+      val er = transform(e)
+      val br = transform(b)
+      LetVar(id, er, br)
+    }
 
     //case ite@IfExpr(cond, tExpr, eExpr) => 
 

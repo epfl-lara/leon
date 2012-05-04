@@ -386,6 +386,9 @@ object Trees {
   //ArrayUpdate should be eliminated soon in the analysis while ArrayUpdated is keep all the way to the backend
   case class ArrayUpdate(array: Expr, index: Expr, newValue: Expr) extends Expr
   case class ArrayUpdated(array: Expr, index: Expr, newValue: Expr) extends Expr 
+  case class ArrayLength(array: Expr) extends Expr with FixedType {
+    val fixedType = Int32Type
+  }
 
   /* List operations */
   case class NilList(baseType: TypeTree) extends Expr with Terminal
@@ -419,6 +422,7 @@ object Trees {
       case CaseClassInstanceOf(cd, e) => Some((e, CaseClassInstanceOf(cd, _)))
       case Assignment(id, e) => Some((e, Assignment(id, _)))
       case TupleSelect(t, i) => Some((t, TupleSelect(_, i)))
+      case ArrayLength(a) => Some((a, ArrayLength))
       case e@Epsilon(t) => Some((t, (expr: Expr) => Epsilon(expr).setType(e.getType).setPosInfo(e)))
       case _ => None
     }

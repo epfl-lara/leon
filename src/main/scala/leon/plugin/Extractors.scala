@@ -662,6 +662,14 @@ trait Extractors {
       }
     }
 
+    object ExArrayLength {
+      def unapply(tree: Select): Option[Tree] = tree match {
+        case Select(t, n) if (n.toString == "length") => Some(t)
+        case _ => None
+      }
+
+    }
+
     object ExArrayFill {
       def unapply(tree: Apply): Option[(Tree, Tree, Tree)] = tree match {
         case Apply(

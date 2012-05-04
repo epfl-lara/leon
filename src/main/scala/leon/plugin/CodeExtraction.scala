@@ -805,6 +805,10 @@ trait CodeExtraction extends Extractors {
           val newValueRec = rec(newValue)
           ArrayUpdate(lhsRec, indexRec, newValueRec).setType(newValueRec.getType)
         }
+        case ExArrayLength(t) => {
+          val rt = rec(t)
+          ArrayLength(rt)
+        }
         case ExArrayFill(baseType, length, defaultValue) => {
           val underlying = scalaType2PureScala(unit, silent)(baseType.tpe)
           val lengthRec = rec(length)

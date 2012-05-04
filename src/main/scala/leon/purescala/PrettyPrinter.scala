@@ -249,6 +249,10 @@ object PrettyPrinter {
       nsb = ppNary(nsb, Seq(k), "(", ",", ")", lvl)
       nsb
     }
+    case ArrayLength(a) => {
+      pp(a, sb, lvl)
+      sb.append(".length")
+    }
     case fill@ArrayFill(size, v) => {
       sb.append("Array.fill(")
       pp(size, sb, lvl)
