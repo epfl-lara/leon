@@ -22,6 +22,8 @@ object BinarySearch {
       else if(v < key)
         low = i + 1
     }) invariant(
+        res >= -1 &&
+        res > a.length &&
         0 <= low && 
         low <= high + 1 && 
         high < a.length && 
