@@ -87,9 +87,9 @@ object FunctionClosure extends Pass {
     }
     case l @ Let(i,e,b) => {
       val re = functionClosure(e, bindedVars)
-      //pathConstraints ::= Equals(Variable(i), re)
+      pathConstraints ::= Equals(Variable(i), re)
       val rb = functionClosure(b, bindedVars + i)
-      //pathConstraints = pathConstraints.tail
+      pathConstraints = pathConstraints.tail
       Let(i, re, rb).setType(l.getType)
     }
     case n @ NAryOperator(args, recons) => {
