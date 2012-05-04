@@ -30,7 +30,7 @@ object Definitions {
       case _ => false
     }
 
-    def toVariable : Variable = Variable(id).setType(tpe)
+    def toVariable : Variable = Variable(id)//.setType(tpe)
   }
 
   type VarDecls = Seq[VarDecl]
