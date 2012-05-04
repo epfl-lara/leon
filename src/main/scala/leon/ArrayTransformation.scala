@@ -25,7 +25,7 @@ object ArrayTransformation extends Pass {
     case fill@ArrayFill(length, default) => {
       var rLength = transform(length)
       val rDefault = transform(default)
-      val rFill = ArrayFill(length, default).setType(fill.getType)
+      val rFill = ArrayMake(rDefault).setType(fill.getType)
       Tuple(Seq(rFill, length)).setType(TupleType(Seq(fill.getType, Int32Type)))
     }
     case sel@ArraySelect(a, i) => {

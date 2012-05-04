@@ -381,6 +381,7 @@ object Trees {
 
   /* Array operations */
   case class ArrayFill(length: Expr, defaultValue: Expr) extends Expr
+  case class ArrayMake(defaultValue: Expr) extends Expr
   case class ArraySelect(array: Expr, index: Expr) extends Expr
   //the difference between ArrayUpdate and ArrayUpdated is that the former has a side effect while the latter is the function variant
   //ArrayUpdate should be eliminated soon in the analysis while ArrayUpdated is keep all the way to the backend
@@ -423,6 +424,7 @@ object Trees {
       case Assignment(id, e) => Some((e, Assignment(id, _)))
       case TupleSelect(t, i) => Some((t, TupleSelect(_, i)))
       case ArrayLength(a) => Some((a, ArrayLength))
+      case ArrayMake(t) => Some((t, ArrayMake))
       case e@Epsilon(t) => Some((t, (expr: Expr) => Epsilon(expr).setType(e.getType).setPosInfo(e)))
       case _ => None
     }

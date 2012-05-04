@@ -260,6 +260,11 @@ object PrettyPrinter {
       pp(v, sb, lvl)
       sb.append(")#" + fill.getType)
     }
+    case am@ArrayMake(v) => {
+      sb.append("Array.make(")
+      pp(v, sb, lvl)
+      sb.append(")")    
+    }
     case sel@ArraySelect(ar, i) => {
       pp(ar, sb, lvl)
       sb.append("(")

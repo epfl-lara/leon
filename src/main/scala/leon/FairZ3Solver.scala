@@ -525,14 +525,11 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     reporter.info(" - Initial unrolling...")
     val (clauses, guards) = unrollingBank.initialUnrolling(expandedVC)
 
-    //for(clause <- clauses) {
-    //println("we're getting a new clause " + clause)
-    //   z3.assertCnstr(toZ3Formula(z3, clause).get)
-    //}
+    for(clause <- clauses) {
+      Logger.debug("we're getting a new clause " + clause, 4, "z3solver")
+    }
 
-    //println("The blocking guards: " + guards)
     val cc = toZ3Formula(z3, And(clauses)).get
-    // println("CC : " + cc)
     z3.assertCnstr(cc)
 
     // these are the optional sequence of assumption literals
@@ -573,6 +570,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         (a, m, Seq.empty[Z3AST])
       }
       reporter.info(" - Finished search with blocked literals")
+      Logger.debug("The blocking guards are: " + blockingSet.mkString(", "), 4, "z3solver")
 
       // if (Settings.useCores)
       //   reporter.info(" - Core is : " + core)
@@ -747,16 +745,13 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
             reporter.info(" - more unrollings")
             for((id,polarity) <- toReleaseAsPairs) {
               val (newClauses,newBlockers) = unrollingBank.unlock(id, !polarity)
-                //println("Unlocked : " + (id, !polarity))
                for(clause <- newClauses) {
-                 //println("we're getting a new clause " + clause)
-              //   z3.assertCnstr(toZ3Formula(z3, clause).get)
+                 Logger.debug("we're getting a new clause " + clause, 4, "z3solver")
                }
 
               for(ncl <- newClauses) {
                 z3.assertCnstr(toZ3Formula(z3, ncl).get)
               }
-              //z3.assertCnstr(toZ3Formula(z3, And(newClauses)).get)
               blockingSet = blockingSet ++ Set(newBlockers.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
             }
             reporter.info(" - finished unrolling")
@@ -1055,8 +1050,8 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           case MapType(ft, tt) => z3.mkDistinct(z3.mkSelect(rec(m), rec(k)), mapRangeNoneConstructors(tt)())
           case errorType => scala.sys.error("Unexpected type for map: " + (ex, errorType))
         }
-        case fill@ArrayFill(length, default) => {
-          val ArrayType(base) = fill.getType
+        case a@ArrayMake(default) => {
+          val ArrayType(base) = a.getType
           z3.mkConstArray(typeToSort(base), rec(default))
         }
         case ArraySelect(ar, index) => {
@@ -1122,6 +1117,19 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
             (if (elems.isEmpty) EmptySet(dt) else FiniteSet(elems.toSeq)).setType(expType.get)
           }
         }
+      case Some(ArrayType(dt)) => 
+        model.getArrayValue(t) match {
+          case None => throw new CantTranslateException(t)
+          case Some((map, elseValue)) =>
+            map.foldLeft(ArrayMake(rec(elseValue, Some(dt))): Expr) {
+              case (acc, (key, value)) => ArrayUpdated(acc, rec(key, Some(Int32Type)), rec(value, Some(dt)))
+            }
+        }
+      case Some(TupleType(tpes)) => {
+        val Z3AppAST(decl, args) = z3.getASTKind(t)
+        val rargs = args.zip(tpes).map(p => rec(p._1, Some(p._2)))
+        Tuple(rargs)
+      }
       case other => 
         z3.getASTKind(t) match {
           case Z3AppAST(decl, args) => {

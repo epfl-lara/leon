@@ -248,11 +248,9 @@ object Evaluator {
         case i @ IntLiteral(_) => i
         case b @ BooleanLiteral(_) => b
 
-        case f @ ArrayFill(length, default) => {
-          val rLength = rec(ctx, length)
+        case f @ ArrayMake(default) => {
           val rDefault = rec(ctx, default)
-          assert(rLength.isInstanceOf[IntLiteral])
-          ArrayFill(rLength, rDefault)
+          ArrayMake(rDefault)
         }
         case ArrayUpdated(a, i, v) => {
           val ra = rec(ctx, a)
@@ -266,7 +264,7 @@ object Evaluator {
           var ra = rec(ctx, a)
           var found = false
           var result: Option[Expr] = None
-          while(!ra.isInstanceOf[ArrayFill] && !found) {
+          while(!ra.isInstanceOf[ArrayMake] && !found) {
             val ArrayUpdated(ra2, IntLiteral(i), v) = ra
             if(index == i) {
               result = Some(v)
@@ -277,7 +275,7 @@ object Evaluator {
           }
           result match {
             case Some(r) => r
-            case None => ra.asInstanceOf[ArrayFill].defaultValue
+            case None => ra.asInstanceOf[ArrayMake].defaultValue
           }
         }
 
