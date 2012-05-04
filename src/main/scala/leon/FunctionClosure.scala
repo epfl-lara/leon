@@ -73,7 +73,7 @@ object FunctionClosure extends Pass {
         case precs => Some(And(freshPrecondition.getOrElse(BooleanLiteral(true)) +: precs))
       }
       val recBody = freshBody.map(b =>
-                      functionClosure(b, bindedVars ++ newVarDecls.map(_.id))
+                      functionClosure(b, bindedVars.map(id => freshIds(id)) ++ newVarDecls.map(_.id))
                     ).map(b => searchAndReplaceDFS(substFunInvocInDef)(b))
       val finalBody = recBody.map(b => freshLets.foldLeft(b){ case (bacc, (i, v)) => Let(i, v, bacc) })
 
