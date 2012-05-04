@@ -23,9 +23,10 @@ object BinarySearch {
         low = i + 1
     }) invariant(
         res >= -1 &&
-        res > a.length &&
+        res < a.length &&
         0 <= low && 
         low <= high + 1 && 
+        high >= -1 &&
         high < a.length && 
         (if (res >= 0) 
             a(res) == key else 
