@@ -9,16 +9,14 @@ object FunctionClosure extends Pass {
 
   val description = "Closing function with its scoping variables"
 
-  private var enclosingPreconditions: List[Expr] = Nil
-
   private var pathConstraints: List[Expr] = Nil
+  private var enclosingLets: List[(Identifier, Expr)] = Nil
   private var newFunDefs: Map[FunDef, FunDef] = Map()
 
   def apply(program: Program): Program = {
     newFunDefs = Map()
     val funDefs = program.definedFunctions
     funDefs.foreach(fd => {
-      enclosingPreconditions = fd.precondition.toList
       pathConstraints = fd.precondition.toList
       fd.body = fd.body.map(b => functionClosure(b, fd.args.map(_.id).toSet))
       fd.postcondition = fd.postcondition.map(b => functionClosure(b, fd.args.map(_.id).toSet))
@@ -28,58 +26,66 @@ object FunctionClosure extends Pass {
 
   private def functionClosure(expr: Expr, bindedVars: Set[Identifier]): Expr = expr match {
     case l @ LetDef(fd, rest) => {
+      //val bodyVars: Set[Identifier] = variablesOf(fd.body.getOrElse(BooleanLiteral(true))) ++ 
+      //                                variablesOf(precondition.getOrElse(BooleanLiteral(true))) ++ 
+      //                                variablesOf(postcondition.getOrElse(BooleanLiteral(true)))
 
-      val id = fd.id
-      val rt = fd.returnType
-      val varDecl = fd.args
-      val precondition = fd.precondition
-      val postcondition = fd.postcondition
+      //val capturedVars = bodyVars.intersect(bindedVars)// this should be the variable used that are in the scope
+      //val capturedLets = enclosingLets.filter(let => capturedVars.contains(let._1))
+      //val (constraints, allCapturedVars) = filterConstraints(capturedVars) //all relevant path constraints
+      //val capturedVarsWithConstraints = allCapturedVars.toSeq
 
-      val bodyVars: Set[Identifier] = variablesOf(fd.body.getOrElse(BooleanLiteral(true))) ++ 
-                                      variablesOf(precondition.getOrElse(BooleanLiteral(true))) ++ 
-                                      variablesOf(postcondition.getOrElse(BooleanLiteral(true)))
 
-      val capturedVars = bodyVars.intersect(bindedVars)// this should be the variable used that are in the scope
-      val (constraints, allCapturedVars) = filterConstraints(capturedVars) //all relevant path constraints
-      val capturedVarsWithConstraints = allCapturedVars.toSeq
+      /* let's just take everything for now */
+      val capturedVars = bindedVars.toSeq 
+      val capturedLets = enclosingLets
+      val capturedConstraints = pathConstraints
 
-      val freshVars: Map[Identifier, Identifier] = capturedVarsWithConstraints.map(v => (v, FreshIdentifier(v.name).setType(v.getType))).toMap
-      val freshVarsExpr: Map[Expr, Expr] = freshVars.map(p => (p._1.toVariable, p._2.toVariable))
-
-      val extraVarDecls = freshVars.map{ case (_, v2) => VarDecl(v2, v2.getType) }
-      val newVarDecls = varDecl ++ extraVarDecls
-      val newFunId = FreshIdentifier(id.name)
-      val newFunDef = new FunDef(newFunId, rt, newVarDecls).setPosInfo(fd)
+      val freshIds: Map[Identifier, Identifier] = capturedVars.map(v => (v, FreshIdentifier(v.name).setType(v.getType))).toMap
+      val freshVars: Map[Expr, Expr] = freshIds.map(p => (p._1.toVariable, p._2.toVariable))
+      
+      val extraVarDeclIds = capturedVars.toSet.diff(capturedLets.map(p => p._1).toSet).toSeq
+      val extraVarDecls = extraVarDeclIds.map(id =>  VarDecl(freshIds(id), id.getType))
+      val newVarDecls = fd.args ++ extraVarDecls
+      val newFunId = FreshIdentifier(fd.id.name)
+      val newFunDef = new FunDef(newFunId, fd.returnType, newVarDecls).setPosInfo(fd)
       newFunDef.fromLoop = fd.fromLoop
       newFunDef.parent = fd.parent
       newFunDef.addAnnotation(fd.annotations.toSeq:_*)
 
-      val freshPrecondition = precondition.map(expr => replace(freshVarsExpr, expr))
-      val freshPostcondition = postcondition.map(expr => replace(freshVarsExpr, expr))
-      val freshBody = fd.body.map(b => replace(freshVarsExpr, b))
-      val freshConstraints = constraints.map(expr => replace(freshVarsExpr, expr))
+      val freshPrecondition = fd.precondition.map(expr => replace(freshVars, expr))
+      val freshPostcondition = fd.postcondition.map(expr => replace(freshVars, expr))
+      val freshBody = fd.body.map(expr => replace(freshVars, expr))
+      val freshConstraints = capturedConstraints.map(expr => replace(freshVars, expr))
+      val freshLets = capturedLets.map{ case (i, v) => (freshIds(i), replace(freshVars, v)) }
 
       def substFunInvocInDef(expr: Expr): Option[Expr] = expr match {
-        case fi@FunctionInvocation(fd, args) if fd.id == id => Some(FunctionInvocation(newFunDef, args ++ extraVarDecls.map(_.id.toVariable)).setPosInfo(fi))
+        case fi@FunctionInvocation(fd2, args) if fd2.id == fd.id => Some(FunctionInvocation(newFunDef, args ++ extraVarDeclIds.map(_.toVariable)).setPosInfo(fi))
         case _ => None
       }
       val oldPathConstraints = pathConstraints
-      pathConstraints = (precondition.getOrElse(BooleanLiteral(true)) :: pathConstraints).map(e => replace(freshVarsExpr, e))
-      val recPrecondition = freshConstraints match { //Actually, we do not allow nested fundef in precondition
+      val oldEnclosingLets = enclosingLets
+      pathConstraints = (fd.precondition.getOrElse(BooleanLiteral(true)) :: pathConstraints).map(e => replace(freshVars, e))
+      enclosingLets = enclosingLets.map{ case (i, v) => (freshIds(i), replace(freshVars, v)) }
+
+      val recPrecondition = freshConstraints match {
         case List() => freshPrecondition
         case precs => Some(And(freshPrecondition.getOrElse(BooleanLiteral(true)) +: precs))
       }
       val recBody = freshBody.map(b =>
                       functionClosure(b, bindedVars ++ newVarDecls.map(_.id))
                     ).map(b => searchAndReplaceDFS(substFunInvocInDef)(b))
+      val finalBody = recBody.map(b => freshLets.foldLeft(b){ case (bacc, (i, v)) => Let(i, v, bacc) })
+
       pathConstraints = oldPathConstraints
+      enclosingLets = oldEnclosingLets
 
       newFunDef.precondition = recPrecondition
-      newFunDef.body = recBody
+      newFunDef.body = finalBody
       newFunDef.postcondition = freshPostcondition
 
       def substFunInvocInRest(expr: Expr): Option[Expr] = expr match {
-        case fi@FunctionInvocation(fd, args) if fd.id == id => Some(FunctionInvocation(newFunDef, args ++ capturedVarsWithConstraints.map(_.toVariable)).setPosInfo(fi))
+        case fi@FunctionInvocation(fd2, args) if fd2.id == fd.id => Some(FunctionInvocation(newFunDef, args ++ extraVarDeclIds.map(_.toVariable)).setPosInfo(fi))
         case _ => None
       }
       val recRest = searchAndReplaceDFS(substFunInvocInRest)(functionClosure(rest, bindedVars))
@@ -87,13 +93,22 @@ object FunctionClosure extends Pass {
     }
     case l @ Let(i,e,b) => {
       val re = functionClosure(e, bindedVars)
-      pathConstraints ::= Equals(Variable(i), re)
+      enclosingLets ::= (i, re)
       val rb = functionClosure(b, bindedVars + i)
-      pathConstraints = pathConstraints.tail
+      enclosingLets = enclosingLets.tail
       Let(i, re, rb).setType(l.getType)
     }
+    case i @ IfExpr(cond,then,elze) => {
+      val rCond = functionClosure(cond, bindedVars)
+      pathConstraints ::= rCond
+      val rThen = functionClosure(then, bindedVars)
+      pathConstraints = pathConstraints.tail
+      pathConstraints ::= Not(rCond)
+      val rElze = functionClosure(elze, bindedVars)
+      pathConstraints = pathConstraints.tail
+      IfExpr(rCond, rThen, rElze).setType(i.getType)
+    }
     case n @ NAryOperator(args, recons) => {
-      var change = false
       val rargs = args.map(a => functionClosure(a, bindedVars))
       recons(rargs).setType(n.getType)
     }
@@ -105,16 +120,6 @@ object FunctionClosure extends Pass {
     case u @ UnaryOperator(t,recons) => {
       val r = functionClosure(t, bindedVars)
       recons(r).setType(u.getType)
-    }
-    case i @ IfExpr(cond,then,elze) => {
-      val rCond = functionClosure(cond, bindedVars)
-      pathConstraints ::= rCond
-      val rThen = functionClosure(then, bindedVars)
-      pathConstraints = pathConstraints.tail
-      pathConstraints ::= Not(rCond)
-      val rElze = functionClosure(elze, bindedVars)
-      pathConstraints = pathConstraints.tail
-      IfExpr(rCond, rThen, rElze).setType(i.getType)
     }
     case m @ MatchExpr(scrut,cses) => { //TODO: will not work if there are actual nested function in cases
       //val rScrut = functionClosure(scrut, bindedVars)
