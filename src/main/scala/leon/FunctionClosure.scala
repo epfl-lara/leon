@@ -79,7 +79,7 @@ object FunctionClosure extends Pass {
       IfExpr(rCond, rThen, rElze).setType(i.getType)
     }
     case fi @ FunctionInvocation(fd, args) => fd2FreshFd.get(fd) match {
-      case None => fi
+      case None => FunctionInvocation(fd, args.map(arg => functionClosure(arg, bindedVars, id2freshId, fd2FreshFd))).setPosInfo(fi)
       case Some((nfd, extraArgs)) => 
         FunctionInvocation(nfd, args.map(arg => functionClosure(arg, bindedVars, id2freshId, fd2FreshFd)) ++ extraArgs).setPosInfo(fi)
     }
