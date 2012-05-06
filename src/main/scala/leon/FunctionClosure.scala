@@ -69,11 +69,15 @@ object FunctionClosure extends Pass {
       Let(i, re, rb).setType(l.getType)
     }
     case i @ IfExpr(cond,then,elze) => {
+      /*
+         when acumulating path constraints, take the condition without closing it first, so this
+         might not work well with nested fundef in if then else condition
+      */
       val rCond = functionClosure(cond, bindedVars, id2freshId, fd2FreshFd)
-      pathConstraints ::= rCond
+      pathConstraints ::= cond//rCond
       val rThen = functionClosure(then, bindedVars, id2freshId, fd2FreshFd)
       pathConstraints = pathConstraints.tail
-      pathConstraints ::= Not(rCond)
+      pathConstraints ::= Not(cond)//Not(rCond)
       val rElze = functionClosure(elze, bindedVars, id2freshId, fd2FreshFd)
       pathConstraints = pathConstraints.tail
       IfExpr(rCond, rThen, rElze).setType(i.getType)
