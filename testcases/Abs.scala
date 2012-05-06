@@ -3,22 +3,25 @@ import leon.Utils._
 object Abs {
 
 
-  def abs(tab: Map[Int, Int], size: Int): Map[Int, Int] = ({
-    require(size <= 5 && isArray(tab, size))
+  def abs(tab: Array[Int]): Array[Int] = ({
+    require(tab.length >= 0)
     var k = 0
-    var tabres = Map.empty[Int, Int]
-    (while(k < size) {
+    val tabres = Array.fill(tab.length)(0)
+    (while(k < tab.length) {
       if(tab(k) < 0)
-        tabres = tabres.updated(k, -tab(k))
+        tabres(k) = -tab(k)
       else
-        tabres = tabres.updated(k, tab(k))
+        tabres(k) = tab(k)
       k = k + 1
-    }) invariant(isArray(tabres, k) && k >= 0 && k <= size && isPositive(tabres, k))
+    }) invariant(
+        tabres.length == tab.length && 
+        k >= 0 && k <= tab.length && 
+        isPositive(tabres, k))
     tabres
-  }) ensuring(res => isArray(res, size) && isPositive(res, size))
+  }) ensuring(res => isPositive(res, res.length))
 
-  def isPositive(a: Map[Int, Int], size: Int): Boolean = {
-    require(size <= 10 && isArray(a, size))
+  def isPositive(a: Array[Int], size: Int): Boolean = {
+    require(a.length >= 0 && size <= a.length)
     def rec(i: Int): Boolean = {
       require(i >= 0)
       if(i >= size) 
@@ -31,21 +34,6 @@ object Abs {
       }
     }
     rec(0)
-  }
-
-  def isArray(a: Map[Int, Int], size: Int): Boolean = {
-
-    def rec(i: Int): Boolean = {
-      require(i >= 0)  
-      if(i >= size) true else {
-        if(a.isDefinedAt(i)) rec(i+1) else false
-      }
-    }
-
-    if(size < 0)
-      false
-    else
-      rec(0)
   }
 
 }
