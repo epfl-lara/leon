@@ -6,7 +6,7 @@ failedtests=""
 
 for f in testcases/regression/valid/*.scala; do
   echo -n "Running $f, expecting VALID, got: "
-  res=`./leon --timeout=5 --oneline "$f"`
+  res=`./leon --timeout=10 --oneline "$f"`
   echo $res | tr [a-z] [A-Z]
   if [ $res = valid ]; then
     nbsuccess=$((nbsuccess + 1))
@@ -17,7 +17,7 @@ done
 
 for f in testcases/regression/invalid/*.scala; do
   echo -n "Running $f, expecting INVALID, got: "
-  res=`./leon --timeout=5 --oneline "$f"`
+  res=`./leon --timeout=10 --oneline "$f"`
   echo $res | tr [a-z] [A-Z]
   if [ $res = invalid ]; then
     nbsuccess=$((nbsuccess + 1))
@@ -28,7 +28,7 @@ done
 
 for f in testcases/regression/error/*.scala; do
   echo -n "Running $f, expecting ERROR, got: "
-  res=`./leon --timeout=5 --oneline "$f"`
+  res=`./leon --timeout=10 --oneline "$f"`
   echo $res | tr [a-z] [A-Z]
   if [ $res = error ]; then
     nbsuccess=$((nbsuccess + 1))

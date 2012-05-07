@@ -12,6 +12,8 @@ object FunctionClosure extends Pass {
   private var pathConstraints: List[Expr] = Nil
   private var enclosingLets: List[(Identifier, Expr)] = Nil
   private var newFunDefs: Map[FunDef, FunDef] = Map()
+  private var originalsIds: Map[Identifier, Identifier] = Map()
+  private var topLevelFuns: Set[FunDef] = Set()
 
   def apply(program: Program): Program = {
     newFunDefs = Map()
@@ -20,7 +22,8 @@ object FunctionClosure extends Pass {
       pathConstraints = fd.precondition.toList
       fd.body = fd.body.map(b => functionClosure(b, fd.args.map(_.id).toSet, Map(), Map()))
     })
-    program
+    val Program(id, ObjectDef(objId, defs, invariants)) = program
+    Program(id, ObjectDef(objId, defs ++ topLevelFuns, invariants))
   }
 
   private def functionClosure(expr: Expr, bindedVars: Set[Identifier], id2freshId: Map[Identifier, Identifier], fd2FreshFd: Map[FunDef, (FunDef, Seq[Variable])]): Expr = expr match {
@@ -29,6 +32,7 @@ object FunctionClosure extends Pass {
       val capturedConstraints: Set[Expr] = pathConstraints.toSet
 
       val freshIds: Map[Identifier, Identifier] = capturedVars.map(id => (id, FreshIdentifier(id.name).setType(id.getType))).toMap
+      freshIds.foreach(p => originalsIds += (p._2 -> p._1))
       val freshVars: Map[Expr, Expr] = freshIds.map(p => (p._1.toVariable, p._2.toVariable))
       
       val extraVarDeclOldIds: Seq[Identifier] = capturedVars.toSeq
@@ -39,6 +43,7 @@ object FunctionClosure extends Pass {
       val newFunId = FreshIdentifier(fd.id.name)
 
       val newFunDef = new FunDef(newFunId, fd.returnType, newVarDecls).setPosInfo(fd)
+      topLevelFuns += newFunDef
       newFunDef.fromLoop = fd.fromLoop
       newFunDef.parent = fd.parent
       newFunDef.addAnnotation(fd.annotations.toSeq:_*)
@@ -57,11 +62,11 @@ object FunctionClosure extends Pass {
 
       val freshRest = functionClosure(rest, bindedVars, id2freshId, fd2FreshFd + (fd -> 
                         ((newFunDef, extraVarDeclOldIds.map(id => id2freshId.get(id).getOrElse(id).toVariable)))))
-      LetDef(newFunDef, freshRest).setType(l.getType)
+      freshRest.setType(l.getType)
     }
     case l @ Let(i,e,b) => {
       val re = functionClosure(e, bindedVars, id2freshId, fd2FreshFd)
-      enclosingLets ::= (i, re)
+      enclosingLets ::= (i, replace(originalsIds.map(p => (p._1.toVariable, p._2.toVariable)), re))
       //pathConstraints :: Equals(i.toVariable, re)
       val rb = functionClosure(b, bindedVars + i, id2freshId, fd2FreshFd)
       enclosingLets = enclosingLets.tail
@@ -106,8 +111,10 @@ object FunctionClosure extends Pass {
     }
     case v @ Variable(id) => id2freshId.get(id) match {
       case None => replace(
-                    id2freshId.map(p => (p._1.toVariable, p._2.toVariable)).toMap, 
-                    enclosingLets.foldLeft(v: Expr){ case (expr, (id, value)) => replace(Map(id.toVariable -> value), expr) })
+                     id2freshId.map(p => (p._1.toVariable, p._2.toVariable)),
+                     enclosingLets.foldLeft(v: Expr){ 
+                       case (expr, (id, value)) => replace(Map(id.toVariable -> value), expr) 
+                     })
       case Some(nid) => Variable(nid)
     }
     case t if t.isInstanceOf[Terminal] => t
