@@ -100,6 +100,9 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   private var mapSorts: Map[TypeTree, Z3Sort] = Map.empty
   private var arraySorts: Map[TypeTree, Z3Sort] = Map.empty
 
+  private var unitSort: Z3Sort = null
+  private var unitValue: Z3AST = null
+
   protected[leon] var funSorts: Map[TypeTree, Z3Sort] = Map.empty
   protected[leon] var funDomainConstructors: Map[TypeTree, Z3FuncDecl] = Map.empty
   protected[leon] var funDomainSelectors: Map[TypeTree, Seq[Z3FuncDecl]] = Map.empty
@@ -190,6 +193,27 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     boolSort = z3.mkBoolSort
     setSorts = Map.empty
     setCardFuns = Map.empty
+
+    //unitSort = z3.mkUninterpretedSort("unit")
+    //unitValue = z3.mkFreshConst("Unit", unitSort)
+    //val bound = z3.mkBound(0, unitSort)
+    //val eq = z3.mkEq(bound, unitValue)
+    //val decls = Seq((z3.mkFreshStringSymbol("u"), unitSort))
+    //val unitAxiom = z3.mkForAll(0, Seq(), decls, eq)
+    //println(unitAxiom)
+    //println(unitValue)
+    //z3.assertCnstr(unitAxiom)
+    val Seq((us, Seq(unitCons), Seq(unitTester), _)) = z3.mkADTSorts(
+      Seq(
+        (
+          "Unit",
+          Seq("Unit"),
+          Seq(Seq())
+        )
+      )
+    )
+    unitSort = us
+    unitValue = unitCons()
 
     val intSetSort = typeToSort(SetType(Int32Type))
     intSetMinFun = z3.mkFreshFuncDecl("setMin", Seq(intSetSort), intSort)
@@ -360,6 +384,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   def typeToSort(tt: TypeTree): Z3Sort = tt match {
     case Int32Type => intSort
     case BooleanType => boolSort
+    case UnitType => unitSort
     case AbstractClassType(cd) => adtSorts(cd)
     case CaseClassType(cd) => {
       if (cd.hasParent) {
@@ -967,6 +992,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         case Not(e) => z3.mkNot(rec(e))
         case IntLiteral(v) => z3.mkInt(v, intSort)
         case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()
+        case UnitLiteral => unitValue
         case Equals(l, r) => z3.mkEq(rec(l), rec(r))
         case Plus(l, r) => if(USEBV) z3.mkBVAdd(rec(l), rec(r)) else z3.mkAdd(rec(l), rec(r))
         case Minus(l, r) => if(USEBV) z3.mkBVSub(rec(l), rec(r)) else z3.mkSub(rec(l), rec(r))
@@ -1131,7 +1157,9 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         Tuple(rargs)
       }
       case other => 
-        z3.getASTKind(t) match {
+        if(t == unitValue) 
+          UnitLiteral
+        else z3.getASTKind(t) match {
           case Z3AppAST(decl, args) => {
             val argsSize = args.size
             if(argsSize == 0 && z3IdToExpr.isDefinedAt(t)) {

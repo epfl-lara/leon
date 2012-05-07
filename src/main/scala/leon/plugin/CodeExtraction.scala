@@ -935,6 +935,7 @@ trait CodeExtraction extends Extractors {
     def rec(tr: Type): purescala.TypeTrees.TypeTree = tr match {
       case tpe if tpe == IntClass.tpe => Int32Type
       case tpe if tpe == BooleanClass.tpe => BooleanType
+      case tpe if tpe == UnitClass.tpe => UnitType
       case TypeRef(_, sym, btt :: Nil) if isSetTraitSym(sym) => SetType(rec(btt))
       case TypeRef(_, sym, btt :: Nil) if isMultisetTraitSym(sym) => MultisetType(rec(btt))
       case TypeRef(_, sym, btt :: Nil) if isOptionClassSym(sym) => OptionType(rec(btt))

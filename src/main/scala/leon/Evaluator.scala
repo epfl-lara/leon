@@ -247,6 +247,7 @@ object Evaluator {
         case e @ EmptySet(_) => e
         case i @ IntLiteral(_) => i
         case b @ BooleanLiteral(_) => b
+        case u @ UnitLiteral => u
 
         case f @ ArrayMake(default) => {
           val rDefault = rec(ctx, default)
