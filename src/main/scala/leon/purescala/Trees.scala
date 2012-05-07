@@ -816,13 +816,18 @@ object Trees {
     searchAndReplaceDFS(applyToTree)(expr)
   }
 
-  //checking whether the expr is pure, that is do not contains any non-pure construct: assign, while and blocks
+  //checking whether the expr is pure, that is do not contains any non-pure construct: assign, while, blocks, array, ...
+  //this is expected to be true when entering the "backend" of Leon
   def isPure(expr: Expr): Boolean = {
     def convert(t: Expr) : Boolean = t match {
       case Block(_, _) => false
       case Assignment(_, _) => false
       case While(_, _) => false
       case LetVar(_, _, _) => false
+      case LetDef(_, _) => false
+      case ArrayUpdate(_, _, _) => false
+      case ArrayFill(_, _) => false
+      case Epsilon(_) => false
       case _ => true
     }
     def combine(b1: Boolean, b2: Boolean) = b1 && b2
@@ -831,6 +836,10 @@ object Trees {
       case Assignment(_, _) => false
       case While(_, _) => false
       case LetVar(_, _, _) => false
+      case LetDef(_, _) => false
+      case ArrayUpdate(_, _, _) => false
+      case ArrayFill(_, _) => false
+      case Epsilon(_) => false
       case _ => b
     }
     treeCatamorphism(convert, combine, compute, expr)

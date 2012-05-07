@@ -34,6 +34,7 @@ object Main {
     Logger.debug("Default action on program: " + program, 3, "main")
     val passManager = new PassManager(Seq(ArrayTransformation, EpsilonElimination, ImperativeCodeElimination, /*UnitElimination,*/ FunctionClosure, FunctionHoisting, Simplificator))
     val program2 = passManager.run(program)
+    assert(program2.isPure)
     val analysis = new Analysis(program2, reporter)
     analysis.analyse
   }

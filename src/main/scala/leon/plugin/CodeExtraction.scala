@@ -830,6 +830,10 @@ trait CodeExtraction extends Extractors {
         }
         case ExIfThenElse(t1,t2,t3) => {
           val r1 = rec(t1)
+          if(containsLetDef(r1)) {
+            unit.error(t1.pos, "Condition of if-then-else expression should not contain nested function definition")
+            throw ImpureCodeEncounteredException(t1)
+          }
           val r2 = rec(t2)
           val r3 = rec(t3)
           IfExpr(r1, r2, r3).setType(leastUpperBound(r2.getType, r3.getType))
