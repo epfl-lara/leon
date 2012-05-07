@@ -842,6 +842,18 @@ object Trees {
     }
     treeCatamorphism(convert, combine, compute, expr)
   }
+  def containsIfExpr(expr: Expr): Boolean = {
+    def convert(t : Expr) : Boolean = t match {
+      case (i: IfExpr) => true
+      case _ => false
+    }
+    def combine(c1 : Boolean, c2 : Boolean) : Boolean = c1 || c2
+    def compute(t : Expr, c : Boolean) = t match {
+      case (i: IfExpr) => true
+      case _ => c
+    }
+    treeCatamorphism(convert, combine, compute, expr)
+  }
 
   def variablesOf(expr: Expr) : Set[Identifier] = {
     def convert(t: Expr) : Set[Identifier] = t match {
