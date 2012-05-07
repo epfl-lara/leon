@@ -74,7 +74,7 @@ object ImperativeCodeElimination extends Pass {
               if(freshIds.isEmpty)
                 Let(resId, tupleId.toVariable, body)
               else
-                Let(resId, TupleSelect(tupleId.toVariable, 1),
+                Let(resId, TupleSelect(tupleId.toVariable, 1).setType(ite.getType),
                   freshIds.zipWithIndex.foldLeft(body)((b, id) => 
                     Let(id._1, 
                       TupleSelect(tupleId.toVariable, id._2 + 2).setType(id._1.getType), 

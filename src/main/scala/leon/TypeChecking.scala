@@ -22,6 +22,13 @@ object TypeChecking extends Pass {
   }
 
   private def typeCheck(expr: Expr): Unit = { //expr match {
+    //quick hack
+    //searchAndReplaceDFS(e => {
+    //  if(e.getType == Untyped) {
+    //    println("Expression is untyped: " + e)
+    //  }
+    //  None
+    //})(expr)
 
     //case l@Let(i, v, b) => {
     //  if(l.getType == Untyp

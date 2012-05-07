@@ -616,7 +616,7 @@ object Trees {
       case Some(newEx) => {
         somethingChanged = true
         if(newEx.getType == Untyped) {
-          Settings.reporter.warning("REPLACING WITH AN UNTYPED EXPRESSION !")
+          Settings.reporter.warning("REPLACING [" + ex + "] WITH AN UNTYPED EXPRESSION !")
           Settings.reporter.warning("Here's the new expression: " + newEx)
         }
         newEx
