@@ -106,6 +106,9 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   protected[leon] var tupleConstructors: Map[TypeTree, Z3FuncDecl] = Map.empty
   protected[leon] var tupleSelectors: Map[TypeTree, Seq[Z3FuncDecl]] = Map.empty
 
+  private var reverseTupleConstructors: Map[Z3FuncDecl, TupleType] = Map.empty
+  private var reverseTupleSelectors: Map[Z3FuncDecl, (TupleType, Int)] = Map.empty
+
   private var intSetMinFun: Z3FuncDecl = null
   private var intSetMaxFun: Z3FuncDecl = null
   private var setCardFuns: Map[TypeTree, Z3FuncDecl] = Map.empty
@@ -407,7 +410,9 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         val (tupleSort, consTuple, projsTuple) = z3.mkTupleSort(sortSymbol, tpesSorts: _*)
         tupleSorts += (tt -> tupleSort)
         tupleConstructors += (tt -> consTuple)
+        reverseTupleConstructors += (consTuple -> tt)
         tupleSelectors += (tt -> projsTuple)
+        projsTuple.zipWithIndex.foreach{ case (proj, i) => reverseTupleSelectors += (proj -> (tt, i)) }
         tupleSort
       }
     }
@@ -1121,6 +1126,10 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
               val ccd = reverseADTConstructors(decl)
               assert(argsSize == ccd.fields.size)
               CaseClass(ccd, (args zip ccd.fields).map(p => rec(p._1, Some(p._2.tpe))))
+            } else if(reverseTupleConstructors.isDefinedAt(decl)) {
+              val TupleType(subTypes) = reverseTupleConstructors(decl)
+              val rargs = args.zip(subTypes).map(p => rec(p._1, Some(p._2)))
+              Tuple(rargs)
             } else {
               import Z3DeclKind._
               val rargs = args.map(rec(_))
