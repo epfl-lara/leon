@@ -589,8 +589,13 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           validatingStopwatch.start
           val (trueModel, model) = if(Settings.verifyModel)
               validateAndDeleteModel(m, toCheckAgainstModels, varsInVC, evaluator)
-            else 
-              (true, modelToMap(m, varsInVC))
+            else {
+              val res = (true, modelToMap(m, varsInVC))
+              lazy val modelAsString = res._2.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
+              reporter.info("- Found a model:")
+              reporter.info(modelAsString)
+              res
+            }
           validatingStopwatch.stop
 
           if (trueModel) {
