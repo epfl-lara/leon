@@ -100,6 +100,7 @@ object TypeTrees {
     case UnitType => FiniteSize(1)
     case Int32Type => InfiniteSize
     case ListType(_) => InfiniteSize
+    case ArrayType(_) => InfiniteSize
     case TupleType(bases) => {
       val baseSizes = bases.map(domainSize(_))
       baseSizes.find(_ == InfiniteSize) match {

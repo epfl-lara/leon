@@ -77,7 +77,7 @@ object ArrayTransformation extends Pass {
       val length = TupleSelect(ar, 2).setType(Int32Type)
       IfExpr(
         And(GreaterEquals(ir, IntLiteral(0)), LessThan(ir, length)),
-        ArraySelect(TupleSelect(ar, 1), ir).setType(sel.getType).setPosInfo(sel),
+        ArraySelect(TupleSelect(ar, 1).setType(ArrayType(sel.getType)), ir).setType(sel.getType).setPosInfo(sel),
         Error("Index out of bound").setType(sel.getType).setPosInfo(sel)
       ).setType(sel.getType)
     }
