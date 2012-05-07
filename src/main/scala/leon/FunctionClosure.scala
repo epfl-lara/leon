@@ -66,7 +66,8 @@ object FunctionClosure extends Pass {
     }
     case l @ Let(i,e,b) => {
       val re = functionClosure(e, bindedVars, id2freshId, fd2FreshFd)
-      enclosingLets ::= (i, replace(originalsIds.map(p => (p._1.toVariable, p._2.toVariable)), re))
+      //we need the enclosing lets to always refer to the original ids, because it might be expand later in a highly nested function
+      enclosingLets ::= (i, replace(originalsIds.map(p => (p._1.toVariable, p._2.toVariable)), re)) 
       //pathConstraints :: Equals(i.toVariable, re)
       val rb = functionClosure(b, bindedVars + i, id2freshId, fd2FreshFd)
       enclosingLets = enclosingLets.tail
