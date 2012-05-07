@@ -90,16 +90,14 @@ object ArrayTransformation extends Pass {
       val array = TupleSelect(ar, 1).setType(ArrayType(v.getType))
       IfExpr(
         And(GreaterEquals(i, IntLiteral(0)), LessThan(i, length)),
-        Block(Seq(
-          Assignment(
-            id, 
-            Tuple(Seq(
-              ArrayUpdated(array, ir, vr).setType(array.getType).setPosInfo(up),
-              length)
-            ).setType(TupleType(Seq(array.getType, Int32Type))))),
-          IntLiteral(0)),
-        Error("Index out of bound").setType(Int32Type).setPosInfo(up)
-      ).setType(Int32Type)
+        Assignment(
+          id, 
+          Tuple(Seq(
+            ArrayUpdated(array, ir, vr).setType(array.getType).setPosInfo(up),
+            length)
+          ).setType(TupleType(Seq(array.getType, Int32Type)))),
+        Error("Index out of bound").setType(UnitType).setPosInfo(up)
+      ).setType(UnitType)
     }
     case ArrayLength(a) => {
       val ar = transform(a)
