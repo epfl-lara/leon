@@ -242,6 +242,14 @@ object Evaluator {
           case (e, f @ FiniteSet(els)) => BooleanLiteral(els.contains(e))
           case (l,r) => throw TypeErrorEx(TypeError(r, SetType(l.getType)))
         }
+        case SetCardinality(s) => {
+          val sr = rec(ctx, s)
+          sr match {
+            case EmptySet(_) => IntLiteral(0)
+            case FiniteSet(els) => IntLiteral(els.size)
+            case _ => throw TypeErrorEx(TypeError(sr, SetType(AnyType)))
+          }
+        }
 
         case f @ FiniteSet(els) => FiniteSet(els.map(rec(ctx,_)).distinct).setType(f.getType)
         case e @ EmptySet(_) => e
