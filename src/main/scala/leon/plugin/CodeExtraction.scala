@@ -804,7 +804,7 @@ trait CodeExtraction extends Extractors {
             }
           }
         }
-        // for now update only happens with array. later it might have to be distinguish in function of the lhs
+        // for now update only occurs on Array. later we might have to distinguished depending on the type of the lhs
         case update@ExUpdate(lhs, index, newValue) => { 
           val lhsRec = rec(lhs)
           lhsRec match {
