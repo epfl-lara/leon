@@ -1161,11 +1161,6 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
               case (acc, (key, value)) => ArrayUpdated(acc, rec(key, Some(Int32Type)), rec(value, Some(dt)))
             }
         }
-      case Some(TupleType(tpes)) => {
-        val Z3AppAST(decl, args) = z3.getASTKind(t)
-        val rargs = args.zip(tpes).map(p => rec(p._1, Some(p._2)))
-        Tuple(rargs)
-      }
       case other => 
         if(t == unitValue) 
           UnitLiteral
