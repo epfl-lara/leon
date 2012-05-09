@@ -1187,13 +1187,18 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       case Some(ArrayType(dt)) => {
         val Z3AppAST(decl, args) = z3.getASTKind(t)
         assert(args.size == 2)
-        val length = rec(args(1), Some(Int32Type))
+        val IntLiteral(length) = rec(args(1), Some(Int32Type))
         val array = model.getArrayValue(args(0)) match {
           case None => throw new CantTranslateException(t)
-          case Some((map, elseValue)) =>
-            map.foldLeft(ArrayFill(length, rec(elseValue, Some(dt))): Expr) {
-              case (acc, (key, value)) => ArrayUpdated(acc, rec(key, Some(Int32Type)), rec(value, Some(dt)))
-            }
+          case Some((map, elseValue)) => {
+            val exprs = map.foldLeft((1 to length).map(_ => rec(elseValue, Some(dt))).toSeq)((acc, p) => {
+              val IntLiteral(index) = rec(p._1, Some(Int32Type))
+              if(index >= 0 && index < length)
+                acc.updated(index, rec(p._2, Some(dt)))
+              else acc
+            })
+            FiniteArray(exprs)
+          }
         }
         array
       }

@@ -286,6 +286,9 @@ object PrettyPrinter {
       pp(v, sb, lvl)
       sb.append(")")
     }
+    case FiniteArray(exprs) => {
+      ppNary(sb, exprs, "Array(", ", ", ")", lvl)
+    }
 
     case Distinct(exprs) => {
       var nsb = sb

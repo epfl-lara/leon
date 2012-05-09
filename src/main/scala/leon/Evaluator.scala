@@ -85,7 +85,9 @@ object Evaluator {
           if(fd.hasPrecondition) {
             rec(frame, matchToIfThenElse(fd.precondition.get)) match {
               case BooleanLiteral(true) => ;
-              case BooleanLiteral(false) => throw RuntimeErrorEx("Precondition violation for " + fd.id.name + " reached in evaluation.")
+              case BooleanLiteral(false) => {
+                throw RuntimeErrorEx("Precondition violation for " + fd.id.name + " reached in evaluation.: " + fd.precondition.get)
+              }
               case other => throw TypeErrorEx(TypeError(other, BooleanType))
             }
           }
@@ -260,39 +262,28 @@ object Evaluator {
         case f @ ArrayFill(length, default) => {
           val rDefault = rec(ctx, default)
           val rLength = rec(ctx, length)
-          ArrayFill(rLength, rDefault)
+          val IntLiteral(iLength) = rLength
+          FiniteArray((1 to iLength).map(_ => rDefault).toSeq)
         }
         case ArrayLength(a) => {
           var ra = rec(ctx, a)
-          while(!ra.isInstanceOf[ArrayFill])
+          while(!ra.isInstanceOf[FiniteArray])
             ra = ra.asInstanceOf[ArrayUpdated].array
-          ra.asInstanceOf[ArrayFill].length
+          IntLiteral(ra.asInstanceOf[FiniteArray].exprs.size)
         }
         case ArrayUpdated(a, i, v) => {
           val ra = rec(ctx, a)
           val ri = rec(ctx, i)
-          assert(ri.isInstanceOf[IntLiteral])
           val rv = rec(ctx, v)
-          ArrayUpdated(ra, ri, rv)
+
+          val IntLiteral(index) = ri
+          val FiniteArray(exprs) = ra
+          FiniteArray(exprs.updated(index, rv))
         }
         case ArraySelect(a, i) => {
           val IntLiteral(index) = rec(ctx, i)
-          var ra = rec(ctx, a)
-          var found = false
-          var result: Option[Expr] = None
-          while(!ra.isInstanceOf[ArrayFill] && !found) {
-            val ArrayUpdated(ra2, IntLiteral(i), v) = ra
-            if(index == i) {
-              result = Some(v)
-              found = true
-            } else {
-              ra = ra2
-            }
-          }
-          result match {
-            case Some(r) => r
-            case None => ra.asInstanceOf[ArrayFill].defaultValue
-          }
+          val FiniteArray(exprs) = rec(ctx, a)
+          exprs(index)
         }
 
         case f @ FiniteMap(ss) => FiniteMap(ss.map(rec(ctx,_)).distinct.asInstanceOf[Seq[SingletonMap]]).setType(f.getType)

@@ -398,6 +398,7 @@ object Trees {
   case class ArrayLength(array: Expr) extends Expr with FixedType {
     val fixedType = Int32Type
   }
+  case class FiniteArray(exprs: Seq[Expr]) extends Expr
 
   /* List operations */
   case class NilList(baseType: TypeTree) extends Expr with Terminal
@@ -489,6 +490,7 @@ object Trees {
       case FiniteMultiset(args) => Some((args, FiniteMultiset))
       case ArrayUpdate(t1, t2, t3) => Some((Seq(t1,t2,t3), (as: Seq[Expr]) => ArrayUpdate(as(0), as(1), as(2))))
       case ArrayUpdated(t1, t2, t3) => Some((Seq(t1,t2,t3), (as: Seq[Expr]) => ArrayUpdated(as(0), as(1), as(2))))
+      case FiniteArray(args) => Some((args, FiniteArray))
       case Distinct(args) => Some((args, Distinct))
       case Block(args, rest) => Some((args :+ rest, exprs => Block(exprs.init, exprs.last)))
       case Tuple(args) => Some((args, Tuple))
