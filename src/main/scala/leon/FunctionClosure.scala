@@ -12,7 +12,6 @@ object FunctionClosure extends Pass {
   private var pathConstraints: List[Expr] = Nil
   private var enclosingLets: List[(Identifier, Expr)] = Nil
   private var newFunDefs: Map[FunDef, FunDef] = Map()
-  private var originalsIds: Map[Identifier, Identifier] = Map()
   private var topLevelFuns: Set[FunDef] = Set()
 
   def apply(program: Program): Program = {
@@ -32,7 +31,6 @@ object FunctionClosure extends Pass {
       val capturedConstraints: Set[Expr] = pathConstraints.toSet
 
       val freshIds: Map[Identifier, Identifier] = capturedVars.map(id => (id, FreshIdentifier(id.name).setType(id.getType))).toMap
-      freshIds.foreach(p => originalsIds += (p._2 -> p._1))
       val freshVars: Map[Expr, Expr] = freshIds.map(p => (p._1.toVariable, p._2.toVariable))
       
       val extraVarDeclOldIds: Seq[Identifier] = capturedVars.toSeq
@@ -48,17 +46,27 @@ object FunctionClosure extends Pass {
       newFunDef.parent = fd.parent
       newFunDef.addAnnotation(fd.annotations.toSeq:_*)
 
-      val newPrecondition = functionClosure(And((capturedConstraints ++ fd.precondition).toSeq), newBindedVars, freshIds, fd2FreshFd)
+      def introduceLets(expr: Expr, fd2FreshFd: Map[FunDef, (FunDef, Seq[Variable])]): Expr = {
+        val (newExpr, _) = enclosingLets.foldLeft((expr, Map[Identifier, Identifier]()))((acc, p) => {
+          val newId = FreshIdentifier(p._1.name).setType(p._1.getType)
+          val newMap = acc._2 + (p._1 -> newId)
+          val newBody = functionClosure(acc._1, newBindedVars, freshIds ++ newMap, fd2FreshFd)
+          (Let(newId, p._2, newBody), newMap)
+        })
+        functionClosure(newExpr, newBindedVars, freshIds, fd2FreshFd)
+      }
+
+
+      val newPrecondition = simplifyLets(introduceLets(And((capturedConstraints ++ fd.precondition).toSeq), fd2FreshFd))
       newFunDef.precondition = if(newPrecondition == BooleanLiteral(true)) None else Some(newPrecondition)
 
-      val freshPostcondition = fd.postcondition.map(expr => functionClosure(expr, newBindedVars, freshIds, fd2FreshFd))
+      val freshPostcondition = fd.postcondition.map(post => introduceLets(post, fd2FreshFd))
       newFunDef.postcondition = freshPostcondition
       
       pathConstraints = fd.precondition.getOrElse(BooleanLiteral(true)) :: pathConstraints
-      val freshBody = fd.body.map(expr => 
-        functionClosure(expr, newBindedVars, freshIds, fd2FreshFd + (fd -> ((newFunDef, extraVarDeclFreshIds.map(_.toVariable))))))
-      pathConstraints = pathConstraints.tail
+      val freshBody = fd.body.map(body => introduceLets(body, fd2FreshFd + (fd -> ((newFunDef, extraVarDeclFreshIds.map(_.toVariable))))))
       newFunDef.body = freshBody
+      pathConstraints = pathConstraints.tail
 
       val freshRest = functionClosure(rest, bindedVars, id2freshId, fd2FreshFd + (fd -> 
                         ((newFunDef, extraVarDeclOldIds.map(id => id2freshId.get(id).getOrElse(id).toVariable)))))
@@ -67,7 +75,7 @@ object FunctionClosure extends Pass {
     case l @ Let(i,e,b) => {
       val re = functionClosure(e, bindedVars, id2freshId, fd2FreshFd)
       //we need the enclosing lets to always refer to the original ids, because it might be expand later in a highly nested function
-      enclosingLets ::= (i, replace(originalsIds.map(p => (p._1.toVariable, p._2.toVariable)), re)) 
+      enclosingLets ::= (i, replace(id2freshId.map(p => (p._2.toVariable, p._1.toVariable)), re)) 
       //pathConstraints :: Equals(i.toVariable, re)
       val rb = functionClosure(b, bindedVars + i, id2freshId, fd2FreshFd)
       enclosingLets = enclosingLets.tail
@@ -111,13 +119,14 @@ object FunctionClosure extends Pass {
       m
     }
     case v @ Variable(id) => id2freshId.get(id) match {
-      case None => replace(
+      case None => v
+      case Some(nid) => Variable(nid)
+    }
+          /*replace(
                      id2freshId.map(p => (p._1.toVariable, p._2.toVariable)),
                      enclosingLets.foldLeft(v: Expr){ 
                        case (expr, (id, value)) => replace(Map(id.toVariable -> value), expr) 
-                     })
-      case Some(nid) => Variable(nid)
-    }
+                     })*/
     case t if t.isInstanceOf[Terminal] => t
     case unhandled => scala.sys.error("Non-terminal case should be handled in FunctionClosure: " + unhandled)
   }

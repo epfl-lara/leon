@@ -5,7 +5,7 @@ import leon.Utils._
 object BubbleSort {
 
   def sort(a: Array[Int]): Array[Int] = ({
-    require(a.length >= 5)
+    require(a.length >= 0)
     var i = a.length - 1
     var j = 0
     val sa = a
