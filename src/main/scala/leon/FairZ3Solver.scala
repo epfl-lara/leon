@@ -98,7 +98,6 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   private var boolSort: Z3Sort = null
   private var setSorts: Map[TypeTree, Z3Sort] = Map.empty
   private var mapSorts: Map[TypeTree, Z3Sort] = Map.empty
-  private var arraySorts: Map[TypeTree, Z3Sort] = Map.empty
 
   private var unitSort: Z3Sort = null
   private var unitValue: Z3AST = null
@@ -110,6 +109,11 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   protected[leon] var tupleSorts: Map[TypeTree, Z3Sort] = Map.empty
   protected[leon] var tupleConstructors: Map[TypeTree, Z3FuncDecl] = Map.empty
   protected[leon] var tupleSelectors: Map[TypeTree, Seq[Z3FuncDecl]] = Map.empty
+
+  private var arraySorts: Map[TypeTree, Z3Sort] = Map.empty
+  protected[leon] var arrayTupleCons: Map[TypeTree, Z3FuncDecl] = Map.empty
+  protected[leon] var arrayTupleSelectorArray: Map[TypeTree, Z3FuncDecl] = Map.empty
+  protected[leon] var arrayTupleSelectorLength: Map[TypeTree, Z3FuncDecl] = Map.empty
 
   private var reverseTupleConstructors: Map[Z3FuncDecl, TupleType] = Map.empty
   private var reverseTupleSelectors: Map[Z3FuncDecl, (TupleType, Int)] = Map.empty
@@ -419,11 +423,16 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     case at @ ArrayType(base) => arraySorts.get(at) match {
       case Some(s) => s
       case None => {
-        val fromSort = typeToSort(Int32Type)
+        val intSort = typeToSort(Int32Type)
         val toSort = typeToSort(base)
-        val as = z3.mkArraySort(fromSort, toSort)
-        arraySorts += (at -> as)
-        as
+        val as = z3.mkArraySort(intSort, toSort)
+        val tupleSortSymbol = z3.mkFreshStringSymbol("Array")
+        val (arrayTupleSort, arrayTupleCons_, Seq(arrayTupleSelectorArray_, arrayTupleSelectorLength_)) = z3.mkTupleSort(tupleSortSymbol, as, intSort)
+        arraySorts += (at -> arrayTupleSort)
+        arrayTupleCons += (at -> arrayTupleCons_)
+        arrayTupleSelectorArray += (at -> arrayTupleSelectorArray_)
+        arrayTupleSelectorLength += (at -> arrayTupleSelectorLength_)
+        arrayTupleSort
       }
     }
     case ft @ FunctionType(fts, tt) => funSorts.get(ft) match {
@@ -443,7 +452,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       case Some(s) => s
       case None => {
         val tpesSorts = tpes.map(typeToSort)
-        val sortSymbol = z3.mkFreshStringSymbol("TupleSort")
+        val sortSymbol = z3.mkFreshStringSymbol("Tuple")
         val (tupleSort, consTuple, projsTuple) = z3.mkTupleSort(sortSymbol, tpesSorts: _*)
         tupleSorts += (tt -> tupleSort)
         tupleConstructors += (tt -> consTuple)
@@ -1086,15 +1095,37 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           case MapType(ft, tt) => z3.mkDistinct(z3.mkSelect(rec(m), rec(k)), mapRangeNoneConstructors(tt)())
           case errorType => scala.sys.error("Unexpected type for map: " + (ex, errorType))
         }
-        case a@ArrayMake(default) => {
-          val ArrayType(base) = a.getType
-          z3.mkConstArray(typeToSort(base), rec(default))
+        case fill@ArrayFill(length, default) => {
+          val at@ArrayType(base) = fill.getType
+          typeToSort(at)
+          val cons = arrayTupleCons(at)
+          val ar = z3.mkConstArray(typeToSort(base), rec(default))
+          val res = cons(ar, rec(length))
+          res
         }
-        case ArraySelect(ar, index) => {
-          z3.mkSelect(rec(ar), rec(index))
+        case ArraySelect(a, index) => {
+          typeToSort(a.getType)
+          val ar = rec(a)
+          val getArray = arrayTupleSelectorArray(a.getType)
+          val res = z3.mkSelect(getArray(ar), rec(index))
+          res
         }
-        case ArrayUpdated(ar, index, newVal) => {
-          z3.mkStore(rec(ar), rec(index), rec(newVal))
+        case ArrayUpdated(a, index, newVal) => {
+          typeToSort(a.getType)
+          val ar = rec(a)
+          val getArray = arrayTupleSelectorArray(a.getType)
+          val getLength = arrayTupleSelectorLength(a.getType)
+          val cons = arrayTupleCons(a.getType)
+          val store = z3.mkStore(getArray(ar), rec(index), rec(newVal))
+          val res = cons(store, getLength(ar))
+          res
+        }
+        case ArrayLength(a) => {
+          typeToSort(a.getType)
+          val ar = rec(a)
+          val getLength = arrayTupleSelectorLength(a.getType)
+          val res = getLength(ar)
+          res
         }
         case AnonymousFunctionInvocation(id, args) => id.getType match {
           case ft @ FunctionType(fts, tt) => {
@@ -1153,14 +1184,19 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
             (if (elems.isEmpty) EmptySet(dt) else FiniteSet(elems.toSeq)).setType(expType.get)
           }
         }
-      case Some(ArrayType(dt)) => 
-        model.getArrayValue(t) match {
+      case Some(ArrayType(dt)) => {
+        val Z3AppAST(decl, args) = z3.getASTKind(t)
+        assert(args.size == 2)
+        val length = rec(args(1), Some(Int32Type))
+        val array = model.getArrayValue(args(0)) match {
           case None => throw new CantTranslateException(t)
           case Some((map, elseValue)) =>
-            map.foldLeft(ArrayMake(rec(elseValue, Some(dt))): Expr) {
+            map.foldLeft(ArrayFill(length, rec(elseValue, Some(dt))): Expr) {
               case (acc, (key, value)) => ArrayUpdated(acc, rec(key, Some(Int32Type)), rec(value, Some(dt)))
             }
         }
+        array
+      }
       case other => 
         if(t == unitValue) 
           UnitLiteral

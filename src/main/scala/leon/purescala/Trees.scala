@@ -826,7 +826,7 @@ object Trees {
       case LetVar(_, _, _) => false
       case LetDef(_, _) => false
       case ArrayUpdate(_, _, _) => false
-      case ArrayFill(_, _) => false
+      case ArrayMake(_) => false
       case Epsilon(_) => false
       case _ => true
     }
@@ -838,7 +838,7 @@ object Trees {
       case LetVar(_, _, _) => false
       case LetDef(_, _) => false
       case ArrayUpdate(_, _, _) => false
-      case ArrayFill(_, _) => false
+      case ArrayMake(_) => false
       case Epsilon(_) => false
       case _ => b
     }
