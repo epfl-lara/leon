@@ -1256,6 +1256,24 @@ object Trees {
     toRet
   }
 
+  def conditionForPattern(in: Expr, pattern: Pattern) : Expr = pattern match {
+    case WildcardPattern(_) => BooleanLiteral(true)
+    case InstanceOfPattern(_,_) => scala.sys.error("InstanceOfPattern not yet supported.")
+    case CaseClassPattern(_, ccd, subps) => {
+      assert(ccd.fields.size == subps.size)
+      val pairs = ccd.fields.map(_.id).toList zip subps.toList
+      val subTests = pairs.map(p => conditionForPattern(CaseClassSelector(ccd, in, p._1), p._2))
+      val together = And(subTests)
+      And(CaseClassInstanceOf(ccd, in), together)
+    }
+    case TuplePattern(_, subps) => {
+      val TupleType(tpes) = in.getType
+      assert(tpes.size == subps.size)
+      val subTests = subps.zipWithIndex.map{case (p, i) => conditionForPattern(TupleSelect(in, i+1).setType(tpes(i)), p)}
+      And(subTests)
+    }
+  }
+
   private def convertMatchToIfThenElse(expr: Expr) : Expr = {
     def mapForPattern(in: Expr, pattern: Pattern) : Map[Identifier,Expr] = pattern match {
       case WildcardPattern(None) => Map.empty
@@ -1282,24 +1300,6 @@ object Trees {
           case Some(id) => map + (id -> in)
           case None => map
         }
-      }
-    }
-
-    def conditionForPattern(in: Expr, pattern: Pattern) : Expr = pattern match {
-      case WildcardPattern(_) => BooleanLiteral(true)
-      case InstanceOfPattern(_,_) => scala.sys.error("InstanceOfPattern not yet supported.")
-      case CaseClassPattern(_, ccd, subps) => {
-        assert(ccd.fields.size == subps.size)
-        val pairs = ccd.fields.map(_.id).toList zip subps.toList
-        val subTests = pairs.map(p => conditionForPattern(CaseClassSelector(ccd, in, p._1), p._2))
-        val together = And(subTests)
-        And(CaseClassInstanceOf(ccd, in), together)
-      }
-      case TuplePattern(_, subps) => {
-        val TupleType(tpes) = in.getType
-        assert(tpes.size == subps.size)
-        val subTests = subps.zipWithIndex.map{case (p, i) => conditionForPattern(TupleSelect(in, i+1).setType(tpes(i)), p)}
-        And(subTests)
       }
     }
 
