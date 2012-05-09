@@ -18,7 +18,7 @@ object TypeTrees {
 
     def setType(tt: TypeTree): self.type = _type match {
       case None => _type = Some(tt); this
-      case Some(o) if o != tt => scala.sys.error("Resetting type information.")
+      case Some(o) if o != tt => scala.sys.error("Resetting type information! Type [" + o + "] is modified to [" + tt)
       case _ => this
     }
   }
@@ -47,7 +47,7 @@ object TypeTrees {
     case other => other
   }
 
-  def leastUpperBound(t1: TypeTree, t2: TypeTree): TypeTree = (t1,t2) match {
+  def leastUpperBound(t1: TypeTree, t2: TypeTree): Option[TypeTree] = (t1,t2) match {
     case (c1: ClassType, c2: ClassType) => {
       import scala.collection.immutable.Set
       var c: ClassTypeDef = c1.classDef
@@ -72,19 +72,19 @@ object TypeTrees {
       }
 
       if(found.isEmpty) {
-        scala.sys.error("Asking for lub of unrelated class types : " + t1 + " and " + t2)
+        None
       } else {
-        classDefToClassType(found.get)
+        Some(classDefToClassType(found.get))
       }
     }
 
-    case (o1, o2) if (o1 == o2) => o1
-    case (o1,BottomType) => o1
-    case (BottomType,o2) => o2
-    case (o1,AnyType) => AnyType
-    case (AnyType,o2) => AnyType
+    case (o1, o2) if (o1 == o2) => Some(o1)
+    case (o1,BottomType) => Some(o1)
+    case (BottomType,o2) => Some(o2)
+    case (o1,AnyType) => Some(AnyType)
+    case (AnyType,o2) => Some(AnyType)
 
-    case _ => scala.sys.error("Asking for lub of unrelated types: " + t1 + " and " + t2)
+    case _ => None
   }
 
   // returns the number of distinct values that inhabit a type

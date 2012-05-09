@@ -49,6 +49,11 @@ object ImperativeCodeElimination extends Pass {
         val (cRes, cScope, cFun) = toFunction(cond)
         val (tRes, tScope, tFun) = toFunction(tExpr)
         val (eRes, eScope, eFun) = toFunction(eExpr)
+        if(tRes.getType != eRes.getType) {
+          println("PROBLEM: tres: " + tRes + " has type: " + tRes.getType + " then was: " + tExpr)
+          println("PROBLEM: eres: " + eRes + " has type: " + eRes.getType + " else was: " + eExpr)
+          assert(false)
+        }
 
         val modifiedVars: Seq[Identifier] = (tFun.keys ++ eFun.keys).toSet.intersect(varInScope).toSeq
         val resId = FreshIdentifier("res").setType(ite.getType)

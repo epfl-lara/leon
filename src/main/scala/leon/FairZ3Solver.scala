@@ -1237,7 +1237,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
                   val r1 = rargs(1)
                   val r2 = rargs(2)
                   try {
-                    IfExpr(r0, r1, r2).setType(leastUpperBound(r1.getType, r2.getType))
+                    IfExpr(r0, r1, r2).setType(leastUpperBound(r1.getType, r2.getType).get)
                   } catch {
                     case e => {
                       println("I was asking for lub because of this.")

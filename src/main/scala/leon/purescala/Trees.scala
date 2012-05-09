@@ -76,7 +76,13 @@ object Trees {
   }
   case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr 
 
-  case class Tuple(exprs: Seq[Expr]) extends Expr
+  case class Tuple(exprs: Seq[Expr]) extends Expr {
+    val subTpes = exprs.map(_.getType)
+    if(!subTpes.exists(_ == Untyped)) {
+      setType(TupleType(subTpes))
+    }
+
+  }
   case class TupleSelect(tuple: Expr, index: Int) extends Expr
 
   object MatchExpr {

@@ -42,10 +42,9 @@ object ArrayTransformation extends Pass {
       val rv = transform(v)
       val Variable(id) = ra
       val length = ArrayLength(ra)
-      val array = TupleSelect(ra, 1).setType(ArrayType(v.getType))
       val res = IfExpr(
         And(LessEquals(IntLiteral(0), ri), LessThan(ri, length)),
-        Assignment(id, ArrayUpdated(ra, ri, rv).setType(a.getType).setPosInfo(up)),
+        Assignment(id, ArrayUpdated(ra, ri, rv).setType(ra.getType).setPosInfo(up)),
         Error("Index out of bound").setType(UnitType).setPosInfo(up)
       ).setType(UnitType)
       res
@@ -53,7 +52,7 @@ object ArrayTransformation extends Pass {
     case Let(i, v, b) => {
       v.getType match {
         case ArrayType(_) => {
-          val freshIdentifier = FreshIdentifier("t").setType(v.getType)
+          val freshIdentifier = FreshIdentifier("t").setType(i.getType)
           id2FreshId += (i -> freshIdentifier)
           LetVar(freshIdentifier, transform(v), transform(b))
         }
@@ -74,6 +73,7 @@ object ArrayTransformation extends Pass {
       val newWh = While(transform(c), transform(e))
       newWh.invariant = wh.invariant.map(i => transform(i))
       newWh.setPosInfo(wh)
+      newWh
     }
 
     case ite@IfExpr(c, t, e) => {

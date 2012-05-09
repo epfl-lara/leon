@@ -816,7 +816,7 @@ trait CodeExtraction extends Extractors {
           }
           val indexRec = rec(index)
           val newValueRec = rec(newValue)
-          ArrayUpdate(lhsRec, indexRec, newValueRec).setType(newValueRec.getType).setPosInfo(update.pos.line, update.pos.column)
+          ArrayUpdate(lhsRec, indexRec, newValueRec).setPosInfo(update.pos.line, update.pos.column)
         }
         case ExArrayLength(t) => {
           val rt = rec(t)
@@ -836,7 +836,13 @@ trait CodeExtraction extends Extractors {
           }
           val r2 = rec(t2)
           val r3 = rec(t3)
-          IfExpr(r1, r2, r3).setType(leastUpperBound(r2.getType, r3.getType))
+          val lub = leastUpperBound(r2.getType, r3.getType)
+          lub match {
+            case Some(lub) => IfExpr(r1, r2, r3).setType(lub)
+            case None =>
+              unit.error(tree.pos, "Both branches of ifthenelse have incompatible types")
+              throw ImpureCodeEncounteredException(t1)
+          }
         }
 
         case ExIsInstanceOf(tt, cc) => {
@@ -879,7 +885,7 @@ trait CodeExtraction extends Extractors {
         case pm @ ExPatternMatching(sel, cses) => {
           val rs = rec(sel)
           val rc = cses.map(rewriteCaseDef(_))
-          val rt: purescala.TypeTrees.TypeTree = rc.map(_.rhs.getType).reduceLeft(leastUpperBound(_,_))
+          val rt: purescala.TypeTrees.TypeTree = rc.map(_.rhs.getType).reduceLeft(leastUpperBound(_,_).get)
           MatchExpr(rs, rc).setType(rt).setPosInfo(pm.pos.line,pm.pos.column)
         }
 
