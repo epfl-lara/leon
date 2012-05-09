@@ -66,7 +66,7 @@ object PrettyPrinter {
   }
 
   private def pp(tree: Expr, sb: StringBuffer, lvl: Int): StringBuffer = tree match {
-    case Variable(id) => sb.append(id + "#" + id.getType)
+    case Variable(id) => sb.append(id)
     case DeBruijnIndex(idx) => sb.append("_" + idx)
     case Let(b,d,e) => {
         //pp(e, pp(d, sb.append("(let (" + b + " := "), lvl).append(") in "), lvl).append(")")
@@ -139,10 +139,10 @@ object PrettyPrinter {
       sb.append("\n")
     }
 
-    case t@Tuple(exprs) => ppNary(sb, exprs, "(", ", ", ")#" + t.getType, lvl)
+    case t@Tuple(exprs) => ppNary(sb, exprs, "(", ", ", ")", lvl)
     case s@TupleSelect(t, i) => {
       pp(t, sb, lvl)
-      sb.append("._" + i + "#" + s.getType)
+      sb.append("._" + i)
       sb
     }
 
