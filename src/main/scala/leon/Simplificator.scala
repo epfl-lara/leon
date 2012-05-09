@@ -12,9 +12,11 @@ object Simplificator extends Pass {
   def apply(pgm: Program): Program = {
 
     val allFuns = pgm.definedFunctions
-    allFuns.foreach(fd => fd.body.map(body => {
-      fd.body = Some(simplifyLets(body))
-    }))
+    allFuns.foreach(fd => {
+      fd.body = fd.body.map(simplifyLets)
+      fd.precondition = fd.precondition.map(simplifyLets)
+      fd.postcondition = fd.postcondition.map(simplifyLets)
+    })
     pgm
   }
 
