@@ -22,6 +22,7 @@ object BubbleSort {
             j >= 0 &&
             j <= i &&
             i < sa.length &&
+            sa.length >= 0 &&
             partitioned(sa, 0, i, i+1, sa.length-1) &&
             sorted(sa, i, sa.length-1) &&
             partitioned(sa, 0, j-1, j, j)
@@ -30,6 +31,7 @@ object BubbleSort {
     }) invariant(
           i >= 0 &&
           i < sa.length &&
+          sa.length >= 0 &&
           partitioned(sa, 0, i, i+1, sa.length-1) &&
           sorted(sa, i, sa.length-1)
        )
