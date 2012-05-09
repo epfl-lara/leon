@@ -840,7 +840,7 @@ trait CodeExtraction extends Extractors {
           lub match {
             case Some(lub) => IfExpr(r1, r2, r3).setType(lub)
             case None =>
-              unit.error(tree.pos, "Both branches of ifthenelse have incompatible types")
+              unit.error(nextExpr.pos, "Both branches of ifthenelse have incompatible types")
               throw ImpureCodeEncounteredException(t1)
           }
         }
