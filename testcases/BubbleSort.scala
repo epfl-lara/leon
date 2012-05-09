@@ -16,7 +16,7 @@ object BubbleSort {
           val tmp = sa(j)
           sa(j) = sa(j+1)
           sa(j+1) = tmp
-        } else 0
+        }
         j = j + 1
       }) invariant(
             j >= 0 &&
