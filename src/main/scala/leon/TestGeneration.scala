@@ -17,7 +17,11 @@ class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
   def analyse(program: Program) {
     reporter.info("Running test generation")
     val allFuns = program.definedFunctions
-    allFuns.foreach(generateTestCases)
+    allFuns.foreach(fd => {
+      val testcases = generateTestCases(fd)
+      reporter.info("Running " + fd.id + " with the following testcases:\n")
+      reporter.info(testcases.mkString("\n"))
+    })
   }
 
   private def generatePathConditions(funDef: FunDef): Seq[Expr] = if(!funDef.hasImplementation) Seq() else {
@@ -26,40 +30,30 @@ class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
     collectWithPathCondition(cleanBody)
   }
 
-  private def generateTestCases(funDef: FunDef): Seq[Expr] = {
+  private def generateTestCases(funDef: FunDef): Seq[Map[Identifier, Expr]] = {
     val allPaths = generatePathConditions(funDef)
 
-    allPaths.map(pathCond => {
+    allPaths.flatMap(pathCond => {
       reporter.info("Now considering path condition: " + pathCond)
 
-      // try all solvers until one returns a meaningful answer
-      var testcase: Option[Expr] = None
-      val solverExtensions: Seq[Solver] = loadedSolverExtensions
-      solverExtensions.find(se => {
-        reporter.info("Trying with solver: " + se.shortDescription)
-        val t1 = System.nanoTime
-        se.init()
-        val solverResult = se.solve(Not(pathCond))
-        val t2 = System.nanoTime
-        val dt = ((t2 - t1) / 1000000) / 1000.0
+      var testcase: Option[Map[Identifier, Expr]] = None
+      val z3Solver: FairZ3Solver = loadedSolverExtensions.find(se => se.isInstanceOf[FairZ3Solver]).get.asInstanceOf[FairZ3Solver]
+        
+      z3Solver.init()
+      z3Solver.restartZ3
+      val (solverResult, model) = z3Solver.decideWithModel(pathCond, false)
 
-        solverResult match {
-          case None => false
-          case Some(true) => {
-            reporter.info("==== VALID ====")
-            reporter.info("This means the path is unreachable")
-            testcase = None
-            true
-          }
-          case Some(false) => {
-            reporter.info("==== INVALID ====")
-            reporter.info("The model should be used as the testcase")
-            testcase = None
-            true
-          }
+      solverResult match {
+        case None => Seq()
+        case Some(true) => {
+          reporter.info("The path is unreachable")
+          Seq()
         }
-      })
-      null
+        case Some(false) => {
+          reporter.info("The model should be used as the testcase")
+          Seq(model)
+        }
+      }
     })
   }
 
