@@ -49,14 +49,11 @@ object ImperativeCodeElimination extends Pass {
         val (cRes, cScope, cFun) = toFunction(cond)
         val (tRes, tScope, tFun) = toFunction(tExpr)
         val (eRes, eScope, eFun) = toFunction(eExpr)
-        if(tRes.getType != eRes.getType) {
-          println("PROBLEM: tres: " + tRes + " has type: " + tRes.getType + " then was: " + tExpr)
-          println("PROBLEM: eres: " + eRes + " has type: " + eRes.getType + " else was: " + eExpr)
-          assert(false)
-        }
+
+        val iteRType = leastUpperBound(tRes.getType, eRes.getType).get
 
         val modifiedVars: Seq[Identifier] = (tFun.keys ++ eFun.keys).toSet.intersect(varInScope).toSeq
-        val resId = FreshIdentifier("res").setType(ite.getType)
+        val resId = FreshIdentifier("res").setType(iteRType)
         val freshIds = modifiedVars.map(id => FreshIdentifier(id.name).setType(id.getType))
         val iteType = if(modifiedVars.isEmpty) resId.getType else TupleType(resId.getType +: freshIds.map(_.getType))
 
@@ -79,7 +76,7 @@ object ImperativeCodeElimination extends Pass {
               if(freshIds.isEmpty)
                 Let(resId, tupleId.toVariable, body)
               else
-                Let(resId, TupleSelect(tupleId.toVariable, 1).setType(ite.getType),
+                Let(resId, TupleSelect(tupleId.toVariable, 1).setType(iteRType),
                   freshIds.zipWithIndex.foldLeft(body)((b, id) => 
                     Let(id._1, 
                       TupleSelect(tupleId.toVariable, id._2 + 2).setType(id._1.getType), 
