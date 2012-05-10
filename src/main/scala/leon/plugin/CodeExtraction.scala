@@ -339,6 +339,10 @@ trait CodeExtraction extends Extractors {
     }
   }
 
+
+  private var currentFunDef: FunDef = null
+  private var owners: Map[Expr, Option[FunDef]] = Map()
+
   /** Forces conversion from scalac AST to purescala AST, throws an Exception
    * if impossible. If not in 'silent mode', non-pure AST nodes are reported as
    * errors. */
@@ -415,6 +419,8 @@ trait CodeExtraction extends Extractors {
       var reqCont: Option[Expr] = None
       var ensCont: Option[Expr] = None
       
+      currentFunDef = funDef
+
       realBody match {
         case ExEnsuredExpression(body2, resSym, contract) => {
           varSubsts(resSym) = (() => ResultVariable().setType(funDef.returnType))
@@ -444,12 +450,18 @@ trait CodeExtraction extends Extractors {
         case e: ImpureCodeEncounteredException => None
       }
 
-      reqCont.map(e => 
+      bodyAttempt.foreach(e => 
+        if(e.getType.isInstanceOf[ArrayType] && owners.get(e).getOrElse(null) != funDef) {
+          unit.error(realBody.pos, "Function cannot return an array that is not locally defined")
+          throw ImpureCodeEncounteredException(realBody)
+        })
+
+      reqCont.foreach(e => 
         if(containsLetDef(e)) {
           unit.error(realBody.pos, "Function precondtion should not contain nested function definition")
           throw ImpureCodeEncounteredException(realBody)
         })
-      ensCont.map(e => 
+      ensCont.foreach(e => 
         if(containsLetDef(e)) {
           unit.error(realBody.pos, "Function postcondition should not contain nested function definition")
           throw ImpureCodeEncounteredException(realBody)
