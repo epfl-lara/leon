@@ -632,7 +632,7 @@ trait Extractors {
       }
     }
 
-    object ExMapUpdated {
+    object ExUpdated {
       def unapply(tree: Apply): Option[(Tree,Tree,Tree)] = tree match {
         case Apply(TypeApply(Select(lhs, n), typeTreeList), List(from, to)) if (n.toString == "updated") => 
           Some((lhs, from, to))

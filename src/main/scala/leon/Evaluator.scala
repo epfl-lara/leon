@@ -285,6 +285,9 @@ object Evaluator {
           val FiniteArray(exprs) = rec(ctx, a)
           exprs(index)
         }
+        case FiniteArray(exprs) => {
+          FiniteArray(exprs.map(e => rec(ctx, e)))
+        }
 
         case f @ FiniteMap(ss) => FiniteMap(ss.map(rec(ctx,_)).distinct.asInstanceOf[Seq[SingletonMap]]).setType(f.getType)
         case e @ EmptyMap(_,_) => e

@@ -752,14 +752,18 @@ trait CodeExtraction extends Extractors {
             }
           }
         }
-        case ExMapUpdated(m,f,t) => {
+        case up@ExUpdated(m,f,t) => {
           val rm = rec(m)
           val rf = rec(f)
           val rt = rec(t)
-          val newSingleton = SingletonMap(rf, rt).setType(rm.getType)
           rm.getType match {
-            case MapType(ft, tt) =>
+            case MapType(ft, tt) => {
+              val newSingleton = SingletonMap(rf, rt).setType(rm.getType)
               MapUnion(rm, FiniteMap(Seq(newSingleton)).setType(rm.getType)).setType(rm.getType)
+            }
+            case ArrayType(bt) => {
+              ArrayUpdated(rm, rf, rt).setType(rm.getType).setPosInfo(up.pos.line, up.pos.column)
+            }
             case _ => {
               if (!silent) unit.error(tree.pos, "updated can only be applied to maps.")
               throw ImpureCodeEncounteredException(tree)
