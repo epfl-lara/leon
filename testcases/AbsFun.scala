@@ -1,3 +1,5 @@
+import leon.Utils._
+
 object AbsFun {
 
 
@@ -48,4 +50,16 @@ object AbsFun {
       res._2 >= 0 &&
       res._2 <= tab.length &&
       isPositive(res._1, res._2))
+
+  def property(t: Array[Int], k: Int): Boolean = {
+    require(isPositive(t, k) && t.length >= 0 && k >= 0)
+    if(k < t.length) {
+      val nt = if(t(k) < 0) {
+        t.updated(k, -t(k))
+      } else {
+        t.updated(k, t(k))
+      }
+      isPositive(nt, k+1)
+    } else true
+  } holds
 }
