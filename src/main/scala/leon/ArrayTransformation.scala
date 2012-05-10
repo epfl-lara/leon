@@ -49,6 +49,18 @@ object ArrayTransformation extends Pass {
       ).setType(UnitType)
       res
     }
+    case up@ArrayUpdated(a, i, v) => {
+      val ra = transform(a)
+      val ri = transform(i)
+      val rv = transform(v)
+      val length = ArrayLength(ra)
+      val res = IfExpr(
+        And(LessEquals(IntLiteral(0), ri), LessThan(ri, length)),
+        ArrayUpdated(ra, ri, rv).setType(ra.getType).setPosInfo(up),
+        Error("Index out of bound").setType(ra.getType).setPosInfo(up)
+      ).setType(ra.getType)
+      res
+    }
     case Let(i, v, b) => {
       v.getType match {
         case ArrayType(_) => {

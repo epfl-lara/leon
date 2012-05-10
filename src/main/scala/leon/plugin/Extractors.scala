@@ -636,6 +636,9 @@ trait Extractors {
       def unapply(tree: Apply): Option[(Tree,Tree,Tree)] = tree match {
         case Apply(TypeApply(Select(lhs, n), typeTreeList), List(from, to)) if (n.toString == "updated") => 
           Some((lhs, from, to))
+        case Apply(
+              Apply(TypeApply(Select(Apply(_, Seq(lhs)), n), _), Seq(index, value)),
+              List(Apply(_, _))) if (n.toString == "updated") => Some((lhs, index, value))
         case _ => None
       }
     }
@@ -667,8 +670,8 @@ trait Extractors {
         case Select(t, n) if (n.toString == "length") => Some(t)
         case _ => None
       }
-
     }
+
 
     object ExArrayFill {
       def unapply(tree: Apply): Option[(Tree, Tree, Tree)] = tree match {
