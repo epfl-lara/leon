@@ -118,17 +118,19 @@ object FunctionClosure extends Pass {
       val scrutRec = functionClosure(scrut, bindedVars, id2freshId, fd2FreshFd)
       val csesRec = cses.map{
         case SimpleCase(pat, rhs) => {
+          val binders = pat.binders
           val cond = conditionForPattern(scrut, pat)
           pathConstraints ::= cond
-          val rRhs = functionClosure(rhs, bindedVars, id2freshId, fd2FreshFd)
+          val rRhs = functionClosure(rhs, bindedVars ++ binders, id2freshId, fd2FreshFd)
           pathConstraints = pathConstraints.tail
           SimpleCase(pat, rRhs)
         }
         case GuardedCase(pat, guard, rhs) => {
+          val binders = pat.binders
           val cond = conditionForPattern(scrut, pat)
           pathConstraints ::= cond
-          val rRhs = functionClosure(rhs, bindedVars, id2freshId, fd2FreshFd)
-          val rGuard = functionClosure(guard, bindedVars, id2freshId, fd2FreshFd)
+          val rRhs = functionClosure(rhs, bindedVars ++ binders, id2freshId, fd2FreshFd)
+          val rGuard = functionClosure(guard, bindedVars ++ binders, id2freshId, fd2FreshFd)
           pathConstraints = pathConstraints.tail
           GuardedCase(pat, rGuard, rRhs)
         }
@@ -140,13 +142,15 @@ object FunctionClosure extends Pass {
       case None => v
       case Some(nid) => Variable(nid)
     }
-          /*replace(
-                     id2freshId.map(p => (p._1.toVariable, p._2.toVariable)),
-                     enclosingLets.foldLeft(v: Expr){ 
-                       case (expr, (id, value)) => replace(Map(id.toVariable -> value), expr) 
-                     })*/
     case t if t.isInstanceOf[Terminal] => t
     case unhandled => scala.sys.error("Non-terminal case should be handled in FunctionClosure: " + unhandled)
+  }
+
+  def freshIdInPat(pat: Pattern, id2freshId: Map[Identifier, Identifier]): Pattern = pat match {
+    case InstanceOfPattern(binder, classTypeDef) => InstanceOfPattern(binder.map(id2freshId(_)), classTypeDef)
+    case WildcardPattern(binder) => WildcardPattern(binder.map(id2freshId(_)))
+    case CaseClassPattern(binder, caseClassDef, subPatterns) => CaseClassPattern(binder.map(id2freshId(_)), caseClassDef, subPatterns.map(freshIdInPat(_, id2freshId)))
+    case TuplePattern(binder, subPatterns) => TuplePattern(binder.map(id2freshId(_)), subPatterns.map(freshIdInPat(_, id2freshId)))
   }
 
   //filter the list of constraints, only keeping those relevant to the set of variables
