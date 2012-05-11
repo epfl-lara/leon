@@ -249,6 +249,7 @@ trait CodeExtraction extends Extractors {
       val newParams = params.map(p => {
         val ptpe = st2ps(p.tpt.tpe)
         val newID = FreshIdentifier(p.name.toString).setType(ptpe)
+        owners += (Variable(newID) -> None)
         varSubsts(p.symbol) = (() => Variable(newID))
         VarDecl(newID, ptpe)
       })
@@ -259,6 +260,8 @@ trait CodeExtraction extends Extractors {
       var realBody = body
       var reqCont: Option[Expr] = None
       var ensCont: Option[Expr] = None
+      
+      currentFunDef = funDef
 
       realBody match {
         case ExEnsuredExpression(body2, resSym, contract) => {
@@ -289,15 +292,23 @@ trait CodeExtraction extends Extractors {
         case e: ImpureCodeEncounteredException => None
       }
 
+      bodyAttempt.foreach(e => 
+        if(e.getType.isInstanceOf[ArrayType]) {
+          //println(owners)
+          //println(getOwner(e))
+          getOwner(e) match {
+            case Some(Some(fd)) if fd == funDef =>
+            case None =>
+            case _ => unit.error(realBody.pos, "Function cannot return an array that is not locally defined")
+          }
+        })
       reqCont.map(e => 
         if(containsLetDef(e)) {
           unit.error(realBody.pos, "Function precondtion should not contain nested function definition")
-          throw ImpureCodeEncounteredException(realBody)
         })
       ensCont.map(e => 
         if(containsLetDef(e)) {
           unit.error(realBody.pos, "Function postcondition should not contain nested function definition")
-          throw ImpureCodeEncounteredException(realBody)
         })
       funDef.body = bodyAttempt
       funDef.precondition = reqCont
@@ -341,7 +352,10 @@ trait CodeExtraction extends Extractors {
 
 
   private var currentFunDef: FunDef = null
-  private var owners: Map[Expr, Option[FunDef]] = Map()
+
+  //This is a bit missleading, if an expr is not mapped then it has no owner, if it is mapped to None it means
+  //that it can have any owner
+  private var owners: Map[Expr, Option[FunDef]] = Map() 
 
   /** Forces conversion from scalac AST to purescala AST, throws an Exception
    * if impossible. If not in 'silent mode', non-pure AST nodes are reported as
@@ -408,6 +422,7 @@ trait CodeExtraction extends Extractors {
       val newParams = params.map(p => {
         val ptpe =  scalaType2PureScala(unit, silent) (p.tpt.tpe)
         val newID = FreshIdentifier(p.name.toString).setType(ptpe)
+        owners += (Variable(newID) -> None)
         varSubsts(p.symbol) = (() => Variable(newID))
         VarDecl(newID, ptpe)
       })
@@ -451,20 +466,21 @@ trait CodeExtraction extends Extractors {
       }
 
       bodyAttempt.foreach(e => 
-        if(e.getType.isInstanceOf[ArrayType] && owners.get(e).getOrElse(null) != funDef) {
-          unit.error(realBody.pos, "Function cannot return an array that is not locally defined")
-          throw ImpureCodeEncounteredException(realBody)
+        if(e.getType.isInstanceOf[ArrayType]) {
+          getOwner(e) match {
+            case Some(Some(fd)) if fd == funDef =>
+            case None =>
+            case _ => unit.error(realBody.pos, "Function cannot return an array that is not locally defined")
+          }
         })
 
       reqCont.foreach(e => 
         if(containsLetDef(e)) {
           unit.error(realBody.pos, "Function precondtion should not contain nested function definition")
-          throw ImpureCodeEncounteredException(realBody)
         })
       ensCont.foreach(e => 
         if(containsLetDef(e)) {
           unit.error(realBody.pos, "Function postcondition should not contain nested function definition")
-          throw ImpureCodeEncounteredException(realBody)
         })
       funDef.body = bodyAttempt
       funDef.precondition = reqCont
@@ -500,6 +516,16 @@ trait CodeExtraction extends Extractors {
           val binderTpe = scalaType2PureScala(unit, silent)(tpt.tpe)
           val newID = FreshIdentifier(vs.name.toString).setType(binderTpe)
           val valTree = rec(bdy)
+          handleRest = false
+          if(valTree.getType.isInstanceOf[ArrayType]) {
+            getOwner(valTree) match {
+              case None =>
+                owners += (Variable(newID) -> Some(currentFunDef))
+              case Some(_) =>
+                unit.error(nextExpr.pos, "Cannot alias array")
+                throw ImpureCodeEncounteredException(nextExpr)
+            }
+          }
           val restTree = rest match {
             case Some(rst) => {
               varSubsts(vs) = (() => Variable(newID))
@@ -509,7 +535,6 @@ trait CodeExtraction extends Extractors {
             }
             case None => UnitLiteral
           }
-          handleRest = false
           val res = Let(newID, valTree, restTree)
           res
         }
@@ -517,9 +542,11 @@ trait CodeExtraction extends Extractors {
           val funDef = extractFunSig(n, p, t).setPosInfo(dd.pos.line, dd.pos.column)
           defsToDefs += (dd.symbol -> funDef)
           val oldMutableVarSubst = mutableVarSubsts.toMap //take an immutable snapshot of the map
+          val oldCurrentFunDef = currentFunDef
           mutableVarSubsts.clear //reseting the visible mutable vars, we do not handle mutable variable closure in nested functions
           val funDefWithBody = extractFunDef(funDef, b)
           mutableVarSubsts ++= oldMutableVarSubst
+          currentFunDef = oldCurrentFunDef
           val restTree = rest match {
             case Some(rst) => rec(rst)
             case None => UnitLiteral
@@ -530,15 +557,25 @@ trait CodeExtraction extends Extractors {
         }
         case ExVarDef(vs, tpt, bdy) => {
           val binderTpe = scalaType2PureScala(unit, silent)(tpt.tpe)
-          binderTpe match {
-            case ArrayType(_) => 
-              unit.error(tree.pos, "Cannot declare array variables, only val are alllowed")
-              throw ImpureCodeEncounteredException(tree)
-            case _ =>
-          }
+          //binderTpe match {
+          //  case ArrayType(_) => 
+          //    unit.error(tree.pos, "Cannot declare array variables, only val are alllowed")
+          //    throw ImpureCodeEncounteredException(tree)
+          //  case _ =>
+          //}
           val newID = FreshIdentifier(vs.name.toString).setType(binderTpe)
           val valTree = rec(bdy)
           mutableVarSubsts += (vs -> (() => Variable(newID)))
+          handleRest = false
+          if(valTree.getType.isInstanceOf[ArrayType]) {
+            getOwner(valTree) match {
+              case None =>
+                owners += (Variable(newID) -> Some(currentFunDef))
+              case Some(_) =>
+                unit.error(nextExpr.pos, "Cannot alias array")
+                throw ImpureCodeEncounteredException(nextExpr)
+            }
+          }
           val restTree = rest match {
             case Some(rst) => {
               varSubsts(vs) = (() => Variable(newID))
@@ -548,7 +585,6 @@ trait CodeExtraction extends Extractors {
             }
             case None => UnitLiteral
           }
-          handleRest = false
           val res = LetVar(newID, valTree, restTree)
           res
         }
@@ -557,6 +593,14 @@ trait CodeExtraction extends Extractors {
           case Some(fun) => {
             val Variable(id) = fun()
             val rhsTree = rec(rhs)
+            if(rhsTree.getType.isInstanceOf[ArrayType]) {
+              getOwner(rhsTree) match {
+                case None =>
+                case Some(_) =>
+                  unit.error(nextExpr.pos, "Cannot alias array")
+                  throw ImpureCodeEncounteredException(nextExpr)
+              }
+            }
             Assignment(id, rhsTree)
           }
           case None => {
@@ -830,6 +874,16 @@ trait CodeExtraction extends Extractors {
               throw ImpureCodeEncounteredException(tree)
             }
           }
+          getOwner(lhsRec) match {
+            case Some(Some(fd)) if fd != currentFunDef => 
+              unit.error(nextExpr.pos, "cannot update an array that is not defined locally")
+              throw ImpureCodeEncounteredException(nextExpr)
+            case Some(None) =>
+              unit.error(nextExpr.pos, "cannot update an array that is not defined locally")
+              throw ImpureCodeEncounteredException(nextExpr)
+            case Some(_) =>
+            case None => sys.error("This array: " + lhsRec + " should have had an owner")
+          }
           val indexRec = rec(index)
           val newValueRec = rec(newValue)
           ArrayUpdate(lhsRec, indexRec, newValueRec).setPosInfo(update.pos.line, update.pos.column)
@@ -837,6 +891,10 @@ trait CodeExtraction extends Extractors {
         case ExArrayLength(t) => {
           val rt = rec(t)
           ArrayLength(rt)
+        }
+        case ExArrayClone(t) => {
+          val rt = rec(t)
+          ArrayClone(rt)
         }
         case ExArrayFill(baseType, length, defaultValue) => {
           val underlying = scalaType2PureScala(unit, silent)(baseType.tpe)
@@ -941,17 +999,20 @@ trait CodeExtraction extends Extractors {
         }
       }
 
-      if(handleRest) {
+      val res = if(handleRest) {
         rest match {
           case Some(rst) => {
             val recRst = rec(rst)
-            PBlock(Seq(psExpr), recRst).setType(recRst.getType)
+            val block = PBlock(Seq(psExpr), recRst).setType(recRst.getType)
+            block
           }
           case None => psExpr
         }
       } else {
         psExpr
       }
+
+      res
     }
     rec(tree)
   }
@@ -994,4 +1055,27 @@ trait CodeExtraction extends Extractors {
   def mkPosString(pos: scala.tools.nsc.util.Position) : String = {
     pos.line + "," + pos.column
   }
+
+  def getReturnedExpr(expr: Expr): Seq[Expr] = expr match {
+    case Let(_, _, rest) => getReturnedExpr(rest)
+    case LetVar(_, _, rest) => getReturnedExpr(rest)
+    case PBlock(_, rest) => getReturnedExpr(rest)
+    case IfExpr(_, then, elze) => getReturnedExpr(then) ++ getReturnedExpr(elze)
+    case _ => Seq(expr)
+  }
+
+  def getOwner(exprs: Seq[Expr]): Option[Option[FunDef]] = {
+    val exprOwners: Seq[Option[Option[FunDef]]] = exprs.map(owners.get(_))
+    if(exprOwners.exists(_ == None))
+      None
+    else if(exprOwners.exists(_ == Some(None)))
+      Some(None)
+    else if(exprOwners.exists(o1 => exprOwners.exists(o2 => o1 != o2)))
+      Some(None)
+    else
+      exprOwners(0)
+  }
+
+  def getOwner(expr: Expr): Option[Option[FunDef]] = getOwner(getReturnedExpr(expr))
+
 }

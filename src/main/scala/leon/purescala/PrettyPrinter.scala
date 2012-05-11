@@ -253,6 +253,10 @@ object PrettyPrinter {
       pp(a, sb, lvl)
       sb.append(".length")
     }
+    case ArrayClone(a) => {
+      pp(a, sb, lvl)
+      sb.append(".clone")
+    }
     case fill@ArrayFill(size, v) => {
       sb.append("Array.fill(")
       pp(size, sb, lvl)

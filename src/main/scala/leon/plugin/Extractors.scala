@@ -672,6 +672,13 @@ trait Extractors {
       }
     }
 
+    object ExArrayClone {
+      def unapply(tree: Apply): Option[Tree] = {println(tree); tree match {
+        case Apply(Select(t, n), List()) if (n.toString == "clone") => Some(t)
+        case _ => None
+      }}
+    }
+
 
     object ExArrayFill {
       def unapply(tree: Apply): Option[(Tree, Tree, Tree)] = tree match {

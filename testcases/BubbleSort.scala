@@ -8,7 +8,7 @@ object BubbleSort {
     require(a.length >= 1)
     var i = a.length - 1
     var j = 0
-    val sa = a
+    val sa = a.clone
     (while(i > 0) {
       j = 0
       (while(j < i) {

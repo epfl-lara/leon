@@ -399,6 +399,10 @@ object Trees {
     val fixedType = Int32Type
   }
   case class FiniteArray(exprs: Seq[Expr]) extends Expr
+  case class ArrayClone(array: Expr) extends Expr {
+    if(array.getType != Untyped)
+      setType(array.getType)
+  }
 
   /* List operations */
   case class NilList(baseType: TypeTree) extends Expr with Terminal
@@ -433,6 +437,7 @@ object Trees {
       case Assignment(id, e) => Some((e, Assignment(id, _)))
       case TupleSelect(t, i) => Some((t, TupleSelect(_, i)))
       case ArrayLength(a) => Some((a, ArrayLength))
+      case ArrayClone(a) => Some((a, ArrayClone))
       case ArrayMake(t) => Some((t, ArrayMake))
       case e@Epsilon(t) => Some((t, (expr: Expr) => Epsilon(expr).setType(e.getType).setPosInfo(e)))
       case _ => None
@@ -837,6 +842,7 @@ object Trees {
       case LetDef(_, _) => false
       case ArrayUpdate(_, _, _) => false
       case ArrayMake(_) => false
+      case ArrayClone(_) => false
       case Epsilon(_) => false
       case _ => true
     }
@@ -849,6 +855,7 @@ object Trees {
       case LetDef(_, _) => false
       case ArrayUpdate(_, _, _) => false
       case ArrayMake(_) => false
+      case ArrayClone(_) => false
       case Epsilon(_) => false
       case _ => b
     }

@@ -21,7 +21,6 @@ object ArrayTransformation extends Pass {
     pgm
   }
 
-
   private var id2FreshId = Map[Identifier, Identifier]()
 
   def transform(expr: Expr): Expr = expr match {
@@ -60,6 +59,10 @@ object ArrayTransformation extends Pass {
         Error("Index out of bound").setType(ra.getType).setPosInfo(up)
       ).setType(ra.getType)
       res
+    }
+    case ArrayClone(a) => {
+      val ra = transform(a)
+      ra
     }
     case Let(i, v, b) => {
       v.getType match {

@@ -1,9 +1,9 @@
-object Array2 {
+object Array7 {
 
   def foo(): Int = {
     val a = Array.fill(5)(5)
-    val b = a
-    b(3)
+    var b = a
+    b(0)
   }
 
 }
