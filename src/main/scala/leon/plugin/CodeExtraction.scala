@@ -1065,6 +1065,10 @@ trait CodeExtraction extends Extractors {
     case LetVar(_, _, rest) => getReturnedExpr(rest)
     case PBlock(_, rest) => getReturnedExpr(rest)
     case IfExpr(_, then, elze) => getReturnedExpr(then) ++ getReturnedExpr(elze)
+    case MatchExpr(_, cses) => cses.flatMap{
+      case SimpleCase(_, rhs) => getReturnedExpr(rhs)
+      case GuardedCase(_, _, rhs) => getReturnedExpr(rhs)
+    }
     case _ => Seq(expr)
   }
 
