@@ -4,29 +4,29 @@ import leon.Utils._
 
 object LinearSearch {
 
-  def linearSearch(a: Map[Int, Int], size: Int, c: Int): Boolean = ({
-    require(size <= 5 && isArray(a, size))
+  def linearSearch(a: Array[Int], c: Int): Boolean = ({
+    require(a.length >= 0)
     var i = 0
     var found = false
-    (while(i < size) {
+    (while(i < a.length) {
       if(a(i) == c)
         found = true
       i = i + 1
-    }) invariant(i <= size && 
-                 i >= 0 && 
-                 (if(found) contains(a, i, c) else !contains(a, i, c))
-                )
+    }) invariant(
+         i <= a.length && 
+         i >= 0 && 
+         (if(found) contains(a, i, c) else !contains(a, i, c))
+       )
     found
-  }) ensuring(res => if(res) contains(a, size, c) else !contains(a, size, c))
+  }) ensuring(res => if(res) contains(a, a.length, c) else !contains(a, a.length, c))
 
-  def contains(a: Map[Int, Int], size: Int, c: Int): Boolean = {
-    require(isArray(a, size) && size <= 5)
+  def contains(a: Array[Int], size: Int, c: Int): Boolean = {
+    require(a.length >= 0 && size >= 0 && size <= a.length)
     content(a, size).contains(c)
   }
   
-
-  def content(a: Map[Int, Int], size: Int): Set[Int] = {
-    require(isArray(a, size) && size <= 5)
+  def content(a: Array[Int], size: Int): Set[Int] = {
+    require(a.length >= 0 && size >= 0 && size <= a.length)
     var set = Set.empty[Int]
     var i = 0
     (while(i < size) {
@@ -36,18 +36,4 @@ object LinearSearch {
     set
   }
 
-  def isArray(a: Map[Int, Int], size: Int): Boolean = {
-
-    def rec(i: Int): Boolean = {
-      require(i >= 0)  
-      if(i >= size) true else {
-        if(a.isDefinedAt(i)) rec(i+1) else false
-      }
-    }
-
-    if(size < 0)
-      false
-    else
-      rec(0)
-  }
 }

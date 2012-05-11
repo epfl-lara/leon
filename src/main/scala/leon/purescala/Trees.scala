@@ -76,7 +76,13 @@ object Trees {
   }
   case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr 
 
-  case class Tuple(exprs: Seq[Expr]) extends Expr
+  case class Tuple(exprs: Seq[Expr]) extends Expr {
+    val subTpes = exprs.map(_.getType)
+    if(!subTpes.exists(_ == Untyped)) {
+      setType(TupleType(subTpes))
+    }
+
+  }
   case class TupleSelect(tuple: Expr, index: Int) extends Expr
 
   object MatchExpr {
@@ -379,6 +385,25 @@ object Trees {
     val fixedType = BooleanType
   }
 
+  /* Array operations */
+  case class ArrayFill(length: Expr, defaultValue: Expr) extends Expr
+  case class ArrayMake(defaultValue: Expr) extends Expr
+  case class ArraySelect(array: Expr, index: Expr) extends Expr with ScalacPositional
+  //the difference between ArrayUpdate and ArrayUpdated is that the former has a side effect while the latter is the function variant
+  //ArrayUpdate should be eliminated soon in the analysis while ArrayUpdated is keep all the way to the backend
+  case class ArrayUpdate(array: Expr, index: Expr, newValue: Expr) extends Expr with ScalacPositional with FixedType {
+    val fixedType = UnitType
+  }
+  case class ArrayUpdated(array: Expr, index: Expr, newValue: Expr) extends Expr with ScalacPositional
+  case class ArrayLength(array: Expr) extends Expr with FixedType {
+    val fixedType = Int32Type
+  }
+  case class FiniteArray(exprs: Seq[Expr]) extends Expr
+  case class ArrayClone(array: Expr) extends Expr {
+    if(array.getType != Untyped)
+      setType(array.getType)
+  }
+
   /* List operations */
   case class NilList(baseType: TypeTree) extends Expr with Terminal
   case class Cons(head: Expr, tail: Expr) extends Expr 
@@ -411,6 +436,9 @@ object Trees {
       case CaseClassInstanceOf(cd, e) => Some((e, CaseClassInstanceOf(cd, _)))
       case Assignment(id, e) => Some((e, Assignment(id, _)))
       case TupleSelect(t, i) => Some((t, TupleSelect(_, i)))
+      case ArrayLength(a) => Some((a, ArrayLength))
+      case ArrayClone(a) => Some((a, ArrayClone))
+      case ArrayMake(t) => Some((t, ArrayMake))
       case e@Epsilon(t) => Some((t, (expr: Expr) => Epsilon(expr).setType(e.getType).setPosInfo(e)))
       case _ => None
     }
@@ -446,6 +474,8 @@ object Trees {
       case MapUnion(t1,t2) => Some((t1,t2,MapUnion))
       case MapDifference(t1,t2) => Some((t1,t2,MapDifference))
       case MapIsDefinedAt(t1,t2) => Some((t1,t2, MapIsDefinedAt))
+      case ArrayFill(t1, t2) => Some((t1, t2, ArrayFill))
+      case ArraySelect(t1, t2) => Some((t1, t2, ArraySelect))
       case Concat(t1,t2) => Some((t1,t2,Concat))
       case ListAt(t1,t2) => Some((t1,t2,ListAt))
       case wh@While(t1, t2) => Some((t1,t2, (t1, t2) => While(t1, t2).setInvariant(wh.invariant).setPosInfo(wh)))
@@ -463,6 +493,9 @@ object Trees {
       case FiniteSet(args) => Some((args, FiniteSet))
       case FiniteMap(args) => Some((args, (as : Seq[Expr]) => FiniteMap(as.asInstanceOf[Seq[SingletonMap]])))
       case FiniteMultiset(args) => Some((args, FiniteMultiset))
+      case ArrayUpdate(t1, t2, t3) => Some((Seq(t1,t2,t3), (as: Seq[Expr]) => ArrayUpdate(as(0), as(1), as(2))))
+      case ArrayUpdated(t1, t2, t3) => Some((Seq(t1,t2,t3), (as: Seq[Expr]) => ArrayUpdated(as(0), as(1), as(2))))
+      case FiniteArray(args) => Some((args, FiniteArray))
       case Distinct(args) => Some((args, Distinct))
       case Block(args, rest) => Some((args :+ rest, exprs => Block(exprs.init, exprs.last)))
       case Tuple(args) => Some((args, Tuple))
@@ -598,7 +631,7 @@ object Trees {
       case Some(newEx) => {
         somethingChanged = true
         if(newEx.getType == Untyped) {
-          Settings.reporter.warning("REPLACING WITH AN UNTYPED EXPRESSION !")
+          Settings.reporter.warning("REPLACING [" + ex + "] WITH AN UNTYPED EXPRESSION !")
           Settings.reporter.warning("Here's the new expression: " + newEx)
         }
         newEx
@@ -798,13 +831,19 @@ object Trees {
     searchAndReplaceDFS(applyToTree)(expr)
   }
 
-  //checking whether the expr is pure, that is do not contains any non-pure construct: assign, while and blocks
+  //checking whether the expr is pure, that is do not contains any non-pure construct: assign, while, blocks, array, ...
+  //this is expected to be true when entering the "backend" of Leon
   def isPure(expr: Expr): Boolean = {
     def convert(t: Expr) : Boolean = t match {
       case Block(_, _) => false
       case Assignment(_, _) => false
       case While(_, _) => false
       case LetVar(_, _, _) => false
+      case LetDef(_, _) => false
+      case ArrayUpdate(_, _, _) => false
+      case ArrayMake(_) => false
+      case ArrayClone(_) => false
+      case Epsilon(_) => false
       case _ => true
     }
     def combine(b1: Boolean, b2: Boolean) = b1 && b2
@@ -813,6 +852,11 @@ object Trees {
       case Assignment(_, _) => false
       case While(_, _) => false
       case LetVar(_, _, _) => false
+      case LetDef(_, _) => false
+      case ArrayUpdate(_, _, _) => false
+      case ArrayMake(_) => false
+      case ArrayClone(_) => false
+      case Epsilon(_) => false
       case _ => b
     }
     treeCatamorphism(convert, combine, compute, expr)
@@ -1241,6 +1285,24 @@ object Trees {
     toRet
   }
 
+  def conditionForPattern(in: Expr, pattern: Pattern) : Expr = pattern match {
+    case WildcardPattern(_) => BooleanLiteral(true)
+    case InstanceOfPattern(_,_) => scala.sys.error("InstanceOfPattern not yet supported.")
+    case CaseClassPattern(_, ccd, subps) => {
+      assert(ccd.fields.size == subps.size)
+      val pairs = ccd.fields.map(_.id).toList zip subps.toList
+      val subTests = pairs.map(p => conditionForPattern(CaseClassSelector(ccd, in, p._1), p._2))
+      val together = And(subTests)
+      And(CaseClassInstanceOf(ccd, in), together)
+    }
+    case TuplePattern(_, subps) => {
+      val TupleType(tpes) = in.getType
+      assert(tpes.size == subps.size)
+      val subTests = subps.zipWithIndex.map{case (p, i) => conditionForPattern(TupleSelect(in, i+1).setType(tpes(i)), p)}
+      And(subTests)
+    }
+  }
+
   private def convertMatchToIfThenElse(expr: Expr) : Expr = {
     def mapForPattern(in: Expr, pattern: Pattern) : Map[Identifier,Expr] = pattern match {
       case WildcardPattern(None) => Map.empty
@@ -1267,24 +1329,6 @@ object Trees {
           case Some(id) => map + (id -> in)
           case None => map
         }
-      }
-    }
-
-    def conditionForPattern(in: Expr, pattern: Pattern) : Expr = pattern match {
-      case WildcardPattern(_) => BooleanLiteral(true)
-      case InstanceOfPattern(_,_) => scala.sys.error("InstanceOfPattern not yet supported.")
-      case CaseClassPattern(_, ccd, subps) => {
-        assert(ccd.fields.size == subps.size)
-        val pairs = ccd.fields.map(_.id).toList zip subps.toList
-        val subTests = pairs.map(p => conditionForPattern(CaseClassSelector(ccd, in, p._1), p._2))
-        val together = And(subTests)
-        And(CaseClassInstanceOf(ccd, in), together)
-      }
-      case TuplePattern(_, subps) => {
-        val TupleType(tpes) = in.getType
-        assert(tpes.size == subps.size)
-        val subTests = subps.zipWithIndex.map{case (p, i) => conditionForPattern(TupleSelect(in, i+1).setType(tpes(i)), p)}
-        And(subTests)
       }
     }
 
