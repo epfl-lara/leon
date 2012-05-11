@@ -114,9 +114,27 @@ object FunctionClosure extends Pass {
       val r = functionClosure(t, bindedVars, id2freshId, fd2FreshFd)
       recons(r).setType(u.getType)
     }
-    case m @ MatchExpr(scrut,cses) => { //TODO: will not work if there are actual nested function in cases
-      //val rScrut = functionClosure(scrut, bindedVars, id2freshId, fd2FreshFd)
-      m
+    case m @ MatchExpr(scrut,cses) => { //still needs to handle the new ids introduced by the patterns
+      val scrutRec = functionClosure(scrut, bindedVars, id2freshId, fd2FreshFd)
+      val csesRec = cses.map{
+        case SimpleCase(pat, rhs) => {
+          val cond = conditionForPattern(scrut, pat)
+          pathConstraints ::= cond
+          val rRhs = functionClosure(rhs, bindedVars, id2freshId, fd2FreshFd)
+          pathConstraints = pathConstraints.tail
+          SimpleCase(pat, rRhs)
+        }
+        case GuardedCase(pat, guard, rhs) => {
+          val cond = conditionForPattern(scrut, pat)
+          pathConstraints ::= cond
+          val rRhs = functionClosure(rhs, bindedVars, id2freshId, fd2FreshFd)
+          val rGuard = functionClosure(guard, bindedVars, id2freshId, fd2FreshFd)
+          pathConstraints = pathConstraints.tail
+          GuardedCase(pat, rGuard, rRhs)
+        }
+      }
+      val tpe = csesRec.head.rhs.getType
+      MatchExpr(scrutRec, csesRec).setType(tpe).setPosInfo(m)
     }
     case v @ Variable(id) => id2freshId.get(id) match {
       case None => v
