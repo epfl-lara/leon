@@ -13,8 +13,10 @@ class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
   def description: String = "Generate random testcases"
   override def shortDescription: String = "test"
 
+  private val z3Solver = new FairZ3Solver(reporter)
 
   def analyse(program: Program) {
+    z3Solver.setProgram(program)
     reporter.info("Running test generation")
     val allFuns = program.definedFunctions
     allFuns.foreach(fd => {
@@ -37,7 +39,7 @@ class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
       reporter.info("Now considering path condition: " + pathCond)
 
       var testcase: Option[Map[Identifier, Expr]] = None
-      val z3Solver: FairZ3Solver = loadedSolverExtensions.find(se => se.isInstanceOf[FairZ3Solver]).get.asInstanceOf[FairZ3Solver]
+      //val z3Solver: FairZ3Solver = loadedSolverExtensions.find(se => se.isInstanceOf[FairZ3Solver]).get.asInstanceOf[FairZ3Solver]
         
       z3Solver.init()
       z3Solver.restartZ3

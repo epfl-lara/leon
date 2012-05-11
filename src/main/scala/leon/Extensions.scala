@@ -99,7 +99,7 @@ object Extensions {
 
     allLoaded = defaultExtensions ++ loaded
     analysisExtensions = allLoaded.filter(_.isInstanceOf[Analyser]).map(_.asInstanceOf[Analyser])
-    analysisExtensions = new TestGeneration(extensionsReporter) +: analysisExtensions
+    //analysisExtensions = new TestGeneration(extensionsReporter) +: analysisExtensions
 
     val solverExtensions0 = allLoaded.filter(_.isInstanceOf[Solver]).map(_.asInstanceOf[Solver])
     val solverExtensions1 = if(Settings.useQuickCheck) new RandomSolver(extensionsReporter) +: solverExtensions0 else solverExtensions0
