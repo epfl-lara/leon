@@ -64,12 +64,14 @@ object FunctionClosure extends Pass {
       newFunDef.postcondition = freshPostcondition
       
       pathConstraints = fd.precondition.getOrElse(BooleanLiteral(true)) :: pathConstraints
-      val freshBody = fd.body.map(body => introduceLets(body, fd2FreshFd + (fd -> ((newFunDef, extraVarDeclFreshIds.map(_.toVariable))))))
+      //val freshBody = fd.body.map(body => introduceLets(body, fd2FreshFd + (fd -> ((newFunDef, extraVarDeclFreshIds.map(_.toVariable))))))
+      val freshBody = fd.body.map(body => introduceLets(body, fd2FreshFd + (fd -> ((newFunDef, extraVarDeclOldIds.map(_.toVariable))))))
       newFunDef.body = freshBody
       pathConstraints = pathConstraints.tail
 
-      val freshRest = functionClosure(rest, bindedVars, id2freshId, fd2FreshFd + (fd -> 
-                        ((newFunDef, extraVarDeclOldIds.map(id => id2freshId.get(id).getOrElse(id).toVariable)))))
+      //val freshRest = functionClosure(rest, bindedVars, id2freshId, fd2FreshFd + (fd -> 
+      //                  ((newFunDef, extraVarDeclOldIds.map(id => id2freshId.get(id).getOrElse(id).toVariable)))))
+      val freshRest = functionClosure(rest, bindedVars, id2freshId, fd2FreshFd + (fd -> ((newFunDef, extraVarDeclOldIds.map(_.toVariable)))))
       freshRest.setType(l.getType)
     }
     case l @ Let(i,e,b) => {
@@ -99,7 +101,8 @@ object FunctionClosure extends Pass {
     case fi @ FunctionInvocation(fd, args) => fd2FreshFd.get(fd) match {
       case None => FunctionInvocation(fd, args.map(arg => functionClosure(arg, bindedVars, id2freshId, fd2FreshFd))).setPosInfo(fi)
       case Some((nfd, extraArgs)) => 
-        FunctionInvocation(nfd, args.map(arg => functionClosure(arg, bindedVars, id2freshId, fd2FreshFd)) ++ extraArgs).setPosInfo(fi)
+        FunctionInvocation(nfd, args.map(arg => functionClosure(arg, bindedVars, id2freshId, fd2FreshFd)) ++ 
+                                extraArgs.map(v => replace(id2freshId.map(p => (p._1.toVariable, p._2.toVariable)), v))).setPosInfo(fi)
     }
     case n @ NAryOperator(args, recons) => {
       val rargs = args.map(a => functionClosure(a, bindedVars, id2freshId, fd2FreshFd))
@@ -114,7 +117,7 @@ object FunctionClosure extends Pass {
       val r = functionClosure(t, bindedVars, id2freshId, fd2FreshFd)
       recons(r).setType(u.getType)
     }
-    case m @ MatchExpr(scrut,cses) => { //still needs to handle the new ids introduced by the patterns
+    case m @ MatchExpr(scrut,cses) => {
       val scrutRec = functionClosure(scrut, bindedVars, id2freshId, fd2FreshFd)
       val csesRec = cses.map{
         case SimpleCase(pat, rhs) => {
