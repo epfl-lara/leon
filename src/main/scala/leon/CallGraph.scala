@@ -11,20 +11,73 @@ class CallGraph(val program: Program) {
   case class FunctionStart(fd: FunDef) extends ProgramPoint
   case class ExpressionPoint(wp: Expr) extends ProgramPoint
 
-  sealed abstract class EdgeLabel
-  case class ConditionLabel(expr: Expr) extends EdgeLabel {
-    require(expr.getType == BooleanType)
-  }
-  case class FunctionInvocLabel(fd: FunDef, args: List[Expr]) extends EdgeLabel {
-    require(args.zip(fd.args).forall(p => p._1.getType == p._2.getType))
-  }
+  //sealed abstract class EdgeLabel
+  //case class ConditionLabel(expr: Expr) extends EdgeLabel {
+  //  require(expr.getType == BooleanType)
+  //}
+  //case class FunctionInvocLabel(fd: FunDef, args: List[Expr]) extends EdgeLabel {
+  //  require(args.zip(fd.args).forall(p => p._1.getType == p._2.getType))
+  //}
+  case class TransitionLabel(cond: Expr, assignment: Map[Variable, Expr])
 
-  private lazy val graph: Map[ProgramPoint, Set[EdgeLabel]] = buildGraph
+  private lazy val graph: Map[ProgramPoint, Set[(ProgramPoint, TransitionLabel)]] = buildGraph
 
 
-  private def buildGraph: Map[ProgramPoint, Set[EdgeLabel]] = {
+  private def buildGraph: Map[ProgramPoint, Set[(ProgramPoint, TransitionLabel)]] = {
+    //var fd2point: Map[FunDef, ProgramPoint] = Map()
+
+    program.definedFunctions.foreach(fd => {
+      val body = fd.body.get 
+      //val cleanBody = hoistIte(expandLets(matchToIfThenElse(body)))
+      val cleanBody = expandLets(matchToIfThenElse(body))
+    //  collectWithPathCondition(cleanBody).foreach{
+    //    case (path, WayPoint) =>
+
+    })
+
     null
   }
+
+  private def collectWithPathCondition(expression: Expr, startingPoint: ProgramPoint): Map[ProgramPoint, (ProgramPoint, Set[TransitionLabel])] = {
+    var callGraph: Map[ProgramPoint, Set[(ProgramPoint, TransitionLabel)]] = Map()
+
+    def rec(expr: Expr, path: List[Expr], startingPoint: ProgramPoint): Unit = expr match {
+      case FunctionInvocation(fd, args) => {
+        val transitions: Set[(ProgramPoint, TransitionLabel)] = callGraph.get(startingPoint) match {
+          case None => Set()
+          case Some(s) => s
+        }
+        val newPoint = FunctionStart(fd)
+        val newTransition = TransitionLabel(And(path.toSeq), fd.args.zip(args).map{ case (VarDecl(id, _), arg) => (id.toVariable, arg) }.toMap)
+        callGraph += (startingPoint -> (transitions + (newPoint, newTransition)))
+        args.foreach(arg => rec(arg, startingPoint, startingPoint))
+      }
+      case WayPoint(e) => {
+        val transitions: Set[(ProgramPoint, TransitionLabel)] = callGraph.get(startingPoint) match {
+          case None => Set()
+          case Some(s) => s
+        }
+        val newPoint = ExpressionPoint(expr)
+        val newTransition = TransitionLabel(And(path.toSeq), fd.args.zip(args).map{ case (VarDecl(id, _), arg) => (id.toVariable, arg) }.toMap)
+        callGraph += (startingPoint -> (transitions + (newPoint, newTransition)))
+        rec(e, List(), newPoint)
+      }
+      case IfExpr(cond, then, elze) => {
+        rec(cond, path, startingPoint)
+        rec(then, cond :: path, startingPoint) 
+        rec(elze, Not(cond) :: path, startingPoint)
+      }
+      case NAryOperator(args, _) => args.foreach(rec(_, path, startingPoint))
+      case BinaryOperator(t1, t2, _) => rec(t1, path, startingPoint); rec(t2, path, startingPoint)
+      case UnaryOperator(t, _) => rec(t, path, startingPoint)
+      case t : Terminal => ;
+      case _ => scala.sys.error("Unhandled tree in collectWithPathCondition : " + expr)
+    }
+
+    rec(expression, List(), startingPoint)
+    callGraph
+  }
+
 
   //guarentee that all IfExpr will be at the top level and as soon as you encounter a non-IfExpr, then no more IfExpr can be find in the sub-expressions
   def hoistIte(expr: Expr): Expr = {
@@ -53,29 +106,6 @@ class CallGraph(val program: Program) {
     }
     fix(searchAndReplaceDFS(transform), expr)
   }
-
-  // prec: there should be no lets and no pattern-matching in this expression
-  //private def collectWithPathCondition(expression: Expr, cond: Seq[Expr]): Seq[Expr] = {
-  //  var allPaths: Seq[Expr] = Seq()
-
-  //  def rec(expr: Expr, path: Seq[Expr]): Seq[Expr] = {
-  //    expr match {
-  //      case FunctionInvocLabel(fd, args) =>
-  //      case WayPoint(e) =>
-  //    }
-  //    
-  //    case IfExpr(cond, then, elze) =>
-  //      (if(!containsIfExpr(then)) Seq(And(path, cond)) else rec(then, And(cond, path))) ++
-  //      (if(!containsIfExpr(elze)) Seq(And(path, Not(cond))) else rec(then, And(cond, path)))
-  //    case NAryOperator(args, _) => args.flatMap(arg => rec(arg, path))
-  //    case BinaryOperator(t1, t2, _) => rec(t1, path) ++ rec(t2, path)
-  //    case UnaryOperator(t, _) => rec(t, path)
-  //    case t : Terminal => Seq()
-  //    case _ => scala.sys.error("Unhandled tree in collectWithPathCondition : " + expr)
-  //  }
-
-  //  rec(expression, BooleanLiteral(true)).distinct
-  //}
 
   //def analyse(program: Program) {
   //  z3Solver.setProgram(program)
