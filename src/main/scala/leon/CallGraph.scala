@@ -22,23 +22,21 @@ class CallGraph(val program: Program) {
 
   private lazy val graph: Map[ProgramPoint, Set[(ProgramPoint, TransitionLabel)]] = buildGraph
 
-
   private def buildGraph: Map[ProgramPoint, Set[(ProgramPoint, TransitionLabel)]] = {
-    //var fd2point: Map[FunDef, ProgramPoint] = Map()
+    var callGraph: Map[ProgramPoint, Set[(ProgramPoint, TransitionLabel)]] = Map()
 
     program.definedFunctions.foreach(fd => {
       val body = fd.body.get 
       //val cleanBody = hoistIte(expandLets(matchToIfThenElse(body)))
       val cleanBody = expandLets(matchToIfThenElse(body))
-    //  collectWithPathCondition(cleanBody).foreach{
-    //    case (path, WayPoint) =>
-
+      val subgraph = collectWithPathCondition(cleanBody, FunctionStart(fd))
+      callGraph ++= subgraph
     })
 
-    null
+    callGraph
   }
 
-  private def collectWithPathCondition(expression: Expr, startingPoint: ProgramPoint): Map[ProgramPoint, (ProgramPoint, Set[TransitionLabel])] = {
+  private def collectWithPathCondition(expression: Expr, startingPoint: ProgramPoint): Map[ProgramPoint, Set[(ProgramPoint, TransitionLabel)]] = {
     var callGraph: Map[ProgramPoint, Set[(ProgramPoint, TransitionLabel)]] = Map()
 
     def rec(expr: Expr, path: List[Expr], startingPoint: ProgramPoint): Unit = expr match {
@@ -49,8 +47,8 @@ class CallGraph(val program: Program) {
         }
         val newPoint = FunctionStart(fd)
         val newTransition = TransitionLabel(And(path.toSeq), fd.args.zip(args).map{ case (VarDecl(id, _), arg) => (id.toVariable, arg) }.toMap)
-        callGraph += (startingPoint -> (transitions + (newPoint, newTransition)))
-        args.foreach(arg => rec(arg, startingPoint, startingPoint))
+        callGraph += (startingPoint -> (transitions + ((newPoint, newTransition))))
+        args.foreach(arg => rec(arg, path, startingPoint))
       }
       case WayPoint(e) => {
         val transitions: Set[(ProgramPoint, TransitionLabel)] = callGraph.get(startingPoint) match {
@@ -58,8 +56,8 @@ class CallGraph(val program: Program) {
           case Some(s) => s
         }
         val newPoint = ExpressionPoint(expr)
-        val newTransition = TransitionLabel(And(path.toSeq), fd.args.zip(args).map{ case (VarDecl(id, _), arg) => (id.toVariable, arg) }.toMap)
-        callGraph += (startingPoint -> (transitions + (newPoint, newTransition)))
+        val newTransition = TransitionLabel(And(path.toSeq), Map())
+        callGraph += (startingPoint -> (transitions + ((newPoint, newTransition))))
         rec(e, List(), newPoint)
       }
       case IfExpr(cond, then, elze) => {
@@ -105,6 +103,27 @@ class CallGraph(val program: Program) {
       if(a == na) a else fix(f, na)
     }
     fix(searchAndReplaceDFS(transform), expr)
+  }
+
+
+  lazy val toDotString: String = {
+    var vertexId = -1
+    var point2vertex: Map[ProgramPoint, Int] = Map()
+    //return id and label
+    def getVertex(p: ProgramPoint): (String, String) = point2vertex.get(p) match {
+      case Some(id) => ("v_" + id, pp(p))
+      case None => {
+        vertexId += 1
+        point2vertex += (p -> vertexId)
+        ("v_" + vertexId, pp(p))
+      }
+    }
+
+    def pp(p: ProgramPoint): String = p match {
+      case FunctionStart(fd) => fd.id.name
+      case ExpressionPoint(WayPoint(e)) => "WayPoint"
+    }
+
   }
 
   //def analyse(program: Program) {
