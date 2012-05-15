@@ -85,6 +85,8 @@ object Trees {
   }
   case class TupleSelect(tuple: Expr, index: Int) extends Expr
 
+  case class WayPoint(expr: Expr) extends Expr
+
   object MatchExpr {
     def apply(scrutinee: Expr, cases: Seq[MatchCase]) : MatchExpr = {
       scrutinee.getType match {
@@ -153,6 +155,7 @@ object Trees {
   // We don't handle Seq stars for now.
 
   case class TuplePattern(binder: Option[Identifier], subPatterns: Seq[Pattern]) extends Pattern
+
 
   /* Propositional logic */
   object And {
@@ -439,6 +442,7 @@ object Trees {
       case ArrayLength(a) => Some((a, ArrayLength))
       case ArrayClone(a) => Some((a, ArrayClone))
       case ArrayMake(t) => Some((t, ArrayMake))
+      case WayPoint(t) => Some((t, WayPoint))
       case e@Epsilon(t) => Some((t, (expr: Expr) => Epsilon(expr).setType(e.getType).setPosInfo(e)))
       case _ => None
     }
