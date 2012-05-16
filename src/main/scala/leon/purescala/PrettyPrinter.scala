@@ -154,6 +154,12 @@ object PrettyPrinter {
       nsb
     }
 
+    case Waypoint(i, expr) => {
+      sb.append("waypoint_" + i + "(")
+      pp(expr, sb, lvl)
+      sb.append(")")
+    }
+
     case OptionSome(a) => {
       var nsb = sb
       nsb.append("Some(")

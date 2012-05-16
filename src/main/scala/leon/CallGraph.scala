@@ -21,6 +21,9 @@ class CallGraph(val program: Program) {
   case class TransitionLabel(cond: Expr, assignment: Map[Variable, Expr])
 
   private lazy val graph: Map[ProgramPoint, Set[(ProgramPoint, TransitionLabel)]] = buildGraph
+  private lazy val programPoints: Set[ProgramPoint] = {
+    graph.flatMap(pair => pair._2.map(edge => edge._1).toSet + pair._1).toSet
+  }
 
   private def buildGraph: Map[ProgramPoint, Set[(ProgramPoint, TransitionLabel)]] = {
     var callGraph: Map[ProgramPoint, Set[(ProgramPoint, TransitionLabel)]] = Map()
@@ -81,9 +84,51 @@ class CallGraph(val program: Program) {
     callGraph
   }
 
-  //find a path that goes through all waypoint in order
-  //def findPath
+  def findAllPathes: Set[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = {
+    val waypoints: Set[ProgramPoint] = programPoints.filter{ case ExpressionPoint(_) => true case _ => false }
+    val sortedWaypoints: Seq[ProgramPoint] = waypoints.toSeq.sortWith((p1, p2) => {
+      val (ExpressionPoint(Waypoint(i1, _)), ExpressionPoint(Waypoint(i2, _))) = (p1, p2)
+      i1 <= i2
+    })
+    Set(findPath(sortedWaypoints(0), sortedWaypoints(1)))
+  }
 
+  //find a path that goes through all waypoint in order
+  def findPath(from: ProgramPoint, to: ProgramPoint): Seq[(ProgramPoint, ProgramPoint, TransitionLabel)] = {
+    var visitedPoints: Set[ProgramPoint] = Set()
+    var history: Map[ProgramPoint, (ProgramPoint, TransitionLabel)] = Map()
+    var toVisit: List[ProgramPoint] = List(from)
+
+    var currentPoint: ProgramPoint = null
+    while(!toVisit.isEmpty && currentPoint != to) {
+      currentPoint = toVisit.head
+      if(currentPoint != to) {
+        visitedPoints += currentPoint
+        toVisit = toVisit.tail
+        graph.get(currentPoint).foreach(edges => edges.foreach{
+          case (neighbour, transition) =>
+            if(!visitedPoints.contains(neighbour) && !toVisit.contains(neighbour)) {
+              toVisit ::= neighbour
+              history += (neighbour -> ((currentPoint, transition)))
+            }
+        })
+      }
+    }
+
+    def rebuildPath(point: ProgramPoint, path: List[(ProgramPoint, ProgramPoint, TransitionLabel)]): Seq[(ProgramPoint, ProgramPoint, TransitionLabel)] = {
+      if(point == from) path else {
+        val (previousPoint, transition) = history(point)
+        val newPath = (previousPoint, point, transition) :: path
+        rebuildPath(previousPoint, newPath)
+      }
+    }
+
+    //TODO: handle case where the target node is not found
+    println(history)
+    println(from)
+    println(to)
+    rebuildPath(to, List())
+  }
 
   //guarentee that all IfExpr will be at the top level and as soon as you encounter a non-IfExpr, then no more IfExpr can be find in the sub-expressions
   def hoistIte(expr: Expr): Expr = {
