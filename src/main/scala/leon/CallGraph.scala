@@ -222,23 +222,6 @@ class CallGraph(val program: Program) {
     out.close
   }
 
-  //def analyse(program: Program) {
-  //  z3Solver.setProgram(program)
-  //  reporter.info("Running test generation")
-  //  val allFuns = program.definedFunctions
-  //  allFuns.foreach(fd => {
-  //    val testcases = generateTestCases(fd)
-  //    reporter.info("Running " + fd.id + " with the following testcases:\n")
-  //    reporter.info(testcases.mkString("\n"))
-  //  })
-  //}
-
-  //private def generatePathConditions(funDef: FunDef): Seq[Expr] = if(!funDef.hasImplementation) Seq() else {
-  //  val body = funDef.body.get
-  //  val cleanBody = expandLets(matchToIfThenElse(body))
-  //  collectWithPathCondition(cleanBody)
-  //}
-
 }
 
   //def hoistIte(expr: Expr): (Seq[Expr] => Expr, Seq[Expr]) = expr match { 
