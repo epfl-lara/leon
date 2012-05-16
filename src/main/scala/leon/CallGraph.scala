@@ -213,6 +213,15 @@ class CallGraph(val program: Program) {
     res
   }
 
+  def writeDotFile(filename: String) {
+    import java.io.FileWriter
+    import java.io.BufferedWriter
+    val fstream = new FileWriter(filename)
+    val out = new BufferedWriter(fstream)
+    out.write(toDotString)
+    out.close
+  }
+
   //def analyse(program: Program) {
   //  z3Solver.setProgram(program)
   //  reporter.info("Running test generation")

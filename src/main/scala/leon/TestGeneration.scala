@@ -17,7 +17,7 @@ class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
 
   def analyse(program: Program) {
     val callGraph = new CallGraph(program)
-    println(callGraph.toDotString)
+    callGraph.writeDotFile("testgen.dot")
     callGraph.findAllPathes.foreach(path => {
       println("Path is: " + path)
       println("constraint is: " + callGraph.pathConstraint(path))
