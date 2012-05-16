@@ -124,9 +124,6 @@ class CallGraph(val program: Program) {
     }
 
     //TODO: handle case where the target node is not found
-    println(history)
-    println(from)
-    println(to)
     rebuildPath(to, List())
   }
 
