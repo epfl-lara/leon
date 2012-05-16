@@ -85,7 +85,7 @@ object Trees {
   }
   case class TupleSelect(tuple: Expr, index: Int) extends Expr
 
-  case class WayPoint(expr: Expr) extends Expr
+  case class Waypoint(i: Int, expr: Expr) extends Expr
 
   object MatchExpr {
     def apply(scrutinee: Expr, cases: Seq[MatchCase]) : MatchExpr = {
@@ -442,7 +442,7 @@ object Trees {
       case ArrayLength(a) => Some((a, ArrayLength))
       case ArrayClone(a) => Some((a, ArrayClone))
       case ArrayMake(t) => Some((t, ArrayMake))
-      case WayPoint(t) => Some((t, WayPoint))
+      case Waypoint(i, t) => Some((t, (expr: Expr) => Waypoint(i, expr)))
       case e@Epsilon(t) => Some((t, (expr: Expr) => Epsilon(expr).setType(e.getType).setPosInfo(e)))
       case _ => None
     }

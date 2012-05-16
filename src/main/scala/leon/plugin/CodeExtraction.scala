@@ -680,6 +680,11 @@ trait CodeExtraction extends Extractors {
             }
             Epsilon(c1).setType(pstpe).setPosInfo(epsi.pos.line, epsi.pos.column)
           }
+          case ExWaypointExpression(tpe, i, tree) => {
+            val pstpe = scalaType2PureScala(unit, silent)(tpe)
+            val IntLiteral(ri) = rec(i)
+            Waypoint(ri, rec(tree)).setType(pstpe)
+          }
           case ExSomeConstruction(tpe, arg) => {
             // println("Got Some !" + tpe + ":" + arg)
             val underlying = scalaType2PureScala(unit, silent)(tpe)

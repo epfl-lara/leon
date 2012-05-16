@@ -54,12 +54,12 @@ class CallGraph(val program: Program) {
         callGraph += (startingPoint -> (transitions + ((newPoint, newTransition))))
         args.foreach(arg => rec(arg, path, startingPoint))
       }
-      case WayPoint(e) => {
+      case way@Waypoint(i, e) => {
         val transitions: Set[(ProgramPoint, TransitionLabel)] = callGraph.get(startingPoint) match {
           case None => Set()
           case Some(s) => s
         }
-        val newPoint = ExpressionPoint(expr)
+        val newPoint = ExpressionPoint(way)
         val newTransition = TransitionLabel(And(path.toSeq), Map())
         callGraph += (startingPoint -> (transitions + ((newPoint, newTransition))))
         rec(e, List(), newPoint)
@@ -80,6 +80,9 @@ class CallGraph(val program: Program) {
 
     callGraph
   }
+
+  //find a path that goes through all waypoint in order
+  //def findPath
 
 
   //guarentee that all IfExpr will be at the top level and as soon as you encounter a non-IfExpr, then no more IfExpr can be find in the sub-expressions
@@ -129,7 +132,7 @@ class CallGraph(val program: Program) {
 
     def ppPoint(p: ProgramPoint): String = p match {
       case FunctionStart(fd) => fd.id.name
-      case ExpressionPoint(WayPoint(e)) => "WayPoint"
+      case ExpressionPoint(Waypoint(i, e)) => "WayPoint " + i
       case _ => sys.error("Unexpected programPoint: " + p)
     }
     def ppLabel(l: TransitionLabel): String = {
