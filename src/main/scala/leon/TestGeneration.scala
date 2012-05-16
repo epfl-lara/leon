@@ -16,14 +16,16 @@ class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
   private val z3Solver = new FairZ3Solver(reporter)
 
   def analyse(program: Program) {
-    z3Solver.setProgram(program)
-    reporter.info("Running test generation")
-    val allFuns = program.definedFunctions
-    allFuns.foreach(fd => {
-      val testcases = generateTestCases(fd)
-      reporter.info("Running " + fd.id + " with the following testcases:\n")
-      reporter.info(testcases.mkString("\n"))
-    })
+    val callGraph = new CallGraph(program)
+    println(callGraph.toDotString)
+    //z3Solver.setProgram(program)
+    //reporter.info("Running test generation")
+    //val allFuns = program.definedFunctions
+    //allFuns.foreach(fd => {
+    //  val testcases = generateTestCases(fd)
+    //  reporter.info("Running " + fd.id + " with the following testcases:\n")
+    //  reporter.info(testcases.mkString("\n"))
+    //})
   }
 
   private def generatePathConditions(funDef: FunDef): Seq[Expr] = if(!funDef.hasImplementation) Seq() else {

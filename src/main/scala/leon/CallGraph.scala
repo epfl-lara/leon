@@ -29,9 +29,13 @@ class CallGraph(val program: Program) {
       val body = fd.body.get 
       //val cleanBody = hoistIte(expandLets(matchToIfThenElse(body)))
       val cleanBody = expandLets(matchToIfThenElse(body))
+      //println(cleanBody)
       val subgraph = collectWithPathCondition(cleanBody, FunctionStart(fd))
+      //println(subgraph)
       callGraph ++= subgraph
     })
+
+    //println(callGraph)
 
     callGraph
   }
@@ -73,6 +77,7 @@ class CallGraph(val program: Program) {
     }
 
     rec(expression, List(), startingPoint)
+
     callGraph
   }
 
@@ -107,23 +112,48 @@ class CallGraph(val program: Program) {
 
 
   lazy val toDotString: String = {
+    var vertexLabels: Set[(String, String)] = Set()
     var vertexId = -1
     var point2vertex: Map[ProgramPoint, Int] = Map()
     //return id and label
     def getVertex(p: ProgramPoint): (String, String) = point2vertex.get(p) match {
-      case Some(id) => ("v_" + id, pp(p))
+      case Some(id) => ("v_" + id, ppPoint(p))
       case None => {
         vertexId += 1
         point2vertex += (p -> vertexId)
-        ("v_" + vertexId, pp(p))
+        val pair = ("v_" + vertexId, ppPoint(p))
+        vertexLabels += pair
+        pair
       }
     }
 
-    def pp(p: ProgramPoint): String = p match {
+    def ppPoint(p: ProgramPoint): String = p match {
       case FunctionStart(fd) => fd.id.name
       case ExpressionPoint(WayPoint(e)) => "WayPoint"
+      case _ => sys.error("Unexpected programPoint: " + p)
+    }
+    def ppLabel(l: TransitionLabel): String = {
+      val TransitionLabel(cond, assignments) = l
+      cond.toString + ", " + assignments.map(p => p._1 + " -> " + p._2).mkString("\n")
     }
 
+    val edges: List[(String, String, String)] = graph.flatMap(pair => {
+      val (startPoint, edges) = pair
+      val (startId, _) = getVertex(startPoint)
+      edges.map(pair => {
+        val (endPoint, label) = pair
+        val (endId, _) = getVertex(endPoint)
+        (startId, endId, ppLabel(label))
+      }).toList
+    }).toList
+
+    val res = (
+      "digraph " + program.id.name + " {\n" +
+      vertexLabels.map(p => p._1 + " [label=\"" + p._2 + "\"];").mkString("\n") + "\n" +
+      edges.map(p => p._1 + " -> " + p._2 + " [label=\"" + p._3 + "\"];").mkString("\n") + "\n" +
+      "}")
+
+    res
   }
 
   //def analyse(program: Program) {
