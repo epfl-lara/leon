@@ -18,7 +18,10 @@ class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
   def analyse(program: Program) {
     val callGraph = new CallGraph(program)
     println(callGraph.toDotString)
-    println(callGraph.findAllPathes)
+    callGraph.findAllPathes.foreach(path => {
+      println("Path is: " + path)
+      println("constraint is: " + callGraph.pathConstraint(path))
+    })
     //z3Solver.setProgram(program)
     //reporter.info("Running test generation")
     //val allFuns = program.definedFunctions

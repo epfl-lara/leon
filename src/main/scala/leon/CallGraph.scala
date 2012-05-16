@@ -84,13 +84,25 @@ class CallGraph(val program: Program) {
     callGraph
   }
 
+  //given a path, follow the path to build the logical constraint that need to be satisfiable
+  def pathConstraint(path: Seq[(ProgramPoint, ProgramPoint, TransitionLabel)], assigns: List[Map[Expr, Expr]] = List()): Expr = {
+    if(path.isEmpty) BooleanLiteral(true) else {
+      val (_, _, TransitionLabel(cond, assign)) = path.head
+      val finalCond = assigns.foldRight(cond)((map, acc) => replace(map, acc))
+      And(finalCond, pathConstraint(path.tail, assign.asInstanceOf[Map[Expr, Expr]] :: assigns))
+    }
+  }
+
   def findAllPathes: Set[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = {
     val waypoints: Set[ProgramPoint] = programPoints.filter{ case ExpressionPoint(_) => true case _ => false }
     val sortedWaypoints: Seq[ProgramPoint] = waypoints.toSeq.sortWith((p1, p2) => {
       val (ExpressionPoint(Waypoint(i1, _)), ExpressionPoint(Waypoint(i2, _))) = (p1, p2)
       i1 <= i2
     })
-    Set(findPath(sortedWaypoints(0), sortedWaypoints(1)))
+    Set(
+      sortedWaypoints.zip(sortedWaypoints.tail).foldLeft(Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]())((path, waypoint) =>
+        path ++ findPath(waypoint._1, waypoint._2))
+    )
   }
 
   //find a path that goes through all waypoint in order
