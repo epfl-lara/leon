@@ -1466,4 +1466,34 @@ object Trees {
     case FunctionType(fromTypes, toType) => AnonymousFunction(Seq.empty, simplestValue(toType)).setType(tpe)
     case _ => throw new Exception("I can't choose simplest value for type " + tpe)
   }
+
+  //guarentee that all IfExpr will be at the top level and as soon as you encounter a non-IfExpr, then no more IfExpr can be find in the sub-expressions
+  //require no-match, no-ets and only pure code
+  def hoistIte(expr: Expr): Expr = {
+    def transform(expr: Expr): Option[Expr] = expr match {
+      case uop@UnaryOperator(IfExpr(c, t, e), op) => Some(IfExpr(c, op(t).setType(uop.getType), op(e).setType(uop.getType)).setType(uop.getType))
+      case bop@BinaryOperator(IfExpr(c, t, e), t2, op) => Some(IfExpr(c, op(t, t2).setType(bop.getType), op(e, t2).setType(bop.getType)).setType(bop.getType))
+      case bop@BinaryOperator(t1, IfExpr(c, t, e), op) => Some(IfExpr(c, op(t1, t).setType(bop.getType), op(t1, e).setType(bop.getType)).setType(bop.getType))
+      case nop@NAryOperator(ts, op) => {
+        val iteIndex = ts.indexWhere{ case IfExpr(_, _, _) => true case _ => false }
+        if(iteIndex == -1) None else {
+          val (beforeIte, startIte) = ts.splitAt(iteIndex)
+          val afterIte = startIte.tail
+          val IfExpr(c, t, e) = startIte.head
+          Some(IfExpr(c,
+            op(beforeIte ++ Seq(t) ++ afterIte).setType(nop.getType),
+            op(beforeIte ++ Seq(e) ++ afterIte).setType(nop.getType)
+          ).setType(nop.getType))
+        }
+      }
+      case _ => None
+    }
+
+    def fix[A](f: (A) => A, a: A): A = {
+      val na = f(a)
+      if(a == na) a else fix(f, na)
+    }
+    fix(searchAndReplaceDFS(transform), expr)
+  }
+
 }
