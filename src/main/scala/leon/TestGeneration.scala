@@ -25,7 +25,6 @@ class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
       case Waypoint(1, _) => true
       case _ => false
     })).get
-    println("Top level function: " + topFunDef)
 
     val testFun = new FunDef(FreshIdentifier("test"), UnitType, Seq())
     val funInvocs = testcases.map(testcase => {
@@ -39,7 +38,6 @@ class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
       FunctionInvocation(topFunDef, args)
     }).toSeq
     testFun.body = Some(Block(funInvocs, UnitLiteral))
-    println("The test function:\n" + testFun)
 
     val Program(id, ObjectDef(objId, defs, invariants)) = program
     val testProgram = Program(id, ObjectDef(objId, testFun +: defs , invariants))
