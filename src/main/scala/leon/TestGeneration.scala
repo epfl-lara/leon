@@ -43,7 +43,7 @@ class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
 
     val Program(id, ObjectDef(objId, defs, invariants)) = program
     val testProgram = Program(id, ObjectDef(objId, testFun +: defs , invariants))
-    println("New program:\n" + ScalaPrinter(testProgram))
+    testProgram.writeScalaFile("TestGen.scala")
 
     reporter.info("Running from waypoint with the following testcases:\n")
     reporter.info(testcases.mkString("\n"))
