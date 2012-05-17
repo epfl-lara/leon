@@ -4,6 +4,7 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
+import purescala.ScalaPrinter
 import Extensions._
 import scala.collection.mutable.{Set => MutableSet}
 
@@ -37,8 +38,12 @@ class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
       }
       FunctionInvocation(topFunDef, args)
     }).toSeq
-    testFun.body = Some(Block(funInvocs.init, funInvocs.last))
+    testFun.body = Some(Block(funInvocs, UnitLiteral))
     println("The test function:\n" + testFun)
+
+    val Program(id, ObjectDef(objId, defs, invariants)) = program
+    val testProgram = Program(id, ObjectDef(objId, testFun +: defs , invariants))
+    println("New program:\n" + ScalaPrinter(testProgram))
 
     reporter.info("Running from waypoint with the following testcases:\n")
     reporter.info(testcases.mkString("\n"))
