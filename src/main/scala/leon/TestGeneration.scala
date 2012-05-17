@@ -19,6 +19,27 @@ class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
     z3Solver.setProgram(program)
     reporter.info("Running test generation")
     val testcases = generateTestCases(program)
+
+    val topFunDef = program.definedFunctions.find(fd => fd.body.exists(body => body match {
+      case Waypoint(1, _) => true
+      case _ => false
+    })).get
+    println("Top level function: " + topFunDef)
+
+    val testFun = new FunDef(FreshIdentifier("test"), UnitType, Seq())
+    val funInvocs = testcases.map(testcase => {
+      val params = topFunDef.args
+      val args = topFunDef.args.map{
+        case VarDecl(id, tpe) => testcase.get(id) match {
+          case Some(v) => v
+          case None => simplestValue(tpe)
+        }
+      }
+      FunctionInvocation(topFunDef, args)
+    }).toSeq
+    testFun.body = Some(Block(funInvocs.init, funInvocs.last))
+    println("The test function:\n" + testFun)
+
     reporter.info("Running from waypoint with the following testcases:\n")
     reporter.info(testcases.mkString("\n"))
   }
