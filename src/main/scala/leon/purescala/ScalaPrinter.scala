@@ -372,7 +372,7 @@ object ScalaPrinter {
       nsb
     }
 
-    case ResultVariable() => sb.append("#res")
+    case ResultVariable() => sb.append("res")
     case EpsilonVariable((row, col)) => sb.append("x" + row + "_" + col)
     case Not(expr) => ppUnary(sb, expr, "\u00AC(", ")", lvl)               // \neg
 
@@ -434,10 +434,7 @@ object ScalaPrinter {
     defn match {
       case Program(id, mainObj) => {
         assert(lvl == 0)
-        sb.append("package ")
-        sb.append(id)
-        sb.append(" {\n")
-        pp(mainObj, sb, lvl+1).append("}\n")
+        pp(mainObj, sb, lvl)
       }
 
       case ObjectDef(id, defs, invs) => {
@@ -502,19 +499,6 @@ object ScalaPrinter {
           nsb.append("@" + a + "\n")
         }
 
-        pre.foreach(prec => {
-          ind(nsb, lvl)
-          nsb.append("@pre : ")
-          nsb = pp(prec, nsb, lvl)
-          nsb.append("\n")
-        })
-
-        post.foreach(postc => {
-          ind(nsb, lvl)
-          nsb.append("@post: ")
-          nsb = pp(postc, nsb, lvl)
-          nsb.append("\n")
-        })
 
         ind(nsb, lvl)
         nsb.append("def ")
@@ -538,10 +522,31 @@ object ScalaPrinter {
         nsb.append(") : ")
         nsb = pp(rt, nsb, lvl)
         nsb.append(" = ")
-        if(body.isDefined)
-          pp(body.get, nsb, lvl)
-        else
+        if(body.isDefined) {
+          pre match {
+            case None => pp(body.get, nsb, lvl)
+            case Some(prec) => {
+              nsb.append("{\n")
+              ind(nsb, lvl+1)
+              nsb.append("require(")
+              nsb = pp(prec, nsb, lvl+1)
+              nsb.append(")\n")
+              pp(body.get, nsb, lvl+1)
+              nsb.append("\n")
+              ind(nsb, lvl)
+              nsb.append("}")
+            }
+          }
+        } else
           nsb.append("[unknown function implementation]")
+
+        post.foreach(postc => {
+          nsb.append(" ensuring(res => ") //TODO, not very general solution...
+          nsb = pp(postc, nsb, lvl)
+          nsb.append(")")
+        })
+
+        nsb
       }
 
       case _ => sb.append("Defn?")
