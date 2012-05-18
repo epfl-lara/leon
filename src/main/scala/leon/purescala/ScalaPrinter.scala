@@ -349,6 +349,7 @@ object ScalaPrinter {
       }
 
       var nsb = sb
+      nsb.append("(")
       nsb == pp(s, nsb, lvl)
       // if(mex.posInfo != "") {
       //   nsb.append(" match@(" + mex.posInfo + ") {\n")
@@ -369,6 +370,7 @@ object ScalaPrinter {
         nsb.append("\n")
       })
       ind(nsb, lvl).append("}")
+      nsb.append(")")
       nsb
     }
 
