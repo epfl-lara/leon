@@ -45,14 +45,14 @@ object Trees {
   /* Like vals */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
     binder.markAsLetBinder
-    val et = body.getType
+    val et = binder.getType
     if(et != Untyped)
       setType(et)
   }
   //same as let, buf for mutable variable declaration
   case class LetVar(binder: Identifier, value: Expr, body: Expr) extends Expr {
     binder.markAsLetBinder
-    val et = body.getType
+    val et = binder.getType
     if(et != Untyped)
       setType(et)
   }
@@ -77,7 +77,7 @@ object Trees {
   case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr 
 
   case class Tuple(exprs: Seq[Expr]) extends Expr {
-    val subTpes = exprs.map(_.getType)
+    val subTpes = exprs.map(_.getType).map(bestRealType)
     if(!subTpes.exists(_ == Untyped)) {
       setType(TupleType(subTpes))
     }
