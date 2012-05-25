@@ -45,14 +45,14 @@ object Trees {
   /* Like vals */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
     binder.markAsLetBinder
-    val et = binder.getType
+    val et = body.getType
     if(et != Untyped)
       setType(et)
   }
   //same as let, buf for mutable variable declaration
   case class LetVar(binder: Identifier, value: Expr, body: Expr) extends Expr {
     binder.markAsLetBinder
-    val et = binder.getType
+    val et = body.getType
     if(et != Untyped)
       setType(et)
   }
