@@ -528,8 +528,8 @@ trait CodeExtraction extends Extractors {
         case Some(e3) => e3
         case None => nextExpr match {
           case ExTuple(tpes, exprs) => {
-            val tupleType = TupleType(tpes.map(tpe => scalaType2PureScala(unit, silent)(tpe)))
             val tupleExprs = exprs.map(e => rec(e))
+            val tupleType = TupleType(tupleExprs.map(expr => bestRealType(expr.getType)))
             Tuple(tupleExprs).setType(tupleType)
           }
           case ExTupleExtract(tuple, index) => {

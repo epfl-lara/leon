@@ -1,5 +1,5 @@
 
-object MyTuple1 {
+object MyTuple4 {
 
   abstract class A
   case class B(i: Int) extends A
