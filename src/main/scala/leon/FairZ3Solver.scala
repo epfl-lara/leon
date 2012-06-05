@@ -631,6 +631,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         }
         case (Some(true), m) => { // SAT
           validatingStopwatch.start
+          Logger.debug("Model Found: " + m, 4, "z3solver")
           val (trueModel, model) = if(Settings.verifyModel)
               validateAndDeleteModel(m, toCheckAgainstModels, varsInVC, evaluator)
             else {
@@ -686,6 +687,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
               foundAnswer(Some(true))
             } else {
               luckyStopwatch.start
+              Logger.debug("Model Found: " + m2, 4, "z3solver")
               // we might have been lucky :D
               val (wereWeLucky, cleanModel) = validateAndDeleteModel(m2, toCheckAgainstModels, varsInVC, evaluator)
               if(wereWeLucky) {
