@@ -225,8 +225,13 @@ object ImperativeCodeElimination extends Pass {
       }
       case LetDef(fd, b) => {
         //Recall that here the nested function should not access mutable variables from an outside scope
+        val newFd = if(!fd.hasImplementation) fd else {
+          val (fdRes, fdScope, fdFun) = toFunction(fd.getBody)
+          fd.body = Some(fdScope(fdRes))
+          fd
+        }
         val (bodyRes, bodyScope, bodyFun) = toFunction(b)
-        (bodyRes, (b2: Expr) => LetDef(fd, bodyScope(b2)), bodyFun)
+        (bodyRes, (b2: Expr) => LetDef(newFd, bodyScope(b2)), bodyFun)
       }
       case n @ NAryOperator(Seq(), recons) => (n, (body: Expr) => body, Map())
       case n @ NAryOperator(args, recons) => {
