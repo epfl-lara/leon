@@ -896,19 +896,27 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
 
 
   // the last return value is a map binding ite values to boolean switches
-  private def clausifyITE(formula : Expr) : (Expr, List[Expr], Map[Identifier,Identifier]) = {
+  private def clausifyITE(formula : Expr) : (Expr, List[Expr], Map[Identifier,Identifier], Seq[(Identifier, Boolean)]) = {
     var newClauses : List[Expr] = Nil
     var ite2Bools : Map[Identifier,Identifier] = Map.empty
+    var guards: List[(Identifier, Boolean)] = List()
 
     def clausify(ex : Expr) : Option[Expr] = ex match {
       case ie @ IfExpr(cond, then, elze) => {
-        val switch = FreshIdentifier("path", true).setType(BooleanType).toVariable
+        val switchId = FreshIdentifier("path", true).setType(BooleanType)
+        val switch = switchId.toVariable
         val placeHolder = FreshIdentifier("iteval", true).setType(ie.getType).toVariable
         newClauses = Iff(switch, cond) :: newClauses
         newClauses = Implies(switch, Equals(placeHolder, then)) :: newClauses
         newClauses = Implies(Not(switch), Equals(placeHolder, elze)) :: newClauses
         // newBools = newBools + switch.id
         ite2Bools = ite2Bools + (placeHolder.id -> switch.id)
+
+        if(!functionCallsOf(then).isEmpty)
+          guards ::= (switchId -> true)
+        if(!functionCallsOf(elze).isEmpty)
+          guards ::= (switchId -> false)
+
         Some(placeHolder)
       }
       case _ => None
@@ -916,7 +924,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
 
     val cleanedUp = searchAndReplaceDFS(clausify)(formula)
 
-    (cleanedUp, newClauses.reverse, ite2Bools)
+    (cleanedUp, newClauses.reverse, ite2Bools, guards.toSeq)
   }
 
   protected[leon] var exprToZ3Id : Map[Expr,Z3AST] = Map.empty
@@ -1340,13 +1348,13 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       }
     }
 
-    private def treatFunctionInvocationSet(sVar : Identifier, pol : Boolean, fis : Set[FunctionInvocation]) : (Seq[Expr],Seq[(Identifier,Boolean)]) = {
+    private def treatFunctionInvocationSet(sVar : Identifier, pol : Boolean, fis : Set[FunctionInvocation], initialUnroll: Boolean) : (Seq[Expr],Seq[(Identifier,Boolean)]) = {
       val allBlocks : MutableSet[(Identifier,Boolean)] = MutableSet.empty
       var allNewExprs : Seq[Expr] = Seq.empty
 
       for(fi <- fis) {
         val temp = FunctionTemplate.mkTemplate(fi.funDef)
-        val (newExprs,newBlocks) = temp.instantiate(sVar, pol, fi.args)
+        val (newExprs,newBlocks) = temp.instantiate(sVar, pol, fi.args, initialUnroll)
 
         for(((i,p),fis) <- newBlocks) {
           if(registerBlocked(i,p,fis)) {
@@ -1362,15 +1370,23 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     // Wouldn't it be better/more uniform to pretend the initial formula is a
     // function and generate a template for it?
     def initialUnrolling(formula : Expr) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
+      //val (cleanedFormula, clauses, _, guards) = clausifyITE(formula)
+      //val seqClauses = (cleanedFormula :: clauses).toSeq
+      //(seqClauses, guards)
+      //val funDef = new FunDef(FreshIdentifier("foo"), formula.getType, Seq())
+      //funDef.body = Some(formula)
+      //val startingVar : Identifier = FreshIdentifier("start", true).setType(BooleanType)
+      //val result = treatFunctionInvocationSet(startingVar, true, Set(FunctionInvocation(funDef, Seq())))
+      //(Variable(startingVar) +: result._1, result._2)
       val fi = functionCallsOf(formula)
       if(fi.isEmpty) {
         (Seq(formula), Seq.empty)
       } else {
         val startingVar : Identifier = FreshIdentifier("start", true).setType(BooleanType)
 
-        val result = treatFunctionInvocationSet(startingVar, true, functionCallsOf(formula))
-        //reporter.info(result)
-        (Variable(startingVar) +: formula +: result._1, result._2)
+        val result = treatFunctionInvocationSet(startingVar, true, functionCallsOf(formula), true)
+        val (clauses, guards) = initialUnrolling0(startingVar, formula)
+        (clauses ++ result._1, guards ++ result._2)
       }
     }
 
@@ -1380,8 +1396,78 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       } else {
         val copy = blockMap((id,pol))
         blockMap((id,pol)) = Set.empty
-        treatFunctionInvocationSet(id, pol, copy)
+        treatFunctionInvocationSet(id, pol, copy, false)
       }
+    }
+
+    def initialUnrolling0(startingVar: Identifier, formula: Expr): (Seq[Expr], Seq[(Identifier,Boolean)]) = {
+
+      var guardedExprs : Map[(Identifier,Boolean),Seq[Expr]] = Map.empty
+      def storeGuarded(guardVar : Identifier, guardPol : Boolean, expr : Expr) : Unit = {
+        assert(expr.getType == BooleanType)
+        val p : (Identifier,Boolean) = (guardVar,guardPol)
+        if(guardedExprs.isDefinedAt(p)) {
+          val prev : Seq[Expr] = guardedExprs(p)
+          guardedExprs += (p -> (expr +: prev))
+        } else {
+          guardedExprs += (p -> Seq(expr))
+        }
+      }
+  
+      def rec(pathVar : Identifier, pathPol : Boolean, expr : Expr) : Expr = {
+        expr match {
+          case l : Let => sys.error("Let's should have been eliminated.")
+          case m : MatchExpr => sys.error("MatchExpr's should have been eliminated.")
+  
+          case i @ IfExpr(cond, then, elze) => {
+            if(!containsFunctionCalls(cond) && !containsFunctionCalls(then) && !containsFunctionCalls(elze)) {
+              i
+            } else {
+              val newBool : Identifier = FreshIdentifier("b", true).setType(BooleanType)
+              val newExpr : Identifier = FreshIdentifier("e", true).setType(i.getType)
+              
+              val crec = rec(pathVar, pathPol, cond)
+              val trec = rec(newBool, true, then)
+              val erec = rec(newBool, false, elze)
+  
+              storeGuarded(pathVar, pathPol, Iff(Variable(newBool), crec))
+              storeGuarded(newBool, true,  Equals(Variable(newExpr), trec))
+              storeGuarded(newBool, false, Equals(Variable(newExpr), erec))
+              Variable(newExpr)
+            }
+          }
+  
+          case n @ NAryOperator(as, r) => r(as.map(a => rec(pathVar, pathPol, a))).setType(n.getType)
+          case b @ BinaryOperator(a1, a2, r) => r(rec(pathVar, pathPol, a1), rec(pathVar, pathPol, a2)).setType(b.getType)
+          case u @ UnaryOperator(a, r) => r(rec(pathVar, pathPol, a)).setType(u.getType)
+          case t : Terminal => t
+          case a : AnonymousFunction => {
+            Settings.reporter.warning("AnonymousFunction literal showed up in the construction of a FunctionTemplate.")
+            a
+          }
+        }
+      }
+      val newFormula = rec(startingVar, true, formula)
+
+      val asClauses : Seq[Expr] = {
+        (for(((b,p),es) <- guardedExprs; e <- es) yield {
+          Implies(if(!p) Not(Variable(b)) else Variable(b), e)
+        }).toSeq
+      }
+
+      val blockers : Map[(Identifier,Boolean),Set[FunctionInvocation]] = {
+        Map((for((p, es) <- guardedExprs) yield {
+          val calls = es.foldLeft(Set.empty[FunctionInvocation])((s,e) => s ++ functionCallsOf(e))
+          if(calls.isEmpty) {
+            None
+          } else {
+            Some((p, calls))
+          }
+        }).flatten.toSeq : _*)
+      }
+
+      (Variable(startingVar) +: (newFormula +: asClauses), blockers.keys.toSeq)
+
     }
   }
 }
