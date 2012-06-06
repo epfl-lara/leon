@@ -37,7 +37,7 @@ class FunctionTemplate private(
   // Returns two things:
   //  - a set of clauses representing the computation of the function/post
   //  - a map indicating which boolean variables guard which (recursive) fun. invoc.
-  def instantiate(aVar : Identifier, aPol : Boolean, args : Seq[Expr], initialUnroll: Boolean = false) : (Seq[Expr],Map[(Identifier,Boolean),Set[FunctionInvocation]]) = {
+  def instantiate(aVar : Identifier, aPol : Boolean, args : Seq[Expr]) : (Seq[Expr],Map[(Identifier,Boolean),Set[FunctionInvocation]]) = {
     assert(args.size == funDef.args.size)
 
     val idSubstMap : Map[Identifier,Identifier] = 
