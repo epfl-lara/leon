@@ -1304,6 +1304,11 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           }
 
           case Z3NumeralAST(Some(v)) => IntLiteral(v)
+          case Z3NumeralAST(None) => {
+            reporter.info("Cannot read exact model from Z3: Integer does not fit in machine word")
+            reporter.info("Exiting procedure now")
+            sys.exit(0)
+          }
           case other @ _ => {
             System.err.println("Don't know what this is " + other) 
             System.err.println("REVERSE FUNCTION MAP:")
