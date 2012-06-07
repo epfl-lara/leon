@@ -778,7 +778,6 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
               }
             }
 
-            // println("Release set : " + toRelease)
 
             blockingSet = blockingSet -- toRelease
 
@@ -1367,16 +1366,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     // Wouldn't it be better/more uniform to pretend the initial formula is a
     // function and generate a template for it?
     def initialUnrolling(formula : Expr) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
-      val fi = functionCallsOf(formula)
-      if(fi.isEmpty) {
-        (Seq(formula), Seq.empty)
-      } else {
-        val startingVar : Identifier = FreshIdentifier("start", true).setType(BooleanType)
-
-        val result = treatFunctionInvocationSet(startingVar, true, functionCallsOf(formula))
-        //reporter.info(result)
-        (Variable(startingVar) +: formula +: result._1, result._2)
-      }
+      initialUnrolling0(formula)
     }
 
     def unlock(id: Identifier, pol: Boolean) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
@@ -1387,6 +1377,80 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         blockMap((id,pol)) = Set.empty
         treatFunctionInvocationSet(id, pol, copy)
       }
+    }
+
+    def initialUnrolling0(formula: Expr): (Seq[Expr], Seq[(Identifier,Boolean)]) = {
+
+      var guardedExprs : Map[(Identifier,Boolean),Seq[Expr]] = Map.empty
+      def storeGuarded(guardVar : Identifier, guardPol : Boolean, expr : Expr) : Unit = {
+        assert(expr.getType == BooleanType)
+        val p : (Identifier,Boolean) = (guardVar,guardPol)
+        if(guardedExprs.isDefinedAt(p)) {
+          val prev : Seq[Expr] = guardedExprs(p)
+          guardedExprs += (p -> (expr +: prev))
+        } else {
+          guardedExprs += (p -> Seq(expr))
+        }
+      }
+  
+      def rec(pathVar : Identifier, pathPol : Boolean, expr : Expr) : Expr = {
+        expr match {
+          case l : Let => sys.error("Let's should have been eliminated.")
+          case m : MatchExpr => sys.error("MatchExpr's should have been eliminated.")
+  
+          case i @ IfExpr(cond, then, elze) => {
+            if(!containsFunctionCalls(cond) && !containsFunctionCalls(then) && !containsFunctionCalls(elze)) {
+              i
+            } else {
+              val newBool : Identifier = FreshIdentifier("b", true).setType(BooleanType)
+              val newExpr : Identifier = FreshIdentifier("e", true).setType(i.getType)
+              
+              val crec = rec(pathVar, pathPol, cond)
+              val trec = rec(newBool, true, then)
+              val erec = rec(newBool, false, elze)
+  
+              storeGuarded(pathVar, pathPol, Iff(Variable(newBool), crec))
+              storeGuarded(newBool, true,  Equals(Variable(newExpr), trec))
+              storeGuarded(newBool, false, Equals(Variable(newExpr), erec))
+              Variable(newExpr)
+            }
+          }
+  
+          case n @ NAryOperator(as, r) => r(as.map(a => rec(pathVar, pathPol, a))).setType(n.getType)
+          case b @ BinaryOperator(a1, a2, r) => r(rec(pathVar, pathPol, a1), rec(pathVar, pathPol, a2)).setType(b.getType)
+          case u @ UnaryOperator(a, r) => r(rec(pathVar, pathPol, a)).setType(u.getType)
+          case t : Terminal => t
+          case a : AnonymousFunction => {
+            Settings.reporter.warning("AnonymousFunction literal showed up in the construction of a FunctionTemplate.")
+            a
+          }
+        }
+      }
+      val startingVar : Identifier = FreshIdentifier("start", true).setType(BooleanType)
+      storeGuarded(startingVar, false, BooleanLiteral(false))
+      val newFormula = rec(startingVar, true, formula)
+      storeGuarded(startingVar, true, newFormula)
+
+      val asClauses : Seq[Expr] = {
+        (for(((b,p),es) <- guardedExprs; e <- es) yield {
+          Implies(if(!p) Not(Variable(b)) else Variable(b), e)
+        }).toSeq
+      }
+
+      val blockers : Map[(Identifier,Boolean),Set[FunctionInvocation]] = {
+        Map((for((p, es) <- guardedExprs) yield {
+          val calls = es.foldLeft(Set.empty[FunctionInvocation])((s,e) => s ++ functionCallsOf(e))
+          if(calls.isEmpty) {
+            None
+          } else {
+            registerBlocked(p._1, p._2, calls)
+            Some((p, calls))
+          }
+        }).flatten.toSeq : _*)
+      }
+
+      (asClauses, blockers.keys.toSeq)
+
     }
   }
 }
