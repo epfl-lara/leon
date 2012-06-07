@@ -1379,6 +1379,8 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       }
     }
 
+    //this is mostly copied from FunctionTemplate. This is sort of a quick hack to the problem
+    //of the initial unrolling
     def initialUnrolling0(formula: Expr): (Seq[Expr], Seq[(Identifier,Boolean)]) = {
 
       var guardedExprs : Map[(Identifier,Boolean),Seq[Expr]] = Map.empty
