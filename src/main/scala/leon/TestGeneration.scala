@@ -19,6 +19,8 @@ class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
   def analyse(program: Program) {
     z3Solver.setProgram(program)
     reporter.info("Running test generation")
+    program.definedFunctions.foreach(fd => println(fd.annotations))
+
     val testcases = generateTestCases(program)
 
     val topFunDef = program.definedFunctions.find(fd => fd.body.exists(body => body match {
