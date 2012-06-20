@@ -19,7 +19,6 @@ class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
   def analyse(program: Program) {
     z3Solver.setProgram(program)
     reporter.info("Running test generation")
-    program.definedFunctions.foreach(fd => println(fd.annotations))
 
     val testcases = generateTestCases(program)
 
@@ -47,6 +46,10 @@ class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
 
     reporter.info("Running from waypoint with the following testcases:\n")
     reporter.info(testcases.mkString("\n"))
+  }
+
+  private def isMain(fd: FunDef): Boolean = {
+    fd.annotations.exists(_ == "main")
   }
 
   def generatePathConditions(program: Program): Set[Expr] = {
