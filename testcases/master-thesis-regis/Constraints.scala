@@ -21,6 +21,30 @@ object Epsilon4 {
     MyCons(elem, toList(set -- Set[Int](elem)))
   }
 
-  def property(lst: MyList): Boolean = (size(toList(toSet(lst))) <= size(lst)) holds
+  def sizeToListEq(lst: MyList): Boolean = (size(toList(toSet(lst))) == size(lst)) holds
+
+  def sizeToListLessEq(lst: MyList): Boolean = (size(toList(toSet(lst))) <= size(lst)) holds
+
+  def toListEq(lst: MyList): Boolean = (toList(toSet(lst)) == lst) holds
+
+  def positiveNum(): Int = epsilon((x: Int) => x > 0) ensuring(_ > 0)
+
+
+  def linearEquation(): (Int, Int) = {
+    val sol = epsilon((t: (Int, Int)) => 2*t._1 + 3*t._2 == 10 && t._1 >= 0 && t._2 >= 0)
+    sol
+  } ensuring(res => res == (2, 2) || res == (5, 0))
+
+
+  def nonDeterminsticExecution(): Int = {
+    var i = 0
+    var b = epsilon((x: Boolean) => i == i)
+    while(b) {
+      i = i + 1
+      b = epsilon((x: Boolean) => i == i)
+    }
+    i
+  } ensuring(_ <= 10)
+  
 
 }
