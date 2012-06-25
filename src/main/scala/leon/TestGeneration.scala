@@ -22,11 +22,11 @@ class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
 
     val testcases = generateTestCases(program)
 
-    val topFunDef = program.definedFunctions.find(fd => fd.body.exists(body => body match {
-      case Waypoint(1, _) => true
-      case _ => false
-    })).get
-
+    val topFunDef = program.definedFunctions.find(fd => isMain(fd)).get
+//fd.body.exists(body => body match {
+//      case Waypoint(1, _) => true
+//      case _ => false
+//    })
     val testFun = new FunDef(FreshIdentifier("test"), UnitType, Seq())
     val funInvocs = testcases.map(testcase => {
       val params = topFunDef.args
