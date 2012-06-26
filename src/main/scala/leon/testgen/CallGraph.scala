@@ -1,9 +1,10 @@
-package leon
+package leon.testgen
 
 import leon.purescala.Definitions._
 import leon.purescala.Trees._
 import leon.purescala.TypeTrees._
 import leon.purescala.Common._
+import leon.FairZ3Solver
 
 class CallGraph(val program: Program) {
 

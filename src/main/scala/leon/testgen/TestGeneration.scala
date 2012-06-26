@@ -1,13 +1,15 @@
-package leon
+package leon.testgen
 
-import purescala.Common._
-import purescala.Definitions._
-import purescala.Trees._
-import purescala.TypeTrees._
-import purescala.ScalaPrinter
-import Extensions._
+import leon.purescala.Common._
+import leon.purescala.Definitions._
+import leon.purescala.Trees._
+import leon.purescala.TypeTrees._
+import leon.purescala.ScalaPrinter
+import leon.Extensions._
+import leon.FairZ3Solver
+import leon.Reporter
+
 import scala.collection.mutable.{Set => MutableSet}
-
 
 class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
 
