@@ -67,7 +67,7 @@ object ScalaPrinter {
     case Variable(id) => sb.append(id)
     case DeBruijnIndex(idx) => sys.error("Not Valid Scala")
     case Let(b,d,e) => {
-      sb.append("{\n")
+      sb.append("locally {\n")
       ind(sb, lvl+1)
       sb.append("val " + b + " = ")
       pp(d, sb, lvl+1)
@@ -81,7 +81,7 @@ object ScalaPrinter {
       sb
     }
     case LetVar(b,d,e) => {
-      sb.append("{\n")
+      sb.append("locally {\n")
       ind(sb, lvl+1)
       sb.append("var " + b + " = ")
       pp(d, sb, lvl+1)
@@ -496,11 +496,10 @@ object ScalaPrinter {
       case fd @ FunDef(id, rt, args, body, pre, post) => {
         var nsb = sb
 
-        for(a <- fd.annotations) {
-          ind(nsb, lvl)
-          nsb.append("@" + a + "\n")
-        }
-
+        //for(a <- fd.annotations) {
+        //  ind(nsb, lvl)
+        //  nsb.append("@" + a + "\n")
+        //}
 
         ind(nsb, lvl)
         nsb.append("def ")
@@ -523,7 +522,7 @@ object ScalaPrinter {
 
         nsb.append(") : ")
         nsb = pp(rt, nsb, lvl)
-        nsb.append(" = ")
+        nsb.append(" = (")
         if(body.isDefined) {
           pre match {
             case None => pp(body.get, nsb, lvl)
@@ -542,11 +541,16 @@ object ScalaPrinter {
         } else
           nsb.append("[unknown function implementation]")
 
-        post.foreach(postc => {
-          nsb.append(" ensuring(res => ") //TODO, not very general solution...
-          nsb = pp(postc, nsb, lvl)
-          nsb.append(")")
-        })
+        post match {
+          case None => {
+            nsb.append(")")
+          }
+          case Some(postc) => {
+            nsb.append(" ensuring(res => ") //TODO, not very general solution...
+            nsb = pp(postc, nsb, lvl)
+            nsb.append("))")
+          }
+        }
 
         nsb
       }
