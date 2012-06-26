@@ -964,6 +964,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           z3Vars = z3Vars - i
           rb
         }
+        case Waypoint(_, e) => rec(e)
         case e @ Error(_) => {
           val tpe = e.getType
           val newAST = z3.mkFreshConst("errorValue", typeToSort(tpe))

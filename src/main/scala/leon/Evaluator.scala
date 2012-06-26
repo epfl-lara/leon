@@ -77,6 +77,7 @@ object Evaluator {
             case _ => throw TypeErrorEx(TypeError(first, BooleanType))
           }
         }
+        case Waypoint(_, arg) => rec(ctx, arg)
         case FunctionInvocation(fd, args) => {
           val evArgs = args.map(a => rec(ctx, a))
           // build a context for the function...

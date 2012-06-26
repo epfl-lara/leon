@@ -1,9 +1,7 @@
-package leon
-package purescala
+package leon.purescala
 
-/** This pretty-printer uses Unicode for some operators, to make sure we
- * distinguish PureScala from "real" Scala (and also because it's cute). */
-object PrettyPrinter {
+/** This pretty-printer only print valid scala syntax */
+object ScalaPrinter {
   import Common._
   import Trees._
   import TypeTrees._
@@ -67,24 +65,33 @@ object PrettyPrinter {
 
   private def pp(tree: Expr, sb: StringBuffer, lvl: Int): StringBuffer = tree match {
     case Variable(id) => sb.append(id)
-    case DeBruijnIndex(idx) => sb.append("_" + idx)
+    case DeBruijnIndex(idx) => sys.error("Not Valid Scala")
     case Let(b,d,e) => {
-        //pp(e, pp(d, sb.append("(let (" + b + " := "), lvl).append(") in "), lvl).append(")")
-      sb.append("(let (" + b + " := ");
-      pp(d, sb, lvl)
-      sb.append(") in\n")
+      sb.append("locally {\n")
+      ind(sb, lvl+1)
+      sb.append("val " + b + " = ")
+      pp(d, sb, lvl+1)
+      sb.append("\n")
       ind(sb, lvl+1)
       pp(e, sb, lvl+1)
-      sb.append(")")
+      sb.append("\n")
+      ind(sb, lvl)
+      sb.append("}\n")
+      ind(sb, lvl)
       sb
     }
     case LetVar(b,d,e) => {
-      sb.append("(letvar (" + b + " := ");
-      pp(d, sb, lvl)
-      sb.append(") in\n")
+      sb.append("locally {\n")
+      ind(sb, lvl+1)
+      sb.append("var " + b + " = ")
+      pp(d, sb, lvl+1)
+      sb.append("\n")
       ind(sb, lvl+1)
       pp(e, sb, lvl+1)
-      sb.append(")")
+      sb.append("\n")
+      ind(sb, lvl)
+      sb.append("}\n")
+      ind(sb, lvl)
       sb
     }
     case LetDef(fd,e) => {
@@ -96,11 +103,11 @@ object PrettyPrinter {
       pp(e, sb, lvl)
       sb
     }
-    case And(exprs) => ppNary(sb, exprs, "(", " \u2227 ", ")", lvl)            // \land
-    case Or(exprs) => ppNary(sb, exprs, "(", " \u2228 ", ")", lvl)             // \lor
-    case Not(Equals(l, r)) => ppBinary(sb, l, r, " \u2260 ", lvl)    // \neq
-    case Iff(l,r) => ppBinary(sb, l, r, " <=> ", lvl)              
-    case Implies(l,r) => ppBinary(sb, l, r, " ==> ", lvl)              
+    case And(exprs) => ppNary(sb, exprs, "(", " && ", ")", lvl)            // \land
+    case Or(exprs) => ppNary(sb, exprs, "(", " || ", ")", lvl)             // \lor
+    case Not(Equals(l, r)) => ppBinary(sb, l, r, " != ", lvl)    // \neq
+    case Iff(l,r) => sys.error("Not Scala Code")
+    case Implies(l,r) => sys.error("Not Scala Code")
     case UMinus(expr) => ppUnary(sb, expr, "-(", ")", lvl)
     case Equals(l,r) => ppBinary(sb, l, r, " == ", lvl)
     case IntLiteral(v) => sb.append(v)
@@ -146,19 +153,8 @@ object PrettyPrinter {
       sb
     }
 
-    case e@Epsilon(pred) => {
-      var nsb = sb
-      nsb.append("epsilon(x" + e.posIntInfo._1 + "_" + e.posIntInfo._2 + ". ")
-      nsb = pp(pred, nsb, lvl)
-      nsb.append(")")
-      nsb
-    }
-
-    case Waypoint(i, expr) => {
-      sb.append("waypoint_" + i + "(")
-      pp(expr, sb, lvl)
-      sb.append(")")
-    }
+    case e@Epsilon(pred) => sys.error("Not Scala Code")
+    case Waypoint(i, expr) => pp(expr, sb, lvl)
 
     case OptionSome(a) => {
       var nsb = sb
@@ -216,32 +212,32 @@ object PrettyPrinter {
     case Modulo(l,r) => ppBinary(sb, l, r, " % ", lvl)
     case LessThan(l,r) => ppBinary(sb, l, r, " < ", lvl)
     case GreaterThan(l,r) => ppBinary(sb, l, r, " > ", lvl)
-    case LessEquals(l,r) => ppBinary(sb, l, r, " \u2264 ", lvl)      // \leq
-    case GreaterEquals(l,r) => ppBinary(sb, l, r, " \u2265 ", lvl)   // \geq
+    case LessEquals(l,r) => ppBinary(sb, l, r, " <= ", lvl)      // \leq
+    case GreaterEquals(l,r) => ppBinary(sb, l, r, " >= ", lvl)   // \geq
     case FiniteSet(rs) => ppNary(sb, rs, "{", ", ", "}", lvl)
     case FiniteMultiset(rs) => ppNary(sb, rs, "{|", ", ", "|}", lvl)
-    case EmptySet(_) => sb.append("\u2205")                          // Ø
-    case EmptyMultiset(_) => sb.append("\u2205")                     // Ø
-    case Not(ElementOfSet(s,e)) => ppBinary(sb, s, e, " \u2209 ", lvl) // \notin
-    case ElementOfSet(s,e) => ppBinary(sb, s, e, " \u2208 ", lvl)    // \in
-    case SubsetOf(l,r) => ppBinary(sb, l, r, " \u2286 ", lvl)        // \subseteq
-    case Not(SubsetOf(l,r)) => ppBinary(sb, l, r, " \u2288 ", lvl)        // \notsubseteq
+    case EmptySet(bt) => sb.append("Set()")                          // Ø
+    case EmptyMultiset(_) => sys.error("Not Valid Scala")
+    case Not(ElementOfSet(s,e)) => sys.error("TODO")
+    //case ElementOfSet(s,e) => ppBinary(sb, s, e, " \u2208 ", lvl)    // \in
+    //case SubsetOf(l,r) => ppBinary(sb, l, r, " \u2286 ", lvl)        // \subseteq
+    //case Not(SubsetOf(l,r)) => ppBinary(sb, l, r, " \u2288 ", lvl)        // \notsubseteq
     case SetMin(s) => pp(s, sb, lvl).append(".min")
     case SetMax(s) => pp(s, sb, lvl).append(".max")
-    case SetUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)        // \cup
-    case MultisetUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)   // \cup
-    case MapUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)        // \cup
-    case SetDifference(l,r) => ppBinary(sb, l, r, " \\ ", lvl)       
-    case MultisetDifference(l,r) => ppBinary(sb, l, r, " \\ ", lvl)       
-    case SetIntersection(l,r) => ppBinary(sb, l, r, " \u2229 ", lvl) // \cap
-    case MultisetIntersection(l,r) => ppBinary(sb, l, r, " \u2229 ", lvl) // \cap
-    case SetCardinality(t) => ppUnary(sb, t, "|", "|", lvl)
-    case MultisetCardinality(t) => ppUnary(sb, t, "|", "|", lvl)
-    case MultisetPlus(l,r) => ppBinary(sb, l, r, " \u228E ", lvl)    // U+
-    case MultisetToSet(e) => pp(e, sb, lvl).append(".toSet")
-    case EmptyMap(_,_) => sb.append("{}")
+   // case SetUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)        // \cup
+   // case MultisetUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)   // \cup
+   // case MapUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)        // \cup
+   // case SetDifference(l,r) => ppBinary(sb, l, r, " \\ ", lvl)       
+   // case MultisetDifference(l,r) => ppBinary(sb, l, r, " \\ ", lvl)       
+   // case SetIntersection(l,r) => ppBinary(sb, l, r, " \u2229 ", lvl) // \cap
+   // case MultisetIntersection(l,r) => ppBinary(sb, l, r, " \u2229 ", lvl) // \cap
+   // case SetCardinality(t) => ppUnary(sb, t, "|", "|", lvl)
+   // case MultisetCardinality(t) => ppUnary(sb, t, "|", "|", lvl)
+   // case MultisetPlus(l,r) => ppBinary(sb, l, r, " \u228E ", lvl)    // U+
+   // case MultisetToSet(e) => pp(e, sb, lvl).append(".toSet")
+    case EmptyMap(_,_) => sb.append("Map()")
     case SingletonMap(f,t) => ppBinary(sb, f, t, " -> ", lvl)
-    case FiniteMap(rs) => ppNary(sb, rs, "{", ", ", "}", lvl)
+    case FiniteMap(rs) => ppNary(sb, rs, "Map(", ", ", ")", lvl)
     case MapGet(m,k) => {
       var nsb = sb
       pp(m, nsb, lvl)
@@ -270,11 +266,7 @@ object PrettyPrinter {
       pp(v, sb, lvl)
       sb.append(")")
     }
-    case am@ArrayMake(v) => {
-      sb.append("Array.make(")
-      pp(v, sb, lvl)
-      sb.append(")")    
-    }
+    case am@ArrayMake(v) => sys.error("Not Scala Code")
     case sel@ArraySelect(ar, i) => {
       pp(ar, sb, lvl)
       sb.append("(")
@@ -309,7 +301,7 @@ object PrettyPrinter {
     
     case IfExpr(c, t, e) => {
       var nsb = sb
-      nsb.append("if (")
+      nsb.append("(if (")
       nsb = pp(c, nsb, lvl)
       nsb.append(")\n")
       ind(nsb, lvl+1)
@@ -319,19 +311,8 @@ object PrettyPrinter {
       nsb.append("else\n")
       ind(nsb, lvl+1)
       nsb = pp(e, nsb, lvl+1)
+      nsb.append(")")
       nsb
-      //nsb.append(") {\n")
-      //ind(nsb, lvl+1)
-      //nsb = pp(t, nsb, lvl+1)
-      //nsb.append("\n")
-      //ind(nsb, lvl)
-      //nsb.append("} else {\n")
-      //ind(nsb, lvl+1)
-      //nsb = pp(e, nsb, lvl+1)
-      //nsb.append("\n")
-      //ind(nsb, lvl)
-      //nsb.append("}")
-      //nsb
     }
 
     case mex @ MatchExpr(s, csc) => {
@@ -368,6 +349,7 @@ object PrettyPrinter {
       }
 
       var nsb = sb
+      nsb.append("(")
       nsb == pp(s, nsb, lvl)
       // if(mex.posInfo != "") {
       //   nsb.append(" match@(" + mex.posInfo + ") {\n")
@@ -388,10 +370,11 @@ object PrettyPrinter {
         nsb.append("\n")
       })
       ind(nsb, lvl).append("}")
+      nsb.append(")")
       nsb
     }
 
-    case ResultVariable() => sb.append("#res")
+    case ResultVariable() => sb.append("res")
     case EpsilonVariable((row, col)) => sb.append("x" + row + "_" + col)
     case Not(expr) => ppUnary(sb, expr, "\u00AC(", ")", lvl)               // \neg
 
@@ -453,10 +436,7 @@ object PrettyPrinter {
     defn match {
       case Program(id, mainObj) => {
         assert(lvl == 0)
-        sb.append("package ")
-        sb.append(id)
-        sb.append(" {\n")
-        pp(mainObj, sb, lvl+1).append("}\n")
+        pp(mainObj, sb, lvl)
       }
 
       case ObjectDef(id, defs, invs) => {
@@ -516,24 +496,10 @@ object PrettyPrinter {
       case fd @ FunDef(id, rt, args, body, pre, post) => {
         var nsb = sb
 
-        for(a <- fd.annotations) {
-          ind(nsb, lvl)
-          nsb.append("@" + a + "\n")
-        }
-
-        pre.foreach(prec => {
-          ind(nsb, lvl)
-          nsb.append("@pre : ")
-          nsb = pp(prec, nsb, lvl)
-          nsb.append("\n")
-        })
-
-        post.foreach(postc => {
-          ind(nsb, lvl)
-          nsb.append("@post: ")
-          nsb = pp(postc, nsb, lvl)
-          nsb.append("\n")
-        })
+        //for(a <- fd.annotations) {
+        //  ind(nsb, lvl)
+        //  nsb.append("@" + a + "\n")
+        //}
 
         ind(nsb, lvl)
         nsb.append("def ")
@@ -556,14 +522,42 @@ object PrettyPrinter {
 
         nsb.append(") : ")
         nsb = pp(rt, nsb, lvl)
-        nsb.append(" = ")
-        if(body.isDefined)
-          pp(body.get, nsb, lvl)
-        else
+        nsb.append(" = (")
+        if(body.isDefined) {
+          pre match {
+            case None => pp(body.get, nsb, lvl)
+            case Some(prec) => {
+              nsb.append("{\n")
+              ind(nsb, lvl+1)
+              nsb.append("require(")
+              nsb = pp(prec, nsb, lvl+1)
+              nsb.append(")\n")
+              pp(body.get, nsb, lvl+1)
+              nsb.append("\n")
+              ind(nsb, lvl)
+              nsb.append("}")
+            }
+          }
+        } else
           nsb.append("[unknown function implementation]")
+
+        post match {
+          case None => {
+            nsb.append(")")
+          }
+          case Some(postc) => {
+            nsb.append(" ensuring(res => ") //TODO, not very general solution...
+            nsb = pp(postc, nsb, lvl)
+            nsb.append("))")
+          }
+        }
+
+        nsb
       }
 
       case _ => sb.append("Defn?")
     }
   }
 }
+
+// vim: set ts=4 sw=4 et:

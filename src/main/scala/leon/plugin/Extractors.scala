@@ -174,6 +174,19 @@ trait Extractors {
         case _ => None
       }
     }
+    object ExWaypointExpression {
+      def unapply(tree: Apply) : Option[(Type, Tree, Tree)] = tree match {
+        case Apply(
+              TypeApply(Select(Select(funcheckIdent, utilsName), waypoint), typeTree :: Nil),
+              List(i, expr)) => {
+          if (utilsName.toString == "Utils" && waypoint.toString == "waypoint")
+            Some((typeTree.tpe, i, expr))
+          else 
+            None
+        }
+        case _ => None
+      }
+    }
 
 
     object ExValDef {

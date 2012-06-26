@@ -203,6 +203,7 @@ trait CodeExtraction extends Extractors {
               a.atp.safeToString match {
                 case "leon.Annotations.induct" => funDef.addAnnotation("induct")
                 case "leon.Annotations.axiomatize" => funDef.addAnnotation("axiomatize")
+                case "leon.Annotations.main" => funDef.addAnnotation("main")
                 case _ => ;
               }
             }
@@ -679,6 +680,11 @@ trait CodeExtraction extends Extractors {
               throw ImpureCodeEncounteredException(epsi)
             }
             Epsilon(c1).setType(pstpe).setPosInfo(epsi.pos.line, epsi.pos.column)
+          }
+          case ExWaypointExpression(tpe, i, tree) => {
+            val pstpe = scalaType2PureScala(unit, silent)(tpe)
+            val IntLiteral(ri) = rec(i)
+            Waypoint(ri, rec(tree)).setType(pstpe)
           }
           case ExSomeConstruction(tpe, arg) => {
             // println("Got Some !" + tpe + ":" + arg)

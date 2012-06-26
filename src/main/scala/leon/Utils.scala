@@ -16,4 +16,7 @@ object Utils {
     def invariant(x: Boolean): Unit = ()
   }
   implicit def while2Invariant(u: Unit) = InvariantFunction
+
+
+  def waypoint[A](i: Int, expr: A): A = expr
 }
