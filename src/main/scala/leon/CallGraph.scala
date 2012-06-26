@@ -53,7 +53,7 @@ class CallGraph(val program: Program) {
     graph.find{
       case (point, edges) => {
         edges.exists{
-          case edge@(p2, TransitionLabel(BooleanLiteral(true), assign)) if assign.isEmpty => {
+          case edge@(p2@ExpressionPoint(e, _), TransitionLabel(BooleanLiteral(true), assign)) if assign.isEmpty && !e.isInstanceOf[Waypoint] => {
             val edgesOfPoint: Set[(ProgramPoint, TransitionLabel)] = graph.get(p2).getOrElse(Set()) //should be unique entry point and cannot be a FunctionStart
             newGraph += (point -> ((edges - edge) ++ edgesOfPoint))
             newGraph -= p2
@@ -160,7 +160,7 @@ class CallGraph(val program: Program) {
     fd.annotations.exists(_ == "main")
   }
 
-  def findAllPaths: Set[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = {
+  def findAllPaths(z3Solver: FairZ3Solver): Set[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = {
     val waypoints: Set[ProgramPoint] = programPoints.filter{ case ExpressionPoint(Waypoint(_, _), _) => true case _ => false }
     val sortedWaypoints: Seq[ProgramPoint] = waypoints.toSeq.sortWith((p1, p2) => {
       val (ExpressionPoint(Waypoint(i1, _), _), ExpressionPoint(Waypoint(i2, _), _)) = (p1, p2)
@@ -170,25 +170,72 @@ class CallGraph(val program: Program) {
     val functionPoints: Set[ProgramPoint] = programPoints.flatMap{ case f@FunctionStart(fd) => Set[ProgramPoint](f) case _ => Set[ProgramPoint]() }
     val mainPoint: Option[ProgramPoint] = functionPoints.find{ case FunctionStart(fd) => isMain(fd) case p => sys.error("unexpected: " + p) }
 
-    assert(mainPoint != None || sortedWaypoints.size > 1)
+    assert(mainPoint != None)
 
-    if(mainPoint != None) {
+    if(sortedWaypoints.size == 0) {
       findSimplePaths(mainPoint.get)
     } else {
-      Set(
-        sortedWaypoints.zip(sortedWaypoints.tail).foldLeft(Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]())((path, waypoint) =>
-          path ++ findPath(waypoint._1, waypoint._2))
-      )
+      visitAllWaypoints(mainPoint.get :: sortedWaypoints.toList, z3Solver) match {
+        case None => Set()
+        case Some(p) => Set(p)
+      }
+      //Set(
+      //  sortedWaypoints.zip(sortedWaypoints.tail).foldLeft(Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]())((path, waypoint) =>
+      //    path ++ findPath(waypoint._1, waypoint._2))
+      //)
     }
   }
 
-  def findSimplePaths(from: ProgramPoint): Set[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = {
+  def visitAllWaypoints(waypoints: List[ProgramPoint], z3Solver: FairZ3Solver): Option[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = {
+    def rec(head: ProgramPoint, tail: List[ProgramPoint], path: Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]): 
+      Option[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = {
+        tail match {
+          case Nil => Some(path)
+          case x::xs => {
+            val allPaths = findSimplePaths(head, Some(x))
+            var completePath: Option[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = None
+            allPaths.find(intermediatePath => {
+              val pc = pathConstraint(path ++ intermediatePath)
+              z3Solver.init()
+              z3Solver.restartZ3
 
+              var testcase: Option[Map[Identifier, Expr]] = None
+                
+              val (solverResult, model) = z3Solver.decideWithModel(pc, false)
+              solverResult match {
+                case None => {
+                  false
+                }
+                case Some(true) => {
+                  false
+                }
+                case Some(false) => {
+                  val recPath = rec(x, xs, path ++ intermediatePath)
+                  recPath match {
+                    case None => false
+                    case Some(path) => {
+                      completePath = Some(path)
+                      true
+                    }
+                  }
+                }
+              }
+            })
+            completePath
+          }
+        }
+    }
+    rec(waypoints.head, waypoints.tail, Seq())
+  }
+
+  def findSimplePaths(from: ProgramPoint, to: Option[ProgramPoint] = None): Set[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = {
     def dfs(point: ProgramPoint, path: List[(ProgramPoint, ProgramPoint, TransitionLabel)], visitedPoints: Set[ProgramPoint]): 
       Set[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = graph.get(point) match {
         case None => Set(path.reverse)
         case Some(edges) => {
-          if(edges.forall((edge: (ProgramPoint, TransitionLabel)) => visitedPoints.contains(edge._1) || point == edge._1))
+          if(to != None && to.get == point)
+            Set(path.reverse)
+          else if(to == None && edges.forall((edge: (ProgramPoint, TransitionLabel)) => visitedPoints.contains(edge._1) || point == edge._1))
             Set(path.reverse)
           else {
             edges.flatMap((edge: (ProgramPoint, TransitionLabel)) => {

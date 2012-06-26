@@ -42,7 +42,7 @@ class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
 
     val Program(id, ObjectDef(objId, defs, invariants)) = program
     val testProgram = Program(id, ObjectDef(objId, testFun +: defs , invariants))
-    testProgram.writeScalaFile("TestGen.scala")
+    testProgram.writeScalaFile("TestGen.scalax")
 
     reporter.info("Running from waypoint with the following testcases:\n")
     reporter.info(testcases.mkString("\n"))
@@ -56,7 +56,7 @@ class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
 
     val callGraph = new CallGraph(program)
     callGraph.writeDotFile("testgen.dot")
-    val constraints = callGraph.findAllPaths.map(path => {
+    val constraints = callGraph.findAllPaths(z3Solver).map(path => {
       println("Path is: " + path)
       val cnstr = callGraph.pathConstraint(path)
       println("constraint is: " + cnstr)
