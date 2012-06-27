@@ -1,6 +1,6 @@
 import leon.Utils._
 
-object SatFun {
+object Sat {
 
   sealed abstract class Formula
   case class And(f1: Formula, f2: Formula) extends Formula
