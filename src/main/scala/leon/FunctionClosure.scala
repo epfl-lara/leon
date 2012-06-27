@@ -9,119 +9,151 @@ object FunctionClosure extends Pass {
 
   val description = "Closing function with its scoping variables"
 
-  private var enclosingPreconditions: List[Expr] = Nil
-
   private var pathConstraints: List[Expr] = Nil
+  private var enclosingLets: List[(Identifier, Expr)] = Nil
   private var newFunDefs: Map[FunDef, FunDef] = Map()
+  private var topLevelFuns: Set[FunDef] = Set()
 
   def apply(program: Program): Program = {
     newFunDefs = Map()
     val funDefs = program.definedFunctions
     funDefs.foreach(fd => {
-      enclosingPreconditions = fd.precondition.toList
       pathConstraints = fd.precondition.toList
-      fd.body = fd.body.map(b => functionClosure(b, fd.args.map(_.id).toSet))
-      fd.postcondition = fd.postcondition.map(b => functionClosure(b, fd.args.map(_.id).toSet))
+      fd.body = fd.body.map(b => functionClosure(b, fd.args.map(_.id).toSet, Map(), Map()))
     })
-    program
+    val Program(id, ObjectDef(objId, defs, invariants)) = program
+    Program(id, ObjectDef(objId, defs ++ topLevelFuns, invariants))
   }
 
-  private def functionClosure(expr: Expr, bindedVars: Set[Identifier]): Expr = expr match {
+  private def functionClosure(expr: Expr, bindedVars: Set[Identifier], id2freshId: Map[Identifier, Identifier], fd2FreshFd: Map[FunDef, (FunDef, Seq[Variable])]): Expr = expr match {
     case l @ LetDef(fd, rest) => {
+      val capturedVars: Set[Identifier] = bindedVars.diff(enclosingLets.map(_._1).toSet)
+      val capturedConstraints: Set[Expr] = pathConstraints.toSet
 
-      val id = fd.id
-      val rt = fd.returnType
-      val varDecl = fd.args
-      val precondition = fd.precondition
-      val postcondition = fd.postcondition
+      val freshIds: Map[Identifier, Identifier] = capturedVars.map(id => (id, FreshIdentifier(id.name).setType(id.getType))).toMap
+      val freshVars: Map[Expr, Expr] = freshIds.map(p => (p._1.toVariable, p._2.toVariable))
+      
+      val extraVarDeclOldIds: Seq[Identifier] = capturedVars.toSeq
+      val extraVarDeclFreshIds: Seq[Identifier] = extraVarDeclOldIds.map(freshIds(_))
+      val extraVarDecls: Seq[VarDecl] = extraVarDeclFreshIds.map(id =>  VarDecl(id, id.getType))
+      val newVarDecls: Seq[VarDecl] = fd.args ++ extraVarDecls
+      val newBindedVars: Set[Identifier] = bindedVars ++ fd.args.map(_.id)
+      val newFunId = FreshIdentifier(fd.id.name)
 
-      val bodyVars: Set[Identifier] = variablesOf(fd.body.getOrElse(BooleanLiteral(true))) ++ 
-                                      variablesOf(precondition.getOrElse(BooleanLiteral(true))) ++ 
-                                      variablesOf(postcondition.getOrElse(BooleanLiteral(true)))
-
-      val capturedVars = bodyVars.intersect(bindedVars)// this should be the variable used that are in the scope
-      val (constraints, allCapturedVars) = filterConstraints(capturedVars) //all relevant path constraints
-      val capturedVarsWithConstraints = allCapturedVars.toSeq
-
-      val freshVars: Map[Identifier, Identifier] = capturedVarsWithConstraints.map(v => (v, FreshIdentifier(v.name).setType(v.getType))).toMap
-      val freshVarsExpr: Map[Expr, Expr] = freshVars.map(p => (p._1.toVariable, p._2.toVariable))
-
-      val extraVarDecls = freshVars.map{ case (_, v2) => VarDecl(v2, v2.getType) }
-      val newVarDecls = varDecl ++ extraVarDecls
-      val newFunId = FreshIdentifier(id.name)
-      val newFunDef = new FunDef(newFunId, rt, newVarDecls).setPosInfo(fd)
+      val newFunDef = new FunDef(newFunId, fd.returnType, newVarDecls).setPosInfo(fd)
+      topLevelFuns += newFunDef
       newFunDef.fromLoop = fd.fromLoop
       newFunDef.parent = fd.parent
       newFunDef.addAnnotation(fd.annotations.toSeq:_*)
 
-      val freshPrecondition = precondition.map(expr => replace(freshVarsExpr, expr))
-      val freshPostcondition = postcondition.map(expr => replace(freshVarsExpr, expr))
-      val freshBody = fd.body.map(b => replace(freshVarsExpr, b))
-      val freshConstraints = constraints.map(expr => replace(freshVarsExpr, expr))
-
-      def substFunInvocInDef(expr: Expr): Option[Expr] = expr match {
-        case fi@FunctionInvocation(fd, args) if fd.id == id => Some(FunctionInvocation(newFunDef, args ++ extraVarDecls.map(_.id.toVariable)).setPosInfo(fi))
-        case _ => None
+      def introduceLets(expr: Expr, fd2FreshFd: Map[FunDef, (FunDef, Seq[Variable])]): Expr = {
+        val (newExpr, _) = enclosingLets.foldLeft((expr, Map[Identifier, Identifier]()))((acc, p) => {
+          val newId = FreshIdentifier(p._1.name).setType(p._1.getType)
+          val newMap = acc._2 + (p._1 -> newId)
+          val newBody = functionClosure(acc._1, newBindedVars, freshIds ++ newMap, fd2FreshFd)
+          (Let(newId, p._2, newBody), newMap)
+        })
+        functionClosure(newExpr, newBindedVars, freshIds, fd2FreshFd)
       }
-      val oldPathConstraints = pathConstraints
-      pathConstraints = (precondition.getOrElse(BooleanLiteral(true)) :: pathConstraints).map(e => replace(freshVarsExpr, e))
-      val recPrecondition = freshConstraints match { //Actually, we do not allow nested fundef in precondition
-        case List() => freshPrecondition
-        case precs => Some(And(freshPrecondition.getOrElse(BooleanLiteral(true)) +: precs))
-      }
-      val recBody = freshBody.map(b =>
-                      functionClosure(b, bindedVars ++ newVarDecls.map(_.id))
-                    ).map(b => searchAndReplaceDFS(substFunInvocInDef)(b))
-      pathConstraints = oldPathConstraints
 
-      newFunDef.precondition = recPrecondition
-      newFunDef.body = recBody
+
+      val newPrecondition = simplifyLets(introduceLets(And((capturedConstraints ++ fd.precondition).toSeq), fd2FreshFd))
+      newFunDef.precondition = if(newPrecondition == BooleanLiteral(true)) None else Some(newPrecondition)
+
+      val freshPostcondition = fd.postcondition.map(post => introduceLets(post, fd2FreshFd))
       newFunDef.postcondition = freshPostcondition
+      
+      pathConstraints = fd.precondition.getOrElse(BooleanLiteral(true)) :: pathConstraints
+      //val freshBody = fd.body.map(body => introduceLets(body, fd2FreshFd + (fd -> ((newFunDef, extraVarDeclFreshIds.map(_.toVariable))))))
+      val freshBody = fd.body.map(body => introduceLets(body, fd2FreshFd + (fd -> ((newFunDef, extraVarDeclOldIds.map(_.toVariable))))))
+      newFunDef.body = freshBody
+      pathConstraints = pathConstraints.tail
 
-      def substFunInvocInRest(expr: Expr): Option[Expr] = expr match {
-        case fi@FunctionInvocation(fd, args) if fd.id == id => Some(FunctionInvocation(newFunDef, args ++ capturedVarsWithConstraints.map(_.toVariable)).setPosInfo(fi))
-        case _ => None
-      }
-      val recRest = searchAndReplaceDFS(substFunInvocInRest)(functionClosure(rest, bindedVars))
-      LetDef(newFunDef, recRest).setType(l.getType)
+      //val freshRest = functionClosure(rest, bindedVars, id2freshId, fd2FreshFd + (fd -> 
+      //                  ((newFunDef, extraVarDeclOldIds.map(id => id2freshId.get(id).getOrElse(id).toVariable)))))
+      val freshRest = functionClosure(rest, bindedVars, id2freshId, fd2FreshFd + (fd -> ((newFunDef, extraVarDeclOldIds.map(_.toVariable)))))
+      freshRest.setType(l.getType)
     }
     case l @ Let(i,e,b) => {
-      val re = functionClosure(e, bindedVars)
-      pathConstraints ::= Equals(Variable(i), re)
-      val rb = functionClosure(b, bindedVars + i)
-      pathConstraints = pathConstraints.tail
+      val re = functionClosure(e, bindedVars, id2freshId, fd2FreshFd)
+      //we need the enclosing lets to always refer to the original ids, because it might be expand later in a highly nested function
+      enclosingLets ::= (i, replace(id2freshId.map(p => (p._2.toVariable, p._1.toVariable)), re)) 
+      //pathConstraints :: Equals(i.toVariable, re)
+      val rb = functionClosure(b, bindedVars + i, id2freshId, fd2FreshFd)
+      enclosingLets = enclosingLets.tail
+      //pathConstraints = pathConstraints.tail
       Let(i, re, rb).setType(l.getType)
     }
-    case n @ NAryOperator(args, recons) => {
-      var change = false
-      val rargs = args.map(a => functionClosure(a, bindedVars))
-      recons(rargs).setType(n.getType)
-    }
-    case b @ BinaryOperator(t1,t2,recons) => {
-      val r1 = functionClosure(t1, bindedVars)
-      val r2 = functionClosure(t2, bindedVars)
-      recons(r1,r2).setType(b.getType)
-    }
-    case u @ UnaryOperator(t,recons) => {
-      val r = functionClosure(t, bindedVars)
-      recons(r).setType(u.getType)
-    }
     case i @ IfExpr(cond,then,elze) => {
-      val rCond = functionClosure(cond, bindedVars)
-      pathConstraints ::= rCond
-      val rThen = functionClosure(then, bindedVars)
+      /*
+         when acumulating path constraints, take the condition without closing it first, so this
+         might not work well with nested fundef in if then else condition
+      */
+      val rCond = functionClosure(cond, bindedVars, id2freshId, fd2FreshFd)
+      pathConstraints ::= cond//rCond
+      val rThen = functionClosure(then, bindedVars, id2freshId, fd2FreshFd)
       pathConstraints = pathConstraints.tail
-      pathConstraints ::= Not(rCond)
-      val rElze = functionClosure(elze, bindedVars)
+      pathConstraints ::= Not(cond)//Not(rCond)
+      val rElze = functionClosure(elze, bindedVars, id2freshId, fd2FreshFd)
       pathConstraints = pathConstraints.tail
       IfExpr(rCond, rThen, rElze).setType(i.getType)
     }
-    case m @ MatchExpr(scrut,cses) => { //TODO: will not work if there are actual nested function in cases
-      //val rScrut = functionClosure(scrut, bindedVars)
-      m
+    case fi @ FunctionInvocation(fd, args) => fd2FreshFd.get(fd) match {
+      case None => FunctionInvocation(fd, args.map(arg => functionClosure(arg, bindedVars, id2freshId, fd2FreshFd))).setPosInfo(fi)
+      case Some((nfd, extraArgs)) => 
+        FunctionInvocation(nfd, args.map(arg => functionClosure(arg, bindedVars, id2freshId, fd2FreshFd)) ++ 
+                                extraArgs.map(v => replace(id2freshId.map(p => (p._1.toVariable, p._2.toVariable)), v))).setPosInfo(fi)
+    }
+    case n @ NAryOperator(args, recons) => {
+      val rargs = args.map(a => functionClosure(a, bindedVars, id2freshId, fd2FreshFd))
+      recons(rargs).setType(n.getType)
+    }
+    case b @ BinaryOperator(t1,t2,recons) => {
+      val r1 = functionClosure(t1, bindedVars, id2freshId, fd2FreshFd)
+      val r2 = functionClosure(t2, bindedVars, id2freshId, fd2FreshFd)
+      recons(r1,r2).setType(b.getType)
+    }
+    case u @ UnaryOperator(t,recons) => {
+      val r = functionClosure(t, bindedVars, id2freshId, fd2FreshFd)
+      recons(r).setType(u.getType)
+    }
+    case m @ MatchExpr(scrut,cses) => {
+      val scrutRec = functionClosure(scrut, bindedVars, id2freshId, fd2FreshFd)
+      val csesRec = cses.map{
+        case SimpleCase(pat, rhs) => {
+          val binders = pat.binders
+          val cond = conditionForPattern(scrut, pat)
+          pathConstraints ::= cond
+          val rRhs = functionClosure(rhs, bindedVars ++ binders, id2freshId, fd2FreshFd)
+          pathConstraints = pathConstraints.tail
+          SimpleCase(pat, rRhs)
+        }
+        case GuardedCase(pat, guard, rhs) => {
+          val binders = pat.binders
+          val cond = conditionForPattern(scrut, pat)
+          pathConstraints ::= cond
+          val rRhs = functionClosure(rhs, bindedVars ++ binders, id2freshId, fd2FreshFd)
+          val rGuard = functionClosure(guard, bindedVars ++ binders, id2freshId, fd2FreshFd)
+          pathConstraints = pathConstraints.tail
+          GuardedCase(pat, rGuard, rRhs)
+        }
+      }
+      val tpe = csesRec.head.rhs.getType
+      MatchExpr(scrutRec, csesRec).setType(tpe).setPosInfo(m)
+    }
+    case v @ Variable(id) => id2freshId.get(id) match {
+      case None => v
+      case Some(nid) => Variable(nid)
     }
     case t if t.isInstanceOf[Terminal] => t
     case unhandled => scala.sys.error("Non-terminal case should be handled in FunctionClosure: " + unhandled)
+  }
+
+  def freshIdInPat(pat: Pattern, id2freshId: Map[Identifier, Identifier]): Pattern = pat match {
+    case InstanceOfPattern(binder, classTypeDef) => InstanceOfPattern(binder.map(id2freshId(_)), classTypeDef)
+    case WildcardPattern(binder) => WildcardPattern(binder.map(id2freshId(_)))
+    case CaseClassPattern(binder, caseClassDef, subPatterns) => CaseClassPattern(binder.map(id2freshId(_)), caseClassDef, subPatterns.map(freshIdInPat(_, id2freshId)))
+    case TuplePattern(binder, subPatterns) => TuplePattern(binder.map(id2freshId(_)), subPatterns.map(freshIdInPat(_, id2freshId)))
   }
 
   //filter the list of constraints, only keeping those relevant to the set of variables

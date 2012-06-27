@@ -77,6 +77,7 @@ object Evaluator {
             case _ => throw TypeErrorEx(TypeError(first, BooleanType))
           }
         }
+        case Waypoint(_, arg) => rec(ctx, arg)
         case FunctionInvocation(fd, args) => {
           val evArgs = args.map(a => rec(ctx, a))
           // build a context for the function...
@@ -85,7 +86,9 @@ object Evaluator {
           if(fd.hasPrecondition) {
             rec(frame, matchToIfThenElse(fd.precondition.get)) match {
               case BooleanLiteral(true) => ;
-              case BooleanLiteral(false) => throw RuntimeErrorEx("Precondition violation for " + fd.id.name + " reached in evaluation.")
+              case BooleanLiteral(false) => {
+                throw RuntimeErrorEx("Precondition violation for " + fd.id.name + " reached in evaluation.: " + fd.precondition.get)
+              }
               case other => throw TypeErrorEx(TypeError(other, BooleanType))
             }
           }
@@ -242,11 +245,50 @@ object Evaluator {
           case (e, f @ FiniteSet(els)) => BooleanLiteral(els.contains(e))
           case (l,r) => throw TypeErrorEx(TypeError(r, SetType(l.getType)))
         }
+        case SetCardinality(s) => {
+          val sr = rec(ctx, s)
+          sr match {
+            case EmptySet(_) => IntLiteral(0)
+            case FiniteSet(els) => IntLiteral(els.size)
+            case _ => throw TypeErrorEx(TypeError(sr, SetType(AnyType)))
+          }
+        }
 
         case f @ FiniteSet(els) => FiniteSet(els.map(rec(ctx,_)).distinct).setType(f.getType)
         case e @ EmptySet(_) => e
         case i @ IntLiteral(_) => i
         case b @ BooleanLiteral(_) => b
+        case u @ UnitLiteral => u
+
+        case f @ ArrayFill(length, default) => {
+          val rDefault = rec(ctx, default)
+          val rLength = rec(ctx, length)
+          val IntLiteral(iLength) = rLength
+          FiniteArray((1 to iLength).map(_ => rDefault).toSeq)
+        }
+        case ArrayLength(a) => {
+          var ra = rec(ctx, a)
+          while(!ra.isInstanceOf[FiniteArray])
+            ra = ra.asInstanceOf[ArrayUpdated].array
+          IntLiteral(ra.asInstanceOf[FiniteArray].exprs.size)
+        }
+        case ArrayUpdated(a, i, v) => {
+          val ra = rec(ctx, a)
+          val ri = rec(ctx, i)
+          val rv = rec(ctx, v)
+
+          val IntLiteral(index) = ri
+          val FiniteArray(exprs) = ra
+          FiniteArray(exprs.updated(index, rv))
+        }
+        case ArraySelect(a, i) => {
+          val IntLiteral(index) = rec(ctx, i)
+          val FiniteArray(exprs) = rec(ctx, a)
+          exprs(index)
+        }
+        case FiniteArray(exprs) => {
+          FiniteArray(exprs.map(e => rec(ctx, e)))
+        }
 
         case f @ FiniteMap(ss) => FiniteMap(ss.map(rec(ctx,_)).distinct.asInstanceOf[Seq[SingletonMap]]).setType(f.getType)
         case e @ EmptyMap(_,_) => e

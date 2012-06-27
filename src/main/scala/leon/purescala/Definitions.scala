@@ -53,6 +53,16 @@ object Definitions {
     def isCatamorphism(f1: FunDef) = mainObject.isCatamorphism(f1)
     def caseClassDef(name: String) = mainObject.caseClassDef(name)
     def allIdentifiers : Set[Identifier] = mainObject.allIdentifiers + id
+    def isPure: Boolean = definedFunctions.forall(fd => fd.body.forall(Trees.isPure) && fd.precondition.forall(Trees.isPure) && fd.postcondition.forall(Trees.isPure))
+
+    def writeScalaFile(filename: String) {
+      import java.io.FileWriter
+      import java.io.BufferedWriter
+      val fstream = new FileWriter(filename)
+      val out = new BufferedWriter(fstream)
+      out.write(ScalaPrinter(this))
+      out.close
+    }
   }
 
   /** Objects work as containers for class definitions, functions (def's) and

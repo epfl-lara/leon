@@ -23,5 +23,5 @@ object Epsilon4 {
 
 
   def wrongProperty0(lst: MyList): Boolean = (size(toList(toSet(lst))) == size(lst)) holds
-  def wrongProperty1(lst: MyList): Boolean = (toList(toSet(lst)) == lst) holds
+  //def wrongProperty1(lst: MyList): Boolean = (toList(toSet(lst)) == lst) holds
 }

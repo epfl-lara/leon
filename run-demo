@@ -1,0 +1,1 @@
+./leon --timeout=10 --noLuckyTests $@

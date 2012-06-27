@@ -59,6 +59,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     fallbackSorts = Map.empty
 
     mapSorts = Map.empty
+    arraySorts = Map.empty
     funSorts = Map.empty
     funDomainConstructors = Map.empty
     funDomainSelectors = Map.empty
@@ -98,6 +99,9 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   private var setSorts: Map[TypeTree, Z3Sort] = Map.empty
   private var mapSorts: Map[TypeTree, Z3Sort] = Map.empty
 
+  private var unitSort: Z3Sort = null
+  private var unitValue: Z3AST = null
+
   protected[leon] var funSorts: Map[TypeTree, Z3Sort] = Map.empty
   protected[leon] var funDomainConstructors: Map[TypeTree, Z3FuncDecl] = Map.empty
   protected[leon] var funDomainSelectors: Map[TypeTree, Seq[Z3FuncDecl]] = Map.empty
@@ -105,6 +109,14 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   protected[leon] var tupleSorts: Map[TypeTree, Z3Sort] = Map.empty
   protected[leon] var tupleConstructors: Map[TypeTree, Z3FuncDecl] = Map.empty
   protected[leon] var tupleSelectors: Map[TypeTree, Seq[Z3FuncDecl]] = Map.empty
+
+  private var arraySorts: Map[TypeTree, Z3Sort] = Map.empty
+  protected[leon] var arrayTupleCons: Map[TypeTree, Z3FuncDecl] = Map.empty
+  protected[leon] var arrayTupleSelectorArray: Map[TypeTree, Z3FuncDecl] = Map.empty
+  protected[leon] var arrayTupleSelectorLength: Map[TypeTree, Z3FuncDecl] = Map.empty
+
+  private var reverseTupleConstructors: Map[Z3FuncDecl, TupleType] = Map.empty
+  private var reverseTupleSelectors: Map[Z3FuncDecl, (TupleType, Int)] = Map.empty
 
   private var intSetMinFun: Z3FuncDecl = null
   private var intSetMaxFun: Z3FuncDecl = null
@@ -188,6 +200,27 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     boolSort = z3.mkBoolSort
     setSorts = Map.empty
     setCardFuns = Map.empty
+
+    //unitSort = z3.mkUninterpretedSort("unit")
+    //unitValue = z3.mkFreshConst("Unit", unitSort)
+    //val bound = z3.mkBound(0, unitSort)
+    //val eq = z3.mkEq(bound, unitValue)
+    //val decls = Seq((z3.mkFreshStringSymbol("u"), unitSort))
+    //val unitAxiom = z3.mkForAll(0, Seq(), decls, eq)
+    //println(unitAxiom)
+    //println(unitValue)
+    //z3.assertCnstr(unitAxiom)
+    val Seq((us, Seq(unitCons), Seq(unitTester), _)) = z3.mkADTSorts(
+      Seq(
+        (
+          "Unit",
+          Seq("Unit"),
+          Seq(Seq())
+        )
+      )
+    )
+    unitSort = us
+    unitValue = unitCons()
 
     val intSetSort = typeToSort(SetType(Int32Type))
     intSetMinFun = z3.mkFreshFuncDecl("setMin", Seq(intSetSort), intSort)
@@ -358,6 +391,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
   def typeToSort(tt: TypeTree): Z3Sort = tt match {
     case Int32Type => intSort
     case BooleanType => boolSort
+    case UnitType => unitSort
     case AbstractClassType(cd) => adtSorts(cd)
     case CaseClassType(cd) => {
       if (cd.hasParent) {
@@ -386,6 +420,21 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         ms
       }
     }
+    case at @ ArrayType(base) => arraySorts.get(at) match {
+      case Some(s) => s
+      case None => {
+        val intSort = typeToSort(Int32Type)
+        val toSort = typeToSort(base)
+        val as = z3.mkArraySort(intSort, toSort)
+        val tupleSortSymbol = z3.mkFreshStringSymbol("Array")
+        val (arrayTupleSort, arrayTupleCons_, Seq(arrayTupleSelectorArray_, arrayTupleSelectorLength_)) = z3.mkTupleSort(tupleSortSymbol, as, intSort)
+        arraySorts += (at -> arrayTupleSort)
+        arrayTupleCons += (at -> arrayTupleCons_)
+        arrayTupleSelectorArray += (at -> arrayTupleSelectorArray_)
+        arrayTupleSelectorLength += (at -> arrayTupleSelectorLength_)
+        arrayTupleSort
+      }
+    }
     case ft @ FunctionType(fts, tt) => funSorts.get(ft) match {
       case Some(s) => s
       case None => {
@@ -403,11 +452,13 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       case Some(s) => s
       case None => {
         val tpesSorts = tpes.map(typeToSort)
-        val sortSymbol = z3.mkFreshStringSymbol("TupleSort")
+        val sortSymbol = z3.mkFreshStringSymbol("Tuple")
         val (tupleSort, consTuple, projsTuple) = z3.mkTupleSort(sortSymbol, tpesSorts: _*)
         tupleSorts += (tt -> tupleSort)
         tupleConstructors += (tt -> consTuple)
+        reverseTupleConstructors += (consTuple -> tt)
         tupleSelectors += (tt -> projsTuple)
+        projsTuple.zipWithIndex.foreach{ case (proj, i) => reverseTupleSelectors += (proj -> (tt, i)) }
         tupleSort
       }
     }
@@ -513,14 +564,11 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     reporter.info(" - Initial unrolling...")
     val (clauses, guards) = unrollingBank.initialUnrolling(expandedVC)
 
-    //for(clause <- clauses) {
-    //println("we're getting a new clause " + clause)
-    //   z3.assertCnstr(toZ3Formula(z3, clause).get)
-    //}
+    for(clause <- clauses) {
+      Logger.debug("we're getting a new clause " + clause, 4, "z3solver")
+    }
 
-    //println("The blocking guards: " + guards)
     val cc = toZ3Formula(z3, And(clauses)).get
-    // println("CC : " + cc)
     z3.assertCnstr(cc)
 
     // these are the optional sequence of assumption literals
@@ -561,6 +609,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         (a, m, Seq.empty[Z3AST])
       }
       reporter.info(" - Finished search with blocked literals")
+      Logger.debug("The blocking guards are: " + blockingSet.mkString(", "), 4, "z3solver")
 
       // if (Settings.useCores)
       //   reporter.info(" - Core is : " + core)
@@ -582,10 +631,16 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         }
         case (Some(true), m) => { // SAT
           validatingStopwatch.start
+          Logger.debug("Model Found: " + m, 4, "z3solver")
           val (trueModel, model) = if(Settings.verifyModel)
               validateAndDeleteModel(m, toCheckAgainstModels, varsInVC, evaluator)
-            else 
-              (true, modelToMap(m, varsInVC))
+            else {
+              val res = (true, modelToMap(m, varsInVC))
+              lazy val modelAsString = res._2.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
+              reporter.info("- Found a model:")
+              reporter.info(modelAsString)
+              res
+            }
           validatingStopwatch.stop
 
           if (trueModel) {
@@ -632,6 +687,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
               foundAnswer(Some(true))
             } else {
               luckyStopwatch.start
+              Logger.debug("Model Found: " + m2, 4, "z3solver")
               // we might have been lucky :D
               val (wereWeLucky, cleanModel) = validateAndDeleteModel(m2, toCheckAgainstModels, varsInVC, evaluator)
               if(wereWeLucky) {
@@ -722,7 +778,6 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
               }
             }
 
-            // println("Release set : " + toRelease)
 
             blockingSet = blockingSet -- toRelease
 
@@ -735,16 +790,13 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
             reporter.info(" - more unrollings")
             for((id,polarity) <- toReleaseAsPairs) {
               val (newClauses,newBlockers) = unrollingBank.unlock(id, !polarity)
-                //println("Unlocked : " + (id, !polarity))
                for(clause <- newClauses) {
-                 //println("we're getting a new clause " + clause)
-              //   z3.assertCnstr(toZ3Formula(z3, clause).get)
+                 Logger.debug("we're getting a new clause " + clause, 4, "z3solver")
                }
 
               for(ncl <- newClauses) {
                 z3.assertCnstr(toZ3Formula(z3, ncl).get)
               }
-              //z3.assertCnstr(toZ3Formula(z3, And(newClauses)).get)
               blockingSet = blockingSet ++ Set(newBlockers.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
             }
             reporter.info(" - finished unrolling")
@@ -912,6 +964,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           z3Vars = z3Vars - i
           rb
         }
+        case Waypoint(_, e) => rec(e)
         case e @ Error(_) => {
           val tpe = e.getType
           val newAST = z3.mkFreshConst("errorValue", typeToSort(tpe))
@@ -960,6 +1013,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         case Not(e) => z3.mkNot(rec(e))
         case IntLiteral(v) => z3.mkInt(v, intSort)
         case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()
+        case UnitLiteral => unitValue
         case Equals(l, r) => z3.mkEq(rec(l), rec(r))
         case Plus(l, r) => if(USEBV) z3.mkBVAdd(rec(l), rec(r)) else z3.mkAdd(rec(l), rec(r))
         case Minus(l, r) => if(USEBV) z3.mkBVSub(rec(l), rec(r)) else z3.mkSub(rec(l), rec(r))
@@ -1043,6 +1097,38 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           case MapType(ft, tt) => z3.mkDistinct(z3.mkSelect(rec(m), rec(k)), mapRangeNoneConstructors(tt)())
           case errorType => scala.sys.error("Unexpected type for map: " + (ex, errorType))
         }
+        case fill@ArrayFill(length, default) => {
+          val at@ArrayType(base) = fill.getType
+          typeToSort(at)
+          val cons = arrayTupleCons(at)
+          val ar = z3.mkConstArray(typeToSort(base), rec(default))
+          val res = cons(ar, rec(length))
+          res
+        }
+        case ArraySelect(a, index) => {
+          typeToSort(a.getType)
+          val ar = rec(a)
+          val getArray = arrayTupleSelectorArray(a.getType)
+          val res = z3.mkSelect(getArray(ar), rec(index))
+          res
+        }
+        case ArrayUpdated(a, index, newVal) => {
+          typeToSort(a.getType)
+          val ar = rec(a)
+          val getArray = arrayTupleSelectorArray(a.getType)
+          val getLength = arrayTupleSelectorLength(a.getType)
+          val cons = arrayTupleCons(a.getType)
+          val store = z3.mkStore(getArray(ar), rec(index), rec(newVal))
+          val res = cons(store, getLength(ar))
+          res
+        }
+        case ArrayLength(a) => {
+          typeToSort(a.getType)
+          val ar = rec(a)
+          val getLength = arrayTupleSelectorLength(a.getType)
+          val res = getLength(ar)
+          res
+        }
         case AnonymousFunctionInvocation(id, args) => id.getType match {
           case ft @ FunctionType(fts, tt) => {
             val consFD = funDomainConstructors(ft)
@@ -1100,8 +1186,28 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
             (if (elems.isEmpty) EmptySet(dt) else FiniteSet(elems.toSeq)).setType(expType.get)
           }
         }
+      case Some(ArrayType(dt)) => {
+        val Z3AppAST(decl, args) = z3.getASTKind(t)
+        assert(args.size == 2)
+        val IntLiteral(length) = rec(args(1), Some(Int32Type))
+        val array = model.getArrayValue(args(0)) match {
+          case None => throw new CantTranslateException(t)
+          case Some((map, elseValue)) => {
+            val exprs = map.foldLeft((1 to length).map(_ => rec(elseValue, Some(dt))).toSeq)((acc, p) => {
+              val IntLiteral(index) = rec(p._1, Some(Int32Type))
+              if(index >= 0 && index < length)
+                acc.updated(index, rec(p._2, Some(dt)))
+              else acc
+            })
+            FiniteArray(exprs)
+          }
+        }
+        array
+      }
       case other => 
-        z3.getASTKind(t) match {
+        if(t == unitValue) 
+          UnitLiteral
+        else z3.getASTKind(t) match {
           case Z3AppAST(decl, args) => {
             val argsSize = args.size
             if(argsSize == 0 && z3IdToExpr.isDefinedAt(t)) {
@@ -1121,6 +1227,10 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
               val ccd = reverseADTConstructors(decl)
               assert(argsSize == ccd.fields.size)
               CaseClass(ccd, (args zip ccd.fields).map(p => rec(p._1, Some(p._2.tpe))))
+            } else if(reverseTupleConstructors.isDefinedAt(decl)) {
+              val TupleType(subTypes) = reverseTupleConstructors(decl)
+              val rargs = args.zip(subTypes).map(p => rec(p._1, Some(p._2)))
+              Tuple(rargs)
             } else {
               import Z3DeclKind._
               val rargs = args.map(rec(_))
@@ -1134,7 +1244,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
                   val r1 = rargs(1)
                   val r2 = rargs(2)
                   try {
-                    IfExpr(r0, r1, r2).setType(leastUpperBound(r1.getType, r2.getType))
+                    IfExpr(r0, r1, r2).setType(leastUpperBound(r1.getType, r2.getType).get)
                   } catch {
                     case e => {
                       println("I was asking for lub because of this.")
@@ -1194,6 +1304,11 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           }
 
           case Z3NumeralAST(Some(v)) => IntLiteral(v)
+          case Z3NumeralAST(None) => {
+            reporter.info("Cannot read exact model from Z3: Integer does not fit in machine word")
+            reporter.info("Exiting procedure now")
+            sys.exit(0)
+          }
           case other @ _ => {
             System.err.println("Don't know what this is " + other) 
             System.err.println("REVERSE FUNCTION MAP:")
@@ -1252,16 +1367,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     // Wouldn't it be better/more uniform to pretend the initial formula is a
     // function and generate a template for it?
     def initialUnrolling(formula : Expr) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
-      val fi = functionCallsOf(formula)
-      if(fi.isEmpty) {
-        (Seq(formula), Seq.empty)
-      } else {
-        val startingVar : Identifier = FreshIdentifier("start", true).setType(BooleanType)
-
-        val result = treatFunctionInvocationSet(startingVar, true, functionCallsOf(formula))
-        //reporter.info(result)
-        (Variable(startingVar) +: formula +: result._1, result._2)
-      }
+      initialUnrolling0(formula)
     }
 
     def unlock(id: Identifier, pol: Boolean) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
@@ -1272,6 +1378,82 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         blockMap((id,pol)) = Set.empty
         treatFunctionInvocationSet(id, pol, copy)
       }
+    }
+
+    //this is mostly copied from FunctionTemplate. This is sort of a quick hack to the problem
+    //of the initial unrolling
+    def initialUnrolling0(formula: Expr): (Seq[Expr], Seq[(Identifier,Boolean)]) = {
+
+      var guardedExprs : Map[(Identifier,Boolean),Seq[Expr]] = Map.empty
+      def storeGuarded(guardVar : Identifier, guardPol : Boolean, expr : Expr) : Unit = {
+        assert(expr.getType == BooleanType)
+        val p : (Identifier,Boolean) = (guardVar,guardPol)
+        if(guardedExprs.isDefinedAt(p)) {
+          val prev : Seq[Expr] = guardedExprs(p)
+          guardedExprs += (p -> (expr +: prev))
+        } else {
+          guardedExprs += (p -> Seq(expr))
+        }
+      }
+  
+      def rec(pathVar : Identifier, pathPol : Boolean, expr : Expr) : Expr = {
+        expr match {
+          case l : Let => sys.error("Let's should have been eliminated.")
+          case m : MatchExpr => sys.error("MatchExpr's should have been eliminated.")
+  
+          case i @ IfExpr(cond, then, elze) => {
+            if(!containsFunctionCalls(cond) && !containsFunctionCalls(then) && !containsFunctionCalls(elze)) {
+              i
+            } else {
+              val newBool : Identifier = FreshIdentifier("b", true).setType(BooleanType)
+              val newExpr : Identifier = FreshIdentifier("e", true).setType(i.getType)
+              
+              val crec = rec(pathVar, pathPol, cond)
+              val trec = rec(newBool, true, then)
+              val erec = rec(newBool, false, elze)
+  
+              storeGuarded(pathVar, pathPol, Iff(Variable(newBool), crec))
+              storeGuarded(newBool, true,  Equals(Variable(newExpr), trec))
+              storeGuarded(newBool, false, Equals(Variable(newExpr), erec))
+              Variable(newExpr)
+            }
+          }
+  
+          case n @ NAryOperator(as, r) => r(as.map(a => rec(pathVar, pathPol, a))).setType(n.getType)
+          case b @ BinaryOperator(a1, a2, r) => r(rec(pathVar, pathPol, a1), rec(pathVar, pathPol, a2)).setType(b.getType)
+          case u @ UnaryOperator(a, r) => r(rec(pathVar, pathPol, a)).setType(u.getType)
+          case t : Terminal => t
+          case a : AnonymousFunction => {
+            Settings.reporter.warning("AnonymousFunction literal showed up in the construction of a FunctionTemplate.")
+            a
+          }
+        }
+      }
+      val startingVar : Identifier = FreshIdentifier("start", true).setType(BooleanType)
+      storeGuarded(startingVar, false, BooleanLiteral(false))
+      val newFormula = rec(startingVar, true, formula)
+      storeGuarded(startingVar, true, newFormula)
+
+      val asClauses : Seq[Expr] = {
+        (for(((b,p),es) <- guardedExprs; e <- es) yield {
+          Implies(if(!p) Not(Variable(b)) else Variable(b), e)
+        }).toSeq
+      }
+
+      val blockers : Map[(Identifier,Boolean),Set[FunctionInvocation]] = {
+        Map((for((p, es) <- guardedExprs) yield {
+          val calls = es.foldLeft(Set.empty[FunctionInvocation])((s,e) => s ++ functionCallsOf(e))
+          if(calls.isEmpty) {
+            None
+          } else {
+            registerBlocked(p._1, p._2, calls)
+            Some((p, calls))
+          }
+        }).flatten.toSeq : _*)
+      }
+
+      (asClauses, blockers.keys.toSeq)
+
     }
   }
 }

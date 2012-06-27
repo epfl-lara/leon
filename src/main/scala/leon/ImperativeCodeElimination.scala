@@ -15,11 +15,9 @@ object ImperativeCodeElimination extends Pass {
   def apply(pgm: Program): Program = {
     val allFuns = pgm.definedFunctions
     allFuns.foreach(fd => fd.body.map(body => {
-      Logger.debug("Transforming to functional code the following function:\n" + fd, 5, "imperative")
       parent = fd
       val (res, scope, _) = toFunction(body)
       fd.body = Some(scope(res))
-      Logger.debug("Resulting functional code is:\n" + fd, 5, "imperative")
     }))
     pgm
   }
@@ -52,8 +50,10 @@ object ImperativeCodeElimination extends Pass {
         val (tRes, tScope, tFun) = toFunction(tExpr)
         val (eRes, eScope, eFun) = toFunction(eExpr)
 
+        val iteRType = leastUpperBound(tRes.getType, eRes.getType).get
+
         val modifiedVars: Seq[Identifier] = (tFun.keys ++ eFun.keys).toSet.intersect(varInScope).toSeq
-        val resId = FreshIdentifier("res").setType(ite.getType)
+        val resId = FreshIdentifier("res").setType(iteRType)
         val freshIds = modifiedVars.map(id => FreshIdentifier(id.name).setType(id.getType))
         val iteType = if(modifiedVars.isEmpty) resId.getType else TupleType(resId.getType +: freshIds.map(_.getType))
 
@@ -76,7 +76,7 @@ object ImperativeCodeElimination extends Pass {
               if(freshIds.isEmpty)
                 Let(resId, tupleId.toVariable, body)
               else
-                Let(resId, TupleSelect(tupleId.toVariable, 1),
+                Let(resId, TupleSelect(tupleId.toVariable, 1).setType(iteRType),
                   freshIds.zipWithIndex.foldLeft(body)((b, id) => 
                     Let(id._1, 
                       TupleSelect(tupleId.toVariable, id._2 + 2).setType(id._1.getType), 
@@ -225,8 +225,13 @@ object ImperativeCodeElimination extends Pass {
       }
       case LetDef(fd, b) => {
         //Recall that here the nested function should not access mutable variables from an outside scope
+        val newFd = if(!fd.hasImplementation) fd else {
+          val (fdRes, fdScope, fdFun) = toFunction(fd.getBody)
+          fd.body = Some(fdScope(fdRes))
+          fd
+        }
         val (bodyRes, bodyScope, bodyFun) = toFunction(b)
-        (bodyRes, (b2: Expr) => LetDef(fd, bodyScope(b2)), bodyFun)
+        (bodyRes, (b2: Expr) => LetDef(newFd, bodyScope(b2)), bodyFun)
       }
       case n @ NAryOperator(Seq(), recons) => (n, (body: Expr) => body, Map())
       case n @ NAryOperator(args, recons) => {

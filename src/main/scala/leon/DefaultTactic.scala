@@ -194,6 +194,35 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
       toRet
     }
 
+    def generateArrayAccessChecks(function: FunDef) : Seq[VerificationCondition] = {
+      val toRet = if (function.hasBody) {
+        val cleanBody = matchToIfThenElse(function.body.get)
+
+        val allPathConds = collectWithPathCondition((t => t match {
+          case Error("Index out of bound") => true
+          case _ => false
+        }), cleanBody)
+
+        def withPrecIfDefined(conds: Seq[Expr]) : Expr = if (function.hasPrecondition) {
+          Not(And(mapGetWithChecks(matchToIfThenElse(function.precondition.get)), And(conds)))
+        } else {
+          Not(And(conds))
+        }
+
+        allPathConds.map(pc =>
+          new VerificationCondition(
+            withPrecIfDefined(pc._1),
+            if(function.fromLoop) function.parent.get else function,
+            VCKind.ArrayAccess,
+            this.asInstanceOf[DefaultTactic]).setPosInfo(pc._2.asInstanceOf[Error])
+        ).toSeq
+      } else {
+        Seq.empty
+      }
+
+      toRet
+    }
+
     def generateMiscCorrectnessConditions(function: FunDef) : Seq[VerificationCondition] = {
       generateMapAccessChecks(function)
     }

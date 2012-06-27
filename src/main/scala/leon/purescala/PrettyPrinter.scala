@@ -139,8 +139,8 @@ object PrettyPrinter {
       sb.append("\n")
     }
 
-    case Tuple(exprs) => ppNary(sb, exprs, "(", ", ", ")", lvl)
-    case TupleSelect(t, i) => {
+    case t@Tuple(exprs) => ppNary(sb, exprs, "(", ", ", ")", lvl)
+    case s@TupleSelect(t, i) => {
       pp(t, sb, lvl)
       sb.append("._" + i)
       sb
@@ -152,6 +152,12 @@ object PrettyPrinter {
       nsb = pp(pred, nsb, lvl)
       nsb.append(")")
       nsb
+    }
+
+    case Waypoint(i, expr) => {
+      sb.append("waypoint_" + i + "(")
+      pp(expr, sb, lvl)
+      sb.append(")")
     }
 
     case OptionSome(a) => {
@@ -248,6 +254,50 @@ object PrettyPrinter {
       nsb.append(".isDefinedAt")
       nsb = ppNary(nsb, Seq(k), "(", ",", ")", lvl)
       nsb
+    }
+    case ArrayLength(a) => {
+      pp(a, sb, lvl)
+      sb.append(".length")
+    }
+    case ArrayClone(a) => {
+      pp(a, sb, lvl)
+      sb.append(".clone")
+    }
+    case fill@ArrayFill(size, v) => {
+      sb.append("Array.fill(")
+      pp(size, sb, lvl)
+      sb.append(")(")
+      pp(v, sb, lvl)
+      sb.append(")")
+    }
+    case am@ArrayMake(v) => {
+      sb.append("Array.make(")
+      pp(v, sb, lvl)
+      sb.append(")")    
+    }
+    case sel@ArraySelect(ar, i) => {
+      pp(ar, sb, lvl)
+      sb.append("(")
+      pp(i, sb, lvl)
+      sb.append(")")
+    }
+    case up@ArrayUpdate(ar, i, v) => {
+      pp(ar, sb, lvl)
+      sb.append("(")
+      pp(i, sb, lvl)
+      sb.append(") = ")
+      pp(v, sb, lvl)
+    }
+    case up@ArrayUpdated(ar, i, v) => {
+      pp(ar, sb, lvl)
+      sb.append(".updated(")
+      pp(i, sb, lvl)
+      sb.append(", ")
+      pp(v, sb, lvl)
+      sb.append(")")
+    }
+    case FiniteArray(exprs) => {
+      ppNary(sb, exprs, "Array(", ", ", ")", lvl)
     }
 
     case Distinct(exprs) => {
@@ -377,6 +427,7 @@ object PrettyPrinter {
     case UnitType => sb.append("Unit")
     case Int32Type => sb.append("Int")
     case BooleanType => sb.append("Boolean")
+    case ArrayType(bt) => pp(bt, sb.append("Array["), lvl).append("]")
     case SetType(bt) => pp(bt, sb.append("Set["), lvl).append("]")
     case MapType(ft,tt) => pp(tt, pp(ft, sb.append("Map["), lvl).append(","), lvl).append("]")
     case MultisetType(bt) => pp(bt, sb.append("Multiset["), lvl).append("]")

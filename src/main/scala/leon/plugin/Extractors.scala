@@ -174,6 +174,19 @@ trait Extractors {
         case _ => None
       }
     }
+    object ExWaypointExpression {
+      def unapply(tree: Apply) : Option[(Type, Tree, Tree)] = tree match {
+        case Apply(
+              TypeApply(Select(Select(funcheckIdent, utilsName), waypoint), typeTree :: Nil),
+              List(i, expr)) => {
+          if (utilsName.toString == "Utils" && waypoint.toString == "waypoint")
+            Some((typeTree.tpe, i, expr))
+          else 
+            None
+        }
+        case _ => None
+      }
+    }
 
 
     object ExValDef {
@@ -632,10 +645,13 @@ trait Extractors {
       }
     }
 
-    object ExMapUpdated {
+    object ExUpdated {
       def unapply(tree: Apply): Option[(Tree,Tree,Tree)] = tree match {
         case Apply(TypeApply(Select(lhs, n), typeTreeList), List(from, to)) if (n.toString == "updated") => 
           Some((lhs, from, to))
+        case Apply(
+              Apply(TypeApply(Select(Apply(_, Seq(lhs)), n), _), Seq(index, value)),
+              List(Apply(_, _))) if (n.toString == "updated") => Some((lhs, index, value))
         case _ => None
       }
     }
@@ -646,6 +662,14 @@ trait Extractors {
         case _ => None
       }
     }
+    object ExUpdate {
+      def unapply(tree: Apply): Option[(Tree, Tree, Tree)] = tree match {
+        case Apply(
+              Select(lhs, update),
+              index :: newValue :: Nil) if(update.toString == "update") => Some((lhs, index, newValue))
+        case _ => None
+      }
+    }
 
     object ExMapIsDefinedAt {
       def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
@@ -653,5 +677,42 @@ trait Extractors {
         case _ => None
       }
     }
+
+    object ExArrayLength {
+      def unapply(tree: Select): Option[Tree] = tree match {
+        case Select(t, n) if (n.toString == "length") => Some(t)
+        case _ => None
+      }
+    }
+
+    object ExArrayClone {
+      def unapply(tree: Apply): Option[Tree] = tree match {
+        case Apply(Select(t, n), List()) if (n.toString == "clone") => Some(t)
+        case _ => None
+      }
+    }
+
+
+    object ExArrayFill {
+      def unapply(tree: Apply): Option[(Tree, Tree, Tree)] = tree match {
+        case Apply(
+               Apply(
+                 Apply(
+                   TypeApply(
+                     Select(Select(Ident(scala), arrayObject), fillMethod),
+                     baseType :: Nil
+                   ),
+                   length :: Nil
+                 ),
+                 defaultValue :: Nil
+               ),
+               manifest
+             ) if(scala.toString == "scala" &&
+                  arrayObject.toString == "Array" &&
+                  fillMethod.toString == "fill") => Some((baseType, length, defaultValue))
+        case _ => None
+      }
+    }
+
   }
 }
