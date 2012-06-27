@@ -1,3 +1,5 @@
+import leon.Utils._
+
 object SatFun {
 
   sealed abstract class Formula
@@ -129,11 +131,23 @@ object SatFun {
   def property1(formula: Formula, trueVars: Set[Int]): Boolean = {
     val dnfFormula = dnfNaive(formula)
     eval(formula, trueVars) == evalDnf(dnfFormula, trueVars)
-  } ensuring(_ == true)
+  } holds
+
   def property2(formula: Formula, trueVars: Set[Int]): Boolean = {
     val cnfFormula = cnfNaive(formula)
     eval(formula, trueVars) == evalCnf(cnfFormula, trueVars)
-  } ensuring(_ == true)
+  } holds
+
+  def propertyWrong1(formula: Formula, trueVars: Set[Int]): Boolean = {
+    val dnfFormula = dnfNaive(formula)
+    isSatDnf(dnfFormula)
+  } holds
+
+  def property3(formula: Formula, trueVars: Set[Int]): Boolean = {
+    val dnfFormula = dnfNaive(formula)
+    if(!isSatDnf(dnfFormula)) eval(formula, trueVars) else true
+  } holds
+
 
 
   def vars(formula: Formula): Set[Int] = formula match {
