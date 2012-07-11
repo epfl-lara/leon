@@ -26,6 +26,14 @@ object Sat {
     case Or(f1, f2) => eval(f1, trueVars) || eval(f2, trueVars)
   }
 
+  //buggy version of eval
+  def evalWrong(formula: Formula, trueVars: Set[Int]): Boolean = formula match {
+    case Var(n) => trueVars.contains(n) //bug
+    case Not(f) => !eval(f, trueVars)
+    case And(f1, f2) => eval(f1, trueVars) && eval(f2, trueVars)
+    case Or(f1, f2) => eval(f1, trueVars) || eval(f2, trueVars)
+  }
+
   def evalCnf(clauses: ClauseList, trueVars: Set[Int]): Boolean = clauses match {
     case ClauseCons(cl, cls) => evalClauseCnf(cl, trueVars) && evalCnf(cls, trueVars)
     case ClauseNil() => true
@@ -36,6 +44,19 @@ object Sat {
     case ClauseNil() => false
     case ClauseLit(b) => b
   }
+
+  //buggy version of evalCnf/Dnf
+  def evalCnfWrong(clauses: ClauseList, trueVars: Set[Int]): Boolean = clauses match {
+    case ClauseCons(cl, cls) => evalClauseCnf(cl, trueVars) && evalCnf(cls, trueVars)
+    case ClauseNil() => false //bug
+    case ClauseLit(b) => b
+  }
+  def evalDnfWrong(clauses: ClauseList, trueVars: Set[Int]): Boolean = clauses match {
+    case ClauseCons(cl, cls) => evalClauseDnf(cl, trueVars) || evalDnf(cls, trueVars)
+    case ClauseNil() => true //bug
+    case ClauseLit(b) => b
+  }
+
   def evalClauseCnf(clause: VarList, trueVars: Set[Int]): Boolean = clause match {
     case VarCons(v, vs) => (if(v < 0) trueVars.contains(-v) else trueVars.contains(v)) || evalClauseCnf(vs, trueVars)
       if(v == 1) true
@@ -51,6 +72,29 @@ object Sat {
       if(v == 1) evalClauseDnf(vs, trueVars)
       else if(v == -1) false
       else if(v < -1) !trueVars.contains(-v) && evalClauseDnf(vs, trueVars)
+      else if(v > 1) trueVars.contains(v) && evalClauseDnf(vs, trueVars)
+      else false
+    }
+    case VarNil() => true
+    case VarLit(b) => b
+  }
+
+  //buggy version of evalClauses
+  def evalClauseCnfWrong(clause: VarList, trueVars: Set[Int]): Boolean = clause match {
+    case VarCons(v, vs) => (if(v < 0) trueVars.contains(-v) else trueVars.contains(v)) || evalClauseCnf(vs, trueVars)
+      if(v == 1) true
+      else if(v == -1) evalClauseCnf(vs, trueVars)
+      else if(v < -1) trueVars.contains(-v) || evalClauseCnf(vs, trueVars) //bug
+      else if(v > 1) trueVars.contains(v) || evalClauseCnf(vs, trueVars)
+      else false
+    case VarNil() => false
+    case VarLit(b) => b
+  }
+  def evalClauseDnfWrong(clause: VarList, trueVars: Set[Int]): Boolean = clause match {
+    case VarCons(v, vs) => {
+      if(v == 1) evalClauseDnf(vs, trueVars)
+      else if(v == -1) false
+      else if(v < -1) trueVars.contains(-v) && evalClauseDnf(vs, trueVars) //bug
       else if(v > 1) trueVars.contains(v) && evalClauseDnf(vs, trueVars)
       else false
     }
