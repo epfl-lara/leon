@@ -172,6 +172,82 @@ object Sat {
     case Not(Var(n)) => ClauseCons(VarCons(-n, VarNil()), ClauseNil())
     case Var(n) => ClauseCons(VarCons(n, VarNil()), ClauseNil())
   }
+
+  def vars(formula: Formula): Set[Int] = formula match {
+    case Var(n) => Set(n)
+    case Not(f) => vars(f)
+    case And(f1, f2) => vars(f1) ++ vars(f2)
+    case Or(f1, f2) => vars(f1) ++ vars(f2)
+  }
+  def isContradictory(clause: VarList, vars: Set[Int]): Boolean = clause match {
+    case VarCons(v, vs) => vars.contains(-v) || vars.contains(-1) || isContradictory(vs, vars ++ Set(v))
+    case VarNil() => false
+    case VarLit(b) => !b
+  }
+  def isSatDnf(clauses: ClauseList): Boolean = clauses match {
+    case ClauseCons(cl, cls) => !isContradictory(cl, Set.empty) || isSatDnf(cls)
+    case ClauseNil() => false
+    case ClauseLit(b) => b
+  }
+
+  def simplify(formula: ClauseList): ClauseList = formula match {
+    case ClauseNil() => ClauseNil()
+    case ClauseCons(cl, cls) => simplify(cl) match {
+      case VarNil() => ClauseLit(false)
+      case VarLit(b) => if(!b) ClauseLit(false) else ClauseCons(VarLit(b), simplify(cls))
+      case vs => ClauseCons(vs, simplify(cls))
+    }
+    case ClauseLit(b) => ClauseLit(b)
+  }
+
+  def simplify(vars: VarList): VarList = vars match {
+    case VarNil() => VarNil()
+    case VarLit(b) => VarLit(b)
+    case VarCons(VarLit(b), vs) => if(b) VarList(true) else simplify(vs)
+    case VarCons(v, vs) => VarCons(v, simplify(vs))
+  }
+
+  //for substitute we assume we are dealing with a cnf formula
+  def substitute(formula: ClauseList, variable: Int, value: Boolean): ClauseList = formula match {
+    case ClauseNil() => ClauseNil()
+    case ClauseCons(cl, cls) => ClauseCons(substitute(cl, variable, value), substitute(cls, variable, value))
+    case ClauseLit(b) => ClauseLit(b)
+  }
+
+  def substitute(vars: VarList, variable: Int, value: Boolean): VarList = vars match {
+    case VarNil() => VarNil()
+    case VarLit(b) => VarLit(b)
+    case VarCons(v, vs) => 
+      if     (v == variable && value)   VarLit(true)
+      else if(v == variable && !value)  VarCons(VarLit(false), substitute(vs, variable, value))
+      else if(v == -variable && value)  VarCons(VarLit(false), substitute(vs, variable, value))
+      else if(v == -variable && !value) VarLit(true)
+      else                              VarCons(v, substitute(vs, variable, value))
+  }
+
+  def choose(formula: ClauseList): Int = formula match {
+    case ClauseCons(varList, cls) => varList match {
+      case VarCons(head, vs) => head
+      case VarNil() => 0
+      case VarLit(b) => 0
+    }
+    case ClauseNil() => 0
+    case ClauseLit(b) => 0
+  }
+
+  def dpll(formula: ClauseList): Boolean = formula match {
+    case ClauseNil() => true
+    case ClauseLit(b) => b
+    case _ => {
+      val chosenVar = choose(formula)
+      val lhs = dpll(simplify(substitute(formula, chosenVar, true)))
+      val rhs = dpll(simplify(substitute(formula, chosenVar, false)))
+      lhs || rhs
+    }
+  }
+
+
+
   def property1(formula: Formula, trueVars: Set[Int]): Boolean = {
     val dnfFormula = dnfNaive(formula)
     eval(formula, trueVars) == evalDnf(dnfFormula, trueVars)
@@ -192,64 +268,11 @@ object Sat {
     if(!isSatDnf(dnfFormula)) eval(formula, trueVars) else true
   } holds
 
-
-
-  def vars(formula: Formula): Set[Int] = formula match {
-    case Var(n) => Set(n)
-    case Not(f) => vars(f)
-    case And(f1, f2) => vars(f1) ++ vars(f2)
-    case Or(f1, f2) => vars(f1) ++ vars(f2)
+  def property4(formula: Formula): Boolean = {
+    val cnfFormula = cnfNaive(formula)
+    val dnfFormula = dnfNaive(formula)
+    isSatDnf(dnfFormula) == dpll(cnfFormula)
   }
-  def isContradictory(clause: VarList, vars: Set[Int]): Boolean = clause match {
-    case VarCons(v, vs) => vars.contains(-v) || vars.contains(-1) || isContradictory(vs, vars ++ Set(v))
-    case VarNil() => false
-    case VarLit(b) => !b
-  }
-  def isSatDnf(clauses: ClauseList): Boolean = clauses match {
-    case ClauseCons(cl, cls) => !isContradictory(cl, Set.empty) || isSatDnf(cls)
-    case ClauseNil() => false
-    case ClauseLit(b) => b
-  }
-
-  //for substitute we assume we are dealing with a cnf formula
-  def substitute(formula: ClauseList, variable: Int, value: Boolean): ClauseList = formula match {
-    case ClauseNil() => ClauseNil()
-    case ClauseCons(cl, cls) => ClauseCons(substitute(cl, variable, value), substitute(cls, variable, value))
-    case ClauseLit(b) => ClauseLit(b)
-  }
-
-  def substitute(vars: VarList, variable: Int, value: Boolean): VarList = vars match {
-    case VarNil() => VarNil()
-    case VarLit(b) => VarLit(b)
-    case VarCons(v, vs) => 
-      if     (v == variable && value)   VarLit(true)
-      else if(v == variable && !value)  substitute(vs, variable, value)
-      else if(v == -variable && value)  substitute(vs, variable, value)
-      else if(v == -variable && !value) VarLit(true)
-      else                              VarCons(v, substitute(vs, variable, value))
-  }
-
-  def choose(formula: ClauseList): Int = formula match {
-    case ClauseCons(varList, cls) => varList match {
-      case VarCons(head, vs) => head
-      case VarNil() => 0
-      case VarLit(b) => 0
-    }
-    case ClauseNil() => 0
-    case ClauseLit(b) => 0
-  }
-
-  def dpll(formula: ClauseList): Boolean = formula match {
-    case ClauseNil() => true
-    case ClauseLit(b) => b
-    case _ => {
-      val chosenVar = choose(formula)
-      val lhs = dpll(substitute(formula, chosenVar, true))
-      val rhs = dpll(substitute(formula, chosenVar, false))
-      lhs || rhs
-    }
-  }
-
 
 
 //  def main(args: Array[String]) {
