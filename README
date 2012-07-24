@@ -1,0 +1,45 @@
+This is Leon 0.2.0
+
+To build it, you will need, for example, the following:
+  * Java Runtime Environment, from Oracle, e.g. Version 7 Update 5 
+    (to run xsbt and scala)
+  * Scala, from Typesafe, e.g. version 2.9.1
+  * xsbt, e.g. version 0.11.3: download sbt-launch.jar, run it with java -jar
+    (to built Leon)
+  * a recent GLIBC3 or later, works with e.g. apt-get
+    (for Z3)
+  * GNU Multiprecision library, e.g. gmp3, works with e.g. apt-get
+    (for Z3)
+
+To build, type this:
+
+xsbt clean   
+xsbt package # takes a while
+xsbt script
+
+Then you can try e.g.
+
+./run-demo demo/RedBlackTree.scala
+
+and get something like this:
+
+[ Info  ] . ┌─────────┐
+          ╔═╡ Summary ╞═══════════════════════════════════════════════════════════════════════╗
+          ║ └─────────┘                                                                       ║
+          ║ add                       postcond.           valid               Z3-f+t    0.314 ║
+          ║ add                       precond.    (82,14) valid               Z3-f+t    0.020 ║
+          ║ add                       precond.    (82,18) valid               Z3-f+t    0.005 ║
+          ║ balance                   postcond.           valid               Z3-f+t    0.409 ║
+          ║ balance                   match.      (91,19) valid               Z3-f+t    0.034 ║
+          ║ blackHeight               match.      (51,39) valid               Z3-f+t    0.004 ║
+          ║ buggyAdd                  postcond.           invalid             Z3-f+t    4.084 ║
+          ║ buggyAdd                  precond.     (87,8) invalid             Z3-f+t    0.111 ║
+          ║ buggyBalance              postcond.           invalid             Z3-f+t    0.055 ║
+          ║ buggyBalance              match.     (105,19) invalid             Z3-f+t    0.007 ║
+          ║ ins                       postcond.           valid               Z3-f+t    6.577 ║
+          ║ ins                       precond.    (63,40) valid               Z3-f+t    0.021 ║
+          ║ ins                       precond.    (65,43) valid               Z3-f+t    0.005 ║
+          ║ makeBlack                 postcond.           valid               Z3-f+t    0.007 ║
+          ║ redNodesHaveBlackChildren match.      (35,56) valid               Z3-f+t    0.003 ║
+          ║ size                      postcond.           valid               Z3-f+t    0.012 ║
+          ╚═══════════════════════════════════════════════════════════════════════════════════╝
