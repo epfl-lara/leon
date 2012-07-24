@@ -43,3 +43,16 @@ and get something like this:
           ║ redNodesHaveBlackChildren match.      (35,56) valid               Z3-f+t    0.003 ║
           ║ size                      postcond.           valid               Z3-f+t    0.012 ║
           ╚═══════════════════════════════════════════════════════════════════════════════════╝
+
+Additional information:
+=======================
+Sample output of 
+  ldd lib-bin/lib3.so
+is:
+	linux-gate.so.1 =>  (0x00b13000)
+	libgmp.so.3 => /usr/lib/libgmp.so.3 (0x00110000)
+	libstdc++.so.6 => /usr/lib/i386-linux-gnu/libstdc++.so.6 (0x0016f000)
+	libm.so.6 => /lib/i386-linux-gnu/libm.so.6 (0x0025a000)
+	libgcc_s.so.1 => /lib/i386-linux-gnu/libgcc_s.so.1 (0x00709000)
+	libc.so.6 => /lib/i386-linux-gnu/libc.so.6 (0x004d9000)
+	/lib/ld-linux.so.2 (0x002ab000)
