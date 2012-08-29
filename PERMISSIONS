@@ -12,5 +12,5 @@ tail -2 "$0" | ssh git@laragit.epfl.ch setperms ${thisrepo}
 exit $_
 
 # **Do not** add new lines after the following two!
-WRITERS kuncak psuter rblanc edarulov hojjat
+WRITERS kuncak psuter rblanc edarulov hojjat ekneuss
 READERS @lara mazimmer hardy amin
