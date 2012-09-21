@@ -53,5 +53,8 @@ object Leon extends Build {
     id = "leon",
     base = file("."),
     settings = Project.defaultSettings ++ LeonProject.settings
-  )
+  ) aggregate(leonLibrary) dependsOn(leonLibrary) 
+
+  lazy val leonLibrary = Project(id = "leon-library", base = file("./library"))
+
 }
