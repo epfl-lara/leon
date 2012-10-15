@@ -5,13 +5,22 @@ import Keys._
 object Leon extends Build {
   private val scriptName = "leon"
   def scriptFile = file(".") / scriptName
-  def ldLibraryDir = file(".") / "lib-bin"
+  def is64 = System.getProperty("sun.arch.data.model") == "64"
+  def ldLibraryDir = file(".") / (if (is64) "lib64-bin" else "lib-bin")
 
   val scriptTask = TaskKey[Unit]("script", "Generate the " + scriptName + " Bash script") <<= (streams, dependencyClasspath in Compile, classDirectory in Compile) map { (s, deps, out) =>
     if(!scriptFile.exists) {
-      s.log.info("Generating script...")
+      s.log.info("Generating script ("+(if(is64) "64b" else "32b")+")...")
       try {
-        val depsPaths = deps.map(_.data.absolutePath)
+        val depsPaths = deps.map(_.data.absolutePath).filter(p =>
+          if (p.endsWith("unmanaged/z3.jar")) {
+            !is64
+          } else if (p.endsWith("unmanaged/z3-64.jar")) {
+            is64
+          } else {
+            true
+          }
+        )
         // One ugly hack... Likely to fail for Windows, but it's a Bash script anyway.
         val scalaHomeDir = depsPaths.find(_.endsWith("lib/scala-library.jar")) match {
           case None => throw new Exception("Couldn't guess SCALA_HOME.")
