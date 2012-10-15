@@ -54,7 +54,7 @@ object SortedTree {
       v < max &&
       v > min
     case _ => true
-  })
+  }) ensuring ( res => !res || (allGreaterThan(t, min) && allSmallerThan(t, max)))
 
   def isSortedMin(t: Tree, min: Int): Boolean = (t match {
     case Node(v, l, r) =>
@@ -62,7 +62,7 @@ object SortedTree {
       isSortedMin(r, v) &&
       v > min
     case _ => true
-  })
+  }) ensuring ( res => !res || allGreaterThan(t, min))
 
   def isSortedMax(t: Tree, max: Int): Boolean = (t match {
     case Node(v, l, r) =>
@@ -70,7 +70,7 @@ object SortedTree {
       isSortedMinMax(r, v, max) &&
       v < max
     case _ => true
-  })
+  }) ensuring ( res => !res || allSmallerThan(t, max))
 
   def isSorted(t: Tree): Boolean = (t match {
     case Node(v, l, r) =>
@@ -79,8 +79,8 @@ object SortedTree {
     case _ => true
   }) ensuring ( res => !res || (t match {
     case Node(v, l, r) =>
-      allSmallerThan(l, v) &&
-      allGreaterThan(r, v)
+      isSorted(l) &&
+      isSorted(r)
     case Leaf() => true
   }))
 
@@ -161,7 +161,7 @@ object SortedTree {
       (v == searchV) ||
       contains1(l, searchV) ||
       contains1(r, searchV)
-  }) ensuring(res => !res || (content(t) contains searchV))
+  }) ensuring(_ == (content(t) contains searchV))
 
   def contains2(t: Tree, searchV: Int): Boolean = {
     require(isMostlySorted(t))
@@ -176,20 +176,20 @@ object SortedTree {
         } else {
           true
         }
-  })} ensuring(res => !res || (content(t) contains searchV))
+  })} ensuring(_ == (content(t) contains searchV))
 
-  def containsBuggy(t: Tree, searchV: Int): Boolean = {
-    require(isMostlySorted(t))
+  def contains3(t: Tree, searchV: Int): Boolean = {
+    require(isSorted(t))
 
     (t match {
       case Leaf() => false
       case Node(v, l, r) =>
         if (searchV > v) {
-          contains2(l, searchV)
+          contains3(r, searchV)
         } else if (searchV < v) {
-          contains2(r, searchV)
+          contains3(l, searchV)
         } else {
           true
         }
-  })} ensuring(res => !res || (content(t) contains searchV))
+  })} ensuring(_ == (content(t) contains searchV))
 }
