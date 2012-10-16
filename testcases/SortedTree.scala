@@ -49,28 +49,34 @@ object SortedTree {
 
   def isSortedMinMax(t: Tree, min: Int, max: Int): Boolean = (t match {
     case Node(v, l, r) =>
-      isSortedMinMax(l, min, v) &&
-      isSortedMinMax(r, v, max) &&
-      v < max &&
-      v > min
+      if(isSortedMinMax(l, min, v) &&
+         isSortedMinMax(r, v, max) &&
+         v < max && v > min) {
+        ltLemma(l, v, max) &&
+        gtLemma(r, v, min)
+      } else false
     case _ => true
-  }) ensuring ( res => !res || (allGreaterThan(t, min) && allSmallerThan(t, max)))
+  }) ensuring ( _ == (allGreaterThan(t, min) && allLessThan(t, max) && isSorted(t)))
 
   def isSortedMin(t: Tree, min: Int): Boolean = (t match {
     case Node(v, l, r) =>
-      isSortedMinMax(l, min, v) &&
-      isSortedMin(r, v) &&
-      v > min
+      if(isSortedMinMax(l, min, v) &&
+         isSortedMin(r, v) &&
+         v > min) {
+        gtLemma(r, v, min)
+      } else false
     case _ => true
-  }) ensuring ( res => !res || allGreaterThan(t, min))
+  }) ensuring ( _ == (allGreaterThan(t, min) && isSorted(t)))
 
   def isSortedMax(t: Tree, max: Int): Boolean = (t match {
     case Node(v, l, r) =>
-      isSortedMax(l, v) &&
-      isSortedMinMax(r, v, max) &&
-      v < max
+      if(isSortedMax(l, v) &&
+         isSortedMinMax(r, v, max) &&
+         v < max) {
+        ltLemma(l, v, max)
+      } else false
     case _ => true
-  }) ensuring ( res => !res || allSmallerThan(t, max))
+  }) ensuring ( _ == (allLessThan(t, max) && isSorted(t)))
 
   def isSorted(t: Tree): Boolean = (t match {
     case Node(v, l, r) =>
@@ -80,17 +86,26 @@ object SortedTree {
   }) ensuring ( res => !res || (t match {
     case Node(v, l, r) =>
       isSorted(l) &&
-      isSorted(r)
+      isSorted(r) &&
+      allLessThan(l, v) &&
+      allGreaterThan(r, v) &&
+      !(content(l) contains v) &&
+      !(content(r) contains v)
     case Leaf() => true
   }))
 
-  def allSmallerThan(t: Tree, max: Int): Boolean = (t match {
+  def sortedLemma(v : Int, l : Tree, r : Tree) : Boolean = {
+    require(isSorted(l) && isSorted(r) && allLessThan(l, v) && allGreaterThan(r, v))
+    isSorted(Node(v, l, r))
+  } holds
+
+  def allLessThan(t: Tree, max: Int): Boolean = (t match {
       case Node(v, l, r) =>
-        allSmallerThan(l, max) &&
-        allSmallerThan(r, max) &&
+        allLessThan(l, max) &&
+        allLessThan(r, max) &&
         v < max
       case Leaf() => true
-  })
+  }) ensuring (!_ || !(content(t) contains max))
 
   def allGreaterThan(t: Tree, min: Int): Boolean = (t match {
       case Node(v, l, r) =>
@@ -98,7 +113,19 @@ object SortedTree {
         allGreaterThan(r, min) &&
         v > min
       case Leaf() => true
-  })
+  }) ensuring (!_ || !(content(t) contains min))
+
+  @induct
+  def ltLemma(t : Tree, v1 : Int, v2 : Int) : Boolean = {
+    require(v1 <= v2 && allLessThan(t, v1))
+    allLessThan(t, v2)
+  } holds
+  
+  @induct
+  def gtLemma(t : Tree, v1 : Int, v2 : Int) : Boolean = {
+    require(v1 >= v2 && allGreaterThan(t, v1))
+    allGreaterThan(t, v2)
+  } holds
 
   @induct
   def sortedLemma1(t: Tree) = ({
@@ -107,7 +134,7 @@ object SortedTree {
     t match {
       case Node(v, l, r) =>
         allGreaterThan(r, v) &&
-        allSmallerThan(l, v)
+        allLessThan(l, v)
       case Leaf() => true
     }
   }).holds
@@ -188,6 +215,23 @@ object SortedTree {
           contains3(r, searchV)
         } else if (searchV < v) {
           contains3(l, searchV)
+        } else {
+          true
+        }
+  })} ensuring(!_ || (content(t) contains searchV))
+
+  def contains4(t: Tree, searchV: Int): Boolean = {
+    require(isSorted(t))
+
+    (t match {
+      case Leaf() => false
+      case Node(v, l, r) =>
+        if (searchV > v) {
+          contains4(l, searchV) &&
+          contains4(r, searchV)
+        } else if (searchV < v) {
+          contains4(r, searchV) &&
+          contains4(l, searchV)
         } else {
           true
         }
