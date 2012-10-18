@@ -23,7 +23,7 @@ object SortedTree {
   }) ensuring(res => res >= 0)
 
   def content(t: Tree): Set[Int] = t match {
-    case Leaf() => Set()
+    case Leaf() => Set.empty[Int]
     case Node(v, l, r) => Set(v) ++ content(l) ++ content(r)
   }
 
@@ -113,7 +113,7 @@ object SortedTree {
         allGreaterThan(r, min) &&
         v > min
       case Leaf() => true
-  }) ensuring (!_ || !(content(t) contains min))
+  }) ensuring (res => !res || !(content(t) contains min))
 
   @induct
   def ltLemma(t : Tree, v1 : Int, v2 : Int) : Boolean = {
@@ -138,6 +138,55 @@ object SortedTree {
       case Leaf() => true
     }
   }).holds
+
+  @induct
+  def sortedLemma2(t: Tree) = ({
+    require(isSorted(t))
+
+    t match {
+      case Node(v, l, r) =>
+        !(content(l) contains v) &&
+        !(content(r) contains v)
+      case Leaf() => true
+    }
+  }).holds
+
+  def sortedLemma3(v: Int, l: Tree, r: Tree) = {
+    require(isSorted(Node(v, l, r)))
+
+    !((content(l) ++ content(r)) contains v)
+  } holds
+
+  // Proving is apparently difficult. Who knew.
+  @induct
+  def allLessThanAllOf(t: Tree, top: Int, of: Tree): Boolean = {
+    require(isSorted(Node(top, t, of)))
+
+    t match {
+      case Node(v, l, r) =>
+        top > v &&
+        allLessThanAllOf(l, v, of) &&
+        allLessThanAllOf(r, v, of) &&
+        allGreaterThan(of, v)
+      case Leaf() =>
+        true
+    }
+  } ensuring {res => !res || (allLessThan(t, top) && allGreaterThan(of, top))}
+
+  // Ne marche pas encore vraiment... c'est difficile ce truc :(
+  // PS
+  def separation(v : Int, l : Tree, r : Tree) : Boolean = {
+    require(isSorted(Node(v, l, r)))
+  
+    (l match {
+      case Leaf() => true
+      case Node(vl, ll, rl) => separation(vl, ll, rl)
+    }) && (r match {
+      case Leaf() => true
+      case Node(vr, lr, rr) => separation(vr, lr, rr)
+    }) 
+  } ensuring(res => !res || (content(l) ** content(r)) == Set.empty[Int])
+
 
   //
   // OPERATIONS:
@@ -205,16 +254,16 @@ object SortedTree {
         }
   })} ensuring(_ == (content(t) contains searchV))
 
-  def contains3(t: Tree, searchV: Int): Boolean = {
+  def containsInvalid(t: Tree, searchV: Int): Boolean = {
     require(isSorted(t))
 
     (t match {
       case Leaf() => false
       case Node(v, l, r) =>
         if (searchV > v) {
-          contains3(r, searchV)
+          containsInvalid(r, searchV)
         } else if (searchV < v) {
-          contains3(l, searchV)
+          containsInvalid(l, searchV)
         } else {
           true
         }
@@ -227,10 +276,8 @@ object SortedTree {
       case Leaf() => false
       case Node(v, l, r) =>
         if (searchV > v) {
-          contains4(l, searchV) &&
           contains4(r, searchV)
         } else if (searchV < v) {
-          contains4(r, searchV) &&
           contains4(l, searchV)
         } else {
           true
