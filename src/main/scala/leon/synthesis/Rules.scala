@@ -1,11 +1,6 @@
 package leon
 package synthesis
 
-/** AST definitions for Pure Scala. */
-object Rules {
-
-  abstract class Rule {
-    def isApplicable(p: Problem): Option[Step];
-  }
-
+abstract class Rule(val name: String) {
+  def isApplicable(p: Problem, parent: Task): List[Task]
 }
