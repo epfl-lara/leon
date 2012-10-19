@@ -98,6 +98,11 @@ object ArrayTransformation extends Pass {
       IfExpr(rc, rt, re).setType(rt.getType)
     }
 
+    case c @ Choose(args, body) =>
+      val body2 = transform(body)
+
+      Choose(args, body2).setType(c.getType).setPosInfo(c)
+
     case m @ MatchExpr(scrut, cses) => {
       val scrutRec = transform(scrut)
       val csesRec = cses.map{

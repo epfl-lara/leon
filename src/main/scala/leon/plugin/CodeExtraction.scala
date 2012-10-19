@@ -681,6 +681,23 @@ trait CodeExtraction extends Extractors {
             }
             Epsilon(c1).setType(pstpe).setPosInfo(epsi.pos.line, epsi.pos.column)
           }
+
+          case chs @ ExChooseExpression(args, tpe, body) => {
+            val cTpe  = scalaType2PureScala(unit, silent)(tpe) 
+
+            val vars = args map { case (tpe, sym) => 
+              val aTpe  = scalaType2PureScala(unit, silent)(tpe)
+              val newID = FreshIdentifier(sym.name.toString).setType(aTpe)
+              owners += (Variable(newID) -> None)
+              varSubsts(sym) = (() => Variable(newID))
+              newID
+            }
+
+            val cBody = rec(body)
+
+            Choose(vars, cBody).setType(cTpe).setPosInfo(chs.pos.line, chs.pos.column)
+          }
+
           case ExWaypointExpression(tpe, i, tree) => {
             val pstpe = scalaType2PureScala(unit, silent)(tpe)
             val IntLiteral(ri) = rec(i)

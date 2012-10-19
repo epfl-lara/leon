@@ -154,6 +154,14 @@ object PrettyPrinter {
       nsb
     }
 
+    case c@Choose(vars, pred) => {
+      var nsb = sb
+      nsb.append("choose("+vars.mkString(", ")+" => ")
+      nsb = pp(pred, nsb, lvl)
+      nsb.append(")")
+      nsb
+    }
+
     case Waypoint(i, expr) => {
       sb.append("waypoint_" + i + "(")
       pp(expr, sb, lvl)

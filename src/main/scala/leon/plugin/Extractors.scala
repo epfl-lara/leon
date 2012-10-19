@@ -174,6 +174,21 @@ trait Extractors {
         case _ => None
       }
     }
+
+    object ExChooseExpression {
+      def unapply(tree: Apply) : Option[(List[(Type, Symbol)], Type, Tree)] = tree match {
+        case a @ Apply(
+              TypeApply(Select(Select(funcheckIdent, utilsName), chooseName), types),
+              Function(vds, predicateBody) :: Nil) => {
+          if (utilsName.toString == "Utils" && chooseName.toString == "choose")
+            Some(((types.map(_.tpe) zip vds.map(_.symbol)).toList, a.tpe, predicateBody))
+          else 
+            None
+        }
+        case _ => None
+      }
+    }
+
     object ExWaypointExpression {
       def unapply(tree: Apply) : Option[(Type, Tree, Tree)] = tree match {
         case Apply(

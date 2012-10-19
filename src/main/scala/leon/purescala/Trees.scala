@@ -612,6 +612,16 @@ object Trees {
             i
         }
         case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut), cses.map(inCase(_))).setType(m.getType).setPosInfo(m)
+
+        case c @ Choose(args, body) =>
+          val body2 = rec(body)
+
+          if (body != body2) {
+            Choose(args, body2).setType(c.getType)
+          } else {
+            c
+          }
+
         case t if t.isInstanceOf[Terminal] => t
         case unhandled => scala.sys.error("Non-terminal case should be handled in searchAndReplace: " + unhandled)
       }
@@ -724,6 +734,16 @@ object Trees {
           m
         })
       }
+
+      case c @ Choose(args, body) =>
+        val body2 = rec(body)
+
+        applySubst(if (body != body2) {
+          Choose(args, body2).setType(c.getType).setPosInfo(c)
+        } else {
+          c
+        })
+
       case t if t.isInstanceOf[Terminal] => applySubst(t)
       case unhandled => scala.sys.error("Non-terminal case should be handled in searchAndReplaceDFS: " + unhandled)
     }
@@ -850,6 +870,7 @@ object Trees {
       case ArrayMake(_) => false
       case ArrayClone(_) => false
       case Epsilon(_) => false
+      case Choose(_, _) => false
       case _ => true
     }
     def combine(b1: Boolean, b2: Boolean) = b1 && b2
@@ -863,6 +884,7 @@ object Trees {
       case ArrayMake(_) => false
       case ArrayClone(_) => false
       case Epsilon(_) => false
+      case Choose(_, _) => false
       case _ => b
     }
     treeCatamorphism(convert, combine, compute, expr)
@@ -880,6 +902,7 @@ object Trees {
     }
     treeCatamorphism(convert, combine, compute, expr)
   }
+
   def containsLetDef(expr: Expr): Boolean = {
     def convert(t : Expr) : Boolean = t match {
       case (l : LetDef) => true
