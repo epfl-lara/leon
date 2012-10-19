@@ -1,7 +1,7 @@
 package leon
 package synthesis
 
-import leon.purescala.Trees.Expr
+import leon.purescala.Trees._
 
 // Defines a synthesis solution of the form:
 // ⟨ P | T ⟩
@@ -10,6 +10,5 @@ case class Solution(pre: Expr, term: Expr) {
 }
 
 object Solution {
-  def fromProblem(p: Problem): Solution =
-    null
+  def choose(p: Problem): Solution = Solution(BooleanLiteral(true), Choose(p.xs, p.phi))
 }

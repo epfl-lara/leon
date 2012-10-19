@@ -6,6 +6,6 @@ import leon.purescala.Common._
 
 // Defines a synthesis triple of the form:
 // ⟦ as ⟨ phi ⟩ xs ⟧
-case class Problem(as: Set[Identifier], phi: Expr, xs: Set[Identifier]) {
+case class Problem(as: List[Identifier], phi: Expr, xs: List[Identifier]) {
   override def toString = "⟦ "+as.mkString(";")+" ⟨ "+phi+" ⟩ "+xs.mkString(";")+" ⟧ "
 }

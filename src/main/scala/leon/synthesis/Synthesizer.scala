@@ -26,9 +26,24 @@ class Synthesizer(rules: List[Rule]) {
 
       task.subProblems match {
         case Nil =>
-          task.onSuccess()
+          throw new Exception("Such tasks shouldbe handled immediately")
         case subProblems =>
-          workList ++= subProblems.flatMap(applyRules(_, task))
+          for (sp <- subProblems) {
+            val alternatives = applyRules(sp, task)
+
+            alternatives.find(_.isSuccess) match {
+              case Some(ss) =>
+                ss.onSuccess()
+              case None =>
+                workList ++= alternatives
+            }
+
+            // We are stuck
+            if (alternatives.isEmpty) {
+              // I give up
+              task.onSuccess(sp, Solution.choose(sp))
+            }
+          }
       }
 
     }
