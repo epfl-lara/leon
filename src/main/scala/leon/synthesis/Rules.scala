@@ -22,7 +22,13 @@ object OnePoint extends Rule("One-point") {
   def isApplicable(p: Problem, parent: Task): List[Task] = {
 
     p.phi match {
-      case And(exprs) =>
+      case a : And =>
+        def collectAnds(e: Expr): List[Expr] = e match {
+          case And(exs) => exs.toList.flatMap(collectAnds)
+          case e => List(e)
+        }
+
+        val exprs = collectAnds(a)
         val candidates = exprs.collect {
           case eq @ Equals(Variable(x), e) if (p.xs contains x) && !(variablesOf(e) contains x) =>
             (x, e, eq)

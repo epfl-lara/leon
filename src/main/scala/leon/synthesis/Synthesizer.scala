@@ -67,7 +67,7 @@ class Synthesizer(rules: List[Rule]) {
 
     val x = Variable(FreshIdentifier("x").setType(Int32Type))
     val y = Variable(FreshIdentifier("y").setType(Int32Type))
-    val p = Problem(Nil, And(GreaterThan(x, y), Equals(x, IntLiteral(3))), List(x.id, y.id))
+    val p = Problem(Nil, And(List(GreaterThan(x, y), Equals(y, IntLiteral(2)), Equals(x, IntLiteral(3)))), List(x.id, y.id))
 
     synthesize(p)
   }

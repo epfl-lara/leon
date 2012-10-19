@@ -17,7 +17,12 @@ class Task(
 
   def succeeded() {
     assert(isSuccess)
-    notifyParent(onSuccess(Nil))
+
+    val solution = onSuccess(Nil)
+
+    println("Found solution: "+problem+" ⊢  "+solution)
+
+    notifyParent(solution)
   }
 
   def subSucceeded(p: Problem, s: Solution) {
@@ -30,7 +35,7 @@ class Task(
 
       val solution = onSuccess(subProblems map subSolutions) 
 
-      println("Found solution to: "+problem+" ⊢  "+solution)
+      println("Found solution: "+problem+" ⊢  "+solution)
 
       notifyParent(solution)
     }
@@ -43,6 +48,6 @@ class Task(
 
 class RootTask(p: Problem) extends Task(null, p, List(p), xs => xs.head, 0) {
   override def notifyParent(solution: Solution) {
-    sys.error("You need to extend this!")
+    sys.error("You need to override this!")
   }
 }
