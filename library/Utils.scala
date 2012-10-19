@@ -22,11 +22,11 @@ object Utils {
 
   private def noChoose = throw new RuntimeException("Implementation not supported")
 
-  def choose[A](predicate: A => Boolean) = noChoose
-  def choose[A, B](predicate: (A, B) => Boolean) = noChoose
-  def choose[A, B, C](predicate: (A, B, C) => Boolean) = noChoose
-  def choose[A, B, C, D](predicate: (A, B, C, D) => Boolean) = noChoose
-  def choose[A, B, C, D, E](predicate: (A, B, C, D, E) => Boolean) = noChoose
-  def choose[A, B, C, D, E, F](predicate: (A, B, C, D, E, F) => Boolean) = noChoose
-  def choose[A, B, C, D, E, F, G](predicate: (A, B, C, D, E, F, G) => Boolean) = noChoose
+  def choose[A](predicate: A => Boolean): A = noChoose
+  def choose[A, B](predicate: (A, B) => Boolean): (A, B) = noChoose
+  def choose[A, B, C](predicate: (A, B, C) => Boolean): (A, B, C) = noChoose
+  def choose[A, B, C, D](predicate: (A, B, C, D) => Boolean): (A, B, C, D) = noChoose
+  def choose[A, B, C, D, E](predicate: (A, B, C, D, E) => Boolean): (A, B, C, D, E) = noChoose
+  def choose[A, B, C, D, E, F](predicate: (A, B, C, D, E, F) => Boolean): (A, B, C, D, E, F) = noChoose
+  def choose[A, B, C, D, E, F, G](predicate: (A, B, C, D, E, F, G) => Boolean): (A, B, C, D, E, F, G) = noChoose
 }
