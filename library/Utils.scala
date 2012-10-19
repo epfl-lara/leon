@@ -27,6 +27,4 @@ object Utils {
   def choose[A, B, C](predicate: (A, B, C) => Boolean): (A, B, C) = noChoose
   def choose[A, B, C, D](predicate: (A, B, C, D) => Boolean): (A, B, C, D) = noChoose
   def choose[A, B, C, D, E](predicate: (A, B, C, D, E) => Boolean): (A, B, C, D, E) = noChoose
-  def choose[A, B, C, D, E, F](predicate: (A, B, C, D, E, F) => Boolean): (A, B, C, D, E, F) = noChoose
-  def choose[A, B, C, D, E, F, G](predicate: (A, B, C, D, E, F, G) => Boolean): (A, B, C, D, E, F, G) = noChoose
 }
