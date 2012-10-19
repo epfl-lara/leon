@@ -42,6 +42,8 @@ object Trees {
 
   case class Epsilon(pred: Expr) extends Expr with ScalacPositional
 
+  case class Choose(vars: List[Identifier], pred: Expr) extends Expr with ScalacPositional
+
   /* Like vals */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
     binder.markAsLetBinder
