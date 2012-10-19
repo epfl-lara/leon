@@ -1,6 +1,7 @@
 package leon
 package synthesis
 
+import purescala.Common._
 import purescala.Trees._
 
 object Rules {
@@ -12,6 +13,9 @@ object Rules {
 
 abstract class Rule(val name: String) {
   def isApplicable(p: Problem, parent: Task): List[Task]
+
+
+  def subst(what: Tuple2[Identifier, Expr], in: Expr): Expr = replace(Map(Variable(what._1) -> what._2), in)
 }
 
 object OnePoint extends Rule("One-point") {
@@ -32,14 +36,14 @@ object OnePoint extends Rule("One-point") {
           val others = exprs.filter(_ != eq)
           val oxs    = p.xs.filter(_ != x)
 
-          val newProblem = Problem(p.as, replace(Map(Variable(x) -> e), And(others)), oxs)
+          val newProblem = Problem(p.as, subst(x -> e, And(others)), oxs)
 
           val onSuccess: List[Solution] => Solution = { 
             case List(Solution(pre, term)) =>
               if (oxs.isEmpty) {
                 Solution(pre, e) 
               } else {
-                Solution(pre, LetTuple(oxs, term, replace(Map(Variable(x) -> e), Tuple(p.xs.map(Variable(_))))) ) 
+                Solution(pre, LetTuple(oxs, term, subst(x -> e, Tuple(p.xs.map(Variable(_))))) ) 
               }
             case _ => Solution.none
           }
