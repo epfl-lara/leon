@@ -5,7 +5,7 @@ class Task(
         val parent: Task,
         val problem: Problem,
         val subProblems: List[Problem],
-        val construct: List[Solution] => Solution,
+        val onSuccess: List[Solution] => Solution,
         val score: Score
   ) extends Ordered[Task] {
 
@@ -15,12 +15,12 @@ class Task(
 
   def isSuccess = subProblems.isEmpty
 
-  def onSuccess() {
+  def succeeded() {
     assert(isSuccess)
-    notifyParent(construct(Nil))
+    notifyParent(onSuccess(Nil))
   }
 
-  def onSuccess(p: Problem, s: Solution) {
+  def subSucceeded(p: Problem, s: Solution) {
     assert(subProblems contains p)
     assert(!(subSolutions contains p))
 
@@ -28,16 +28,16 @@ class Task(
 
     if (subSolutions.size == subProblems.size) {
 
-      val solution = construct(subProblems map subSolutions) 
+      val solution = onSuccess(subProblems map subSolutions) 
 
-      println(": "+problem+" ⊢  "+solution)
+      println("Found solution to: "+problem+" ⊢  "+solution)
 
       notifyParent(solution)
     }
   }
 
   def notifyParent(solution: Solution) {
-    parent.onSuccess(problem, solution)
+    parent.subSucceeded(problem, solution)
   }
 }
 

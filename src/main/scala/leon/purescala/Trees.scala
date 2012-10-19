@@ -59,12 +59,12 @@ object Trees {
       setType(et)
   }
 
-  //case class LetTuple(binders: Seq[Identifier], value: Expr, body: Expr) extends Expr {
-  //  binders.foreach(_.markAsLetBinder)
-  //  val et = body.getType
-  //  if(et != Untyped)
-  //    setType(et)
-  //}
+  case class LetTuple(binders: Seq[Identifier], value: Expr, body: Expr) extends Expr {
+    binders.foreach(_.markAsLetBinder)
+    val et = body.getType
+    if(et != Untyped)
+      setType(et)
+  }
 
   case class LetDef(value: FunDef, body: Expr) extends Expr {
     val et = body.getType

@@ -38,7 +38,7 @@ class Synthesizer(rules: List[Rule]) {
 
             alternatives.find(_.isSuccess) match {
               case Some(ss) =>
-                ss.onSuccess()
+                ss.succeeded()
               case None =>
                 workList ++= alternatives
             }
@@ -46,7 +46,7 @@ class Synthesizer(rules: List[Rule]) {
             // We are stuck
             if (alternatives.isEmpty) {
               // I give up
-              task.onSuccess(sp, Solution.choose(sp))
+              task.subSucceeded(sp, Solution.choose(sp))
             }
           }
       }
@@ -65,9 +65,9 @@ class Synthesizer(rules: List[Rule]) {
     import purescala.Trees._
     import purescala.TypeTrees._
 
-    val aID = FreshIdentifier("a").setType(Int32Type)
-    val a = Variable(aID)
-    val p = Problem(Nil, And(GreaterThan(a, IntLiteral(2)), Equals(a, IntLiteral(3))), List(aID))
+    val x = Variable(FreshIdentifier("x").setType(Int32Type))
+    val y = Variable(FreshIdentifier("y").setType(Int32Type))
+    val p = Problem(Nil, And(GreaterThan(x, y), Equals(x, IntLiteral(3))), List(x.id, y.id))
 
     synthesize(p)
   }

@@ -11,4 +11,6 @@ case class Solution(pre: Expr, term: Expr) {
 
 object Solution {
   def choose(p: Problem): Solution = Solution(BooleanLiteral(true), Choose(p.xs, p.phi))
+
+  def none: Solution = throw new Exception("Unexpected failure to construct solution")
 }

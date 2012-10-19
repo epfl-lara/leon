@@ -68,6 +68,16 @@ object PrettyPrinter {
   private def pp(tree: Expr, sb: StringBuffer, lvl: Int): StringBuffer = tree match {
     case Variable(id) => sb.append(id)
     case DeBruijnIndex(idx) => sb.append("_" + idx)
+    case LetTuple(bs,d,e) => {
+        //pp(e, pp(d, sb.append("(let (" + b + " := "), lvl).append(") in "), lvl).append(")")
+      sb.append("(let (" + bs.mkString(",") + " := ");
+      pp(d, sb, lvl)
+      sb.append(") in\n")
+      ind(sb, lvl+1)
+      pp(e, sb, lvl+1)
+      sb.append(")")
+      sb
+    }
     case Let(b,d,e) => {
         //pp(e, pp(d, sb.append("(let (" + b + " := "), lvl).append(") in "), lvl).append(")")
       sb.append("(let (" + b + " := ");
