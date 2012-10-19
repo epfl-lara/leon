@@ -4,9 +4,6 @@ import scala.tools.nsc.{Global,Settings=>NSCSettings,SubComponent,CompilerComman
 
 import purescala.Definitions.Program
 
-import synthesis.Synthesizer
-import purescala.ScalaPrinter
-
 object Main {
   import leon.{Reporter,DefaultReporter,Analysis}
 
@@ -35,10 +32,11 @@ object Main {
 
   private def defaultAction(program: Program, reporter: Reporter) : Unit = {
     Logger.debug("Default action on program: " + program, 3, "main")
-    //val passManager = new PassManager(Seq(ArrayTransformation, EpsilonElimination, ImperativeCodeElimination, /*UnitElimination,*/ FunctionClosure, /*FunctionHoisting,*/ Simplificator))
-    //val program2 = passManager.run(program)
-    assert(program.isPure)
-    val program2 = new Synthesizer().synthesizeAll(program)
+    val passManager = new PassManager(Seq(ArrayTransformation, EpsilonElimination, ImperativeCodeElimination, /*UnitElimination,*/ FunctionClosure, /*FunctionHoisting,*/ Simplificator))
+    val program2 = passManager.run(program)
+    assert(program2.isPure)
+    val analysis = new Analysis(program2, reporter)
+    analysis.analyse
   }
 
   private def runWithSettings(args : Array[String], settings : NSCSettings, printerFunction : String=>Unit, actionOnProgram : Option[Program=>Unit] = None) : Unit = {

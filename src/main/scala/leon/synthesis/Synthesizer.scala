@@ -60,7 +60,7 @@ class Synthesizer(rules: List[Rule]) {
     solution
   }
 
-  def test1 = {
+  def test() {
     import purescala.Common._
     import purescala.Trees._
     import purescala.TypeTrees._
@@ -73,7 +73,6 @@ class Synthesizer(rules: List[Rule]) {
   }
 
   def synthesizeAll(p: Program): Program = {
-    test1
     p
   }
 }
