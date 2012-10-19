@@ -27,7 +27,12 @@ class Task(
     subSolutions += p -> s
 
     if (subSolutions.size == subProblems.size) {
-      notifyParent(construct(subProblems map subSolutions))
+
+      val solution = construct(subProblems map subSolutions) 
+
+      println(": "+problem+" ⊢  "+solution)
+
+      notifyParent(solution)
     }
   }
 

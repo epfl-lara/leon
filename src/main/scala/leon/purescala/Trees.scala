@@ -830,6 +830,7 @@ object Trees {
       case i @ IfExpr(a1,a2,a3) => compute(i, combine(combine(rec(a1), rec(a2)), rec(a3)))
       case m @ MatchExpr(scrut, cses) => compute(m, (scrut +: cses.flatMap(_.expressions)).map(rec(_)).reduceLeft(combine))
       case a @ AnonymousFunction(es, ev) => compute(a, (es.flatMap(e => e._1 ++ Seq(e._2)) ++ Seq(ev)).map(rec(_)).reduceLeft(combine))
+      case c @ Choose(args, body) => compute(c, rec(body))
       case t: Terminal => compute(t, convert(t))
       case unhandled => scala.sys.error("Non-terminal case should be handled in treeCatamorphism: " + unhandled)
     }
@@ -870,7 +871,6 @@ object Trees {
       case ArrayMake(_) => false
       case ArrayClone(_) => false
       case Epsilon(_) => false
-      case Choose(_, _) => false
       case _ => true
     }
     def combine(b1: Boolean, b2: Boolean) = b1 && b2
@@ -884,7 +884,6 @@ object Trees {
       case ArrayMake(_) => false
       case ArrayClone(_) => false
       case Epsilon(_) => false
-      case Choose(_, _) => false
       case _ => b
     }
     treeCatamorphism(convert, combine, compute, expr)

@@ -1,9 +1,14 @@
 package leon
 package synthesis
 
+import purescala.Definitions.Program
+
 import collection.mutable.PriorityQueue
 
 class Synthesizer(rules: List[Rule]) {
+  def this() = this(Rules.all)
+
+
   def applyRules(p: Problem, parent: Task): List[Task] = {
     rules.flatMap(_.isApplicable(p, parent))
   }
@@ -48,7 +53,28 @@ class Synthesizer(rules: List[Rule]) {
 
     }
 
+    println
+    println(" ++ RESULT ++ ")
+    println("==> "+p+" ⊢  "+solution)
+
     solution
+  }
+
+  def test1 = {
+    import purescala.Common._
+    import purescala.Trees._
+    import purescala.TypeTrees._
+
+    val aID = FreshIdentifier("a").setType(Int32Type)
+    val a = Variable(aID)
+    val p = Problem(Nil, And(GreaterThan(a, IntLiteral(2)), Equals(a, IntLiteral(3))), List(aID))
+
+    synthesize(p)
+  }
+
+  def synthesizeAll(p: Program): Program = {
+    test1
+    p
   }
 }
 

@@ -257,8 +257,8 @@ object ImperativeCodeElimination extends Pass {
         val (argVal, argScope, argFun) = toFunction(a)
         (recons(argVal).setType(u.getType), argScope, argFun)
       }
-      case (t: Terminal) => (t, (body: Expr) => body, Map())
 
+      case (t: Terminal) => (t, (body: Expr) => body, Map())
 
       case _ => sys.error("not supported: " + expr)
     }
