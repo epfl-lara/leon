@@ -5,24 +5,20 @@ import purescala.Definitions.Program
 
 import collection.mutable.PriorityQueue
 
-class Synthesizer(rules: List[Rule]) {
-  def this() = this(Rules.all)
+class Synthesizer(val r: Reporter) {
+  import r.{error,warning,info,fatalError}
 
+  private[this] var solution: Solution = null
 
-  def applyRules(p: Problem, parent: Task): List[Task] = {
-    rules.flatMap(_.isApplicable(p, parent))
-  }
+  def synthesize(p: Problem, rules: List[Rule]): Solution = {
 
-  def synthesize(p: Problem): Solution = {
+    def applyRules(p: Problem, parent: Task): List[Task] = {
+      rules.flatMap(_.isApplicable(p, parent))
+    }
+
     val workList = new PriorityQueue[Task]()
 
-    var solution: Solution = null
-
-    val rootTask = new RootTask(p) {
-      override def notifyParent(s: Solution) {
-        solution = s
-      }
-    }
+    val rootTask = new RootTask(this, p)
 
     workList += rootTask
 
@@ -34,10 +30,13 @@ class Synthesizer(rules: List[Rule]) {
           throw new Exception("Such tasks shouldbe handled immediately")
         case subProblems =>
           for (sp <- subProblems) {
+            info("Now handling: "+sp)
+
             val alternatives = applyRules(sp, task)
 
             alternatives.find(_.isSuccess) match {
               case Some(ss) =>
+                info(" => Success!")
                 ss.succeeded()
               case None =>
                 workList ++= alternatives
@@ -46,18 +45,30 @@ class Synthesizer(rules: List[Rule]) {
             // We are stuck
             if (alternatives.isEmpty) {
               // I give up
-              task.subSucceeded(sp, Solution.choose(sp))
+              val sol = Solution.choose(sp)
+              warning(" => Solved (by choose): "+sp+" ⊢  "+sol)
+              task.subSucceeded(sp, sol)
+            } else {
+              info(" => Possible Next Steps:")
+              alternatives.foreach(a => info(" -   "+a))
             }
           }
       }
 
     }
 
-    println
-    println(" ++ RESULT ++ ")
-    println("==> "+p+" ⊢  "+solution)
-
     solution
+  }
+
+  def onTaskSucceeded(task: Task, solution: Solution) {
+    info(" => Solved "+task.problem+" ⊢  "+solution)
+    task match {
+      case rt: RootTask =>
+        info(" SUCCESS!")
+        this.solution = solution
+      case t: Task =>
+        t.parent.subSucceeded(t.problem, solution)
+    }
   }
 
   def test() {
@@ -69,11 +80,7 @@ class Synthesizer(rules: List[Rule]) {
     val y = Variable(FreshIdentifier("y").setType(Int32Type))
     val p = Problem(Nil, And(List(GreaterThan(x, y), Equals(y, IntLiteral(2)), Equals(x, IntLiteral(3)))), List(x.id, y.id))
 
-    synthesize(p)
-  }
-
-  def synthesizeAll(p: Program): Program = {
-    p
+    synthesize(p, Rules.all(this))
   }
 }
 

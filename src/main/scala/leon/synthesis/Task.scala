@@ -2,6 +2,7 @@ package leon
 package synthesis
 
 class Task(
+        val synth: Synthesizer, 
         val parent: Task,
         val problem: Problem,
         val subProblems: List[Problem],
@@ -20,14 +21,12 @@ class Task(
 
     val solution = onSuccess(Nil)
 
-    println("Found solution: "+problem+" ⊢  "+solution)
-
-    notifyParent(solution)
+    synth.onTaskSucceeded(this, solution)
   }
 
   def subSucceeded(p: Problem, s: Solution) {
-    assert(subProblems contains p)
-    assert(!(subSolutions contains p))
+    assert(subProblems contains p, "Problem "+p+" is unknown to me ?!?")
+    assert(!(subSolutions contains p), "I already have a solution for "+p+" ?!?")
 
     subSolutions += p -> s
 
@@ -35,19 +34,11 @@ class Task(
 
       val solution = onSuccess(subProblems map subSolutions) 
 
-      println("Found solution: "+problem+" ⊢  "+solution)
-
-      notifyParent(solution)
+      synth.onTaskSucceeded(this, solution)
     }
   }
 
-  def notifyParent(solution: Solution) {
-    parent.subSucceeded(problem, solution)
-  }
+  override def toString = subProblems.map(p => (p, !subSolutions.get(p).isEmpty)).map{ case (p, isSolved) => p+(if(isSolved) "(OK)" else "(?)") }.mkString(" ; ") 
 }
 
-class RootTask(p: Problem) extends Task(null, p, List(p), xs => xs.head, 0) {
-  override def notifyParent(solution: Solution) {
-    sys.error("You need to override this!")
-  }
-}
+class RootTask(synth: Synthesizer, p: Problem) extends Task(synth, null, p, List(p), xs => xs.head, 0)

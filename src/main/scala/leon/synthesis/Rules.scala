@@ -5,8 +5,8 @@ import purescala.Common._
 import purescala.Trees._
 
 object Rules {
-  def all = List(
-    OnePoint
+  def all(synth: Synthesizer) = List(
+    OnePoint(synth)
   )
 }
 
@@ -18,7 +18,7 @@ abstract class Rule(val name: String) {
   def subst(what: Tuple2[Identifier, Expr], in: Expr): Expr = replace(Map(Variable(what._1) -> what._2), in)
 }
 
-object OnePoint extends Rule("One-point") {
+case class OnePoint(synth: Synthesizer) extends Rule("One-point") {
   def isApplicable(p: Problem, parent: Task): List[Task] = {
 
     p.phi match {
@@ -54,7 +54,7 @@ object OnePoint extends Rule("One-point") {
             case _ => Solution.none
           }
 
-          List(new Task(parent, p, List(newProblem), onSuccess, 100))
+          List(new Task(synth, parent, p, List(newProblem), onSuccess, 100))
         } else {
           Nil
         }
