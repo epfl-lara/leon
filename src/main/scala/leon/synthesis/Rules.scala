@@ -68,7 +68,7 @@ class Ground(synth: Synthesizer) extends Rule("Ground", synth) {
       synth.solveSAT(p.phi) match {
         case (Some(true), model) =>
           val onSuccess: List[Solution] => Solution = { 
-            case Nil => Solution(BooleanLiteral(true), replaceFromIDs(model, p.phi))
+            case Nil => Solution(BooleanLiteral(true), Tuple(p.xs.map(model)))
           }
 
           List(new Task(synth, parent, this, p, Nil, onSuccess, 200))

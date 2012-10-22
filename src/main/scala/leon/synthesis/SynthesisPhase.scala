@@ -8,9 +8,10 @@ class SynthesisPhase(reporter: Reporter) extends plugin.TransformationPhase {
   val description = "Synthesis"
 
   def apply(program: Program): Program = {
+    val quietReporter = new QuietReporter
     val solvers  = List(
-      new TrivialSolver(reporter),
-      new FairZ3Solver(reporter)
+      new TrivialSolver(quietReporter),
+      new FairZ3Solver(quietReporter)
     )
 
     new Synthesizer(reporter, solvers).synthesizeAll(program)

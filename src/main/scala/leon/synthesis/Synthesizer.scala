@@ -43,6 +43,8 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
                 info(" => Success!")
                 ss.succeeded()
               case None =>
+                info(" => Possible Next Steps:")
+                alternatives.foreach(t => info(" -   "+t.description))
                 workList ++= alternatives
             }
 
@@ -52,9 +54,6 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
               val sol = Solution.choose(sp)
               warning(" => Solved (by choose): "+sp+" ⊢  "+sol)
               task.subSucceeded(sp, sol)
-            } else {
-              info(" => Possible Next Steps:")
-              alternatives.foreach(t => info(" -   "+t.description))
             }
           }
       }
@@ -78,12 +77,12 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
   }
 
   def onTaskSucceeded(task: Task, solution: Solution) {
-    info(" => Solved "+task.problem+" ⊢  "+solution)
     task match {
       case rt: RootTask =>
         info(" SUCCESS!")
         this.solution = solution
       case t: Task =>
+        info(" => Solved "+task.problem+" ⊢  "+solution)
         t.parent.subSucceeded(t.problem, solution)
     }
   }
@@ -101,7 +100,33 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
   }
 
   def synthesizeAll(program: Program) = {
+    import purescala.Trees._
+
     solvers.foreach(_.setProgram(program))
+
+    val rules = Rules.all(this)
+
+    def noop(u:Expr, u2: Expr) = u
+
+    def actOnChoose(e: Expr, a: Expr): Expr = e match {
+      case Choose(vars, pred) =>
+        val xs = vars
+        val as = (variablesOf(pred)--xs).toList
+        val phi = pred
+
+        synthesize(Problem(as, phi, xs), rules)
+
+        a
+      case _ =>
+        a
+    }
+
+    // Look for choose()
+    for (f <- program.definedFunctions if f.body.isDefined) {
+      println(f)
+      treeCatamorphism(x => x, noop, actOnChoose, f.body.get)
+    }
+
     program
   }
 }
