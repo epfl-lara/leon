@@ -5,11 +5,12 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-object TypeChecking extends Pass {
+object TypeChecking extends plugin.UnitPhase {
 
+  val name = "Type Checking"
   val description = "Type check the AST"
 
-  def apply(pgm: Program): Program = {
+  def apply(pgm: Program): Unit = {
     val allFuns = pgm.definedFunctions
 
     allFuns.foreach(fd  => {
@@ -17,8 +18,6 @@ object TypeChecking extends Pass {
       fd.postcondition.foreach(typeCheck)
       fd.body.foreach(typeCheck)
     })
-
-    pgm
   }
 
   private def typeCheck(expr: Expr): Unit = { //expr match {

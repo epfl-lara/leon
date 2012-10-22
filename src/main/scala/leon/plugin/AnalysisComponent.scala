@@ -4,7 +4,10 @@ package plugin
 import scala.tools.nsc._
 import scala.tools.nsc.plugins._
 
-class AnalysisComponent(val global: Global, val pluginInstance: LeonPlugin)
+import purescala.Definitions.Program
+import synthesis.SynthesisPhase
+
+class AnalysisComponent(val global: Global, val leonReporter: Reporter, val pluginInstance: LeonPlugin)
   extends PluginComponent
   with CodeExtraction
 {
@@ -22,7 +25,7 @@ class AnalysisComponent(val global: Global, val pluginInstance: LeonPlugin)
   protected def stopIfErrors: Unit = {
     if(reporter.hasErrors) {
       if(Settings.simpleOutput)
-        println("error")
+        leonReporter.fatalError("errrr")
       sys.exit(1)
       //throw new Exception("There were errors.")
     }
@@ -31,34 +34,58 @@ class AnalysisComponent(val global: Global, val pluginInstance: LeonPlugin)
   def newPhase(prev: Phase) = new AnalysisPhase(prev)
 
   class AnalysisPhase(prev: Phase) extends StdPhase(prev) {
+    def computeLeonPhases: List[LeonPhase] = {
+      List(
+        if (Settings.transformProgram) {
+          List(
+            ArrayTransformation,
+            EpsilonElimination,
+            ImperativeCodeElimination,
+            /*UnitElimination,*/
+            FunctionClosure,
+            /*FunctionHoisting,*/
+            Simplificator
+          )
+        } else {
+          Nil
+        }
+      ,
+        if (Settings.synthesis)
+          List(
+            new SynthesisPhase(leonReporter)
+          )
+        else
+          Nil
+      ,
+        if (!Settings.stopAfterTransformation) {
+          List(
+            AnalysisPhase
+          )
+        } else {
+          Nil
+        }
+      ).flatten
+    }
+
     def apply(unit: CompilationUnit): Unit = {
       //global ref to freshName creator
       fresh = unit.fresh
 
-      val prog: purescala.Definitions.Program = extractCode(unit)
-      if(pluginInstance.stopAfterExtraction) {
-        println("Extracted program for " + unit + ": ")
-        println(prog)
-        println("Extraction complete. Now terminating the compiler process.")
+      var ac = LeonContext(program = extractCode(unit))
+
+      if(Settings.stopAfterExtraction) {
+        leonReporter.info("Extracted program for " + unit + ": ")
+        leonReporter.info(ac.program)
         sys.exit(0)
-      } else {
-        if(!pluginInstance.actionAfterExtraction.isDefined) {
-          println("Extracted program for " + unit + ". Re-run with -P:leon:parse to see the output.")
-        }
-        //println(prog)
       }
 
-      if(!pluginInstance.actionAfterExtraction.isDefined) {
-        println("Starting analysis.")
-        val analysis = new Analysis(prog)
-        analysis.analyse
-        if(pluginInstance.stopAfterAnalysis) {
-          println("Analysis complete. Now terminating the compiler process.")
-          sys.exit(0)
-        }
-      } else {
-        pluginInstance.actionAfterExtraction.get(prog)
+      val phases = computeLeonPhases
+
+      for ((phase, i) <- phases.zipWithIndex) {
+        leonReporter.info("%2d".format(i)+": "+phase.name)
+        ac = phase.run(ac)
       }
+
     }
   }
 }

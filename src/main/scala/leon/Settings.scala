@@ -27,4 +27,10 @@ object Settings {
   var debugLevel: Int = 0
   var debugTags: Set[String] = Set.empty
   var simpleOutput: Boolean = false
+  var synthesis: Boolean = false
+  var transformProgram: Boolean              = true
+  var stopAfterExtraction: Boolean           = false
+  var stopAfterTransformation: Boolean       = false
+  var stopAfterAnalysis: Boolean             = true
+  var silentlyTolerateNonPureBodies: Boolean = false
 }

@@ -289,7 +289,7 @@ trait CodeExtraction extends Extractors {
       }
       
       val bodyAttempt = try {
-        Some(flattenBlocks(scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies)(realBody)))
+        Some(flattenBlocks(scala2PureScala(unit, Settings.silentlyTolerateNonPureBodies)(realBody)))
       } catch {
         case e: ImpureCodeEncounteredException => None
       }
@@ -441,7 +441,7 @@ trait CodeExtraction extends Extractors {
       realBody match {
         case ExEnsuredExpression(body2, resSym, contract) => {
           varSubsts(resSym) = (() => ResultVariable().setType(funDef.returnType))
-          val c1 = scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies) (contract)
+          val c1 = scala2PureScala(unit, Settings.silentlyTolerateNonPureBodies) (contract)
           // varSubsts.remove(resSym)
           realBody = body2
           ensCont = Some(c1)
@@ -456,13 +456,13 @@ trait CodeExtraction extends Extractors {
       realBody match {
         case ExRequiredExpression(body3, contract) => {
           realBody = body3
-          reqCont = Some(scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies) (contract))
+          reqCont = Some(scala2PureScala(unit, Settings.silentlyTolerateNonPureBodies) (contract))
         }
         case _ => ;
       }
       
       val bodyAttempt = try {
-        Some(flattenBlocks(scala2PureScala(unit, pluginInstance.silentlyTolerateNonPureBodies)(realBody)))
+        Some(flattenBlocks(scala2PureScala(unit, Settings.silentlyTolerateNonPureBodies)(realBody)))
       } catch {
         case e: ImpureCodeEncounteredException => None
       }

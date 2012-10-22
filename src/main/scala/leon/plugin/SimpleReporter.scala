@@ -4,10 +4,11 @@ package plugin
 import scala.tools.nsc.Settings
 import scala.tools.nsc.reporters.AbstractReporter
 import scala.tools.nsc.util._
+import scala.tools.util.StringOps
 
 /** This implements a reporter that calls the callback with every line that a
 regular ConsoleReporter would display. */
-class SimpleReporter(val settings: Settings, callback: String => Unit) extends AbstractReporter {
+class SimpleReporter(val settings: Settings, reporter: leon.Reporter) extends AbstractReporter {
   final val ERROR_LIMIT = 5
 
   private def label(severity: Severity): String = severity match {
@@ -22,10 +23,10 @@ class SimpleReporter(val settings: Settings, callback: String => Unit) extends A
   }
 
   private def getCountString(severity: Severity): String =
-    countElementsAsString((severity).count, label(severity))
+    StringOps.countElementsAsString((severity).count, label(severity))
 
   /** Prints the message. */
-  def printMessage(msg: String) { callback(msg) }
+  def printMessage(msg: String) { reporter.info(msg) }
 
   /** Prints the message with the given position indication. */
   def printMessage(posIn: Position, msg: String) {

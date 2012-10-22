@@ -27,19 +27,7 @@ object Main {
   def run(args: Array[String], reporter: Reporter = new DefaultReporter, classPath : Option[Seq[String]] = None) : Unit = {
     val settings = new NSCSettings
     classPath.foreach(s => settings.classpath.tryToSet(s.toList))
-    runWithSettings(args, settings, s => reporter.info(s), Some(p => defaultAction(p, reporter)))
-  }
 
-  private def defaultAction(program: Program, reporter: Reporter) : Unit = {
-    Logger.debug("Default action on program: " + program, 3, "main")
-    val passManager = new PassManager(Seq(ArrayTransformation, EpsilonElimination, ImperativeCodeElimination, /*UnitElimination,*/ FunctionClosure, /*FunctionHoisting,*/ Simplificator))
-    val program2 = passManager.run(program)
-    assert(program2.isPure)
-    val analysis = new Analysis(program2, reporter)
-    analysis.analyse
-  }
-
-  private def runWithSettings(args : Array[String], settings : NSCSettings, printerFunction : String=>Unit, actionOnProgram : Option[Program=>Unit] = None) : Unit = {
     val (leonOptions, nonLeonOptions) = args.toList.partition(_.startsWith("--"))
     val command = new CompilerCommand(nonLeonOptions, settings) {
       override val cmdName = "leon"
@@ -49,9 +37,9 @@ object Main {
       if(settings.version.value) {
         println(command.cmdName + " beta.")
       } else {
-        val runner = new PluginRunner(settings, printerFunction, actionOnProgram)
-        runner.leonPlugin.processOptions(leonOptions.map(_.substring(2)), Console.err.println(_))
-        runner.leonPlugin.stopAfterAnalysis = false
+        val runner = new PluginRunner(settings, reporter)
+        runner.leonPlugin.processOptions(leonOptions.map(_.substring(2)), reporter.error(_))
+
         val run = new runner.Run
         run.compile(command.files)
       }
@@ -61,8 +49,8 @@ object Main {
 
 /** This class is a compiler that will be used for running the plugin in
  * standalone mode. Original version courtesy of D. Zufferey. */
-class PluginRunner(settings : NSCSettings, reportingFunction : String => Unit, actionOnProgram : Option[Program=>Unit]) extends Global(settings, new plugin.SimpleReporter(settings, reportingFunction)) {
-  val leonPlugin = new plugin.LeonPlugin(this, actionOnProgram)
+class PluginRunner(settings : NSCSettings, reporter : Reporter) extends Global(settings, new plugin.SimpleReporter(settings, reporter)) {
+  val leonPlugin = new plugin.LeonPlugin(this, reporter)
 
   protected def myAddToPhasesSet(sub : SubComponent, descr : String) : Unit = {
     phasesSet += sub

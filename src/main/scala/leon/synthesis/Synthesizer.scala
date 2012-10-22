@@ -1,7 +1,10 @@
 package leon
 package synthesis
 
+import purescala.Common._
 import purescala.Definitions.Program
+import purescala.Trees.{Expr, Not}
+
 import Extensions.Solver
 
 import collection.mutable.PriorityQueue
@@ -61,6 +64,19 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
     solution
   }
 
+  def solveSAT(phi: Expr): (Option[Boolean], Map[Identifier, Expr]) = {
+    for (s <- solvers) {
+      s.solveOrGetCounterexample(Not(phi)) match {
+        case (Some(true), _) =>
+          return (Some(false), Map())
+        case (Some(false), model) =>
+          return (Some(true), model)
+        case _ =>
+      }
+    }
+    (None, Map())
+  }
+
   def onTaskSucceeded(task: Task, solution: Solution) {
     info(" => Solved "+task.problem+" ⊢  "+solution)
     task match {
@@ -83,5 +99,9 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
 
     synthesize(p, Rules.all(this))
   }
-}
 
+  def synthesizeAll(program: Program) = {
+    solvers.foreach(_.setProgram(program))
+    program
+  }
+}

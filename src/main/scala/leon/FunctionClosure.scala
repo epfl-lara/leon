@@ -5,8 +5,9 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-object FunctionClosure extends Pass {
+object FunctionClosure extends plugin.TransformationPhase{
 
+  val name = "Function Closure"
   val description = "Closing function with its scoping variables"
 
   private var pathConstraints: List[Expr] = Nil

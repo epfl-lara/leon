@@ -5,8 +5,9 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-object FunctionHoisting extends Pass {
+object FunctionHoisting extends plugin.TransformationPhase {
 
+  val name = "Function Hoisting"
   val description = "Hoist function at the top level"
 
   def apply(program: Program): Program = {

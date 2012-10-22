@@ -5,8 +5,9 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-object ArrayTransformation extends Pass {
+object ArrayTransformation extends plugin.TransformationPhase {
 
+  val name = "Array Transformation"
   val description = "Add bound checking for array access and remove array update with side effect"
 
   def apply(pgm: Program): Program = {

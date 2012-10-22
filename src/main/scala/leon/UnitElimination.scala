@@ -5,8 +5,9 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-object UnitElimination extends Pass {
+object UnitElimination extends plugin.TransformationPhase {
 
+  val name = "Unit Elimination"
   val description = "Remove all usage of the Unit type and value"
 
   private var fun2FreshFun: Map[FunDef, FunDef] = Map()

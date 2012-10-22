@@ -7,15 +7,11 @@ import scala.tools.nsc.plugins.{Plugin,PluginComponent}
 import purescala.Definitions.Program
 
 /** This class is the entry point for the plugin. */
-class LeonPlugin(val global: Global, val actionAfterExtraction : Option[Program=>Unit] = None) extends Plugin {
+class LeonPlugin(val global: Global, val reporter: Reporter) extends Plugin {
   import global._
 
   val name = "leon"
   val description = "The Leon static analyzer"
-
-  var stopAfterAnalysis: Boolean = true
-  var stopAfterExtraction: Boolean = false
-  var silentlyTolerateNonPureBodies: Boolean = false
 
   /** The help message displaying the options for that plugin. */
   override val optionsHelp: Option[String] = Some(
@@ -43,7 +39,8 @@ class LeonPlugin(val global: Global, val actionAfterExtraction : Option[Program=
     "  --noverifymodel      Do not verify the correctness of models returned by Z3" + "\n" +
     "  --debug=[1-5]        Debug level" + "\n" +
     "  --tags=t1:...        Filter out debug information that are not of one of the given tags" + "\n" +
-    "  --oneline            Reduce the output to a single line: valid if all properties were valid, invalid if at least one is invalid, unknown else"
+    "  --oneline            Reduce the output to a single line: valid if all properties were valid, invalid if at least one is invalid, unknown else" + "\n" +
+    "  --synthesis          Magic!"
   )
 
   /** Processes the command-line options. */
@@ -51,10 +48,10 @@ class LeonPlugin(val global: Global, val actionAfterExtraction : Option[Program=
   override def processOptions(options: List[String], error: String => Unit) {
     for(option <- options) {
       option match {
-        case "with-code"     =>                     stopAfterAnalysis = false
+        case "with-code"     =>                     leon.Settings.stopAfterAnalysis = false
         case "uniqid"        =>                     leon.Settings.showIDs = true
-        case "parse"         =>                     stopAfterExtraction = true
-        case "tolerant"      =>                     silentlyTolerateNonPureBodies = true
+        case "parse"         =>                     leon.Settings.stopAfterExtraction = true
+        case "tolerant"      =>                     leon.Settings.silentlyTolerateNonPureBodies = true
         case "nodefaults"    =>                     leon.Settings.runDefaultExtensions = false
         case "axioms"        =>                     leon.Settings.noForallAxioms = false
         case "bapa"          =>                     leon.Settings.useBAPA = true
@@ -68,6 +65,9 @@ class LeonPlugin(val global: Global, val actionAfterExtraction : Option[Program=
         case "oneline"       =>                     leon.Settings.simpleOutput = true
         case "noLuckyTests"  =>                     leon.Settings.luckyTest = false
         case "noverifymodel" =>                     leon.Settings.verifyModel = false
+        case "synthesis"     =>                     leon.Settings.synthesis = true;
+                                                    leon.Settings.transformProgram = false;
+                                                    leon.Settings.stopAfterTransformation = true;
 
         case s if s.startsWith("debug=") =>       leon.Settings.debugLevel = try { s.substring("debug=".length, s.length).toInt } catch { case _ => 0 }
         case s if s.startsWith("tags=") =>       leon.Settings.debugTags = Set(splitList(s.substring("tags=".length, s.length)): _*)
@@ -82,6 +82,6 @@ class LeonPlugin(val global: Global, val actionAfterExtraction : Option[Program=
     }
   }
 
-  val components = List[PluginComponent](new AnalysisComponent(global, this))
+  val components = List(new AnalysisComponent(global, reporter, this))
   val descriptions = List[String]("leon analyses")
 }

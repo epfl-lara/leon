@@ -327,3 +327,12 @@ object Analysis {
     liftLets(Implies(And(trueThings.reverse), result))
   }
 }
+
+object AnalysisPhase extends plugin.UnitPhase {
+  val name = "Analysis"
+  val description = "Leon Analyses"
+
+  def apply(program: Program) {
+    new Analysis(program).analyse
+  }
+}

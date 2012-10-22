@@ -64,6 +64,25 @@ class OnePoint(synth: Synthesizer) extends Rule("One-point", synth) {
 
 class Ground(synth: Synthesizer) extends Rule("Ground", synth) {
   def isApplicable(p: Problem, parent: Task): List[Task] = {
-    Nil
+    if (p.as.isEmpty) {
+      synth.solveSAT(p.phi) match {
+        case (Some(true), model) =>
+          val onSuccess: List[Solution] => Solution = { 
+            case Nil => Solution(BooleanLiteral(true), replaceFromIDs(model, p.phi))
+          }
+
+          List(new Task(synth, parent, this, p, Nil, onSuccess, 200))
+        case (Some(false), model) =>
+          val onSuccess: List[Solution] => Solution = { 
+            case Nil => Solution(BooleanLiteral(false), BooleanLiteral(false))
+          }
+
+          List(new Task(synth, parent, this, p, Nil, onSuccess, 200))
+        case _ =>
+          Nil
+      }
+    } else {
+      Nil
+    }
   }
 }

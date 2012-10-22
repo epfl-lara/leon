@@ -5,8 +5,9 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-object EpsilonElimination extends Pass {
+object EpsilonElimination extends plugin.TransformationPhase {
 
+  val name = "Epsilon Elimination"
   val description = "Remove all epsilons from the program"
 
   def apply(pgm: Program): Program = {
