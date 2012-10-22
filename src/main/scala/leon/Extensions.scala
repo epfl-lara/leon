@@ -1,5 +1,6 @@
 package leon
 
+import purescala.Common._
 import purescala.Trees._
 import purescala.Definitions._
 
@@ -19,6 +20,8 @@ object Extensions {
     // None if unknown.
     // should halt as soon as possible with any result (Unknown is ok) as soon as forceStop is true
     def solve(expression: Expr) : Option[Boolean]
+
+    def solveOrGetCounterexample(expression : Expr) : (Option[Boolean],Map[Identifier,Expr]) = (solve(expression), Map.empty)
 
     def isUnsat(expression: Expr) : Option[Boolean] = solve(negate(expression))
     def superseeds : Seq[String] = Nil

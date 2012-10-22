@@ -478,6 +478,11 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
 
   def solve(vc: Expr) = decide(vc, true)
 
+  override def solveOrGetCounterexample(vc : Expr) : (Option[Boolean],Map[Identifier,Expr]) = {
+    restartZ3
+    decideWithModel(vc, true)
+  }
+
   def solveWithBounds(vc: Expr, fv: Boolean) : (Option[Boolean], Map[Identifier,Expr]) = {
     restartZ3
     boundValues
