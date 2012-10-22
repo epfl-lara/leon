@@ -8,7 +8,8 @@ import purescala.TypeTrees._
 object Rules {
   def all(synth: Synthesizer) = List(
     new OnePoint(synth),
-    new Ground(synth)
+    new Ground(synth),
+    new CaseSplit(synth)
   )
 }
 
@@ -87,6 +88,24 @@ class Ground(synth: Synthesizer) extends Rule("Ground", synth) {
       }
     } else {
       Nil
+    }
+  }
+}
+
+class CaseSplit(synth: Synthesizer) extends Rule("Case-Split", synth) {
+  def isApplicable(p: Problem, parent: Task): List[Task] = {
+    p.phi match {
+      case Or(Seq(o1, o2)) =>
+        val sub1 = Problem(p.as, o1, p.xs)
+        val sub2 = Problem(p.as, o2, p.xs)
+
+        val onSuccess: List[Solution] => Solution = { 
+          case List(s1, s2) => Solution(Or(s1.pre, s2.pre), IfExpr(s1.pre, s1.term, s2.term))
+        }
+
+        List(new Task(synth, parent, this, p, List(sub1, sub2), onSuccess, 100))
+      case _ =>
+        Nil
     }
   }
 }

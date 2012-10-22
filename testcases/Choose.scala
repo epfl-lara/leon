@@ -5,6 +5,8 @@ object ChooseTest {
   def c0(): Int = choose{ (x1: Int) => x1 > 13 }
   def b0(): Int = choose{ (x1: Int) => x1 > 13 && x1 < 2 }
 
+  def t0(a: Int): Int = choose{ (x1: Int) => (a > 13 && x1 == 2) || (a < 2 && x1 == 0) }
+
   def c1(a: Int): Int = choose{ (x1: Int) => x1 > a }
   def c2(a: Int): (Int, Int) = choose{ (x1: Int, x2: Int) => x1 > a && x2 > a }
   def c3(a: Int): (Int, Int, Int) = choose{ (x1: Int, x2: Int, x3: Int) => x1 > a && x2 > a }
