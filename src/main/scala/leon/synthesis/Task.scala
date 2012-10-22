@@ -4,6 +4,7 @@ package synthesis
 class Task(
         val synth: Synthesizer, 
         val parent: Task,
+        val rule: Rule,
         val problem: Problem,
         val subProblems: List[Problem],
         val onSuccess: List[Solution] => Solution,
@@ -38,7 +39,9 @@ class Task(
     }
   }
 
-  override def toString = subProblems.map(p => (p, !subSolutions.get(p).isEmpty)).map{ case (p, isSolved) => p+(if(isSolved) "(OK)" else "(?)") }.mkString(" ; ") 
+  override def toString = description 
+
+  def description = "by "+rule.name+"("+score+"): "+problem +" ⟿    "+subProblems.mkString(" ; ")
 }
 
-class RootTask(synth: Synthesizer, p: Problem) extends Task(synth, null, p, List(p), xs => xs.head, 0)
+class RootTask(synth: Synthesizer, p: Problem) extends Task(synth, null, null, p, List(p), xs => xs.head, 0)

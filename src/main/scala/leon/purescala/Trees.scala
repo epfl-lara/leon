@@ -179,6 +179,15 @@ object Trees {
     val fixedType = BooleanType
   }
 
+  object TopLevelAnds { // expr1 AND (expr2 AND (expr3 AND ..)) => List(expr1, expr2, expr3)
+    def unapply(e: Expr): Option[Seq[Expr]] = e match {
+      case And(exprs) =>
+        Some(exprs.flatMap(unapply(_).flatten))
+      case e =>
+        Some(Seq(e))
+    }
+  }
+
   object Or {
     def apply(l: Expr, r: Expr) : Expr = (l,r) match {
       case (BooleanLiteral(false),_) => r

@@ -6,29 +6,25 @@ import purescala.Trees._
 
 object Rules {
   def all(synth: Synthesizer) = List(
-    OnePoint(synth)
+    new OnePoint(synth),
+    new Ground(synth)
   )
 }
 
 
-abstract class Rule(val name: String) {
+abstract class Rule(val name: String, val synth: Synthesizer) {
   def isApplicable(p: Problem, parent: Task): List[Task]
 
-
   def subst(what: Tuple2[Identifier, Expr], in: Expr): Expr = replace(Map(Variable(what._1) -> what._2), in)
+
+  override def toString = name
 }
 
-case class OnePoint(synth: Synthesizer) extends Rule("One-point") {
+class OnePoint(synth: Synthesizer) extends Rule("One-point", synth) {
   def isApplicable(p: Problem, parent: Task): List[Task] = {
 
     p.phi match {
-      case a : And =>
-        def collectAnds(e: Expr): List[Expr] = e match {
-          case And(exs) => exs.toList.flatMap(collectAnds)
-          case e => List(e)
-        }
-
-        val exprs = collectAnds(a)
+      case TopLevelAnds(exprs) =>
         val candidates = exprs.collect {
           case eq @ Equals(Variable(x), e) if (p.xs contains x) && !(variablesOf(e) contains x) =>
             (x, e, eq)
@@ -54,7 +50,7 @@ case class OnePoint(synth: Synthesizer) extends Rule("One-point") {
             case _ => Solution.none
           }
 
-          List(new Task(synth, parent, p, List(newProblem), onSuccess, 100))
+          List(new Task(synth, parent, this, p, List(newProblem), onSuccess, 100))
         } else {
           Nil
         }
@@ -63,5 +59,11 @@ case class OnePoint(synth: Synthesizer) extends Rule("One-point") {
       case _ =>
         Nil
     }
+  }
+}
+
+class Ground(synth: Synthesizer) extends Rule("Ground", synth) {
+  def isApplicable(p: Problem, parent: Task): List[Task] = {
+    Nil
   }
 }

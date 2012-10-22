@@ -2,10 +2,11 @@ package leon
 package synthesis
 
 import purescala.Definitions.Program
+import Extensions.Solver
 
 import collection.mutable.PriorityQueue
 
-class Synthesizer(val r: Reporter) {
+class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
   import r.{error,warning,info,fatalError}
 
   private[this] var solution: Solution = null
@@ -50,7 +51,7 @@ class Synthesizer(val r: Reporter) {
               task.subSucceeded(sp, sol)
             } else {
               info(" => Possible Next Steps:")
-              alternatives.foreach(a => info(" -   "+a))
+              alternatives.foreach(t => info(" -   "+t.description))
             }
           }
       }
