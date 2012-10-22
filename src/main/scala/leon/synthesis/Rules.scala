@@ -3,6 +3,7 @@ package synthesis
 
 import purescala.Common._
 import purescala.Trees._
+import purescala.TypeTrees._
 
 object Rules {
   def all(synth: Synthesizer) = List(
@@ -65,16 +66,19 @@ class OnePoint(synth: Synthesizer) extends Rule("One-point", synth) {
 class Ground(synth: Synthesizer) extends Rule("Ground", synth) {
   def isApplicable(p: Problem, parent: Task): List[Task] = {
     if (p.as.isEmpty) {
+
+      val tpe = TupleType(p.xs.map(_.getType))
+
       synth.solveSAT(p.phi) match {
         case (Some(true), model) =>
           val onSuccess: List[Solution] => Solution = { 
-            case Nil => Solution(BooleanLiteral(true), Tuple(p.xs.map(model)))
+            case Nil => Solution(BooleanLiteral(true), Tuple(p.xs.map(model)).setType(tpe))
           }
 
           List(new Task(synth, parent, this, p, Nil, onSuccess, 200))
         case (Some(false), model) =>
           val onSuccess: List[Solution] => Solution = { 
-            case Nil => Solution(BooleanLiteral(false), BooleanLiteral(false))
+            case Nil => Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe))
           }
 
           List(new Task(synth, parent, this, p, Nil, onSuccess, 200))
