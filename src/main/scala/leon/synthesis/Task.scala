@@ -27,15 +27,16 @@ class Task(
 
   def subSucceeded(p: Problem, s: Solution) {
     assert(subProblems contains p, "Problem "+p+" is unknown to me ?!?")
-    assert(!(subSolutions contains p), "I already have a solution for "+p+" ?!?")
 
-    subSolutions += p -> s
+    if (subSolutions.get(p).map(_.score).getOrElse(-1) < s.score) {
+      subSolutions += p -> s
 
-    if (subSolutions.size == subProblems.size) {
+      if (subSolutions.size == subProblems.size) {
 
-      val solution = onSuccess(subProblems map subSolutions) 
+        val solution = onSuccess(subProblems map subSolutions) 
 
-      synth.onTaskSucceeded(this, solution)
+        synth.onTaskSucceeded(this, solution)
+      }
     }
   }
 

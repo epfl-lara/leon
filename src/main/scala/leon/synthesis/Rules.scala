@@ -9,7 +9,8 @@ object Rules {
   def all(synth: Synthesizer) = List(
     new OnePoint(synth),
     new Ground(synth),
-    new CaseSplit(synth)
+    new CaseSplit(synth),
+    new Assert(synth)
   )
 }
 
@@ -43,11 +44,11 @@ class OnePoint(synth: Synthesizer) extends Rule("One-point", synth) {
           val newProblem = Problem(p.as, subst(x -> e, And(others)), oxs)
 
           val onSuccess: List[Solution] => Solution = { 
-            case List(Solution(pre, term)) =>
+            case List(Solution(pre, term, sc)) =>
               if (oxs.isEmpty) {
-                Solution(pre, e) 
+                Solution(pre, e, sc) 
               } else {
-                Solution(pre, LetTuple(oxs, term, subst(x -> e, Tuple(p.xs.map(Variable(_))))) ) 
+                Solution(pre, LetTuple(oxs, term, subst(x -> e, Tuple(p.xs.map(Variable(_))))), sc) 
               }
             case _ => Solution.none
           }
@@ -73,13 +74,13 @@ class Ground(synth: Synthesizer) extends Rule("Ground", synth) {
       synth.solveSAT(p.phi) match {
         case (Some(true), model) =>
           val onSuccess: List[Solution] => Solution = { 
-            case Nil => Solution(BooleanLiteral(true), Tuple(p.xs.map(model)).setType(tpe))
+            case Nil => Solution(BooleanLiteral(true), Tuple(p.xs.map(model)).setType(tpe), 200)
           }
 
           List(new Task(synth, parent, this, p, Nil, onSuccess, 200))
         case (Some(false), model) =>
           val onSuccess: List[Solution] => Solution = { 
-            case Nil => Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe))
+            case Nil => Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe), 200)
           }
 
           List(new Task(synth, parent, this, p, Nil, onSuccess, 200))
@@ -100,10 +101,44 @@ class CaseSplit(synth: Synthesizer) extends Rule("Case-Split", synth) {
         val sub2 = Problem(p.as, o2, p.xs)
 
         val onSuccess: List[Solution] => Solution = { 
-          case List(s1, s2) => Solution(Or(s1.pre, s2.pre), IfExpr(s1.pre, s1.term, s2.term))
+          case List(s1, s2) => Solution(Or(s1.pre, s2.pre), IfExpr(s1.pre, s1.term, s2.term), 100)
+          case _ => Solution.none
         }
 
         List(new Task(synth, parent, this, p, List(sub1, sub2), onSuccess, 100))
+      case _ =>
+        Nil
+    }
+  }
+}
+
+class Assert(synth: Synthesizer) extends Rule("Assert", synth) {
+  def isApplicable(p: Problem, parent: Task): List[Task] = {
+    p.phi match {
+      case TopLevelAnds(exprs) =>
+        val xsSet = p.xs.toSet
+
+        val (exprsA, others) = exprs.partition(e => (variablesOf(e) & xsSet).isEmpty)
+
+        if (!exprsA.isEmpty) {
+          if (others.isEmpty) {
+            val onSuccess: List[Solution] => Solution = { 
+              case Nil => Solution(And(exprsA), BooleanLiteral(true), 150)
+              case _ => Solution.none
+            }
+
+            List(new Task(synth, parent, this, p, Nil, onSuccess, 150))
+          } else {
+            val onSuccess: List[Solution] => Solution = { 
+              case List(s) => Solution(And(s.pre +: exprsA), s.term, 150)
+              case _ => Solution.none
+            }
+
+            List(new Task(synth, parent, this, p, List(p.copy(phi = And(others))), onSuccess, 150))
+          }
+        } else {
+          Nil
+        }
       case _ =>
         Nil
     }
