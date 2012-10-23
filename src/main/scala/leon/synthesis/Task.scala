@@ -8,6 +8,14 @@ class Task(val synth: Synthesizer,
 
   def compare(that: Task) = this.score - that.score
 
+  def decompose(rule: Rule, subProblems: List[Problem], onSuccess: List[Solution] => Solution, score: Score): DecomposedTask = {
+    new DecomposedTask(this.synth, this.parent, this.problem, score, rule, subProblems, onSuccess)
+  }
+
+  def solveUsing(rule: Rule, onSuccess: => Solution, score: Score): DecomposedTask = {
+    new DecomposedTask(this.synth, this.parent, this.problem, 1000, rule, Nil, { case _ => onSuccess })
+  }
+
   override def toString = " Task("+score+"): " +problem
 }
 

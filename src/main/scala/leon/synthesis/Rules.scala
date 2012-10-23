@@ -56,7 +56,7 @@ class OnePoint(synth: Synthesizer) extends Rule("One-point", synth) {
             case _ => Solution.none
           }
 
-          List(new DecomposedTask(synth, task.parent, p, 100, this, List(newProblem), onSuccess))
+          List(task.decompose(this, List(newProblem), onSuccess, 100))
         } else {
           Nil
         }
@@ -78,17 +78,9 @@ class Ground(synth: Synthesizer) extends Rule("Ground", synth) {
 
       synth.solveSAT(p.phi) match {
         case (Some(true), model) =>
-          val onSuccess: List[Solution] => Solution = { 
-            case Nil => Solution(BooleanLiteral(true), Tuple(p.xs.map(model)).setType(tpe), 200)
-          }
-
-          List(new DecomposedTask(synth, task.parent, p, 200, this, Nil, onSuccess))
+          List(task.solveUsing(this, Solution(BooleanLiteral(true), Tuple(p.xs.map(model)).setType(tpe), 200), 200))
         case (Some(false), model) =>
-          val onSuccess: List[Solution] => Solution = { 
-            case Nil => Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe), 200)
-          }
-
-          List(new DecomposedTask(synth, task.parent, p, 200, this, Nil, onSuccess))
+          List(task.solveUsing(this, Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe), 200), 200))
         case _ =>
           Nil
       }
@@ -111,7 +103,7 @@ class CaseSplit(synth: Synthesizer) extends Rule("Case-Split", synth) {
           case _ => Solution.none
         }
 
-        List(new DecomposedTask(synth, task.parent, p, 100, this, List(sub1, sub2), onSuccess))
+        List(task.decompose(this, List(sub1, sub2), onSuccess, 100))
       case _ =>
         Nil
     }
@@ -130,12 +122,7 @@ class Assert(synth: Synthesizer) extends Rule("Assert", synth) {
 
         if (!exprsA.isEmpty) {
           if (others.isEmpty) {
-            val onSuccess: List[Solution] => Solution = { 
-              case Nil => Solution(And(exprsA), BooleanLiteral(true), 150)
-              case _ => Solution.none
-            }
-
-            List(new DecomposedTask(synth, task.parent, p, 150, this, Nil, onSuccess))
+            List(task.solveUsing(this, Solution(And(exprsA), BooleanLiteral(true), 150), 150))
           } else {
             val onSuccess: List[Solution] => Solution = { 
               case List(s) => Solution(And(s.pre +: exprsA), s.term, 150)
@@ -144,7 +131,7 @@ class Assert(synth: Synthesizer) extends Rule("Assert", synth) {
 
             val sub = p.copy(phi = And(others))
 
-            List(new DecomposedTask(synth, task.parent, p, 150, this, List(sub), onSuccess))
+            List(task.decompose(this, List(sub), onSuccess, 150))
           }
         } else {
           Nil
@@ -168,7 +155,7 @@ class UnusedInput(synth: Synthesizer) extends Rule("UnusedInput", synth) {
           case _ => Solution.none
         }
 
-        List(new DecomposedTask(synth, task.parent, p, 300, this, List(sub), onSuccess))
+        List(task.decompose(this, List(sub), onSuccess, 300))
     } else {
       Nil
     }
