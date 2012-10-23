@@ -58,7 +58,7 @@ class OnePoint(synth: Synthesizer) extends Rule("One-point", synth) {
           val onSuccess: List[Solution] => Solution = { 
             case List(Solution(pre, term, sc)) =>
               if (oxs.isEmpty) {
-                Solution(pre, e, sc) 
+                Solution(pre, Tuple(e :: Nil), sc) 
               } else {
                 Solution(pre, LetTuple(oxs, term, subst(x -> e, Tuple(p.xs.map(Variable(_))))), sc) 
               }

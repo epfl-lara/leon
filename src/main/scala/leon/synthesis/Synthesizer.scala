@@ -96,7 +96,7 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
         val sol = synthesize(Problem(as, phi, xs), rules)
 
         info("Scala code:")
-        info(ScalaPrinter(sol.toExpr))
+        info(ScalaPrinter(simplifyLets(sol.toExpr)))
 
         a
       case _ =>

@@ -580,6 +580,16 @@ object Trees {
           fd.postcondition = fd.postcondition.map(rec(_))
           LetDef(fd, rec(b)).setType(l.getType)
         }
+
+        case lt @ LetTuple(ids, expr, body) => {
+          val re = rec(expr)
+          val rb = rec(body)
+          if (re != expr || rb != body) {
+            LetTuple(ids, re, rb).setType(lt.getType)
+          } else {
+            lt
+          }
+        }
         case n @ NAryOperator(args, recons) => {
           var change = false
           val rargs = args.map(a => {
@@ -669,6 +679,15 @@ object Trees {
         val rb = rec(b)
         applySubst(if(re != e || rb != b) {
           Let(i,re,rb).setType(l.getType)
+        } else {
+          l
+        })
+      }
+      case l @ LetTuple(ids,e,b) => {
+        val re = rec(e)
+        val rb = rec(b)
+        applySubst(if(re != e || rb != b) {
+          LetTuple(ids,re,rb).setType(l.getType)
         } else {
           l
         })
@@ -1059,11 +1078,45 @@ object Trees {
           None
         }
       }
-      case letTuple @ LetTuple(ids, e, body) =>
-      None
+      case letTuple @ LetTuple(ids, expr, body) if ids.size == 1 =>
+        simplerLet(Let(ids.head, TupleSelect(expr, 0).setType(ids.head.getType), body))
+
+      case letTuple @ LetTuple(ids, Tuple(exprs), body) =>
+
+        var newBody = body
+
+        val (remIds, remExprs) = (ids zip exprs).filter { 
+          case (id, value: Terminal) =>
+            newBody = replace(Map((Variable(id) -> value)), newBody)
+            //we replace, so we drop old
+            false
+          case (id, value) =>
+            val occurences = treeCatamorphism[Int]((e:Expr) => e match {
+              case Variable(x) if x == id => 1
+              case _ => 0
+            }, (x:Int,y:Int)=>x+y, body)
+
+            if(occurences == 0) {
+              false
+            } else if(occurences == 1) {
+              newBody = replace(Map((Variable(id) -> value)), newBody)
+              false
+            } else {
+              true
+            }
+        }.unzip
+
+
+        if (remIds.isEmpty) {
+          Some(newBody)
+        } else if (remIds.tail.isEmpty) {
+          Some(Let(remIds.head, remExprs.head, newBody))
+        } else {
+          Some(LetTuple(remIds, Tuple(remExprs), newBody))
+        }
       case _ => None 
     }
-    searchAndReplace(simplerLet)(expr)
+    searchAndReplaceDFS(simplerLet)(expr)
   }
 
   // Pulls out all let constructs to the top level, and makes sure they're
