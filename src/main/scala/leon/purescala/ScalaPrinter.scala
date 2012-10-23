@@ -66,6 +66,28 @@ object ScalaPrinter {
   private def pp(tree: Expr, sb: StringBuffer, lvl: Int): StringBuffer = tree match {
     case Variable(id) => sb.append(id)
     case DeBruijnIndex(idx) => sys.error("Not Valid Scala")
+    case LetTuple(ids,d,e) => {
+      sb.append("locally {\n")
+      ind(sb, lvl+1)
+      sb.append("val (" )
+      for (((id, tpe), i) <- ids.map(id => (id, id.getType)).zipWithIndex) {
+          sb.append(id.toString+": ")
+          pp(tpe, sb, lvl)
+          if (i != ids.size-1) {
+              sb.append(", ")
+          }
+      }
+      sb.append(") = ")
+      pp(d, sb, lvl+1)
+      sb.append("\n")
+      ind(sb, lvl+1)
+      pp(e, sb, lvl+1)
+      sb.append("\n")
+      ind(sb, lvl)
+      sb.append("}\n")
+      ind(sb, lvl)
+      sb
+    }
     case Let(b,d,e) => {
       sb.append("locally {\n")
       ind(sb, lvl+1)
