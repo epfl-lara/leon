@@ -11,6 +11,7 @@ object Rules {
     new Ground(synth),
     new CaseSplit(synth),
     new UnusedInput(synth),
+    new UnconstrainedOutput(synth),
     new Assert(synth)
   )
 }
@@ -148,16 +149,40 @@ class UnusedInput(synth: Synthesizer) extends Rule("UnusedInput", synth) {
     val unused = p.as.toSet -- variablesOf(p.phi)
 
     if (!unused.isEmpty) {
-        val sub = p.copy(as = p.as.filterNot(unused))
+      val sub = p.copy(as = p.as.filterNot(unused))
 
-        val onSuccess: List[Solution] => Solution = { 
-          case List(s) => s
-          case _ => Solution.none
-        }
+      val onSuccess: List[Solution] => Solution = { 
+        case List(s) => s
+        case _ => Solution.none
+      }
 
-        List(task.decompose(this, List(sub), onSuccess, 300))
+      List(task.decompose(this, List(sub), onSuccess, 300))
     } else {
       Nil
     }
+  }
+}
+
+class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", synth) {
+  def defaultValueFor(id: Identifier): Expr = IntLiteral(0)
+
+  def isApplicable(task: Task): List[DecomposedTask] = {
+    val p = task.problem
+    val unconstr = p.xs.toSet -- variablesOf(p.phi)
+
+    if (!unconstr.isEmpty) {
+      val sub = p.copy(xs = p.xs.filterNot(unconstr))
+
+      val onSuccess: List[Solution] => Solution = { 
+        case List(s) => Solution(s.pre, LetTuple(sub.xs, s.term, Tuple(p.xs.map(id => if (unconstr(id)) defaultValueFor(id) else Variable(id) ))))
+        case _ => Solution.none
+      }
+
+      List(task.decompose(this, List(sub), onSuccess, 300))
+
+    } else {
+      Nil
+    }
+
   }
 }
