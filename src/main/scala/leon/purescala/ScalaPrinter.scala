@@ -315,6 +315,25 @@ object ScalaPrinter {
       nsb
     }
 
+    case Choose(ids, pred) => {
+      var nsb = sb
+      nsb.append("(choose { (")
+      for (((id, tpe), i) <- ids.map(id => (id, id.getType)).zipWithIndex) {
+          nsb.append(id.toString+": ")
+          nsb = pp(tpe, nsb, lvl)
+          if (i != ids.size-1) {
+              nsb.append(", ")
+          }
+      }
+      nsb.append(") =>\n")
+      ind(nsb, lvl+1)
+      nsb = pp(pred, nsb, lvl+1)
+      nsb.append("\n")
+      ind(nsb, lvl)
+      nsb.append("})")
+      nsb
+    }
+
     case mex @ MatchExpr(s, csc) => {
       def ppc(sb: StringBuffer, p: Pattern): StringBuffer = p match {
         //case InstanceOfPattern(None,     ctd) =>
