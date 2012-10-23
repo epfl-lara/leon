@@ -10,6 +10,7 @@ object Rules {
     new OnePoint(synth),
     new Ground(synth),
     new CaseSplit(synth),
+    new UnusedInput(synth),
     new Assert(synth)
   )
 }
@@ -141,6 +142,25 @@ class Assert(synth: Synthesizer) extends Rule("Assert", synth) {
         }
       case _ =>
         Nil
+    }
+  }
+}
+
+class UnusedInput(synth: Synthesizer) extends Rule("UnusedInput", synth) {
+  def isApplicable(p: Problem, parent: Task): List[Task] = {
+    val unused = p.as.toSet -- variablesOf(p.phi)
+
+    if (!unused.isEmpty) {
+        val sub = p.copy(as = p.as.filterNot(unused))
+
+        val onSuccess: List[Solution] => Solution = { 
+          case List(s) => s
+          case _ => Solution.none
+        }
+
+        List(new Task(synth, parent, this, p, List(sub), onSuccess, 300))
+    } else {
+      Nil
     }
   }
 }

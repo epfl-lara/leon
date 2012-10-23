@@ -12,7 +12,7 @@ import collection.mutable.PriorityQueue
 class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
   import r.{error,warning,info,fatalError}
 
-  private[this] var solution: Solution = null
+  private[this] var solution: Option[Solution] = None
 
   def synthesize(p: Problem, rules: List[Rule]): Solution = {
 
@@ -26,7 +26,9 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
 
     workList += rootTask
 
-    while (!workList.isEmpty) {
+    solution = None
+
+    while (!workList.isEmpty && solution.isEmpty) {
       val task = workList.dequeue()
 
       task.subProblems match {
@@ -59,7 +61,7 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
 
     }
 
-    solution
+    solution.getOrElse(Solution.none)
   }
 
   def solveSAT(phi: Expr): (Option[Boolean], Map[Identifier, Expr]) = {
@@ -79,7 +81,7 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
     task match {
       case rt: RootTask =>
         info(" SUCCESS!")
-        this.solution = solution
+        this.solution = Some(solution)
       case t: Task =>
         info(" => Solved "+task.problem+" ⊢  "+solution)
         t.parent.subSucceeded(t.problem, solution)
