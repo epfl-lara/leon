@@ -32,6 +32,7 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
 
       alternatives.find(_.isSuccess) match {
         case Some(ss) =>
+          info(" => "+ss.rule+" succeeded")
           ss.succeeded()
         case None =>
           info(" => Possible Next Steps:")

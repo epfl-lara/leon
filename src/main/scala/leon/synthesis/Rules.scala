@@ -131,7 +131,7 @@ class Assert(synth: Synthesizer) extends Rule("Assert", synth) {
 
         if (!exprsA.isEmpty) {
           if (others.isEmpty) {
-            List(task.solveUsing(this, Solution(And(exprsA), BooleanLiteral(true), 150), 150))
+            List(task.solveUsing(this, Solution(And(exprsA), Tuple(p.xs.map(id => simplestValue(Variable(id))))), 150))
           } else {
             val onSuccess: List[Solution] => Solution = { 
               case List(s) => Solution(And(s.pre +: exprsA), s.term, 150)

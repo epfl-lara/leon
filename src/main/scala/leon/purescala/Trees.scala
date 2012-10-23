@@ -1059,6 +1059,8 @@ object Trees {
           None
         }
       }
+      case letTuple @ LetTuple(ids, e, body) =>
+      None
       case _ => None 
     }
     searchAndReplace(simplerLet)(expr)
