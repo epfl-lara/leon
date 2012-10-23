@@ -256,24 +256,17 @@ class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth) {
     val TopLevelAnds(exprs) = p.phi
 
 
-    val (toRemove, toAdd, toPre) = exprs.collect {
+    val (toRemove, toAdd) = exprs.collect {
       case eq @ Equals(cc @ CaseClass(cd, args), e) if (variablesOf(e) -- as).isEmpty && (variablesOf(cc) -- xs).isEmpty =>
-        (eq, (cd.fieldsIds zip args).map{ case (id, ex) => Equals(ex, CaseClassSelector(cd, e, id)) }, CaseClassInstanceOf(cd, e) )
+        (eq, CaseClassInstanceOf(cd, e) +: (cd.fieldsIds zip args).map{ case (id, ex) => Equals(ex, CaseClassSelector(cd, e, id)) } )
       case eq @ Equals(e, cc @ CaseClass(cd, args)) if (variablesOf(e) -- as).isEmpty && (variablesOf(cc) -- xs).isEmpty =>
-        (eq, (cd.fieldsIds zip args).map{ case (id, ex) => Equals(ex, CaseClassSelector(cd, e, id)) }, CaseClassInstanceOf(cd, e) )
-    }.unzip3
+        (eq, CaseClassInstanceOf(cd, e) +: (cd.fieldsIds zip args).map{ case (id, ex) => Equals(ex, CaseClassSelector(cd, e, id)) } )
+    }.unzip
 
     if (!toRemove.isEmpty) {
       val sub = p.copy(phi = And((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
-      val onSuccess: List[Solution] => Solution = { 
-        case List(s) => 
-          Solution(And(s.pre +: toPre), s.term)
-        case _ =>
-          Solution.none
-      }
-
-      List(task.decompose(this, List(sub), onSuccess, 80))
+      List(task.decompose(this, List(sub), forward, 80))
     } else {
       Nil
     }
