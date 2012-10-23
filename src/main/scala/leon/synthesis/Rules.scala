@@ -164,8 +164,6 @@ class UnusedInput(synth: Synthesizer) extends Rule("UnusedInput", synth) {
 }
 
 class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", synth) {
-  def defaultValueFor(id: Identifier): Expr = IntLiteral(0)
-
   def isApplicable(task: Task): List[DecomposedTask] = {
     val p = task.problem
     val unconstr = p.xs.toSet -- variablesOf(p.phi)
@@ -174,7 +172,14 @@ class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", sy
       val sub = p.copy(xs = p.xs.filterNot(unconstr))
 
       val onSuccess: List[Solution] => Solution = { 
-        case List(s) => Solution(s.pre, LetTuple(sub.xs, s.term, Tuple(p.xs.map(id => if (unconstr(id)) defaultValueFor(id) else Variable(id) ))))
+        case List(s) => 
+          synth.solveSAT(And(unconstr.map(id => Equals(Variable(id), Variable(id))).toSeq)) match {
+            case (Some(true), model) =>
+              Solution(s.pre, LetTuple(sub.xs, s.term, Tuple(p.xs.map(id => if (unconstr(id)) model(id) else Variable(id)))))
+            case _ =>
+              Solution.none
+          }
+        
         case _ => Solution.none
       }
 
