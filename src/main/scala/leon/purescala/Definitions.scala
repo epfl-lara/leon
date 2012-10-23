@@ -246,6 +246,8 @@ object Definitions {
       fields.map(f => f.id).toSet
     }
 
+    def fieldsIds = fields.map(_.id)
+
     def selectorID2Index(id: Identifier) : Int = {
       var i : Int = 0
       var found = false

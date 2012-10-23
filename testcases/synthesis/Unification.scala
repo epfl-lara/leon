@@ -12,6 +12,8 @@ object UnificationSynthesis {
 
   def u5(a1: Int): List = choose { (xs: List) => Cons(a1, Nil()) == xs }
 
+  def u6(a1: List): Int = choose { (xs: Int) => Cons(xs, Nil()) == a1 }
+
   sealed abstract class List
   case class Nil() extends List
   case class Cons(head : Int, tail : List) extends List

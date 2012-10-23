@@ -64,11 +64,11 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
   }
 
   def onTaskSucceeded(task: Task, solution: Solution) {
+    info(" => Solved "+task.problem+" ⊢  "+solution)
     if (task.parent eq null) {
       info(" SUCCESS!")
       this.solution = Some(solution)
     } else {
-      info(" => Solved "+task.problem+" ⊢  "+solution)
       task.parent.subSucceeded(task.problem, solution)
     }
   }

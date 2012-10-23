@@ -9,6 +9,7 @@ object Rules {
   def all(synth: Synthesizer) = List(
     new Unification.DecompTrivialClash(synth),
     new Unification.OccursCheck(synth),
+    new ADTDual(synth),
     new OnePoint(synth),
     new Ground(synth),
     new CaseSplit(synth),
@@ -240,6 +241,41 @@ object Unification {
       } else {
         Nil
       }
+    }
+  }
+}
+
+
+class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth) {
+  def isApplicable(task: Task): List[DecomposedTask] = {
+    val p = task.problem
+
+    val xs = p.xs.toSet
+    val as = p.as.toSet
+
+    val TopLevelAnds(exprs) = p.phi
+
+
+    val (toRemove, toAdd, toPre) = exprs.collect {
+      case eq @ Equals(cc @ CaseClass(cd, args), e) if (variablesOf(e) -- as).isEmpty && (variablesOf(cc) -- xs).isEmpty =>
+        (eq, (cd.fieldsIds zip args).map{ case (id, ex) => Equals(ex, CaseClassSelector(cd, e, id)) }, CaseClassInstanceOf(cd, e) )
+      case eq @ Equals(e, cc @ CaseClass(cd, args)) if (variablesOf(e) -- as).isEmpty && (variablesOf(cc) -- xs).isEmpty =>
+        (eq, (cd.fieldsIds zip args).map{ case (id, ex) => Equals(ex, CaseClassSelector(cd, e, id)) }, CaseClassInstanceOf(cd, e) )
+    }.unzip3
+
+    if (!toRemove.isEmpty) {
+      val sub = p.copy(phi = And((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
+
+      val onSuccess: List[Solution] => Solution = { 
+        case List(s) => 
+          Solution(And(s.pre +: toPre), s.term)
+        case _ =>
+          Solution.none
+      }
+
+      List(task.decompose(this, List(sub), onSuccess, 80))
+    } else {
+      Nil
     }
   }
 }
