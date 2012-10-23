@@ -2,8 +2,9 @@ package leon
 package synthesis
 
 import purescala.Common._
-import purescala.Definitions.Program
+import purescala.Definitions.{Program, FunDef}
 import purescala.Trees.{Expr, Not}
+import purescala.ScalaPrinter
 
 import Extensions.Solver
 
@@ -88,18 +89,6 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
     }
   }
 
-  def test() {
-    import purescala.Common._
-    import purescala.Trees._
-    import purescala.TypeTrees._
-
-    val x = Variable(FreshIdentifier("x").setType(Int32Type))
-    val y = Variable(FreshIdentifier("y").setType(Int32Type))
-    val p = Problem(Nil, And(List(GreaterThan(x, y), Equals(y, IntLiteral(2)), Equals(x, IntLiteral(3)))), List(x.id, y.id))
-
-    synthesize(p, Rules.all(this))
-  }
-
   def synthesizeAll(program: Program) = {
     import purescala.Trees._
 
@@ -109,13 +98,20 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
 
     def noop(u:Expr, u2: Expr) = u
 
-    def actOnChoose(e: Expr, a: Expr): Expr = e match {
+    def actOnChoose(f: FunDef)(e: Expr, a: Expr): Expr = e match {
       case Choose(vars, pred) =>
         val xs = vars
         val as = (variablesOf(pred)--xs).toList
         val phi = pred
 
-        synthesize(Problem(as, phi, xs), rules)
+        info("")
+        info("")
+        info("In Function "+f.id+":")
+        info("-"*80)
+        val sol = synthesize(Problem(as, phi, xs), rules)
+
+        info("Scala code:")
+        info(ScalaPrinter(sol.term))
 
         a
       case _ =>
@@ -123,9 +119,8 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
     }
 
     // Look for choose()
-    for (f <- program.definedFunctions if f.body.isDefined) {
-      println(f)
-      treeCatamorphism(x => x, noop, actOnChoose, f.body.get)
+    for (f <- program.definedFunctions.sortBy(_.id.toString) if f.body.isDefined) {
+      treeCatamorphism(x => x, noop, actOnChoose(f), f.body.get)
     }
 
     program
