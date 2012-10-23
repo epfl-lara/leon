@@ -17,49 +17,34 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
 
   def synthesize(p: Problem, rules: List[Rule]): Solution = {
 
-    def applyRules(p: Problem, parent: Task): List[Task] = {
-      rules.flatMap(_.isApplicable(p, parent))
-    }
-
     val workList = new PriorityQueue[Task]()
-
     val rootTask = new RootTask(this, p)
 
     workList += rootTask
-
     solution = None
 
     while (!workList.isEmpty && solution.isEmpty) {
       val task = workList.dequeue()
 
-      task.subProblems match {
-        case Nil =>
-          throw new Exception("Such tasks shouldbe handled immediately")
-        case subProblems =>
-          for (sp <- subProblems) {
-            info("Now handling: "+sp)
+      info("Now handling: "+task.problem)
 
-            val alternatives = applyRules(sp, task)
+      val alternatives = rules.flatMap(_.isApplicable(task))
 
-            alternatives.find(_.isSuccess) match {
-              case Some(ss) =>
-                ss.succeeded()
-              case None =>
-                info(" => Possible Next Steps:")
-                alternatives.foreach(t => info(" -   "+t.description))
-                workList ++= alternatives
-            }
-
-            // We are stuck
-            if (alternatives.isEmpty) {
-              // I give up
-              val sol = Solution.choose(sp)
-              warning(" => Solved (by choose): "+sp+" ⊢  "+sol)
-              task.subSucceeded(sp, sol)
-            }
-          }
+      alternatives.find(_.isSuccess) match {
+        case Some(ss) =>
+          ss.succeeded()
+        case None =>
+          info(" => Possible Next Steps:")
+          alternatives.foreach(t => info(" -   "+t.description))
+          workList ++= alternatives.flatMap(_.subTasks)
       }
 
+      // We are stuck
+      if (alternatives.isEmpty) {
+        val sol = Solution.choose(task.problem)
+        warning(" => I give up: "+task+" ⊢  "+sol)
+        onTaskSucceeded(task, sol)
+      }
     }
 
     solution.getOrElse(Solution.none)
@@ -79,13 +64,12 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
   }
 
   def onTaskSucceeded(task: Task, solution: Solution) {
-    task match {
-      case rt: RootTask =>
-        info(" SUCCESS!")
-        this.solution = Some(solution)
-      case t: Task =>
-        info(" => Solved "+task.problem+" ⊢  "+solution)
-        t.parent.subSucceeded(t.problem, solution)
+    if (task.parent eq null) {
+      info(" SUCCESS!")
+      this.solution = Some(solution)
+    } else {
+      info(" => Solved "+task.problem+" ⊢  "+solution)
+      task.parent.subSucceeded(task.problem, solution)
     }
   }
 
