@@ -7,6 +7,16 @@ import leon.purescala.Trees._
 // ⟨ P | T ⟩
 case class Solution(pre: Expr, term: Expr, score: Score = 0) {
   override def toString = "⟨ "+pre+" | "+term+" ⟩" 
+
+  def toExpr = {
+    if (pre == BooleanLiteral(true)) {
+      term
+    } else if (pre == BooleanLiteral(false)) {
+      Error("Impossible program").setType(term.getType)
+    } else {
+      IfExpr(pre, term, Error("Precondition failed").setType(term.getType))
+    }
+  }
 }
 
 object Solution {

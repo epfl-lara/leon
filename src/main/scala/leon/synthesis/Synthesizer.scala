@@ -96,7 +96,7 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
         val sol = synthesize(Problem(as, phi, xs), rules)
 
         info("Scala code:")
-        info(ScalaPrinter(IfExpr(sol.pre, sol.term, Error("Precondition failed").setType(sol.term.getType))))
+        info(ScalaPrinter(sol.toExpr))
 
         a
       case _ =>
