@@ -8,7 +8,7 @@ class Task(val synth: Synthesizer,
 
   def compare(that: Task) = this.score - that.score
 
-  override def toString = "("+score+") " +problem
+  override def toString = " Task("+score+"): " +problem
 }
 
 class DecomposedTask(synth: Synthesizer,

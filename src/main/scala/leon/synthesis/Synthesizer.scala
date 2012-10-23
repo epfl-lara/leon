@@ -42,7 +42,7 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
       // We are stuck
       if (alternatives.isEmpty) {
         val sol = Solution.choose(task.problem)
-        warning(" => I give up: "+task+" ⊢  "+sol)
+        warning(" => I give up: "+task.problem+" ⊢  "+sol)
         onTaskSucceeded(task, sol)
       }
     }
