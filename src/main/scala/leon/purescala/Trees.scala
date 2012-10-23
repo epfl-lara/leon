@@ -85,7 +85,11 @@ object Trees {
     }
 
   }
-  case class TupleSelect(tuple: Expr, index: Int) extends Expr
+
+  // This must be 1-indexed !
+  case class TupleSelect(tuple: Expr, index: Int) extends Expr {
+    assert(index >= 1)
+  }
 
   case class Waypoint(i: Int, expr: Expr) extends Expr
 
@@ -1078,8 +1082,8 @@ object Trees {
           None
         }
       }
-      case letTuple @ LetTuple(ids, expr, body) if ids.size == 1 =>
-        simplerLet(Let(ids.head, TupleSelect(expr, 0).setType(ids.head.getType), body))
+      //case letTuple @ LetTuple(ids, expr, body) if ids.size == 1 =>
+      //  simplerLet(Let(ids.head, TupleSelect(expr, 1).setType(ids.head.getType), body))
 
       case letTuple @ LetTuple(ids, Tuple(exprs), body) =>
 
