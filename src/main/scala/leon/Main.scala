@@ -17,13 +17,28 @@ object Main {
     )
   }
 
+  lazy val allOptions = allPhases.flatMap(_.definedOptions) ++ Set(
+      LeonOptionDef("synthesis",     true,  "--synthesis          Partial synthesis or choose() constructs"),
+      LeonOptionDef("xlang",         true,  "--xlang              Support for extra program constructs (imperative,...)"),
+      LeonOptionDef("parse",         true,  "--parse              Checks only whether the program is valid PureScala"),
+      LeonOptionDef("debug",         false, "--debug=[1-5]        Debug level"),
+      LeonOptionDef("help",          true,  "--help               This help")
+    )
+
+  def displayHelp() {
+    println("usage: leon [--xlang] [--help] [--synthesis] [--help] [--debug=<N>] [..] <files>")
+    println
+    println("Leon options are:")
+    for (opt <- allOptions.toSeq.sortBy(_.name)) {
+      println("   "+opt.description)
+    }
+    sys.exit(1)
+  }
+
   def processOptions(reporter: Reporter, args: List[String]) = {
     val phases = allPhases
 
-    val allOptions = allPhases.flatMap(_.definedOptions) ++ Set(
-      LeonOptionDef("synthesis",     true,  "--synthesis          Magic!"),
-      LeonOptionDef("xlang",         true,  "--xlang              Preprocessing and transformation from extended programs")
-    )
+    val allOptions = this.allOptions
 
     val allOptionsMap = allOptions.map(o => o.name -> o).toMap
 
@@ -47,10 +62,12 @@ object Main {
           case (false, LeonValueOption(name, value)) =>
             Some(leonOpt)
           case _ =>
-            reporter.fatalError("Invalid option usage")
+            System.err.println("Invalid option usage: "+opt)
+            displayHelp()
             None
         }
       } else {
+        System.err.println("leon: '"+opt+"' is not a valid option. See 'leon --help'")
         None
       }
     }
@@ -63,6 +80,10 @@ object Main {
         settings = settings.copy(synthesis = true, xlang = false, analyze = false)
       case LeonFlagOption("xlang") =>
         settings = settings.copy(synthesis = false, xlang = true)
+      case LeonFlagOption("parse") =>
+        settings = settings.copy(synthesis = false, xlang = false, analyze = false)
+      case LeonFlagOption("help") =>
+        displayHelp()
       case _ =>
     }
 
@@ -112,8 +133,10 @@ object Main {
     // Process options
     val ctx = processOptions(reporter, args.toList)
 
+    // Compute leon pipeline
     val pipeline = computePipeLine(ctx.settings)
 
+    // Run phases
     pipeline.run(ctx)(args.toList)
   }
 }
