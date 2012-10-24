@@ -4,6 +4,7 @@ package purescala
 object Definitions {
   import Common._
   import Trees._
+  import TreeOps._
   import TypeTrees._
 
   sealed abstract class Definition extends Serializable {
@@ -53,7 +54,7 @@ object Definitions {
     def isCatamorphism(f1: FunDef) = mainObject.isCatamorphism(f1)
     def caseClassDef(name: String) = mainObject.caseClassDef(name)
     def allIdentifiers : Set[Identifier] = mainObject.allIdentifiers + id
-    def isPure: Boolean = definedFunctions.forall(fd => fd.body.forall(Trees.isPure) && fd.precondition.forall(Trees.isPure) && fd.postcondition.forall(Trees.isPure))
+    def isPure: Boolean = definedFunctions.forall(fd => fd.body.forall(TreeOps.isPure) && fd.precondition.forall(TreeOps.isPure) && fd.postcondition.forall(TreeOps.isPure))
 
     def writeScalaFile(filename: String) {
       import java.io.FileWriter
@@ -77,7 +78,7 @@ object Definitions {
 
     def allIdentifiers : Set[Identifier] = {
       (defs       map (_.allIdentifiers)).foldLeft(Set[Identifier]())((a, b) => a ++ b) ++ 
-      (invariants map (Trees.allIdentifiers(_))).foldLeft(Set[Identifier]())((a, b) => a ++ b) + id
+      (invariants map (TreeOps.allIdentifiers(_))).foldLeft(Set[Identifier]())((a, b) => a ++ b) + id
     }
 
     lazy val classHierarchyRoots : Seq[ClassTypeDef] = defs.filter(_.isInstanceOf[ClassTypeDef]).map(_.asInstanceOf[ClassTypeDef]).filter(!_.hasParent)
@@ -276,7 +277,7 @@ object Definitions {
   /** Values */
   case class ValDef(varDecl: VarDecl, value: Expr) extends Definition {
     val id: Identifier = varDecl.id
-    def allIdentifiers : Set[Identifier] = Trees.allIdentifiers(value) + id
+    def allIdentifiers : Set[Identifier] = TreeOps.allIdentifiers(value) + id
   }
 
   /** Functions (= 'methods' of objects) */
@@ -312,9 +313,9 @@ object Definitions {
 
     def allIdentifiers : Set[Identifier] = {
       args.map(_.id).toSet ++
-      body.map(Trees.allIdentifiers(_)).getOrElse(Set[Identifier]()) ++
-      precondition.map(Trees.allIdentifiers(_)).getOrElse(Set[Identifier]()) ++
-      postcondition.map(Trees.allIdentifiers(_)).getOrElse(Set[Identifier]()) + id
+      body.map(TreeOps.allIdentifiers(_)).getOrElse(Set[Identifier]()) ++
+      precondition.map(TreeOps.allIdentifiers(_)).getOrElse(Set[Identifier]()) ++
+      postcondition.map(TreeOps.allIdentifiers(_)).getOrElse(Set[Identifier]()) + id
     }
     
     private var annots: Set[String] = Set.empty[String]

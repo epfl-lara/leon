@@ -8,6 +8,7 @@ import purescala.Definitions._
 import purescala.Trees.{Block => PBlock, _}
 import purescala.TypeTrees._
 import purescala.Common._
+import purescala.TreeOps._
 
 trait CodeExtraction extends Extractors {
   self: AnalysisComponent =>

@@ -3,6 +3,7 @@ package leon
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
+import purescala.Extractors._
 import purescala.TypeTrees._
 
 object UnitElimination extends TransformationPhase {
