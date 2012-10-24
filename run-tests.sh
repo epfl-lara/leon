@@ -1,36 +1,37 @@
 #!/bin/bash
 
-nbtests=$(ls -l testcases/regression/{valid,invalid,error}/*.scala | wc -l)
+base=./regression
+nbtests=$(ls -l $base/{valid,invalid,error}/*.scala | wc -l)
 nbsuccess=0
 failedtests=""
 
-for f in testcases/regression/valid/*.scala; do
+for f in $base/valid/*.scala; do
   echo -n "Running $f, expecting VALID, got: "
   res=`./leon --noLuckyTests --timeout=10 --oneline "$f"`
   echo $res | tr [a-z] [A-Z]
-  if [ "$res" = valid ]; then
+  if [ $res = valid ]; then
     nbsuccess=$((nbsuccess + 1))
   else
     failedtests="$failedtests $f"
   fi
 done
 
-for f in testcases/regression/invalid/*.scala; do
+for f in $base/invalid/*.scala; do
   echo -n "Running $f, expecting INVALID, got: "
   res=`./leon --noLuckyTests --timeout=10 --oneline "$f"`
   echo $res | tr [a-z] [A-Z]
-  if [ "$res" = invalid ]; then
+  if [ $res = invalid ]; then
     nbsuccess=$((nbsuccess + 1))
   else
     failedtests="$failedtests $f"
   fi
 done
 
-for f in testcases/regression/error/*.scala; do
+for f in $base/error/*.scala; do
   echo -n "Running $f, expecting ERROR, got: "
   res=`./leon --noLuckyTests --timeout=10 --oneline "$f"`
   echo $res | tr [a-z] [A-Z]
-  if [ "$res" = error ]; then
+  if [ $res = error ]; then
     nbsuccess=$((nbsuccess + 1))
   else
     failedtests="$failedtests $f"
