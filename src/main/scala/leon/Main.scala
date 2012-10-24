@@ -1,75 +1,119 @@
 package leon
 
-import scala.tools.nsc.{Global,Settings=>NSCSettings,SubComponent,CompilerCommand}
-
-import purescala.Definitions.Program
-
 object Main {
-  import leon.{Reporter,DefaultReporter,Analysis}
 
-  def main(args : Array[String]) : Unit = run(args)
-
-  def runFromString(program : String, args : Array[String], reporter : Reporter = new DefaultReporter, classPath : Option[Seq[String]] = None) : Unit = {
-    import java.io.{BufferedWriter,File,FileWriter,IOException}
-
-    try {
-      val file : File = File.createTempFile("leon", ".scala")
-      file.deleteOnExit
-      val out = new BufferedWriter(new FileWriter(file))
-      out.write(program)
-      out.close
-      run(file.getPath.toString +: args, reporter, classPath)
-    } catch {
-      case e : IOException => reporter.error(e.getMessage)
-    }
+  def allPhases: List[LeonPhase[_, _]] = {
+    List(
+      plugin.ExtractionPhase,
+      ArrayTransformation,
+      EpsilonElimination,
+      ImperativeCodeElimination,
+      /*UnitElimination,*/
+      FunctionClosure,
+      /*FunctionHoisting,*/
+      Simplificator,
+      synthesis.SynthesisPhase,
+      AnalysisPhase
+    )
   }
 
-  def run(args: Array[String], reporter: Reporter = new DefaultReporter, classPath : Option[Seq[String]] = None) : Unit = {
-    val settings = new NSCSettings
-    classPath.foreach(s => settings.classpath.tryToSet(s.toList))
+  def processOptions(reporter: Reporter, args: List[String]) = {
+    val phases = allPhases
 
-    val (leonOptions, nonLeonOptions) = args.toList.partition(_.startsWith("--"))
-    val command = new CompilerCommand(nonLeonOptions, settings) {
-      override val cmdName = "leon"
-    }
+    val allOptions = allPhases.flatMap(_.definedOptions) ++ Set(
+      LeonOptionDef("synthesis",     true,  "--synthesis          Magic!"),
+      LeonOptionDef("xlang",         true,  "--xlang              Preprocessing and transformation from extended programs")
+    )
 
-    if(command.ok) {
-      if(settings.version.value) {
-        println(command.cmdName + " beta.")
+    val allOptionsMap = allOptions.map(o => o.name -> o).toMap
+
+    // Detect unknown options:
+    val options = args.filter(_.startsWith("--"))
+
+    val leonOptions = options.flatMap { opt =>
+      val leonOpt: LeonOption = opt.substring(2, opt.length).split("=", 2).toList match {
+        case List(name, value) =>
+          LeonValueOption(name, value)
+        case List(name) => name
+          LeonFlagOption(name)
+        case _ =>
+          reporter.fatalError("Woot?")
+      }
+
+      if (allOptionsMap contains leonOpt.name) {
+        (allOptionsMap(leonOpt.name).isFlag, leonOpt) match {
+          case (true,  LeonFlagOption(name)) =>
+            Some(leonOpt)
+          case (false, LeonValueOption(name, value)) =>
+            Some(leonOpt)
+          case _ =>
+            reporter.fatalError("Invalid option usage")
+            None
+        }
       } else {
-        val runner = new PluginRunner(settings, reporter)
-        runner.leonPlugin.processOptions(leonOptions.map(_.substring(2)), reporter.error(_))
-
-        val run = new runner.Run
-        run.compile(command.files)
+        None
       }
     }
-  }
-}
 
-/** This class is a compiler that will be used for running the plugin in
- * standalone mode. Original version courtesy of D. Zufferey. */
-class PluginRunner(settings : NSCSettings, reporter : Reporter) extends Global(settings, new plugin.SimpleReporter(settings, reporter)) {
-  val leonPlugin = new plugin.LeonPlugin(this, reporter)
+    var settings  = Settings()
 
-  protected def myAddToPhasesSet(sub : SubComponent, descr : String) : Unit = {
-    phasesSet += sub
-  }
-
-  /** The phases to be run. */
-  override protected def computeInternalPhases() : Unit = {
-    val phs = List(
-      syntaxAnalyzer          -> "parse source into ASTs, perform simple desugaring",
-      analyzer.namerFactory   -> "resolve names, attach symbols to named trees",
-      analyzer.packageObjects -> "load package objects",
-      analyzer.typerFactory   -> "the meat and potatoes: type the trees",
-      superAccessors          -> "add super accessors in traits and nested classes",
-      pickler                 -> "serialize symbol tables",
-      refchecks               -> "reference and override checking, translate nested objects"
-    ) ::: {
-      val zipped = leonPlugin.components zip leonPlugin.descriptions
-      zipped
+    // Process options we understand:
+    for(opt <- leonOptions) opt match {
+      case LeonFlagOption("synthesis") =>
+        settings = settings.copy(synthesis = true, xlang = false, analyze = false)
+      case LeonFlagOption("xlang") =>
+        settings = settings.copy(synthesis = false, xlang = true)
+      case _ =>
     }
-    phs foreach (myAddToPhasesSet _).tupled
+
+    LeonContext(settings = settings, reporter = reporter)
+  }
+
+  implicit def phaseToPipeline[F, T](phase: LeonPhase[F, T]): Pipeline[F, T] = new PipeCons(phase, new PipeNil())
+
+  def computePipeLine(settings: Settings): Pipeline[List[String], Unit] = {
+    import purescala.Definitions.Program
+
+    val pipeBegin = phaseToPipeline(plugin.ExtractionPhase)
+
+    val pipeTransforms: Pipeline[Program, Program] =
+      if (settings.xlang) {
+        ArrayTransformation andThen
+        EpsilonElimination andThen
+        ImperativeCodeElimination
+      } else {
+        NoopPhase[Program]()
+      }
+
+    val pipeSynthesis: Pipeline[Program, Program] =
+      if (settings.synthesis) {
+        synthesis.SynthesisPhase
+      } else {
+        NoopPhase[Program]()
+      }
+
+    val pipeAnalysis: Pipeline[Program, Program] =
+      if (settings.analyze) {
+        AnalysisPhase
+      } else {
+        NoopPhase[Program]()
+      }
+
+    pipeBegin followedBy
+    pipeTransforms followedBy
+    pipeSynthesis followedBy
+    pipeAnalysis andThen
+    ExitPhase()
+  }
+
+  def main(args : Array[String]) : Unit = {
+    val reporter = new DefaultReporter()
+
+    // Process options
+    val ctx = processOptions(reporter, args.toList)
+
+    val pipeline = computePipeLine(ctx.settings)
+
+    pipeline.run(ctx)(args.toList)
   }
 }

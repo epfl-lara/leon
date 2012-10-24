@@ -34,3 +34,9 @@ object Settings {
   var stopAfterAnalysis: Boolean             = true
   var silentlyTolerateNonPureBodies: Boolean = false
 }
+
+case class Settings(
+  val synthesis: Boolean    = false,
+  val xlang: Boolean        = false,
+  val analyze: Boolean      = true
+)

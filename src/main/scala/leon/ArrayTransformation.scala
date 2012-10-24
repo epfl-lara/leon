@@ -5,12 +5,12 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-object ArrayTransformation extends plugin.TransformationPhase {
+object ArrayTransformation extends TransformationPhase {
 
   val name = "Array Transformation"
   val description = "Add bound checking for array access and remove array update with side effect"
 
-  def apply(pgm: Program): Program = {
+  def apply(ctx: LeonContext, pgm: Program): Program = {
 
     val allFuns = pgm.definedFunctions
     allFuns.foreach(fd => {

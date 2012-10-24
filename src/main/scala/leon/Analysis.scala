@@ -328,11 +328,11 @@ object Analysis {
   }
 }
 
-object AnalysisPhase extends plugin.UnitPhase {
+object AnalysisPhase extends UnitPhase[Program] {
   val name = "Analysis"
   val description = "Leon Analyses"
 
-  def apply(program: Program) {
+  def apply(ctx: LeonContext, program: Program) {
     new Analysis(program).analyse
   }
 }

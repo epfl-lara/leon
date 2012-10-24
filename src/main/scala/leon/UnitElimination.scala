@@ -5,7 +5,7 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-object UnitElimination extends plugin.TransformationPhase {
+object UnitElimination extends TransformationPhase {
 
   val name = "Unit Elimination"
   val description = "Remove all usage of the Unit type and value"
@@ -13,7 +13,7 @@ object UnitElimination extends plugin.TransformationPhase {
   private var fun2FreshFun: Map[FunDef, FunDef] = Map()
   private var id2FreshId: Map[Identifier, Identifier] = Map()
 
-  def apply(pgm: Program): Program = {
+  def apply(ctx: LeonContext, pgm: Program): Program = {
     fun2FreshFun = Map()
     val allFuns = pgm.definedFunctions
 

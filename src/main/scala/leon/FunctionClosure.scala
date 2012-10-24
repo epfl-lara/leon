@@ -5,7 +5,7 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-object FunctionClosure extends plugin.TransformationPhase{
+object FunctionClosure extends TransformationPhase{
 
   val name = "Function Closure"
   val description = "Closing function with its scoping variables"
@@ -15,7 +15,7 @@ object FunctionClosure extends plugin.TransformationPhase{
   private var newFunDefs: Map[FunDef, FunDef] = Map()
   private var topLevelFuns: Set[FunDef] = Set()
 
-  def apply(program: Program): Program = {
+  def apply(ctx: LeonContext, program: Program): Program = {
     newFunDefs = Map()
     val funDefs = program.definedFunctions
     funDefs.foreach(fd => {

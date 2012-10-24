@@ -1,22 +1,19 @@
 package leon
 package synthesis
 
-import plugin.LeonContext
 import purescala.Definitions.Program
 
-object SynthesisPhase extends plugin.LeonPhase {
+object SynthesisPhase extends TransformationPhase {
   val name        = "Synthesis"
   val description = "Synthesis"
 
-  def run(ctx: LeonContext): LeonContext = {
+  def apply(ctx: LeonContext, p: Program): Program = {
     val quietReporter = new QuietReporter
     val solvers  = List(
       new TrivialSolver(quietReporter),
       new FairZ3Solver(quietReporter)
     )
 
-    val newProgram = new Synthesizer(ctx.reporter, solvers).synthesizeAll(ctx.program)
-
-    ctx.copy(program = newProgram)
+    new Synthesizer(ctx.reporter, solvers).synthesizeAll(p)
   }
 }

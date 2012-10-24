@@ -7,7 +7,7 @@ import scala.tools.nsc.plugins.{Plugin,PluginComponent}
 import purescala.Definitions.Program
 
 /** This class is the entry point for the plugin. */
-class LeonPlugin(val global: Global, val reporter: Reporter) extends Plugin {
+class LeonPlugin(val global: PluginRunner) extends Plugin {
   import global._
 
   val name = "leon"
@@ -85,6 +85,6 @@ class LeonPlugin(val global: Global, val reporter: Reporter) extends Plugin {
     }
   }
 
-  val components = List(new AnalysisComponent(global, reporter, this))
+  val components = List(new AnalysisComponent(global, this))
   val descriptions = List[String]("leon analyses")
 }

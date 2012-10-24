@@ -5,7 +5,7 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-object ImperativeCodeElimination extends plugin.TransformationPhase {
+object ImperativeCodeElimination extends TransformationPhase {
 
   val name = "Imperative Code Elimination"
   val description = "Transform imperative constructs into purely functional code"
@@ -13,7 +13,7 @@ object ImperativeCodeElimination extends plugin.TransformationPhase {
   private var varInScope = Set[Identifier]()
   private var parent: FunDef = null //the enclosing fundef
 
-  def apply(pgm: Program): Program = {
+  def apply(ctx: LeonContext, pgm: Program): Program = {
     val allFuns = pgm.definedFunctions
     allFuns.foreach(fd => fd.body.map(body => {
       parent = fd
