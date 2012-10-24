@@ -17,65 +17,68 @@ object Leon extends Build {
   }
 
   val scriptTask = TaskKey[Unit]("script", "Generate the " + scriptName + " Bash script") <<= (streams, dependencyClasspath in Compile, classDirectory in Compile) map { (s, deps, out) =>
-    if(!scriptFile.exists) {
+    if(scriptFile.exists) {
+      s.log.info("Re-generating script ("+(if(is64) "64b" else "32b")+")...")
+      scriptFile.delete
+    } else {
       s.log.info("Generating script ("+(if(is64) "64b" else "32b")+")...")
-      try {
-        val depsPaths = deps.map(_.data.absolutePath)
+    }
+    try {
+      val depsPaths = deps.map(_.data.absolutePath)
 
-        val depsPaths64 = depsPaths.filterNot(_.endsWith("unmanaged/z3.jar"))
-        val depsPaths32 = depsPaths.filterNot(_.endsWith("unmanaged/z3-64.jar"))
+      val depsPaths64 = depsPaths.filterNot(_.endsWith("unmanaged/z3.jar"))
+      val depsPaths32 = depsPaths.filterNot(_.endsWith("unmanaged/z3-64.jar"))
 
-        // One ugly hack... Likely to fail for Windows, but it's a Bash script anyway.
-        val scalaHomeDir = depsPaths.find(_.endsWith("lib/scala-library.jar")) match {
-          case None => throw new Exception("Couldn't guess SCALA_HOME.")
-          case Some(p) => p.substring(0, p.length - 21)
-        }
-        s.log.info("Will use " + scalaHomeDir + " as SCALA_HOME.")
+      // One ugly hack... Likely to fail for Windows, but it's a Bash script anyway.
+      val scalaHomeDir = depsPaths.find(_.endsWith("lib/scala-library.jar")) match {
+        case None => throw new Exception("Couldn't guess SCALA_HOME.")
+        case Some(p) => p.substring(0, p.length - 21)
+      }
+      s.log.info("Will use " + scalaHomeDir + " as SCALA_HOME.")
 
-        val nl = System.getProperty("line.separator")
-        val fw = new java.io.FileWriter(scriptFile)
-        fw.write("#!/bin/bash --posix" + nl)
-        if (is64) {
+      val nl = System.getProperty("line.separator")
+      val fw = new java.io.FileWriter(scriptFile)
+      fw.write("#!/bin/bash --posix" + nl)
+      if (is64) {
+        fw.write("SCALACLASSPATH=\"")
+        fw.write((out.absolutePath +: depsPaths64).mkString(":"))
+        fw.write("\"" + nl + nl)
+
+        // Setting the dynamic lib path
+        fw.write("LIBRARY_PATH=\"" + ldLibraryDir64.absolutePath + "\"" + nl)
+      } else {
+        fw.write("if [ `uname -m` == \"x86_64\" ]; then "+nl)
+
           fw.write("SCALACLASSPATH=\"")
           fw.write((out.absolutePath +: depsPaths64).mkString(":"))
           fw.write("\"" + nl + nl)
 
           // Setting the dynamic lib path
           fw.write("LIBRARY_PATH=\"" + ldLibraryDir64.absolutePath + "\"" + nl)
-        } else {
-          fw.write("if [ `uname -m` == \"x86_64\" ]; then "+nl)
 
-            fw.write("SCALACLASSPATH=\"")
-            fw.write((out.absolutePath +: depsPaths64).mkString(":"))
-            fw.write("\"" + nl + nl)
+        fw.write("else" + nl)
 
-            // Setting the dynamic lib path
-            fw.write("LIBRARY_PATH=\"" + ldLibraryDir64.absolutePath + "\"" + nl)
+          fw.write("SCALACLASSPATH=\"")
+          fw.write((out.absolutePath +: depsPaths32).mkString(":"))
+          fw.write("\"" + nl + nl)
 
-          fw.write("else" + nl)
+          // Setting the dynamic lib path
+          fw.write("LIBRARY_PATH=\"" + ldLibraryDir32.absolutePath + "\"" + nl)
+        fw.write("fi" + nl)
 
-            fw.write("SCALACLASSPATH=\"")
-            fw.write((out.absolutePath +: depsPaths32).mkString(":"))
-            fw.write("\"" + nl + nl)
-
-            // Setting the dynamic lib path
-            fw.write("LIBRARY_PATH=\"" + ldLibraryDir32.absolutePath + "\"" + nl)
-          fw.write("fi" + nl)
-
-        }
-
-        // the Java command that uses sbt's local Scala to run the whole contraption.
-        fw.write("LD_LIBRARY_PATH=\"$LIBRARY_PATH\" \\"+nl)
-        fw.write("java -Xmx2G -Xms512M -classpath ${SCALACLASSPATH} -Dscala.home=\"")
-        fw.write(scalaHomeDir)
-        fw.write("\" -Dscala.usejavacp=true ")
-        fw.write("scala.tools.nsc.MainGenericRunner -classpath ${SCALACLASSPATH} ")
-        fw.write("leon.Main $@" + nl)
-        fw.close
-        scriptFile.setExecutable(true)
-      } catch {
-        case e => s.log.error("There was an error while generating the script file: " + e.getLocalizedMessage)
       }
+
+      // the Java command that uses sbt's local Scala to run the whole contraption.
+      fw.write("LD_LIBRARY_PATH=\"$LIBRARY_PATH\" \\"+nl)
+      fw.write("java -Xmx2G -Xms512M -classpath ${SCALACLASSPATH} -Dscala.home=\"")
+      fw.write(scalaHomeDir)
+      fw.write("\" -Dscala.usejavacp=true ")
+      fw.write("scala.tools.nsc.MainGenericRunner -classpath ${SCALACLASSPATH} ")
+      fw.write("leon.Main $@" + nl)
+      fw.close
+      scriptFile.setExecutable(true)
+    } catch {
+      case e => s.log.error("There was an error while generating the script file: " + e.getLocalizedMessage)
     }
   }
 
