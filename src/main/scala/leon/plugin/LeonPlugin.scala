@@ -40,6 +40,7 @@ class LeonPlugin(val global: Global, val reporter: Reporter) extends Plugin {
     "  --debug=[1-5]        Debug level" + "\n" +
     "  --tags=t1:...        Filter out debug information that are not of one of the given tags" + "\n" +
     "  --oneline            Reduce the output to a single line: valid if all properties were valid, invalid if at least one is invalid, unknown else" + "\n" +
+    "  --imperative         Preprocessing and transformation from imperative programs" + "\n" +
     "  --synthesis          Magic!"
   )
 
@@ -65,6 +66,8 @@ class LeonPlugin(val global: Global, val reporter: Reporter) extends Plugin {
         case "oneline"       =>                     leon.Settings.simpleOutput = true
         case "noLuckyTests"  =>                     leon.Settings.luckyTest = false
         case "noverifymodel" =>                     leon.Settings.verifyModel = false
+        case "imperative"     =>                    leon.Settings.synthesis = false;
+                                                    leon.Settings.transformProgram = true;
         case "synthesis"     =>                     leon.Settings.synthesis = true;
                                                     leon.Settings.transformProgram = false;
                                                     leon.Settings.stopAfterTransformation = true;
