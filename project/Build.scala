@@ -6,8 +6,15 @@ object Leon extends Build {
   private val scriptName = "leon"
   def scriptFile = file(".") / scriptName
   def is64 = System.getProperty("sun.arch.data.model") == "64"
-  def ldLibraryDir32 = file(".") / "lib-bin"
-  def ldLibraryDir64 = file(".") / "lib64-bin"
+  def ldLibraryDir32 = file(".") / "lib-bin" / "32"
+  def ldLibraryDir64 = file(".") / "lib-bin" / "64"
+
+  val cleanTask = TaskKey[Unit]("clean", "Cleans up the generated binaries and scripts.") <<= (streams, clean) map { (s,c) =>
+    c
+    if(scriptFile.exists && scriptFile.isFile) {
+      scriptFile.delete
+    }
+  }
 
   val scriptTask = TaskKey[Unit]("script", "Generate the " + scriptName + " Bash script") <<= (streams, dependencyClasspath in Compile, classDirectory in Compile) map { (s, deps, out) =>
     if(!scriptFile.exists) {
@@ -74,7 +81,8 @@ object Leon extends Build {
 
   object LeonProject {
     val settings = Seq(
-      scriptTask
+      scriptTask,
+      cleanTask
     )
   }
 

@@ -13,13 +13,13 @@ To build it, you will need, for example, the following:
 
 To build, type this:
 
-xsbt clean   
-xsbt package # takes a while
-xsbt script
+    $ xsbt clean   
+    $ xsbt package # takes a while
+    $ xsbt script
 
 Then you can try e.g.
 
-./run-demo demo/RedBlackTree.scala
+    $ ./leon ./testcases/sas2011-testcases/RedBlackTree.scala
 
 and get something like this:
 
