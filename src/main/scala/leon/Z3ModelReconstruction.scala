@@ -4,6 +4,7 @@ import z3.scala._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
+import purescala.TreeOps._
 import purescala.TypeTrees._
 import Extensions._
 
