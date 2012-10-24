@@ -52,7 +52,7 @@ class AnalysisComponent(val global: Global, val leonReporter: Reporter, val plug
       ,
         if (Settings.synthesis)
           List(
-            new SynthesisPhase(leonReporter)
+            SynthesisPhase
           )
         else
           Nil
@@ -71,7 +71,8 @@ class AnalysisComponent(val global: Global, val leonReporter: Reporter, val plug
       //global ref to freshName creator
       fresh = unit.fresh
 
-      var ac = LeonContext(program = extractCode(unit))
+      var ac = LeonContext(program = extractCode(unit),
+                           reporter = leonReporter)
 
       if(Settings.stopAfterExtraction) {
         leonReporter.info("Extracted program for " + unit + ": ")
