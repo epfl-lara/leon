@@ -38,41 +38,36 @@ class OnePoint(synth: Synthesizer) extends Rule("One-point", synth) {
 
     val p = task.problem
 
-    p.phi match {
-      case TopLevelAnds(exprs) =>
-        val candidates = exprs.collect {
-          case eq @ Equals(Variable(x), e) if (p.xs contains x) && !(variablesOf(e) contains x) =>
-            (x, e, eq)
-          case eq @ Equals(e, Variable(x)) if (p.xs contains x) && !(variablesOf(e) contains x) =>
-            (x, e, eq)
-        }
+    val TopLevelAnds(exprs) = p.phi
 
-        if (!candidates.isEmpty) {
-          val (x, e, eq) = candidates.head
+    val candidates = exprs.collect {
+      case eq @ Equals(Variable(x), e) if (p.xs contains x) && !(variablesOf(e) contains x) =>
+        (x, e, eq)
+      case eq @ Equals(e, Variable(x)) if (p.xs contains x) && !(variablesOf(e) contains x) =>
+        (x, e, eq)
+    }
 
-          val others = exprs.filter(_ != eq)
-          val oxs    = p.xs.filter(_ != x)
+    if (!candidates.isEmpty) {
+      val (x, e, eq) = candidates.head
 
-          val newProblem = Problem(p.as, subst(x -> e, And(others)), oxs)
+      val others = exprs.filter(_ != eq)
+      val oxs    = p.xs.filter(_ != x)
 
-          val onSuccess: List[Solution] => Solution = { 
-            case List(Solution(pre, term, sc)) =>
-              if (oxs.isEmpty) {
-                Solution(pre, Tuple(e :: Nil), sc) 
-              } else {
-                Solution(pre, LetTuple(oxs, term, subst(x -> e, Tuple(p.xs.map(Variable(_))))), sc) 
-              }
-            case _ => Solution.none
+      val newProblem = Problem(p.as, subst(x -> e, And(others)), oxs)
+
+      val onSuccess: List[Solution] => Solution = { 
+        case List(Solution(pre, term, sc)) =>
+          if (oxs.isEmpty) {
+            Solution(pre, Tuple(e :: Nil), sc) 
+          } else {
+            Solution(pre, LetTuple(oxs, term, subst(x -> e, Tuple(p.xs.map(Variable(_))))), sc) 
           }
+        case _ => Solution.none
+      }
 
-          List(task.decompose(this, List(newProblem), onSuccess, 100))
-        } else {
-          Nil
-        }
-
-
-      case _ =>
-        Nil
+      List(task.decompose(this, List(newProblem), onSuccess, 100))
+    } else {
+      Nil
     }
   }
 }
@@ -87,7 +82,7 @@ class Ground(synth: Synthesizer) extends Rule("Ground", synth) {
 
       synth.solveSAT(p.phi) match {
         case (Some(true), model) =>
-          List(task.solveUsing(this, Solution(BooleanLiteral(true), Tuple(p.xs.map(model)).setType(tpe), 200), 200))
+          List(task.solveUsing(this, Solution(BooleanLiteral(true), Tuple(p.xs.map(id => model.getOrElse(id, simplestValue(Variable(id))))).setType(tpe), 200), 200))
         case (Some(false), model) =>
           List(task.solveUsing(this, Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe), 200), 200))
         case _ =>
