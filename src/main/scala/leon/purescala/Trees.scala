@@ -6,8 +6,6 @@ object Trees {
   import Common._
   import TypeTrees._
   import Definitions._
-  import Extractors._
-  import TreeOps._
 
   /* EXPRESSIONS */
 
