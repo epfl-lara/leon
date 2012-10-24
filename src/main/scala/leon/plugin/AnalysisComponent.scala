@@ -50,12 +50,13 @@ class AnalysisComponent(val global: Global, val leonReporter: Reporter, val plug
           Nil
         }
       ,
-        if (Settings.synthesis)
+        if (Settings.synthesis) {
           List(
             SynthesisPhase
           )
-        else
+        } else {
           Nil
+        }
       ,
         if (!Settings.stopAfterTransformation) {
           List(
