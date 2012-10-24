@@ -7,7 +7,7 @@ import scala.tools.nsc.plugins._
 import purescala.Definitions.Program
 import synthesis.SynthesisPhase
 
-class AnalysisComponent(val global: Global, val leonReporter: Reporter, val pluginInstance: LeonPlugin)
+class AnalysisComponent(val global: Global, val pluginInstance: LeonPlugin)
   extends PluginComponent
   with CodeExtraction
 {
@@ -34,60 +34,12 @@ class AnalysisComponent(val global: Global, val leonReporter: Reporter, val plug
   def newPhase(prev: Phase) = new AnalysisPhase(prev)
 
   class AnalysisPhase(prev: Phase) extends StdPhase(prev) {
-    def computeLeonPhases: List[LeonPhase] = {
-      List(
-        if (Settings.transformProgram) {
-          List(
-            ArrayTransformation,
-            EpsilonElimination,
-            ImperativeCodeElimination,
-            /*UnitElimination,*/
-            FunctionClosure,
-            /*FunctionHoisting,*/
-            Simplificator
-          )
-        } else {
-          Nil
-        }
-      ,
-        if (Settings.synthesis) {
-          List(
-            SynthesisPhase
-          )
-        } else {
-          Nil
-        }
-      ,
-        if (!Settings.stopAfterTransformation) {
-          List(
-            AnalysisPhase
-          )
-        } else {
-          Nil
-        }
-      ).flatten
-    }
-
     def apply(unit: CompilationUnit): Unit = {
       //global ref to freshName creator
       fresh = unit.fresh
 
-      var ac = LeonContext(program = extractCode(unit),
-                           reporter = leonReporter)
-
-      if(Settings.stopAfterExtraction) {
-        leonReporter.info("Extracted program for " + unit + ": ")
-        leonReporter.info(ac.program)
-        sys.exit(0)
-      }
-
-      val phases = computeLeonPhases
-
-      for ((phase, i) <- phases.zipWithIndex) {
-        leonReporter.info("%2d".format(i)+": "+phase.name)
-        ac = phase.run(ac)
-      }
-
+      
+      pluginInstance.global.ctx = pluginInstance.global.ctx.copy(program = Some(extractCode(unit)))
     }
   }
 }

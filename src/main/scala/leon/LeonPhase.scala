@@ -12,11 +12,27 @@ abstract class LeonPhase {
 abstract class TransformationPhase extends LeonPhase {
   def apply(p: Program): Program
 
-  override def run(ac: LeonContext) = ac.copy(program = apply(ac.program))
+  override def run(ctx: LeonContext) = {
+    ctx.program match {
+      case Some(p) =>
+        ctx.copy(program = Some(apply(p)))
+      case None =>
+        ctx.reporter.fatalError("Empty program at this point?!?")
+        ctx
+    }
+  }
 }
 
 abstract class UnitPhase extends LeonPhase {
   def apply(p: Program): Unit
 
-  override def run(ac: LeonContext) = { apply(ac.program); ac }
+  override def run(ctx: LeonContext) = { 
+    ctx.program match {
+      case Some(p) =>
+        apply(p)
+      case None =>
+        ctx.reporter.fatalError("Empty program at this point?!?")
+    }
+    ctx
+  }
 }

@@ -3,7 +3,8 @@ package leon
 import purescala.Definitions.Program
 
 case class LeonContext(
-  val program: Program,
-  val reporter: Reporter
+  val options: List[String] = List(),
+  val program: Option[Program] = None,
+  val reporter: Reporter = new DefaultReporter
 )
 

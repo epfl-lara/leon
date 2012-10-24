@@ -14,8 +14,8 @@ object SynthesisPhase extends LeonPhase {
       new FairZ3Solver(quietReporter)
     )
 
-    val newProgram = new Synthesizer(ctx.reporter, solvers).synthesizeAll(ctx.program)
+    val newProgram = new Synthesizer(ctx.reporter, solvers).synthesizeAll(ctx.program.get)
 
-    ctx.copy(program = newProgram)
+    ctx.copy(program = Some(newProgram))
   }
 }
