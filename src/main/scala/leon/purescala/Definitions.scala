@@ -5,6 +5,7 @@ object Definitions {
   import Common._
   import Trees._
   import TreeOps._
+  import Extractors._
   import TypeTrees._
 
   sealed abstract class Definition extends Serializable {

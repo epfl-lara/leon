@@ -8,6 +8,7 @@ import leon.purescala.Common.Identifier
 import leon.purescala.Definitions._
 import leon.purescala.PrettyPrinter
 import leon.purescala.Trees._
+import leon.purescala.Extractors._
 import leon.purescala.TypeTrees._
 
 import java.lang.StringBuffer
