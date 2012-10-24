@@ -25,7 +25,7 @@ class AnalysisComponent(val global: Global, val leonReporter: Reporter, val plug
   protected def stopIfErrors: Unit = {
     if(reporter.hasErrors) {
       if(Settings.simpleOutput)
-        leonReporter.fatalError("errrr")
+        println("error")
       sys.exit(1)
       //throw new Exception("There were errors.")
     }
