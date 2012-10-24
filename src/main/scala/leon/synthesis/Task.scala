@@ -29,7 +29,7 @@ class DecomposedTask(synth: Synthesizer,
 
   def subTasks = subProblems.map(new Task(synth, this, _, score))
 
-  var subSolutions = Map[Problem, Solution]()
+  var subSolutions   = Map[Problem, Solution]()
 
   def isSuccess = subProblems.isEmpty
 
