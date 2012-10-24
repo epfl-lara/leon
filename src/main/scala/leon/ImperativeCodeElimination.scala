@@ -5,7 +5,7 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-object ImperativeCodeElimination extends plugin.TransformationPhase {
+object ImperativeCodeElimination extends TransformationPhase {
 
   val name = "Imperative Code Elimination"
   val description = "Transform imperative constructs into purely functional code"

@@ -5,7 +5,7 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-object TypeChecking extends plugin.UnitPhase {
+object TypeChecking extends UnitPhase {
 
   val name = "Type Checking"
   val description = "Type check the AST"

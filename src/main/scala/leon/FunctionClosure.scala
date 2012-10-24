@@ -5,7 +5,7 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-object FunctionClosure extends plugin.TransformationPhase{
+object FunctionClosure extends TransformationPhase{
 
   val name = "Function Closure"
   val description = "Closing function with its scoping variables"

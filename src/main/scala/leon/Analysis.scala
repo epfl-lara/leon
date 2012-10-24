@@ -328,7 +328,7 @@ object Analysis {
   }
 }
 
-object AnalysisPhase extends plugin.UnitPhase {
+object AnalysisPhase extends UnitPhase {
   val name = "Analysis"
   val description = "Leon Analyses"
 

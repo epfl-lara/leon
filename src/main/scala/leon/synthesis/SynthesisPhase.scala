@@ -1,10 +1,9 @@
 package leon
 package synthesis
 
-import plugin.LeonContext
 import purescala.Definitions.Program
 
-object SynthesisPhase extends plugin.LeonPhase {
+object SynthesisPhase extends LeonPhase {
   val name        = "Synthesis"
   val description = "Synthesis"
 

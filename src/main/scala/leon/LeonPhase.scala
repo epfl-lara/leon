@@ -1,5 +1,4 @@
 package leon
-package plugin
 
 import purescala.Definitions.Program
 

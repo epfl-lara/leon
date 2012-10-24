@@ -5,7 +5,7 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-object EpsilonElimination extends plugin.TransformationPhase {
+object EpsilonElimination extends TransformationPhase {
 
   val name = "Epsilon Elimination"
   val description = "Remove all epsilons from the program"

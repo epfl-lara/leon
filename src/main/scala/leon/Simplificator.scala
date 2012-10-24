@@ -5,7 +5,7 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-object Simplificator extends plugin.TransformationPhase {
+object Simplificator extends TransformationPhase {
 
   val name = "Simplificator"
   val description = "Some safe and minimal simplification"
