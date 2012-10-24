@@ -10,7 +10,7 @@ object Simplificator extends TransformationPhase {
   val name = "Simplificator"
   val description = "Some safe and minimal simplification"
 
-  def apply(pgm: Program): Program = {
+  def apply(ctx: LeonContext, pgm: Program): Program = {
 
     val allFuns = pgm.definedFunctions
     allFuns.foreach(fd => {

@@ -10,7 +10,7 @@ object EpsilonElimination extends TransformationPhase {
   val name = "Epsilon Elimination"
   val description = "Remove all epsilons from the program"
 
-  def apply(pgm: Program): Program = {
+  def apply(ctx: LeonContext, pgm: Program): Program = {
 
     val allFuns = pgm.definedFunctions
     allFuns.foreach(fd => fd.body.map(body => {

@@ -10,7 +10,7 @@ object FunctionHoisting extends TransformationPhase {
   val name = "Function Hoisting"
   val description = "Hoist function at the top level"
 
-  def apply(program: Program): Program = {
+  def apply(ctx: LeonContext, program: Program): Program = {
     val funDefs = program.definedFunctions
     var topLevelFuns: Set[FunDef] = Set()
     funDefs.foreach(fd => {

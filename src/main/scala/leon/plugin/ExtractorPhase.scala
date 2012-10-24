@@ -1,43 +1,43 @@
 package leon
 package plugin
 
+import purescala.Definitions.Program
 import scala.tools.nsc.{Global,Settings=>NSCSettings,SubComponent,CompilerCommand}
 
-object ExtractionPhase extends LeonPhase {
+object ExtractionPhase extends LeonPhase[List[String], Program] {
 
   val name = "Extraction"
   val description = "Extraction of trees from the Scala Compiler"
 
-  def run(ctx: LeonContext): LeonContext = {
+  def run(ctx: LeonContext)(args: List[String]): Program = {
 
     val settings = new NSCSettings
-    val compilerOpts = ctx.options.filterNot(_.startsWith("--"))
+    val compilerOpts = args.filterNot(_.startsWith("--"))
 
     val command = new CompilerCommand(compilerOpts, settings) {
       override val cmdName = "leon"
     }
 
-    val newCtx = if(command.ok) {
-      val runner = new PluginRunner(settings, ctx)
+    if(command.ok) {
+      val runner = new PluginRunner(settings, ctx, None)
       val run = new runner.Run
       run.compile(command.files)
 
-      runner.ctx
+      runner.program match {
+        case Some(p) =>
+          p
+        case None =>
+          ctx.reporter.fatalError("Error while compiling.")
+      }
     } else {
-      ctx
-    }
-
-    if (newCtx.program.isDefined) {
-      newCtx
-    } else {
-      newCtx.reporter.fatalError("No input program.")
+      ctx.reporter.fatalError("No input program.")
     }
   }
 }
 
 /** This class is a compiler that will be used for running the plugin in
  * standalone mode. Original version courtesy of D. Zufferey. */
-class PluginRunner(settings : NSCSettings, var ctx: LeonContext) extends Global(settings, new SimpleReporter(settings, ctx.reporter)) {
+class PluginRunner(settings : NSCSettings, ctx: LeonContext, var program: Option[Program]) extends Global(settings, new SimpleReporter(settings, ctx.reporter)) {
   val leonPlugin = new LeonPlugin(this)
 
   protected def myAddToPhasesSet(sub : SubComponent, descr : String) : Unit = {

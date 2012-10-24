@@ -13,7 +13,7 @@ object ImperativeCodeElimination extends TransformationPhase {
   private var varInScope = Set[Identifier]()
   private var parent: FunDef = null //the enclosing fundef
 
-  def apply(pgm: Program): Program = {
+  def apply(ctx: LeonContext, pgm: Program): Program = {
     val allFuns = pgm.definedFunctions
     allFuns.foreach(fd => fd.body.map(body => {
       parent = fd

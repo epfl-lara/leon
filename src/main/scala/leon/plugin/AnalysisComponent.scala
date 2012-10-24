@@ -39,7 +39,7 @@ class AnalysisComponent(val global: Global, val pluginInstance: LeonPlugin)
       fresh = unit.fresh
 
       
-      pluginInstance.global.ctx = pluginInstance.global.ctx.copy(program = Some(extractCode(unit)))
+      pluginInstance.global.program = Some(extractCode(unit))
     }
   }
 }

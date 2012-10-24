@@ -13,7 +13,7 @@ object UnitElimination extends TransformationPhase {
   private var fun2FreshFun: Map[FunDef, FunDef] = Map()
   private var id2FreshId: Map[Identifier, Identifier] = Map()
 
-  def apply(pgm: Program): Program = {
+  def apply(ctx: LeonContext, pgm: Program): Program = {
     fun2FreshFun = Map()
     val allFuns = pgm.definedFunctions
 

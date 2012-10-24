@@ -15,7 +15,7 @@ object FunctionClosure extends TransformationPhase{
   private var newFunDefs: Map[FunDef, FunDef] = Map()
   private var topLevelFuns: Set[FunDef] = Set()
 
-  def apply(program: Program): Program = {
+  def apply(ctx: LeonContext, program: Program): Program = {
     newFunDefs = Map()
     val funDefs = program.definedFunctions
     funDefs.foreach(fd => {

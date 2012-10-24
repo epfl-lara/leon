@@ -1,56 +1,119 @@
 package leon
 
-import synthesis.SynthesisPhase
-import plugin.ExtractionPhase
-
 object Main {
 
-  def computeLeonPhases: List[LeonPhase] = {
+  def allPhases: List[LeonPhase[_, _]] = {
     List(
-      List(
-        ExtractionPhase
-      ),
-      if (Settings.transformProgram) {
-        List(
-          ArrayTransformation,
-          EpsilonElimination,
-          ImperativeCodeElimination,
-          /*UnitElimination,*/
-          FunctionClosure,
-          /*FunctionHoisting,*/
-          Simplificator
-        )
-      } else {
-        Nil
+      plugin.ExtractionPhase,
+      ArrayTransformation,
+      EpsilonElimination,
+      ImperativeCodeElimination,
+      /*UnitElimination,*/
+      FunctionClosure,
+      /*FunctionHoisting,*/
+      Simplificator,
+      synthesis.SynthesisPhase,
+      AnalysisPhase
+    )
+  }
+
+  def processOptions(reporter: Reporter, args: List[String]) = {
+    val phases = allPhases
+
+    val allOptions = allPhases.flatMap(_.definedOptions) ++ Set(
+      LeonOptionDef("synthesis",     true,  "--synthesis          Magic!"),
+      LeonOptionDef("xlang",         true,  "--xlang              Preprocessing and transformation from extended programs")
+    )
+
+    val allOptionsMap = allOptions.map(o => o.name -> o).toMap
+
+    // Detect unknown options:
+    val options = args.filter(_.startsWith("--"))
+
+    val leonOptions = options.flatMap { opt =>
+      val leonOpt: LeonOption = opt.substring(2, opt.length).split("=", 2).toList match {
+        case List(name, value) =>
+          LeonValueOption(name, value)
+        case List(name) => name
+          LeonFlagOption(name)
+        case _ =>
+          reporter.fatalError("Woot?")
       }
-    ,
-      if (Settings.synthesis) {
-        List(
-          SynthesisPhase
-        )
+
+      if (allOptionsMap contains leonOpt.name) {
+        (allOptionsMap(leonOpt.name).isFlag, leonOpt) match {
+          case (true,  LeonFlagOption(name)) =>
+            Some(leonOpt)
+          case (false, LeonValueOption(name, value)) =>
+            Some(leonOpt)
+          case _ =>
+            reporter.fatalError("Invalid option usage")
+            None
+        }
       } else {
-        Nil
+        None
       }
-    ,
-      if (!Settings.stopAfterTransformation) {
-        List(
-          AnalysisPhase
-        )
+    }
+
+    var settings  = Settings()
+
+    // Process options we understand:
+    for(opt <- leonOptions) opt match {
+      case LeonFlagOption("synthesis") =>
+        settings = settings.copy(synthesis = true, xlang = false, analyze = false)
+      case LeonFlagOption("xlang") =>
+        settings = settings.copy(synthesis = false, xlang = true)
+      case _ =>
+    }
+
+    LeonContext(settings = settings, reporter = reporter)
+  }
+
+  implicit def phaseToPipeline[F, T](phase: LeonPhase[F, T]): Pipeline[F, T] = new PipeCons(phase, new PipeNil())
+
+  def computePipeLine(settings: Settings): Pipeline[List[String], Unit] = {
+    import purescala.Definitions.Program
+
+    val pipeBegin = phaseToPipeline(plugin.ExtractionPhase)
+
+    val pipeTransforms: Pipeline[Program, Program] =
+      if (settings.xlang) {
+        ArrayTransformation andThen
+        EpsilonElimination andThen
+        ImperativeCodeElimination
       } else {
-        Nil
+        NoopPhase[Program]()
       }
-    ).flatten
+
+    val pipeSynthesis: Pipeline[Program, Program] =
+      if (settings.synthesis) {
+        synthesis.SynthesisPhase
+      } else {
+        NoopPhase[Program]()
+      }
+
+    val pipeAnalysis: Pipeline[Program, Program] =
+      if (settings.analyze) {
+        AnalysisPhase
+      } else {
+        NoopPhase[Program]()
+      }
+
+    pipeBegin followedBy
+    pipeTransforms followedBy
+    pipeSynthesis followedBy
+    pipeAnalysis andThen
+    ExitPhase()
   }
 
   def main(args : Array[String]) : Unit = {
-    var ctx = LeonContext(options = args.toList)
+    val reporter = new DefaultReporter()
 
-    val phases = computeLeonPhases
+    // Process options
+    val ctx = processOptions(reporter, args.toList)
 
-    for ((phase, i) <- phases.zipWithIndex) {
-      ctx.reporter.info("%2d".format(i)+": "+phase.name)
-      ctx = phase.run(ctx)
-    }
+    val pipeline = computePipeLine(ctx.settings)
+
+    pipeline.run(ctx)(args.toList)
   }
 }
-
