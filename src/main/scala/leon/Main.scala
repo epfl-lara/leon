@@ -92,7 +92,7 @@ object Main {
 
   implicit def phaseToPipeline[F, T](phase: LeonPhase[F, T]): Pipeline[F, T] = new PipeCons(phase, new PipeNil())
 
-  def computePipeline(settings: Settings): Pipeline[List[String], PipelineControl] = {
+  def computePipeline(settings: Settings): Pipeline[List[String], Unit] = {
     import purescala.Definitions.Program
 
     val pipeBegin = phaseToPipeline(plugin.ExtractionPhase)
@@ -107,10 +107,15 @@ object Main {
         NoopPhase[Program]()
       }
 
-    val pipeAction: Pipeline[Program, PipelineControl]=
+    val pipeSynthesis: Pipeline[Program, Program]=
       if (settings.synthesis) {
         synthesis.SynthesisPhase
-      } else if (settings.analyze) {
+      } else {
+        NoopPhase[Program]()
+      }
+
+    val pipeAnalysis: Pipeline[Program, Unit] =
+      if (settings.analyze) {
         AnalysisPhase andThen
         ExitPhase[Program]()
       } else {
@@ -119,7 +124,8 @@ object Main {
 
     pipeBegin followedBy
     pipeTransforms followedBy
-    pipeAction
+    pipeSynthesis followedBy
+    pipeAnalysis
   }
 
   def main(args : Array[String]) {
@@ -131,11 +137,7 @@ object Main {
     // Compute leon pipeline
     val pipeline = computePipeline(ctx.settings)
 
-    var exec = PipelineControl()
-    do {
-      exec = pipeline.run(ctx)(args.toList)
-    } while(exec.restart)
-
-    sys.exit(exec.exitcode)
+    // Run pipeline
+    pipeline.run(ctx)(args.toList)
   }
 }
