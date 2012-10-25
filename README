@@ -25,13 +25,13 @@ repository and are actually automatically handled by the default build configura
 
 To build, type this:
 
-xsbt clean   
-xsbt package # takes a while
-xsbt script
+    $ xsbt clean   
+    $ xsbt package # takes a while
+    $ xsbt script
 
 Then you can try e.g.
 
-./leon testcases/sas2011-testcases/RedBlackTree.scala
+    $ ./leon ./testcases/sas2011-testcases/RedBlackTree.scala
 
 and get something like this:
 
