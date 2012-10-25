@@ -25,12 +25,12 @@ object Main {
       LeonOptionDef("help",          true,  "--help               This help")
     )
 
-  def displayHelp() {
-    println("usage: leon [--xlang] [--help] [--synthesis] [--help] [--debug=<N>] [..] <files>")
-    println
-    println("Leon options are:")
+  def displayHelp(reporter: Reporter) {
+    reporter.info("usage: leon [--xlang] [--help] [--synthesis] [--help] [--debug=<N>] [..] <files>")
+    reporter.info("")
+    reporter.info("Leon options are:")
     for (opt <- allOptions.toSeq.sortBy(_.name)) {
-      println("   "+opt.description)
+      reporter.info("   "+opt.description)
     }
     sys.exit(1)
   }
@@ -62,12 +62,12 @@ object Main {
           case (false, LeonValueOption(name, value)) =>
             Some(leonOpt)
           case _ =>
-            System.err.println("Invalid option usage: "+opt)
-            displayHelp()
+            reporter.error("Invalid option usage: "+opt)
+            displayHelp(reporter)
             None
         }
       } else {
-        System.err.println("leon: '"+opt+"' is not a valid option. See 'leon --help'")
+        reporter.error("leon: '"+opt+"' is not a valid option. See 'leon --help'")
         None
       }
     }
@@ -83,7 +83,7 @@ object Main {
       case LeonFlagOption("parse") =>
         settings = settings.copy(synthesis = false, xlang = false, analyze = false)
       case LeonFlagOption("help") =>
-        displayHelp()
+        displayHelp(reporter)
       case _ =>
     }
 
