@@ -86,8 +86,8 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
     (None, Map())
   }
 
-  def synthesizeAll(program: Program) = {
-    import purescala.Trees._
+  import purescala.Trees._
+  def synthesizeAll(program: Program): List[(Choose, Solution)] = {
 
     solvers.foreach(_.setProgram(program))
 
@@ -95,8 +95,10 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
 
     def noop(u:Expr, u2: Expr) = u
 
+    var solutions = List[(Choose, Solution)]()
+
     def actOnChoose(f: FunDef)(e: Expr, a: Expr): Expr = e match {
-      case Choose(vars, pred) =>
+      case ch @ Choose(vars, pred) =>
         val xs = vars
         val as = (variablesOf(pred)--xs).toList
         val phi = pred
@@ -105,7 +107,10 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
         info("")
         info("In Function "+f.id+":")
         info("-"*80)
+
         val sol = synthesize(Problem(as, phi, xs), rules)
+
+        solutions = (ch, sol) :: solutions
 
         info("Scala code:")
         info(ScalaPrinter(simplifyLets(sol.toExpr)))
@@ -120,6 +125,13 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
       treeCatamorphism(x => x, noop, actOnChoose(f), f.body.get)
     }
 
-    program
+    solutions
+  }
+
+  def substitueChooses(file: String, sols: List[(Choose, Solution)]) = {
+    import scala.io.Source
+
+    val src = Source.fromFile(file)
+
   }
 }

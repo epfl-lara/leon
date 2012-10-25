@@ -14,7 +14,8 @@ object SynthesisPhase extends LeonPhase[Program, PipelineControl] {
       new FairZ3Solver(quietReporter)
     )
 
-    val newProgram = new Synthesizer(ctx.reporter, solvers).synthesizeAll(p)
+    val synth = new Synthesizer(ctx.reporter, solvers)
+    val solutions = synth.synthesizeAll(p)
 
     detectEditor match {
       case Some(program) => 
@@ -31,7 +32,31 @@ object SynthesisPhase extends LeonPhase[Program, PipelineControl] {
   }
 
   def openEditor(program: String, path: String) {
-    val p = sys.process.Process(program+" "+path)
-    p !<
+    val proc = Runtime.getRuntime().exec(program+" "+path)
+
+    val errGobbler = new StreamGobbler(proc.getErrorStream(), System.err)
+    val outGobbler = new StreamGobbler(proc.getInputStream(), System.out)
+    val inGobbler  = new StreamGobbler(System.in, proc.getOutputStream())
+
+    errGobbler.start()
+    outGobbler.start()
+    inGobbler.start()
+
+    proc.waitFor()
+    errGobbler.join()
+    outGobbler.join()
+  }
+
+  import java.io.{InputStream, OutputStream}
+  class StreamGobbler(is: InputStream, os: OutputStream) extends Thread {
+    override def run() {
+      var c: Int = is.read()
+      while(c != 1) {
+        os.write(c);
+        os.flush();
+
+        c = is.read()
+      }
+    }
   }
 }
