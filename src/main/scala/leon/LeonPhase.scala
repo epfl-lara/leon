@@ -34,8 +34,8 @@ case class NoopPhase[T]() extends LeonPhase[T, T] {
   override def run(ctx: LeonContext)(v: T) = v
 }
 
-case class ExitPhase[T]() extends LeonPhase[T, Unit] {
+case class ExitPhase[T]() extends LeonPhase[T, PipelineControl] {
   val name = "end";
   val description = "end"
-  override def run(ctx: LeonContext)(v: T) = ()
+  override def run(ctx: LeonContext)(v: T) = PipelineControl(restart = false)
 }

@@ -24,3 +24,5 @@ class PipeNil[T]() extends Pipeline[T,T] {
     "|"
   }
 }
+
+case class PipelineControl(exitcode: Int = 0, restart: Boolean = false)
