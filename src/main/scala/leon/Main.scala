@@ -26,7 +26,7 @@ object Main {
     )
 
   def displayHelp(reporter: Reporter) {
-    reporter.info("usage: leon [--xlang] [--help] [--synthesis] [--help] [--debug=<N>] [..] <files>")
+    reporter.info("usage: leon [--xlang] [--synthesis] [--help] [--debug=<N>] [..] <files>")
     reporter.info("")
     reporter.info("Leon options are:")
     for (opt <- allOptions.toSeq.sortBy(_.name)) {
