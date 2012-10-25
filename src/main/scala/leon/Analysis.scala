@@ -8,7 +8,7 @@ import purescala.TypeTrees._
 import Extensions._
 import scala.collection.mutable.{Set => MutableSet}
 
-class Analysis(val program : Program, val reporter: Reporter = Settings.reporter) {
+class Analysis(val program : Program, val reporter: Reporter) {
   Extensions.loadAll(reporter)
 
   val analysisExtensions: Seq[Analyser] = loadedAnalysisExtensions
@@ -334,6 +334,6 @@ object AnalysisPhase extends UnitPhase[Program] {
   val description = "Leon Analyses"
 
   def apply(ctx: LeonContext, program: Program) {
-    new Analysis(program).analyse
+    new Analysis(program, ctx.reporter).analyse
   }
 }
