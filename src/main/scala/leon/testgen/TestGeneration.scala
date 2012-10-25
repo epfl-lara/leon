@@ -3,6 +3,7 @@ package leon.testgen
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Trees._
+import leon.purescala.TreeOps._
 import leon.purescala.TypeTrees._
 import leon.purescala.ScalaPrinter
 import leon.Extensions._
