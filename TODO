@@ -1,0 +1,7 @@
+- Map and Set get element function to extract and encode using epsilon in a pass
+- Fix Modulo
+- Handle multiple files and modules => can have a standard library of
+  verified data structure (with their contracts) that can be used
+  to build more complex examples.
+- Integrate List branch
+- implement assert statement
