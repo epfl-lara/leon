@@ -92,7 +92,7 @@ object Main {
 
   implicit def phaseToPipeline[F, T](phase: LeonPhase[F, T]): Pipeline[F, T] = new PipeCons(phase, new PipeNil())
 
-  def computePipeLine(settings: Settings): Pipeline[List[String], PipelineControl] = {
+  def computePipeline(settings: Settings): Pipeline[List[String], PipelineControl] = {
     import purescala.Definitions.Program
 
     val pipeBegin = phaseToPipeline(plugin.ExtractionPhase)
@@ -129,7 +129,7 @@ object Main {
     val ctx = processOptions(reporter, args.toList)
 
     // Compute leon pipeline
-    val pipeline = computePipeLine(ctx.settings)
+    val pipeline = computePipeline(ctx.settings)
 
     var exec = PipelineControl()
     do {
