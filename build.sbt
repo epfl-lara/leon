@@ -12,5 +12,10 @@ scalacOptions += "-unchecked"
 
 libraryDependencies += "org.scala-lang" % "scala-compiler" % "2.9.1-1"
 
+libraryDependencies += "org.scalatest" %% "scalatest" % "1.8" % "test"
+
 unmanagedBase <<= baseDirectory { base => base / "unmanaged" }
 
+fork in run := true
+
+fork in test := true
