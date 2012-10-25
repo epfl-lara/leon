@@ -2,6 +2,8 @@ package leon.testgen
 
 import leon.purescala.Definitions._
 import leon.purescala.Trees._
+import leon.purescala.TreeOps._
+import leon.purescala.Extractors._
 import leon.purescala.TypeTrees._
 import leon.purescala.Common._
 import leon.FairZ3Solver

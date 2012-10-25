@@ -3,6 +3,7 @@ package synthesis
 
 import purescala.Common._
 import purescala.Definitions.{Program, FunDef}
+import purescala.TreeOps._
 import purescala.Trees.{Expr, Not}
 import purescala.ScalaPrinter
 

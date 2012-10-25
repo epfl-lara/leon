@@ -2,6 +2,7 @@ package leon
 
 import purescala.Common._
 import purescala.Trees._
+import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
 

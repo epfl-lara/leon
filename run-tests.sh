@@ -7,7 +7,7 @@ failedtests=""
 
 for f in $base/valid/*.scala; do
   echo -n "Running $f, expecting VALID, got: "
-  res=`./leon --noLuckyTests --timeout=10 --oneline "$f"`
+  res=`./leon --xlang --noLuckyTests --timeout=10 --oneline "$f"`
   echo $res | tr [a-z] [A-Z]
   if [ $res = valid ]; then
     nbsuccess=$((nbsuccess + 1))
@@ -18,7 +18,7 @@ done
 
 for f in $base/invalid/*.scala; do
   echo -n "Running $f, expecting INVALID, got: "
-  res=`./leon --noLuckyTests --timeout=10 --oneline "$f"`
+  res=`./leon --xlang --noLuckyTests --timeout=10 --oneline "$f"`
   echo $res | tr [a-z] [A-Z]
   if [ $res = invalid ]; then
     nbsuccess=$((nbsuccess + 1))
@@ -29,7 +29,7 @@ done
 
 for f in $base/error/*.scala; do
   echo -n "Running $f, expecting ERROR, got: "
-  res=`./leon --noLuckyTests --timeout=10 --oneline "$f"`
+  res=`./leon --xlang --noLuckyTests --timeout=10 --oneline "$f"`
   echo $res | tr [a-z] [A-Z]
   if [ $res = error ]; then
     nbsuccess=$((nbsuccess + 1))
