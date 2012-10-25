@@ -80,7 +80,8 @@ object Main {
       if (settings.xlang) {
         ArrayTransformation andThen
         EpsilonElimination andThen
-        ImperativeCodeElimination
+        ImperativeCodeElimination andThen
+        FunctionClosure
       } else {
         NoopPhase[Program]()
       }
