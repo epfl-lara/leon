@@ -1,7 +1,3 @@
-*.swp
-bin
-project/boot
-project/build
-project/target
 target
+/project/build
 /leon
