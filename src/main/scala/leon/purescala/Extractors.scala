@@ -30,8 +30,13 @@ object Extractors {
       case ArrayMake(t) => Some((t, ArrayMake))
       case Waypoint(i, t) => Some((t, (expr: Expr) => Waypoint(i, expr)))
       case e@Epsilon(t) => Some((t, (expr: Expr) => Epsilon(expr).setType(e.getType).setPosInfo(e)))
+      case ue: UnaryExtractable => ue.extract
       case _ => None
     }
+  }
+
+  trait UnaryExtractable {
+    def extract: Option[(Expr, (Expr)=>Expr)];
   }
 
   object BinaryOperator {
@@ -68,9 +73,15 @@ object Extractors {
       case ArraySelect(t1, t2) => Some((t1, t2, ArraySelect))
       case Concat(t1,t2) => Some((t1,t2,Concat))
       case ListAt(t1,t2) => Some((t1,t2,ListAt))
+      case LetTuple(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => LetTuple(binders, e, body)))
       case wh@While(t1, t2) => Some((t1,t2, (t1, t2) => While(t1, t2).setInvariant(wh.invariant).setPosInfo(wh)))
+      case ex: BinaryExtractable => ex.extract
       case _ => None
     }
+  }
+
+  trait BinaryExtractable {
+    def extract: Option[(Expr, Expr, (Expr, Expr)=>Expr)];
   }
 
   object NAryOperator {
@@ -89,8 +100,14 @@ object Extractors {
       case Distinct(args) => Some((args, Distinct))
       case Block(args, rest) => Some((args :+ rest, exprs => Block(exprs.init, exprs.last)))
       case Tuple(args) => Some((args, Tuple))
+      case IfExpr(cond, then, elze) => Some((Seq(cond, then, elze), (as: Seq[Expr]) => IfExpr(as(0), as(1), as(2))))
+      case ex: NAryExtractable => ex.extract
       case _ => None
     }
+  }
+
+  trait NAryExtractable {
+    def extract: Option[(Seq[Expr], (Seq[Expr])=>Expr)];
   }
 
   object SimplePatternMatching {
