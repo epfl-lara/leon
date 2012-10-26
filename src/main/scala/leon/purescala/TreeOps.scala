@@ -996,12 +996,50 @@ object TreeOps {
   def noPost[C](e: Expr, c: C) = (e, c)
   def noCombiner[C](e: Expr, initC: C, subCs: Seq[C]) = initC
 
+
+  def simpleTransform(pre: Expr => Expr, post: Expr => Expr)(expr: Expr) = {
+    val newPre  = (e: Expr, c: Unit) => (pre(e), ())
+    val newPost = (e: Expr, c: Unit) => (post(e), ())
+
+    genericTransform[Unit](newPre, newPost, noCombiner)(())(expr)._1
+  }
+
+  def toDNF(e: Expr): Expr = {
+    def pre(e: Expr) = e match {
+      case And(Seq(l, Or(Seq(r1, r2)))) =>
+        Or(And(l, r1), And(l, r2))
+      case And(Seq(Or(Seq(l1, l2)), r)) =>
+        Or(And(l1, r), And(l2, r))
+      case _ =>
+        e
+    }
+
+    simpleTransform(pre, identity)(e)
+  }
+
+  def toCNF(e: Expr): Expr = {
+    def pre(e: Expr) = e match {
+      case Or(Seq(l, And(Seq(r1, r2)))) =>
+        And(Or(l, r1), Or(l, r2))
+      case Or(Seq(And(Seq(l1, l2)), r)) =>
+        And(Or(l1, r), Or(l2, r))
+      case _ =>
+        e
+    }
+
+    simpleTransform(pre, identity)(e)
+  }
+
   def patternMatchReconstruction(e: Expr): Expr = {
     case class PMContext()
 
     def pre(e: Expr, c: PMContext): (Expr, PMContext) = e match {
       case IfExpr(cond, then, elze) =>
         println("Found IF: "+e)
+
+        println(toCNF(cond))
+        println(toDNF(cond))
+
         (e, c)
       case _ =>
         (e, c)
