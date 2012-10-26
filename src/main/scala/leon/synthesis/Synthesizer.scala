@@ -8,6 +8,7 @@ import purescala.Trees.{Expr, Not}
 import purescala.ScalaPrinter
 
 import Extensions.Solver
+import java.io.File
 
 import collection.mutable.PriorityQueue
 
@@ -87,7 +88,7 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
   }
 
   import purescala.Trees._
-  def synthesizeAll(program: Program): List[(Choose, Solution)] = {
+  def synthesizeAll(program: Program): Map[Choose, Solution] = {
 
     solvers.foreach(_.setProgram(program))
 
@@ -95,7 +96,7 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
 
     def noop(u:Expr, u2: Expr) = u
 
-    var solutions = List[(Choose, Solution)]()
+    var solutions = Map[Choose, Solution]()
 
     def actOnChoose(f: FunDef)(e: Expr, a: Expr): Expr = e match {
       case ch @ Choose(vars, pred) =>
@@ -110,7 +111,7 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
 
         val sol = synthesize(Problem(as, phi, xs), rules)
 
-        solutions = (ch, sol) :: solutions
+        solutions += ch -> sol
 
         info("Scala code:")
         info(ScalaPrinter(simplifyLets(sol.toExpr)))
@@ -128,10 +129,110 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
     solutions
   }
 
-  def substitueChooses(file: String, sols: List[(Choose, Solution)]) = {
-    import scala.io.Source
 
-    val src = Source.fromFile(file)
+  def substitueChooses(str: String, solutions: Map[Choose, Solution], ignoreMissing: Boolean = false): String = {
+    var lines = List[Int]()
 
+    // Compute line positions
+    var lastFound = -1
+    do {
+      lastFound = str.indexOf('\n', lastFound+1)
+
+      if (lastFound > -1) {
+        lines = lastFound :: lines
+      }
+    } while(lastFound> 0)
+    lines = lines.reverse;
+
+    def lineOf(offset: Int): (Int, Int) = {
+      lines.zipWithIndex.find(_._1 > offset) match {
+        case Some((off, no)) =>
+          (no+1, if (no > 0) lines(no-1) else 0)
+        case None =>
+          (lines.size+1, lines.lastOption.getOrElse(0))
+      }
+    }
+
+    lastFound = -1
+
+    var newStr = str
+    var newStrOffset = 0
+
+    do {
+      lastFound = str.indexOf("choose", lastFound+1)
+
+      if (lastFound > -1) {
+        val (lineno, lineoffset) = lineOf(lastFound)
+        // compute scala equivalent of the position:
+        val scalaOffset = str.substring(lineoffset, lastFound).replaceAll("\t", " "*8).length
+
+        solutions.find(_._1.posIntInfo == (lineno, scalaOffset)) match {
+          case Some((choose, solution)) =>
+            var lvl      = 0;
+            var i        = lastFound + 6;
+            var continue = true;
+            do {
+              val c = str.charAt(i)
+              if (c == '(' || c == '{') {
+                lvl += 1
+              } else if (c == ')' || c == '}') {
+                lvl -= 1
+                if (lvl == 0) {
+                  continue = false
+                }
+              }
+              i += 1
+            } while(continue)
+
+            val newCode = solutionToString(solution)
+            newStr = (newStr.substring(0, lastFound+newStrOffset))+newCode+(newStr.substring(i+newStrOffset, newStr.length))
+
+            newStrOffset += -(i-lastFound)+newCode.length
+
+          case _ =>
+            if (!ignoreMissing) {
+              warning("Could not find solution corresponding to choose at "+lineno+":"+scalaOffset)
+            }
+        }
+      }
+    } while(lastFound> 0)
+
+    newStr
+  }
+
+  def solutionToString(solution: Solution): String = {
+    ScalaPrinter(simplifyLets(solution.toExpr))
+  }
+
+  def updateFile(origFile: File, solutions: Map[Choose, Solution], ignoreMissing: Boolean = false) {
+    import java.io.{File, BufferedWriter, FileWriter}
+    val FileExt = """^(.+)\.([^.]+)$""".r
+
+    origFile.getAbsolutePath() match {
+      case FileExt(path, "scala") =>
+        var i = 0
+        def savePath = path+"."+i+".scala"
+        while (new File(savePath).isFile()) {
+          i += 1
+        }
+
+        val origCode = readFile(origFile)
+        val backup   = new File(savePath)
+        val newFile  = new File(origFile.getAbsolutePath())
+        origFile.renameTo(backup)
+
+
+        val newCode = substitueChooses(origCode, solutions, ignoreMissing)
+
+        val out = new BufferedWriter(new FileWriter(newFile))
+        out.write(newCode)
+        out.close
+      case _ =>
+
+    }
+  }
+
+  def readFile(file: File): String = {
+    scala.io.Source.fromFile(file).mkString
   }
 }

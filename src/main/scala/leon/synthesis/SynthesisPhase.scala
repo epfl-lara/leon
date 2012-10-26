@@ -17,6 +17,10 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     val synth = new Synthesizer(ctx.reporter, solvers)
     val solutions = synth.synthesizeAll(p)
 
+    for (file <- ctx.files) {
+      synth.updateFile(new java.io.File(file), solutions)
+    }
+
     p
   }
 

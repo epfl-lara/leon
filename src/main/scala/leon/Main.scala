@@ -45,6 +45,8 @@ object Main {
     // Detect unknown options:
     val options = args.filter(_.startsWith("--"))
 
+    val files = args.filterNot(_.startsWith("-"))
+
     val leonOptions = options.flatMap { opt =>
       val leonOpt: LeonOption = opt.substring(2, opt.length).split("=", 2).toList match {
         case List(name, value) =>
@@ -87,7 +89,7 @@ object Main {
       case _ =>
     }
 
-    LeonContext(settings = settings, reporter = reporter)
+    LeonContext(settings = settings, reporter = reporter, files = files)
   }
 
   implicit def phaseToPipeline[F, T](phase: LeonPhase[F, T]): Pipeline[F, T] = new PipeCons(phase, new PipeNil())
@@ -114,18 +116,18 @@ object Main {
         NoopPhase[Program]()
       }
 
-    val pipeAnalysis: Pipeline[Program, Unit] =
+    val pipeAnalysis: Pipeline[Program, Program] =
       if (settings.analyze) {
-        AnalysisPhase andThen
-        ExitPhase[Program]()
+        AnalysisPhase
       } else {
-        ExitPhase[Program]()
+        NoopPhase[Program]()
       }
 
     pipeBegin followedBy
     pipeTransforms followedBy
     pipeSynthesis followedBy
-    pipeAnalysis
+    pipeAnalysis andThen
+    ExitPhase[Program]()
   }
 
   def main(args : Array[String]) {
