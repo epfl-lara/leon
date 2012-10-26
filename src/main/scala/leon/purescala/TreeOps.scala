@@ -960,24 +960,30 @@ object TreeOps {
       val (expr, ctx) = pre(eIn, cIn)
 
       val (newExpr, newC) = expr match {
+        case t: Terminal =>
+          (expr, ctx)
+
         case UnaryOperator(e, builder) =>
           val (e1, c) = rec(e, ctx)
-
           val newE = builder(e1)
+
           (newE, combiner(newE, ctx, Seq(c)))
+
         case BinaryOperator(e1, e2, builder) =>
           val (ne1, c1) = rec(e1, ctx)
           val (ne2, c2) = rec(e2, ctx)
-
           val newE = builder(ne1, ne2)
+
           (newE, combiner(newE, ctx, Seq(c1, c2)))
+
         case NAryOperator(es, builder) =>
           val (nes, cs) = es.map(e => rec(e, ctx)).unzip
-
           val newE = builder(nes)
+
           (newE, combiner(newE, ctx, cs))
+
         case e =>
-          sys.error("Expression "+e+" ["+e.getClass+"] has no defined extractor")
+          sys.error("Expression "+e+" ["+e.getClass+"] is not extractable")
       }
 
       post(newExpr, newC)
