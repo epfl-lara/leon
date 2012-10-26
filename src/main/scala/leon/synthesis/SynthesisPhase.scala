@@ -2,6 +2,9 @@ package leon
 package synthesis
 
 import purescala.TreeOps._
+import solvers.TrivialSolver
+import solvers.z3.FairZ3Solver
+
 import purescala.Trees.Expr
 import purescala.ScalaPrinter
 import purescala.Definitions.Program

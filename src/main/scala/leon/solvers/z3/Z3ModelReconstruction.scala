@@ -1,4 +1,5 @@
 package leon
+package solvers.z3
 
 import z3.scala._
 import purescala.Common._

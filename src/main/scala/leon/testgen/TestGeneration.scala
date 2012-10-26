@@ -7,7 +7,7 @@ import leon.purescala.TreeOps._
 import leon.purescala.TypeTrees._
 import leon.purescala.ScalaPrinter
 import leon.Extensions._
-import leon.FairZ3Solver
+import leon.solvers.z3.FairZ3Solver
 import leon.Reporter
 
 import scala.collection.mutable.{Set => MutableSet}

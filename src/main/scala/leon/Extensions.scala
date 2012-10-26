@@ -95,7 +95,7 @@ object Extensions {
     }
     // these extensions are always loaded, unless specified otherwise
     val defaultExtensions: Seq[Extension] = if(Settings.runDefaultExtensions) {
-      val z3 : Solver = new FairZ3Solver(extensionsReporter)
+      val z3 : Solver = new solvers.z3.FairZ3Solver(extensionsReporter)
       z3 :: Nil
     } else {
       Nil
@@ -106,14 +106,14 @@ object Extensions {
     //analysisExtensions = new TestGeneration(extensionsReporter) +: analysisExtensions
 
     val solverExtensions0 = allLoaded.filter(_.isInstanceOf[Solver]).map(_.asInstanceOf[Solver])
-    val solverExtensions1 = if(Settings.useQuickCheck) new RandomSolver(extensionsReporter) +: solverExtensions0 else solverExtensions0
-    val solverExtensions2 = if(Settings.useParallel) Seq(new ParallelSolver(solverExtensions1: _*)) else solverExtensions1
+    val solverExtensions1 = if(Settings.useQuickCheck) new solvers.RandomSolver(extensionsReporter) +: solverExtensions0 else solverExtensions0
+    val solverExtensions2 = if(Settings.useParallel) Seq(new solvers.ParallelSolver(solverExtensions1: _*)) else solverExtensions1
     val solverExtensions3 = 
       if(Settings.solverTimeout == None) {
         solverExtensions2 
       } else {
         val t = Settings.solverTimeout.get 
-        solverExtensions2.map(s => new TimeoutSolver(s, t))
+        solverExtensions2.map(s => new solvers.TimeoutSolver(s, t))
       }
     solverExtensions = solverExtensions3
     loaded
