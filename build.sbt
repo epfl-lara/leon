@@ -14,7 +14,11 @@ libraryDependencies += "org.scala-lang" % "scala-compiler" % "2.9.1-1"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "1.8" % "test"
 
-unmanagedBase <<= baseDirectory { base => base / "unmanaged" }
+if(System.getProperty("sun.arch.data.model") == "64") {
+  unmanagedBase <<= baseDirectory { base => base / "unmanaged" / "64" }
+} else {
+  unmanagedBase <<= baseDirectory { base => base / "unmanaged" / "32" }
+}
 
 fork in run := true
 

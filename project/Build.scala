@@ -26,9 +26,6 @@ object Leon extends Build {
     try {
       val depsPaths = deps.map(_.data.absolutePath)
 
-      val depsPaths64 = depsPaths.filterNot(_.endsWith("unmanaged/z3.jar"))
-      val depsPaths32 = depsPaths.filterNot(_.endsWith("unmanaged/z3-64.jar"))
-
       // One ugly hack... Likely to fail for Windows, but it's a Bash script anyway.
       val scalaHomeDir = depsPaths.find(_.endsWith("lib/scala-library.jar")) match {
         case None => throw new Exception("Couldn't guess SCALA_HOME.")
@@ -41,7 +38,7 @@ object Leon extends Build {
       fw.write("#!/bin/bash --posix" + nl)
       if (is64) {
         fw.write("SCALACLASSPATH=\"")
-        fw.write((out.absolutePath +: depsPaths64).mkString(":"))
+        fw.write((out.absolutePath +: depsPaths).mkString(":"))
         fw.write("\"" + nl + nl)
 
         // Setting the dynamic lib path
@@ -49,23 +46,18 @@ object Leon extends Build {
       } else {
         fw.write("if [ `uname -m` == \"x86_64\" ]; then "+nl)
 
-          fw.write("SCALACLASSPATH=\"")
-          fw.write((out.absolutePath +: depsPaths64).mkString(":"))
-          fw.write("\"" + nl + nl)
-
-          // Setting the dynamic lib path
-          fw.write("LIBRARY_PATH=\"" + ldLibraryDir64.absolutePath + "\"" + nl)
+          fw.write("    echo \"It appears you have compiled Leon with a 32bit virtual machine, but are now trying to run it on a 64bit architecture. This is unfortunately not supported.\"" + nl)
+          fw.write("    exit -1" + nl)
 
         fw.write("else" + nl)
 
-          fw.write("SCALACLASSPATH=\"")
-          fw.write((out.absolutePath +: depsPaths32).mkString(":"))
-          fw.write("\"" + nl + nl)
+          fw.write("    SCALACLASSPATH=\"")
+          fw.write((out.absolutePath +: depsPaths).mkString(":"))
+          fw.write("\"" + nl)
 
           // Setting the dynamic lib path
-          fw.write("LIBRARY_PATH=\"" + ldLibraryDir32.absolutePath + "\"" + nl)
-        fw.write("fi" + nl)
-
+          fw.write("    LIBRARY_PATH=\"" + ldLibraryDir32.absolutePath + "\"" + nl)
+        fw.write("fi" + nl + nl)
       }
 
       // the Java command that uses sbt's local Scala to run the whole contraption.
