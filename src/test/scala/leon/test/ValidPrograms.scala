@@ -43,5 +43,6 @@ class ValidPrograms extends FunSuite {
     }
   }
 
-  mkTest("/home/psuter/Test.scala")
+  // Sorry for leaving this there...
+  // mkTest("/home/psuter/Test.scala")
 }

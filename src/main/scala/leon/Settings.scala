@@ -26,7 +26,6 @@ object Settings {
   var bitvectorBitwidth : Option[Int] = None
   var debugLevel: Int = 0
   var debugTags: Set[String] = Set.empty
-  var simpleOutput: Boolean = false
   var synthesis: Boolean = false
   var transformProgram: Boolean              = true
   var stopAfterExtraction: Boolean           = false
