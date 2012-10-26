@@ -1,3 +1,7 @@
+# Vim
+*.swp
+
+# sbt
 target
 /project/build
 /leon

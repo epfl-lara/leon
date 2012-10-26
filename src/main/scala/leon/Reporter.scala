@@ -57,6 +57,11 @@ class DefaultReporter extends Reporter {
 }
 
 class QuietReporter extends DefaultReporter {
-  override def warning(msg: Any) = {}
-  override def info(msg: Any) = {}
+  override def warning(msg : Any) = {}
+  override def info(msg : Any) = {}
+}
+
+class SilentReporter extends QuietReporter {
+  override def error(msg : Any) = {}
+  override def fatalError(msg : Any) = throw new Exception("Fatal error: " + msg.toString)
 }

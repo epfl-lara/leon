@@ -52,35 +52,30 @@ class UninterpretedZ3Solver(reporter : Reporter) extends Solver(reporter) with A
 
   // Where the solving occurs
   override def solveOrGetCounterexample(expression : Expr) : (Option[Boolean],Map[Identifier,Expr]) = {
+    restartZ3
+
     val emptyModel    = Map.empty[Identifier,Expr]
     val unknownResult = (None, emptyModel)
     val validResult   = (Some(true), emptyModel)
 
-    containedInvocations = false
     val result = toZ3Formula(expression).map { asZ3 => 
       z3.assertCnstr(z3.mkNot(asZ3))
       z3.checkAndGetModel() match {
         case (Some(false), _) => validResult
-        case (Some(true), model) if !containedInvocations => {
-          val variables = variablesOf(expression)
-          val r = (Some(false), modelToMap(model, variables))
-          model.delete
-          r
+        case (Some(true), model) => {
+          if(containsFunctionCalls(expression)) {
+            unknownResult
+          } else { 
+            val variables = variablesOf(expression)
+            val r = (Some(false), modelToMap(model, variables))
+            model.delete
+            r
+          }
         }
         case _ => unknownResult
       }
     } getOrElse unknownResult
 
     result
-  }
-
-  private var containedInvocations : Boolean = _
-
-  override def toZ3Formula(expr : Expr, m : Map[Identifier,Z3AST] = Map.empty) : Option[Z3AST] = {
-    expr match {
-      case FunctionInvocation(_, _) => containedInvocations = true
-      case _ => ;
-    }
-    super.toZ3Formula(expr,m)
   }
 }
