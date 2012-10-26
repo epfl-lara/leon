@@ -1,7 +1,7 @@
 package leon
 package purescala
 
-import leon.Extensions.Solver
+import leon.solvers.Solver
 
 object TreeOps {
   import Common._

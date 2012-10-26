@@ -13,7 +13,7 @@ object Main {
       /*FunctionHoisting,*/
       Simplificator,
       synthesis.SynthesisPhase,
-      AnalysisPhase
+      verification.AnalysisPhase
     )
   }
 
@@ -143,7 +143,7 @@ object Main {
 
     val pipeAnalysis: Pipeline[Program, Program] =
       if (settings.analyze) {
-        AnalysisPhase
+        verification.AnalysisPhase
       } else {
         NoopPhase[Program]()
       }

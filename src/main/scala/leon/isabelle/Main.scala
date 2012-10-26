@@ -4,6 +4,8 @@ import leon.Extensions._
 import leon.Reporter
 import leon.Settings._
 
+import leon.verification.Analyser
+
 import leon.purescala.Common.Identifier
 import leon.purescala.Definitions._
 import leon.purescala.PrettyPrinter

@@ -1,4 +1,5 @@
 package leon
+package verification
 
 import purescala.Common._
 import purescala.Definitions._
@@ -8,7 +9,7 @@ import purescala.TypeTrees._
 
 import Extensions._
 
-import solvers.TrivialSolver
+import solvers.{Solver,TrivialSolver}
 
 import scala.collection.mutable.{Set => MutableSet}
 
@@ -330,14 +331,5 @@ object Analysis {
     }
     val result = searchAndReplaceDFS(applyToCall)(expression)
     liftLets(Implies(And(trueThings.reverse), result))
-  }
-}
-
-object AnalysisPhase extends UnitPhase[Program] {
-  val name = "Analysis"
-  val description = "Leon Analyses"
-
-  def apply(ctx: LeonContext, program: Program) {
-    new Analysis(program).analyse
   }
 }

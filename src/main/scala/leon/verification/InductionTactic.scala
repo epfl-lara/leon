@@ -1,4 +1,5 @@
 package leon
+package verification
 
 import purescala.Common._
 import purescala.Trees._

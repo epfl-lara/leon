@@ -2,6 +2,9 @@ package leon
 package solvers.z3
 
 import z3.scala._
+
+import leon.solvers.Solver
+
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
@@ -247,7 +250,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       }
 
       reporter.info(" - Running Z3 search...")
-      val (answer, model, core) : (Option[Boolean], Z3Model, Seq[Z3AST]) = if(Settings.useCores) {
+      val answerModelCore : (Option[Boolean], Z3Model, Seq[Z3AST]) = if(Settings.useCores) {
         // println(blockingSetAsZ3)
         z3.checkAssumptions(blockingSetAsZ3 : _*)
       } else {
@@ -259,6 +262,8 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         z3SearchStopwatch.stop
         (a, m, Seq.empty[Z3AST])
       }
+      val (answer, model, core) = answerModelCore // to work around the stupid type inferer
+
       reporter.info(" - Finished search with blocked literals")
       Logger.debug("The blocking guards are: " + blockingSet.mkString(", "), 4, "z3solver")
 

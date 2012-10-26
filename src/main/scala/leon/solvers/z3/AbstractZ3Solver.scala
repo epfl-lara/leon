@@ -15,7 +15,7 @@ import scala.collection.mutable.{Set => MutableSet}
 // This is just to factor out the things that are common in "classes that deal
 // with a Z3 instance"
 trait AbstractZ3Solver {
-  self: Solver =>
+  self: leon.solvers.Solver =>
 
   val reporter: Reporter
 

@@ -1,11 +1,11 @@
 package leon
+package verification
 
 import purescala.Common._
 import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.Definitions._
-import Extensions.Tactic
 
 import scala.collection.mutable.{Map => MutableMap}
 

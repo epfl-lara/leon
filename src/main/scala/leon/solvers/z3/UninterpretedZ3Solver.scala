@@ -2,6 +2,9 @@ package leon
 package solvers.z3
 
 import z3.scala._
+
+import leon.solvers.Solver
+
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
