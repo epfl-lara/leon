@@ -1,6 +1,9 @@
 package leon
 package synthesis
 
+import solvers.TrivialSolver
+import solvers.z3.FairZ3Solver
+
 import purescala.Definitions.Program
 
 object SynthesisPhase extends LeonPhase[Program, Program] {

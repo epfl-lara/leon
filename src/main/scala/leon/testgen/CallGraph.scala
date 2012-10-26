@@ -6,7 +6,7 @@ import leon.purescala.TreeOps._
 import leon.purescala.Extractors._
 import leon.purescala.TypeTrees._
 import leon.purescala.Common._
-import leon.FairZ3Solver
+import leon.solvers.z3.FairZ3Solver
 
 class CallGraph(val program: Program) {
 

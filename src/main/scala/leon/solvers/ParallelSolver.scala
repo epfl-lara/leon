@@ -1,4 +1,5 @@
 package leon
+package solvers
 
 import purescala.Common._
 import purescala.Definitions._
