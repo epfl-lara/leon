@@ -1045,10 +1045,8 @@ object TreeOps {
 
     def pre(e: Expr, c: PMContext): (Expr, PMContext) = e match {
       case IfExpr(cond, then, elze) =>
-        println("Found IF: "+e)
-
-        println(toCNF(cond))
-        println(toDNF(cond))
+        val TopLevelOrs(cases) = toDNF(cond)
+        //println("Found Cases: "+cases)
 
         (e, c)
       case _ =>
