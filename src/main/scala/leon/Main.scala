@@ -18,11 +18,36 @@ object Main {
   }
 
   lazy val allOptions = allPhases.flatMap(_.definedOptions) ++ Set(
-      LeonFlagOptionDef ("synthesis", "--synthesis",   "Partial synthesis or choose() constructs"),
-      LeonFlagOptionDef ("xlang",     "--xlang",       "Support for extra program constructs (imperative,...)"),
-      LeonFlagOptionDef ("parse",     "--parse",       "Checks only whether the program is valid PureScala"),
-      LeonValueOptionDef("debug",     "--debug=[1-5]", "Debug level"),
-      LeonFlagOptionDef ("help",      "--help",        "This help")
+      LeonFlagOptionDef ("synthesis",    "--synthesis",   "Partial synthesis or choose() constructs"),
+      LeonFlagOptionDef ("xlang",        "--xlang",       "Support for extra program constructs (imperative,...)"),
+      LeonFlagOptionDef ("parse",        "--parse",       "Checks only whether the program is valid PureScala"),
+      LeonValueOptionDef("debug",        "--debug=[1-5]", "Debug level"),
+      LeonFlagOptionDef ("help",         "--help",        "This help")
+
+      //  Unimplemented Options:
+      //
+      //  LeonFlagOptionDef("uniqid",        "--uniqid",             "When pretty-printing purescala trees, show identifiers IDs"),
+      //  LeonValueOptionDef("extensions",   "--extensions=ex1:...", "Specifies a list of qualified class names of extensions to be loaded"),
+      //  LeonFlagOptionDef("nodefaults",    "--nodefaults",         "Runs only the analyses provided by the extensions"),
+      //  LeonValueOptionDef("functions",    "--functions=fun1:...", "Only generates verification conditions for the specified functions"),
+      //  LeonFlagOptionDef("unrolling",     "--unrolling=[0,1,2]",  "Unrolling depth for recursive functions" ),
+      //  LeonFlagOptionDef("axioms",        "--axioms",             "Generate simple forall axioms for recursive functions when possible" ),
+      //  LeonFlagOptionDef("tolerant",      "--tolerant",           "Silently extracts non-pure function bodies as ''unknown''"),
+      //  LeonFlagOptionDef("bapa",          "--bapa",               "Use BAPA Z3 extension (incompatible with many other things)"),
+      //  LeonFlagOptionDef("impure",        "--impure",             "Generate testcases only for impure functions"),
+      //  LeonValueOptionDef("testcases",    "--testcases=[1,2]",    "Number of testcases to generate per function"),
+      //  LeonValueOptionDef("testbounds",   "--testbounds=l:u",     "Lower and upper bounds for integers in recursive datatypes"),
+      //  LeonValueOptionDef("timeout",      "--timeout=N",          "Sets a timeout of N seconds"),
+      //  LeonFlagOptionDef("XP",            "--XP",                 "Enable weird transformations and other bug-producing features"),
+      //  LeonFlagOptionDef("BV",            "--BV",                 "Use bit-vectors for integers"),
+      //  LeonFlagOptionDef("prune",         "--prune",              "Use additional SMT queries to rule out some unrollings"),
+      //  LeonFlagOptionDef("cores",         "--cores",              "Use UNSAT cores in the unrolling/refinement step"),
+      //  LeonFlagOptionDef("quickcheck",    "--quickcheck",         "Use QuickCheck-like random search"),
+      //  LeonFlagOptionDef("parallel",      "--parallel",           "Run all solvers in parallel"),
+      //  LeonFlagOptionDef("noLuckyTests",  "--noLuckyTests",       "Do not perform additional tests to potentially find models early"),
+      //  LeonFlagOptionDef("noverifymodel", "--noverifymodel",      "Do not verify the correctness of models returned by Z3"),
+      //  LeonValueOptionDef("tags",         "--tags=t1:...",        "Filter out debug information that are not of one of the given tags"),
+      //  LeonFlagOptionDef("oneline",       "--oneline",            "Reduce the output to a single line: valid if all properties were valid, invalid if at least one is invalid, unknown else")
     )
 
   def displayHelp(reporter: Reporter) {
