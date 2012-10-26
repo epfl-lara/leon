@@ -234,4 +234,21 @@ object Extractors {
     })
   }
 
+  object TopLevelOrs { // expr1 AND (expr2 AND (expr3 AND ..)) => List(expr1, expr2, expr3)
+    def unapply(e: Expr): Option[Seq[Expr]] = e match {
+      case Or(exprs) =>
+        Some(exprs.flatMap(unapply(_).flatten))
+      case e =>
+        Some(Seq(e))
+    }
+  }
+  object TopLevelAnds { // expr1 AND (expr2 AND (expr3 AND ..)) => List(expr1, expr2, expr3)
+    def unapply(e: Expr): Option[Seq[Expr]] = e match {
+      case And(exprs) =>
+        Some(exprs.flatMap(unapply(_).flatten))
+      case e =>
+        Some(Seq(e))
+    }
+  }
+
 }

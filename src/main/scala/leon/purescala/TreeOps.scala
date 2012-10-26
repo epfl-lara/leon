@@ -997,9 +997,9 @@ object TreeOps {
   def noCombiner[C](e: Expr, initC: C, subCs: Seq[C]) = initC
 
   def patternMatchReconstruction(e: Expr): Expr = {
-    case class Context()
+    case class PMContext()
 
-    def pre(e: Expr, c: Context): (Expr, Context) = e match {
+    def pre(e: Expr, c: PMContext): (Expr, PMContext) = e match {
       case IfExpr(cond, then, elze) =>
         println("Found IF: "+e)
         (e, c)
@@ -1007,6 +1007,6 @@ object TreeOps {
         (e, c)
     }
 
-    genericTransform[Context](pre, noPost, noCombiner)(Context())(e)._1
+    genericTransform[PMContext](pre, noPost, noCombiner)(PMContext())(e)._1
   }
 }
