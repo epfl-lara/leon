@@ -13,12 +13,13 @@ class ValidPrograms extends FunSuite {
            "Benchmark [%s] is not a readable file".format(filename))
 
     val ctx = LeonContext(
-      Settings(
+      settings = Settings(
         synthesis = false,
         xlang     = false,
-        analyze   = true
+        verify    = true
       ),
-      new SilentReporter
+      files = List(file),
+      reporter = new SilentReporter
     )
 
     val pipeline = Main.computePipeline(ctx.settings)

@@ -38,5 +38,5 @@ object Settings {
 case class Settings(
   val synthesis: Boolean    = false,
   val xlang: Boolean        = false,
-  val analyze: Boolean      = true
+  val verify: Boolean      = true
 )

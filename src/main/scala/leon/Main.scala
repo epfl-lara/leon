@@ -104,11 +104,11 @@ object Main {
     // Process options we understand:
     for(opt <- leonOptions) opt match {
       case LeonFlagOption("synthesis") =>
-        settings = settings.copy(synthesis = true, xlang = false, analyze = false)
+        settings = settings.copy(synthesis = true, xlang = false, verify = false)
       case LeonFlagOption("xlang") =>
         settings = settings.copy(synthesis = false, xlang = true)
       case LeonFlagOption("parse") =>
-        settings = settings.copy(synthesis = false, xlang = false, analyze = false)
+        settings = settings.copy(synthesis = false, xlang = false, verify = false)
       case LeonFlagOption("help") =>
         displayHelp(reporter)
       case _ =>
@@ -117,12 +117,10 @@ object Main {
     LeonContext(settings = settings, reporter = reporter, files = files, options = leonOptions)
   }
 
-  implicit def phaseToPipeline[F, T](phase: LeonPhase[F, T]): Pipeline[F, T] = new PipeCons(phase, new PipeNil())
-
   def computePipeline(settings: Settings): Pipeline[List[String], Unit] = {
     import purescala.Definitions.Program
 
-    val pipeBegin = phaseToPipeline(plugin.ExtractionPhase)
+    val pipeBegin : Pipeline[List[String],Program] = plugin.ExtractionPhase
 
     val pipeTransforms: Pipeline[Program, Program] =
       if (settings.xlang) {
@@ -141,18 +139,18 @@ object Main {
         NoopPhase[Program]()
       }
 
-    val pipeAnalysis: Pipeline[Program, Program] =
-      if (settings.analyze) {
+    val pipeVerify: Pipeline[Program, Any] =
+      if (settings.verify) {
         verification.AnalysisPhase
       } else {
         NoopPhase[Program]()
       }
 
-    pipeBegin followedBy
-    pipeTransforms followedBy
-    pipeSynthesis followedBy
-    pipeAnalysis andThen
-    ExitPhase[Program]()
+    pipeBegin andThen
+    pipeTransforms andThen
+    pipeSynthesis andThen
+    pipeVerify andThen
+    ExitPhase()
   }
 
   def main(args : Array[String]) {
