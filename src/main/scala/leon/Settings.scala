@@ -1,6 +1,7 @@
 package leon
 
 // typically these settings can be changed through some command-line switch.
+// TODO this global object needs to die (or at least clean out of its var's)
 object Settings {
   var experimental : Boolean = false
   var showIDs: Boolean = false
@@ -10,7 +11,6 @@ object Settings {
   var runDefaultExtensions: Boolean = true
   var noForallAxioms: Boolean = true
   var unrollingLevel: Int = 0
-  var zeroInlining : Boolean = true
   var useBAPA: Boolean = false
   var impureTestcases: Boolean = false
   var nbTestcases: Int = 1
