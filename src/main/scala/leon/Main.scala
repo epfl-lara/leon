@@ -45,7 +45,7 @@ object Main {
     // Detect unknown options:
     val options = args.filter(_.startsWith("--"))
 
-    val files = args.filterNot(_.startsWith("-"))
+    val files = args.filterNot(_.startsWith("-")).map(new java.io.File(_))
 
     val leonOptions = options.flatMap { opt =>
       val leonOpt: LeonOption = opt.substring(2, opt.length).split("=", 2).toList match {
