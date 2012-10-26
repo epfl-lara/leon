@@ -49,9 +49,10 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       }
     } else {
       for ((chs, ex) <- chooseToExprs) {
-        ctx.reporter.info("-"*80)
-        ctx.reporter.info("For: "+chs)
-        ctx.reporter.info("Synthesized Code:\n"+ScalaPrinter(ex))
+        ctx.reporter.info("-"*32+" Synthesis of: "+"-"*32)
+        ctx.reporter.info(chs)
+        ctx.reporter.info("-"*35+" Result: "+"-"*35)
+        ctx.reporter.info(ScalaPrinter(ex))
       }
     }
 
