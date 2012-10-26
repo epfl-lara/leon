@@ -993,16 +993,25 @@ object TreeOps {
     rec(expr, init)
   }
 
-  def noPre[C] (e: Expr, c: C) = (e, c)
-  def noPost[C](e: Expr, c: C) = (e, c)
-  def noCombiner[C](e: Expr, initC: C, subCs: Seq[C]) = initC
-
+  private def noCombiner[C](e: Expr, initC: C, subCs: Seq[C]) = initC
 
   def simpleTransform(pre: Expr => Expr, post: Expr => Expr)(expr: Expr) = {
     val newPre  = (e: Expr, c: Unit) => (pre(e), ())
     val newPost = (e: Expr, c: Unit) => (post(e), ())
 
     genericTransform[Unit](newPre, newPost, noCombiner)(())(expr)._1
+  }
+
+  def simplePreTransform(pre: Expr => Expr)(expr: Expr) = {
+    val newPre  = (e: Expr, c: Unit) => (pre(e), ())
+
+    genericTransform[Unit](newPre, (_, _), noCombiner)(())(expr)._1
+  }
+
+  def simplePostTransform(post: Expr => Expr)(expr: Expr) = {
+    val newPost = (e: Expr, c: Unit) => (post(e), ())
+
+    genericTransform[Unit]((_, _), newPost, noCombiner)(())(expr)._1
   }
 
   def toDNF(e: Expr): Expr = {
@@ -1015,7 +1024,7 @@ object TreeOps {
         e
     }
 
-    simpleTransform(pre, identity)(e)
+    simplePreTransform(pre)(e)
   }
 
   def toCNF(e: Expr): Expr = {
@@ -1028,7 +1037,7 @@ object TreeOps {
         e
     }
 
-    simpleTransform(pre, identity)(e)
+    simplePreTransform(pre)(e)
   }
 
   def patternMatchReconstruction(e: Expr): Expr = {
@@ -1046,7 +1055,7 @@ object TreeOps {
         (e, c)
     }
 
-    genericTransform[PMContext](pre, noPost, noCombiner)(PMContext())(e)._1
+    genericTransform[PMContext](pre, (_, _), noCombiner)(PMContext())(e)._1
   }
 
   def simplifyTautologies(solver : Solver)(expr : Expr) : Expr = {
@@ -1061,7 +1070,7 @@ object TreeOps {
       }
       case _ => e
     }
-      
-    simpleTransform(pre, identity)(expr)
-  } 
+
+    simplePreTransform(pre)(expr)
+  }
 }
