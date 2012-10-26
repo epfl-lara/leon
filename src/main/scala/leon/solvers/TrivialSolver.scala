@@ -1,6 +1,6 @@
 package leon
+package solvers
 
-import z3.scala._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
@@ -16,6 +16,7 @@ class TrivialSolver(reporter: Reporter) extends Solver(reporter) {
     case Not(BooleanLiteral(v)) => Some(!v)
     case Or(exs) if exs.contains(BooleanLiteral(true)) => Some(true)
     case And(exs) if exs.contains(BooleanLiteral(false)) => Some(false)
+    case Equals(l,r) if l == r => Some(true)
     case _ => None
   }
 }

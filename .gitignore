@@ -1,7 +1,7 @@
+# Vim
 *.swp
-bin
-project/boot
-project/build
-project/target
+
+# sbt
 target
+/project/build
 /leon

@@ -8,10 +8,11 @@ import purescala.Trees.{Expr, Not}
 import purescala.ScalaPrinter
 
 import Extensions.Solver
+import java.io.File
 
 import collection.mutable.PriorityQueue
 
-class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
+class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivationTrees: Boolean) {
   import r.{error,warning,info,fatalError}
 
   private[this] var solution: Option[Solution] = None
@@ -27,7 +28,9 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
 
     workList += rootTask
     solution = None
-    derivationTree = new DerivationTree(rootTask)
+    if (generateDerivationTrees) {
+      derivationTree = new DerivationTree(rootTask)
+    }
 
     while (!workList.isEmpty && solution.isEmpty) {
       val task = workList.dequeue()
@@ -55,15 +58,19 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
     }
 
 
-    derivationTree.toDotFile("derivation"+derivationCounter+".dot")
-    derivationCounter += 1
+    if (generateDerivationTrees) {
+      derivationTree.toDotFile("derivation"+derivationCounter+".dot")
+      derivationCounter += 1
+    }
 
     solution.getOrElse(Solution.none)
   }
 
   def onTaskSucceeded(task: Task, solution: Solution) {
     info(" => Solved "+task.problem+" ⊢  "+solution)
-    derivationTree.recordSolutionFor(task, solution)
+    if (generateDerivationTrees) {
+      derivationTree.recordSolutionFor(task, solution)
+    }
 
     if (task.parent eq null) {
       info(" SUCCESS!")
@@ -86,8 +93,8 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
     (None, Map())
   }
 
-  def synthesizeAll(program: Program) = {
-    import purescala.Trees._
+  import purescala.Trees._
+  def synthesizeAll(program: Program): Map[Choose, Solution] = {
 
     solvers.foreach(_.setProgram(program))
 
@@ -95,20 +102,17 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
 
     def noop(u:Expr, u2: Expr) = u
 
+    var solutions = Map[Choose, Solution]()
+
     def actOnChoose(f: FunDef)(e: Expr, a: Expr): Expr = e match {
-      case Choose(vars, pred) =>
+      case ch @ Choose(vars, pred) =>
         val xs = vars
         val as = (variablesOf(pred)--xs).toList
         val phi = pred
 
-        info("")
-        info("")
-        info("In Function "+f.id+":")
-        info("-"*80)
         val sol = synthesize(Problem(as, phi, xs), rules)
 
-        info("Scala code:")
-        info(ScalaPrinter(simplifyLets(sol.toExpr)))
+        solutions += ch -> sol
 
         a
       case _ =>
@@ -120,6 +124,13 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver]) {
       treeCatamorphism(x => x, noop, actOnChoose(f), f.body.get)
     }
 
-    program
+    solutions
   }
+
+
+
+  def solutionToString(solution: Solution): String = {
+    ScalaPrinter(simplifyLets(solution.toExpr))
+  }
+
 }

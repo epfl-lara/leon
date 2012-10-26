@@ -683,7 +683,7 @@ trait CodeExtraction extends Extractors {
             Epsilon(c1).setType(pstpe).setPosInfo(epsi.pos.line, epsi.pos.column)
           }
 
-          case chs @ ExChooseExpression(args, tpe, body) => {
+          case chs @ ExChooseExpression(args, tpe, body, select) => {
             val cTpe  = scalaType2PureScala(unit, silent)(tpe) 
 
             val vars = args map { case (tpe, sym) => 
@@ -696,7 +696,7 @@ trait CodeExtraction extends Extractors {
 
             val cBody = rec(body)
 
-            Choose(vars, cBody).setType(cTpe).setPosInfo(chs.pos.line, chs.pos.column)
+            Choose(vars, cBody).setType(cTpe).setPosInfo(select.pos.line, select.pos.column)
           }
 
           case ExWaypointExpression(tpe, i, tree) => {

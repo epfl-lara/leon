@@ -6,6 +6,7 @@ object Trees {
   import Common._
   import TypeTrees._
   import Definitions._
+  import Extractors._
 
   /* EXPRESSIONS */
 
@@ -42,7 +43,9 @@ object Trees {
 
   case class Epsilon(pred: Expr) extends Expr with ScalacPositional
 
-  case class Choose(vars: List[Identifier], pred: Expr) extends Expr with ScalacPositional
+  case class Choose(vars: List[Identifier], pred: Expr) extends Expr with ScalacPositional with UnaryExtractable {
+    def extract = Some((pred, (e: Expr) => Choose(vars, e).setPosInfo(this)))
+  }
 
   /* Like vals */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {

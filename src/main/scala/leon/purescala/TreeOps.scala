@@ -950,4 +950,63 @@ object TreeOps {
     }
     fix(searchAndReplaceDFS(transform), expr)
   }
+
+  def genericTransform[C](pre:  (Expr, C) => (Expr, C),
+                          post: (Expr, C) => (Expr, C),
+                          combiner: (Expr, C, Seq[C]) => C)(init: C)(expr: Expr) = {
+
+    def rec(eIn: Expr, cIn: C): (Expr, C) = {
+
+      val (expr, ctx) = pre(eIn, cIn)
+
+      val (newExpr, newC) = expr match {
+        case t: Terminal =>
+          (expr, ctx)
+
+        case UnaryOperator(e, builder) =>
+          val (e1, c) = rec(e, ctx)
+          val newE = builder(e1)
+
+          (newE, combiner(newE, ctx, Seq(c)))
+
+        case BinaryOperator(e1, e2, builder) =>
+          val (ne1, c1) = rec(e1, ctx)
+          val (ne2, c2) = rec(e2, ctx)
+          val newE = builder(ne1, ne2)
+
+          (newE, combiner(newE, ctx, Seq(c1, c2)))
+
+        case NAryOperator(es, builder) =>
+          val (nes, cs) = es.map(e => rec(e, ctx)).unzip
+          val newE = builder(nes)
+
+          (newE, combiner(newE, ctx, cs))
+
+        case e =>
+          sys.error("Expression "+e+" ["+e.getClass+"] is not extractable")
+      }
+
+      post(newExpr, newC)
+    }
+
+    rec(expr, init)
+  }
+
+  def noPre[C] (e: Expr, c: C) = (e, c)
+  def noPost[C](e: Expr, c: C) = (e, c)
+  def noCombiner[C](e: Expr, initC: C, subCs: Seq[C]) = initC
+
+  def patternMatchReconstruction(e: Expr): Expr = {
+    case class Context()
+
+    def pre(e: Expr, c: Context): (Expr, Context) = e match {
+      case IfExpr(cond, then, elze) =>
+        println("Found IF: "+e)
+        (e, c)
+      case _ =>
+        (e, c)
+    }
+
+    genericTransform[Context](pre, noPost, noCombiner)(Context())(e)._1
+  }
 }

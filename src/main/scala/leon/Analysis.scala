@@ -5,7 +5,11 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TreeOps._
 import purescala.TypeTrees._
+
 import Extensions._
+
+import solvers.TrivialSolver
+
 import scala.collection.mutable.{Set => MutableSet}
 
 class Analysis(val program : Program, val reporter: Reporter) {
