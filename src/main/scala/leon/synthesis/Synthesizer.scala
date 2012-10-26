@@ -110,17 +110,9 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivation
         val as = (variablesOf(pred)--xs).toList
         val phi = pred
 
-        info("")
-        info("")
-        info("In Function "+f.id+":")
-        info("-"*80)
-
         val sol = synthesize(Problem(as, phi, xs), rules)
 
         solutions += ch -> sol
-
-        info("Scala code:")
-        info(ScalaPrinter(simplifyLets(sol.toExpr)))
 
         a
       case _ =>

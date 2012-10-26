@@ -3,6 +3,7 @@ package synthesis
 
 import purescala.TreeOps.simplifyLets
 import purescala.Trees.Expr
+import purescala.ScalaPrinter
 import purescala.Definitions.Program
 
 object SynthesisPhase extends LeonPhase[Program, Program] {
@@ -45,6 +46,12 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     if (inPlace) {
       for (file <- ctx.files) {
         new FileInterface(ctx.reporter, file).updateFile(chooseToExprs)
+      }
+    } else {
+      for ((chs, ex) <- chooseToExprs) {
+        ctx.reporter.info("-"*80)
+        ctx.reporter.info("For: "+chs)
+        ctx.reporter.info("Synthesized Code:\n"+ScalaPrinter(ex))
       }
     }
 
