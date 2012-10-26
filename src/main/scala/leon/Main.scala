@@ -18,11 +18,11 @@ object Main {
   }
 
   lazy val allOptions = allPhases.flatMap(_.definedOptions) ++ Set(
-      LeonOptionDef("synthesis",     true,  "--synthesis          Partial synthesis or choose() constructs"),
-      LeonOptionDef("xlang",         true,  "--xlang              Support for extra program constructs (imperative,...)"),
-      LeonOptionDef("parse",         true,  "--parse              Checks only whether the program is valid PureScala"),
-      LeonOptionDef("debug",         false, "--debug=[1-5]        Debug level"),
-      LeonOptionDef("help",          true,  "--help               This help")
+      LeonFlagOptionDef ("synthesis", "--synthesis",   "Partial synthesis or choose() constructs"),
+      LeonFlagOptionDef ("xlang",     "--xlang",       "Support for extra program constructs (imperative,...)"),
+      LeonFlagOptionDef ("parse",     "--parse",       "Checks only whether the program is valid PureScala"),
+      LeonValueOptionDef("debug",     "--debug=[1-5]", "Debug level"),
+      LeonFlagOptionDef ("help",      "--help",        "This help")
     )
 
   def displayHelp(reporter: Reporter) {
@@ -30,7 +30,7 @@ object Main {
     reporter.info("")
     reporter.info("Leon options are:")
     for (opt <- allOptions.toSeq.sortBy(_.name)) {
-      reporter.info("   "+opt.description)
+      reporter.info("   %-20s %s".format(opt.usageOption, opt.usageDesc))
     }
     sys.exit(1)
   }
@@ -89,7 +89,7 @@ object Main {
       case _ =>
     }
 
-    LeonContext(settings = settings, reporter = reporter, files = files)
+    LeonContext(settings = settings, reporter = reporter, files = files, options = leonOptions)
   }
 
   implicit def phaseToPipeline[F, T](phase: LeonPhase[F, T]): Pipeline[F, T] = new PipeCons(phase, new PipeNil())

@@ -10,4 +10,16 @@ case class LeonValueOption(name: String, value: String) extends LeonOption {
   def splitList : Seq[String] = value.split(':').map(_.trim).filter(!_.isEmpty)
 }
 
-case class LeonOptionDef(name: String, isFlag: Boolean, description: String)
+sealed abstract class LeonOptionDef {
+  val name: String
+  val usageOption: String
+  val usageDesc: String
+  val isFlag: Boolean
+}
+case class LeonFlagOptionDef(name: String, usageOption: String, usageDesc: String) extends LeonOptionDef {
+  val isFlag = true
+}
+
+case class LeonValueOptionDef(name: String, usageOption: String, usageDesc: String) extends LeonOptionDef {
+  val isFlag = false
+}

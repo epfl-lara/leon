@@ -7,6 +7,10 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
   val name        = "Synthesis"
   val description = "Synthesis"
 
+  override def definedOptions = Set(
+    LeonFlagOptionDef("inplace", "--inplace", "Debug level")
+  )
+
   def run(ctx: LeonContext)(p: Program): Program = {
     val quietReporter = new QuietReporter
     val solvers  = List(
@@ -14,11 +18,20 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       new FairZ3Solver(quietReporter)
     )
 
+    var inPlace = false
+    for(opt <- ctx.options) opt match {
+      case LeonFlagOption("inplace") =>
+        inPlace = true
+      case _ =>
+    }
+
     val synth = new Synthesizer(ctx.reporter, solvers)
     val solutions = synth.synthesizeAll(p)
 
-    for (file <- ctx.files) {
-      synth.updateFile(new java.io.File(file), solutions)
+    if (inPlace) {
+      for (file <- ctx.files) {
+        synth.updateFile(new java.io.File(file), solutions)
+      }
     }
 
     p
