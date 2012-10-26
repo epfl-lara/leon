@@ -951,33 +951,56 @@ object TreeOps {
     fix(searchAndReplaceDFS(transform), expr)
   }
 
-  def genericTransform[C](down: PartialFunction[(Expr, C),(Expr, C)], up: PartialFunction[(Expr, C),(Expr, C)])(init: C)(expr: Expr) = {
-    val fDown = { x: (Expr, C) => if (down.isDefinedAt(x)) down(x) else x }
-    val fUp   = { x: (Expr, C) => if (up.isDefinedAt(x)) up(x) else x }
+  def genericTransform[C](pre:  (Expr, C) => (Expr, C),
+                          post: (Expr, C) => (Expr, C),
+                          combiner: (Expr, C, Seq[C]) => C)(init: C)(expr: Expr) = {
 
-    def rec(in: (Expr, C)): (Expr, C) = {
+    def rec(eIn: Expr, cIn: C): (Expr, C) = {
 
-      val (expr, ctx) = fDown(in)
+      val (expr, ctx) = pre(eIn, cIn)
 
-      val newExpr = expr match {
-        case UnaryOperator(e, builder) => builder(rec((e, ctx))._1)
-        case BinaryOperator(e1, e2, builder) => builder(rec((e1, ctx))._1, rec((e2, ctx))._1)
-        case NAryOperator(es, builder) => builder(es.map(e => rec((e, ctx))._1))
+      val (newExpr, newC) = expr match {
+        case UnaryOperator(e, builder) =>
+          val (e1, c) = rec(e, ctx)
+
+          val newE = builder(e1)
+          (newE, combiner(newE, ctx, Seq(c)))
+        case BinaryOperator(e1, e2, builder) =>
+          val (ne1, c1) = rec(e1, ctx)
+          val (ne2, c2) = rec(e2, ctx)
+
+          val newE = builder(ne1, ne2)
+          (newE, combiner(newE, ctx, Seq(c1, c2)))
+        case NAryOperator(es, builder) =>
+          val (nes, cs) = es.map(e => rec(e, ctx)).unzip
+
+          val newE = builder(nes)
+          (newE, combiner(newE, ctx, cs))
+        case e =>
+          sys.error("Expression "+e+" ["+e.getClass+"] has no defined extractor")
       }
 
-      fUp((newExpr, in._2))
+      post(newExpr, newC)
     }
 
-    rec((expr, init))
+    rec(expr, init)
   }
 
-  def genericDFS[C](up: PartialFunction[(Expr, C), (Expr, C)])(init: C)(e: Expr) =
-    genericTransform[C](Map.empty, up)(init)(e)
-
-  def genericBFS[C](down: PartialFunction[(Expr, C), (Expr, C)])(init: C)(e: Expr) =
-    genericTransform[C](down, Map.empty)(init)(e)
+  def noPre[C] (e: Expr, c: C) = (e, c)
+  def noPost[C](e: Expr, c: C) = (e, c)
+  def noCombiner[C](e: Expr, initC: C, subCs: Seq[C]) = initC
 
   def patternMatchReconstruction(e: Expr): Expr = {
-    e
+    case class Context()
+
+    def pre(e: Expr, c: Context): (Expr, Context) = e match {
+      case IfExpr(cond, then, elze) =>
+        println("Found IF: "+e)
+        (e, c)
+      case _ =>
+        (e, c)
+    }
+
+    genericTransform[Context](pre, noPost, noCombiner)(Context())(e)._1
   }
 }
