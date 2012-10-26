@@ -44,7 +44,7 @@ object Trees {
   case class Epsilon(pred: Expr) extends Expr with ScalacPositional
 
   case class Choose(vars: List[Identifier], pred: Expr) extends Expr with ScalacPositional with UnaryExtractable {
-    def extract = Some((pred, (e: Expr) => Choose(vars, e)))
+    def extract = Some((pred, (e: Expr) => Choose(vars, e).setPosInfo(this)))
   }
 
   /* Like vals */
