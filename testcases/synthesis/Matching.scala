@@ -1,7 +1,7 @@
 import leon.Utils._
 
 object Matching {
-    def t1(a: NatList) = choose( (x: Nat) => Cons(x, Nil()) == a)
+  def t1(a: NatList) = choose( (x: Nat) => Cons(x, Nil()) == a)
 
   abstract class Nat
   case class Z() extends Nat

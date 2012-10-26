@@ -1,7 +1,7 @@
 package leon
 package synthesis
 
-import purescala.TreeOps.simplifyLets
+import purescala.TreeOps._
 import purescala.Trees.Expr
 import purescala.ScalaPrinter
 import purescala.Definitions.Program
@@ -38,7 +38,8 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
     // Simplify expressions
     val simplifiers = List[Expr => Expr](
-      simplifyLets _
+      simplifyLets _,
+      patternMatchReconstruction _
     )
 
     val chooseToExprs = solutions.mapValues(sol => simplifiers.foldLeft(sol.toExpr){ (x, sim) => sim(x) })

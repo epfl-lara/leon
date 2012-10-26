@@ -950,4 +950,8 @@ object TreeOps {
     }
     fix(searchAndReplaceDFS(transform), expr)
   }
+
+  def patternMatchReconstruction(e: Expr): Expr = {
+    e
+  }
 }
