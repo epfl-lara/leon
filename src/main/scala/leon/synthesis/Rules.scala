@@ -3,6 +3,7 @@ package synthesis
 
 import purescala.Common._
 import purescala.Trees._
+import purescala.Extractors._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 
