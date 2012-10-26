@@ -951,6 +951,32 @@ object TreeOps {
     fix(searchAndReplaceDFS(transform), expr)
   }
 
+  def genericTransform[C](down: PartialFunction[(Expr, C),(Expr, C)], up: PartialFunction[(Expr, C),(Expr, C)])(init: C)(expr: Expr) = {
+    val fDown = { x: (Expr, C) => if (down.isDefinedAt(x)) down(x) else x }
+    val fUp   = { x: (Expr, C) => if (up.isDefinedAt(x)) up(x) else x }
+
+    def rec(in: (Expr, C)): (Expr, C) = {
+
+      val (expr, ctx) = fDown(in)
+
+      val newExpr = expr match {
+        case UnaryOperator(e, builder) => builder(rec((e, ctx))._1)
+        case BinaryOperator(e1, e2, builder) => builder(rec((e1, ctx))._1, rec((e2, ctx))._1)
+        case NAryOperator(es, builder) => builder(es.map(e => rec((e, ctx))._1))
+      }
+
+      fUp((newExpr, in._2))
+    }
+
+    rec((expr, init))
+  }
+
+  def genericDFS[C](up: PartialFunction[(Expr, C), (Expr, C)])(init: C)(e: Expr) =
+    genericTransform[C](Map.empty, up)(init)(e)
+
+  def genericBFS[C](down: PartialFunction[(Expr, C), (Expr, C)])(init: C)(e: Expr) =
+    genericTransform[C](down, Map.empty)(init)(e)
+
   def patternMatchReconstruction(e: Expr): Expr = {
     e
   }
