@@ -97,14 +97,14 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           assert(variablesOf(expr) -- argsAsIDs.toSet == Set.empty)
           val axiom : Z3AST = if(args.isEmpty) {
             val eq = Equals(FunctionInvocation(fd, Seq(cc)), expr)
-            toZ3Formula(z3, eq).get
+            toZ3Formula(eq).get
           } else {
             val z3ArgSorts = argsAsIDs.map(i => typeToSort(i.getType))
             val boundVars = z3ArgSorts.zipWithIndex.map(p => z3.mkBound(p._2, p._1))
             val map : Map[Identifier,Z3AST] = (argsAsIDs zip boundVars).toMap
             val eq = Equals(FunctionInvocation(fd, Seq(cc)), expr)
-            val z3IzedEq = toZ3Formula(z3, eq, map).get
-            val z3IzedCC = toZ3Formula(z3, cc, map).get
+            val z3IzedEq = toZ3Formula(eq, map).get
+            val z3IzedCC = toZ3Formula(cc, map).get
             val pattern = z3.mkPattern(functionDefToDecl(fd)(z3IzedCC))
             val nameTypePairs = z3ArgSorts.map(s => (z3.mkFreshIntSymbol, s))
             z3.mkForAll(0, List(pattern), nameTypePairs, z3IzedEq)
@@ -121,7 +121,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           val argSort = typeToSort(fd.args(0).getType)
           val bound = z3.mkBound(0, argSort)
           val subst = replace(Map(ResultVariable() -> FunctionInvocation(fd, Seq(fd.args(0).toVariable))), cleaned)
-          val z3IzedPost = toZ3Formula(z3, subst, Map(fd.args(0).id -> bound)).get
+          val z3IzedPost = toZ3Formula(subst, Map(fd.args(0).id -> bound)).get
           val pattern = z3.mkPattern(functionDefToDecl(fd)(bound))
           val nameTypePairs = Seq((z3.mkFreshIntSymbol, argSort))
           val postAxiom = z3.mkForAll(0, List(pattern), nameTypePairs, z3IzedPost)
@@ -219,11 +219,11 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       Logger.debug("we're getting a new clause " + clause, 4, "z3solver")
     }
 
-    val cc = toZ3Formula(z3, And(clauses)).get
+    val cc = toZ3Formula(And(clauses)).get
     z3.assertCnstr(cc)
 
     // these are the optional sequence of assumption literals
-    val assumptionsAsZ3: Option[Seq[Z3AST]] = assumptions.map(set => set.toSeq.map(toZ3Formula(z3, _).get))
+    val assumptionsAsZ3: Option[Seq[Z3AST]] = assumptions.map(set => set.toSeq.map(toZ3Formula(_).get))
 
     blockingSet ++= Set(guards.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
 
@@ -234,7 +234,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       iterationsLeft -= 1
 
       blocking2Z3Stopwatch.start
-      val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.toSeq.map(toZ3Formula(z3, _).get)
+      val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.toSeq.map(toZ3Formula(_).get)
       // println("Blocking set : " + blockingSet)
       blocking2Z3Stopwatch.stop
 
@@ -398,12 +398,12 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
               for(ex <- blockingSet) ex match {
                 case Not(Variable(b)) => {
                   z3.push
-                  z3.assertCnstr(toZ3Formula(z3, Variable(b)).get)
+                  z3.assertCnstr(toZ3Formula(Variable(b)).get)
                   z3.check match {
                     case Some(false) => {
                       //println("We had ~" + b + " in the blocking set. We now know it should stay there forever.")
                       z3.pop(1)
-                      z3.assertCnstr(toZ3Formula(z3, Not(Variable(b))).get)
+                      z3.assertCnstr(toZ3Formula(Not(Variable(b))).get)
                       fixedForEver = fixedForEver + ex
                     }
                     case _ => z3.pop(1)
@@ -411,12 +411,12 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
                 }
                 case Variable(b) => {
                   z3.push
-                  z3.assertCnstr(toZ3Formula(z3, Not(Variable(b))).get)
+                  z3.assertCnstr(toZ3Formula(Not(Variable(b))).get)
                   z3.check match {
                     case Some(false) => {
                       //println("We had " + b + " in the blocking set. We now know it should stay there forever.")
                       z3.pop(1)
-                      z3.assertCnstr(toZ3Formula(z3, Variable(b)).get)
+                      z3.assertCnstr(toZ3Formula(Variable(b)).get)
                       fixedForEver = fixedForEver + ex
                     }
                     case _ => z3.pop(1)
@@ -446,7 +446,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
                }
 
               for(ncl <- newClauses) {
-                z3.assertCnstr(toZ3Formula(z3, ncl).get)
+                z3.assertCnstr(toZ3Formula(ncl).get)
               }
               blockingSet = blockingSet ++ Set(newBlockers.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
             }
@@ -543,269 +543,6 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       (false, Map.empty)
     }
   }
-
-
-  // the last return value is a map binding ite values to boolean switches
-  private def clausifyITE(formula : Expr) : (Expr, List[Expr], Map[Identifier,Identifier]) = {
-    var newClauses : List[Expr] = Nil
-    var ite2Bools : Map[Identifier,Identifier] = Map.empty
-
-    def clausify(ex : Expr) : Option[Expr] = ex match {
-      case ie @ IfExpr(cond, then, elze) => {
-        val switch = FreshIdentifier("path", true).setType(BooleanType).toVariable
-        val placeHolder = FreshIdentifier("iteval", true).setType(ie.getType).toVariable
-        newClauses = Iff(switch, cond) :: newClauses
-        newClauses = Implies(switch, Equals(placeHolder, then)) :: newClauses
-        newClauses = Implies(Not(switch), Equals(placeHolder, elze)) :: newClauses
-        // newBools = newBools + switch.id
-        ite2Bools = ite2Bools + (placeHolder.id -> switch.id)
-        Some(placeHolder)
-      }
-      case _ => None
-    }
-
-    val cleanedUp = searchAndReplaceDFS(clausify)(formula)
-
-    (cleanedUp, newClauses.reverse, ite2Bools)
-  }
-
-  protected[leon] override def toZ3Formula(z3: Z3Context, expr: Expr, initialMap: Map[Identifier,Z3AST] = Map.empty) : Option[Z3AST] = {
-    class CantTranslateException extends Exception
-
-    val varsInformula: Set[Identifier] = variablesOf(expr)
-
-    var z3Vars: Map[Identifier,Z3AST] = if(!initialMap.isEmpty) {
-      initialMap
-    } else {
-      // FIXME TODO pleeeeeeeease make this cleaner. Ie. decide what set of
-      // variable has to remain in a map etc.
-      exprToZ3Id.filter(p => p._1.isInstanceOf[Variable]).map(p => (p._1.asInstanceOf[Variable].id -> p._2))
-    }
-    // exprToZ3Id = Map.empty
-    // z3IdToExpr = Map.empty
-
-    // for((k, v) <- initialMap) {
-    //   exprToZ3Id += (k.toVariable -> v)
-    //   z3IdToExpr += (v -> k.toVariable)
-    // }
-
-    def rec(ex: Expr): Z3AST = { 
-      //println("Stacking up call for:")
-      //println(ex)
-      val recResult = (ex match {
-        case tu@Tuple(args) => {
-          // This call is required, because the Z3 sort may not have been generated yet.
-          // If it has, it's just a map lookup and instant return.
-          typeToSort(tu.getType)
-          val constructor = tupleConstructors(tu.getType)
-          constructor(args.map(rec(_)): _*)
-        }
-        case ts@TupleSelect(tu, i) => {
-          // See comment above for similar code.
-          typeToSort(tu.getType)
-          val selector = tupleSelectors(tu.getType)(i-1)
-          selector(rec(tu))
-        }
-        case Let(i, e, b) => {
-          val re = rec(e)
-          z3Vars = z3Vars + (i -> re)
-          val rb = rec(b)
-          z3Vars = z3Vars - i
-          rb
-        }
-        case Waypoint(_, e) => rec(e)
-        case e @ Error(_) => {
-          val tpe = e.getType
-          val newAST = z3.mkFreshConst("errorValue", typeToSort(tpe))
-          exprToZ3Id += (e -> newAST)
-          z3IdToExpr += (newAST -> e)
-          newAST
-        }
-        case v@Variable(id) => z3Vars.get(id) match {
-          case Some(ast) => ast
-          case None => {
-            // if (id.isLetBinder) {
-            //   scala.sys.error("Error in formula being translated to Z3: identifier " + id + " seems to have escaped its let-definition")
-            // }
-            val newAST = z3.mkFreshConst(id.uniqueName/*name*/, typeToSort(v.getType))
-            z3Vars = z3Vars + (id -> newAST)
-            exprToZ3Id += (v -> newAST)
-            z3IdToExpr += (newAST -> v)
-            newAST
-          }
-        }
-
-        case ite @ IfExpr(c, t, e) => {
-          z3.mkITE(rec(c), rec(t), rec(e))
-        }
-        // case ite @ IfExpr(c, t, e) => {
-        //   val switch = z3.mkFreshConst("path", z3.mkBoolSort)
-        //   val placeHolder = z3.mkFreshConst("ite", typeToSort(ite.getType))
-        //   val clause1 = z3.mkIff(switch, rec(c))
-        //   val clause2 = z3.mkImplies(switch, z3.mkEq(placeHolder, rec(t)))
-        //   val clause3 = z3.mkImplies(z3.mkNot(switch), z3.mkEq(placeHolder, rec(e)))
-
-        //   accumulatedClauses = clause3 :: clause2 :: clause1 :: accumulatedClauses
-
-        //   placeHolder
-        // }
-        case And(exs) => z3.mkAnd(exs.map(rec(_)): _*)
-        case Or(exs) => z3.mkOr(exs.map(rec(_)): _*)
-        case Implies(l, r) => z3.mkImplies(rec(l), rec(r))
-        case Iff(l, r) => {
-          val rl = rec(l)
-          val rr = rec(r)
-          z3.mkAnd(z3.mkImplies(rl, rr), z3.mkImplies(rr, rl))
-        }
-        case Not(Iff(l, r)) => z3.mkXor(rec(l), rec(r))
-        case Not(Equals(l, r)) => z3.mkDistinct(rec(l), rec(r))
-        case Not(e) => z3.mkNot(rec(e))
-        case IntLiteral(v) => z3.mkInt(v, intSort)
-        case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()
-        case UnitLiteral => unitValue
-        case Equals(l, r) => z3.mkEq(rec(l), rec(r))
-        case Plus(l, r) => if(USEBV) z3.mkBVAdd(rec(l), rec(r)) else z3.mkAdd(rec(l), rec(r))
-        case Minus(l, r) => if(USEBV) z3.mkBVSub(rec(l), rec(r)) else z3.mkSub(rec(l), rec(r))
-        case Times(l, r) => if(USEBV) z3.mkBVMul(rec(l), rec(r)) else z3.mkMul(rec(l), rec(r))
-        case Division(l, r) => if(USEBV) z3.mkBVSdiv(rec(l), rec(r)) else z3.mkDiv(rec(l), rec(r))
-        case Modulo(l, r) => if(USEBV) sys.error("I don't know what to do here!") else z3.mkMod(rec(l), rec(r))
-        case UMinus(e) => if(USEBV) z3.mkBVNeg(rec(e)) else z3.mkUnaryMinus(rec(e))
-        case LessThan(l, r) => if(USEBV) z3.mkBVSlt(rec(l), rec(r)) else z3.mkLT(rec(l), rec(r))
-        case LessEquals(l, r) => if(USEBV) z3.mkBVSle(rec(l), rec(r)) else z3.mkLE(rec(l), rec(r))
-        case GreaterThan(l, r) => if(USEBV) z3.mkBVSgt(rec(l), rec(r)) else z3.mkGT(rec(l), rec(r))
-        case GreaterEquals(l, r) => if(USEBV) z3.mkBVSge(rec(l), rec(r)) else z3.mkGE(rec(l), rec(r))
-        case c@CaseClass(cd, args) => {
-          val constructor = adtConstructors(cd)
-          constructor(args.map(rec(_)): _*)
-        }
-        case c@CaseClassSelector(_, cc, sel) => {
-          val selector = adtFieldSelectors(sel)
-          selector(rec(cc))
-        }
-        case c@CaseClassInstanceOf(ccd, e) => {
-          val tester = adtTesters(ccd)
-          tester(rec(e))
-        }
-        case f@FunctionInvocation(fd, args) => {
-          z3.mkApp(functionDefToDecl(fd), args.map(rec(_)): _*)
-        }
-        case e@EmptySet(_) => z3.mkEmptySet(typeToSort(e.getType.asInstanceOf[SetType].base))
-        
-        case SetEquals(s1, s2) => z3.mkEq(rec(s1), rec(s2))
-        case ElementOfSet(e, s) => z3.mkSetSubset(z3.mkSetAdd(z3.mkEmptySet(typeToSort(e.getType)), rec(e)), rec(s))
-        case SubsetOf(s1, s2) => z3.mkSetSubset(rec(s1), rec(s2))
-        case SetIntersection(s1, s2) => z3.mkSetIntersect(rec(s1), rec(s2))
-        case SetUnion(s1, s2) => z3.mkSetUnion(rec(s1), rec(s2))
-        case SetDifference(s1, s2) => z3.mkSetDifference(rec(s1), rec(s2))
-        case f@FiniteSet(elems) => elems.foldLeft(z3.mkEmptySet(typeToSort(f.getType.asInstanceOf[SetType].base)))((ast, el) => z3.mkSetAdd(ast, rec(el)))
-        case SetCardinality(s) => {
-          val rs = rec(s)
-          setCardFuns(s.getType.asInstanceOf[SetType].base)(rs)
-        }
-        case SetMin(s) => intSetMinFun(rec(s))
-        case SetMax(s) => intSetMaxFun(rec(s))
-        case s @ SingletonMap(from,to) => s.getType match {
-          case MapType(fromType, toType) =>
-            val fromSort = typeToSort(fromType)
-            val toSort = typeToSort(toType)
-            val constArray = z3.mkConstArray(fromSort, mapRangeNoneConstructors(toType)())
-            z3.mkStore(constArray, rec(from), mapRangeSomeConstructors(toType)(rec(to)))
-          case errorType => scala.sys.error("Unexpected type for singleton map: " + (ex, errorType))
-        }
-        case e @ EmptyMap(fromType, toType) => {
-          typeToSort(e.getType) //had to add this here because the mapRangeNoneConstructors was not yet constructed...
-          val fromSort = typeToSort(fromType)
-          val toSort = typeToSort(toType)
-          z3.mkConstArray(fromSort, mapRangeNoneConstructors(toType)())
-        }
-        case f @ FiniteMap(elems) => f.getType match {
-          case MapType(fromType, toType) =>
-            val fromSort = typeToSort(fromType)
-            val toSort = typeToSort(toType)
-            elems.foldLeft(z3.mkConstArray(fromSort, mapRangeNoneConstructors(toType)())){ case (ast, SingletonMap(k,v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(toType)(rec(v))) }
-          case errorType => scala.sys.error("Unexpected type for finite map: " + (ex, errorType))
-        }
-        case mg @ MapGet(m,k) => m.getType match {
-          case MapType(fromType, toType) =>
-            val selected = z3.mkSelect(rec(m), rec(k))
-            mapRangeValueSelectors(toType)(selected)
-          case errorType => scala.sys.error("Unexpected type for map: " + (ex, errorType))
-        }
-        case MapUnion(m1,m2) => m1.getType match {
-          case MapType(ft, tt) => m2 match {
-            case FiniteMap(ss) =>
-              ss.foldLeft(rec(m1)){
-                case (ast, SingletonMap(k, v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(tt)(rec(v)))
-              }
-            case SingletonMap(k, v) => z3.mkStore(rec(m1), rec(k), mapRangeSomeConstructors(tt)(rec(v)))
-            case _ => scala.sys.error("map updates can only be applied with concrete map instances")
-          }
-          case errorType => scala.sys.error("Unexpected type for map: " + (ex, errorType))
-        }
-        case MapIsDefinedAt(m,k) => m.getType match {
-          case MapType(ft, tt) => z3.mkDistinct(z3.mkSelect(rec(m), rec(k)), mapRangeNoneConstructors(tt)())
-          case errorType => scala.sys.error("Unexpected type for map: " + (ex, errorType))
-        }
-        case fill@ArrayFill(length, default) => {
-          val at@ArrayType(base) = fill.getType
-          typeToSort(at)
-          val cons = arrayTupleCons(at)
-          val ar = z3.mkConstArray(typeToSort(base), rec(default))
-          val res = cons(ar, rec(length))
-          res
-        }
-        case ArraySelect(a, index) => {
-          typeToSort(a.getType)
-          val ar = rec(a)
-          val getArray = arrayTupleSelectorArray(a.getType)
-          val res = z3.mkSelect(getArray(ar), rec(index))
-          res
-        }
-        case ArrayUpdated(a, index, newVal) => {
-          typeToSort(a.getType)
-          val ar = rec(a)
-          val getArray = arrayTupleSelectorArray(a.getType)
-          val getLength = arrayTupleSelectorLength(a.getType)
-          val cons = arrayTupleCons(a.getType)
-          val store = z3.mkStore(getArray(ar), rec(index), rec(newVal))
-          val res = cons(store, getLength(ar))
-          res
-        }
-        case ArrayLength(a) => {
-          typeToSort(a.getType)
-          val ar = rec(a)
-          val getLength = arrayTupleSelectorLength(a.getType)
-          val res = getLength(ar)
-          res
-        }
-        case AnonymousFunctionInvocation(id, args) => id.getType match {
-          case ft @ FunctionType(fts, tt) => {
-            val consFD = funDomainConstructors(ft)
-            val rid = rec(Variable(id))
-            val rargs = args map rec
-            z3.mkSelect(rid, consFD(rargs: _*))
-          }
-          case errorType => scala.sys.error("Unexpected type for function: " + (ex, errorType))
-        }
-        
-        case Distinct(exs) => z3.mkDistinct(exs.map(rec(_)): _*)
-  
-        case _ => {
-          reporter.warning("Can't handle this in translation to Z3: " + ex)
-          throw new CantTranslateException
-        }
-      })
-      recResult
-    }
-
-    try {
-      val res = Some(rec(expr))
-      res
-    } catch {
-      case e: CantTranslateException => None
-    }
-  }
-
 
   class UnrollingBank { 
     private val blockMap : MutableMap[(Identifier,Boolean),Set[FunctionInvocation]] = MutableMap.empty
