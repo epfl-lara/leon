@@ -3,7 +3,7 @@ package synthesis
 
 import purescala.TreeOps._
 import solvers.TrivialSolver
-import solvers.z3.FairZ3Solver
+import solvers.z3.{FairZ3Solver,UninterpretedZ3Solver}
 
 import purescala.Trees.Expr
 import purescala.ScalaPrinter
@@ -24,6 +24,8 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       new TrivialSolver(quietReporter),
       new FairZ3Solver(quietReporter)
     )
+    val uninterpretedZ3 = new UninterpretedZ3Solver(quietReporter)
+    uninterpretedZ3.setProgram(p)
 
     var inPlace  = false
     var genTrees = false
@@ -41,6 +43,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
     // Simplify expressions
     val simplifiers = List[Expr => Expr](
+      simplifyTautologies(uninterpretedZ3)(_), 
       simplifyLets _,
       patternMatchReconstruction _
     )

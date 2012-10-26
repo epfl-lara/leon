@@ -1,6 +1,7 @@
 package leon
 package purescala
 
+import leon.Extensions.Solver
 
 object TreeOps {
   import Common._
@@ -1047,4 +1048,20 @@ object TreeOps {
 
     genericTransform[PMContext](pre, noPost, noCombiner)(PMContext())(e)._1
   }
+
+  def simplifyTautologies(solver : Solver)(expr : Expr) : Expr = {
+    def pre(e : Expr) = e match {
+      case IfExpr(cond, then, elze) => solver.solve(cond) match {
+        case Some(true)  => then
+        case Some(false) => solver.solve(Not(cond)) match {
+          case Some(true) => elze
+          case _ => e
+        }
+        case None => e
+      }
+      case _ => e
+    }
+      
+    simpleTransform(pre, identity)(expr)
+  } 
 }
