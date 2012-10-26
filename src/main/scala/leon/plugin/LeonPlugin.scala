@@ -63,7 +63,6 @@ class LeonPlugin(val global: PluginRunner) extends Plugin {
         case "cores"         =>                     leon.Settings.useCores = true
         case "quickcheck"    =>                     leon.Settings.useQuickCheck = true
         case "parallel"      =>                     leon.Settings.useParallel = true
-        case "oneline"       =>                     leon.Settings.simpleOutput = true
         case "noLuckyTests"  =>                     leon.Settings.luckyTest = false
         case "noverifymodel" =>                     leon.Settings.verifyModel = false
         case "imperative"     =>                    leon.Settings.synthesis = false;

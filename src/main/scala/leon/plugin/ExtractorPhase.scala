@@ -12,6 +12,8 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
   def run(ctx: LeonContext)(args: List[String]): Program = {
 
     val settings = new NSCSettings
+    settings.usejavacp.value = true
+
     val compilerOpts = args.filterNot(_.startsWith("--"))
 
     val command = new CompilerCommand(compilerOpts, settings) {

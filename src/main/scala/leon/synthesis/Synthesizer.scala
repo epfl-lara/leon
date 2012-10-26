@@ -7,7 +7,7 @@ import purescala.TreeOps._
 import purescala.Trees.{Expr, Not}
 import purescala.ScalaPrinter
 
-import Extensions.Solver
+import solvers.Solver
 import java.io.File
 
 import collection.mutable.PriorityQueue

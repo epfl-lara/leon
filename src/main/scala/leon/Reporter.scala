@@ -27,10 +27,7 @@ class DefaultReporter extends Reporter {
   protected val infoPfx    = "[ Info  ] "
   protected val fatalPfx   = "[ Fatal ] "
 
-  def output(msg: String) : Unit = {
-    if(!Settings.simpleOutput)
-      println(msg)
-  }
+  def output(msg: String) : Unit = println(msg)
 
   protected def reline(pfx: String, msg: String) : String = {
     val color = if(pfx == errorPfx || pfx == warningPfx || pfx == fatalPfx) {

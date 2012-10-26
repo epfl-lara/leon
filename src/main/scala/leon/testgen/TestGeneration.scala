@@ -1,5 +1,7 @@
 package leon.testgen
 
+import leon.verification.Analyser
+
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Trees._

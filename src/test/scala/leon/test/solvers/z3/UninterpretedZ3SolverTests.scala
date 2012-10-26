@@ -8,7 +8,7 @@ import leon.purescala.TypeTrees._
 
 import leon.SilentReporter
 
-import leon.Extensions.Solver
+import leon.solvers.Solver
 import leon.solvers.z3.UninterpretedZ3Solver
 
 import org.scalatest.FunSuite
