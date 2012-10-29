@@ -117,6 +117,9 @@ object Main {
     LeonContext(settings = settings, reporter = reporter, files = files, options = leonOptions)
   }
 
+  // not sure we actually want this, but it is sexy
+  implicit def unitToNoopPhase[T](u: Unit): NoopPhase[T] = NoopPhase[T]()
+
   def computePipeline(settings: Settings): Pipeline[List[String], Any] = {
     import purescala.Definitions.Program
 
@@ -128,22 +131,16 @@ object Main {
         EpsilonElimination andThen
         ImperativeCodeElimination andThen
         FunctionClosure
-      } else {
-        NoopPhase()
       }
 
     val pipeSynthesis: Pipeline[Program, Program]=
       if (settings.synthesis) {
         synthesis.SynthesisPhase
-      } else {
-        NoopPhase()
       }
 
     val pipeVerify: Pipeline[Program, Any] =
       if (settings.verify) {
         verification.AnalysisPhase
-      } else {
-        NoopPhase()
       }
 
     pipeBegin andThen
