@@ -117,7 +117,7 @@ object Main {
     LeonContext(settings = settings, reporter = reporter, files = files, options = leonOptions)
   }
 
-  def computePipeline(settings: Settings): Pipeline[List[String], Unit] = {
+  def computePipeline(settings: Settings): Pipeline[List[String], Any] = {
     import purescala.Definitions.Program
 
     val pipeBegin : Pipeline[List[String],Program] = plugin.ExtractionPhase
@@ -129,28 +129,27 @@ object Main {
         ImperativeCodeElimination andThen
         FunctionClosure
       } else {
-        NoopPhase[Program]()
+        NoopPhase()
       }
 
     val pipeSynthesis: Pipeline[Program, Program]=
       if (settings.synthesis) {
         synthesis.SynthesisPhase
       } else {
-        NoopPhase[Program]()
+        NoopPhase()
       }
 
     val pipeVerify: Pipeline[Program, Any] =
       if (settings.verify) {
         verification.AnalysisPhase
       } else {
-        NoopPhase[Program]()
+        NoopPhase()
       }
 
     pipeBegin andThen
     pipeTransforms andThen
     pipeSynthesis andThen
-    pipeVerify andThen
-    ExitPhase()
+    pipeVerify
   }
 
   def main(args : Array[String]) {
