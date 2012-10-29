@@ -33,9 +33,3 @@ case class NoopPhase[T]() extends LeonPhase[T, T] {
   val description = "no-op"
   override def run(ctx: LeonContext)(v: T) = v
 }
-
-case class ExitPhase() extends LeonPhase[Any, Unit] {
-  val name = "end";
-  val description = "end"
-  override def run(ctx: LeonContext)(v: Any) = ()
-}
