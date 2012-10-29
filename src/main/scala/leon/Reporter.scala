@@ -5,20 +5,31 @@ import purescala.Trees.Expr
 import purescala.PrettyPrinter
 
 abstract class Reporter {
-  def error(msg: Any) : Unit
-  def warning(msg: Any) : Unit 
-  def info(msg: Any) : Unit 
-  def fatalError(msg: Any) : Nothing
+  def infoFunction(msg: Any) : Unit 
+  def warningFunction(msg: Any) : Unit 
+  def errorFunction(msg: Any) : Unit
+  def fatalErrorFunction(msg: Any) : Nothing
 
-  def error(definition: Definition, msg: Any) : Unit = error(msg)
-  def warning(definition: Definition, msg: Any) : Unit = warning(msg)
-  def info(definition: Definition, msg: Any) : Unit = info(msg)
-  def fatalError(definition: Definition, msg: Any) : Nothing = fatalError(msg)
+  // This part of the implementation is non-negociable.
+  private var _errorCount : Int = 0
+  private var _warningCount : Int = 0
 
-  def error(expr: Expr, msg: Any) : Unit = error(msg)
-  def warning(expr: Expr, msg: Any) : Unit = warning(msg)
-  def info(expr: Expr, msg: Any) : Unit = info(msg)
-  def fatalError(expr: Expr, msg: Any) : Nothing = fatalError(msg)
+  final def errorCount : Int = _errorCount
+  final def warningCount : Int = _warningCount
+
+  final def info(msg: Any) = infoFunction(msg)
+  final def warning(msg: Any) = {
+    _warningCount += 1
+    warningFunction(msg)
+  }
+  final def error(msg: Any) = {
+    _errorCount += 1
+    errorFunction(msg)
+  }
+  final def fatalError(msg: Any) = {
+    _errorCount += 1
+    fatalErrorFunction(msg)
+  }
 }
 
 class DefaultReporter extends Reporter {
@@ -39,26 +50,18 @@ class DefaultReporter extends Reporter {
     msg.trim.replaceAll("\n", "\n" + (" " * (pfx.size)))
   }
 
-  def error(msg: Any) = output(reline(errorPfx, msg.toString))
-  def warning(msg: Any) = output(reline(warningPfx, msg.toString))
-  def info(msg: Any) = output(reline(infoPfx, msg.toString))
-  def fatalError(msg: Any) = { output(reline(fatalPfx, msg.toString)); sys.exit(0) }
-  override def error(definition: Definition, msg: Any) = output(reline(errorPfx, PrettyPrinter(definition) + "\n" + msg.toString))
-  override def warning(definition: Definition, msg: Any) = output(reline(warningPfx, PrettyPrinter(definition) + "\n" + msg.toString))
-  override def info(definition: Definition, msg: Any) = output(reline(infoPfx, PrettyPrinter(definition) + "\n" + msg.toString))
-  override def fatalError(definition: Definition, msg: Any) = { output(reline(fatalPfx, PrettyPrinter(definition) + "\n" + msg.toString)); sys.exit(0) }
-  override def error(expr: Expr, msg: Any) = output(reline(errorPfx, PrettyPrinter(expr) + "\n" + msg.toString)) 
-  override def warning(expr: Expr, msg: Any) = output(reline(warningPfx, PrettyPrinter(expr) + "\n" + msg.toString))
-  override def info(expr: Expr, msg: Any) = output(reline(infoPfx, PrettyPrinter(expr) + "\n" + msg.toString))
-  override def fatalError(expr: Expr, msg: Any) = { output(reline(fatalPfx, PrettyPrinter(expr) + "\n" + msg.toString)); sys.exit(0) }
+  def errorFunction(msg: Any) = output(reline(errorPfx, msg.toString))
+  def warningFunction(msg: Any) = output(reline(warningPfx, msg.toString))
+  def infoFunction(msg: Any) = output(reline(infoPfx, msg.toString))
+  def fatalErrorFunction(msg: Any) = { output(reline(fatalPfx, msg.toString)); sys.exit(0) }
 }
 
 class QuietReporter extends DefaultReporter {
-  override def warning(msg : Any) = {}
-  override def info(msg : Any) = {}
+  override def warningFunction(msg : Any) = {}
+  override def infoFunction(msg : Any) = {}
 }
 
 class SilentReporter extends QuietReporter {
-  override def error(msg : Any) = {}
-  override def fatalError(msg : Any) = throw new Exception("Fatal error: " + msg.toString)
+  override def errorFunction(msg : Any) = {}
+  override def fatalErrorFunction(msg : Any) = throw new Exception("Fatal error: " + msg.toString)
 }
