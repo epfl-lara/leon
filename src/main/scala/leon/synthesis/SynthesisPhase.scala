@@ -45,7 +45,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     val simplifiers = List[Expr => Expr](
       simplifyTautologies(uninterpretedZ3)(_), 
       simplifyLets _,
-      patternMatchReconstruction _
+      decomposeIfs _
     )
 
     val chooseToExprs = solutions.mapValues(sol => simplifiers.foldLeft(sol.toExpr){ (x, sim) => sim(x) })
