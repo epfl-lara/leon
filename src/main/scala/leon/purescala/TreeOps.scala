@@ -1040,13 +1040,43 @@ object TreeOps {
     simplePreTransform(pre)(e)
   }
 
+  def decomposeIfs(e: Expr): Expr = {
+    def pre(e: Expr): Expr = e match {
+      case IfExpr(cond, then, elze) =>
+        val TopLevelOrs(orcases) = toDNF(cond)
+
+        if (!orcases.tail.isEmpty) {
+          pre(IfExpr(orcases.head, then, IfExpr(Or(orcases.tail), then, elze)))
+        } else {
+          val TopLevelAnds(andcases) = orcases.head
+
+          val (andis, andnotis) = andcases.partition(_.isInstanceOf[CaseClassInstanceOf])
+
+          if (andis.isEmpty || andnotis.isEmpty) {
+            e
+          } else {
+            IfExpr(And(andis), IfExpr(And(andnotis), then, elze), elze)
+          }
+        }
+      case _ =>
+        e
+    }
+
+    simplePreTransform(pre)(e)
+  }
+
   def patternMatchReconstruction(e: Expr): Expr = {
     case class PMContext()
 
     def pre(e: Expr, c: PMContext): (Expr, PMContext) = e match {
       case IfExpr(cond, then, elze) =>
         val TopLevelOrs(cases) = toDNF(cond)
-        //println("Found Cases: "+cases)
+        // find one variable on which we will match:
+        val casematches = for (caze <- cases) yield {
+           val TopLevelAnds(conds) = caze
+
+           conds.filter(_.isInstanceOf[CaseClassInstanceOf])
+        }
 
         (e, c)
       case _ =>
