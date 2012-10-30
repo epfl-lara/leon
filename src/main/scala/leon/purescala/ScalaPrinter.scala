@@ -426,7 +426,9 @@ object ScalaPrinter {
 
     case e @ Error(desc) => {
       var nsb = sb
-      nsb.append("sys.error(\"" + desc + "\")")
+      nsb.append("leon.Utils.error[")
+      nsb = pp(e.getType, nsb, lvl)
+      nsb.append("](\"" + desc + "\")")
       nsb
     }
 
