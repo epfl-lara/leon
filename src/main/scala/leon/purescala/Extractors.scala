@@ -101,6 +101,18 @@ object Extractors {
       case Block(args, rest) => Some((args :+ rest, exprs => Block(exprs.init, exprs.last)))
       case Tuple(args) => Some((args, Tuple))
       case IfExpr(cond, then, elze) => Some((Seq(cond, then, elze), (as: Seq[Expr]) => IfExpr(as(0), as(1), as(2))))
+      case MatchExpr(scrut, cases) =>
+        Some((scrut +: cases.flatMap{ case SimpleCase(_, e) => Seq(e)
+                                     case GuardedCase(_, e1, e2) => Seq(e1, e2) }
+             , { es: Seq[Expr] =>
+            var i = 1;
+            val newcases = for (caze <- cases) yield caze match {
+              case SimpleCase(b, _) => i+=1; SimpleCase(b, es(i-1)) 
+              case GuardedCase(b, _, _) => i+=2; GuardedCase(b, es(i-2), es(i-1)) 
+            }
+
+           MatchExpr(es(0), newcases)
+           }))
       case ex: NAryExtractable => ex.extract
       case _ => None
     }
