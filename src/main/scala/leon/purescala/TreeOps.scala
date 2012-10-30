@@ -1159,12 +1159,7 @@ object TreeOps {
               }
             }
 
-            if (subconds.forall(_.isInstanceOf[WildcardPattern])) {
-              // nothing to check underneath
-              InstanceOfPattern(Some(binder), cd)
-            } else {
-              CaseClassPattern(Some(binder), cd, subconds)
-            }
+            CaseClassPattern(Some(binder), cd, subconds)
           }
 
           val (scrutinees, patterns) = scrutSet.toSeq.map(s => (s, computePatternFor(conditions(s), s))) unzip
