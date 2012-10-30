@@ -175,6 +175,22 @@ trait Extractors {
       }
     }
 
+    object ExIdNamed {
+      def unapply(id: Ident): Option[String] = Some(id.toString)
+    }
+    object ExNamed {
+      def unapply(name: Name): Option[String] = Some(name.toString)
+    }
+
+    object ExErrorExpression {
+      def unapply(tree: Apply) : Option[String] = tree match {
+        case a @ Apply(Select(Select(Select(ExIdNamed("scala"), ExNamed("sys")), ExNamed("package")), ExNamed("error")), List(lit : Literal)) =>
+          Some(lit.value.stringValue)
+        case _ =>
+          None
+      }
+    }
+
     object ExChooseExpression {
       def unapply(tree: Apply) : Option[(List[(Type, Symbol)], Type, Tree, Tree)] = tree match {
         case a @ Apply(

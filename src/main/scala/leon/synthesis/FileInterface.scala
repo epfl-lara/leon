@@ -14,7 +14,7 @@ class FileInterface(reporter: Reporter, origFile: File) {
     origFile.getAbsolutePath() match {
       case FileExt(path, "scala") =>
         var i = 0
-        def savePath = path+"."+i+".scala"
+        def savePath = path+".scala."+i
         while (new File(savePath).isFile()) {
           i += 1
         }

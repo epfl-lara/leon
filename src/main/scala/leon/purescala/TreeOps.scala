@@ -1173,6 +1173,10 @@ object TreeOps {
             (scrutinees.head, patterns.head)
           }
 
+          // We use searchAndReplace to replace the biggest match first
+          // (topdown).
+          // So replaceing using Map(a => b, CC(a) => d) will replace
+          // "CC(a)" by "d" and not by "CC(b)"
           val newThen = searchAndReplace(substMap.get)(then)
 
           MatchExpr(scrutinee, Seq(SimpleCase(pattern, newThen), SimpleCase(WildcardPattern(None), elze)))

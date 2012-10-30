@@ -534,6 +534,9 @@ trait CodeExtraction extends Extractors {
             val tupleType = TupleType(tupleExprs.map(expr => bestRealType(expr.getType)))
             Tuple(tupleExprs).setType(tupleType)
           }
+          case ExErrorExpression(str) =>
+            Error(str).setType(scalaType2PureScala(unit, silent)(nextExpr.tpe))
+
           case ExTupleExtract(tuple, index) => {
             val tupleExpr = rec(tuple)
             val TupleType(tpes) = tupleExpr.getType
@@ -1051,6 +1054,7 @@ trait CodeExtraction extends Extractors {
       case tpe if tpe == IntClass.tpe => Int32Type
       case tpe if tpe == BooleanClass.tpe => BooleanType
       case tpe if tpe == UnitClass.tpe => UnitType
+      case tpe if tpe == NothingClass.tpe => BottomType
       case TypeRef(_, sym, btt :: Nil) if isSetTraitSym(sym) => SetType(rec(btt))
       case TypeRef(_, sym, btt :: Nil) if isMultisetTraitSym(sym) => MultisetType(rec(btt))
       case TypeRef(_, sym, btt :: Nil) if isOptionClassSym(sym) => OptionType(rec(btt))

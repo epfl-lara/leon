@@ -426,7 +426,7 @@ object ScalaPrinter {
 
     case e @ Error(desc) => {
       var nsb = sb
-      nsb.append("error(\"" + desc + "\")")
+      nsb.append("sys.error(\"" + desc + "\")")
       nsb
     }
 
