@@ -1153,7 +1153,9 @@ object TreeOps {
               if (conditions contains fieldSel) {
                 computePatternFor(conditions(fieldSel), fieldSel)
               } else {
-                WildcardPattern(None)
+                val b = FreshIdentifier(id.name, true).setType(id.getType)
+                substMap += fieldSel -> Variable(b)
+                WildcardPattern(Some(b))
               }
             }
 
