@@ -183,9 +183,9 @@ trait Extractors {
     }
 
     object ExErrorExpression {
-      def unapply(tree: Apply) : Option[String] = tree match {
-        case a @ Apply(Select(Select(Select(ExIdNamed("scala"), ExNamed("sys")), ExNamed("package")), ExNamed("error")), List(lit : Literal)) =>
-          Some(lit.value.stringValue)
+      def unapply(tree: Apply) : Option[(String, Type)] = tree match {
+        case a @ Apply(TypeApply(Select(Select(ExIdNamed("leon"), ExNamed("Utils")), ExNamed("error")), List(tpe)), List(lit : Literal)) =>
+          Some((lit.value.stringValue, tpe.tpe))
         case _ =>
           None
       }

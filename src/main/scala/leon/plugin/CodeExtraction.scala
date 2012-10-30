@@ -534,8 +534,8 @@ trait CodeExtraction extends Extractors {
             val tupleType = TupleType(tupleExprs.map(expr => bestRealType(expr.getType)))
             Tuple(tupleExprs).setType(tupleType)
           }
-          case ExErrorExpression(str) =>
-            Error(str).setType(scalaType2PureScala(unit, silent)(nextExpr.tpe))
+          case ExErrorExpression(str, tpe) =>
+            Error(str).setType(scalaType2PureScala(unit, silent)(tpe))
 
           case ExTupleExtract(tuple, index) => {
             val tupleExpr = rec(tuple)
