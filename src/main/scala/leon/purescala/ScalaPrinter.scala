@@ -376,6 +376,11 @@ object ScalaPrinter {
         }
         case WildcardPattern(None)     => sb.append("_")
         case WildcardPattern(Some(id)) => sb.append(id)
+        case InstanceOfPattern(bndr, ccd) => {
+          var nsb = sb
+          bndr.foreach(b => nsb.append(b + " : "))
+          nsb.append(ccd.id)
+        }
         case TuplePattern(bndr, subPatterns) => {
           bndr.foreach(b => sb.append(b + " @ "))
           sb.append("(")
