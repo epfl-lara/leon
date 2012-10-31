@@ -12,7 +12,7 @@ import java.io.File
 
 import collection.mutable.PriorityQueue
 
-class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivationTrees: Boolean) {
+class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivationTrees: Boolean, filterFuns: Option[Set[String]]) {
   import r.{error,warning,info,fatalError}
 
   private[this] var solution: Option[Solution] = None
@@ -121,7 +121,9 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivation
 
     // Look for choose()
     for (f <- program.definedFunctions.sortBy(_.id.toString) if f.body.isDefined) {
-      treeCatamorphism(x => x, noop, actOnChoose(f), f.body.get)
+      if (filterFuns.isEmpty || filterFuns.get.contains(f.id.toString)) {
+        treeCatamorphism(x => x, noop, actOnChoose(f), f.body.get)
+      }
     }
 
     solutions

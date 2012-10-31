@@ -23,3 +23,7 @@ case class LeonFlagOptionDef(name: String, usageOption: String, usageDesc: Strin
 case class LeonValueOptionDef(name: String, usageOption: String, usageDesc: String) extends LeonOptionDef {
   val isFlag = false
 }
+
+object ListValue {
+  def unapply(value: String): Option[Seq[String]] = Some(value.split(':').map(_.trim).filter(!_.isEmpty))
+}

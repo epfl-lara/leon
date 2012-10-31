@@ -14,8 +14,9 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
   val description = "Synthesis"
 
   override def definedOptions = Set(
-    LeonFlagOptionDef("inplace", "--inplace",           "Debug level"),
-    LeonFlagOptionDef("derivtrees", "--derivtrees",     "Generate derivation trees")
+    LeonFlagOptionDef( "inplace", "--inplace",           "Debug level"),
+    LeonFlagOptionDef( "derivtrees", "--derivtrees",     "Generate derivation trees"),
+    LeonValueOptionDef("functions", "--functions=f1:f2", "Limit synthesis of choose found within f1,f2,..")
   )
 
   def run(ctx: LeonContext)(p: Program): Program = {
@@ -27,17 +28,21 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     val uninterpretedZ3 = new UninterpretedZ3Solver(quietReporter)
     uninterpretedZ3.setProgram(p)
 
-    var inPlace  = false
-    var genTrees = false
+    var inPlace                        = false
+    var genTrees                       = false
+    var filterFun: Option[Seq[String]] = None 
+
     for(opt <- ctx.options) opt match {
       case LeonFlagOption("inplace") =>
         inPlace = true
+      case LeonValueOption("functions", ListValue(fs)) =>
+        filterFun = Some(fs)
       case LeonFlagOption("derivtrees") =>
         genTrees = true
       case _ =>
     }
 
-    val synth = new Synthesizer(ctx.reporter, solvers, genTrees)
+    val synth = new Synthesizer(ctx.reporter, solvers, genTrees, filterFun.map(_.toSet))
     val solutions = synth.synthesizeAll(p)
 
 

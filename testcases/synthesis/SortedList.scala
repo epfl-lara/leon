@@ -20,6 +20,8 @@ object SortedList {
     case Cons(i, t) => Set(i) ++ content(t)
   }
 
+  def groundSynth() = choose{ (out: List) => size(out) == 5 }
+
   def insertSynth(in: List, v: Int) = choose{ (out: List) => content(out) == content(in) ++ Set(v) }
 
   def insert1(l: List, v: Int) = (
