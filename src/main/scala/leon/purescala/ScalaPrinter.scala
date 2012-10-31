@@ -10,60 +10,56 @@ object ScalaPrinter {
   import java.lang.StringBuffer
 
   def apply(tree: Expr): String = {
-    val retSB = pp(tree, new StringBuffer, 0)
+    val retSB = new StringBuffer
+    pp(tree, retSB, 0)
     retSB.toString
   }
 
   def apply(tpe: TypeTree): String = {
-    val retSB = pp(tpe, new StringBuffer, 0)
+    val retSB = new StringBuffer
+    pp(tpe, retSB, 0)
     retSB.toString
   }
 
   def apply(defn: Definition): String = {
-    val retSB = pp(defn, new StringBuffer, 0)
+    val retSB = new StringBuffer
+    pp(defn, retSB, 0)
     retSB.toString
   }
 
-  private def ind(sb: StringBuffer, lvl: Int) : StringBuffer = {
-      sb.append("  " * lvl)
-      sb
+  private def ind(sb: StringBuffer, lvl: Int) {
+    sb.append("  " * lvl)
   }
 
   // EXPRESSIONS
   // all expressions are printed in-line
-  private def ppUnary(sb: StringBuffer, expr: Expr, op1: String, op2: String, lvl: Int): StringBuffer = {
-    var nsb: StringBuffer = sb
-    nsb.append(op1)
-    nsb = pp(expr, nsb, lvl)
-    nsb.append(op2)
-    nsb
+  private def ppUnary(sb: StringBuffer, expr: Expr, op1: String, op2: String, lvl: Int) {
+    sb.append(op1)
+    pp(expr, sb, lvl)
+    sb.append(op2)
   }
 
-  private def ppBinary(sb: StringBuffer, left: Expr, right: Expr, op: String, lvl: Int): StringBuffer = {
-    var nsb: StringBuffer = sb
-    nsb.append("(")
-    nsb = pp(left, nsb, lvl)
-    nsb.append(op)
-    nsb = pp(right, nsb, lvl)
-    nsb.append(")")
-    nsb
+  private def ppBinary(sb: StringBuffer, left: Expr, right: Expr, op: String, lvl: Int) {
+    sb.append("(")
+    pp(left, sb, lvl)
+    sb.append(op)
+    pp(right, sb, lvl)
+    sb.append(")")
   }
 
-  private def ppNary(sb: StringBuffer, exprs: Seq[Expr], pre: String, op: String, post: String, lvl: Int): StringBuffer = {
-    var nsb = sb
-    nsb.append(pre)
+  private def ppNary(sb: StringBuffer, exprs: Seq[Expr], pre: String, op: String, post: String, lvl: Int) {
+    sb.append(pre)
     val sz = exprs.size
     var c = 0
 
     exprs.foreach(ex => {
-      nsb = pp(ex, nsb, lvl) ; c += 1 ; if(c < sz) nsb.append(op)
+      pp(ex, sb, lvl) ; c += 1 ; if(c < sz) sb.append(op)
     })
 
-    nsb.append(post)
-    nsb
+    sb.append(post)
   }
 
-  private def pp(tree: Expr, sb: StringBuffer, lvl: Int): StringBuffer = tree match {
+  private def pp(tree: Expr, sb: StringBuffer, lvl: Int): Unit = tree match {
     case Variable(id) => sb.append(id)
     case DeBruijnIndex(idx) => sys.error("Not Valid Scala")
     case LetTuple(ids,d,e) => {
@@ -86,7 +82,6 @@ object ScalaPrinter {
       ind(sb, lvl)
       sb.append("}\n")
       ind(sb, lvl)
-      sb
     }
     case Let(b,d,e) => {
       sb.append("locally {\n")
@@ -100,7 +95,6 @@ object ScalaPrinter {
       ind(sb, lvl)
       sb.append("}\n")
       ind(sb, lvl)
-      sb
     }
     case LetVar(b,d,e) => {
       sb.append("locally {\n")
@@ -114,7 +108,6 @@ object ScalaPrinter {
       ind(sb, lvl)
       sb.append("}\n")
       ind(sb, lvl)
-      sb
     }
     case LetDef(fd,e) => {
       sb.append("\n")
@@ -123,7 +116,6 @@ object ScalaPrinter {
       sb.append("\n")
       ind(sb, lvl)
       pp(e, sb, lvl)
-      sb
     }
     case And(exprs) => ppNary(sb, exprs, "(", " && ", ")", lvl)            // \land
     case Or(exprs) => ppNary(sb, exprs, "(", " || ", ")", lvl)             // \lor
@@ -145,7 +137,6 @@ object ScalaPrinter {
       })
       ind(sb, lvl)
       sb.append("}\n")
-      sb
     }
     case Assignment(lhs, rhs) => ppBinary(sb, lhs.toVariable, rhs, " = ", lvl)
     case wh@While(cond, body) => {
@@ -172,60 +163,50 @@ object ScalaPrinter {
     case s@TupleSelect(t, i) => {
       pp(t, sb, lvl)
       sb.append("._" + i)
-      sb
     }
 
     case e@Epsilon(pred) => sys.error("Not Scala Code")
     case Waypoint(i, expr) => pp(expr, sb, lvl)
 
     case OptionSome(a) => {
-      var nsb = sb
-      nsb.append("Some(")
-      nsb = pp(a, nsb, lvl)
-      nsb.append(")")
-      nsb
+      sb.append("Some(")
+      pp(a, sb, lvl)
+      sb.append(")")
     }
 
     case OptionNone(_) => sb.append("None")
 
     case CaseClass(cd, args) => {
-      var nsb = sb
-      nsb.append(cd.id)
-      nsb = ppNary(nsb, args, "(", ", ", ")", lvl)
-      nsb
+      sb.append(cd.id)
+      ppNary(sb, args, "(", ", ", ")", lvl)
     }
     case CaseClassInstanceOf(cd, e) => {
-      var nsb = sb
-      nsb = pp(e, nsb, lvl)
-      nsb.append(".isInstanceOf[" + cd.id + "]")
-      nsb
+      pp(e, sb, lvl)
+      sb.append(".isInstanceOf[" + cd.id + "]")
     }
-    case CaseClassSelector(_, cc, id) => pp(cc, sb, lvl).append("." + id)
+    case CaseClassSelector(_, cc, id) =>
+      pp(cc, sb, lvl)
+      sb.append("." + id)
     case FunctionInvocation(fd, args) => {
-      var nsb = sb
-      nsb.append(fd.id)
-      nsb = ppNary(nsb, args, "(", ", ", ")", lvl)
-      nsb
+      sb.append(fd.id)
+      ppNary(sb, args, "(", ", ", ")", lvl)
     }
     case AnonymousFunction(es, ev) => {
-      var nsb = sb
-      nsb.append("{")
+      sb.append("{")
       es.foreach {
         case (as, res) => 
-          nsb = ppNary(nsb, as, "", " ", "", lvl)
-          nsb.append(" -> ")
-          nsb = pp(res, nsb, lvl)
-          nsb.append(", ")
+          ppNary(sb, as, "", " ", "", lvl)
+          sb.append(" -> ")
+          pp(res, sb, lvl)
+          sb.append(", ")
       }
-      nsb.append("else -> ")
-      nsb = pp(ev, nsb, lvl)
-      nsb.append("}")
+      sb.append("else -> ")
+      pp(ev, sb, lvl)
+      sb.append("}")
     }
     case AnonymousFunctionInvocation(id, args) => {
-      var nsb = sb
-      nsb.append(id)
-      nsb = ppNary(nsb, args, "(", ", ", ")", lvl)
-      nsb
+      sb.append(id)
+      ppNary(sb, args, "(", ", ", ")", lvl)
     }
     case Plus(l,r) => ppBinary(sb, l, r, " + ", lvl)
     case Minus(l,r) => ppBinary(sb, l, r, " - ", lvl)
@@ -244,8 +225,12 @@ object ScalaPrinter {
     //case ElementOfSet(s,e) => ppBinary(sb, s, e, " \u2208 ", lvl)    // \in
     //case SubsetOf(l,r) => ppBinary(sb, l, r, " \u2286 ", lvl)        // \subseteq
     //case Not(SubsetOf(l,r)) => ppBinary(sb, l, r, " \u2288 ", lvl)        // \notsubseteq
-    case SetMin(s) => pp(s, sb, lvl).append(".min")
-    case SetMax(s) => pp(s, sb, lvl).append(".max")
+    case SetMin(s) =>
+      pp(s, sb, lvl)
+      sb.append(".min")
+    case SetMax(s) =>
+      pp(s, sb, lvl)
+      sb.append(".max")
    // case SetUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)        // \cup
    // case MultisetUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)   // \cup
    // case MapUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)        // \cup
@@ -261,17 +246,13 @@ object ScalaPrinter {
     case SingletonMap(f,t) => ppBinary(sb, f, t, " -> ", lvl)
     case FiniteMap(rs) => ppNary(sb, rs, "Map(", ", ", ")", lvl)
     case MapGet(m,k) => {
-      var nsb = sb
-      pp(m, nsb, lvl)
-      nsb = ppNary(nsb, Seq(k), "(", ",", ")", lvl)
-      nsb
+      pp(m, sb, lvl)
+      ppNary(sb, Seq(k), "(", ",", ")", lvl)
     }
     case MapIsDefinedAt(m,k) => {
-      var nsb = sb
-      pp(m, nsb, lvl)
-      nsb.append(".isDefinedAt")
-      nsb = ppNary(nsb, Seq(k), "(", ",", ")", lvl)
-      nsb
+      pp(m, sb, lvl)
+      sb.append(".isDefinedAt")
+      ppNary(sb, Seq(k), "(", ",", ")", lvl)
     }
     case ArrayLength(a) => {
       pp(a, sb, lvl)
@@ -315,71 +296,63 @@ object ScalaPrinter {
     }
 
     case Distinct(exprs) => {
-      var nsb = sb
-      nsb.append("distinct")
-      nsb = ppNary(nsb, exprs, "(", ", ", ")", lvl)
-      nsb
+      sb.append("distinct")
+      ppNary(sb, exprs, "(", ", ", ")", lvl)
     }
     
     case IfExpr(c, t, e) => {
-      var nsb = sb
-      nsb.append("(if (")
-      nsb = pp(c, nsb, lvl)
-      nsb.append(")\n")
-      ind(nsb, lvl+1)
-      nsb = pp(t, nsb, lvl+1)
-      nsb.append("\n")
-      ind(nsb, lvl)
-      nsb.append("else\n")
-      ind(nsb, lvl+1)
-      nsb = pp(e, nsb, lvl+1)
-      nsb.append(")")
-      nsb
+      sb.append("(if (")
+      pp(c, sb, lvl)
+      sb.append(")\n")
+      ind(sb, lvl+1)
+      pp(t, sb, lvl+1)
+      sb.append("\n")
+      ind(sb, lvl)
+      sb.append("else\n")
+      ind(sb, lvl+1)
+      pp(e, sb, lvl+1)
+      sb.append(")")
     }
 
     case Choose(ids, pred) => {
-      var nsb = sb
-      nsb.append("(choose { (")
+      sb.append("(choose { (")
       for (((id, tpe), i) <- ids.map(id => (id, id.getType)).zipWithIndex) {
-          nsb.append(id.toString+": ")
-          nsb = pp(tpe, nsb, lvl)
+          sb.append(id.toString+": ")
+          pp(tpe, sb, lvl)
           if (i != ids.size-1) {
-              nsb.append(", ")
+              sb.append(", ")
           }
       }
-      nsb.append(") =>\n")
-      ind(nsb, lvl+1)
-      nsb = pp(pred, nsb, lvl+1)
-      nsb.append("\n")
-      ind(nsb, lvl)
-      nsb.append("})")
-      nsb
+      sb.append(") =>\n")
+      ind(sb, lvl+1)
+      pp(pred, sb, lvl+1)
+      sb.append("\n")
+      ind(sb, lvl)
+      sb.append("})")
     }
 
     case mex @ MatchExpr(s, csc) => {
-      def ppc(sb: StringBuffer, p: Pattern): StringBuffer = p match {
+      def ppc(sb: StringBuffer, p: Pattern): Unit = p match {
         //case InstanceOfPattern(None,     ctd) =>
         //case InstanceOfPattern(Some(id), ctd) =>
         case CaseClassPattern(bndr,     ccd, subps) => {
-          var nsb = sb
-          bndr.foreach(b => nsb.append(b + " @ "))
-          nsb.append(ccd.id).append("(")
+          bndr.foreach(b => sb.append(b + " @ "))
+          sb.append(ccd.id).append("(")
           var c = 0
           val sz = subps.size
           subps.foreach(sp => {
-            nsb = ppc(nsb, sp)
+            ppc(sb, sp)
             if(c < sz - 1)
-              nsb.append(", ")
+              sb.append(", ")
             c = c + 1
           })
-          nsb.append(")")
+          sb.append(")")
         }
         case WildcardPattern(None)     => sb.append("_")
         case WildcardPattern(Some(id)) => sb.append(id)
         case InstanceOfPattern(bndr, ccd) => {
-          var nsb = sb
-          bndr.foreach(b => nsb.append(b + " : "))
-          nsb.append(ccd.id)
+          bndr.foreach(b => sb.append(b + " : "))
+          sb.append(ccd.id)
         }
         case TuplePattern(bndr, subPatterns) => {
           bndr.foreach(b => sb.append(b + " @ "))
@@ -394,30 +367,29 @@ object ScalaPrinter {
         case _ => sb.append("Pattern?")
       }
 
-      var nsb = sb
-      nsb.append("(")
-      nsb == pp(s, nsb, lvl)
+      sb.append("(")
+      pp(s, sb, lvl)
       // if(mex.posInfo != "") {
-      //   nsb.append(" match@(" + mex.posInfo + ") {\n")
+      //   sb.append(" match@(" + mex.posInfo + ") {\n")
       // } else {
-        nsb.append(" match {\n")
+        sb.append(" match {\n")
       // }
 
       csc.foreach(cs => {
-        ind(nsb, lvl+1)
-        nsb.append("case ")
-        nsb = ppc(nsb, cs.pattern)
+        ind(sb, lvl+1)
+        sb.append("case ")
+        ppc(sb, cs.pattern)
         cs.theGuard.foreach(g => {
-          nsb.append(" if ")
-          nsb = pp(g, nsb, lvl+1)
+          sb.append(" if ")
+          pp(g, sb, lvl+1)
         })
-        nsb.append(" => ")
-        nsb = pp(cs.rhs, nsb, lvl+1)
-        nsb.append("\n")
+        sb.append(" => ")
+        pp(cs.rhs, sb, lvl+1)
+        sb.append("\n")
       })
-      ind(nsb, lvl).append("}")
-      nsb.append(")")
-      nsb
+      ind(sb, lvl)
+      sb.append("}")
+      sb.append(")")
     }
 
     case ResultVariable() => sb.append("res")
@@ -425,11 +397,9 @@ object ScalaPrinter {
     case Not(expr) => ppUnary(sb, expr, "!(", ")", lvl)               // \neg
 
     case e @ Error(desc) => {
-      var nsb = sb
-      nsb.append("leon.Utils.error[")
-      nsb = pp(e.getType, nsb, lvl)
-      nsb.append("](\"" + desc + "\")")
-      nsb
+      sb.append("leon.Utils.error[")
+      pp(e.getType, sb, lvl)
+      sb.append("](\"" + desc + "\")")
     }
 
     case _ => sb.append("Expr?")
@@ -437,38 +407,52 @@ object ScalaPrinter {
 
   // TYPE TREES
   // all type trees are printed in-line
-  private def ppNaryType(sb: StringBuffer, tpes: Seq[TypeTree], pre: String, op: String, post: String, lvl: Int): StringBuffer = {
-    var nsb = sb
-    nsb.append(pre)
+  private def ppNaryType(sb: StringBuffer, tpes: Seq[TypeTree], pre: String, op: String, post: String, lvl: Int) = {
+    sb.append(pre)
     val sz = tpes.size
     var c = 0
 
     tpes.foreach(t => {
-      nsb = pp(t, nsb, lvl) ; c += 1 ; if(c < sz) nsb.append(op)
+      pp(t, sb, lvl) ; c += 1 ; if(c < sz) sb.append(op)
     })
 
-    nsb.append(post)
-    nsb
+    sb.append(post)
   }
 
-  private def pp(tpe: TypeTree, sb: StringBuffer, lvl: Int): StringBuffer = tpe match {
+  private def pp(tpe: TypeTree, sb: StringBuffer, lvl: Int): Unit = tpe match {
     case Untyped => sb.append("???")
     case UnitType => sb.append("Unit")
     case Int32Type => sb.append("Int")
     case BooleanType => sb.append("Boolean")
-    case ArrayType(bt) => pp(bt, sb.append("Array["), lvl).append("]")
-    case SetType(bt) => pp(bt, sb.append("Set["), lvl).append("]")
-    case MapType(ft,tt) => pp(tt, pp(ft, sb.append("Map["), lvl).append(","), lvl).append("]")
-    case MultisetType(bt) => pp(bt, sb.append("Multiset["), lvl).append("]")
-    case OptionType(bt) => pp(bt, sb.append("Option["), lvl).append("]")
+    case ArrayType(bt) =>
+      sb.append("Array[")
+      pp(bt, sb, lvl)
+      sb.append("]")
+    case SetType(bt) =>
+      sb.append("Set[")
+      pp(bt, sb, lvl)
+      sb.append("]")
+    case MapType(ft,tt) =>
+      sb.append("Map[")
+      pp(ft, sb, lvl)
+      sb.append(",")
+      pp(tt, sb, lvl)
+      sb.append("]")
+    case MultisetType(bt) =>
+      sb.append("Multiset[")
+      pp(bt, sb, lvl)
+      sb.append("]")
+    case OptionType(bt) =>
+      sb.append("Option[")
+      pp(bt, sb, lvl)
+      sb.append("]")
     case FunctionType(fts, tt) => {
-      var nsb = sb
       if (fts.size > 1)
-        nsb = ppNaryType(nsb, fts, "(", ", ", ")", lvl)
+        ppNaryType(sb, fts, "(", ", ", ")", lvl)
       else if (fts.size == 1)
-        nsb = pp(fts.head, nsb, lvl)
-      nsb.append(" => ")
-      pp(tt, nsb, lvl)
+        pp(fts.head, sb, lvl)
+      sb.append(" => ")
+      pp(tt, sb, lvl)
     }
     case TupleType(tpes) => ppNaryType(sb, tpes, "(", ", ", ")", lvl)
     case c: ClassType => sb.append(c.classDef.id)
@@ -477,7 +461,7 @@ object ScalaPrinter {
 
   // DEFINITIONS
   // all definitions are printed with an end-of-line
-  private def pp(defn: Definition, sb: StringBuffer, lvl: Int): StringBuffer = {
+  private def pp(defn: Definition, sb: StringBuffer, lvl: Int): Unit = {
 
     defn match {
       case Program(id, mainObj) => {
@@ -486,124 +470,119 @@ object ScalaPrinter {
       }
 
       case ObjectDef(id, defs, invs) => {
-        var nsb = sb
-        ind(nsb, lvl)
-        nsb.append("object ")
-        nsb.append(id)
-        nsb.append(" {\n")
+        ind(sb, lvl)
+        sb.append("object ")
+        sb.append(id)
+        sb.append(" {\n")
 
         var c = 0
         val sz = defs.size
 
         defs.foreach(df => {
-          nsb = pp(df, nsb, lvl+1)
+          pp(df, sb, lvl+1)
           if(c < sz - 1) {
-            nsb.append("\n\n")
+            sb.append("\n\n")
           }
           c = c + 1
         })
 
-        nsb.append("\n")
-        ind(nsb, lvl).append("}\n")
+        sb.append("\n")
+        ind(sb, lvl)
+        sb.append("}\n")
       }
 
       case AbstractClassDef(id, parent) => {
-        var nsb = sb
-        ind(nsb, lvl)
-        nsb.append("sealed abstract class ")
-        nsb.append(id)
-        parent.foreach(p => nsb.append(" extends " + p.id))
-        nsb
+        ind(sb, lvl)
+        sb.append("sealed abstract class ")
+        sb.append(id)
+        parent.foreach(p => sb.append(" extends " + p.id))
+        sb
       }
 
       case CaseClassDef(id, parent, varDecls) => {
-        var nsb = sb
-        ind(nsb, lvl)
-        nsb.append("case class ")
-        nsb.append(id)
-        nsb.append("(")
+        ind(sb, lvl)
+        sb.append("case class ")
+        sb.append(id)
+        sb.append("(")
         var c = 0
         val sz = varDecls.size
 
         varDecls.foreach(vd => {
-          nsb.append(vd.id)
-          nsb.append(": ")
-          nsb = pp(vd.tpe, nsb, lvl)
+          sb.append(vd.id)
+          sb.append(": ")
+          pp(vd.tpe, sb, lvl)
           if(c < sz - 1) {
-            nsb.append(", ")
+            sb.append(", ")
           }
           c = c + 1
         })
-        nsb.append(")")
-        parent.foreach(p => nsb.append(" extends " + p.id))
-        nsb
+        sb.append(")")
+        parent.foreach(p => sb.append(" extends " + p.id))
+        sb
       }
 
       case fd @ FunDef(id, rt, args, body, pre, post) => {
-        var nsb = sb
 
         //for(a <- fd.annotations) {
-        //  ind(nsb, lvl)
-        //  nsb.append("@" + a + "\n")
+        //  ind(sb, lvl)
+        //  sb.append("@" + a + "\n")
         //}
 
-        ind(nsb, lvl)
-        nsb.append("def ")
-        nsb.append(id)
-        nsb.append("(")
+        ind(sb, lvl)
+        sb.append("def ")
+        sb.append(id)
+        sb.append("(")
 
         val sz = args.size
         var c = 0
         
         args.foreach(arg => {
-          nsb.append(arg.id)
-          nsb.append(" : ")
-          nsb = pp(arg.tpe, nsb, lvl)
+          sb.append(arg.id)
+          sb.append(" : ")
+          pp(arg.tpe, sb, lvl)
 
           if(c < sz - 1) {
-            nsb.append(", ")
+            sb.append(", ")
           }
           c = c + 1
         })
 
-        nsb.append(") : ")
-        nsb = pp(rt, nsb, lvl)
-        nsb.append(" = (")
+        sb.append(") : ")
+        pp(rt, sb, lvl)
+        sb.append(" = (")
         if(body.isDefined) {
           pre match {
-            case None => pp(body.get, nsb, lvl)
+            case None => pp(body.get, sb, lvl)
             case Some(prec) => {
-              nsb.append("{\n")
-              ind(nsb, lvl+1)
-              nsb.append("require(")
-              nsb = pp(prec, nsb, lvl+1)
-              nsb.append(")\n")
-              pp(body.get, nsb, lvl+1)
-              nsb.append("\n")
-              ind(nsb, lvl)
-              nsb.append("}")
+              sb.append("{\n")
+              ind(sb, lvl+1)
+              sb.append("require(")
+              pp(prec, sb, lvl+1)
+              sb.append(")\n")
+              pp(body.get, sb, lvl+1)
+              sb.append("\n")
+              ind(sb, lvl)
+              sb.append("}")
             }
           }
         } else
-          nsb.append("[unknown function implementation]")
+          sb.append("[unknown function implementation]")
 
         post match {
           case None => {
-            nsb.append(")")
+            sb.append(")")
           }
           case Some(postc) => {
-            nsb.append(" ensuring(res => ") //TODO, not very general solution...
-            nsb = pp(postc, nsb, lvl)
-            nsb.append("))")
+            sb.append(" ensuring(res => ") //TODO, not very general solution...
+            pp(postc, sb, lvl)
+            sb.append("))")
           }
         }
 
-        nsb
+        sb
       }
 
       case _ => sb.append("Defn?")
     }
   }
 }
-
-// vim: set ts=4 sw=4 et:
