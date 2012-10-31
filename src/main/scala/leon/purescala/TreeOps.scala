@@ -1218,4 +1218,76 @@ object TreeOps {
 
     simplePreTransform(pre)(expr)
   }
+
+  // NOTE : this is currently untested, use at your own risk !
+  // (or better yet, write tests for it)
+  // PS
+  def simplifyPaths(solver : Solver)(expr : Expr) : Expr = {
+    def impliedBy(e : Expr, path : Seq[Expr]) : Boolean = {
+      solver.solve(Implies(And(path), e)) match {
+        case Some(true) => true
+        case _ => false
+      }
+    }
+
+    def contradictedBy(e : Expr, path : Seq[Expr]) : Boolean = {
+      solver.solve(Implies(And(path), Not(e))) match {
+        case Some(true) => true
+        case _ => false
+      }
+    }
+
+    def rec(e : Expr, path : Seq[Expr]): Expr = e match {
+
+      case IfExpr(cond, then, elze) =>
+        val rc = rec(cond, path)
+        rc match {
+          case BooleanLiteral(true)  => rec(then, path)
+          case BooleanLiteral(false) => rec(elze, path)
+          case _ => IfExpr(rc, rec(then, rc +: path), rec(elze, Not(rc) +: path))
+        }
+
+      case And(es) =>
+        var extPath = path
+        var continue = true
+        And(for(e <- es if continue) yield {
+          val se = rec(e, extPath)
+          if(se == BooleanLiteral(false)) continue = false
+          extPath = se +: extPath
+          se 
+        })
+
+      case Or(es) =>
+        var extPath = path
+        var continue = true
+        Or(for(e <- es if continue) yield {
+          val se = rec(e, extPath)
+          if(se == BooleanLiteral(true)) continue = true
+          extPath = se +: extPath
+          se 
+        })
+
+      case b if b.getType == BooleanType && impliedBy(b, path) =>
+        BooleanLiteral(true)
+
+      case b if b.getType == BooleanType && contradictedBy(b, path) =>
+        BooleanLiteral(false)
+
+      case UnaryOperator(e, builder) =>
+        builder(rec(e, path))
+
+      case BinaryOperator(e1, e2, builder) =>
+        builder(rec(e1, path), rec(e2, path))
+
+      case NAryOperator(es, builder) =>
+        builder(es.map(rec(_, path)))
+
+      case t : Terminal => t
+
+      case _ =>
+        sys.error("Expression "+e+" ["+e.getClass+"] is not extractable")
+    }
+
+    rec(expr, Nil)
+  }
 }
