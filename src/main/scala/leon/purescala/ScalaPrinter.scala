@@ -301,17 +301,19 @@ object ScalaPrinter {
     }
     
     case IfExpr(c, t, e) => {
-      sb.append("(if (")
+      sb.append("if (")
       pp(c, sb, lvl)
-      sb.append(")\n")
+      sb.append(") {\n")
       ind(sb, lvl+1)
       pp(t, sb, lvl+1)
       sb.append("\n")
       ind(sb, lvl)
-      sb.append("else\n")
+      sb.append("} else {\n")
       ind(sb, lvl+1)
       pp(e, sb, lvl+1)
-      sb.append(")")
+      sb.append("\n")
+      ind(sb, lvl)
+      sb.append("}")
     }
 
     case Choose(ids, pred) => {
@@ -383,8 +385,9 @@ object ScalaPrinter {
           sb.append(" if ")
           pp(g, sb, lvl+1)
         })
-        sb.append(" => ")
-        pp(cs.rhs, sb, lvl+1)
+        sb.append(" =>\n")
+        ind(sb, lvl+2)
+        pp(cs.rhs, sb, lvl+2)
         sb.append("\n")
       })
       ind(sb, lvl)
