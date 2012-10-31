@@ -240,7 +240,7 @@ object ScalaPrinter {
     case FiniteMultiset(rs) => ppNary(sb, rs, "{|", ", ", "|}", lvl)
     case EmptySet(bt) => sb.append("Set()")                          // Ø
     case EmptyMultiset(_) => sys.error("Not Valid Scala")
-    case Not(ElementOfSet(s,e)) => sys.error("TODO")
+    case ElementOfSet(s,e) => ppBinary(sb, s, e, " contains ", lvl)
     //case ElementOfSet(s,e) => ppBinary(sb, s, e, " \u2208 ", lvl)    // \in
     //case SubsetOf(l,r) => ppBinary(sb, l, r, " \u2286 ", lvl)        // \subseteq
     //case Not(SubsetOf(l,r)) => ppBinary(sb, l, r, " \u2288 ", lvl)        // \notsubseteq
@@ -422,7 +422,7 @@ object ScalaPrinter {
 
     case ResultVariable() => sb.append("res")
     case EpsilonVariable((row, col)) => sb.append("x" + row + "_" + col)
-    case Not(expr) => ppUnary(sb, expr, "\u00AC(", ")", lvl)               // \neg
+    case Not(expr) => ppUnary(sb, expr, "!(", ")", lvl)               // \neg
 
     case e @ Error(desc) => {
       var nsb = sb
