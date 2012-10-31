@@ -962,26 +962,26 @@ object TreeOps {
 
       val (newExpr, newC) = expr match {
         case t: Terminal =>
-          (expr, ctx)
+          (expr, cIn)
 
         case UnaryOperator(e, builder) =>
           val (e1, c) = rec(e, ctx)
           val newE = builder(e1)
 
-          (newE, combiner(newE, ctx, Seq(c)))
+          (newE, combiner(newE, cIn, Seq(c)))
 
         case BinaryOperator(e1, e2, builder) =>
           val (ne1, c1) = rec(e1, ctx)
           val (ne2, c2) = rec(e2, ctx)
           val newE = builder(ne1, ne2)
 
-          (newE, combiner(newE, ctx, Seq(c1, c2)))
+          (newE, combiner(newE, cIn, Seq(c1, c2)))
 
         case NAryOperator(es, builder) =>
-          val (nes, cs) = es.map(e => rec(e, ctx)).unzip
+          val (nes, cs) = es.map{ rec(_, ctx)}.unzip
           val newE = builder(nes)
 
-          (newE, combiner(newE, ctx, cs))
+          (newE, combiner(newE, cIn, cs))
 
         case e =>
           sys.error("Expression "+e+" ["+e.getClass+"] is not extractable")
@@ -1011,7 +1011,7 @@ object TreeOps {
   def simplePostTransform(post: Expr => Expr)(expr: Expr) = {
     val newPost = (e: Expr, c: Unit) => (post(e), ())
 
-    genericTransform[Unit]((_, _), newPost, noCombiner)(())(expr)._1
+    genericTransform[Unit]((e,c) => (e, None), newPost, noCombiner)(())(expr)._1
   }
 
   def toDNF(e: Expr): Expr = {
@@ -1176,7 +1176,23 @@ object TreeOps {
           // "CC(a)" by "d" and not by "CC(b)"
           val newThen = searchAndReplace(substMap.get)(then)
 
-          MatchExpr(scrutinee, Seq(SimpleCase(pattern, newThen), SimpleCase(WildcardPattern(None), elze)))
+          // Remove unused binders
+          val vars = variablesOf(newThen)
+
+          def simplerBinder(oid: Option[Identifier]) = oid.filter(vars(_))
+
+          def simplifyPattern(p: Pattern): Pattern = p match {
+            case CaseClassPattern(ob, cd, subpatterns) =>
+              CaseClassPattern(simplerBinder(ob), cd, subpatterns map simplifyPattern)
+            case WildcardPattern(ob) =>
+              WildcardPattern(simplerBinder(ob))
+            case TuplePattern(ob, patterns) =>
+              TuplePattern(simplerBinder(ob), patterns map simplifyPattern)
+            case _ =>
+              p
+          }
+
+          MatchExpr(scrutinee, Seq(SimpleCase(simplifyPattern(pattern), newThen), SimpleCase(WildcardPattern(None), elze)))
         } else {
           e
         }
