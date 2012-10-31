@@ -1221,6 +1221,7 @@ object TreeOps {
 
   // NOTE : this is currently untested, use at your own risk !
   // (or better yet, write tests for it)
+  // TODO : test and remove this header.
   // PS
   def simplifyPaths(solver : Solver)(expr : Expr) : Expr = {
     def impliedBy(e : Expr, path : Seq[Expr]) : Boolean = {
@@ -1238,6 +1239,11 @@ object TreeOps {
     }
 
     def rec(e : Expr, path : Seq[Expr]): Expr = e match {
+
+      case Let(i, e, b) => 
+        // The path condition for the body of the Let is the same as outside, plus an equality to constrain the newly bound variable.
+        val se = rec(e, path)
+        Let(i, se, rec(b, Equals(Variable(i), se) +: path))
 
       case IfExpr(cond, then, elze) =>
         val rc = rec(cond, path)
