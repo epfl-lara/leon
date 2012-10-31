@@ -83,10 +83,9 @@ object Trees {
 
   case class Tuple(exprs: Seq[Expr]) extends Expr {
     val subTpes = exprs.map(_.getType).map(bestRealType)
-    if(!subTpes.exists(_ == Untyped)) {
+    if(subTpes.forall(_ != Untyped)) {
       setType(TupleType(subTpes))
     }
-
   }
 
   // This must be 1-indexed !
