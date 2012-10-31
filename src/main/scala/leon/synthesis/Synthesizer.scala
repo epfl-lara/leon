@@ -28,6 +28,7 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivation
 
     workList += rootTask
     solution = None
+
     if (generateDerivationTrees) {
       derivationTree = new DerivationTree(rootTask)
     }
@@ -35,26 +36,11 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivation
     while (!workList.isEmpty && solution.isEmpty) {
       val task = workList.dequeue()
 
-      info("Now handling: "+task.problem)
+      println("Running "+task+"...")
+      val subtasks = task.run
+      println(subtasks)
 
-      val alternatives = rules.flatMap(_.isApplicable(task))
-
-      alternatives.find(_.isSuccess) match {
-        case Some(ss) =>
-          info(" => Rule "+ss.rule+" succeeded")
-          ss.succeeded()
-        case None =>
-          info(" => Possible Next Steps:")
-          alternatives.foreach(t => info(" -   "+t.description))
-          workList ++= alternatives.flatMap(_.subTasks)
-      }
-
-      // We are stuck
-      if (alternatives.isEmpty) {
-        val sol = Solution.choose(task.problem)
-        warning(" => I give up: "+task.problem+" ⊢  "+sol)
-        onTaskSucceeded(task, sol)
-      }
+      workList ++= subtasks
     }
 
 
@@ -68,15 +54,19 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivation
 
   def onTaskSucceeded(task: Task, solution: Solution) {
     info(" => Solved "+task.problem+" ⊢  "+solution)
+
     if (generateDerivationTrees) {
       derivationTree.recordSolutionFor(task, solution)
     }
 
-    if (task.parent eq null) {
-      info(" SUCCESS!")
-      this.solution = Some(solution)
-    } else {
-      task.parent.subSucceeded(task.problem, solution)
+    task match {
+      case rt: RootTask =>
+        info(" SUCCESS!")
+        this.solution = Some(solution)
+      case d: ApplyRuleTask =>
+        d.parent.succeeded(solution)
+      case s: SimpleTask =>
+        s.parent.subSucceeded(task.problem, solution)
     }
   }
 
@@ -93,12 +83,13 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivation
     (None, Map())
   }
 
+  val rules = Rules.all(this)
+
   import purescala.Trees._
   def synthesizeAll(program: Program): Map[Choose, Solution] = {
 
     solvers.foreach(_.setProgram(program))
 
-    val rules = Rules.all(this)
 
     def noop(u:Expr, u2: Expr) = u
 

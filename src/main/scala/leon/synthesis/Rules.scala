@@ -21,9 +21,14 @@ object Rules {
   )
 }
 
+abstract class RuleResult
+case object RuleInapplicable extends RuleResult
+case class RuleSuccess(solution: Solution) extends RuleResult
+case class RuleDecomposed(subProblems: List[Problem], onSuccess: List[Solution] => Solution) extends RuleResult
+
 
 abstract class Rule(val name: String, val synth: Synthesizer) {
-  def isApplicable(task: Task): List[DecomposedTask]
+  def applyOn(task: Task): RuleResult
 
   def subst(what: Tuple2[Identifier, Expr], in: Expr): Expr = replace(Map(Variable(what._1) -> what._2), in)
 
@@ -36,7 +41,7 @@ abstract class Rule(val name: String, val synth: Synthesizer) {
 }
 
 class OnePoint(synth: Synthesizer) extends Rule("One-point", synth) {
-  def isApplicable(task: Task): List[DecomposedTask] = {
+  def applyOn(task: Task): RuleResult = {
 
     val p = task.problem
 
@@ -67,15 +72,15 @@ class OnePoint(synth: Synthesizer) extends Rule("One-point", synth) {
         case _ => Solution.none
       }
 
-      List(task.decompose(this, List(newProblem), onSuccess, 100))
+      RuleDecomposed(List(newProblem), onSuccess)
     } else {
-      Nil
+      RuleInapplicable
     }
   }
 }
 
 class Ground(synth: Synthesizer) extends Rule("Ground", synth) {
-  def isApplicable(task: Task): List[DecomposedTask] = {
+  def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
     if (p.as.isEmpty) {
@@ -84,20 +89,20 @@ class Ground(synth: Synthesizer) extends Rule("Ground", synth) {
 
       synth.solveSAT(p.phi) match {
         case (Some(true), model) =>
-          List(task.solveUsing(this, Solution(BooleanLiteral(true), Tuple(p.xs.map(id => model.getOrElse(id, simplestValue(Variable(id))))).setType(tpe), 200), 200))
+          RuleSuccess(Solution(BooleanLiteral(true), Tuple(p.xs.map(id => model.getOrElse(id, simplestValue(Variable(id))))).setType(tpe)))
         case (Some(false), model) =>
-          List(task.solveUsing(this, Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe), 200), 200))
+          RuleSuccess(Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe)))
         case _ =>
-          Nil
+          RuleInapplicable
       }
     } else {
-      Nil
+      RuleInapplicable
     }
   }
 }
 
 class CaseSplit(synth: Synthesizer) extends Rule("Case-Split", synth) {
-  def isApplicable(task: Task): List[DecomposedTask] = {
+  def applyOn(task: Task): RuleResult = {
     val p = task.problem
     p.phi match {
       case Or(Seq(o1, o2)) =>
@@ -109,15 +114,15 @@ class CaseSplit(synth: Synthesizer) extends Rule("Case-Split", synth) {
           case _ => Solution.none
         }
 
-        List(task.decompose(this, List(sub1, sub2), onSuccess, 100))
+        RuleDecomposed(List(sub1, sub2), onSuccess)
       case _ =>
-        Nil
+        RuleInapplicable
     }
   }
 }
 
 class Assert(synth: Synthesizer) extends Rule("Assert", synth) {
-  def isApplicable(task: Task): List[DecomposedTask] = {
+  def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
     p.phi match {
@@ -128,7 +133,7 @@ class Assert(synth: Synthesizer) extends Rule("Assert", synth) {
 
         if (!exprsA.isEmpty) {
           if (others.isEmpty) {
-            List(task.solveUsing(this, Solution(And(exprsA), Tuple(p.xs.map(id => simplestValue(Variable(id))))), 150))
+            RuleSuccess(Solution(And(exprsA), Tuple(p.xs.map(id => simplestValue(Variable(id))))))
           } else {
             val onSuccess: List[Solution] => Solution = { 
               case List(s) => Solution(And(s.pre +: exprsA), s.term, 150)
@@ -137,34 +142,34 @@ class Assert(synth: Synthesizer) extends Rule("Assert", synth) {
 
             val sub = p.copy(phi = And(others))
 
-            List(task.decompose(this, List(sub), onSuccess, 150))
+            RuleDecomposed(List(sub), onSuccess)
           }
         } else {
-          Nil
+          RuleInapplicable
         }
       case _ =>
-        Nil
+        RuleInapplicable
     }
   }
 }
 
 class UnusedInput(synth: Synthesizer) extends Rule("UnusedInput", synth) {
-  def isApplicable(task: Task): List[DecomposedTask] = {
+  def applyOn(task: Task): RuleResult = {
     val p = task.problem
     val unused = p.as.toSet -- variablesOf(p.phi)
 
     if (!unused.isEmpty) {
       val sub = p.copy(as = p.as.filterNot(unused))
 
-      List(task.decompose(this, List(sub), forward, 300))
+      RuleDecomposed(List(sub), forward)
     } else {
-      Nil
+      RuleInapplicable
     }
   }
 }
 
 class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", synth) {
-  def isApplicable(task: Task): List[DecomposedTask] = {
+  def applyOn(task: Task): RuleResult = {
     val p = task.problem
     val unconstr = p.xs.toSet -- variablesOf(p.phi)
 
@@ -178,10 +183,9 @@ class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", sy
           Solution.none
       }
 
-      List(task.decompose(this, List(sub), onSuccess, 300))
-
+      RuleDecomposed(List(sub), onSuccess)
     } else {
-      Nil
+      RuleInapplicable
     }
 
   }
@@ -189,7 +193,7 @@ class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", sy
 
 object Unification {
   class DecompTrivialClash(synth: Synthesizer) extends Rule("Unif Dec./Clash/Triv.", synth) {
-    def isApplicable(task: Task): List[DecomposedTask] = {
+    def applyOn(task: Task): RuleResult = {
       val p = task.problem
 
       val TopLevelAnds(exprs) = p.phi
@@ -209,15 +213,15 @@ object Unification {
         val sub = p.copy(phi = And((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
 
-        List(task.decompose(this, List(sub), forward, 100))
+        RuleDecomposed(List(sub), forward)
       } else {
-        Nil
+        RuleInapplicable
       }
     }
   }
 
   class OccursCheck(synth: Synthesizer) extends Rule("Unif OccursCheck", synth) {
-    def isApplicable(task: Task): List[DecomposedTask] = {
+    def applyOn(task: Task): RuleResult = {
       val p = task.problem
 
       val TopLevelAnds(exprs) = p.phi
@@ -234,9 +238,9 @@ object Unification {
       if (isImpossible) {
         val tpe = TupleType(p.xs.map(_.getType))
 
-        List(task.solveUsing(this, Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe), 200), 200))
+        RuleSuccess(Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe)))
       } else {
-        Nil
+        RuleInapplicable
       }
     }
   }
@@ -244,7 +248,7 @@ object Unification {
 
 
 class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth) {
-  def isApplicable(task: Task): List[DecomposedTask] = {
+  def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
     val xs = p.xs.toSet
@@ -263,9 +267,9 @@ class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth) {
     if (!toRemove.isEmpty) {
       val sub = p.copy(phi = And((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
-      List(task.decompose(this, List(sub), forward, 80))
+      RuleDecomposed(List(sub), forward)
     } else {
-      Nil
+      RuleInapplicable
     }
   }
 }

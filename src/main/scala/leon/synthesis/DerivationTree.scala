@@ -2,16 +2,19 @@ package leon
 package synthesis
 
 class DerivationTree(root: RootTask)  {
-  var store = Map[DecomposedTask, Map[Problem, DecomposedTask]]().withDefaultValue(Map())
+  var store = Map[SimpleTask, Map[Problem, SimpleTask]]().withDefaultValue(Map())
   var solutions = Map[Task, Solution]()
 
   def recordSolutionFor(task: Task, solution: Solution) = task match {
-    case dt: DecomposedTask =>
+      /*
+    case dt: SimpleTask =>
       if (dt.parent ne null) {
         store += dt.parent -> (store(dt.parent) + (task.problem -> dt))
       }
 
       solutions += dt -> solution
+    case _ =>
+    */
     case _ =>
   }
 
@@ -41,12 +44,13 @@ class DerivationTree(root: RootTask)  {
       }
     }
 
-    def printTask(t: DecomposedTask) {
+    def printTask(t: SimpleTask) {
 
       val node = nameFor(t, "task");
 
+      /*
       res append " "+node+" [ label = <<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\"><TR><TD BORDER=\"0\">"+t.rule.name+"</TD></TR><TR><TD BGCOLOR=\"indianred1\">"+t.problem+"</TD></TR><TR><TD BGCOLOR=\"greenyellow\">"+solutions.getOrElse(t, "?")+"</TD></TR></TABLE>> shape = \"none\" ];\n"
-
+      */
 
       for ((_, task) <- store(t)) {
         res append nameFor(task, "task") +" -> " + " "+node+";\n"
