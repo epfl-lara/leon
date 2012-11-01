@@ -5,3 +5,6 @@
 target
 /project/build
 /leon
+
+# synthesis
+derivation*.dot
