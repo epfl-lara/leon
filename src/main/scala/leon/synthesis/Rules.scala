@@ -32,6 +32,7 @@ abstract class Rule(val name: String, val synth: Synthesizer, val priority: Prio
   def applyOn(task: Task): RuleResult
 
   def subst(what: Tuple2[Identifier, Expr], in: Expr): Expr = replace(Map(Variable(what._1) -> what._2), in)
+  def substAll(what: Map[Identifier, Expr], in: Expr): Expr = replace(what.map(w => Variable(w._1) -> w._2), in)
 
   val forward: List[Solution] => Solution = {
     case List(s) => s
@@ -90,7 +91,7 @@ class Ground(synth: Synthesizer) extends Rule("Ground", synth, 500) {
 
       synth.solveSAT(p.phi) match {
         case (Some(true), model) =>
-          RuleSuccess(Solution(BooleanLiteral(true), Tuple(p.xs.map(id => model.getOrElse(id, simplestValue(Variable(id))))).setType(tpe)))
+          RuleSuccess(Solution(BooleanLiteral(true), Tuple(p.xs.map(valuateWithModel(model))).setType(tpe)))
         case (Some(false), model) =>
           RuleSuccess(Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe)))
         case _ =>
@@ -124,15 +125,15 @@ class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", syn
           case (Some(true), satModel) =>
             val satXsModel = satModel.filterKeys(xss) 
 
-            val newPhi = valuateWithModel(phi, xss, satModel)
+            val newPhi = valuateWithModelIn(phi, xss, satModel)
 
             synth.solveSAT(Not(newPhi)) match {
               case (Some(true), invalidModel) =>
                 // Found as such as the xs break, refine predicates
-                predicates = valuateWithModel(phi, ass, invalidModel) +: predicates
+                predicates = valuateWithModelIn(phi, ass, invalidModel) +: predicates
 
               case (Some(false), _) =>
-                result = Some(RuleSuccess(Solution(BooleanLiteral(true), newPhi)))
+                result = Some(RuleSuccess(Solution(BooleanLiteral(true), Tuple(p.xs.map(valuateWithModel(satModel))).setType(tpe))))
 
               case _ =>
                 result = Some(RuleInapplicable)
@@ -327,6 +328,25 @@ class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth, 200) {
       RuleDecomposed(List(sub), forward)
     } else {
       RuleInapplicable
+    }
+  }
+}
+
+object Heuristics {
+  class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 80) {
+    def applyOn(task: Task): RuleResult = {
+      val p = task.problem
+
+      p.as.find(_.getType == Int32Type) match {
+        case Some(inductOn) =>
+                
+          val subBase = Problem(p.as.filterNot(_ == inductOn), subst(inductOn -> IntLiteral(0), p.phi), p.xs)
+        //  val subGT   = Problem(p.as + tmpGT, And(Seq(p.phi, GreaterThan(Variable(inductOn), IntLiteral(0)), subst(inductOn -> IntLiteral(0), p.phi), p.xs)
+
+          RuleDecomposed(List(subBase), forward)
+        case None =>
+          RuleInapplicable
+      }
     }
   }
 }
