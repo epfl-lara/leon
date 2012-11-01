@@ -16,12 +16,13 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivation
   import r.{error,warning,info,fatalError}
 
 
+  var derivationCounter = 1;
+
   def synthesize(p: Problem, rules: List[Rule]): Solution = {
 
     val workList = new PriorityQueue[Task]()
     val rootTask = new RootTask(this, p)
 
-    var derivationCounter = 1;
 
     workList += rootTask
 
@@ -38,8 +39,6 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivation
       deriv.toDotFile("derivation"+derivationCounter+".dot")
       derivationCounter += 1
     }
-
-
 
     rootTask.solution.getOrElse(Solution.none)
   }
