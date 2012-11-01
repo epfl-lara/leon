@@ -13,7 +13,7 @@ object SortedList {
       case Cons(_, t) => 1 + size(t)
   }) ensuring(res => res >= 0)
 
-  def sizeSynth(l: List): Int = choose{ (i: Int) => i >= 0 && sizeSynth(Cons(0, l)) == i + 1}
+  //def sizeSynth(l: List): Int = choose{ (i: Int) => i >= 0 && sizeSynth(Cons(0, l)) == i + 1}
 
   def content(l: List): Set[Int] = l match {
     case Nil() => Set()

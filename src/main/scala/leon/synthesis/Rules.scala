@@ -114,7 +114,7 @@ class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", syn
       val tpe = TupleType(p.xs.map(_.getType))
 
       var i = 0;
-      var maxTries = 5;
+      var maxTries = 3;
 
       var result: Option[RuleResult]   = None
       var predicates: Seq[Expr]        = Seq()
