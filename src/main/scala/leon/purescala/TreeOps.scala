@@ -1246,6 +1246,11 @@ object TreeOps {
         val se = rec(e, path)
         Let(i, se, rec(b, Equals(Variable(i), se) +: path))
 
+      case LetTuple(is, e, b) =>
+        // Similar to the Let case
+        val se = rec(e, path)
+        LetTuple(is, se, rec(b, Equals(Tuple(is.map(Variable(_))), se) +: path)) 
+
       case IfExpr(cond, then, elze) =>
         val rc = rec(cond, path)
         rc match {
