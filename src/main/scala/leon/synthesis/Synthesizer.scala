@@ -15,25 +15,17 @@ import collection.mutable.PriorityQueue
 class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivationTrees: Boolean, filterFuns: Option[Set[String]]) {
   import r.{error,warning,info,fatalError}
 
-  private[this] var solution: Option[Solution] = None
-  private[this] var derivationTree: DerivationTree = _
-
-  var derivationCounter = 1;
 
   def synthesize(p: Problem, rules: List[Rule]): Solution = {
 
     val workList = new PriorityQueue[Task]()
     val rootTask = new RootTask(this, p)
 
+    var derivationCounter = 1;
 
     workList += rootTask
-    solution = None
 
-    if (generateDerivationTrees) {
-      derivationTree = new DerivationTree(rootTask)
-    }
-
-    while (!workList.isEmpty && solution.isEmpty) {
+    while (!workList.isEmpty && rootTask.solution.isEmpty) {
       val task = workList.dequeue()
 
       val subtasks = task.run
@@ -41,31 +33,15 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivation
       workList ++= subtasks
     }
 
-
     if (generateDerivationTrees) {
-      derivationTree.toDotFile("derivation"+derivationCounter+".dot")
+      val deriv = new DerivationTree(rootTask)
+      deriv.toDotFile("derivation"+derivationCounter+".dot")
       derivationCounter += 1
     }
 
-    solution.getOrElse(Solution.none)
-  }
 
-  def onTaskSucceeded(task: Task, solution: Solution) {
-    info(" => Solved "+task.problem+" ⊢  "+solution)
 
-    if (generateDerivationTrees) {
-      derivationTree.recordSolutionFor(task, solution)
-    }
-
-    task match {
-      case rt: RootTask =>
-        info(" SUCCESS!")
-        this.solution = Some(solution)
-      case d: ApplyRuleTask =>
-        d.parent.succeeded(solution)
-      case s: SimpleTask =>
-        s.parent.subSucceeded(task.problem, solution)
-    }
+    rootTask.solution.getOrElse(Solution.none)
   }
 
   def solveSAT(phi: Expr): (Option[Boolean], Map[Identifier, Expr]) = {

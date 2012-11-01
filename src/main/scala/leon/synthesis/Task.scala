@@ -8,16 +8,6 @@ abstract class Task(val synth: Synthesizer,
 
   def compare(that: Task) = this.priority - that.priority
 
-  /*
-  def decompose(rule: Rule, subProblems: List[Problem], onSuccess: List[Solution] => Solution, score: Score): DecomposedTask = {
-    new DecomposedTask(this.synth, this.parent, this.problem, score, rule, subProblems, onSuccess)
-  }
-
-  def solveUsing(rule: Rule, onSuccess: => Solution, score: Score): DecomposedTask = {
-    new DecomposedTask(this.synth, this.parent, this.problem, 1000, rule, Nil, { case _ => onSuccess })
-  }
-  */
-
   def run: List[Task]
 
   override def toString = " Task("+priority+"): " +problem
@@ -28,8 +18,18 @@ class SimpleTask(synth: Synthesizer,
                  problem: Problem,
                  priority: Priority) extends Task(synth, parent, problem, priority) {
 
-  def succeeded(solution: Solution) {
-    synth.onTaskSucceeded(this, solution)
+  var solverTask: Option[ApplyRuleTask] = None
+  var solution: Option[Solution] = None
+
+  def solvedBy(t: ApplyRuleTask, s: Solution) {
+    if (solution.map(_.score).getOrElse(-1) < s.score) {
+      solution = Some(s)
+      solverTask = Some(t)
+
+      if (parent ne null) {
+        parent.partlySolvedBy(this, s)
+      }
+    }
   }
 
   def run: List[Task] = {
@@ -37,10 +37,16 @@ class SimpleTask(synth: Synthesizer,
   }
 
   var failed = Set[Rule]()
-  def notifyInapplicable(r: Rule) = {
-    failed += r
+  def unsolvedBy(t: ApplyRuleTask) = {
+    failed += t.rule
     if (failed.size == synth.rules.size) {
-      synth.onTaskSucceeded(this, Solution.choose(problem))
+      val s = Solution.choose(problem)
+      solution = Some(s)
+      solverTask = None
+
+      if (parent ne null) {
+        parent.partlySolvedBy(this, s)
+      }
     }
   }
 }
@@ -52,21 +58,17 @@ class ApplyRuleTask(synth: Synthesizer,
                     problem: Problem,
                     val rule: Rule) extends Task(synth, parent, problem, rule.priority) {
 
-  var subProblems: List[Problem]            = _
-  var onSuccess: List[Solution] => Solution = _
-  var subSolutions : Map[Problem, Solution] = _
+  var subTasks: List[SimpleTask]               = Nil
+  var onSuccess: List[Solution] => Solution    = _
+  var subSolutions : Map[SimpleTask, Solution] = _
 
-  def subSucceeded(p: Problem, s: Solution) {
-    assert(subProblems contains p, "Problem "+p+" is unknown to me ?!?")
+  def partlySolvedBy(t: SimpleTask, s: Solution) {
+    if (subSolutions.get(t).map(_.score).getOrElse(-1) < s.score) {
+      subSolutions += t -> s
 
-    if (subSolutions.get(p).map(_.score).getOrElse(-1) <= s.score) {
-      subSolutions += p -> s
-
-      if (subSolutions.size == subProblems.size) {
-
-        val solution = onSuccess(subProblems map subSolutions)
-
-        synth.onTaskSucceeded(this, solution)
+      if (subSolutions.size == subTasks.size) {
+        val solution = onSuccess(subTasks map subSolutions)
+        parent.solvedBy(this, solution)
       }
     }
   }
@@ -75,16 +77,16 @@ class ApplyRuleTask(synth: Synthesizer,
     rule.applyOn(this) match {
       case RuleSuccess(solution) =>
         // Solved
-        synth.onTaskSucceeded(this, solution)
+        parent.solvedBy(this, solution)
         Nil
       case RuleDecomposed(subProblems, onSuccess) =>
-        this.subProblems  = subProblems
+        this.subTasks     = subProblems.map(new SimpleTask(synth, this, _, 1000))
         this.onSuccess    = onSuccess
         this.subSolutions = Map()
 
-        subProblems.map(new SimpleTask(synth, this, _, 42))
+        subTasks
       case RuleInapplicable =>
-        parent.notifyInapplicable(rule)
+        parent.unsolvedBy(this)
         Nil
     }
   }

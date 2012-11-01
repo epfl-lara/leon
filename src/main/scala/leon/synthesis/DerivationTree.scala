@@ -2,21 +2,6 @@ package leon
 package synthesis
 
 class DerivationTree(root: RootTask)  {
-  var store = Map[SimpleTask, Map[Problem, SimpleTask]]().withDefaultValue(Map())
-  var solutions = Map[Task, Solution]()
-
-  def recordSolutionFor(task: Task, solution: Solution) = task match {
-      /*
-    case dt: SimpleTask =>
-      if (dt.parent ne null) {
-        store += dt.parent -> (store(dt.parent) + (task.problem -> dt))
-      }
-
-      solutions += dt -> solution
-    case _ =>
-    */
-    case _ =>
-  }
 
   private[this] var _nextID = 0
 
@@ -48,22 +33,21 @@ class DerivationTree(root: RootTask)  {
 
       val node = nameFor(t, "task");
 
-      /*
-      res append " "+node+" [ label = <<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\"><TR><TD BORDER=\"0\">"+t.rule.name+"</TD></TR><TR><TD BGCOLOR=\"indianred1\">"+t.problem+"</TD></TR><TR><TD BGCOLOR=\"greenyellow\">"+solutions.getOrElse(t, "?")+"</TD></TR></TABLE>> shape = \"none\" ];\n"
-      */
+      t.solverTask match {
+        case Some(decompTask) =>
+          res append " "+node+" [ label = <<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\"><TR><TD BORDER=\"0\">"+decompTask.rule.name+"</TD></TR><TR><TD BGCOLOR=\"indianred1\">"+t.problem+"</TD></TR><TR><TD BGCOLOR=\"greenyellow\">"+t.solution.getOrElse("?")+"</TD></TR></TABLE>> shape = \"none\" ];\n"
 
-      for ((_, task) <- store(t)) {
-        res append nameFor(task, "task") +" -> " + " "+node+";\n"
-      }
-      
-      for ((_, subt) <- store(t)) {
-        printTask(subt)
+          for (t <- decompTask.subTasks) {
+            printTask(t)
+            res append nameFor(t, "task") +" -> " + " "+node+";\n"
+          }
+
+        case None =>
       }
     }
 
-    for (task <- store.keysIterator if task.parent eq null) {
-      printTask(task)
-    }
+
+    printTask(root)
 
     res append "}\n"
 

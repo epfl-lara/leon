@@ -153,7 +153,7 @@ class Assert(synth: Synthesizer) extends Rule("Assert", synth, 200) {
   }
 }
 
-class UnusedInput(synth: Synthesizer) extends Rule("UnusedInput", synth, 500) {
+class UnusedInput(synth: Synthesizer) extends Rule("UnusedInput", synth, 100) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
     val unused = p.as.toSet -- variablesOf(p.phi)
@@ -168,7 +168,7 @@ class UnusedInput(synth: Synthesizer) extends Rule("UnusedInput", synth, 500) {
   }
 }
 
-class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", synth, 500) {
+class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", synth, 100) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
     val unconstr = p.xs.toSet -- variablesOf(p.phi)
@@ -192,7 +192,7 @@ class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", sy
 }
 
 object Unification {
-  class DecompTrivialClash(synth: Synthesizer) extends Rule("Unif Dec./Clash/Triv.", synth, 300) {
+  class DecompTrivialClash(synth: Synthesizer) extends Rule("Unif Dec./Clash/Triv.", synth, 200) {
     def applyOn(task: Task): RuleResult = {
       val p = task.problem
 
@@ -220,7 +220,7 @@ object Unification {
     }
   }
 
-  class OccursCheck(synth: Synthesizer) extends Rule("Unif OccursCheck", synth, 300) {
+  class OccursCheck(synth: Synthesizer) extends Rule("Unif OccursCheck", synth, 200) {
     def applyOn(task: Task): RuleResult = {
       val p = task.problem
 
@@ -247,7 +247,7 @@ object Unification {
 }
 
 
-class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth, 300) {
+class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth, 200) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
