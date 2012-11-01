@@ -1302,4 +1302,9 @@ object TreeOps {
 
     rec(expr, Nil)
   }
+
+  def valuateWithModel(expr: Expr, vars: Set[Identifier], model: Map[Identifier, Expr]) = {
+    replace(vars.map(id => Variable(id) -> model.getOrElse(id, simplestValue(id.getType))).toMap, expr)
+  }
+
 }

@@ -14,6 +14,7 @@ object Rules {
     new ADTDual(synth),
     new OnePoint(synth),
     new Ground(synth),
+    new OptimisticGround(synth),
     new CaseSplit(synth),
     new UnusedInput(synth),
     new UnconstrainedOutput(synth),
@@ -95,6 +96,62 @@ class Ground(synth: Synthesizer) extends Rule("Ground", synth, 500) {
         case _ =>
           RuleInapplicable
       }
+    } else {
+      RuleInapplicable
+    }
+  }
+}
+
+class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", synth, 90) {
+  def applyOn(task: Task): RuleResult = {
+    val p = task.problem
+
+    if (!p.as.isEmpty && !p.xs.isEmpty) {
+      val xss = p.xs.toSet
+      val ass = p.as.toSet
+
+      val tpe = TupleType(p.xs.map(_.getType))
+
+      var i = 0;
+      var maxTries = 5;
+
+      var result: Option[RuleResult]   = None
+      var predicates: Seq[Expr]        = Seq()
+
+      while (result.isEmpty && i < maxTries) {
+        val phi = And(p.phi +: predicates)
+        synth.solveSAT(phi) match {
+          case (Some(true), satModel) =>
+            val satXsModel = satModel.filterKeys(xss) 
+
+            val newPhi = valuateWithModel(phi, xss, satModel)
+
+            synth.solveSAT(Not(newPhi)) match {
+              case (Some(true), invalidModel) =>
+                // Found as such as the xs break, refine predicates
+                predicates = valuateWithModel(phi, ass, invalidModel) +: predicates
+
+              case (Some(false), _) =>
+                result = Some(RuleSuccess(Solution(BooleanLiteral(true), newPhi)))
+
+              case _ =>
+                result = Some(RuleInapplicable)
+            }
+
+          case (Some(false), _) =>
+            if (predicates.isEmpty) {
+              result = Some(RuleSuccess(Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe))))
+            } else {
+              result = Some(RuleInapplicable)
+            }
+          case _ =>
+            result = Some(RuleInapplicable)
+        }
+
+        i += 1 
+      }
+
+      result.getOrElse(RuleInapplicable)
     } else {
       RuleInapplicable
     }
