@@ -60,6 +60,8 @@ class RootTask(synth: Synthesizer, problem: Problem) extends Task(synth, null, p
   var solution: Option[Solution]    = None
   var solver: Option[Task] = None
 
+  override def complexity = Complexity.zero
+
   override def partlySolvedBy(t: Task, s: Solution) = {
     if (s.complexity < solution.map(_.complexity).getOrElse(Complexity.max)) {
       solution = Some(s)
