@@ -31,10 +31,11 @@ class DerivationTree(root: RootTask)  {
       }
     }
 
-    def printTask(t: SimpleTask) {
+    def printTask(t: Task) {
 
       val node = nameFor(t, "task");
 
+      /*
       t.solverTask match {
         case Some(decompTask) =>
           res append " "+node+" [ label = <<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\"><TR><TD BORDER=\"0\">"+decompTask.rule.name+"</TD></TR><TR><TD BGCOLOR=\"indianred1\">"+escapeHTML(t.problem.toString)+"</TD></TR><TR><TD BGCOLOR=\"greenyellow\">"+escapeHTML(t.solution.map(_.toString).getOrElse("?"))+"</TD></TR></TABLE>> shape = \"none\" ];\n"
@@ -46,6 +47,7 @@ class DerivationTree(root: RootTask)  {
 
         case None =>
       }
+      */
     }
 
 

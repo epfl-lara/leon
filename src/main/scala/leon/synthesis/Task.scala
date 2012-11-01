@@ -1,74 +1,34 @@
 package leon
 package synthesis
 
-abstract class Task(val synth: Synthesizer,
-           val parent: Task,
+class Task(synth: Synthesizer,
+           parent: Task,
            val problem: Problem,
-           val priority: Priority) extends Ordered[Task] {
+           val rule: Rule) extends Ordered[Task] {
 
-  def compare(that: Task) = this.priority - that.priority
+  def compare(that: Task) = this.complexity compare that.complexity
 
-  def run: List[Task]
+  def complexity = Complexity.max
 
-  override def toString = " Task("+priority+"): " +problem
-}
-
-class SimpleTask(synth: Synthesizer,
-                 override val parent: ApplyRuleTask,
-                 problem: Problem,
-                 priority: Priority) extends Task(synth, parent, problem, priority) {
-
-  var solverTask: Option[ApplyRuleTask] = None
-  var solution: Option[Solution] = None
-
-  def solvedBy(t: ApplyRuleTask, s: Solution) {
-    if (solution.map(_.score).getOrElse(-1) < s.score) {
-      solution = Some(s)
-      solverTask = Some(t)
-
-      if (parent ne null) {
-        parent.partlySolvedBy(this, s)
-      }
-    }
-  }
-
-  def run: List[Task] = {
-    synth.rules.map(r => new ApplyRuleTask(synth, this, problem, r)).toList
-  }
-
-  var failed = Set[Rule]()
-  def unsolvedBy(t: ApplyRuleTask) = {
-    failed += t.rule
-    if (failed.size == synth.rules.size) {
-      val s = Solution.choose(problem)
-      solution = Some(s)
-      solverTask = None
-
-      if (parent ne null) {
-        parent.partlySolvedBy(this, s)
-      }
-    }
-  }
-}
-
-class RootTask(synth: Synthesizer, problem: Problem) extends SimpleTask(synth, null, problem, 0)
-
-class ApplyRuleTask(synth: Synthesizer,
-                    override val parent: SimpleTask,
-                    problem: Problem,
-                    val rule: Rule) extends Task(synth, parent, problem, rule.priority) {
-
-  var subTasks: List[SimpleTask]               = Nil
+  var subProblems: List[Problem]               = Nil
   var onSuccess: List[Solution] => Solution    = _
-  var subSolutions : Map[SimpleTask, Solution] = _
+  var subSolutions : Map[Problem, Solution]    = _
+  var subSolvers : Map[Problem, Task]          = _
 
-  def partlySolvedBy(t: SimpleTask, s: Solution) {
-    if (subSolutions.get(t).map(_.score).getOrElse(-1) < s.score) {
-      subSolutions += t -> s
+  def currentComplexityFor(p: Problem): Complexity =
+    subSolutions.get(p) match {
+      case Some(s) => s.complexity
+      case None => Complexity.max
+    }
 
-      if (subSolutions.size == subTasks.size) {
-        val solution = onSuccess(subTasks map subSolutions)
-        parent.solvedBy(this, solution)
+  def partlySolvedBy(t: Task, s: Solution) {
+    if (s.complexity < currentComplexityFor(t.problem)) {
+      subSolutions += t.problem -> s
+      subSolvers   += t.problem -> t
+
+      if (subSolutions.size == subProblems.size) {
+        val solution = onSuccess(subProblems map subSolutions)
+        parent.partlySolvedBy(this, solution)
       }
     }
   }
@@ -77,19 +37,39 @@ class ApplyRuleTask(synth: Synthesizer,
     rule.applyOn(this) match {
       case RuleSuccess(solution) =>
         // Solved
-        parent.solvedBy(this, solution)
+        parent.partlySolvedBy(this, solution)
         Nil
       case RuleDecomposed(subProblems, onSuccess) =>
-        this.subTasks     = subProblems.map(new SimpleTask(synth, this, _, 1000))
+        this.subProblems  = subProblems
         this.onSuccess    = onSuccess
         this.subSolutions = Map()
+        this.subSolvers   = Map()
 
-        subTasks
+        for (p <- subProblems; r <- synth.rules) yield {
+          new Task(synth, this, p, r)
+        }
       case RuleInapplicable =>
-        parent.unsolvedBy(this)
         Nil
     }
   }
 
   override def toString = "Applying "+rule+" on "+problem
+}
+
+class RootTask(synth: Synthesizer, problem: Problem) extends Task(synth, null, problem, null) {
+  var solution: Option[Solution]    = None
+  var solver: Option[Task] = None
+
+  override def partlySolvedBy(t: Task, s: Solution) = {
+    if (s.complexity < solution.map(_.complexity).getOrElse(Complexity.max)) {
+      solution = Some(s)
+      solver   = Some(t)
+    }
+  }
+
+  override def run: List[Task] = {
+    for (r <- synth.rules.toList) yield {
+      new Task(synth, this, problem, r)
+    }
+  }
 }

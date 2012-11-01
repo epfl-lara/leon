@@ -12,7 +12,12 @@ import java.io.File
 
 import collection.mutable.PriorityQueue
 
-class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivationTrees: Boolean, filterFuns: Option[Set[String]]) {
+class Synthesizer(val r: Reporter,
+                  val solvers: List[Solver],
+                  generateDerivationTrees: Boolean,
+                  filterFuns: Option[Set[String]],
+                  firstOnly: Boolean) {
+
   import r.{error,warning,info,fatalError}
 
 
@@ -26,7 +31,7 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivation
 
     workList += rootTask
 
-    while (!workList.isEmpty && rootTask.solution.isEmpty) {
+    while (!workList.isEmpty && !(firstOnly && rootTask.solution.isDefined)) {
       val task = workList.dequeue()
 
       val subtasks = task.run
@@ -59,14 +64,14 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivation
   val rules = Rules.all(this) ++ Heuristics.all(this)
 
   import purescala.Trees._
-  def synthesizeAll(program: Program): Map[Choose, Solution] = {
+  def synthesizeAll(program: Program): List[(Choose, Solution)] = {
 
     solvers.foreach(_.setProgram(program))
 
 
     def noop(u:Expr, u2: Expr) = u
 
-    var solutions = Map[Choose, Solution]()
+    var solutions = List[(Choose, Solution)]()
 
     def actOnChoose(f: FunDef)(e: Expr, a: Expr): Expr = e match {
       case ch @ Choose(vars, pred) =>
@@ -76,7 +81,7 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivation
 
         val sol = synthesize(Problem(as, phi, xs), rules)
 
-        solutions += ch -> sol
+        solutions = (ch -> sol) :: solutions
 
         a
       case _ =>
@@ -90,6 +95,6 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivation
       }
     }
 
-    solutions
+    solutions.reverse
   }
 }

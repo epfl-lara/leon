@@ -16,6 +16,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
   override def definedOptions = Set(
     LeonFlagOptionDef( "inplace", "--inplace",           "Debug level"),
     LeonFlagOptionDef( "derivtrees", "--derivtrees",     "Generate derivation trees"),
+    LeonFlagOptionDef( "firstonly", "--firstonly",       "Stop as soon as one synthesis solution is found"),
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit synthesis of choose found within f1,f2,..")
   )
 
@@ -30,6 +31,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
     var inPlace                        = false
     var genTrees                       = false
+    var firstOnly                      = false
     var filterFun: Option[Seq[String]] = None 
 
     for(opt <- ctx.options) opt match {
@@ -37,12 +39,14 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
         inPlace = true
       case LeonValueOption("functions", ListValue(fs)) =>
         filterFun = Some(fs)
+      case LeonFlagOption("firstonly") =>
+        firstOnly = true
       case LeonFlagOption("derivtrees") =>
         genTrees = true
       case _ =>
     }
 
-    val synth = new Synthesizer(ctx.reporter, solvers, genTrees, filterFun.map(_.toSet))
+    val synth = new Synthesizer(ctx.reporter, solvers, genTrees, filterFun.map(_.toSet), firstOnly)
     val solutions = synth.synthesizeAll(p)
 
 
@@ -52,14 +56,15 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       simplifyLets _,
       decomposeIfs _,
       patternMatchReconstruction _,
-      simplifyTautologies(uninterpretedZ3)(_)
+      simplifyTautologies(uninterpretedZ3)(_),
+      simplifyLets _
     )
 
-    val chooseToExprs = solutions.mapValues(sol => simplifiers.foldLeft(sol.toExpr){ (x, sim) => sim(x) })
+    val chooseToExprs = solutions.map { case (ch, sol) => (ch, simplifiers.foldLeft(sol.toExpr){ (x, sim) => sim(x) }) }
 
     if (inPlace) {
       for (file <- ctx.files) {
-        new FileInterface(ctx.reporter, file).updateFile(chooseToExprs)
+        new FileInterface(ctx.reporter, file).updateFile(chooseToExprs.toMap)
       }
     } else {
       for ((chs, ex) <- chooseToExprs) {
