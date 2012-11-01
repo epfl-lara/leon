@@ -217,7 +217,7 @@ object ScalaPrinter {
     case GreaterThan(l,r) => ppBinary(sb, l, r, " > ", lvl)
     case LessEquals(l,r) => ppBinary(sb, l, r, " <= ", lvl)      // \leq
     case GreaterEquals(l,r) => ppBinary(sb, l, r, " >= ", lvl)   // \geq
-    case FiniteSet(rs) => ppNary(sb, rs, "{", ", ", "}", lvl)
+    case FiniteSet(rs) => ppNary(sb, rs, "Set(", ", ", ")", lvl)
     case FiniteMultiset(rs) => ppNary(sb, rs, "{|", ", ", "|}", lvl)
     case EmptySet(bt) => sb.append("Set()")                          // Ø
     case EmptyMultiset(_) => sys.error("Not Valid Scala")
@@ -231,14 +231,14 @@ object ScalaPrinter {
     case SetMax(s) =>
       pp(s, sb, lvl)
       sb.append(".max")
-   // case SetUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)        // \cup
+    case SetUnion(l,r) => ppBinary(sb, l, r, " ++ ", lvl)        // \cup
    // case MultisetUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)   // \cup
    // case MapUnion(l,r) => ppBinary(sb, l, r, " \u222A ", lvl)        // \cup
-   // case SetDifference(l,r) => ppBinary(sb, l, r, " \\ ", lvl)       
+   case SetDifference(l,r) => ppBinary(sb, l, r, " -- ", lvl)       
    // case MultisetDifference(l,r) => ppBinary(sb, l, r, " \\ ", lvl)       
-   // case SetIntersection(l,r) => ppBinary(sb, l, r, " \u2229 ", lvl) // \cap
+   case SetIntersection(l,r) => ppBinary(sb, l, r, " & ", lvl) // \cap
    // case MultisetIntersection(l,r) => ppBinary(sb, l, r, " \u2229 ", lvl) // \cap
-   // case SetCardinality(t) => ppUnary(sb, t, "|", "|", lvl)
+    case SetCardinality(t) => ppUnary(sb, t, "", ".size", lvl)
    // case MultisetCardinality(t) => ppUnary(sb, t, "|", "|", lvl)
    // case MultisetPlus(l,r) => ppBinary(sb, l, r, " \u228E ", lvl)    // U+
    // case MultisetToSet(e) => pp(e, sb, lvl).append(".toSet")
