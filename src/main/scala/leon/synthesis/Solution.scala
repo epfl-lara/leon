@@ -2,10 +2,11 @@ package leon
 package synthesis
 
 import leon.purescala.Trees._
+import leon.purescala.TreeOps.simplifyLets
 
 // Defines a synthesis solution of the form:
 // ⟨ P | T ⟩
-case class Solution(pre: Expr, term: Expr) {
+class Solution(val pre: Expr, val term: Expr) {
   override def toString = "⟨ "+pre+" | "+term+" ⟩" 
 
   def toExpr = {
@@ -27,4 +28,12 @@ object Solution {
   }
 
   def none: Solution = throw new Exception("Unexpected failure to construct solution")
+
+  def simplify(e: Expr) = simplifyLets(e)
+
+  def apply(pre: Expr, term: Expr) = {
+    new Solution(simplify(pre), simplify(term))
+  }
+
+  def unapply(s: Solution): Option[(Expr, Expr)] = if (s eq null) None else Some((s.pre, s.term))
 }

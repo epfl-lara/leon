@@ -27,6 +27,8 @@ object SortedList {
   def tailSynth(in: List) = choose{out: List => size(out)+1 == size(in)}
   def consSynth(in: List) = choose{out: List => size(out) == size(in)+1}
 
+  def listOfSizeSynth(i: Int) = choose{out: List => size(out) == i }
+
   def insert1(l: List, v: Int) = (
     Cons(v, l)
   ) ensuring(res => content(res) == content(l) ++ Set(v) && size(res) >= size(l))
