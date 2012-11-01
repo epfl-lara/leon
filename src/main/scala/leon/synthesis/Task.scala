@@ -33,7 +33,7 @@ class SimpleTask(synth: Synthesizer,
   }
 
   def run: List[Task] = {
-    synth.rules.map(r => new ApplyRuleTask(synth, this, problem, r))
+    synth.rules.map(r => new ApplyRuleTask(synth, this, problem, r)).toList
   }
 
   var failed = Set[Rule]()

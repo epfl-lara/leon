@@ -18,7 +18,7 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivation
 
   var derivationCounter = 1;
 
-  def synthesize(p: Problem, rules: List[Rule]): Solution = {
+  def synthesize(p: Problem, rules: Set[Rule]): Solution = {
 
     val workList = new PriorityQueue[Task]()
     val rootTask = new RootTask(this, p)
@@ -56,7 +56,7 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivation
     (None, Map())
   }
 
-  val rules = Rules.all(this)
+  val rules = Rules.all(this) ++ Heuristics.all(this)
 
   import purescala.Trees._
   def synthesizeAll(program: Program): Map[Choose, Solution] = {
