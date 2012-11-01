@@ -36,9 +36,7 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivation
     while (!workList.isEmpty && solution.isEmpty) {
       val task = workList.dequeue()
 
-      println("Running "+task+"...")
       val subtasks = task.run
-      println(subtasks)
 
       workList ++= subtasks
     }
@@ -119,11 +117,4 @@ class Synthesizer(val r: Reporter, val solvers: List[Solver], generateDerivation
 
     solutions
   }
-
-
-
-  def solutionToString(solution: Solution): String = {
-    ScalaPrinter(simplifyLets(solution.toExpr))
-  }
-
 }

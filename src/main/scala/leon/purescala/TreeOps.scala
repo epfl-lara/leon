@@ -1107,10 +1107,10 @@ object TreeOps {
         if (cases.forall(_.isInstanceOf[CaseClassInstanceOf])) {
           // matchingOn might initially be: a : T1, a.tail : T2, b: T2
           def selectorDepth(e: Expr): Int = e match {
-            case v: Variable =>
-              0
             case cd: CaseClassSelector =>
               1+selectorDepth(cd.caseClass)
+            case _ =>
+              0
           }
 
           var scrutSet = Set[Expr]()
@@ -1121,14 +1121,14 @@ object TreeOps {
             conditions += expr -> cd
 
             expr match {
-              case v: Variable =>
-                scrutSet += v 
               case cd: CaseClassSelector =>
                 if (!scrutSet.contains(cd.caseClass)) {
                   // we found a test looking like "a.foo.isInstanceof[..]"
                   // without a check on "a".
                   scrutSet += cd
                 }
+              case e =>
+                scrutSet += e
             }
           }
 
@@ -1137,12 +1137,13 @@ object TreeOps {
 
           def computePatternFor(cd: CaseClassDef, prefix: Expr): Pattern = {
 
-            val id = prefix match {
-              case CaseClassSelector(_, _, id) => id
-              case Variable(id) => id
+            val name = prefix match {
+              case CaseClassSelector(_, _, id) => id.name
+              case Variable(id) => id.name
+              case _ => "tmp"
             }
 
-            val binder = FreshIdentifier(id.name, true).setType(id.getType) // Is it full of women though?
+            val binder = FreshIdentifier(name, true).setType(prefix.getType) // Is it full of women though?
 
             // prefix becomes binder
             substMap += prefix -> Variable(binder)

@@ -33,7 +33,7 @@ class SimpleTask(synth: Synthesizer,
   }
 
   def run: List[Task] = {
-    synth.rules.map(r => new ApplyRuleTask(synth, this, problem, priority, r))
+    synth.rules.map(r => new ApplyRuleTask(synth, this, problem, r))
   }
 
   var failed = Set[Rule]()
@@ -50,8 +50,7 @@ class RootTask(synth: Synthesizer, problem: Problem) extends SimpleTask(synth, n
 class ApplyRuleTask(synth: Synthesizer,
                     override val parent: SimpleTask,
                     problem: Problem,
-                    priority: Priority,
-                    val rule: Rule) extends Task(synth, parent, problem, priority) {
+                    val rule: Rule) extends Task(synth, parent, problem, rule.priority) {
 
   var subProblems: List[Problem]            = _
   var onSuccess: List[Solution] => Solution = _
@@ -60,7 +59,7 @@ class ApplyRuleTask(synth: Synthesizer,
   def subSucceeded(p: Problem, s: Solution) {
     assert(subProblems contains p, "Problem "+p+" is unknown to me ?!?")
 
-    if (subSolutions.get(p).map(_.score).getOrElse(-1) < s.score) {
+    if (subSolutions.get(p).map(_.score).getOrElse(-1) <= s.score) {
       subSolutions += p -> s
 
       if (subSolutions.size == subProblems.size) {
@@ -90,5 +89,5 @@ class ApplyRuleTask(synth: Synthesizer,
     }
   }
 
-  override def toString = "Trying "+rule+" on "+problem
+  override def toString = "Applying "+rule+" on "+problem
 }
