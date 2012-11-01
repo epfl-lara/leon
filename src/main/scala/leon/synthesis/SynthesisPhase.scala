@@ -67,6 +67,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
         ctx.reporter.info(chs)
         ctx.reporter.info("-"*35+" Result: "+"-"*35)
         ctx.reporter.info(ScalaPrinter(ex))
+        ctx.reporter.info("")
       }
     }
 
