@@ -10,6 +10,7 @@ class Task(synth: Synthesizer,
     val cproblem = -(this.problem.complexity compare that.problem.complexity) // problem DESC
 
     if (cproblem == 0) {
+      // On equal complexity, order tasks by rule priority
       this.rule.priority-that.rule.priority
     } else {
       cproblem
@@ -62,6 +63,10 @@ class Task(synth: Synthesizer,
       case RuleDecomposed(subProblems, onSuccess) =>
         this.subProblems  = subProblems
         this.onSuccess    = onSuccess
+
+        val simplestSolution = onSuccess(subProblems.map(Solution.basic _))
+        minComplexity = new FixedSolutionComplexity(parent.minComplexity.value + simplestSolution.complexity.value)
+
         subProblems
 
       case RuleInapplicable =>
@@ -70,15 +75,13 @@ class Task(synth: Synthesizer,
     }
   }
 
-  lazy val minSolutionComplexity: FixedSolutionComplexity = new FixedSolutionComplexity(rule.cost+parent.minSolutionComplexity.value)
+  var minComplexity: SolutionComplexity = new FixedSolutionComplexity(0)
 
   override def toString = "Applying "+rule+" on "+problem
 }
 
 class RootTask(synth: Synthesizer, problem: Problem) extends Task(synth, null, problem, null) {
   var solver: Option[Task] = None
-
-  override lazy val minSolutionComplexity = new FixedSolutionComplexity(0)
 
   override def partlySolvedBy(t: Task, s: Solution) {
     if (isBetterSolutionThan(s, solution)) {
@@ -101,4 +104,5 @@ class RootTask(synth: Synthesizer, problem: Problem) extends Task(synth, null, p
   override def run: List[Problem] = {
     List(problem)
   }
+
 }

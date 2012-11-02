@@ -45,11 +45,11 @@ class Synthesizer(val r: Reporter,
     while (!workList.isEmpty && !(firstOnly && rootTask.solution.isDefined)) {
       val task = workList.dequeue()
 
+      val subProblems = task.run
+
       // Check if solving this task has the slightest chance of improving the
       // current solution
-      if (task.minSolutionComplexity < bestSolutionSoFar().complexity) {
-        val subProblems = task.run
-
+      if (task.minComplexity < bestSolutionSoFar().complexity) {
         for (p <- subProblems; r <- rules) yield {
           workList += new Task(this, task, p, r)
         }

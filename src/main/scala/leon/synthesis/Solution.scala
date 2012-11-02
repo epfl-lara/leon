@@ -2,7 +2,7 @@ package leon
 package synthesis
 
 import leon.purescala.Trees._
-import leon.purescala.TreeOps.simplifyLets
+import leon.purescala.TreeOps._
 
 // Defines a synthesis solution of the form:
 // ⟨ P | T ⟩
@@ -25,6 +25,8 @@ class Solution(val pre: Expr, val term: Expr) {
 object Solution {
   def choose(p: Problem): Solution = 
     new Solution(BooleanLiteral(true), Choose(p.xs, p.phi))
+
+  def basic(p: Problem): Solution = new Solution(BooleanLiteral(true), Tuple(p.xs.map(id => simplestValue(id.getType))))
 
   def none: Solution = throw new Exception("Unexpected failure to construct solution")
 
