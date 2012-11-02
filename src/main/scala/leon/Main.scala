@@ -5,12 +5,10 @@ object Main {
   def allPhases: List[LeonPhase[_, _]] = {
     List(
       plugin.ExtractionPhase,
-      ArrayTransformation,
-      EpsilonElimination,
-      ImperativeCodeElimination,
-      /*UnitElimination,*/
-      FunctionClosure,
-      /*FunctionHoisting,*/
+      xlang.ArrayTransformation,
+      xlang.EpsilonElimination,
+      xlang.ImperativeCodeElimination,
+      xlang.FunctionClosure,
       Simplificator,
       synthesis.SynthesisPhase,
       verification.AnalysisPhase
@@ -124,10 +122,10 @@ object Main {
 
     val pipeTransforms: Pipeline[Program, Program] =
       if (settings.xlang) {
-        ArrayTransformation andThen
-        EpsilonElimination andThen
-        ImperativeCodeElimination andThen
-        FunctionClosure
+        xlang.ArrayTransformation andThen
+        xlang.EpsilonElimination andThen
+        xlang.ImperativeCodeElimination andThen
+        xlang.FunctionClosure
       } else {
         NoopPhase()
       }

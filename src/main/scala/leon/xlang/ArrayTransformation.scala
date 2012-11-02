@@ -1,10 +1,12 @@
-package leon
+package leon.xlang
 
-import purescala.Common._
-import purescala.Definitions._
-import purescala.Trees._
-import purescala.Extractors._
-import purescala.TypeTrees._
+import leon.TransformationPhase
+import leon.LeonContext
+import leon.purescala.Common._
+import leon.purescala.Definitions._
+import leon.purescala.Trees._
+import leon.purescala.Extractors._
+import leon.purescala.TypeTrees._
 
 object ArrayTransformation extends TransformationPhase {
 
