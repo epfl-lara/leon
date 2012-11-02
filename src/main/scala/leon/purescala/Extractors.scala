@@ -74,6 +74,18 @@ object Extractors {
       case Concat(t1,t2) => Some((t1,t2,Concat))
       case ListAt(t1,t2) => Some((t1,t2,ListAt))
       case Let(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => Let(binders, e, body)))
+      case LetDef(fd, body) => 
+        fd.body match {
+          case Some(b) =>
+            Some((b, body, (b: Expr, body: Expr) => {
+              val nfd = new FunDef(fd.id, fd.returnType, fd.args)
+              nfd.body = Some(b)
+
+              LetDef(nfd, body)
+            }))
+          case _ =>
+            None
+        }
       case LetTuple(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => LetTuple(binders, e, body)))
       case wh@While(t1, t2) => Some((t1,t2, (t1, t2) => While(t1, t2).setInvariant(wh.invariant).setPosInfo(wh)))
       case ex: BinaryExtractable => ex.extract

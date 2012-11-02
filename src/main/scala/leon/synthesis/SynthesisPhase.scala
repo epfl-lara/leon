@@ -17,15 +17,16 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     LeonFlagOptionDef( "inplace", "--inplace",           "Debug level"),
     LeonFlagOptionDef( "derivtrees", "--derivtrees",     "Generate derivation trees"),
     LeonFlagOptionDef( "firstonly", "--firstonly",       "Stop as soon as one synthesis solution is found"),
+    LeonValueOptionDef("timeout",   "--timeout=T",       "Timeout after T seconds when searching for synthesis solutions .."),
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit synthesis of choose found within f1,f2,..")
   )
 
   def run(ctx: LeonContext)(p: Program): Program = {
-    val reporter = new SilentReporter
-    val solvers  = List(
-      new TrivialSolver(reporter),
-      new FairZ3Solver(reporter)
-    )
+    val reporter = new QuietReporter
+
+    val mainSolver = new FairZ3Solver(reporter)
+    mainSolver.setProgram(p)
+
     val uninterpretedZ3 = new UninterpretedZ3Solver(reporter)
     uninterpretedZ3.setProgram(p)
 
@@ -33,12 +34,19 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     var genTrees                       = false
     var firstOnly                      = false
     var filterFun: Option[Seq[String]] = None 
+    var timeoutMs: Option[Long]        = None
 
     for(opt <- ctx.options) opt match {
       case LeonFlagOption("inplace") =>
         inPlace = true
       case LeonValueOption("functions", ListValue(fs)) =>
         filterFun = Some(fs)
+      case LeonValueOption("timeout", t) =>
+        try {
+          timeoutMs  = Some(t.toLong)
+        } catch {
+          case _: Throwable => 
+        }
       case LeonFlagOption("firstonly") =>
         firstOnly = true
       case LeonFlagOption("derivtrees") =>
@@ -46,9 +54,8 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       case _ =>
     }
 
-    val synth = new Synthesizer(ctx.reporter, solvers, genTrees, filterFun.map(_.toSet), firstOnly)
+    val synth = new Synthesizer(ctx.reporter, mainSolver, genTrees, filterFun.map(_.toSet), firstOnly, timeoutMs)
     val solutions = synth.synthesizeAll(p)
-
 
     // Simplify expressions
     val simplifiers = List[Expr => Expr](

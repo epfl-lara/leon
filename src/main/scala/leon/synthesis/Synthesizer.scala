@@ -13,10 +13,11 @@ import java.io.File
 import collection.mutable.PriorityQueue
 
 class Synthesizer(val r: Reporter,
-                  val solvers: List[Solver],
+                  solver: Solver,
                   generateDerivationTrees: Boolean,
                   filterFuns: Option[Set[String]],
-                  firstOnly: Boolean) {
+                  firstOnly: Boolean,
+                  timeoutMs: Option[Long]) {
 
   import r.{error,warning,info,fatalError}
 
@@ -28,26 +29,35 @@ class Synthesizer(val r: Reporter,
     val workList = new PriorityQueue[Task]()
     val rootTask = new RootTask(this, p)
 
-    val giveUpComplexity = new TaskComplexity(null) {
-      override def value = 100000
-    }
-
     workList += rootTask
 
+    val ts = System.currentTimeMillis
+    def timeoutExpired(): Boolean = {
+      timeoutMs match {
+        case Some(t) if (System.currentTimeMillis-ts)/1000 > t => true
+        case _ => false
+      }
+    }
+
+    val worstSolution = Solution.choose(p)
+    def bestSolutionSoFar(): Solution= rootTask.solution.getOrElse(worstSolution)
+    
     while (!workList.isEmpty && !(firstOnly && rootTask.solution.isDefined)) {
       val task = workList.dequeue()
 
-      if (task.complexity > giveUpComplexity) {
-        // This task is too complicated, we give up with a choose solution
-        val solution = Solution.choose(task.problem)
-        task.solution = Some(solution)
-        task.parent.partlySolvedBy(task, solution)
-      } else {
+      // Check if solving this task has the slightest chance of improving the
+      // current solution
+      if (task.minSolutionComplexity < bestSolutionSoFar().complexity) {
         val subProblems = task.run
 
         for (p <- subProblems; r <- rules) yield {
           workList += new Task(this, task, p, r)
         }
+      }
+
+      if (timeoutExpired()) {
+        warning("Timeout reached")
+        workList.clear()
       }
     }
 
@@ -57,30 +67,25 @@ class Synthesizer(val r: Reporter,
       derivationCounter += 1
     }
 
-    rootTask.solution.getOrElse(Solution.none)
+    bestSolutionSoFar()
   }
 
   def solveSAT(phi: Expr): (Option[Boolean], Map[Identifier, Expr]) = {
-    for (s <- solvers) {
-      s.solveOrGetCounterexample(Not(phi)) match {
-        case (Some(true), _) =>
-          return (Some(false), Map())
-        case (Some(false), model) =>
-          return (Some(true), model)
-        case _ =>
-      }
+    solver.solveOrGetCounterexample(Not(phi)) match {
+      case (Some(true), _) =>
+        (Some(false), Map())
+      case (Some(false), model) =>
+        (Some(true), model)
+      case (None, _) =>
+        println("WOOPS: failure on "+phi)
+        (None, Map())
     }
-    (None, Map())
   }
 
   val rules = Rules.all(this) ++ Heuristics.all(this)
 
   import purescala.Trees._
   def synthesizeAll(program: Program): List[(Choose, Solution)] = {
-
-    solvers.foreach(_.setProgram(program))
-
-
     def noop(u:Expr, u2: Expr) = u
 
     var solutions = List[(Choose, Solution)]()

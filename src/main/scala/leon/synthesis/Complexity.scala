@@ -10,24 +10,21 @@ abstract class Complexity[T <: Complexity[T]] extends Ordered[T] {
   def value : Int
 }
 
-case class TaskComplexity(t: Task) extends Complexity[TaskComplexity] {
-  def value= { 
-    Option(t.rule) match {
-      case Some(r) =>
-        100*t.problem.complexity.value + (100-r.priority) + t.minSolutionCost
-      case None =>
-        0
-    }
-  }
+abstract class SolutionComplexity extends Complexity[SolutionComplexity] {
+  def value: Int
 }
 
-case class SolutionComplexity(s: Solution) extends Complexity[SolutionComplexity] {
+case class ConcreteSolutionComplexity(s: Solution) extends SolutionComplexity {
   lazy val value = {
     val chooses = collectChooses(s.term)
-    val chooseCost = 1000 * chooses.foldLeft(0)((i, c) => i + (math.pow(2, c.vars.size).toInt + formulaSize(c.pred)))
+    val chooseCost = chooses.foldLeft(0)((i, c) => i + (1000 * math.pow(2, c.vars.size).toInt + formulaSize(c.pred)))
 
     formulaSize(s.pre) + formulaSize(s.term) + chooseCost
   }
+}
+
+case class FixedSolutionComplexity(c: Int) extends SolutionComplexity {
+  val value = c
 }
 
 case class ProblemComplexity(p: Problem) extends Complexity[ProblemComplexity] {

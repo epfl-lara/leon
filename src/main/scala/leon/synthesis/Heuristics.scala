@@ -72,7 +72,7 @@ class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", syn
 }
 
 
-class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 8, 100) {
+class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 8, 500) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
@@ -81,7 +81,7 @@ class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 8, 1
         val tpe = TupleType(p.xs.map(_.getType))
 
         val inductOn = FreshIdentifier(origId.name, true).setType(origId.getType)
-              
+
         val postXs  = p.xs map (id => FreshIdentifier("r", true).setType(id.getType))
 
         val postXsMap = (p.xs zip postXs).toMap.mapValues(Variable(_))
@@ -94,7 +94,7 @@ class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 8, 1
         val subGT   = Problem(inductOn :: postXs, And(Seq(newPhi, GreaterThan(Variable(inductOn), IntLiteral(0)), postCondGT)), p.xs)
         val subLT   = Problem(inductOn :: postXs, And(Seq(newPhi, LessThan(Variable(inductOn), IntLiteral(0)), postCondLT)), p.xs)
 
-        val onSuccess: List[Solution] => Solution = { 
+        val onSuccess: List[Solution] => Solution = {
           case List(base, gt, lt) =>
             val newFun = new FunDef(FreshIdentifier("rec", true), tpe, Seq(VarDecl(inductOn, inductOn.getType)))
             newFun.body = Some( 

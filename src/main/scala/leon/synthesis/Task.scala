@@ -6,9 +6,15 @@ class Task(synth: Synthesizer,
            val problem: Problem,
            val rule: Rule) extends Ordered[Task] {
 
-  val complexity: TaskComplexity = new TaskComplexity(this)
+  def compare(that: Task) = {
+    val cproblem = -(this.problem.complexity compare that.problem.complexity) // problem DESC
 
-  def compare(that: Task) = that.complexity compare this.complexity // sort by complexity ASC
+    if (cproblem == 0) {
+      this.rule.priority-that.rule.priority
+    } else {
+      cproblem
+    }
+  }
 
   var subProblems: List[Problem]               = Nil
   var onSuccess: List[Solution] => Solution    = _
@@ -64,7 +70,7 @@ class Task(synth: Synthesizer,
     }
   }
 
-  lazy val minSolutionCost: Cost = rule.cost + parent.minSolutionCost
+  lazy val minSolutionComplexity: FixedSolutionComplexity = new FixedSolutionComplexity(rule.cost+parent.minSolutionComplexity.value)
 
   override def toString = "Applying "+rule+" on "+problem
 }
@@ -72,7 +78,7 @@ class Task(synth: Synthesizer,
 class RootTask(synth: Synthesizer, problem: Problem) extends Task(synth, null, problem, null) {
   var solver: Option[Task] = None
 
-  override lazy val minSolutionCost = 0
+  override lazy val minSolutionComplexity = new FixedSolutionComplexity(0)
 
   override def partlySolvedBy(t: Task, s: Solution) {
     if (isBetterSolutionThan(s, solution)) {

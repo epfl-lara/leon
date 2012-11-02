@@ -9,7 +9,7 @@ import leon.purescala.TreeOps.simplifyLets
 class Solution(val pre: Expr, val term: Expr) {
   override def toString = "⟨ "+pre+" | "+term+" ⟩" 
 
-  lazy val complexity: SolutionComplexity = new SolutionComplexity(this)
+  lazy val complexity: SolutionComplexity = new ConcreteSolutionComplexity(this)
 
   def toExpr = {
     if (pre == BooleanLiteral(true)) {
