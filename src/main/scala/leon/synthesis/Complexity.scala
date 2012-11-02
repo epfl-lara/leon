@@ -10,11 +10,11 @@ abstract class Complexity[T <: Complexity[T]] extends Ordered[T] {
   def value : Int
 }
 
-abstract class SolutionComplexity extends Complexity[SolutionComplexity] {
+abstract class AbsSolComplexity extends Complexity[AbsSolComplexity] {
   def value: Int
 }
 
-case class ConcreteSolutionComplexity(s: Solution) extends SolutionComplexity {
+case class SolComplexity(s: Solution) extends AbsSolComplexity {
   lazy val value = {
     val chooses = collectChooses(s.term)
     val chooseCost = chooses.foldLeft(0)((i, c) => i + (1000 * math.pow(2, c.vars.size).toInt + formulaSize(c.pred)))
@@ -23,7 +23,7 @@ case class ConcreteSolutionComplexity(s: Solution) extends SolutionComplexity {
   }
 }
 
-case class FixedSolutionComplexity(c: Int) extends SolutionComplexity {
+case class FixedSolComplexity(c: Int) extends AbsSolComplexity {
   val value = c
 }
 

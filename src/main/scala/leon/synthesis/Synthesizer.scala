@@ -14,10 +14,10 @@ import collection.mutable.PriorityQueue
 
 class Synthesizer(val r: Reporter,
                   val solver: Solver,
-                  generateDerivationTrees: Boolean,
-                  filterFuns: Option[Set[String]],
-                  firstOnly: Boolean,
-                  timeoutMs: Option[Long]) {
+                  generateDerivationTrees: Boolean = false,
+                  filterFuns: Option[Set[String]]  = None,
+                  firstOnly: Boolean               = false,
+                  timeoutMs: Option[Long]          = None) {
 
   import r.{error,warning,info,fatalError}
 
@@ -32,6 +32,7 @@ class Synthesizer(val r: Reporter,
     workList += rootTask
 
     val ts = System.currentTimeMillis
+
     def timeoutExpired(): Boolean = {
       timeoutMs match {
         case Some(t) if (System.currentTimeMillis-ts)/1000 > t => true
@@ -40,7 +41,10 @@ class Synthesizer(val r: Reporter,
     }
 
     val worstSolution = Solution.choose(p)
-    def bestSolutionSoFar(): Solution= rootTask.solution.getOrElse(worstSolution)
+
+    def bestSolutionSoFar(): Solution = {
+      rootTask.solution.getOrElse(worstSolution)
+    }
     
     while (!workList.isEmpty && !(firstOnly && rootTask.solution.isDefined)) {
       val task = workList.dequeue()

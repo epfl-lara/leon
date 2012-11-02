@@ -9,7 +9,7 @@ import leon.purescala.TreeOps._
 class Solution(val pre: Expr, val term: Expr) {
   override def toString = "⟨ "+pre+" | "+term+" ⟩" 
 
-  lazy val complexity: SolutionComplexity = new ConcreteSolutionComplexity(this)
+  lazy val complexity: AbsSolComplexity = new SolComplexity(this)
 
   def toExpr = {
     if (pre == BooleanLiteral(true)) {
@@ -23,12 +23,6 @@ class Solution(val pre: Expr, val term: Expr) {
 }
 
 object Solution {
-  def choose(p: Problem): Solution = 
-    new Solution(BooleanLiteral(true), Choose(p.xs, p.phi))
-
-  def basic(p: Problem): Solution = new Solution(BooleanLiteral(true), Tuple(p.xs.map(id => simplestValue(id.getType))))
-
-  def none: Solution = throw new Exception("Unexpected failure to construct solution")
 
   def simplify(e: Expr) = simplifyLets(e)
 
@@ -37,4 +31,17 @@ object Solution {
   }
 
   def unapply(s: Solution): Option[(Expr, Expr)] = if (s eq null) None else Some((s.pre, s.term))
+
+  def choose(p: Problem): Solution = {
+    new Solution(BooleanLiteral(true), Choose(p.xs, p.phi))
+  }
+
+  // Generate the simplest, wrongest solution, used for complexity lowerbound
+  def basic(p: Problem): Solution = {
+    new Solution(BooleanLiteral(true), Tuple(p.xs.map(id => simplestValue(id.getType))))
+  }
+
+  def none: Solution = {
+    throw new Exception("Unexpected failure to construct solution")
+  }
 }

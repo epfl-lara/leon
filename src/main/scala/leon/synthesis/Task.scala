@@ -65,7 +65,7 @@ class Task(synth: Synthesizer,
         this.onSuccess    = onSuccess
 
         val simplestSolution = onSuccess(subProblems.map(Solution.basic _))
-        minComplexity = new FixedSolutionComplexity(parent.minComplexity.value + simplestSolution.complexity.value)
+        minComplexity = new FixedSolComplexity(parent.minComplexity.value + simplestSolution.complexity.value)
 
         subProblems
 
@@ -75,7 +75,7 @@ class Task(synth: Synthesizer,
     }
   }
 
-  var minComplexity: SolutionComplexity = new FixedSolutionComplexity(0)
+  var minComplexity: AbsSolComplexity = new FixedSolComplexity(0)
 
   override def toString = "Applying "+rule+" on "+problem
 }
