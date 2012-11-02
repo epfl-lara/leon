@@ -17,8 +17,7 @@ object Rules {
     new CaseSplit(synth),
     new UnusedInput(synth),
     new UnconstrainedOutput(synth),
-    new Assert(synth),
-    new GiveUp(synth)
+    new Assert(synth)
   )
 }
 
@@ -273,12 +272,6 @@ class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth, 20, 0) {
     } else {
       RuleInapplicable
     }
-  }
-}
-
-class GiveUp(synth: Synthesizer) extends Rule("GiveUp", synth, -100000, 100) {
-  def applyOn(task: Task): RuleResult = {
-    RuleSuccess(Solution.choose(task.problem))
   }
 }
 

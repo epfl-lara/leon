@@ -28,16 +28,26 @@ class Synthesizer(val r: Reporter,
     val workList = new PriorityQueue[Task]()
     val rootTask = new RootTask(this, p)
 
+    val giveUpComplexity = new TaskComplexity(null) {
+      override def value = 100000
+    }
 
     workList += rootTask
 
     while (!workList.isEmpty && !(firstOnly && rootTask.solution.isDefined)) {
       val task = workList.dequeue()
 
-      val subProblems = task.run
+      if (task.complexity > giveUpComplexity) {
+        // This task is too complicated, we give up with a choose solution
+        val solution = Solution.choose(task.problem)
+        task.solution = Some(solution)
+        task.parent.partlySolvedBy(task, solution)
+      } else {
+        val subProblems = task.run
 
-      for (p <- subProblems; r <- rules) yield {
-        workList += new Task(this, task, p, r)
+        for (p <- subProblems; r <- rules) yield {
+          workList += new Task(this, task, p, r)
+        }
       }
     }
 

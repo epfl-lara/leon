@@ -72,7 +72,7 @@ class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", syn
 }
 
 
-class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 8, 50) {
+class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 8, 100) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 

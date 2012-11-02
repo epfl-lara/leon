@@ -2,7 +2,7 @@ package leon
 package synthesis
 
 class Task(synth: Synthesizer,
-           parent: Task,
+           val parent: Task,
            val problem: Problem,
            val rule: Rule) extends Ordered[Task] {
 
@@ -34,6 +34,17 @@ class Task(synth: Synthesizer,
     }
   }
 
+  var failures = Set[Rule]()
+  def unsolvedBy(t: Task) {
+    failures += t.rule
+
+    if (failures.size == synth.rules.size) {
+      // We might want to report unsolved instead of solvedByChoose, depending
+      // on the cases
+      parent.partlySolvedBy(this, Solution.choose(problem))
+    }
+  }
+
   def run: List[Problem] = {
     rule.applyOn(this) match {
       case RuleSuccess(solution) =>
@@ -48,6 +59,7 @@ class Task(synth: Synthesizer,
         subProblems
 
       case RuleInapplicable =>
+        parent.unsolvedBy(this)
         Nil
     }
   }
@@ -62,10 +74,21 @@ class RootTask(synth: Synthesizer, problem: Problem) extends Task(synth, null, p
 
   override lazy val minSolutionCost = 0
 
-  override def partlySolvedBy(t: Task, s: Solution) = {
+  override def partlySolvedBy(t: Task, s: Solution) {
     if (isBetterSolutionThan(s, solution)) {
       solution = Some(s)
       solver   = Some(t)
+    }
+  }
+
+  override def unsolvedBy(t: Task) {
+    failures += t.rule
+
+    if (failures.size == synth.rules.size) {
+      // We might want to report unsolved instead of solvedByChoose, depending
+      // on the cases
+      solution = Some(Solution.choose(problem))
+      solver   = None
     }
   }
 
