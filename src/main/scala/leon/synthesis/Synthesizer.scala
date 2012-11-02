@@ -34,9 +34,12 @@ class Synthesizer(val r: Reporter,
     while (!workList.isEmpty && !(firstOnly && rootTask.solution.isDefined)) {
       val task = workList.dequeue()
 
-      val subtasks = task.run
+      val subProblems = task.run
 
-      workList ++= subtasks
+      for (p <- subProblems; r <- rules) yield {
+        workList += new Task(this, task, p, r)
+      }
+
     }
 
     if (generateDerivationTrees) {

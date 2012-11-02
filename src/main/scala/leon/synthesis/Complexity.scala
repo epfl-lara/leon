@@ -11,6 +11,17 @@ abstract class Complexity extends Ordered[Complexity] {
   def compute : Double
 }
 
+case class TaskComplexity(p: Problem, r: Option[Rule]) extends Complexity {
+  def compute = { 
+    r match {
+      case Some(r) =>
+        100*p.complexity.compute + (100-r.priority)
+      case None =>
+        0
+    }
+  }
+}
+
 object Complexity {
   val zero = new Complexity {
     override def compute = 0

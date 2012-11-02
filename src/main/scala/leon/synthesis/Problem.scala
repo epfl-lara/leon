@@ -8,4 +8,6 @@ import leon.purescala.Common._
 // ⟦ as ⟨ phi ⟩ xs ⟧
 case class Problem(as: List[Identifier], phi: Expr, xs: List[Identifier]) {
   override def toString = "⟦ "+as.mkString(";")+" ⟨ "+phi+" ⟩ "+xs.mkString(";")+" ⟧ "
+
+  def complexity: Complexity = Complexity.max
 }

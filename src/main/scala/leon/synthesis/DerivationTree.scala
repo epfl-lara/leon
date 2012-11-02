@@ -19,39 +19,33 @@ class DerivationTree(root: RootTask)  {
     res append " label=\"Derivation Tree\"\n"
 //    res append " rankdir=\"LR\"\n"
 
-    var namesCache = Map[(AnyRef, String), String]()
-    def nameFor(t: AnyRef, prefix: String) = {
-      namesCache.get((t, prefix)) match {
+    var taskNames = Map[Task, String]()
+    def taskName(t: Task) = {
+      taskNames.get(t) match {
         case Some(name) =>
           name
         case None =>
-          val name = prefix+nextID
-          namesCache += ((t, prefix)) -> name
+          val name = "task"+nextID
+          taskNames += t -> name
           name
       }
     }
 
     def printTask(t: Task) {
 
-      val node = nameFor(t, "task");
+      val node = taskName(t);
 
-      /*
-      t.solverTask match {
-        case Some(decompTask) =>
-          res append " "+node+" [ label = <<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\"><TR><TD BORDER=\"0\">"+decompTask.rule.name+"</TD></TR><TR><TD BGCOLOR=\"indianred1\">"+escapeHTML(t.problem.toString)+"</TD></TR><TR><TD BGCOLOR=\"greenyellow\">"+escapeHTML(t.solution.map(_.toString).getOrElse("?"))+"</TD></TR></TABLE>> shape = \"none\" ];\n"
+      res append " "+node+" [ label = <<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\"><TR><TD BORDER=\"0\">"+t.rule+"</TD></TR><TR><TD BGCOLOR=\"indianred1\">"+escapeHTML(t.problem.toString)+"</TD></TR><TR><TD BGCOLOR=\"greenyellow\">"+escapeHTML(t.solution.map(_.toString).getOrElse("?"))+"</TD></TR></TABLE>> shape = \"none\" ];\n"
 
-          for (t <- decompTask.subTasks) {
-            printTask(t)
-            res append nameFor(t, "task") +" -> " + " "+node+";\n"
-          }
-
-        case None =>
+      for (st <- t.subSolvers.values) {
+        res.append(" "+taskName(st)+" -> "+node+"\n")
+        printTask(st)
       }
-      */
+
     }
 
 
-    printTask(root)
+    root.solver.foreach(printTask)
 
     res append "}\n"
 
