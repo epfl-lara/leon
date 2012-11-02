@@ -13,7 +13,7 @@ import java.io.File
 import collection.mutable.PriorityQueue
 
 class Synthesizer(val r: Reporter,
-                  solver: Solver,
+                  val solver: Solver,
                   generateDerivationTrees: Boolean,
                   filterFuns: Option[Set[String]],
                   firstOnly: Boolean,
@@ -68,18 +68,6 @@ class Synthesizer(val r: Reporter,
     }
 
     bestSolutionSoFar()
-  }
-
-  def solveSAT(phi: Expr): (Option[Boolean], Map[Identifier, Expr]) = {
-    solver.solveOrGetCounterexample(Not(phi)) match {
-      case (Some(true), _) =>
-        (Some(false), Map())
-      case (Some(false), model) =>
-        (Some(true), model)
-      case (None, _) =>
-        println("WOOPS: failure on "+phi)
-        (None, Map())
-    }
   }
 
   val rules = Rules.all(this) ++ Heuristics.all(this)

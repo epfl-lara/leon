@@ -22,7 +22,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
   )
 
   def run(ctx: LeonContext)(p: Program): Program = {
-    val reporter = new QuietReporter
+    val reporter = new SilentReporter
 
     val mainSolver = new FairZ3Solver(reporter)
     mainSolver.setProgram(p)

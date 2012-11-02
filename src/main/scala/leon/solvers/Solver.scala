@@ -22,6 +22,17 @@ abstract class Solver(val reporter: Reporter) extends Extension(reporter) {
 
   def solveOrGetCounterexample(expression : Expr) : (Option[Boolean],Map[Identifier,Expr]) = (solve(expression), Map.empty)
 
+  def solveSAT(expression: Expr): (Option[Boolean], Map[Identifier, Expr]) = {
+    solveOrGetCounterexample(Not(expression)) match {
+      case (Some(true), _) =>
+        (Some(false), Map())
+      case (Some(false), model) =>
+        (Some(true), model)
+      case (None, _) =>
+        (None, Map())
+    }
+  }
+
   def isUnsat(expression: Expr) : Option[Boolean] = solve(negate(expression))
   def superseeds : Seq[String] = Nil
 

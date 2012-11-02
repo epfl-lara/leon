@@ -88,7 +88,7 @@ class Ground(synth: Synthesizer) extends Rule("Ground", synth, 50, 0) {
 
       val tpe = TupleType(p.xs.map(_.getType))
 
-      synth.solveSAT(p.phi) match {
+      synth.solver.solveSAT(p.phi) match {
         case (Some(true), model) =>
           RuleSuccess(Solution(BooleanLiteral(true), Tuple(p.xs.map(valuateWithModel(model))).setType(tpe)))
         case (Some(false), model) =>

@@ -33,13 +33,13 @@ class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", syn
 
       while (result.isEmpty && i < maxTries) {
         val phi = And(p.phi +: predicates)
-        synth.solveSAT(phi) match {
+        synth.solver.solveSAT(phi) match {
           case (Some(true), satModel) =>
             val satXsModel = satModel.filterKeys(xss) 
 
             val newPhi = valuateWithModelIn(phi, xss, satModel)
 
-            synth.solveSAT(Not(newPhi)) match {
+            synth.solver.solveSAT(Not(newPhi)) match {
               case (Some(true), invalidModel) =>
                 // Found as such as the xs break, refine predicates
                 predicates = valuateWithModelIn(phi, ass, invalidModel) +: predicates
