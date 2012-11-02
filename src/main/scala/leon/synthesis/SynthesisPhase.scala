@@ -21,12 +21,12 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
   )
 
   def run(ctx: LeonContext)(p: Program): Program = {
-    val quietReporter = new QuietReporter
+    val reporter = new SilentReporter
     val solvers  = List(
-      new TrivialSolver(quietReporter),
-      new FairZ3Solver(quietReporter)
+      new TrivialSolver(reporter),
+      new FairZ3Solver(reporter)
     )
-    val uninterpretedZ3 = new UninterpretedZ3Solver(quietReporter)
+    val uninterpretedZ3 = new UninterpretedZ3Solver(reporter)
     uninterpretedZ3.setProgram(p)
 
     var inPlace                        = false

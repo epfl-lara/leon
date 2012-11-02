@@ -39,7 +39,6 @@ class Synthesizer(val r: Reporter,
       for (p <- subProblems; r <- rules) yield {
         workList += new Task(this, task, p, r)
       }
-
     }
 
     if (generateDerivationTrees) {

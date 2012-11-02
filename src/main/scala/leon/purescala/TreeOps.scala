@@ -954,7 +954,7 @@ object TreeOps {
 
   def genericTransform[C](pre:  (Expr, C) => (Expr, C),
                           post: (Expr, C) => (Expr, C),
-                          combiner: (Expr, C, Seq[C]) => C)(init: C)(expr: Expr) = {
+                          combiner: (Seq[C]) => C)(init: C)(expr: Expr) = {
 
     def rec(eIn: Expr, cIn: C): (Expr, C) = {
 
@@ -968,20 +968,20 @@ object TreeOps {
           val (e1, c) = rec(e, ctx)
           val newE = builder(e1)
 
-          (newE, combiner(newE, cIn, Seq(c)))
+          (newE, combiner(Seq(c)))
 
         case BinaryOperator(e1, e2, builder) =>
           val (ne1, c1) = rec(e1, ctx)
           val (ne2, c2) = rec(e2, ctx)
           val newE = builder(ne1, ne2)
 
-          (newE, combiner(newE, cIn, Seq(c1, c2)))
+          (newE, combiner(Seq(c1, c2)))
 
         case NAryOperator(es, builder) =>
           val (nes, cs) = es.map{ rec(_, ctx)}.unzip
           val newE = builder(nes)
 
-          (newE, combiner(newE, cIn, cs))
+          (newE, combiner(cs))
 
         case e =>
           sys.error("Expression "+e+" ["+e.getClass+"] is not extractable")
@@ -993,7 +993,7 @@ object TreeOps {
     rec(expr, init)
   }
 
-  private def noCombiner[C](e: Expr, initC: C, subCs: Seq[C]) = initC
+  private def noCombiner(subCs: Seq[Unit]) = ()
 
   def simpleTransform(pre: Expr => Expr, post: Expr => Expr)(expr: Expr) = {
     val newPre  = (e: Expr, c: Unit) => (pre(e), ())
@@ -1301,6 +1301,37 @@ object TreeOps {
     }
 
     rec(expr, Nil)
+  }
+
+  def formulaSize(e: Expr): Int = e match {
+    case t: Terminal =>
+      1
+
+    case UnaryOperator(e, builder) =>
+      formulaSize(e)+1
+
+    case BinaryOperator(e1, e2, builder) =>
+      formulaSize(e1)+formulaSize(e2)+1
+
+    case NAryOperator(es, _) =>
+      es.map(formulaSize).foldRight(0)(_ + _)+1
+  }
+
+  def collectChooses(e: Expr): List[Choose] = {
+    def post(e: Expr, cs: List[Choose]) = {
+      val newCs = e match {
+        case c: Choose => c :: cs
+        case _ => cs
+      }
+
+      (e, newCs)
+    }
+
+    def combiner(cs: Seq[List[Choose]]) = {
+      cs.foldLeft(List[Choose]())(_ ::: _)
+    }
+
+    genericTransform[List[Choose]]((_, _), post, combiner)(List())(e)._2
   }
 
   def valuateWithModel(model: Map[Identifier, Expr])(id: Identifier): Expr = {

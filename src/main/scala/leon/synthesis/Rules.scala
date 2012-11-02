@@ -276,7 +276,7 @@ class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth, 20, 0) {
   }
 }
 
-class GiveUp(synth: Synthesizer) extends Rule("GiveUp", synth, 0, 100) {
+class GiveUp(synth: Synthesizer) extends Rule("GiveUp", synth, -100000, 100) {
   def applyOn(task: Task): RuleResult = {
     RuleSuccess(Solution.choose(task.problem))
   }
