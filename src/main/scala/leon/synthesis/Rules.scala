@@ -34,8 +34,8 @@ abstract class Rule(val name: String, val synth: Synthesizer, val priority: Prio
   def subst(what: Tuple2[Identifier, Expr], in: Expr): Expr = replace(Map(Variable(what._1) -> what._2), in)
   def substAll(what: Map[Identifier, Expr], in: Expr): Expr = replace(what.map(w => Variable(w._1) -> w._2), in)
 
-  def forward(cost: Cost): List[Solution] => Solution = {
-    case List(s) => Solution(s.pre, s.term, s.cost + cost)
+  val forward: List[Solution] => Solution = {
+    case List(s) => Solution(s.pre, s.term)
     case _ => Solution.none
   }
 
@@ -65,11 +65,11 @@ class OnePoint(synth: Synthesizer) extends Rule("One-point", synth, 30, 0) {
       val newProblem = Problem(p.as, subst(x -> e, And(others)), oxs)
 
       val onSuccess: List[Solution] => Solution = { 
-        case List(Solution(pre, term, c)) =>
+        case List(Solution(pre, term)) =>
           if (oxs.isEmpty) {
-            Solution(pre, Tuple(e :: Nil), c + cost) 
+            Solution(pre, Tuple(e :: Nil)) 
           } else {
-            Solution(pre, LetTuple(oxs, term, subst(x -> e, Tuple(p.xs.map(Variable(_))))), c + cost) 
+            Solution(pre, LetTuple(oxs, term, subst(x -> e, Tuple(p.xs.map(Variable(_)))))) 
           }
         case _ => Solution.none
       }
@@ -91,9 +91,9 @@ class Ground(synth: Synthesizer) extends Rule("Ground", synth, 50, 0) {
 
       synth.solveSAT(p.phi) match {
         case (Some(true), model) =>
-          RuleSuccess(Solution(BooleanLiteral(true), Tuple(p.xs.map(valuateWithModel(model))).setType(tpe), cost))
+          RuleSuccess(Solution(BooleanLiteral(true), Tuple(p.xs.map(valuateWithModel(model))).setType(tpe)))
         case (Some(false), model) =>
-          RuleSuccess(Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe), cost))
+          RuleSuccess(Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe)))
         case _ =>
           RuleInapplicable
       }
@@ -112,7 +112,7 @@ class CaseSplit(synth: Synthesizer) extends Rule("Case-Split", synth, 20, 0) {
         val sub2 = Problem(p.as, o2, p.xs)
 
         val onSuccess: List[Solution] => Solution = { 
-          case List(Solution(p1, t1, c1), Solution(p2, t2, c2)) => Solution(Or(p1, p2), IfExpr(p1, t1, t2), c1+c2+cost)
+          case List(Solution(p1, t1), Solution(p2, t2)) => Solution(Or(p1, p2), IfExpr(p1, t1, t2))
           case _ => Solution.none
         }
 
@@ -135,10 +135,10 @@ class Assert(synth: Synthesizer) extends Rule("Assert", synth, 20, 0) {
 
         if (!exprsA.isEmpty) {
           if (others.isEmpty) {
-            RuleSuccess(Solution(And(exprsA), Tuple(p.xs.map(id => simplestValue(Variable(id)))), cost))
+            RuleSuccess(Solution(And(exprsA), Tuple(p.xs.map(id => simplestValue(Variable(id))))))
           } else {
             val onSuccess: List[Solution] => Solution = { 
-              case List(s) => Solution(And(s.pre +: exprsA), s.term, s.cost + cost)
+              case List(s) => Solution(And(s.pre +: exprsA), s.term)
               case _ => Solution.none
             }
 
@@ -163,7 +163,7 @@ class UnusedInput(synth: Synthesizer) extends Rule("UnusedInput", synth, 10, 0) 
     if (!unused.isEmpty) {
       val sub = p.copy(as = p.as.filterNot(unused))
 
-      RuleDecomposed(List(sub), forward(cost))
+      RuleDecomposed(List(sub), forward)
     } else {
       RuleInapplicable
     }
@@ -180,7 +180,7 @@ class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", sy
 
       val onSuccess: List[Solution] => Solution = { 
         case List(s) => 
-          Solution(s.pre, LetTuple(sub.xs, s.term, Tuple(p.xs.map(id => if (unconstr(id)) simplestValue(Variable(id)) else Variable(id)))), s.cost + cost)
+          Solution(s.pre, LetTuple(sub.xs, s.term, Tuple(p.xs.map(id => if (unconstr(id)) simplestValue(Variable(id)) else Variable(id)))))
         case _ =>
           Solution.none
       }
@@ -215,7 +215,7 @@ object Unification {
         val sub = p.copy(phi = And((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
 
-        RuleDecomposed(List(sub), forward(cost))
+        RuleDecomposed(List(sub), forward)
       } else {
         RuleInapplicable
       }
@@ -240,7 +240,7 @@ object Unification {
       if (isImpossible) {
         val tpe = TupleType(p.xs.map(_.getType))
 
-        RuleSuccess(Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe), cost))
+        RuleSuccess(Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe)))
       } else {
         RuleInapplicable
       }
@@ -269,7 +269,7 @@ class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth, 20, 0) {
     if (!toRemove.isEmpty) {
       val sub = p.copy(phi = And((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
-      RuleDecomposed(List(sub), forward(cost))
+      RuleDecomposed(List(sub), forward)
     } else {
       RuleInapplicable
     }
@@ -278,7 +278,7 @@ class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth, 20, 0) {
 
 class GiveUp(synth: Synthesizer) extends Rule("GiveUp", synth, 0, 100) {
   def applyOn(task: Task): RuleResult = {
-    RuleSuccess(Solution.choose(task.problem, cost))
+    RuleSuccess(Solution.choose(task.problem))
   }
 }
 

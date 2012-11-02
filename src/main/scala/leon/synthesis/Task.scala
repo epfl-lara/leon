@@ -6,9 +6,9 @@ class Task(synth: Synthesizer,
            val problem: Problem,
            val rule: Rule) extends Ordered[Task] {
 
-  def compare(that: Task) = -(this.complexity compare that.complexity) // sort by complexity ASC
+  val complexity: TaskComplexity = new TaskComplexity(this)
 
-  val complexity = new TaskComplexity(problem, Option(rule))
+  def compare(that: Task) = that.complexity compare this.complexity // sort by complexity ASC
 
   var subProblems: List[Problem]               = Nil
   var onSuccess: List[Solution] => Solution    = _
@@ -16,14 +16,14 @@ class Task(synth: Synthesizer,
   var subSolvers : Map[Problem, Task]          = Map()
   var solution : Option[Solution]              = None
 
-  def currentComplexityFor(p: Problem): Complexity =
-    subSolutions.get(p) match {
-      case Some(s) => s.complexity
-      case None => Complexity.max
+  def isBetterSolutionThan(sol: Solution, osol: Option[Solution]): Boolean =
+    osol match {
+      case Some(s) => s.complexity > sol.complexity
+      case None => true
     }
 
   def partlySolvedBy(t: Task, s: Solution) {
-    if (s.complexity < currentComplexityFor(t.problem)) {
+    if (isBetterSolutionThan(s, subSolutions.get(t.problem))) {
       subSolutions += t.problem -> s
       subSolvers   += t.problem -> t
 
@@ -52,14 +52,18 @@ class Task(synth: Synthesizer,
     }
   }
 
+  lazy val minSolutionCost: Cost = rule.cost + parent.minSolutionCost
+
   override def toString = "Applying "+rule+" on "+problem
 }
 
 class RootTask(synth: Synthesizer, problem: Problem) extends Task(synth, null, problem, null) {
   var solver: Option[Task] = None
 
+  override lazy val minSolutionCost = 0
+
   override def partlySolvedBy(t: Task, s: Solution) = {
-    if (s.complexity < solution.map(_.complexity).getOrElse(Complexity.max)) {
+    if (isBetterSolutionThan(s, solution)) {
       solution = Some(s)
       solver   = Some(t)
     }

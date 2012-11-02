@@ -45,7 +45,7 @@ class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", syn
                 predicates = valuateWithModelIn(phi, ass, invalidModel) +: predicates
 
               case (Some(false), _) =>
-                result = Some(RuleSuccess(Solution(BooleanLiteral(true), Tuple(p.xs.map(valuateWithModel(satModel))).setType(tpe), cost)))
+                result = Some(RuleSuccess(Solution(BooleanLiteral(true), Tuple(p.xs.map(valuateWithModel(satModel))).setType(tpe))))
 
               case _ =>
                 result = Some(RuleInapplicable)
@@ -53,7 +53,7 @@ class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", syn
 
           case (Some(false), _) =>
             if (predicates.isEmpty) {
-              result = Some(RuleSuccess(Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe), cost)))
+              result = Some(RuleSuccess(Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe))))
             } else {
               result = Some(RuleInapplicable)
             }
@@ -105,7 +105,7 @@ class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 8, 5
               , LetTuple(postXs, FunctionInvocation(newFun, Seq(Plus(Variable(inductOn), IntLiteral(1)))), lt.toExpr)))
             )
 
-            Solution(BooleanLiteral(true), LetDef(newFun, FunctionInvocation(newFun, Seq(Variable(origId)))), base.cost+gt.cost+lt.cost+cost)
+            Solution(BooleanLiteral(true), LetDef(newFun, FunctionInvocation(newFun, Seq(Variable(origId)))))
           case _ =>
             Solution.none
         }
