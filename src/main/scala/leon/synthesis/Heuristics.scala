@@ -15,7 +15,7 @@ object Heuristics {
   )
 }
 
-class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", synth, 9, 0) {
+class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", synth, 9) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
@@ -72,7 +72,7 @@ class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", syn
 }
 
 
-class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 8, 500) {
+class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 8) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 

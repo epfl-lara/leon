@@ -2,6 +2,7 @@ package leon
 package synthesis
 
 import purescala.Common._
+import purescala.ScalaPrinter
 import purescala.Trees._
 import purescala.Extractors._
 import purescala.TreeOps._
@@ -27,7 +28,7 @@ case class RuleSuccess(solution: Solution) extends RuleResult
 case class RuleDecomposed(subProblems: List[Problem], onSuccess: List[Solution] => Solution) extends RuleResult
 
 
-abstract class Rule(val name: String, val synth: Synthesizer, val priority: Priority, val cost: Cost) {
+abstract class Rule(val name: String, val synth: Synthesizer, val priority: Priority) {
   def applyOn(task: Task): RuleResult
 
   def subst(what: Tuple2[Identifier, Expr], in: Expr): Expr = replace(Map(Variable(what._1) -> what._2), in)
@@ -41,7 +42,7 @@ abstract class Rule(val name: String, val synth: Synthesizer, val priority: Prio
   override def toString = name
 }
 
-class OnePoint(synth: Synthesizer) extends Rule("One-point", synth, 30, 5) {
+class OnePoint(synth: Synthesizer) extends Rule("One-point", synth, 30) {
   def applyOn(task: Task): RuleResult = {
 
     val p = task.problem
@@ -80,7 +81,7 @@ class OnePoint(synth: Synthesizer) extends Rule("One-point", synth, 30, 5) {
   }
 }
 
-class Ground(synth: Synthesizer) extends Rule("Ground", synth, 50, 0) {
+class Ground(synth: Synthesizer) extends Rule("Ground", synth, 50) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
@@ -102,7 +103,7 @@ class Ground(synth: Synthesizer) extends Rule("Ground", synth, 50, 0) {
   }
 }
 
-class CaseSplit(synth: Synthesizer) extends Rule("Case-Split", synth, 20, 10) {
+class CaseSplit(synth: Synthesizer) extends Rule("Case-Split", synth, 20) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
     p.phi match {
@@ -122,7 +123,7 @@ class CaseSplit(synth: Synthesizer) extends Rule("Case-Split", synth, 20, 10) {
   }
 }
 
-class Assert(synth: Synthesizer) extends Rule("Assert", synth, 20, 1) {
+class Assert(synth: Synthesizer) extends Rule("Assert", synth, 20) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
@@ -154,7 +155,7 @@ class Assert(synth: Synthesizer) extends Rule("Assert", synth, 20, 1) {
   }
 }
 
-class UnusedInput(synth: Synthesizer) extends Rule("UnusedInput", synth, 10, 1) {
+class UnusedInput(synth: Synthesizer) extends Rule("UnusedInput", synth, 10) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
     val unused = p.as.toSet -- variablesOf(p.phi)
@@ -169,7 +170,7 @@ class UnusedInput(synth: Synthesizer) extends Rule("UnusedInput", synth, 10, 1) 
   }
 }
 
-class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", synth, 10, 5) {
+class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", synth, 10) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
     val unconstr = p.xs.toSet -- variablesOf(p.phi)
@@ -193,7 +194,7 @@ class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", sy
 }
 
 object Unification {
-  class DecompTrivialClash(synth: Synthesizer) extends Rule("Unif Dec./Clash/Triv.", synth, 20, 5) {
+  class DecompTrivialClash(synth: Synthesizer) extends Rule("Unif Dec./Clash/Triv.", synth, 20) {
     def applyOn(task: Task): RuleResult = {
       val p = task.problem
 
@@ -221,7 +222,7 @@ object Unification {
     }
   }
 
-  class OccursCheck(synth: Synthesizer) extends Rule("Unif OccursCheck", synth, 20, 0) {
+  class OccursCheck(synth: Synthesizer) extends Rule("Unif OccursCheck", synth, 20) {
     def applyOn(task: Task): RuleResult = {
       val p = task.problem
 
@@ -248,7 +249,7 @@ object Unification {
 }
 
 
-class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth, 20, 10) {
+class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth, 20) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 

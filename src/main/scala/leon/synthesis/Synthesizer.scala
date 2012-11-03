@@ -54,6 +54,15 @@ class Synthesizer(val r: Reporter,
       // Check if solving this task has the slightest chance of improving the
       // current solution
       if (task.minComplexity < bestSolutionSoFar().complexity) {
+        if (!subProblems.isEmpty) {
+          val name = Option(task.rule).map(_.name).getOrElse("root")
+          println("["+name+"] Got: "+task.problem)
+          println("["+name+"] Decomposed into:")
+          for(p <- subProblems) {
+            println("["+name+"]  - "+p)
+          }
+        }
+
         for (p <- subProblems; r <- rules) yield {
           workList += new Task(this, task, p, r)
         }
