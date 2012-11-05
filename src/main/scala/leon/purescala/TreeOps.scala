@@ -923,7 +923,7 @@ object TreeOps {
     case _ => throw new Exception("I can't choose simplest value for type " + tpe)
   }
 
-  //guarentee that all IfExpr will be at the top level and as soon as you encounter a non-IfExpr, then no more IfExpr can be find in the sub-expressions
+  //guarentee that all IfExpr will be at the top level and as soon as you encounter a non-IfExpr, then no more IfExpr can be found in the sub-expressions
   //require no-match, no-ets and only pure code
   def hoistIte(expr: Expr): Expr = {
     def transform(expr: Expr): Option[Expr] = expr match {

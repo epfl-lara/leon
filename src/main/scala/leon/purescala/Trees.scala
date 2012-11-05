@@ -88,7 +88,7 @@ object Trees {
     }
   }
 
-  // This must be 1-indexed !
+  // This must be 1-indexed ! (So are methods of Scala Tuples)
   case class TupleSelect(tuple: Expr, index: Int) extends Expr {
     assert(index >= 1)
   }
@@ -400,8 +400,8 @@ object Trees {
   case class ArrayFill(length: Expr, defaultValue: Expr) extends Expr
   case class ArrayMake(defaultValue: Expr) extends Expr
   case class ArraySelect(array: Expr, index: Expr) extends Expr with ScalacPositional
-  //the difference between ArrayUpdate and ArrayUpdated is that the former has a side effect while the latter is the function variant
-  //ArrayUpdate should be eliminated soon in the analysis while ArrayUpdated is keep all the way to the backend
+  //the difference between ArrayUpdate and ArrayUpdated is that the former has a side effect while the latter is the functional version
+  //ArrayUpdate should be eliminated soon in the analysis while ArrayUpdated is kept all the way to the backend
   case class ArrayUpdate(array: Expr, index: Expr, newValue: Expr) extends Expr with ScalacPositional with FixedType {
     val fixedType = UnitType
   }
