@@ -16,6 +16,11 @@ class ArithmeticNormalizationSuite extends FunSuite {
   val x = Variable(xId)
   val yId = FreshIdentifier("y")
   val y = Variable(yId)
+
+  val aId = FreshIdentifier("a")
+  val a = Variable(aId)
+  val bId = FreshIdentifier("b")
+  val b = Variable(bId)
   
   val allMaps: Seq[Map[Identifier, Expr]] = (-20 to 20).flatMap(xVal => (-20 to 20).map(yVal => Map(xId-> i(xVal), yId -> i(yVal))))
 
@@ -57,9 +62,10 @@ class ArithmeticNormalizationSuite extends FunSuite {
     val xs = Array(xId, yId)
 
     val e1 = Plus(Times(Plus(x, i(2)), i(3)), Times(i(4), y))
-    println(apply(e1, xs).mkString(" + "))
     checkSameExpr(toSum(apply(e1, xs)), e1)
 
+    val e2 = Plus(Times(Plus(x, i(2)), i(3)), Plus(Plus(a, Times(i(5), b)), Times(i(4), y)))
+    checkSameExpr(toSum(apply(e2, xs)), e2)
 
   }
   
