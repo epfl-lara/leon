@@ -2,6 +2,7 @@ package leon.synthesis
 
 import leon.Evaluator._
 import leon.purescala.Trees._
+import leon.purescala.TreeOps.replace
 import leon.purescala.Common._
 
 /*
@@ -15,6 +16,9 @@ object LikelyEq {
   /*
    * compare e1 and e2, using a list of assignment of integer to the variables in vs
    * Add a default mapping for some set parameters
+   * Note that the default map could contain a mapping for variables to other parameters
+   * It is thus necessary to first select values for those parameters and then substitute
+   * into the default map !
    */
   def apply(e1: Expr, e2: Expr, vs: Set[Identifier], 
             compare: (Expr, Expr) => Boolean = (e1, e2) => e1 == e2, 
@@ -25,12 +29,15 @@ object LikelyEq {
 
     var cont = true
     while(cont && isEq) {
-      val m: Map[Identifier, Expr] = vsOrder.zip(counter).map{case (v, c) => (v, IntLiteral(c))}.toMap ++ defaultMap
-      val ev1 = eval(m, e1, None)
-      val ev2 = eval(m, e2, None)
+      val m: Map[Expr, Expr] = vsOrder.zip(counter).map{case (v, c) => (Variable(v), IntLiteral(c))}.toMap
+      val ne1 = replace(m, e1)
+      val ne2 = replace(m, e2)
+      val ndm = defaultMap.map{ case (id, expr) => (id, eval(m.map{case (Variable(id), t) => (id, t)}, expr, None).asInstanceOf[OK].result) }
+      val ev1 = eval(ndm, ne1, None)
+      val ev2 = eval(ndm, ne2, None)
       (ev1, ev2) match {
         case (OK(v1), OK(v2)) => if(!compare(v1, v2)) isEq = false
-        case _ => sys.error("evaluation could not complete")
+        case (err1, err2) => sys.error("evaluation could not complete, got: (" + err1 + ", " + err2 + ")")
       }
 
       var i = 0
