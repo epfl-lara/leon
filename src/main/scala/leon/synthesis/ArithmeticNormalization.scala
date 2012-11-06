@@ -33,7 +33,8 @@ object ArithmeticNormalization {
     xs.zipWithIndex.foreach{case (id, index) => {
       val (terms, rests) = expandedForm.partition(containsId(_, id))
       expandedForm = rests
-      res(index+1) = group(terms, id)
+      val Times(coef, Variable(_)) = group(terms, id)
+      res(index+1) = coef
     }}
 
     res(0) = expandedForm.foldLeft[Expr](IntLiteral(0))(Plus(_, _))
