@@ -6,7 +6,8 @@ import leon.purescala.Common._
 object LinearEquations {
 
   //as are the parameters while xs are the variable for which we want to find one satisfiable assignment
-  def particularSolution(as: Set[Identifier], xs: Set[Identifier], equation: Equals): Map[Identifier, Expr] = {
+  //return (pre, sol) with pre a precondition under which sol is a solution mapping to the xs
+  def particularSolution(as: Set[Identifier], xs: Set[Identifier], equation: Equals): (Expr, Map[Identifier, Expr]) = {
     val lhs = equation.left
     val rhs = equation.right
     val orderedXs = xs.toArray
@@ -14,7 +15,7 @@ object LinearEquations {
     particularSolution(as, orderedXs, normalized)
   }
 
-  def particularSolution(as: Set[Identifier], xs: Array[Identifier], normalizedEquation: Array[Expr]): Map[Identifier, Expr] = {
+  def particularSolution(as: Set[Identifier], xs: Array[Identifier], normalizedEquation: Array[Expr]): (Expr, Map[Identifier, Expr]) = {
     println("normalized expression: " + normalizedEquation.mkString(" + "))
 
     assert(normalizedEquation.size == 1 + xs.size)
@@ -25,9 +26,13 @@ object LinearEquations {
     val (v1, v2) = GCD.extendedEuclid(i1, i2)
     val d = GCD.gcd(i1, i2)
 
-    Map(
-      xs(0) -> Minus(IntLiteral(0), Times(IntLiteral(v1), Division(t, IntLiteral(d)))),
-      xs(1) -> Minus(IntLiteral(0), Times(IntLiteral(v2), Division(t, IntLiteral(d))))
+    val pre = Equals(Modulo(t, IntLiteral(d)), IntLiteral(0))
+
+    (pre,
+     Map(
+       xs(0) -> Minus(IntLiteral(0), Times(IntLiteral(v1), Division(t, IntLiteral(d)))),
+       xs(1) -> Minus(IntLiteral(0), Times(IntLiteral(v2), Division(t, IntLiteral(d))))
+     )
     )
 
   }
