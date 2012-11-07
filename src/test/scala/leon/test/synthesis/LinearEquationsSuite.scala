@@ -25,9 +25,9 @@ class LinearEquationsSuite extends FunSuite {
 
   def toSum(es: Seq[Expr]) = es.reduceLeft(Plus(_, _))
   
-  def checkSameExpr(e1: Expr, e2: Expr, vs: Set[Identifier], defaultMap: Map[Identifier, Expr] = Map()) {
+  def checkSameExpr(e1: Expr, e2: Expr, vs: Set[Identifier], prec: Expr, defaultMap: Map[Identifier, Expr] = Map()) {
     assert( //this outer assert should not be needed because of the nested one
-      LikelyEq(e1, e2, vs, (e1, e2) => {assert(e1 === e2); true}, defaultMap)
+      LikelyEq(e1, e2, vs, prec, (e1, e2) => {assert(e1 === e2); true}, defaultMap)
     )
   }
   
@@ -43,7 +43,7 @@ class LinearEquationsSuite extends FunSuite {
     val s1 = particularSolution(Set(aId, bId), Array(xId, yId), e1)
     println(s1)
     println(toExpr(e1))
-    checkSameExpr(toExpr(e1), IntLiteral(0), Set(aId, bId), s1)
+    checkSameExpr(toExpr(e1), IntLiteral(0), Set(aId, bId), BooleanLiteral(true), s1)
   }
 
 }

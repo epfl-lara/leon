@@ -29,7 +29,7 @@ class ArithmeticNormalizationSuite extends FunSuite {
 
   def checkSameExpr(e1: Expr, e2: Expr, vs: Set[Identifier]) {
     assert( //this outer assert should not be needed because of the nested one
-      LikelyEq(e1, e2, vs, (e1, e2) => {assert(e1 === e2); true})
+      LikelyEq(e1, e2, vs, BooleanLiteral(true), (e1, e2) => {assert(e1 === e2); true})
     )
   }
 
