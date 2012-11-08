@@ -12,6 +12,16 @@ object GCD {
     if(a > b) gcd0(a, b) else gcd0(b, a)
   }
 
+  def gcd(a1: Int, a2: Int, as: Int*): Int = {
+    var tmp = gcd(a1, a2)
+    var i = 0
+    while(i < as.size) {
+      tmp = gcd(tmp, as(i))
+      i += 1
+    }
+    tmp
+  }
+
   //return (x, y) such that ax + by = gcd(a, b)
   def extendedEuclid(a: Int, b: Int): (Int, Int) = if(b == 0) (1, 0) else {
     val (q, r) = divide(a, b)
