@@ -56,6 +56,26 @@ class GCDSuite extends FunSuite {
     assert(gcd(2,4,8,11,16,4) === 1)
   }
 
+  test("seq gcd") {
+    assert(gcd(Seq(1,1,1)) === 1)
+    assert(gcd(Seq(1,3,5)) === 1)
+    assert(gcd(Seq(3,1,2)) === 1)
+    assert(gcd(Seq(3,3,3)) === 3)
+    assert(gcd(Seq(4,3,8,6)) === 1)
+    assert(gcd(Seq(5,3,2)) === 1)
+    assert(gcd(Seq(6,3,9)) === 3)
+    assert(gcd(Seq(6,3,8)) === 1)
+    assert(gcd(Seq(2,12,16,4)) === 2)
+    assert(gcd(Seq(4,10,8,22)) === 2)
+    assert(gcd(Seq(10,4,20)) === 2)
+    assert(gcd(Seq(12,8,4)) === 4)
+    assert(gcd(Seq(12,8,2)) === 2)
+    assert(gcd(Seq(12,8,6)) === 2)
+    assert(gcd(Seq(23,41,11)) === 1)
+    assert(gcd(Seq(2,4,8,12,16,4)) === 2)
+    assert(gcd(Seq(2,4,8,11,16,4)) === 1)
+  }
+
   def checkExtendedEuclid(a: Int, b: Int) {
     val (x, y) = extendedEuclid(a, b)
     assert(x*a + y*b === gcd(a, b))

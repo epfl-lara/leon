@@ -22,6 +22,17 @@ object GCD {
     tmp
   }
 
+  def gcd(as: Seq[Int]): Int = {
+    require(as.length >= 0)
+    var tmp = gcd(as(0), as(1))
+    var i = 2
+    while(i < as.size) {
+      tmp = gcd(tmp, as(i))
+      i += 1
+    }
+    tmp
+  }
+
   //return (x, y) such that ax + by = gcd(a, b)
   def extendedEuclid(a: Int, b: Int): (Int, Int) = if(b == 0) (1, 0) else {
     val (q, r) = divide(a, b)
