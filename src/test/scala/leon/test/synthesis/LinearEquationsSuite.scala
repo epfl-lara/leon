@@ -59,6 +59,14 @@ class LinearEquationsSuite extends FunSuite {
     val e1: Array[Expr] = Array(t1, c1, d1)
     val (pre1, s1) = particularSolution(Set(aId, bId), e1)
     checkSameExpr(toExpr(e1), IntLiteral(0), Set(aId, bId), pre1, Array(xId, yId).zip(s1).toMap)
+
+    val t2: Expr = Plus(a, b)
+    val c2: Expr = IntLiteral(4)
+    val d2: Expr = IntLiteral(22)
+    val f2: Expr = IntLiteral(10)
+    val e2: Array[Expr] = Array(t2, c2, d2, f2)
+    val (pre2, s2) = particularSolution(Set(aId, bId), e2)
+    checkSameExpr(toExpr(e2), IntLiteral(0), Set(aId, bId), pre2, Array(xId, yId).zip(s2).toMap)
   }
 
 }
