@@ -39,7 +39,7 @@ abstract class Rule(val name: String, val synth: Synthesizer, val priority: Prio
     case _ => Solution.none
   }
 
-  override def toString = name
+  override def toString = "R: "+name
 }
 
 class OnePoint(synth: Synthesizer) extends Rule("One-point", synth, 30) {

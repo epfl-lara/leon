@@ -11,11 +11,18 @@ import purescala.Definitions._
 object Heuristics {
   def all(synth: Synthesizer) = Set(
     new OptimisticGround(synth),
-    new IntInduction(synth)
+    new IntInduction(synth),
+    new OptimisticInjection(synth)
   )
 }
 
-class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", synth, 9) {
+trait Heuristic {
+  this: Rule =>
+
+  override def toString = "H: "+name
+}
+
+class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", synth, 9) with Heuristic {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
@@ -72,7 +79,7 @@ class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", syn
 }
 
 
-class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 8) {
+class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 8) with Heuristic {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
@@ -113,6 +120,45 @@ class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 8) {
         RuleDecomposed(List(subBase, subGT, subLT), onSuccess)
       case _ =>
         RuleInapplicable
+    }
+  }
+}
+
+class OptimisticInjection(synth: Synthesizer) extends Rule("Opt. Injection", synth, 5) with Heuristic {
+  def applyOn(task: Task): RuleResult = {
+    val p = task.problem
+
+    val TopLevelAnds(exprs) = p.phi
+
+    val eqfuncalls = exprs.collect{
+      case eq @ Equals(FunctionInvocation(fd, args), e) =>
+        ((fd, e), args, eq : Expr)
+      case eq @ Equals(e, FunctionInvocation(fd, args)) =>
+        ((fd, e), args, eq : Expr)
+    }
+
+    val candidates = eqfuncalls.groupBy(_._1).filter(_._2.size > 1)
+    if (!candidates.isEmpty) {
+
+      var newExprs = exprs
+      for (cands <- candidates.values) {
+        val cand = cands.take(2)
+        val toRemove = cand.map(_._3).toSet
+        val argss    = cand.map(_._2)
+        val args     = argss(0) zip argss(1)
+
+        newExprs ++= args.map{ case (l, r) => Equals(l, r) }
+
+
+
+        newExprs = newExprs.filterNot(toRemove)
+      }
+
+      val sub = p.copy(phi = And(newExprs))
+
+      RuleDecomposed(List(sub), forward)
+    } else {
+      RuleInapplicable
     }
   }
 }

@@ -58,6 +58,11 @@ class Task(synth: Synthesizer,
         // Solved
         this.solution = Some(solution)
         parent.partlySolvedBy(this, solution)
+
+        val prefix = "[%-20s] ".format(Option(rule).map(_.toString).getOrElse("root"))
+        println(prefix+"Got: "+problem)
+        println(prefix+"Solved with: "+solution)
+
         Nil
 
       case RuleDecomposed(subProblems, onSuccess) =>
@@ -66,6 +71,13 @@ class Task(synth: Synthesizer,
 
         val simplestSolution = onSuccess(subProblems.map(Solution.basic _))
         minComplexity = new FixedSolComplexity(parent.minComplexity.value + simplestSolution.complexity.value)
+
+        val prefix = "[%-20s] ".format(Option(rule).map(_.toString).getOrElse("root"))
+        println(prefix+"Got: "+problem)
+        println(prefix+"Decomposed into:")
+        for(p <- subProblems) {
+          println(prefix+" - "+p)
+        }
 
         subProblems
 
