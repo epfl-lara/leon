@@ -27,11 +27,12 @@ object LikelyEq {
             defaultMap: Map[Identifier, Expr] = Map()): Boolean = {
     var isEq = true
     val vsOrder = vs.toArray
-    val counter: Array[Int] = vsOrder.map(_ => min)
+    val counters: Array[Int] = vsOrder.map(_ => min)
+    var i = 0
 
     var cont = true
-    while(cont && isEq) {
-      val m: Map[Expr, Expr] = vsOrder.zip(counter).map{case (v, c) => (Variable(v), IntLiteral(c))}.toMap
+    while(i < counters.size && isEq) {
+      val m: Map[Expr, Expr] = vsOrder.zip(counters).map{case (v, c) => (Variable(v), IntLiteral(c))}.toMap
       val ne1 = replace(m, e1)
       val ne2 = replace(m, e2)
       val npre = replace(m, pre)
@@ -48,19 +49,16 @@ object LikelyEq {
         case err => sys.error("evaluation of precondition could not complete, got: " + err)
       }
 
-      var i = 0
-      while(i < counter.size && counter(i) >= max)
-        i += 1
-
-      if(i == counter.size) {
-        cont = false
-      } else {
-        counter(i) += 1
-        if(counter(i) == max) {
-          while(i > 0) {
-            i -= 1
-              counter(i) = min
-          }
+      if(counters(i) < max)
+        counters(i) += 1
+      else {
+        while(i < counters.size && counters(i) >= max) {
+          counters(i) = min
+          i += 1
+        }
+        if(i < counters.size) {
+          counters(i) += 1
+          i = 0
         }
       }
     }

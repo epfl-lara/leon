@@ -32,6 +32,69 @@ class LinearEquationsSuite extends FunSuite {
       LikelyEq(e1, e2, vs, prec, (e1, e2) => {assert(e1 === e2); true}, defaultMap)
     )
   }
+
+
+  //use some random values to check that any vector in the basis is a valid solution to
+  //the equation
+  def checkVectorSpace(basis: Array[Array[Int]], equation: Array[Int]) {
+    require(basis.size == basis(0).size + 1 && basis.size == equation.size)
+    val n = basis(0).size
+    val min = -5
+    val max = 5
+    val components = Array.fill(n)(min)
+    var counter = 0
+
+    while(counter < n) {
+      val sol = mult(basis, components) //one linear combination of the basis
+      assert(eval(sol, equation) === 0)
+
+      //next components
+      if(components(counter) < max)
+        components(counter) += 1
+      else {
+        while(counter < n && components(counter) >= max) {
+          components(counter) = min
+          counter += 1
+        }
+        if(counter < n) {
+          components(counter) += 1
+          counter = 0
+        }
+      }
+    }
+  }
+
+  //val that the sol vector with the term in the equation
+  def eval(sol: Array[Int], equation: Array[Int]): Int = {
+    require(sol.size == equation.size)
+    sol.zip(equation).foldLeft(0)((acc, p) => acc + p._1 * p._2)
+  }
+
+  //multiply the matrix by the vector: [M1 M2 .. Mn] * [v1 .. vn] = v1*M1 + ... + vn*Mn]
+  def mult(matrix: Array[Array[Int]], vector: Array[Int]): Array[Int] = {
+    require(vector.size == matrix(0).size && vector.size > 0)
+    val tmat = matrix.transpose
+    var tmp: Array[Int] = null
+    tmp = mult(vector(0), tmat(0))
+    var i = 1
+    while(i < vector.size) {
+      tmp = add(tmp, mult(vector(i), tmat(i)))
+      i += 1
+    }
+    tmp
+  }
+
+  def mult(c: Int, v: Array[Int]): Array[Int] = v.map(_ * c)
+  def add(v1: Array[Int], v2: Array[Int]): Array[Int] = {
+    require(v1.size == v2.size)
+    v1.zip(v2).map(p => p._1 + p._2)
+  }
+
+  test("checkVectorSpace") {
+    checkVectorSpace(Array(Array(1), Array(2)), Array(-2, 1))
+    checkVectorSpace(Array(Array(4, 0), Array(-3, 2), Array(0, -1)), Array(3, 4, 8))
+  }
+
   
   test("particularSolution basecase") {
     def toExpr(es: Array[Expr]): Expr = {
@@ -77,6 +140,24 @@ class LinearEquationsSuite extends FunSuite {
     val e3: Array[Expr] = Array(t3, c3, d3, f3)
     val (pre3, s3) = particularSolution(Set(aId, bId), e3.toList)
     checkSameExpr(toExpr(e3, Array(x, y, z)), IntLiteral(0), Set(aId, bId), pre3, Array(xId, yId, zId).zip(s3).toMap)
+
+    val t4: Expr = Plus(a, b)
+    val c4: Expr = IntLiteral(4)
+    val e4: Array[Expr] = Array(t4, c4)
+    val (pre4, s4) = particularSolution(Set(aId, bId), e4.toList)
+    checkSameExpr(toExpr(e4, Array(x)), IntLiteral(0), Set(aId, bId), pre4, Array(xId).zip(s4).toMap)
+  }
+
+
+  test("linearSet") {
+    val as = Set[Identifier]()
+
+    val eq1 = Array(3, 4, 8)
+    val basis1 = linearSet(as, eq1)
+    println(basis1.map(row => row.mkString(",")).mkString("\n"))
+    checkVectorSpace(basis1, eq1)
+
+
   }
 
 }
