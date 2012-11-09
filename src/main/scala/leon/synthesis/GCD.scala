@@ -23,14 +23,18 @@ object GCD {
   }
 
   def gcd(as: Seq[Int]): Int = {
-    require(as.length >= 0)
-    var tmp = gcd(as(0), as(1))
-    var i = 2
-    while(i < as.size) {
-      tmp = gcd(tmp, as(i))
-      i += 1
+    require(as.length >= 1)
+    if(as.length == 1)
+      as(0)
+    else {
+      var tmp = gcd(as(0), as(1))
+      var i = 2
+      while(i < as.size) {
+        tmp = gcd(tmp, as(i))
+        i += 1
+      }
+      tmp
     }
-    tmp
   }
 
   //return (x, y) such that ax + by = gcd(a, b)

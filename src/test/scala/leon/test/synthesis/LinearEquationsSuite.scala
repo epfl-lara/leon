@@ -140,6 +140,24 @@ class LinearEquationsSuite extends FunSuite {
     val e3: Array[Expr] = Array(t3, c3, d3, f3)
     val (pre3, s3) = particularSolution(Set(aId, bId), e3.toList)
     checkSameExpr(toExpr(e3, Array(x, y, z)), IntLiteral(0), Set(aId, bId), pre3, Array(xId, yId, zId).zip(s3).toMap)
+
+    val t4: Expr = Plus(a, b)
+    val c4: Expr = IntLiteral(4)
+    val e4: Array[Expr] = Array(t4, c4)
+    val (pre4, s4) = particularSolution(Set(aId, bId), e4.toList)
+    checkSameExpr(toExpr(e4, Array(x)), IntLiteral(0), Set(aId, bId), pre4, Array(xId).zip(s4).toMap)
+  }
+
+
+  test("linearSet") {
+    val as = Set[Identifier]()
+
+    val eq1 = Array(3, 4, 8)
+    val basis1 = linearSet(as, eq1)
+    println(basis1.map(row => row.mkString(",")).mkString("\n"))
+    checkVectorSpace(basis1, eq1)
+
+
   }
 
 }

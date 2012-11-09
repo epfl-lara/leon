@@ -2,6 +2,7 @@ package leon.synthesis
 
 import leon.purescala.Trees._
 import leon.purescala.Common._
+import leon.Evaluator 
 
 object LinearEquations {
 
@@ -41,10 +42,10 @@ object LinearEquations {
     }
     for(j <- 0 until K.size - 1) {
       val (_, sols) = particularSolution(as, IntLiteral(-coef(j)*K(j)(j)) :: coef.drop(j+1).map(IntLiteral(_)).toList)
-      assert(sols.size == K.size - j)
+      //assert(sols.size == K.size - j)
       var i = 0
       while(i < sols.size) {
-        K(i+j+1)(j) = sols(i).asInstanceOf[IntLiteral].value
+        K(i+j+1)(j) = Evaluator.eval(Map(), sols(i), None).asInstanceOf[Evaluator.OK].result.asInstanceOf[IntLiteral].value
         i += 1
       }
     }
@@ -79,19 +80,23 @@ object LinearEquations {
     )
   }
 
+  //the equation must at least contain the term t and one variable
   def particularSolution(as: Set[Identifier], normalizedEquation: List[Expr]): (Expr, List[Expr]) = {
+    require(normalizedEquation.size >= 2)
     val t: Expr = normalizedEquation.head
     val coefs: List[Int] = normalizedEquation.tail.map{case IntLiteral(i) => i}
     val d = GCD.gcd(coefs.toSeq)
     val pre = Equals(Modulo(t, IntLiteral(d)), IntLiteral(0))
 
-    if(normalizedEquation.size == 3) {
+    if(normalizedEquation.size == 2) {
+      (pre, List(Minus(IntLiteral(0), Division(t, IntLiteral(d)))))
+    } else if(normalizedEquation.size == 3) {
       val (_, (w1, w2)) = particularSolution(as, t, normalizedEquation(1), normalizedEquation(2))
       (pre, List(w1, w2))
     } else {
-
       val gamma1: Expr = normalizedEquation(1)
       val coefs: List[Int] = normalizedEquation.drop(2).map{case IntLiteral(i) => i}
+      println(coefs)
       val gamma2: Expr = IntLiteral(GCD.gcd(coefs.toSeq))
       val (_, (w1, w)) = particularSolution(as, t, gamma1, gamma2)
       val (_, sols) = particularSolution(as, Minus(IntLiteral(0), Times(w, gamma2)) :: normalizedEquation.drop(2))

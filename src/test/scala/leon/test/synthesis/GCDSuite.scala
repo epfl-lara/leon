@@ -57,6 +57,9 @@ class GCDSuite extends FunSuite {
   }
 
   test("seq gcd") {
+    assert(gcd(Seq(1)) === 1)
+    assert(gcd(Seq(4)) === 4)
+    assert(gcd(Seq(7)) === 7)
     assert(gcd(Seq(1,1,1)) === 1)
     assert(gcd(Seq(1,3,5)) === 1)
     assert(gcd(Seq(3,1,2)) === 1)
