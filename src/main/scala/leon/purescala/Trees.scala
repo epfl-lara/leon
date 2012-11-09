@@ -181,7 +181,7 @@ object Trees {
       if(and == null) None else Some(and.exprs)
   }
 
-  class And(val exprs: Seq[Expr]) extends Expr with FixedType {
+  class And private (val exprs: Seq[Expr]) extends Expr with FixedType {
     val fixedType = BooleanType
   }
 
