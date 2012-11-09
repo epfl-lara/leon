@@ -22,7 +22,7 @@ trait Heuristic {
   override def toString = "H: "+name
 }
 
-class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", synth, 9) with Heuristic {
+class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", synth, 90) with Heuristic {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
@@ -79,7 +79,7 @@ class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", syn
 }
 
 
-class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 8) with Heuristic {
+class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 80) with Heuristic {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
@@ -124,7 +124,7 @@ class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 8) w
   }
 }
 
-class OptimisticInjection(synth: Synthesizer) extends Rule("Opt. Injection", synth, 5) with Heuristic {
+class OptimisticInjection(synth: Synthesizer) extends Rule("Opt. Injection", synth, 50) with Heuristic {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
@@ -148,9 +148,42 @@ class OptimisticInjection(synth: Synthesizer) extends Rule("Opt. Injection", syn
         val args     = argss(0) zip argss(1)
 
         newExprs ++= args.map{ case (l, r) => Equals(l, r) }
+        newExprs = newExprs.filterNot(toRemove)
+      }
 
+      val sub = p.copy(phi = And(newExprs))
 
+      RuleDecomposed(List(sub), forward)
+    } else {
+      RuleInapplicable
+    }
+  }
+}
 
+class SelectiveInlining(synth: Synthesizer) extends Rule("Sel. Inlining", synth, 20) with Heuristic {
+  def applyOn(task: Task): RuleResult = {
+    val p = task.problem
+
+    val TopLevelAnds(exprs) = p.phi
+
+    val eqfuncalls = exprs.collect{
+      case eq @ Equals(FunctionInvocation(fd, args), e) =>
+        ((fd, e), args, eq : Expr)
+      case eq @ Equals(e, FunctionInvocation(fd, args)) =>
+        ((fd, e), args, eq : Expr)
+    }
+
+    val candidates = eqfuncalls.groupBy(_._1).filter(_._2.size > 1)
+    if (!candidates.isEmpty) {
+
+      var newExprs = exprs
+      for (cands <- candidates.values) {
+        val cand = cands.take(2)
+        val toRemove = cand.map(_._3).toSet
+        val argss    = cand.map(_._2)
+        val args     = argss(0) zip argss(1)
+
+        newExprs ++= args.map{ case (l, r) => Equals(l, r) }
         newExprs = newExprs.filterNot(toRemove)
       }
 
