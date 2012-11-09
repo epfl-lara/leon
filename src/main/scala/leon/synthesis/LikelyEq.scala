@@ -14,13 +14,15 @@ object LikelyEq {
   private val max = 5
 
   /*
-   * compare e1 and e2, using a list of assignment of integer to the variables in vs
+   * compare e1 and e2, using a list of assignment of integer to the variables in vs.
+   * Pre is a boolean expression precondition over the same variables that must be evaluated to true
+   * before testing equality.
    * Add a default mapping for some set parameters
    * Note that the default map could contain a mapping for variables to other parameters
    * It is thus necessary to first select values for those parameters and then substitute
    * into the default map !
    */
-  def apply(e1: Expr, e2: Expr, vs: Set[Identifier], 
+  def apply(e1: Expr, e2: Expr, vs: Set[Identifier], pre: Expr = BooleanLiteral(true),
             compare: (Expr, Expr) => Boolean = (e1, e2) => e1 == e2, 
             defaultMap: Map[Identifier, Expr] = Map()): Boolean = {
     var isEq = true
@@ -32,12 +34,18 @@ object LikelyEq {
       val m: Map[Expr, Expr] = vsOrder.zip(counter).map{case (v, c) => (Variable(v), IntLiteral(c))}.toMap
       val ne1 = replace(m, e1)
       val ne2 = replace(m, e2)
+      val npre = replace(m, pre)
       val ndm = defaultMap.map{ case (id, expr) => (id, eval(m.map{case (Variable(id), t) => (id, t)}, expr, None).asInstanceOf[OK].result) }
-      val ev1 = eval(ndm, ne1, None)
-      val ev2 = eval(ndm, ne2, None)
-      (ev1, ev2) match {
-        case (OK(v1), OK(v2)) => if(!compare(v1, v2)) isEq = false
-        case (err1, err2) => sys.error("evaluation could not complete, got: (" + err1 + ", " + err2 + ")")
+      eval(ndm, npre, None) match {
+        case OK(BooleanLiteral(false)) =>
+        case OK(BooleanLiteral(true)) =>
+          val ev1 = eval(ndm, ne1, None)
+          val ev2 = eval(ndm, ne2, None)
+          (ev1, ev2) match {
+            case (OK(v1), OK(v2)) => if(!compare(v1, v2)) isEq = false
+            case (err1, err2) => sys.error("evaluation could not complete, got: (" + err1 + ", " + err2 + ")")
+          }
+        case err => sys.error("evaluation of precondition could not complete, got: " + err)
       }
 
       var i = 0

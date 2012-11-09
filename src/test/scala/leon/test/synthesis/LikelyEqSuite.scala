@@ -32,10 +32,18 @@ class LikelyEqSuite extends FunSuite {
       Plus(IntLiteral(2), Plus(x, y)), 
       Plus(IntLiteral(3), Plus(x, z)), 
       Set(xId), 
+      BooleanLiteral(true),
       defaultCompare, 
       Map(yId -> IntLiteral(2), zId -> IntLiteral(1)))
     )
 
+
+    assert(LikelyEq(
+      Plus(x, Times(IntLiteral(2), Division(y, IntLiteral(2))))
+      , Plus(x, y)
+      , Set(xId, yId)
+      , Equals(Modulo(y, IntLiteral(2)), IntLiteral(0))
+    ))
 
   }
   
