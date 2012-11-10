@@ -88,7 +88,7 @@ class Synthesizer(val r: Reporter,
         val as = (variablesOf(pred)--xs).toList
         val phi = pred
 
-        val sol = synthesize(Problem(as, phi, xs), rules)
+        val sol = synthesize(Problem(as, BooleanLiteral(true), phi, xs), rules)
 
         solutions = (ch -> sol) :: solutions
 

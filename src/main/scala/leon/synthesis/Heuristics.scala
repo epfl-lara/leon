@@ -97,9 +97,9 @@ class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 80) 
         val postCondGT = substAll(postXsMap + (origId -> Minus(Variable(inductOn), IntLiteral(1))), p.phi)
         val postCondLT = substAll(postXsMap + (origId -> Plus(Variable(inductOn), IntLiteral(1))), p.phi)
 
-        val subBase = Problem(List(), subst(origId -> IntLiteral(0), p.phi), p.xs)
-        val subGT   = Problem(inductOn :: postXs, And(Seq(newPhi, GreaterThan(Variable(inductOn), IntLiteral(0)), postCondGT)), p.xs)
-        val subLT   = Problem(inductOn :: postXs, And(Seq(newPhi, LessThan(Variable(inductOn), IntLiteral(0)), postCondLT)), p.xs)
+        val subBase = Problem(List(), p.c, subst(origId -> IntLiteral(0), p.phi), p.xs)
+        val subGT   = Problem(inductOn :: postXs, p.c, And(Seq(newPhi, GreaterThan(Variable(inductOn), IntLiteral(0)), postCondGT)), p.xs)
+        val subLT   = Problem(inductOn :: postXs, p.c, And(Seq(newPhi, LessThan(Variable(inductOn), IntLiteral(0)), postCondLT)), p.xs)
 
         val onSuccess: List[Solution] => Solution = {
           case List(base, gt, lt) =>

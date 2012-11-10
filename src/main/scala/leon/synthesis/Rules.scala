@@ -62,7 +62,7 @@ class OnePoint(synth: Synthesizer) extends Rule("One-point", synth, 300) {
       val others = exprs.filter(_ != eq)
       val oxs    = p.xs.filter(_ != x)
 
-      val newProblem = Problem(p.as, subst(x -> e, And(others)), oxs)
+      val newProblem = Problem(p.as, p.c, subst(x -> e, And(others)), oxs)
 
       val onSuccess: List[Solution] => Solution = { 
         case List(Solution(pre, term)) =>
@@ -108,8 +108,8 @@ class CaseSplit(synth: Synthesizer) extends Rule("Case-Split", synth, 200) {
     val p = task.problem
     p.phi match {
       case Or(Seq(o1, o2)) =>
-        val sub1 = Problem(p.as, o1, p.xs)
-        val sub2 = Problem(p.as, o2, p.xs)
+        val sub1 = Problem(p.as, p.c, o1, p.xs)
+        val sub2 = Problem(p.as, p.c, o2, p.xs)
 
         val onSuccess: List[Solution] => Solution = { 
           case List(Solution(p1, t1), Solution(p2, t2)) => Solution(Or(p1, p2), IfExpr(p1, t1, t2))
@@ -183,7 +183,7 @@ class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", sy
       val sub = p.copy(xs = p.xs.filterNot(unconstr))
 
       val onSuccess: List[Solution] => Solution = { 
-        case List(s) => 
+        case List(s) =>
           Solution(s.pre, LetTuple(sub.xs, s.term, Tuple(p.xs.map(id => if (unconstr(id)) simplestValue(Variable(id)) else Variable(id)))))
         case _ =>
           Solution.none
