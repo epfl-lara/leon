@@ -154,8 +154,19 @@ class LinearEquationsSuite extends FunSuite {
 
     val eq1 = Array(3, 4, 8)
     val basis1 = linearSet(as, eq1)
-    println(basis1.map(row => row.mkString(",")).mkString("\n"))
     checkVectorSpace(basis1, eq1)
+
+    val eq2 = Array(1, 2, 3)
+    val basis2 = linearSet(as, eq2)
+    checkVectorSpace(basis2, eq2)
+
+    val eq3 = Array(1, 1)
+    val basis3 = linearSet(as, eq3)
+    checkVectorSpace(basis3, eq3)
+
+    val eq4 = Array(1, 1, 2, 7)
+    val basis4 = linearSet(as, eq4)
+    checkVectorSpace(basis4, eq4)
 
 
   }
