@@ -96,7 +96,6 @@ object LinearEquations {
     } else {
       val gamma1: Expr = normalizedEquation(1)
       val coefs: List[Int] = normalizedEquation.drop(2).map{case IntLiteral(i) => i}
-      println(coefs)
       val gamma2: Expr = IntLiteral(GCD.gcd(coefs.toSeq))
       val (_, (w1, w)) = particularSolution(as, t, gamma1, gamma2)
       val (_, sols) = particularSolution(as, Minus(IntLiteral(0), Times(w, gamma2)) :: normalizedEquation.drop(2))
