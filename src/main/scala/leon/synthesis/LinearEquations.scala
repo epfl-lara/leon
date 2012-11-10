@@ -41,7 +41,7 @@ object LinearEquations {
       }
     }
     for(j <- 0 until K.size - 1) {
-      val (_, sols) = particularSolution(as, IntLiteral(-coef(j)*K(j)(j)) :: coef.drop(j+1).map(IntLiteral(_)).toList)
+      val (_, sols) = particularSolution(as, IntLiteral(coef(j)*K(j)(j)) :: coef.drop(j+1).map(IntLiteral(_)).toList)
       //assert(sols.size == K.size - j)
       var i = 0
       while(i < sols.size) {
