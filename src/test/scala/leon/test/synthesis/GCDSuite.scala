@@ -34,6 +34,13 @@ class GCDSuite extends FunSuite {
     assert(gcd(10,4) === 2)
     assert(gcd(12,8) === 4)
     assert(gcd(23,41) === 1)
+
+    assert(gcd(-23,41) === 1)
+    assert(gcd(23,-41) === 1)
+    assert(gcd(-23,-41) === 1)
+    assert(gcd(2,-12) === 2)
+    assert(gcd(-4,10) === 2)
+    assert(gcd(-4,-8) === 4)
   }
 
   test("n-ary gcd") {
@@ -54,6 +61,11 @@ class GCDSuite extends FunSuite {
     assert(gcd(23,41,11) === 1)
     assert(gcd(2,4,8,12,16,4) === 2)
     assert(gcd(2,4,8,11,16,4) === 1)
+
+    assert(gcd(-12,8,6) === 2)
+    assert(gcd(23,-41,11) === 1)
+    assert(gcd(2,4,-8,-12,16,4) === 2)
+    assert(gcd(-2,-4,-8,-11,-16,-4) === 1)
   }
 
   test("seq gcd") {
@@ -77,6 +89,11 @@ class GCDSuite extends FunSuite {
     assert(gcd(Seq(23,41,11)) === 1)
     assert(gcd(Seq(2,4,8,12,16,4)) === 2)
     assert(gcd(Seq(2,4,8,11,16,4)) === 1)
+
+    assert(gcd(Seq(-12,8,6)) === 2)
+    assert(gcd(Seq(23,-41,11)) === 1)
+    assert(gcd(Seq(2,4,-8,-12,16,4)) === 2)
+    assert(gcd(Seq(-2,-4,-8,-11,-16,-4)) === 1)
   }
 
   def checkExtendedEuclid(a: Int, b: Int) {
