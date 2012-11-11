@@ -4,6 +4,10 @@ import leon.purescala.Trees._
 import leon.purescala.TreeOps._
 import leon.purescala.Common._
 
+/*
+ * TODO: move those functions to TreeOps
+ */
+
 object ArithmeticNormalization {
 
   //assume the function is an arithmetic expression, not a relation
@@ -71,6 +75,30 @@ object ArithmeticNormalization {
     case v@Variable(_) => Seq(v)
     case n@IntLiteral(_) => Seq(n)
     case _ => sys.error("Unexpected")
+  }
+
+  //simple, local simplifications
+  //you should not assume anything smarter than some constant folding and simple cancelation
+  def simplify(expr: Expr): Expr = {
+    
+    def simplify0(expr: Expr): Expr = expr match {
+      case Plus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 + i2)
+      case Plus(IntLiteral(0), e) => e
+      case Plus(e, IntLiteral(0)) => e
+      case Minus(e, IntLiteral(0)) => e
+      case Minus(IntLiteral(0), e) => UMinus(e)
+      case Minus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 - i2)
+      case Minus(e1, e2) => IntLiteral(0)
+      case Times(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 * i2)
+      case Times(IntLiteral(1), e) => e
+      case Times(e, IntLiteral(1)) => e
+      case Division(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 / i2)
+      case Division(e, IntLiteral(1)) => e
+      case e => e
+    }
+
+    simplePostTransform(simplify0)(expr)
+
   }
 
 

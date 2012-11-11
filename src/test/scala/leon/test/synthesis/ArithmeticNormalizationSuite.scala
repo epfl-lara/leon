@@ -72,6 +72,13 @@ class ArithmeticNormalizationSuite extends FunSuite {
     checkSameExpr(coefToSum(apply(e2, xsOrder), Array(x, y)), e2, xs ++ as)
 
   }
-  
 
+
+  test("simplify") {
+    val e1 = Plus(IntLiteral(3), IntLiteral(2))
+    checkSameExpr(e1, simplify(e1), Set())
+    val e2 = Plus(x, Plus(IntLiteral(3), IntLiteral(2)))
+    checkSameExpr(e2, simplify(e2), Set(xId))
+  }
+  
 }
