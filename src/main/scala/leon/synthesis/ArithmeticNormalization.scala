@@ -88,7 +88,7 @@ object ArithmeticNormalization {
       case Minus(e, IntLiteral(0)) => e
       case Minus(IntLiteral(0), e) => UMinus(e)
       case Minus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 - i2)
-      case Minus(e1, e2) => IntLiteral(0)
+      case Minus(e1, e2) if e1 == e2 => IntLiteral(0)
       case Times(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 * i2)
       case Times(IntLiteral(1), e) => e
       case Times(e, IntLiteral(1)) => e
