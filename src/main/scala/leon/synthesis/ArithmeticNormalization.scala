@@ -92,6 +92,8 @@ object ArithmeticNormalization {
       case Times(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 * i2)
       case Times(IntLiteral(1), e) => e
       case Times(e, IntLiteral(1)) => e
+      case Times(IntLiteral(0), _) => IntLiteral(0)
+      case Times(_, IntLiteral(0)) => IntLiteral(0)
       case Division(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 / i2)
       case Division(e, IntLiteral(1)) => e
       case e => e
