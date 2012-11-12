@@ -273,11 +273,56 @@ class CEGISOnSteroids(synth: Synthesizer) extends Rule("cegis w. gen.", synth, 5
       def closedFormula = And(f :: recTerms.keySet.map(id => Not(Variable(id))).toList)
     }
 
-    println("Formula is: "+p.phi)
-    val initF = TentativeFormula(p.phi, Map() ++ p.xs.map(x => x -> Set(x))) // Set to expand on xs
-    println("unroll 1: "+initF.unroll.closedFormula)
-    println("unroll 2: "+initF.unroll.unroll.closedFormula)
+    var result: Option[RuleResult]   = None
 
-    RuleInapplicable
+    var ass = p.as.toSet
+
+    var lastF     = TentativeFormula(p.phi, Map() ++ p.xs.map(x => x -> Set(x)))
+    var currentF  = lastF.unroll
+    var unrolings = 0
+    do {
+      println("Was: "+lastF.closedFormula)
+      println("Now Trying : "+currentF.closedFormula)
+
+      val tpe = TupleType(p.xs.map(_.getType))
+
+      var i = 0;
+      var maxTries = 10;
+
+      var predicates: Seq[Expr]        = Seq()
+
+      while (result.isEmpty && i < maxTries) {
+        val phi = And(currentF.closedFormula +: predicates)
+        synth.solver.solveSAT(phi) match {
+          case (Some(true), satModel) =>
+            val notAss = satModel.keySet.filterNot(ass)
+            val satXsModel = satModel.filterKeys(notAss)
+
+            val newPhi = valuateWithModelIn(phi, notAss, satModel)
+
+            synth.solver.solveSAT(Not(newPhi)) match {
+              case (Some(true), invalidModel) =>
+                // Found as such as the xs break, refine predicates
+                predicates = valuateWithModelIn(phi, ass, invalidModel) +: predicates
+
+              case (Some(false), _) =>
+                result = Some(RuleSuccess(Solution(BooleanLiteral(true), Tuple(p.xs.map(valuateWithModel(satModel))).setType(tpe))))
+
+              case _ =>
+            }
+
+          case (Some(false), _) =>
+          case _ =>
+        }
+
+        i += 1 
+      }
+
+      lastF = currentF
+      currentF = lastF.unroll
+      unrolings += 1
+    } while(unrolings < 5 && lastF != currentF && result.isEmpty)
+
+    result.getOrElse(RuleInapplicable)
   }
 }
