@@ -144,18 +144,9 @@ class Assert(synth: Synthesizer) extends Rule("Assert", synth, 200) {
           if (others.isEmpty) {
             RuleSuccess(Solution(And(exprsA), Tuple(p.xs.map(id => simplestValue(Variable(id))))))
           } else {
-            /*
-             * Disable for now, it is not that useful anyway
-            val onSuccess: List[Solution] => Solution = { 
-              case List(s) => Solution(And(s.pre +: exprsA), s.term)
-              case _ => Solution.none
-            }
+            val sub = p.copy(c = And(p.c +: exprsA), phi = And(others))
 
-            val sub = p.copy(phi = And(others))
-
-            RuleStep(List(sub), onSuccess)
-            */
-            RuleInapplicable
+            RuleStep(List(sub), forward)
           }
         } else {
           RuleInapplicable
