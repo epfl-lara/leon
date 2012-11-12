@@ -19,7 +19,7 @@ object ArithmeticNormalization {
       case Times(e1, e2) => containsId(e1, id) || containsId(e2, id)
       case IntLiteral(_) => false
       case Variable(id2) => id == id2
-      case _ => sys.error("unexpected format")
+      case _ => sys.error("unexpected format: " + e)
     }
 
     def group(es: Seq[Expr], id: Identifier): Expr = {
@@ -70,7 +70,7 @@ object ArithmeticNormalization {
 
   def expand(expr: Expr): Seq[Expr] = expr match {
     case Plus(es1, es2) => expand(es1) ++ expand(es2)
-    case Minus(e1, e2) => Times(IntLiteral(-1), e2) +: expand(e1)
+    case Minus(e1, e2) => expand(e1) ++ expand(e2).map(Times(IntLiteral(-1), _): Expr)
     case Times(es1, es2) => multiply(expand(es1), expand(es2))
     case v@Variable(_) => Seq(v)
     case n@IntLiteral(_) => Seq(n)

@@ -71,6 +71,9 @@ class ArithmeticNormalizationSuite extends FunSuite {
     val e2 = Plus(Times(Plus(x, i(2)), i(3)), Plus(Plus(a, Times(i(5), b)), Times(i(4), y)))
     checkSameExpr(coefToSum(apply(e2, xsOrder), Array(x, y)), e2, xs ++ as)
 
+    val e3 = Minus(Plus(x, i(3)), Plus(y, i(2)))
+    checkSameExpr(coefToSum(apply(e3, xsOrder), Array(x, y)), e3, xs)
+
   }
 
 
