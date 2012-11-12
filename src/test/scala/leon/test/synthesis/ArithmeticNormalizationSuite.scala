@@ -89,7 +89,7 @@ class ArithmeticNormalizationSuite extends FunSuite {
   }
 
 
-  test("extractEqauls") {
+  test("extractEquals") {
     val eq = Equals(a, b)
     val lt1 = LessThan(a, b)
     val lt2 = LessThan(b, a)
@@ -99,11 +99,22 @@ class ArithmeticNormalizationSuite extends FunSuite {
     val (eq1, r1) = extractEquals(f1)
     assert(eq1 != None)
     assert(eq1.get === eq)
+    assert(extractEquals(r1)._1 === None)
 
     val f2 = And(Seq(lt1, lt2, eq, lt3))
     val (eq2, r2) = extractEquals(f2)
     assert(eq2 != None)
     assert(eq2.get === eq)
+    assert(extractEquals(r2)._1 === None)
+
+    val f3 = And(Seq(lt1, eq, lt2, lt3, eq))
+    val (eq3, r3) = extractEquals(f3)
+    assert(eq3 != None)
+    assert(eq3.get === eq)
+    val (eq4, r4) = extractEquals(r3)
+    assert(eq4 != None)
+    assert(eq4.get === eq)
+    assert(extractEquals(r4)._1 === None)
 
   }
   
