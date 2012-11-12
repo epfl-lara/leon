@@ -111,6 +111,13 @@ class LinearEquationsSuite extends FunSuite {
     val e1: Array[Expr] = Array(t1, c1, d1)
     val (pre1, (w1, w2)) = particularSolution(Set(aId, bId), t1, c1, d1)
     checkSameExpr(toExpr(e1), IntLiteral(0), Set(aId, bId), pre1, Map(xId -> w1, yId -> w2))
+
+    val t2: Expr = IntLiteral(-1)
+    val c2: Expr = IntLiteral(1)
+    val d2: Expr = IntLiteral(-1)
+    val e2: Array[Expr] = Array(t2, c2, d2)
+    val (pre2, (w3, w4)) = particularSolution(Set(), t2, c2, d2)
+    checkSameExpr(toExpr(e2), IntLiteral(0), Set(), pre2, Map(xId -> w3, yId -> w4))
   }
 
   test("particularSolution preprocess") {
@@ -169,17 +176,28 @@ class LinearEquationsSuite extends FunSuite {
     val eq4 = Array(1, 1, 2, 7)
     val basis4 = linearSet(as, eq4)
     checkVectorSpace(basis4, eq4)
+
+    val eq5 = Array(1, -1)
+    val basis5 = linearSet(as, eq5)
+    checkVectorSpace(basis5, eq5)
+
+    val eq6 = Array(1, -6, 3)
+    val basis6 = linearSet(as, eq6)
+    checkVectorSpace(basis6, eq6)
   }
 
+  //TODO: automatic check result
   test("elimVariable") {
     val as = Set[Identifier](aId, bId)
 
     val t1 = Minus(Times(IntLiteral(2), a), b)
     val c1 = List(IntLiteral(3), IntLiteral(4), IntLiteral(8))
     val (pre1, wit1, f1) = elimVariable(as, t1::c1)
-    println("Precondition: " + pre1)
-    println("witness terms: " + wit1.map(simplify(_)).mkString("\n"))
-    println("new vars: " + f1)
+    //checkSameExpr(e1: Expr, e2: Expr, vs: Set[Identifier], prec: Expr, defaultMap: Map[Identifier, Expr] = Map()) {
+
+    val t2 = Plus(Plus(IntLiteral(0), IntLiteral(2)), Times(IntLiteral(-1), IntLiteral(3)))
+    val c2 = List(IntLiteral(1), IntLiteral(-1))
+    val (pre2, wit2, f2) = elimVariable(Set(), t2::c2)
 
   }
 
