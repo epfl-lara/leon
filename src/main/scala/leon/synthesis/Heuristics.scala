@@ -11,7 +11,7 @@ import purescala.Definitions._
 object Heuristics {
   def all = Set[Synthesizer => Rule](
     new OptimisticGround(_),
-//    new IntInduction(_),
+    new IntInduction(_),
     new OptimisticInjection(_)
   )
 }
