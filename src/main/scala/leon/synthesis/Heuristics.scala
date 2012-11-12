@@ -9,10 +9,10 @@ import purescala.TypeTrees._
 import purescala.Definitions._
 
 object Heuristics {
-  def all(synth: Synthesizer) = Set(
-    new OptimisticGround(synth),
-    new IntInduction(synth),
-    new OptimisticInjection(synth)
+  def all = Set[Synthesizer => Rule](
+    new OptimisticGround(_),
+//    new IntInduction(_),
+    new OptimisticInjection(_)
   )
 }
 
@@ -117,7 +117,7 @@ class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 80) 
             Solution.none
         }
 
-        RuleDecomposed(List(subBase, subGT, subLT), onSuccess)
+        RuleStep(List(subBase, subGT, subLT), onSuccess)
       case _ =>
         RuleInapplicable
     }
@@ -153,7 +153,7 @@ class OptimisticInjection(synth: Synthesizer) extends Rule("Opt. Injection", syn
 
       val sub = p.copy(phi = And(newExprs))
 
-      RuleDecomposed(List(sub), forward)
+      RuleStep(List(sub), forward)
     } else {
       RuleInapplicable
     }
@@ -189,7 +189,7 @@ class SelectiveInlining(synth: Synthesizer) extends Rule("Sel. Inlining", synth,
 
       val sub = p.copy(phi = And(newExprs))
 
-      RuleDecomposed(List(sub), forward)
+      RuleStep(List(sub), forward)
     } else {
       RuleInapplicable
     }

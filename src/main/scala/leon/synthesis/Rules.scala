@@ -9,24 +9,31 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 
 object Rules {
-  def all(synth: Synthesizer) = Set(
-    new Unification.DecompTrivialClash(synth),
-    new Unification.OccursCheck(synth),
-    new ADTDual(synth),
-    new OnePoint(synth),
-    new Ground(synth),
-    new CaseSplit(synth),
-    new UnusedInput(synth),
-    new UnconstrainedOutput(synth),
-    new Assert(synth)
+  def all = Set[Synthesizer => Rule](
+    new Unification.DecompTrivialClash(_),
+    new Unification.OccursCheck(_),
+    new ADTDual(_),
+    new OnePoint(_),
+    new Ground(_),
+    new CaseSplit(_),
+    new UnusedInput(_),
+    new UnconstrainedOutput(_),
+    new Assert(_)
   )
 }
 
-abstract class RuleResult
+sealed abstract class RuleResult
 case object RuleInapplicable extends RuleResult
 case class RuleSuccess(solution: Solution) extends RuleResult
-case class RuleDecomposed(subProblems: List[Problem], onSuccess: List[Solution] => Solution) extends RuleResult
+case class RuleMultiSteps(subProblems: List[Problem],
+                          steps: List[List[Solution] => List[Problem]],
+                          onSuccess: List[Solution] => Solution) extends RuleResult
 
+object RuleStep {
+  def apply(subProblems: List[Problem], onSuccess: List[Solution] => Solution) = {
+    RuleMultiSteps(subProblems, Nil, onSuccess)
+  }
+}
 
 abstract class Rule(val name: String, val synth: Synthesizer, val priority: Priority) {
   def applyOn(task: Task): RuleResult
@@ -74,7 +81,7 @@ class OnePoint(synth: Synthesizer) extends Rule("One-point", synth, 300) {
         case _ => Solution.none
       }
 
-      RuleDecomposed(List(newProblem), onSuccess)
+      RuleStep(List(newProblem), onSuccess)
     } else {
       RuleInapplicable
     }
@@ -116,7 +123,7 @@ class CaseSplit(synth: Synthesizer) extends Rule("Case-Split", synth, 200) {
           case _ => Solution.none
         }
 
-        RuleDecomposed(List(sub1, sub2), onSuccess)
+        RuleStep(List(sub1, sub2), onSuccess)
       case _ =>
         RuleInapplicable
     }
@@ -146,7 +153,7 @@ class Assert(synth: Synthesizer) extends Rule("Assert", synth, 200) {
 
             val sub = p.copy(phi = And(others))
 
-            RuleDecomposed(List(sub), onSuccess)
+            RuleStep(List(sub), onSuccess)
             */
             RuleInapplicable
           }
@@ -167,7 +174,7 @@ class UnusedInput(synth: Synthesizer) extends Rule("UnusedInput", synth, 100) {
     if (!unused.isEmpty) {
       val sub = p.copy(as = p.as.filterNot(unused))
 
-      RuleDecomposed(List(sub), forward)
+      RuleStep(List(sub), forward)
     } else {
       RuleInapplicable
     }
@@ -189,7 +196,7 @@ class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", sy
           Solution.none
       }
 
-      RuleDecomposed(List(sub), onSuccess)
+      RuleStep(List(sub), onSuccess)
     } else {
       RuleInapplicable
     }
@@ -219,7 +226,7 @@ object Unification {
         val sub = p.copy(phi = And((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
 
-        RuleDecomposed(List(sub), forward)
+        RuleStep(List(sub), forward)
       } else {
         RuleInapplicable
       }
@@ -273,7 +280,7 @@ class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth, 200) {
     if (!toRemove.isEmpty) {
       val sub = p.copy(phi = And((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
-      RuleDecomposed(List(sub), forward)
+      RuleStep(List(sub), forward)
     } else {
       RuleInapplicable
     }

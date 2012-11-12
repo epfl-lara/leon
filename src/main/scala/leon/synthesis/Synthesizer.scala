@@ -12,23 +12,32 @@ import java.io.File
 
 import collection.mutable.PriorityQueue
 
-class Synthesizer(val r: Reporter,
+class Synthesizer(val reporter: Reporter,
                   val solver: Solver,
+                  val problem: Problem,
+                  val ruleConstructors: Set[Synthesizer => Rule],
                   generateDerivationTrees: Boolean = false,
                   filterFuns: Option[Set[String]]  = None,
                   firstOnly: Boolean               = false,
                   timeoutMs: Option[Long]          = None) {
+  import reporter.{error,warning,info,fatalError}
 
-  import r.{error,warning,info,fatalError}
-
+  val rules = ruleConstructors.map(_.apply(this))
 
   var derivationCounter = 1;
 
-  def synthesize(p: Problem, rules: Set[Rule]): Solution = {
+  val rootTask: RootTask = new RootTask(this, problem)
 
-    val workList = new PriorityQueue[Task]()
-    val rootTask = new RootTask(this, p)
+  val workList = new PriorityQueue[Task]()
 
+  def bestSolutionSoFar(): Solution = {
+    rootTask.solution.getOrElse(worstSolution)
+  }
+
+  val worstSolution = Solution.choose(problem)
+
+  def synthesize(): Solution = {
+    workList.clear()
     workList += rootTask
 
     val ts = System.currentTimeMillis
@@ -40,24 +49,10 @@ class Synthesizer(val r: Reporter,
       }
     }
 
-    val worstSolution = Solution.choose(p)
-
-    def bestSolutionSoFar(): Solution = {
-      rootTask.solution.getOrElse(worstSolution)
-    }
-    
     while (!workList.isEmpty && !(firstOnly && rootTask.solution.isDefined)) {
       val task = workList.dequeue()
 
-      val subProblems = task.run
-
-      // Check if solving this task has the slightest chance of improving the
-      // current solution
-      if (task.minComplexity < bestSolutionSoFar().complexity) {
-        for (p <- subProblems; r <- rules) yield {
-          workList += new Task(this, task, p, r)
-        }
-      }
+      task.run()
 
       if (timeoutExpired()) {
         warning("Timeout reached")
@@ -74,36 +69,11 @@ class Synthesizer(val r: Reporter,
     bestSolutionSoFar()
   }
 
-  val rules = Rules.all(this) ++ Heuristics.all(this)
-
-  import purescala.Trees._
-  def synthesizeAll(program: Program): List[(Choose, Solution)] = {
-    def noop(u:Expr, u2: Expr) = u
-
-    var solutions = List[(Choose, Solution)]()
-
-    def actOnChoose(f: FunDef)(e: Expr, a: Expr): Expr = e match {
-      case ch @ Choose(vars, pred) =>
-        val xs = vars
-        val as = (variablesOf(pred)--xs).toList
-        val phi = pred
-
-        val sol = synthesize(Problem(as, BooleanLiteral(true), phi, xs), rules)
-
-        solutions = (ch -> sol) :: solutions
-
-        a
-      case _ =>
-        a
+  def addProblems(task: Task, problems: Traversable[Problem]) {
+    // Check if solving this task has the slightest chance of improving the
+    // current solution
+    for (p <- problems; rule <- rules) yield {
+      workList += new Task(this, task, p, rule)
     }
-
-    // Look for choose()
-    for (f <- program.definedFunctions.sortBy(_.id.toString) if f.body.isDefined) {
-      if (filterFuns.isEmpty || filterFuns.get.contains(f.id.toString)) {
-        treeCatamorphism(x => x, noop, actOnChoose(f), f.body.get)
-      }
-    }
-
-    solutions.reverse
   }
 }

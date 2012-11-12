@@ -5,9 +5,9 @@ import purescala.TreeOps._
 import solvers.TrivialSolver
 import solvers.z3.{FairZ3Solver,UninterpretedZ3Solver}
 
-import purescala.Trees.Expr
+import purescala.Trees._
 import purescala.ScalaPrinter
-import purescala.Definitions.Program
+import purescala.Definitions.{Program, FunDef}
 
 object SynthesisPhase extends LeonPhase[Program, Program] {
   val name        = "Synthesis"
@@ -54,8 +54,39 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       case _ =>
     }
 
-    val synth = new Synthesizer(ctx.reporter, mainSolver, genTrees, filterFun.map(_.toSet), firstOnly, timeoutMs)
-    val solutions = synth.synthesizeAll(p)
+    def synthesizeAll(program: Program): Map[Choose, Solution] = {
+      def noop(u:Expr, u2: Expr) = u
+
+      var solutions = Map[Choose, Solution]()
+
+      def actOnChoose(f: FunDef)(e: Expr, a: Expr): Expr = e match {
+        case ch @ Choose(vars, pred) =>
+          val xs = vars
+          val as = (variablesOf(pred)--xs).toList
+          val phi = pred
+
+          val problem = Problem(as, BooleanLiteral(true), phi, xs)
+          val synth = new Synthesizer(ctx.reporter, mainSolver, problem, Rules.all ++ Heuristics.all, genTrees, filterFun.map(_.toSet), firstOnly, timeoutMs)
+          val sol = synth.synthesize()
+
+          solutions += ch -> sol
+
+          a
+        case _ =>
+          a
+      }
+
+      // Look for choose()
+      for (f <- program.definedFunctions.sortBy(_.id.toString) if f.body.isDefined) {
+        if (filterFun.isEmpty || filterFun.get.contains(f.id.toString)) {
+          treeCatamorphism(x => x, noop, actOnChoose(f), f.body.get)
+        }
+      }
+
+      solutions
+    }
+
+    val solutions = synthesizeAll(p)
 
     // Simplify expressions
     val simplifiers = List[Expr => Expr](
@@ -71,7 +102,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
     if (inPlace) {
       for (file <- ctx.files) {
-        new FileInterface(ctx.reporter, file).updateFile(chooseToExprs.toMap)
+        new FileInterface(ctx.reporter, file).updateFile(chooseToExprs)
       }
     } else {
       for ((chs, ex) <- chooseToExprs) {
@@ -85,5 +116,6 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
     p
   }
+
 
 }

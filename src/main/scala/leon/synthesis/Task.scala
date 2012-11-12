@@ -17,42 +17,61 @@ class Task(synth: Synthesizer,
     }
   }
 
-  var subProblems: List[Problem]               = Nil
-  var onSuccess: List[Solution] => Solution    = _
-  var subSolutions : Map[Problem, Solution]    = Map()
-  var subSolvers : Map[Problem, Task]          = Map()
-  var solution : Option[Solution]              = None
-
-  def isBetterSolutionThan(sol: Solution, osol: Option[Solution]): Boolean =
+  def isBetterSolutionThan(sol: Solution, osol: Option[Solution]): Boolean = {
     osol match {
       case Some(s) => s.complexity > sol.complexity
       case None => true
     }
+  }
+
+  var solution: Option[Solution] = None
+
+  class TaskStep(val subProblems: List[Problem]) {
+    var subSolutions = Map[Problem, Solution]()
+    var subSolvers   = Map[Problem, Task]()
+    var failures     = Set[Rule]()
+  }
+
+  var steps: List[TaskStep]                            = Nil
+  var nextSteps: List[List[Solution] => List[Problem]] = Nil
+  var onSuccess: List[Solution] => Solution            = _
+
+  def currentStep                 = steps.head
 
   def partlySolvedBy(t: Task, s: Solution) {
-    if (isBetterSolutionThan(s, subSolutions.get(t.problem))) {
-      subSolutions += t.problem -> s
-      subSolvers   += t.problem -> t
+    if (isBetterSolutionThan(s, currentStep.subSolutions.get(t.problem))) {
+      currentStep.subSolutions += t.problem -> s
+      currentStep.subSolvers   += t.problem -> t
 
-      if (subSolutions.size == subProblems.size) {
-        solution = Some(onSuccess(subProblems map subSolutions))
-        parent.partlySolvedBy(this, solution.get)
+      if (currentStep.subSolutions.size == currentStep.subProblems.size) {
+        val solutions = currentStep.subProblems map currentStep.subSolutions
+
+        if (!nextSteps.isEmpty) {
+          val newProblems = nextSteps.head.apply(solutions)
+          nextSteps = nextSteps.tail
+
+          synth.addProblems(this, newProblems)
+
+          steps = new TaskStep(newProblems) :: steps
+        } else {
+          solution = Some(onSuccess(solutions))
+          parent.partlySolvedBy(this, solution.get)
+        }
       }
     }
   }
 
-  var failures = Set[Rule]()
   def unsolvedBy(t: Task) {
-    failures += t.rule
+    currentStep.failures += t.rule
 
-    if (failures.size == synth.rules.size) {
+    if (currentStep.failures.size == synth.rules.size) {
       // We might want to report unsolved instead of solvedByChoose, depending
       // on the cases
       parent.partlySolvedBy(this, Solution.choose(problem))
     }
   }
 
-  def run: List[Problem] = {
+  def run() {
     rule.applyOn(this) match {
       case RuleSuccess(solution) =>
         // Solved
@@ -63,14 +82,10 @@ class Task(synth: Synthesizer,
         println(prefix+"Got: "+problem)
         println(prefix+"Solved with: "+solution)
 
-        Nil
-
-      case RuleDecomposed(subProblems, onSuccess) =>
-        this.subProblems  = subProblems
-        this.onSuccess    = onSuccess
-
-        val simplestSolution = onSuccess(subProblems.map(Solution.basic _))
-        minComplexity = new FixedSolComplexity(parent.minComplexity.value + simplestSolution.complexity.value)
+      case RuleMultiSteps(subProblems, interSteps, onSuccess) =>
+        this.steps = new TaskStep(subProblems) :: Nil
+        this.nextSteps = interSteps
+        this.onSuccess = onSuccess
 
         val prefix = "[%-20s] ".format(Option(rule).map(_.toString).getOrElse("root"))
         println(prefix+"Got: "+problem)
@@ -79,15 +94,12 @@ class Task(synth: Synthesizer,
           println(prefix+" - "+p)
         }
 
-        subProblems
+        synth.addProblems(this, subProblems)
 
       case RuleInapplicable =>
         parent.unsolvedBy(this)
-        Nil
     }
   }
-
-  var minComplexity: AbsSolComplexity = new FixedSolComplexity(0)
 
   override def toString = "Applying "+rule+" on "+problem
 }
@@ -95,26 +107,16 @@ class Task(synth: Synthesizer,
 class RootTask(synth: Synthesizer, problem: Problem) extends Task(synth, null, problem, null) {
   var solver: Option[Task] = None
 
+  override def run() {
+    synth.addProblems(this, List(problem))
+  }
+
   override def partlySolvedBy(t: Task, s: Solution) {
-    if (isBetterSolutionThan(s, solution)) {
-      solution = Some(s)
-      solver   = Some(t)
-    }
+    solution = Some(s)
+    solver   = Some(t)
   }
 
   override def unsolvedBy(t: Task) {
-    failures += t.rule
-
-    if (failures.size == synth.rules.size) {
-      // We might want to report unsolved instead of solvedByChoose, depending
-      // on the cases
-      solution = Some(Solution.choose(problem))
-      solver   = None
-    }
-  }
-
-  override def run: List[Problem] = {
-    List(problem)
   }
 
 }
