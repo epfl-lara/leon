@@ -77,13 +77,13 @@ object LinearEquations {
       for(j <- 0 until K(i).size) {
         if(i < j)
           K(i)(j) = 0
-        else if(i == j)
+        else if(i == j) {
           K(j)(j) = GCD.gcd(coef.drop(j+1))/GCD.gcd(coef.drop(j))
+        }
       }
     }
     for(j <- 0 until K.size - 1) {
       val (_, sols) = particularSolution(as, IntLiteral(coef(j)*K(j)(j)) :: coef.drop(j+1).map(IntLiteral(_)).toList)
-      //assert(sols.size == K.size - j)
       var i = 0
       while(i < sols.size) {
         K(i+j+1)(j) = Evaluator.eval(Map(), sols(i), None).asInstanceOf[Evaluator.OK].result.asInstanceOf[IntLiteral].value
@@ -115,8 +115,8 @@ object LinearEquations {
 
     (pre,
      (
-       Minus(IntLiteral(0), Times(IntLiteral(v1), Division(t, IntLiteral(d)))),
-       Minus(IntLiteral(0), Times(IntLiteral(v2), Division(t, IntLiteral(d))))
+       UMinus(Times(IntLiteral(v1), Division(t, IntLiteral(d)))),
+       UMinus(Times(IntLiteral(v2), Division(t, IntLiteral(d))))
      )
     )
   }
@@ -130,7 +130,7 @@ object LinearEquations {
     val pre = Equals(Modulo(t, IntLiteral(d)), IntLiteral(0))
 
     if(normalizedEquation.size == 2) {
-      (pre, List(Minus(IntLiteral(0), Division(t, IntLiteral(d)))))
+      (pre, List(UMinus(Division(t, normalizedEquation(1)))))
     } else if(normalizedEquation.size == 3) {
       val (_, (w1, w2)) = particularSolution(as, t, normalizedEquation(1), normalizedEquation(2))
       (pre, List(w1, w2))
@@ -139,7 +139,7 @@ object LinearEquations {
       val coefs: List[Int] = normalizedEquation.drop(2).map{case IntLiteral(i) => i}
       val gamma2: Expr = IntLiteral(GCD.gcd(coefs.toSeq))
       val (_, (w1, w)) = particularSolution(as, t, gamma1, gamma2)
-      val (_, sols) = particularSolution(as, Minus(IntLiteral(0), Times(w, gamma2)) :: normalizedEquation.drop(2))
+      val (_, sols) = particularSolution(as, UMinus(Times(w, gamma2)) :: normalizedEquation.drop(2))
       (pre, w1 :: sols)
     }
 

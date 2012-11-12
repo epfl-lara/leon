@@ -41,7 +41,7 @@ object ArithmeticNormalization {
       res(index+1) = coef
     }}
 
-    res(0) = expandedForm.foldLeft[Expr](IntLiteral(0))(Plus(_, _))
+    res(0) = simplify(expandedForm.foldLeft[Expr](IntLiteral(0))(Plus(_, _)))
     res
   }
 
@@ -89,6 +89,8 @@ object ArithmeticNormalization {
       case Minus(IntLiteral(0), e) => UMinus(e)
       case Minus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 - i2)
       case Minus(e1, e2) if e1 == e2 => IntLiteral(0)
+      case UMinus(IntLiteral(x)) => IntLiteral(-x)
+      case UMinus(UMinus(x)) => x
       case Times(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 * i2)
       case Times(IntLiteral(1), e) => e
       case Times(e, IntLiteral(1)) => e
@@ -98,9 +100,8 @@ object ArithmeticNormalization {
       case Division(e, IntLiteral(1)) => e
       case e => e
     }
-
+    //need to do a fixpoint here
     simplePostTransform(simplify0)(expr)
-
   }
 
   //assume the formula consist only of top level AND, find a top level
