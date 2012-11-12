@@ -186,23 +186,18 @@ class LinearEquationsSuite extends FunSuite {
     checkVectorSpace(basis6, eq6)
   }
 
+  //TODO: automatic check result
   test("elimVariable") {
     val as = Set[Identifier](aId, bId)
 
     val t1 = Minus(Times(IntLiteral(2), a), b)
     val c1 = List(IntLiteral(3), IntLiteral(4), IntLiteral(8))
     val (pre1, wit1, f1) = elimVariable(as, t1::c1)
-    println("Precondition: " + pre1)
-    println("witness terms: " + wit1.map(simplify(_)).mkString("\n"))
-    println("new vars: " + f1)
     //checkSameExpr(e1: Expr, e2: Expr, vs: Set[Identifier], prec: Expr, defaultMap: Map[Identifier, Expr] = Map()) {
 
     val t2 = Plus(Plus(IntLiteral(0), IntLiteral(2)), Times(IntLiteral(-1), IntLiteral(3)))
     val c2 = List(IntLiteral(1), IntLiteral(-1))
     val (pre2, wit2, f2) = elimVariable(Set(), t2::c2)
-    println("Precondition: " + pre2)
-    println("witness terms: " + wit2.map((e: Expr) => simplify(e)).mkString("\n"))
-    println("new vars: " + f2)
 
   }
 
