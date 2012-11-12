@@ -87,5 +87,24 @@ class ArithmeticNormalizationSuite extends FunSuite {
     val e5 = Plus(x, Minus(x, IntLiteral(2)))
     checkSameExpr(e5, simplify(e5), Set(xId))
   }
+
+
+  test("extractEqauls") {
+    val eq = Equals(a, b)
+    val lt1 = LessThan(a, b)
+    val lt2 = LessThan(b, a)
+    val lt3 = LessThan(x, y)
+
+    val f1 = And(Seq(eq, lt1, lt2, lt3))
+    val (eq1, r1) = extractEquals(f1)
+    assert(eq1 != None)
+    assert(eq1.get === eq)
+
+    val f2 = And(Seq(lt1, lt2, eq, lt3))
+    val (eq2, r2) = extractEquals(f2)
+    assert(eq2 != None)
+    assert(eq2.get === eq)
+
+  }
   
 }
