@@ -4,10 +4,12 @@ import org.scalatest.FunSuite
 
 import leon.Evaluator
 import leon.purescala.Trees._
+import leon.purescala.TreeOps._
 import leon.purescala.Common._
 
 import leon.synthesis.LinearEquations._
 import leon.synthesis.LikelyEq
+import leon.synthesis.ArithmeticNormalization.simplify
 
 class LinearEquationsSuite extends FunSuite {
 
@@ -167,7 +169,17 @@ class LinearEquationsSuite extends FunSuite {
     val eq4 = Array(1, 1, 2, 7)
     val basis4 = linearSet(as, eq4)
     checkVectorSpace(basis4, eq4)
+  }
 
+  test("elimVariable") {
+    val as = Set[Identifier](aId, bId)
+
+    val t1 = Minus(Times(IntLiteral(2), a), b)
+    val c1 = List(IntLiteral(3), IntLiteral(4), IntLiteral(8))
+    val (pre1, wit1, f1) = elimVariable(as, t1::c1)
+    println("Precondition: " + pre1)
+    println("witness terms: " + wit1.map(simplify(_)).mkString("\n"))
+    println("new vars: " + f1)
 
   }
 

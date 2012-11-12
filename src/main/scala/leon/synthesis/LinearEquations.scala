@@ -8,19 +8,60 @@ object LinearEquations {
 
   //eliminate one variable from normalizedEquation t + a1*x1 + ... + an*xn = 0
   //return a mapping for each of the n variables in (pre, map, freshVars)
-  //def elimVariable(as: Set[Identifier], xs: , normalizedEquation: List[Expr]): (Expr, List[Expr], List[Identifier]) {
-  //  val t: Expr = normalizedEquation.head
-  //  val coefsVars: List[Int] = normalizedEquation.tail.map{case IntLiteral(i) => i}
-  //  val orderedParams: Array[Identifier] = as.toArray
-  //  val coefsParams: List[Int] = ArithmeticNormalization(t, orderedAs).map{case IntLiteral(i) => i}
-  //  val d = GCD.gcd((coefsParams.tail ++ coefs).toSeq)
-  //  if(d > 1) 
+  def elimVariable(as: Set[Identifier], normalizedEquation: List[Expr]): (Expr, List[Expr], List[Identifier]) = {
+    val t: Expr = normalizedEquation.head
+    val coefsVars: List[Int] = normalizedEquation.tail.map{case IntLiteral(i) => i}
+    val orderedParams: Array[Identifier] = as.toArray
+    val coefsParams: List[Int] = ArithmeticNormalization(t, orderedParams).map{case IntLiteral(i) => i}.toList
+    val d: Int = GCD.gcd((coefsParams.tail ++ coefsVars).toSeq)
 
+    if(d > 1) 
+      elimVariable(as, normalizedEquation.map(Division(_, IntLiteral(d)))) 
+    else {
+      val basis: Array[Array[Int]]  = linearSet(as, normalizedEquation.tail.map{case IntLiteral(i) => i}.toArray)
+      val (pre, sol) = particularSolution(as, normalizedEquation)
+      val freshVars: Array[Identifier] = basis(0).map(_ => FreshIdentifier("v", true))
 
-  //  val pre = Equals(Modulo(t, IntLiteral(d)), IntLiteral(0))
+      val tbasis = basis.transpose
+      assert(freshVars.size == tbasis.size)
+      val basisWithFreshVars: Array[Array[Expr]] = freshVars.zip(tbasis).map{
+        case (lambda, column) => column.map((i: Int) => Times(IntLiteral(i), Variable(lambda)): Expr)
+      }.transpose
+      val combinationBasis: Array[Expr] = basisWithFreshVars.map((v: Array[Expr]) => v.foldLeft[Expr](IntLiteral(0))((acc, e) => Plus(acc, e)))
+      assert(combinationBasis.size == sol.size)
+      val subst: List[Expr] = sol.zip(combinationBasis.toList).map(p => Plus(p._1, p._2): Expr)
 
-  //}
+      (pre, subst, freshVars.toList)
+    }
 
+  }
+
+  //val that the sol vector with the term in the equation
+  def eval(sol: Array[Int], equation: Array[Int]): Int = {
+    require(sol.size == equation.size)
+    sol.zip(equation).foldLeft(0)((acc, p) => acc + p._1 * p._2)
+  }
+
+  //multiply the matrix by the vector: [M1 M2 .. Mn] * [v1 .. vn] = v1*M1 + ... + vn*Mn]
+  def mult(matrix: Array[Array[Int]], vector: Array[Int]): Array[Int] = {
+    require(vector.size == matrix(0).size && vector.size > 0)
+    val tmat = matrix.transpose
+    var tmp: Array[Int] = null
+    tmp = mult(vector(0), tmat(0))
+    var i = 1
+    while(i < vector.size) {
+      tmp = add(tmp, mult(vector(i), tmat(i)))
+      i += 1
+    }
+    tmp
+  }
+
+  def mult(c: Int, v: Array[Int]): Array[Int] = v.map(_ * c)
+
+  def add(v1: Array[Int], v2: Array[Int]): Array[Int] = {
+    require(v1.size == v2.size)
+    v1.zip(v2).map(p => p._1 + p._2)
+  }
 
   //compute a list of solution of the equation c1*x1 + ... + cn*xn where coef = [c1 ... cn]
   //return the solution in the form of a list of n-1 vectors that form a basis for the set

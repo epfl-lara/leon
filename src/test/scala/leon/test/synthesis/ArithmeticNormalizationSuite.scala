@@ -79,6 +79,13 @@ class ArithmeticNormalizationSuite extends FunSuite {
     checkSameExpr(e1, simplify(e1), Set())
     val e2 = Plus(x, Plus(IntLiteral(3), IntLiteral(2)))
     checkSameExpr(e2, simplify(e2), Set(xId))
+
+    val e3 = Minus(IntLiteral(3), IntLiteral(2))
+    checkSameExpr(e3, simplify(e3), Set())
+    val e4 = Plus(x, Minus(IntLiteral(3), IntLiteral(2)))
+    checkSameExpr(e4, simplify(e4), Set(xId))
+    val e5 = Plus(x, Minus(x, IntLiteral(2)))
+    checkSameExpr(e5, simplify(e5), Set(xId))
   }
   
 }
