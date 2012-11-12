@@ -25,6 +25,7 @@ class Task(synth: Synthesizer,
   }
 
   var solution: Option[Solution] = None
+  var minComplexity: AbsSolComplexity = new FixedSolComplexity(0)
 
   class TaskStep(val subProblems: List[Problem]) {
     var subSolutions = Map[Problem, Solution]()
@@ -71,7 +72,7 @@ class Task(synth: Synthesizer,
     }
   }
 
-  def run() {
+  def run(): List[Problem] = {
     rule.applyOn(this) match {
       case RuleSuccess(solution) =>
         // Solved
@@ -81,12 +82,19 @@ class Task(synth: Synthesizer,
         val prefix = "[%-20s] ".format(Option(rule).map(_.toString).getOrElse("root"))
         println(prefix+"Got: "+problem)
         println(prefix+"Solved with: "+solution)
+        Nil
 
       case RuleMultiSteps(subProblems, interSteps, onSuccess) =>
         this.steps = new TaskStep(subProblems) :: Nil
         this.nextSteps = interSteps
         this.onSuccess = onSuccess
 
+        // Compute simplest solution possible to evaluate whether this rule is worth it
+        // To each problem we assign the most basic solution, fold on all inner
+        // steps, and then reconstruct final solution
+        val simplestSubSolutions  = interSteps.foldLeft(subProblems.map(Solution.basic(_))){ (sols, step) => step(sols).map(Solution.basic(_)) }
+        val simplestSolution = onSuccess(simplestSubSolutions)
+        minComplexity = new FixedSolComplexity(parent.minComplexity.value + simplestSolution.complexity.value)
         val prefix = "[%-20s] ".format(Option(rule).map(_.toString).getOrElse("root"))
         println(prefix+"Got: "+problem)
         println(prefix+"Decomposed into:")
@@ -94,10 +102,11 @@ class Task(synth: Synthesizer,
           println(prefix+" - "+p)
         }
 
-        synth.addProblems(this, subProblems)
+        subProblems
 
       case RuleInapplicable =>
         parent.unsolvedBy(this)
+        Nil
     }
   }
 
@@ -107,8 +116,8 @@ class Task(synth: Synthesizer,
 class RootTask(synth: Synthesizer, problem: Problem) extends Task(synth, null, problem, null) {
   var solver: Option[Task] = None
 
-  override def run() {
-    synth.addProblems(this, List(problem))
+  override def run() = {
+    List(problem)
   }
 
   override def partlySolvedBy(t: Task, s: Solution) {

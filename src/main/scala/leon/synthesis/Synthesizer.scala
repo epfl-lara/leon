@@ -52,7 +52,11 @@ class Synthesizer(val reporter: Reporter,
     while (!workList.isEmpty && !(firstOnly && rootTask.solution.isDefined)) {
       val task = workList.dequeue()
 
-      task.run()
+      val subProblems = task.run()
+
+      if (task.minComplexity <= bestSolutionSoFar.complexity) {
+        addProblems(task, subProblems)
+      }
 
       if (timeoutExpired()) {
         warning("Timeout reached")
