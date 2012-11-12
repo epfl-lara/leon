@@ -11,7 +11,8 @@ import purescala.Definitions._
 object Heuristics {
   def all = Set[Synthesizer => Rule](
     new OptimisticGround(_),
-    new IntInduction(_),
+    //new IntInduction(_),
+    new CEGISOnSteroids(_),
     new OptimisticInjection(_)
   )
 }
@@ -193,5 +194,90 @@ class SelectiveInlining(synth: Synthesizer) extends Rule("Sel. Inlining", synth,
     } else {
       RuleInapplicable
     }
+  }
+}
+
+class CEGISOnSteroids(synth: Synthesizer) extends Rule("cegis w. gen.", synth, 50) with Heuristic {
+  def applyOn(task: Task): RuleResult = {
+    val p = task.problem
+
+    case class Generator(tpe: TypeTree, altBuilder: () => List[(Expr, Set[Identifier])]);
+
+    var generators = Map[TypeTree, Generator]()
+    def getGenerator(t: TypeTree): Generator = generators.get(t) match {
+      case Some(g) => g
+      case None =>
+        val alternatives: () => List[(Expr, Set[Identifier])] = t match {
+          case BooleanType =>
+            { () => List((BooleanLiteral(true), Set()), (BooleanLiteral(false), Set())) }
+
+          case Int32Type =>
+            { () => List((IntLiteral(0), Set()), (IntLiteral(1), Set())) }
+
+          case TupleType(tps) =>
+            { () =>
+              val ids = tps.map(t => FreshIdentifier("t", true).setType(t))
+              List((Tuple(ids.map(Variable(_))), ids.toSet))
+            }
+
+          case CaseClassType(cd) =>
+            { () =>
+              val ids = cd.fieldsIds.map(i => FreshIdentifier("c", true).setType(i.getType))
+              List((CaseClass(cd, ids.map(Variable(_))), ids.toSet))
+            }
+
+          case AbstractClassType(cd) =>
+            { () =>
+              val alts: Seq[(Expr, Set[Identifier])] = cd.knownDescendents.flatMap(i => i match {
+                  case acd: AbstractClassDef =>
+                    synth.reporter.error("Unnexpected abstract class in descendants!")
+                    None
+                  case cd: CaseClassDef =>
+                    val ids = cd.fieldsIds.map(i => FreshIdentifier("c", true).setType(i.getType))
+                    Some((CaseClass(cd, ids.map(Variable(_))), ids.toSet))
+              })
+              alts.toList
+            }
+
+          case _ =>
+            synth.reporter.error("Can't construct generator. Unsupported type: "+t+"["+t.getClass+"]");
+            { () => Nil }
+        }
+        val g = Generator(t, alternatives)
+        generators += t -> g
+        g
+    }
+
+    case class TentativeFormula(f: Expr, recTerms: Map[Identifier, Set[Identifier]]) {
+      def unroll: TentativeFormula = {
+        var newF = this.f
+        var newRecTerms = Map[Identifier, Set[Identifier]]()
+        for ((_, recIds) <- recTerms; recId <- recIds) {
+          val gen  = getGenerator(recId.getType)
+          val alts = gen.altBuilder().map(alt => FreshIdentifier("b", true) -> alt)
+
+          val pre = Or(alts.map{ case (id, _) => Variable(id) }) // b1 OR b2
+          val cases = for((bid, (ex, rec)) <- alts.toList) yield { // b1 => E(gen1, gen2)     [b1 -> {gen1, gen2}]
+            if (!rec.isEmpty) {
+              newRecTerms += bid -> rec
+            }
+            Implies(Variable(bid), Equals(Variable(recId), ex))
+          }
+
+          newF = And(newF, And(pre :: cases))
+        }
+
+        TentativeFormula(newF, newRecTerms)
+      }
+
+      def closedFormula = And(f :: recTerms.keySet.map(id => Not(Variable(id))).toList)
+    }
+
+    println("Formula is: "+p.phi)
+    val initF = TentativeFormula(p.phi, Map() ++ p.xs.map(x => x -> Set(x))) // Set to expand on xs
+    println("unroll 1: "+initF.unroll.closedFormula)
+    println("unroll 2: "+initF.unroll.unroll.closedFormula)
+
+    RuleInapplicable
   }
 }
