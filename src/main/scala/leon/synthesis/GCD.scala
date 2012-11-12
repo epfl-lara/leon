@@ -2,7 +2,12 @@ package leon.synthesis
 
 object GCD {
 
-  def divide(a: Int, b: Int): (Int, Int) = (a / b, a % b)
+  def remainder(x: Int, y: Int) = ((x % y) + y.abs) % y.abs
+
+  def divide(a: Int, b: Int): (Int, Int) = {
+    val r = remainder(a, b)
+    ((a - r)/b, r)
+  }
 
   def gcd(a: Int, b: Int): Int = {
     val (na, nb) = (a.abs, b.abs)
@@ -40,10 +45,20 @@ object GCD {
   }
 
   //return (x, y) such that ax + by = gcd(a, b)
-  def extendedEuclid(a: Int, b: Int): (Int, Int) = if(b == 0) (1, 0) else {
-    val (q, r) = divide(a, b)
-    val (s, t) = extendedEuclid(b, r)
-    (t, s - q * t)
+  def extendedEuclid(a: Int, b: Int): (Int, Int) = {
+    def rec(a: Int, b: Int): (Int, Int) = {
+      require(a >= 0 && b >= 0)
+      if(b == 0) (1, 0) else {
+        val (q, r) = divide(a, b)
+        val (s, t) = extendedEuclid(b, r)
+        (t, s - q * t)
+      }
+    }
+    if(a >= 0 && b >= 0) rec(a, b)
+    else if(a < 0 && b >= 0) {val (x, y) = rec(-a, b); (-x, y)}
+    else if(a >= 0 && b < 0) {val (x, y) = rec(a, -b); (x, -y)}
+    else if(a < 0 && b < 0) {val (x, y) = rec(-a, -b); (-x, -y)}
+    else sys.error("shouldn't have forgot a case here")
   }
 
 }
