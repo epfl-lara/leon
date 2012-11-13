@@ -12,7 +12,7 @@ object Heuristics {
   def all = Set[Synthesizer => Rule](
     new OptimisticGround(_),
     //new IntInduction(_),
-    new CEGISOnSteroids(_),
+    new CEGIS(_),
     new OptimisticInjection(_)
   )
 }
@@ -197,7 +197,7 @@ class SelectiveInlining(synth: Synthesizer) extends Rule("Sel. Inlining", synth,
   }
 }
 
-class CEGISOnSteroids(synth: Synthesizer) extends Rule("cegis w. gen.", synth, 50) with Heuristic {
+class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 50) with Heuristic {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
@@ -252,32 +252,42 @@ class CEGISOnSteroids(synth: Synthesizer) extends Rule("cegis w. gen.", synth, 5
       p.as.filter(a => isSubtypeOf(a.getType, t)).map(id => (Variable(id) : Expr, Set[Identifier]()))
     }
 
-    case class TentativeFormula(f: Expr, recTerms: Map[Identifier, Set[Identifier]]) {
+    case class TentativeFormula(phi: Expr,
+                                program: Expr,
+                                mappings: Map[Identifier, (Identifier, Expr)],
+                                recTerms: Map[Identifier, Set[Identifier]]) {
       def unroll: TentativeFormula = {
-        var newF = this.f
+        var newProgram  = List[Expr]()
         var newRecTerms = Map[Identifier, Set[Identifier]]()
+        var newMappings = Map[Identifier, (Identifier, Expr)]()
+
         for ((_, recIds) <- recTerms; recId <- recIds) {
           val gen  = getGenerator(recId.getType)
           val alts = gen.altBuilder() ::: inputAlternatives(recId.getType)
 
-          println("For "+recId.getType+": "+alts)
           val altsWithBranches = alts.map(alt => FreshIdentifier("b", true).setType(BooleanType) -> alt)
 
           val pre = Or(altsWithBranches.map{ case (id, _) => Variable(id) }) // b1 OR b2
           val cases = for((bid, (ex, rec)) <- altsWithBranches.toList) yield { // b1 => E(gen1, gen2)     [b1 -> {gen1, gen2}]
             if (!rec.isEmpty) {
               newRecTerms += bid -> rec
+            } else {
+              newMappings += bid -> (recId -> ex)
             }
+
             Implies(Variable(bid), Equals(Variable(recId), ex))
           }
 
-          newF = And(newF, And(pre :: cases))
+          newProgram = newProgram ::: pre :: cases
         }
 
-        TentativeFormula(newF, newRecTerms)
+        TentativeFormula(phi, And(program :: newProgram), mappings ++ newMappings, newRecTerms)
       }
 
-      def closedFormula = And(f :: recTerms.keySet.map(id => Not(Variable(id))).toList)
+      def bounds = recTerms.keySet.map(id => Not(Variable(id))).toList
+      def bss = mappings.keySet
+
+      def entireFormula = And(phi :: program :: bounds)
     }
 
     var result: Option[RuleResult]   = None
@@ -285,38 +295,46 @@ class CEGISOnSteroids(synth: Synthesizer) extends Rule("cegis w. gen.", synth, 5
     var ass = p.as.toSet
     var xss = p.xs.toSet
 
-    var lastF     = TentativeFormula(And(p.c, p.phi), Map() ++ p.xs.map(x => x -> Set(x)))
+    var lastF     = TentativeFormula(And(p.c, p.phi), BooleanLiteral(true), Map(), Map() ++ p.xs.map(x => x -> Set(x)))
     var currentF  = lastF.unroll
     var unrolings = 0
     val maxUnrolings = 2
     do {
-      println("Was: "+lastF.closedFormula)
-      println("Now Trying : "+currentF.closedFormula)
+      println("Was: "+lastF.entireFormula)
+      println("Now Trying : "+currentF.entireFormula)
 
       val tpe = TupleType(p.xs.map(_.getType))
+      val bss = currentF.bss
 
       var predicates: Seq[Expr]        = Seq()
       var continue = true
 
       while (result.isEmpty && continue) {
-        val phi = And(currentF.closedFormula +: predicates)
-        synth.solver.solveSAT(phi) match {
+        val basePhi = currentF.entireFormula
+        val constrainedPhi = And(basePhi +: predicates)
+        println("-"*80)
+        println("To satisfy: "+constrainedPhi)
+        synth.solver.solveSAT(constrainedPhi) match {
           case (Some(true), satModel) =>
-            var bss = satModel.keySet.filterNot(xss ++ ass)
-            println("Found candidate!: "+satModel)
+            println("Found candidate!: "+satModel.filterKeys(bss))
 
-            val newPhi = valuateWithModelIn(phi, bss++xss, satModel)
-            println("new Phi: "+newPhi)
+            val fixedBss = And(bss.map(b => Equals(Variable(b), satModel(b))).toSeq)
+            println("Phi with fixed sat bss: "+fixedBss)
 
-            synth.solver.solveSAT(Not(newPhi)) match {
+            val counterPhi = Implies(And(fixedBss, currentF.program), currentF.phi)
+            println("Formula to validate: "+counterPhi)
+
+            synth.solver.solveSAT(Not(counterPhi)) match {
               case (Some(true), invalidModel) =>
                 // Found as such as the xs break, refine predicates
                 println("Found counter EX: "+invalidModel)
-                predicates = valuateWithModelIn(currentF.closedFormula, ass, invalidModel) +: predicates
-                println(valuateWithModelIn(currentF.closedFormula, ass, invalidModel))
+                predicates = Not(And(bss.map(b => Equals(Variable(b), satModel(b))).toSeq)) +: predicates
+                println("Let's avoid this case: "+bss.map(b => Equals(Variable(b), satModel(b))).mkString(" "))
 
               case (Some(false), _) =>
-                result = Some(RuleSuccess(Solution(BooleanLiteral(true), Tuple(p.xs.map(valuateWithModel(satModel))).setType(tpe))))
+                val mapping = currentF.mappings.filterKeys(satModel.mapValues(_ == BooleanLiteral(true))).values.toMap
+                println("Mapping: "+mapping)
+                result = Some(RuleSuccess(Solution(BooleanLiteral(true), Tuple(p.xs.map(valuateWithModel(mapping))).setType(tpe))))
 
               case _ =>
             }
