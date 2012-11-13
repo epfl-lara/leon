@@ -1078,18 +1078,22 @@ object TreeOps {
       case IfExpr(cond, then, elze) =>
         val TopLevelOrs(orcases) = toDNF(cond)
 
-        if (!orcases.tail.isEmpty) {
-          pre(IfExpr(orcases.head, then, IfExpr(Or(orcases.tail), then, elze)))
-        } else {
-          val TopLevelAnds(andcases) = orcases.head
-
-          val (andis, andnotis) = andcases.partition(_.isInstanceOf[CaseClassInstanceOf])
-
-          if (andis.isEmpty || andnotis.isEmpty) {
-            e
+        if (orcases.exists{ case TopLevelAnds(ands) => ands.exists(_.isInstanceOf[CaseClassInstanceOf]) } ) {
+          if (!orcases.tail.isEmpty) {
+            pre(IfExpr(orcases.head, then, IfExpr(Or(orcases.tail), then, elze)))
           } else {
-            IfExpr(And(andis), IfExpr(And(andnotis), then, elze), elze)
+            val TopLevelAnds(andcases) = orcases.head
+
+            val (andis, andnotis) = andcases.partition(_.isInstanceOf[CaseClassInstanceOf])
+
+            if (andis.isEmpty || andnotis.isEmpty) {
+              e
+            } else {
+              IfExpr(And(andis), IfExpr(And(andnotis), then, elze), elze)
+            }
           }
+        } else {
+          e
         }
       case _ =>
         e

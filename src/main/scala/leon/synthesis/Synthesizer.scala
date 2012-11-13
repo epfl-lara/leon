@@ -42,9 +42,11 @@ class Synthesizer(val reporter: Reporter,
 
     val ts = System.currentTimeMillis
 
+    def currentDurationMs = System.currentTimeMillis-ts
+
     def timeoutExpired(): Boolean = {
       timeoutMs match {
-        case Some(t) if (System.currentTimeMillis-ts)/1000 > t => true
+        case Some(t) if currentDurationMs/1000 > t => true
         case _ => false
       }
     }
@@ -63,6 +65,8 @@ class Synthesizer(val reporter: Reporter,
         workList.clear()
       }
     }
+
+    info("Finished in "+currentDurationMs+"ms")
 
     if (generateDerivationTrees) {
       val deriv = new DerivationTree(rootTask)

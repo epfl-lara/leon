@@ -16,10 +16,10 @@ abstract class AbsSolComplexity extends Complexity[AbsSolComplexity] {
 
 case class SolComplexity(s: Solution) extends AbsSolComplexity {
   lazy val value = {
-    val chooses = collectChooses(s.term)
+    val chooses = collectChooses(s.toExpr)
     val chooseCost = chooses.foldLeft(0)((i, c) => i + (1000 * math.pow(2, c.vars.size).toInt + formulaSize(c.pred)))
 
-    formulaSize(s.pre) + formulaSize(s.term) + chooseCost
+    formulaSize(s.toExpr) + chooseCost
   }
 }
 

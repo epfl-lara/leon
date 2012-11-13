@@ -87,6 +87,10 @@ object TypeTrees {
     case _ => None
   }
 
+  def isSubtypeOf(t1: TypeTree, t2: TypeTree): Boolean = {
+    leastUpperBound(t1, t2) == Some(t2)
+  }
+
   // returns the number of distinct values that inhabit a type
   sealed abstract class TypeSize extends Serializable
   case class FiniteSize(size: Int) extends TypeSize
