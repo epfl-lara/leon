@@ -10,7 +10,6 @@ import purescala.Definitions._
 
 object Heuristics {
   def all = Set[Synthesizer => Rule](
-    new OptimisticGround(_),
     new IntInduction(_),
     new OptimisticInjection(_)
   )
@@ -20,62 +19,6 @@ trait Heuristic {
   this: Rule =>
 
   override def toString = "H: "+name
-}
-
-class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", synth, 90) with Heuristic {
-  def applyOn(task: Task): RuleResult = {
-    val p = task.problem
-
-    if (!p.as.isEmpty && !p.xs.isEmpty) {
-      val xss = p.xs.toSet
-      val ass = p.as.toSet
-
-      val tpe = TupleType(p.xs.map(_.getType))
-
-      var i = 0;
-      var maxTries = 3;
-
-      var result: Option[RuleResult]   = None
-      var predicates: Seq[Expr]        = Seq()
-
-      while (result.isEmpty && i < maxTries) {
-        val phi = And(p.phi +: predicates)
-        synth.solver.solveSAT(phi) match {
-          case (Some(true), satModel) =>
-            val satXsModel = satModel.filterKeys(xss) 
-
-            val newPhi = valuateWithModelIn(phi, xss, satModel)
-
-            synth.solver.solveSAT(Not(newPhi)) match {
-              case (Some(true), invalidModel) =>
-                // Found as such as the xs break, refine predicates
-                predicates = valuateWithModelIn(phi, ass, invalidModel) +: predicates
-
-              case (Some(false), _) =>
-                result = Some(RuleSuccess(Solution(BooleanLiteral(true), Tuple(p.xs.map(valuateWithModel(satModel))).setType(tpe))))
-
-              case _ =>
-                result = Some(RuleInapplicable)
-            }
-
-          case (Some(false), _) =>
-            if (predicates.isEmpty) {
-              result = Some(RuleSuccess(Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe))))
-            } else {
-              result = Some(RuleInapplicable)
-            }
-          case _ =>
-            result = Some(RuleInapplicable)
-        }
-
-        i += 1 
-      }
-
-      result.getOrElse(RuleInapplicable)
-    } else {
-      RuleInapplicable
-    }
-  }
 }
 
 
@@ -104,7 +47,7 @@ class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 80) 
         val onSuccess: List[Solution] => Solution = {
           case List(base, gt, lt) =>
             val newFun = new FunDef(FreshIdentifier("rec", true), tpe, Seq(VarDecl(inductOn, inductOn.getType)))
-            newFun.body = Some( 
+            newFun.body = Some(
               IfExpr(Equals(Variable(inductOn), IntLiteral(0)),
                 base.toExpr,
               IfExpr(GreaterThan(Variable(inductOn), IntLiteral(0)),
@@ -112,7 +55,13 @@ class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 80) 
               , LetTuple(postXs, FunctionInvocation(newFun, Seq(Plus(Variable(inductOn), IntLiteral(1)))), lt.toExpr)))
             )
 
-            Solution(BooleanLiteral(true), LetDef(newFun, FunctionInvocation(newFun, Seq(Variable(origId)))))
+            val pre =
+              subst( inductOn -> Variable(origId),
+                    Or(Seq(And(Equals(Variable(inductOn), IntLiteral(0)),      base.pre),
+                           And(GreaterThan(Variable(inductOn), IntLiteral(0)), gt.pre),
+                           And(LessThan(Variable(inductOn), IntLiteral(0)),    lt.pre))))
+
+            Solution(pre, LetDef(newFun, FunctionInvocation(newFun, Seq(Variable(origId)))))
           case _ =>
             Solution.none
         }
@@ -195,3 +144,4 @@ class SelectiveInlining(synth: Synthesizer) extends Rule("Sel. Inlining", synth,
     }
   }
 }
+
