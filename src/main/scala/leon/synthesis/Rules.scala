@@ -30,11 +30,11 @@ case object RuleInapplicable extends RuleResult
 case class RuleSuccess(solution: Solution) extends RuleResult
 case class RuleMultiSteps(subProblems: List[Problem],
                           steps: List[List[Solution] => List[Problem]],
-                          onSuccess: List[Solution] => Solution) extends RuleResult
+                          onSuccess: List[Solution] => (Solution, Boolean)) extends RuleResult
 
 object RuleStep {
   def apply(subProblems: List[Problem], onSuccess: List[Solution] => Solution) = {
-    RuleMultiSteps(subProblems, Nil, onSuccess)
+    RuleMultiSteps(subProblems, Nil, onSuccess.andThen((_, true)))
   }
 }
 

@@ -23,6 +23,9 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr) {
 
     defs.foldLeft(result){ case (t, fd) => LetDef(fd, t) }
   }
+
+  def fullTerm =
+    defs.foldLeft(term){ case (t, fd) => LetDef(fd, t) }
 }
 
 object Solution {

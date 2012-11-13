@@ -19,6 +19,23 @@ trait Heuristic {
   this: Rule =>
 
   override def toString = "H: "+name
+
+}
+
+object HeuristicStep {
+  def verifyPre(synth: Synthesizer)(s: Solution): (Solution, Boolean) = {
+    synth.solver.solveSAT(And(Not(s.pre), s.fullTerm)) match {
+      case (Some(true), model) =>
+        synth.reporter.warning("Heuristic failed to produce strongest precondition for solution: \n"+s.toExpr)
+        (s, false)
+      case _ =>
+        (s, true)
+    }
+  }
+
+  def apply(synth: Synthesizer, subProblems: List[Problem], onSuccess: List[Solution] => Solution) = {
+    RuleMultiSteps(subProblems, Nil, onSuccess.andThen(verifyPre(synth)))
+  }
 }
 
 

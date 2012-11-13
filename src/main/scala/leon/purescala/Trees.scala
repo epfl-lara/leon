@@ -168,8 +168,9 @@ object Trees {
   /* Propositional logic */
   object And {
     def apply(l: Expr, r: Expr) : Expr = (l,r) match {
-      case (BooleanLiteral(true),_) => r
-      case (_,BooleanLiteral(true)) => l
+      case (BooleanLiteral(false),_) => BooleanLiteral(false)
+      case (BooleanLiteral(true),_)  => r
+      case (_,BooleanLiteral(true))  => l
       case _ => new And(Seq(l,r))
     }
     def apply(exprs: Seq[Expr]) : Expr = {

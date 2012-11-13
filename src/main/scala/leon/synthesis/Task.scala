@@ -35,7 +35,7 @@ class Task(synth: Synthesizer,
 
   var steps: List[TaskStep]                            = Nil
   var nextSteps: List[List[Solution] => List[Problem]] = Nil
-  var onSuccess: List[Solution] => Solution            = _
+  var onSuccess: List[Solution] => (Solution, Boolean) = _
 
   def currentStep                 = steps.head
 
@@ -55,9 +55,15 @@ class Task(synth: Synthesizer,
 
           steps = new TaskStep(newProblems) :: steps
         } else {
-          solution = Some(onSuccess(solutions))
+          onSuccess(solutions) match {
+            case (s, true) =>
+              solution = Some(s)
 
-          parent.partlySolvedBy(this, solution.get)
+              parent.partlySolvedBy(this, solution.get)
+            case _ =>
+              // solution is there, but it is incomplete (precondition not strongest)
+              parent.partlySolvedBy(this, Solution.choose(problem))
+          }
         }
       }
     }
@@ -94,7 +100,7 @@ class Task(synth: Synthesizer,
         // To each problem we assign the most basic solution, fold on all inner
         // steps, and then reconstruct final solution
         val simplestSubSolutions  = interSteps.foldLeft(subProblems.map(Solution.basic(_))){ (sols, step) => step(sols).map(Solution.basic(_)) }
-        val simplestSolution = onSuccess(simplestSubSolutions)
+        val simplestSolution = onSuccess(simplestSubSolutions)._1
         minComplexity = new FixedSolComplexity(parent.minComplexity.value + simplestSolution.complexity.value)
         val prefix = "[%-20s] ".format(Option(rule).map(_.toString).getOrElse("root"))
         synth.reporter.info(prefix+"Got: "+problem)
