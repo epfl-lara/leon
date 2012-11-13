@@ -55,7 +55,13 @@ class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 80) 
               , LetTuple(postXs, FunctionInvocation(newFun, Seq(Plus(Variable(inductOn), IntLiteral(1)))), lt.toExpr)))
             )
 
-            Solution(BooleanLiteral(true), LetDef(newFun, FunctionInvocation(newFun, Seq(Variable(origId)))))
+            val pre =
+              subst( inductOn -> Variable(origId),
+                    Or(Seq(And(Equals(Variable(inductOn), IntLiteral(0)),      base.pre),
+                           And(GreaterThan(Variable(inductOn), IntLiteral(0)), gt.pre),
+                           And(LessThan(Variable(inductOn), IntLiteral(0)),    lt.pre))))
+
+            Solution(pre, LetDef(newFun, FunctionInvocation(newFun, Seq(Variable(origId)))))
           case _ =>
             Solution.none
         }

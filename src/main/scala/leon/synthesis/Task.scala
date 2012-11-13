@@ -80,8 +80,8 @@ class Task(synth: Synthesizer,
         parent.partlySolvedBy(this, solution)
 
         val prefix = "[%-20s] ".format(Option(rule).map(_.toString).getOrElse("root"))
-        println(prefix+"Got: "+problem)
-        println(prefix+"Solved with: "+solution)
+        synth.reporter.info(prefix+"Got: "+problem)
+        synth.reporter.info(prefix+"Solved with: "+solution)
         Nil
 
       case RuleMultiSteps(subProblems, interSteps, onSuccess) =>
@@ -96,10 +96,10 @@ class Task(synth: Synthesizer,
         val simplestSolution = onSuccess(simplestSubSolutions)
         minComplexity = new FixedSolComplexity(parent.minComplexity.value + simplestSolution.complexity.value)
         val prefix = "[%-20s] ".format(Option(rule).map(_.toString).getOrElse("root"))
-        println(prefix+"Got: "+problem)
-        println(prefix+"Decomposed into:")
+        synth.reporter.info(prefix+"Got: "+problem)
+        synth.reporter.info(prefix+"Decomposed into:")
         for(p <- subProblems) {
-          println(prefix+" - "+p)
+          synth.reporter.info(prefix+" - "+p)
         }
 
         subProblems
