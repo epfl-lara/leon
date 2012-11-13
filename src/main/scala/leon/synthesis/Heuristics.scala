@@ -23,18 +23,20 @@ trait Heuristic {
 }
 
 object HeuristicStep {
-  def verifyPre(synth: Synthesizer)(s: Solution): (Solution, Boolean) = {
-    synth.solver.solveSAT(And(Not(s.pre), s.fullTerm)) match {
+  def verifyPre(synth: Synthesizer, problem: Problem)(s: Solution): (Solution, Boolean) = {
+    synth.solver.solveSAT(And(Not(s.pre), problem.phi)) match {
       case (Some(true), model) =>
-        synth.reporter.warning("Heuristic failed to produce strongest precondition for solution: \n"+s.toExpr)
+        synth.reporter.warning("Heuristic failed to produce strongest precondition:")
+        synth.reporter.warning(" - problem: "+problem)
+        synth.reporter.warning(" - precondition: "+s.pre)
         (s, false)
       case _ =>
         (s, true)
     }
   }
 
-  def apply(synth: Synthesizer, subProblems: List[Problem], onSuccess: List[Solution] => Solution) = {
-    RuleMultiSteps(subProblems, Nil, onSuccess.andThen(verifyPre(synth)))
+  def apply(synth: Synthesizer, problem: Problem, subProblems: List[Problem], onSuccess: List[Solution] => Solution) = {
+    RuleMultiSteps(subProblems, Nil, onSuccess.andThen(verifyPre(synth, problem)))
   }
 }
 
@@ -86,7 +88,7 @@ class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 80) 
             Solution.none
         }
 
-        RuleStep(List(subBase, subGT, subLT), onSuccess)
+        HeuristicStep(synth, p, List(subBase, subGT, subLT), onSuccess)
       case _ =>
         RuleInapplicable
     }
@@ -122,7 +124,7 @@ class OptimisticInjection(synth: Synthesizer) extends Rule("Opt. Injection", syn
 
       val sub = p.copy(phi = And(newExprs))
 
-      RuleStep(List(sub), forward)
+      HeuristicStep(synth, p, List(sub), forward)
     } else {
       RuleInapplicable
     }
@@ -158,7 +160,7 @@ class SelectiveInlining(synth: Synthesizer) extends Rule("Sel. Inlining", synth,
 
       val sub = p.copy(phi = And(newExprs))
 
-      RuleStep(List(sub), forward)
+      HeuristicStep(synth, p, List(sub), forward)
     } else {
       RuleInapplicable
     }
