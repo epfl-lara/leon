@@ -97,7 +97,6 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       simplifyTautologies(uninterpretedZ3)(_),
       simplifyLets _
     )
-    println(solutions.map(_._2.toExpr))
 
     val chooseToExprs = solutions.map { case (ch, sol) => (ch, simplifiers.foldLeft(sol.toExpr){ (x, sim) => sim(x) }) }
 
