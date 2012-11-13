@@ -121,8 +121,10 @@ class RootTask(synth: Synthesizer, problem: Problem) extends Task(synth, null, p
   }
 
   override def partlySolvedBy(t: Task, s: Solution) {
-    solution = Some(s)
-    solver   = Some(t)
+    if (isBetterSolutionThan(s, solution)) {
+      solution = Some(s)
+      solver   = Some(t)
+    }
   }
 
   override def unsolvedBy(t: Task) {
