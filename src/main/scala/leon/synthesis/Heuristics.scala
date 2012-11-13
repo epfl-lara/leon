@@ -64,7 +64,7 @@ class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 80) 
             )
 
 
-            Solution(preOut, LetDef(newFun, FunctionInvocation(newFun, Seq(Variable(origId)))))
+            Solution(preOut, base.defs++gt.defs++lt.defs+newFun, FunctionInvocation(newFun, Seq(Variable(origId))))
           case _ =>
             Solution.none
         }

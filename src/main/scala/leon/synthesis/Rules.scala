@@ -45,7 +45,7 @@ abstract class Rule(val name: String, val synth: Synthesizer, val priority: Prio
   def substAll(what: Map[Identifier, Expr], in: Expr): Expr = replace(what.map(w => Variable(w._1) -> w._2), in)
 
   val forward: List[Solution] => Solution = {
-    case List(s) => Solution(s.pre, s.term)
+    case List(s) => Solution(s.pre, s.defs, s.term)
     case _ => Solution.none
   }
 
@@ -75,11 +75,11 @@ class OnePoint(synth: Synthesizer) extends Rule("One-point", synth, 300) {
       val newProblem = Problem(p.as, p.c, subst(x -> e, And(others)), oxs)
 
       val onSuccess: List[Solution] => Solution = { 
-        case List(Solution(pre, term)) =>
+        case List(Solution(pre, defs, term)) =>
           if (oxs.isEmpty) {
-            Solution(pre, Tuple(e :: Nil)) 
+            Solution(pre, defs, Tuple(e :: Nil)) 
           } else {
-            Solution(pre, LetTuple(oxs, term, subst(x -> e, Tuple(p.xs.map(Variable(_)))))) 
+            Solution(pre, defs, LetTuple(oxs, term, subst(x -> e, Tuple(p.xs.map(Variable(_)))))) 
           }
         case _ => Solution.none
       }
@@ -101,9 +101,9 @@ class Ground(synth: Synthesizer) extends Rule("Ground", synth, 500) {
 
       synth.solver.solveSAT(p.phi) match {
         case (Some(true), model) =>
-          RuleSuccess(Solution(BooleanLiteral(true), Tuple(p.xs.map(valuateWithModel(model))).setType(tpe)))
+          RuleSuccess(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(model))).setType(tpe)))
         case (Some(false), model) =>
-          RuleSuccess(Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe)))
+          RuleSuccess(Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe)))
         case _ =>
           RuleInapplicable
       }
@@ -122,7 +122,7 @@ class CaseSplit(synth: Synthesizer) extends Rule("Case-Split", synth, 200) {
         val sub2 = Problem(p.as, p.c, o2, p.xs)
 
         val onSuccess: List[Solution] => Solution = { 
-          case List(Solution(p1, t1), Solution(p2, t2)) => Solution(Or(p1, p2), IfExpr(p1, t1, t2))
+          case List(Solution(p1, d1, t1), Solution(p2, d2, t2)) => Solution(Or(p1, p2), d1++d2, IfExpr(p1, t1, t2))
           case _ => Solution.none
         }
 
@@ -145,7 +145,7 @@ class Assert(synth: Synthesizer) extends Rule("Assert", synth, 200) {
 
         if (!exprsA.isEmpty) {
           if (others.isEmpty) {
-            RuleSuccess(Solution(And(exprsA), Tuple(p.xs.map(id => simplestValue(Variable(id))))))
+            RuleSuccess(Solution(And(exprsA), Set(), Tuple(p.xs.map(id => simplestValue(Variable(id))))))
           } else {
             val sub = p.copy(c = And(p.c +: exprsA), phi = And(others))
 
@@ -185,7 +185,7 @@ class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", sy
 
       val onSuccess: List[Solution] => Solution = { 
         case List(s) =>
-          Solution(s.pre, LetTuple(sub.xs, s.term, Tuple(p.xs.map(id => if (unconstr(id)) simplestValue(Variable(id)) else Variable(id)))))
+          Solution(s.pre, s.defs, LetTuple(sub.xs, s.term, Tuple(p.xs.map(id => if (unconstr(id)) simplestValue(Variable(id)) else Variable(id)))))
         case _ =>
           Solution.none
       }
@@ -245,7 +245,7 @@ object Unification {
       if (isImpossible) {
         val tpe = TupleType(p.xs.map(_.getType))
 
-        RuleSuccess(Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe)))
+        RuleSuccess(Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe)))
       } else {
         RuleInapplicable
       }
@@ -434,7 +434,7 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 50) {
                   mapping += c -> substAll(mapping, e)
                 }
 
-                result = Some(RuleSuccess(Solution(BooleanLiteral(true), Tuple(p.xs.map(valuateWithModel(mapping))).setType(tpe))))
+                result = Some(RuleSuccess(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(mapping))).setType(tpe))))
 
               case _ =>
             }
@@ -487,7 +487,7 @@ class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", syn
                 predicates = valuateWithModelIn(phi, ass, invalidModel) +: predicates
 
               case (Some(false), _) =>
-                result = Some(RuleSuccess(Solution(BooleanLiteral(true), Tuple(p.xs.map(valuateWithModel(satModel))).setType(tpe))))
+                result = Some(RuleSuccess(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(satModel))).setType(tpe))))
 
               case _ =>
                 result = Some(RuleInapplicable)
@@ -495,7 +495,7 @@ class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", syn
 
           case (Some(false), _) =>
             if (predicates.isEmpty) {
-              result = Some(RuleSuccess(Solution(BooleanLiteral(false), Error(p.phi+" is UNSAT!").setType(tpe))))
+              result = Some(RuleSuccess(Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe))))
             } else {
               result = Some(RuleInapplicable)
             }
