@@ -13,13 +13,15 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr) {
   lazy val complexity: AbsSolComplexity = new SolComplexity(this)
 
   def toExpr = {
-    if (pre == BooleanLiteral(true)) {
+    val result = if (pre == BooleanLiteral(true)) {
       term
     } else if (pre == BooleanLiteral(false)) {
       Error("Impossible program").setType(term.getType)
     } else {
       IfExpr(pre, term, Error("Precondition failed").setType(term.getType))
     }
+
+    defs.foldLeft(result){ case (t, fd) => LetDef(fd, t) }
   }
 }
 

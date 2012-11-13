@@ -56,6 +56,7 @@ class Task(synth: Synthesizer,
           steps = new TaskStep(newProblems) :: steps
         } else {
           solution = Some(onSuccess(solutions))
+
           parent.partlySolvedBy(this, solution.get)
         }
       }
