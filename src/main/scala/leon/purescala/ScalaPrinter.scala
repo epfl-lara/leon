@@ -562,7 +562,7 @@ object ScalaPrinter {
               sb.append("require(")
               pp(prec, sb, lvl+1)
               sb.append(")\n")
-              pp(body.get, sb, lvl+1)
+              pp(body.get, sb, lvl)
               sb.append("\n")
               ind(sb, lvl)
               sb.append("}")
@@ -576,8 +576,14 @@ object ScalaPrinter {
             sb.append(")")
           }
           case Some(postc) => {
-            sb.append(" ensuring(res => ") //TODO, not very general solution...
-            pp(postc, sb, lvl)
+            val res = Variable(FreshIdentifier("res", true).setType(fd.returnType))
+
+            val newPost = TreeOps.replace(Map(ResultVariable() -> res), postc)
+
+            sb.append(" ensuring(")
+            pp(res, sb, lvl)
+            sb.append(" => ") //TODO, not very general solution...
+            pp(newPost, sb, lvl)
             sb.append("))")
           }
         }

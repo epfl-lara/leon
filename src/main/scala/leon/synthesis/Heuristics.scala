@@ -52,8 +52,8 @@ class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 80) 
             val preOut = subst(inductOn -> Variable(origId), preIn)
 
             val newFun = new FunDef(FreshIdentifier("rec", true), tpe, Seq(VarDecl(inductOn, inductOn.getType)))
-
             newFun.precondition = Some(preIn)
+            newFun.postcondition = Some(And(Equals(ResultVariable(), Tuple(p.xs.map(Variable(_)))), p.phi))
 
             newFun.body = Some(
               IfExpr(Equals(Variable(inductOn), IntLiteral(0)),
