@@ -10,7 +10,7 @@ object LinearEquations {
   //eliminate one variable from normalizedEquation t + a1*x1 + ... + an*xn = 0
   //return a mapping for each of the n variables in (pre, map, freshVars)
   def elimVariable(as: Set[Identifier], normalizedEquation: List[Expr]): (Expr, List[Expr], List[Identifier]) = {
-    println("elim in normalized: " + normalizedEquation)
+    require(normalizedEquation.size > 1)
     require(normalizedEquation.tail.forall{case IntLiteral(i) if i != 0 => true case _ => false})
     val t: Expr = normalizedEquation.head
     val coefsVars: List[Int] = normalizedEquation.tail.map{case IntLiteral(i) => i}
