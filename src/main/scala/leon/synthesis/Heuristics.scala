@@ -73,7 +73,7 @@ class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 80) 
 
             val newFun = new FunDef(FreshIdentifier("rec", true), tpe, Seq(VarDecl(inductOn, inductOn.getType)))
             newFun.precondition = Some(preIn)
-            newFun.postcondition = Some(And(Equals(ResultVariable(), Tuple(p.xs.map(Variable(_)))), p.phi))
+            newFun.postcondition = Some(LetTuple(p.xs.toSeq, ResultVariable(), p.phi))
 
             newFun.body = Some(
               IfExpr(Equals(Variable(inductOn), IntLiteral(0)),
@@ -248,7 +248,7 @@ class ADTInduction(synth: Synthesizer) extends Rule("ADT Induction", synth, 80) 
             val outerPre = Or(globalPre)
 
             newFun.precondition = Some(funPre)
-            newFun.postcondition = Some(And(Equals(ResultVariable(), Tuple(p.xs.map(Variable(_)))), p.phi))
+            newFun.postcondition = Some(LetTuple(p.xs.toSeq, ResultVariable(), p.phi))
 
             newFun.body = Some(MatchExpr(Variable(inductOn), cases))
 
