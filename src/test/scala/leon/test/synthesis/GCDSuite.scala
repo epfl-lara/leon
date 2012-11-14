@@ -48,7 +48,10 @@ class GCDSuite extends FunSuite {
     assert(gcd(10,4) === 2)
     assert(gcd(12,8) === 4)
     assert(gcd(23,41) === 1)
+    assert(gcd(0,41) === 41)
+    assert(gcd(4,0) === 4)
 
+    assert(gcd(-4,0) === 4)
     assert(gcd(-23,41) === 1)
     assert(gcd(23,-41) === 1)
     assert(gcd(-23,-41) === 1)
@@ -75,9 +78,12 @@ class GCDSuite extends FunSuite {
     assert(gcd(23,41,11) === 1)
     assert(gcd(2,4,8,12,16,4) === 2)
     assert(gcd(2,4,8,11,16,4) === 1)
+    assert(gcd(6,3,8, 0) === 1)
+    assert(gcd(2,12, 0,16,4) === 2)
 
     assert(gcd(-12,8,6) === 2)
     assert(gcd(23,-41,11) === 1)
+    assert(gcd(23,-41, 0,11) === 1)
     assert(gcd(2,4,-8,-12,16,4) === 2)
     assert(gcd(-2,-4,-8,-11,-16,-4) === 1)
   }
@@ -103,11 +109,14 @@ class GCDSuite extends FunSuite {
     assert(gcd(Seq(23,41,11)) === 1)
     assert(gcd(Seq(2,4,8,12,16,4)) === 2)
     assert(gcd(Seq(2,4,8,11,16,4)) === 1)
+    assert(gcd(Seq(6,3,8, 0)) === 1)
+    assert(gcd(Seq(2,12, 0,16,4)) === 2)
 
     assert(gcd(Seq(-1)) === 1)
     assert(gcd(Seq(-7)) === 7)
     assert(gcd(Seq(-12,8,6)) === 2)
     assert(gcd(Seq(23,-41,11)) === 1)
+    assert(gcd(Seq(23,-41, 0,11)) === 1)
     assert(gcd(Seq(2,4,-8,-12,16,4)) === 2)
     assert(gcd(Seq(-2,-4,-8,-11,-16,-4)) === 1)
   }
