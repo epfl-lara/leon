@@ -26,13 +26,25 @@ class BugWithEmptySet extends FunSuite {
     val e2 = FiniteSet(Nil).setType(tIntSet)
     assert(e2.getType === tIntSet)
 
-    val formula = Equals(e1, e2)
+    val s0 = FiniteSet(Seq(IntLiteral(0))).setType(tIntSet)
+
+    val f1 = Equals(e1, e2)
 
     val silentReporter = new SilentReporter
     val solver : Solver = new UninterpretedZ3Solver(silentReporter)
     solver.setProgram(emptyProgram)
 
-    assert(solver.solve(formula) === Some(true),
+    assert(solver.solve(f1) === Some(true),
            "Z3 should prove the equivalence between Ø and {}.")
+
+    val f2 = Equals(e1, SetDifference(e1, s0))
+
+    assert(solver.solve(f2) === Some(true),
+           """Z3 should prove Ø = Ø \ {0}""")
+
+    val f3 = Equals(e2, SetDifference(e2, s0))
+
+    assert(solver.solve(f3) === Some(true),
+           """Z3 should prove {} = {} \ {0}""")
   } 
 }
