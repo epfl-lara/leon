@@ -24,8 +24,8 @@ object Rules {
     new OptimisticGround(_),
     new EqualitySplit(_),
     new CEGIS(_),
-    new Assert(_)
-    //new IntegerEquation(_)
+    new Assert(_),
+    new IntegerEquation(_)
   )
 }
 
@@ -517,7 +517,7 @@ class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", syn
   }
 }
 
-class EqualitySplit(synth: Synthesizer) extends Rule("Eq. Split.", synth, 10) {
+class EqualitySplit(synth: Synthesizer) extends Rule("Eq. Split.", synth, 90) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 

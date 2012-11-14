@@ -228,7 +228,7 @@ class ADTInduction(synth: Synthesizer) extends Rule("ADT Induction", synth, 80) 
 
             val subProblem = Problem(inputs ::: residualArgs, And(p.c :: postFs), subPhi, p.xs)
 
-            (subProblem, subPre, recCalls)
+            (subProblem, subPre, ccd, newIds, recCalls)
           case _ =>
             sys.error("Woops, non case-class as descendent")
         }
@@ -237,42 +237,22 @@ class ADTInduction(synth: Synthesizer) extends Rule("ADT Induction", synth, 80) 
           case sols =>
             var globalPre = List[Expr]()
 
-            for ((sol, (problem, pre, calls)) <- (sols zip subProblemsInfo)) {
+            val cases = for ((sol, (problem, pre, ccd, ids, calls)) <- (sols zip subProblemsInfo)) yield {
               globalPre ::= And(pre, sol.pre)
 
+              val caze = CaseClassPattern(None, ccd, ids.map(id => WildcardPattern(Some(id))))
+              SimpleCase(caze, calls.foldLeft(sol.term){ case (t, (binders, call)) => LetTuple(binders, call, t) })
             }
 
             val funPre = subst(origId -> Variable(inductOn), Or(globalPre))
-            val outerPre = funPre
-            /*
-            solPre ::= And(pre, sol.pre)
+            val outerPre = Or(globalPre)
 
-            val preIn = Or(Seq(And(Equals(Variable(inductOn), IntLiteral(0)),      base.pre),
-                               And(GreaterThan(Variable(inductOn), IntLiteral(0)), gt.pre),
-                               And(LessThan(Variable(inductOn), IntLiteral(0)),    lt.pre)))
-            val preOut = subst(inductOn -> Variable(origId), preIn)
+            newFun.body = Some(MatchExpr(Variable(inductOn), cases))
 
-            val newFun = new FunDef(FreshIdentifier("rec", true), tpe, Seq(VarDecl(inductOn, inductOn.getType)))
-            newFun.precondition = Some(preIn)
-            newFun.postcondition = Some(And(Equals(ResultVariable(), Tuple(p.xs.map(Variable(_)))), p.phi))
-
-            newFun.body = Some(
-              IfExpr(Equals(Variable(inductOn), IntLiteral(0)),
-                base.toExpr,
-              IfExpr(GreaterThan(Variable(inductOn), IntLiteral(0)),
-                LetTuple(postXs, FunctionInvocation(newFun, Seq(Minus(Variable(inductOn), IntLiteral(1)))), gt.toExpr)
-              , LetTuple(postXs, FunctionInvocation(newFun, Seq(Plus(Variable(inductOn), IntLiteral(1)))), lt.toExpr)))
-            )
-
-
-            Solution(preOut, base.defs++gt.defs++lt.defs+newFun, FunctionInvocation(newFun, Seq(Variable(origId))))
-            */
-            Solution.none
+            Solution(Or(globalPre), sols.flatMap(_.defs).toSet+newFun, FunctionInvocation(newFun, p.as.map(Variable(_))))
         }
 
-        println(subProblemsInfo)
-
-        RuleInapplicable
+        HeuristicStep(synth, p, subProblemsInfo.map(_._1).toList, onSuccess)
       } else {
         RuleInapplicable
       }
