@@ -56,7 +56,7 @@ class Synthesizer(val reporter: Reporter,
 
       val prefix = "[%-20s] ".format(Option(task.rule).map(_.toString).getOrElse("root"))
 
-      if (!(firstOnly && (task.parent ne null) && task.parent.isSolved)) {
+      if (!(firstOnly && (task.parent ne null) && task.parent.isSolved(task.problem))) {
         val subProblems = task.run()
 
         if (task.minComplexity <= bestSolutionSoFar.complexity) {
@@ -73,11 +73,7 @@ class Synthesizer(val reporter: Reporter,
             }
           }
           addProblems(task, subProblems)
-        } else {
-          info(prefix+"Skip (worse): "+task.problem)
         }
-      } else {
-        info(prefix+"Skip (done): "+task.problem)
       }
 
       if (timeoutExpired()) {

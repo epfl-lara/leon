@@ -40,7 +40,7 @@ class Task(synth: Synthesizer,
 
   def currentStep                 = steps.head
 
-  def isSolved: Boolean = parent.isSolved || (nextSteps.isEmpty && (currentStep.subSolutions.size == currentStep.subProblems.size))
+  def isSolved(problem: Problem): Boolean = parent.isSolved(this.problem) || (currentStep.subSolutions contains problem)
 
   def partlySolvedBy(t: Task, s: Solution) {
     if (isBetterSolutionThan(s, currentStep.subSolutions.get(t.problem))) {
@@ -121,7 +121,7 @@ class RootTask(synth: Synthesizer, problem: Problem) extends Task(synth, null, p
     List(problem)
   }
 
-  override def isSolved = solver.isDefined
+  override def isSolved(problem: Problem) = solver.isDefined
 
   override def partlySolvedBy(t: Task, s: Solution) {
     if (isBetterSolutionThan(s, solution)) {
