@@ -527,40 +527,64 @@ class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth
     val formula = p.phi
 
     val (eqs, others) = exprs.partition(_.isInstanceOf[Equals])
+    var candidates: Seq[Expr] = eqs
+    var allOthers: Seq[Expr] = others
 
-    if (!eqs.isEmpty) {
+    var vars: Set[Identifier] = Set()
+    var eqas: Set[Identifier] = Set()
+    var eqxs: List[Identifier] = List()
+    var ys: Set[Identifier] = Set()
 
-      val (eq@Equals(_,_), rest) = (eqs.head, eqs.tail)
-      val allOthers = rest ++ others
+    var optionNormalizedEq: Option[List[Expr]] = None
+    while(!candidates.isEmpty && optionNormalizedEq == None) {
+      val eq@Equals(_,_) = candidates.head
+      candidates = candidates.tail
       
-      val vars: Set[Identifier] = variablesOf(eq)
-      val eqas: Set[Identifier] = as.toSet.intersect(vars)
+      vars = variablesOf(eq)
+      eqas = as.toSet.intersect(vars)
 
-      val eqxs: List[Identifier] = xs.toSet.intersect(vars).toList
-      val ys: Set[Identifier] = xs.toSet.diff(vars)
+      eqxs = xs.toSet.intersect(vars).toList
+      ys = xs.toSet.diff(vars)
 
-      val normalizedEq: List[Expr] = ArithmeticNormalization(Minus(eq.left, eq.right), eqxs.toArray).toList
-      val (eqPre, eqWitness, eqFreshVars) = elimVariable(eqas, normalizedEq)
-
-      val eqSubstMap: Map[Expr, Expr] = eqxs.zip(eqWitness).map{case (id, e) => (Variable(id), simplify(e))}.toMap
-      val freshFormula = simplify(replace(eqSubstMap, And(allOthers)))
-      (eqPre, freshFormula)
-
-      val newProblem = Problem(as, And(eqPre, p.c), freshFormula, eqFreshVars)
-
-      val onSuccess: List[Solution] => Solution = { 
-        case List(Solution(pre, defs, term)) =>
-          if (eqFreshVars.isEmpty) {
-            Solution(pre, defs, replace(eqSubstMap, Tuple(eqxs.map(Variable(_)))))
-          } else {
-            Solution(pre, defs, LetTuple(eqFreshVars, term, replace(eqSubstMap, Tuple(eqxs.map(Variable(_))))))
-          }
-        case _ => Solution.none
+      try {
+        optionNormalizedEq = Some(ArithmeticNormalization(Minus(eq.left, eq.right), eqxs.toArray).toList)
+      } catch {
+        case ArithmeticNormalization.NonLinearExpressionException(_) =>
       }
-
-      RuleStep(List(newProblem), onSuccess)
-    } else {
-      RuleInapplicable
     }
+
+    optionNormalizedEq match {
+      case None => RuleInapplicable
+      case Some(normalizedEq0) => {
+        val (neqxs, normalizedEq) = eqxs.zip(normalizedEq0.tail).filterNot{ case (_, IntLiteral(0)) => true case _ => false}.unzip
+
+        if(normalizedEq.size == 1) {
+
+
+        } else {
+
+        val (eqPre, eqWitness, eqFreshVars) = elimVariable(eqas, normalizedEq)
+
+        val eqSubstMap: Map[Expr, Expr] = neqxs.zip(eqWitness).map{case (id, e) => (Variable(id), simplify(e))}.toMap
+        val freshFormula = simplify(replace(eqSubstMap, And(allOthers)))
+        }
+        (eqPre, freshFormula)
+
+        val newProblem = Problem(as, And(eqPre, p.c), freshFormula, eqFreshVars)
+
+        val onSuccess: List[Solution] => Solution = { 
+          case List(Solution(pre, defs, term)) =>
+            if (eqFreshVars.isEmpty) {
+              Solution(pre, defs, replace(eqSubstMap, Tuple(neqxs.map(Variable(_)))))
+            } else {
+              Solution(pre, defs, LetTuple(eqFreshVars, term, replace(eqSubstMap, Tuple(neqxs.map(Variable(_))))))
+            }
+          case _ => Solution.none
+        }
+
+        RuleStep(List(newProblem), onSuccess)
+      }
+    }
+
   }
 }
