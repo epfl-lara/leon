@@ -274,6 +274,13 @@ object Trees {
 
   class Equals(val left: Expr, val right: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
+
+    override def equals(that: Any): Boolean = (that != null) && (that match {
+      case t: Equals => t.left == left && t.right == right
+      case _ => false
+    })
+
+    override def hashCode: Int = left.hashCode+right.hashCode
   }
   
   case class Variable(id: Identifier) extends Expr with Terminal {
