@@ -215,7 +215,7 @@ class ADTInduction(synth: Synthesizer) extends Rule("ADT Induction", synth, 80) 
 
                 recCalls += postXs -> FunctionInvocation(newFun, Variable(id) +: residualArgs.map(id => Variable(id)))
 
-                postFs ::= substAll(postXsMap + (origId -> Variable(id)), innerPhi)
+                postFs ::= substAll(postXsMap + (inductOn -> Variable(id)), innerPhi)
                 id :: postXs
               } else {
                 List(id)
