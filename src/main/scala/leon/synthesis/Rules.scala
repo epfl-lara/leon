@@ -441,6 +441,8 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
                 result = Some(RuleSuccess(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(mapping))).setType(tpe))))
 
               case _ =>
+                reporter.warning("Solver returned 'UNKNOWN' in a CEGIS iteration.")
+                continue = false
             }
 
           case (Some(false), _) =>
@@ -479,12 +481,14 @@ class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", syn
 
       while (result.isEmpty && i < maxTries) {
         val phi = And(p.phi +: predicates)
+        //println("SOLVING " + phi + " ...")
         synth.solver.solveSAT(phi) match {
           case (Some(true), satModel) =>
             val satXsModel = satModel.filterKeys(xss) 
 
             val newPhi = valuateWithModelIn(phi, xss, satModel)
 
+            //println("REFUTING " + Not(newPhi) + "...")
             synth.solver.solveSAT(Not(newPhi)) match {
               case (Some(true), invalidModel) =>
                 // Found as such as the xs break, refine predicates
@@ -535,7 +539,7 @@ class EqualitySplit(synth: Synthesizer) extends Rule("Eq. Split.", synth, 90) {
       )
     }
 
-    val candidate = p.as.groupBy(_.getType).map(_._2.toList).find{
+    val candidate = p.as.groupBy(_.getType).map(_._2.toList).find {
       case List(a1, a2) => (pres & combinations(a1, a2)).isEmpty
       case _ => false
     }
