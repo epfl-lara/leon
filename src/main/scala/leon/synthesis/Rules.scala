@@ -578,17 +578,17 @@ class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth
       case Some(normalizedEq0) => {
         val (neqxs, normalizedEq) = eqxs.zip(normalizedEq0.tail).filterNot{ case (_, IntLiteral(0)) => true case _ => false}.unzip
 
-        if(normalizedEq.size == 1) {
+        //if(normalizedEq.size == 1) {
 
 
-        } else {
+        //} else {
 
         val (eqPre, eqWitness, eqFreshVars) = elimVariable(eqas, normalizedEq)
 
         val eqSubstMap: Map[Expr, Expr] = neqxs.zip(eqWitness).map{case (id, e) => (Variable(id), simplify(e))}.toMap
         val freshFormula = simplify(replace(eqSubstMap, And(allOthers)))
-        }
-        (eqPre, freshFormula)
+        //}
+        //(eqPre, freshFormula)
 
         val newProblem = Problem(as, And(eqPre, p.c), freshFormula, eqFreshVars)
 
