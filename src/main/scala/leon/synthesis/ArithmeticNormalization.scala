@@ -10,6 +10,8 @@ import leon.purescala.Common._
 
 object ArithmeticNormalization {
 
+  case class NonLinearExpressionException(msg: String) extends Exception
+
   //assume the function is an arithmetic expression, not a relation
   //return a normal form where the [t a1 ... an] where
   //expr = t + a1*x1 + ... + an*xn and xs = [x1 ... xn]
@@ -19,7 +21,7 @@ object ArithmeticNormalization {
       case Times(e1, e2) => containsId(e1, id) || containsId(e2, id)
       case IntLiteral(_) => false
       case Variable(id2) => id == id2
-      case _ => sys.error("unexpected format: " + e)
+      case err => throw NonLinearExpressionException("unexpected in containsId: " + err)
     }
 
     def group(es: Seq[Expr], id: Identifier): Expr = {
@@ -53,7 +55,7 @@ object ArithmeticNormalization {
 
     def rec(e: Expr): Unit = e match {
       case IntLiteral(i) => coef = coef*i
-      case Variable(id2) => if(id.isEmpty) id = Some(id2) else sys.error("multiple variables")
+      case Variable(id2) => if(id.isEmpty) id = Some(id2) else throw NonLinearExpressionException("multiple variable")
       case Times(e1, e2) => rec(e1); rec(e2)
     }
 
@@ -75,7 +77,7 @@ object ArithmeticNormalization {
     case Times(es1, es2) => multiply(expand(es1), expand(es2))
     case v@Variable(_) => Seq(v)
     case n@IntLiteral(_) => Seq(n)
-    case err => sys.error("Unexpected in expand: " + err)
+    case err => throw NonLinearExpressionException("unexpected in expand: " + err)
   }
 
   //simple, local simplifications
