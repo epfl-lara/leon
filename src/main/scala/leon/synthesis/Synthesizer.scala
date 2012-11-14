@@ -51,13 +51,33 @@ class Synthesizer(val reporter: Reporter,
       }
     }
 
-    while (!workList.isEmpty && !(firstOnly && rootTask.solution.isDefined)) {
+    while (!workList.isEmpty) {
       val task = workList.dequeue()
 
-      val subProblems = task.run()
+      val prefix = "[%-20s] ".format(Option(task.rule).map(_.toString).getOrElse("root"))
 
-      if (task.minComplexity <= bestSolutionSoFar.complexity) {
-        addProblems(task, subProblems)
+      if (!(firstOnly && (task.parent ne null) && task.parent.isSolved)) {
+        val subProblems = task.run()
+
+        if (task.minComplexity <= bestSolutionSoFar.complexity) {
+          if (task.solution.isDefined || !subProblems.isEmpty) {
+            if (task.solution.isDefined) {
+              info(prefix+"Got: "+task.problem)
+              info(prefix+"Solved with: "+task.solution.get)
+            } else {
+              info(prefix+"Got: "+task.problem)
+              info(prefix+"Decomposed into:")
+              for(p <- subProblems) {
+                info(prefix+" - "+p)
+              }
+            }
+          }
+          addProblems(task, subProblems)
+        } else {
+          info(prefix+"Skip (worse): "+task.problem)
+        }
+      } else {
+        info(prefix+"Skip (done): "+task.problem)
       }
 
       if (timeoutExpired()) {

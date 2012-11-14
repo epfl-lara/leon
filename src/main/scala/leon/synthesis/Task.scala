@@ -24,6 +24,7 @@ class Task(synth: Synthesizer,
     }
   }
 
+
   var solution: Option[Solution] = None
   var minComplexity: AbsSolComplexity = new FixedSolComplexity(0)
 
@@ -38,6 +39,8 @@ class Task(synth: Synthesizer,
   var onSuccess: List[Solution] => (Solution, Boolean) = _
 
   def currentStep                 = steps.head
+
+  def isSolved: Boolean = parent.isSolved || (nextSteps.isEmpty && (currentStep.subSolutions.size == currentStep.subProblems.size))
 
   def partlySolvedBy(t: Task, s: Solution) {
     if (isBetterSolutionThan(s, currentStep.subSolutions.get(t.problem))) {
@@ -62,7 +65,7 @@ class Task(synth: Synthesizer,
               parent.partlySolvedBy(this, solution.get)
             case _ =>
               // solution is there, but it is incomplete (precondition not strongest)
-              parent.partlySolvedBy(this, Solution.choose(problem))
+              //parent.partlySolvedBy(this, Solution.choose(problem))
           }
         }
       }
@@ -75,7 +78,7 @@ class Task(synth: Synthesizer,
     if (currentStep.failures.size == synth.rules.size) {
       // We might want to report unsolved instead of solvedByChoose, depending
       // on the cases
-      parent.partlySolvedBy(this, Solution.choose(problem))
+      //parent.partlySolvedBy(this, Solution.choose(problem))
     }
   }
 
@@ -86,9 +89,6 @@ class Task(synth: Synthesizer,
         this.solution = Some(solution)
         parent.partlySolvedBy(this, solution)
 
-        val prefix = "[%-20s] ".format(Option(rule).map(_.toString).getOrElse("root"))
-        synth.reporter.info(prefix+"Got: "+problem)
-        synth.reporter.info(prefix+"Solved with: "+solution)
         Nil
 
       case RuleMultiSteps(subProblems, interSteps, onSuccess) =>
@@ -102,12 +102,6 @@ class Task(synth: Synthesizer,
         val simplestSubSolutions  = interSteps.foldLeft(subProblems.map(Solution.basic(_))){ (sols, step) => step(sols).map(Solution.basic(_)) }
         val simplestSolution = onSuccess(simplestSubSolutions)._1
         minComplexity = new FixedSolComplexity(parent.minComplexity.value + simplestSolution.complexity.value)
-        val prefix = "[%-20s] ".format(Option(rule).map(_.toString).getOrElse("root"))
-        synth.reporter.info(prefix+"Got: "+problem)
-        synth.reporter.info(prefix+"Decomposed into:")
-        for(p <- subProblems) {
-          synth.reporter.info(prefix+" - "+p)
-        }
 
         subProblems
 
@@ -126,6 +120,8 @@ class RootTask(synth: Synthesizer, problem: Problem) extends Task(synth, null, p
   override def run() = {
     List(problem)
   }
+
+  override def isSolved = solver.isDefined
 
   override def partlySolvedBy(t: Task, s: Solution) {
     if (isBetterSolutionThan(s, solution)) {

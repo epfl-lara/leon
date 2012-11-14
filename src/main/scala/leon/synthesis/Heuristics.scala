@@ -10,7 +10,7 @@ import purescala.Definitions._
 
 object Heuristics {
   def all = Set[Synthesizer => Rule](
-    new IntInduction(_),
+    //new IntInduction(_),
     new OptimisticInjection(_),
     new ADTInduction(_)
   )
