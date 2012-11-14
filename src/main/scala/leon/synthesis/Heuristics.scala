@@ -247,6 +247,9 @@ class ADTInduction(synth: Synthesizer) extends Rule("ADT Induction", synth, 80) 
             val funPre = subst(origId -> Variable(inductOn), Or(globalPre))
             val outerPre = Or(globalPre)
 
+            newFun.precondition = Some(funPre)
+            newFun.postcondition = Some(And(Equals(ResultVariable(), Tuple(p.xs.map(Variable(_)))), p.phi))
+
             newFun.body = Some(MatchExpr(Variable(inductOn), cases))
 
             Solution(Or(globalPre), sols.flatMap(_.defs).toSet+newFun, FunctionInvocation(newFun, p.as.map(Variable(_))))
