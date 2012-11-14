@@ -1,6 +1,7 @@
 package leon.synthesis
 
 import leon.purescala.Trees._
+import leon.purescala.TypeTrees._
 import leon.purescala.Common._
 import leon.Evaluator 
 
@@ -9,18 +10,25 @@ object LinearEquations {
   //eliminate one variable from normalizedEquation t + a1*x1 + ... + an*xn = 0
   //return a mapping for each of the n variables in (pre, map, freshVars)
   def elimVariable(as: Set[Identifier], normalizedEquation: List[Expr]): (Expr, List[Expr], List[Identifier]) = {
+    println("elim in normalized: " + normalizedEquation)
     val t: Expr = normalizedEquation.head
     val coefsVars: List[Int] = normalizedEquation.tail.map{case IntLiteral(i) => i}
     val orderedParams: Array[Identifier] = as.toArray
-    val coefsParams: List[Int] = ArithmeticNormalization(t, orderedParams).map{case IntLiteral(i) => i}.toList
-    val d: Int = GCD.gcd((coefsParams.tail ++ coefsVars).toSeq)
+    val coefsParams0: List[Int] = ArithmeticNormalization(t, orderedParams).map{case IntLiteral(i) => i}.toList
+    val coefsParams: List[Int] = if(coefsParams0.head == 0) coefsParams0.tail else coefsParams0
+    val d: Int = GCD.gcd((coefsParams ++ coefsVars).toSeq)
 
-    if(d > 1) 
-      elimVariable(as, normalizedEquation.map(Division(_, IntLiteral(d)))) 
-    else {
+    if(coefsVars.size == 1) {
+      val coef = coefsVars.head
+      (Equals(Modulo(t, IntLiteral(coef)), IntLiteral(0)), List(UMinus(Division(t, IntLiteral(coef)))), List())
+    } else if(d > 1) {
+      val newCoefsParams: List[Expr] = coefsParams.map(i => IntLiteral(i/d) : Expr)
+      val newT = newCoefsParams.zip(IntLiteral(1)::orderedParams.map(Variable(_)).toList).foldLeft[Expr](IntLiteral(0))((acc, p) => Plus(acc, Times(p._1, p._2)))
+      elimVariable(as, newT :: normalizedEquation.tail.map{case IntLiteral(i) => IntLiteral(i/d) : Expr})
+    } else {
       val basis: Array[Array[Int]]  = linearSet(as, normalizedEquation.tail.map{case IntLiteral(i) => i}.toArray)
       val (pre, sol) = particularSolution(as, normalizedEquation)
-      val freshVars: Array[Identifier] = basis(0).map(_ => FreshIdentifier("v", true))
+      val freshVars: Array[Identifier] = basis(0).map(_ => FreshIdentifier("v", true).setType(Int32Type))
 
       val tbasis = basis.transpose
       assert(freshVars.size == tbasis.size)

@@ -60,6 +60,11 @@ class ArithmeticNormalizationSuite extends FunSuite {
     val e2 = Times(Plus(x, Times(i(2), y)), Plus(Plus(x, y), i(1)))
     checkSameExpr(toSum(expand(e2)), e2, xs)
 
+    val e3 = Minus(Plus(x, Times(i(2), y)), Plus(Plus(x, y), i(1)))
+    checkSameExpr(toSum(expand(e3)), e3, xs)
+
+    val e4 = UMinus(Plus(x, Times(i(2), y)))
+    checkSameExpr(toSum(expand(e4)), e4, xs)
   }
 
   test("apply") {

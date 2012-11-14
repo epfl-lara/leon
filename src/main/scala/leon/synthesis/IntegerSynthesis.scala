@@ -14,13 +14,20 @@ object IntegerSynthesis {
     //  case (None, f) => (f, xs.map(id => (Variable(id))))
     //  case (Some(eq), f) => {
     //    val vars: Set[Identifier] = variablesOf(eq)
-    //    val eqxs: List[Identifier] = xs.toSet.intersect(vars).toList
-    //    val ys: Set[Identifier] = xs.toSet.difference(vars).toList
     //    val eqas: Set[Identifier] = as.intersect(vars)
+
+    //    val eqxs: List[Identifier] = xs.toSet.intersect(vars).toList
+    //    val ys: Set[Identifier] = xs.toSet.diff(vars)
+
     //    val normalizedEq: List[Expr] = ArithmeticNormalization(Minus(eq.left, eq.right), eqxs.toArray).toList
     //    val (eqPre, eqWitness, eqFreshVars) = elimVariable(eqas, normalizedEq)
+
     //    val eqSubstMap: Map[Expr, Expr] = eqxs.zip(eqWitness).map{case (id, e) => (Variable(id), e)}.toMap
     //    val freshFormula = simplify(replace(eqSubstMap, f))
+    //    (eqPre, freshFormula)
+
+
+    //    /*
     //    val (recPre, recSubst) = apply(as, ys ++ eqFreshVars, freshFormula)
 
     //    val freshPre = simplify(replace(
@@ -29,7 +36,8 @@ object IntegerSynthesis {
     //      }.toMap,
     //      eqPre))
 
-    //    (And(freshPre, recPre), 
+    //    (And(freshPre, recPre), recSubst)
+    //    */
 
     //  }
     //}

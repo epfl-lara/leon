@@ -71,10 +71,11 @@ object ArithmeticNormalization {
   def expand(expr: Expr): Seq[Expr] = expr match {
     case Plus(es1, es2) => expand(es1) ++ expand(es2)
     case Minus(e1, e2) => expand(e1) ++ expand(e2).map(Times(IntLiteral(-1), _): Expr)
+    case UMinus(e) => expand(e).map(Times(IntLiteral(-1), _): Expr)
     case Times(es1, es2) => multiply(expand(es1), expand(es2))
     case v@Variable(_) => Seq(v)
     case n@IntLiteral(_) => Seq(n)
-    case _ => sys.error("Unexpected")
+    case err => sys.error("Unexpected in expand: " + err)
   }
 
   //simple, local simplifications
