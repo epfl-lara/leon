@@ -11,6 +11,7 @@ object LinearEquations {
   //return a mapping for each of the n variables in (pre, map, freshVars)
   def elimVariable(as: Set[Identifier], normalizedEquation: List[Expr]): (Expr, List[Expr], List[Identifier]) = {
     println("elim in normalized: " + normalizedEquation)
+    require(normalizedEquation.tail.forall{case IntLiteral(i) if i != 0 => true case _ => false})
     val t: Expr = normalizedEquation.head
     val coefsVars: List[Int] = normalizedEquation.tail.map{case IntLiteral(i) => i}
     val orderedParams: Array[Identifier] = as.toArray
