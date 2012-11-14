@@ -8,6 +8,8 @@ import purescala.Extractors._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
+import LinearEquations.elimVariable
+import ArithmeticNormalization.simplify
 
 object Rules {
   def all = Set[Synthesizer => Rule](
@@ -22,7 +24,8 @@ object Rules {
     new OptimisticGround(_),
     new EqualitySplit(_),
     new CEGIS(_),
-    new Assert(_)
+    new Assert(_),
+    new IntegerEquation(_)
   )
 }
 
@@ -527,6 +530,55 @@ class EqualitySplit(synth: Synthesizer) extends Rule("Eq. Split.", synth, 10) {
     if (!extraConds.isEmpty) {
       val sub = p.copy(phi = And(And(extraConds.toSeq), p.phi))
       RuleStep(List(sub), forward)
+    } else {
+      RuleInapplicable
+    }
+  }
+}
+
+class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth, 300) {
+  def applyOn(task: Task): RuleResult = {
+
+    val p = task.problem
+
+    val TopLevelAnds(exprs) = p.phi
+    val xs = p.xs
+    val as = p.as
+    val formula = p.phi
+
+    val (eqs, others) = exprs.partition(_.isInstanceOf[Equals])
+
+    if (!eqs.isEmpty) {
+
+      val (eq@Equals(_,_), rest) = (eqs.head, eqs.tail)
+      val allOthers = rest ++ others
+
+      val vars: Set[Identifier] = variablesOf(eq)
+      val eqas: Set[Identifier] = as.toSet.intersect(vars)
+
+      val eqxs: List[Identifier] = xs.toSet.intersect(vars).toList
+      val ys: Set[Identifier] = xs.toSet.diff(vars)
+
+      val normalizedEq: List[Expr] = ArithmeticNormalization(Minus(eq.left, eq.right), eqxs.toArray).toList
+      val (eqPre, eqWitness, eqFreshVars) = elimVariable(eqas, normalizedEq)
+
+      val eqSubstMap: Map[Expr, Expr] = eqxs.zip(eqWitness).map{case (id, e) => (Variable(id), simplify(e))}.toMap
+      val freshFormula = simplify(replace(eqSubstMap, And(allOthers)))
+      (eqPre, freshFormula)
+
+      val newProblem = Problem(as, And(eqPre, p.c), freshFormula, eqFreshVars)
+
+      val onSuccess: List[Solution] => Solution = { 
+        case List(Solution(pre, defs, term)) =>
+          if (eqFreshVars.isEmpty) {
+            Solution(pre, defs, replace(eqSubstMap, Tuple(eqxs.map(Variable(_)))))
+          } else {
+            Solution(pre, defs, LetTuple(eqFreshVars, term, replace(eqSubstMap, Tuple(eqxs.map(Variable(_))))))
+          }
+        case _ => Solution.none
+      }
+
+      RuleStep(List(newProblem), onSuccess)
     } else {
       RuleInapplicable
     }
