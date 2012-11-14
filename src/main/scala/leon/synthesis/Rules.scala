@@ -20,6 +20,7 @@ object Rules {
     new UnusedInput(_),
     new UnconstrainedOutput(_),
     new OptimisticGround(_),
+    new EqualitySplit(_),
     new CEGIS(_),
     new Assert(_)
   )
@@ -281,7 +282,7 @@ class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth, 200) {
   }
 }
 
-class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 50) {
+class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
@@ -457,7 +458,7 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 50) {
   }
 }
 
-class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", synth, 90) {
+class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", synth, 150) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
@@ -507,6 +508,25 @@ class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", syn
       }
 
       result.getOrElse(RuleInapplicable)
+    } else {
+      RuleInapplicable
+    }
+  }
+}
+
+class EqualitySplit(synth: Synthesizer) extends Rule("Eq. Split.", synth, 10) {
+  def applyOn(task: Task): RuleResult = {
+    val p = task.problem
+
+    val asgroups = p.as.groupBy(_.getType).filter(_._2.size == 2).mapValues(_.toList)
+
+    val extraConds = for (List(a1, a2) <- asgroups.values) yield {
+      Or(Equals(Variable(a1), Variable(a2)), Not(Equals(Variable(a1), Variable(a2))))
+    }
+
+    if (!extraConds.isEmpty) {
+      val sub = p.copy(phi = And(And(extraConds.toSeq), p.phi))
+      RuleStep(List(sub), forward)
     } else {
       RuleInapplicable
     }
