@@ -301,4 +301,8 @@ object Extractors {
     }
   }
 
+  object IsTyped {
+    def unapply[T <: Typed](e: T): Option[(T, TypeTree)] = Some((e, e.getType))
+  }
+
 }

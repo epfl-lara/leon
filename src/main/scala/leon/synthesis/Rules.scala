@@ -24,8 +24,8 @@ object Rules {
     new OptimisticGround(_),
     new EqualitySplit(_),
     new CEGIS(_),
-    new Assert(_),
-    new IntegerEquation(_)
+    new Assert(_)
+    //new IntegerEquation(_)
   )
 }
 
