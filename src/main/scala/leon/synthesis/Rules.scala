@@ -441,7 +441,7 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
                 result = Some(RuleSuccess(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(mapping))).setType(tpe))))
 
               case _ =>
-                reporter.warning("Solver returned 'UNKNOWN' in a CEGIS iteration.")
+                synth.reporter.warning("Solver returned 'UNKNOWN' in a CEGIS iteration.")
                 continue = false
             }
 
