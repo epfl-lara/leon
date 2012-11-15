@@ -113,6 +113,13 @@ object Trees {
 
   class MatchExpr(val scrutinee: Expr, val cases: Seq[MatchCase]) extends Expr with ScalacPositional {
     def scrutineeClassType: ClassType = scrutinee.getType.asInstanceOf[ClassType]
+
+    override def equals(that: Any): Boolean = (that != null) && (that match {
+      case t: MatchExpr => t.scrutinee == scrutinee && t.cases == cases
+      case _ => false
+    })
+
+    override def hashCode: Int = scrutinee.hashCode+cases.hashCode
   }
 
   sealed abstract class MatchCase extends Serializable {
@@ -184,6 +191,13 @@ object Trees {
 
   class And private (val exprs: Seq[Expr]) extends Expr with FixedType {
     val fixedType = BooleanType
+
+    override def equals(that: Any): Boolean = (that != null) && (that match {
+      case t: And => t.exprs == exprs
+      case _ => false
+    })
+
+    override def hashCode: Int = exprs.hashCode
   }
 
   object Or {
@@ -203,6 +217,13 @@ object Trees {
 
   class Or(val exprs: Seq[Expr]) extends Expr with FixedType {
     val fixedType = BooleanType
+
+    override def equals(that: Any): Boolean = (that != null) && (that match {
+      case t: Or => t.exprs == exprs
+      case _ => false
+    })
+
+    override def hashCode: Int = exprs.hashCode
   }
 
   object Iff {
@@ -221,6 +242,13 @@ object Trees {
 
   class Iff(val left: Expr, val right: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
+
+    override def equals(that: Any): Boolean = (that != null) && (that match {
+      case t: Iff => t.left == left
+      case _ => false
+    })
+
+    override def hashCode: Int = left.hashCode + right.hashCode
   }
 
   object Implies {
@@ -242,6 +270,13 @@ object Trees {
     //   println("culprits: " + left.getType + ", " + right.getType)
     //   assert(false)
     // }
+
+    override def equals(that: Any): Boolean = (that != null) && (that match {
+      case t: Iff => t.left == left
+      case _ => false
+    })
+
+    override def hashCode: Int = left.hashCode + right.hashCode
   }
 
   case class Not(expr: Expr) extends Expr with FixedType {
