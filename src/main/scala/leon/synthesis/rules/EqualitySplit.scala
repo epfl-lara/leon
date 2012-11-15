@@ -21,14 +21,18 @@ class EqualitySplit(synth: Synthesizer) extends Rule("Eq. Split.", synth, 90) {
           case _ => false
         }
 
-        val toValNE = Implies(p.c, Not(Equals(Variable(a1), Variable(a2))))
+        if (!impliesEQ) {
+          val toValNE = Implies(p.c, Not(Equals(Variable(a1), Variable(a2))))
 
-        val impliesNE = synth.solver.solveSAT(Not(toValNE)) match {
-          case (Some(false), _) => true
-          case _ => false
+          val impliesNE = synth.solver.solveSAT(Not(toValNE)) match {
+            case (Some(false), _) => true
+            case _ => false
+          }
+
+          !impliesNE
+        } else {
+          false
         }
-
-        !impliesNE && !impliesEQ
       case _ => false
     }
 
