@@ -174,18 +174,25 @@ object Trees {
 
   /* Propositional logic */
   object And {
-    def apply(l: Expr, r: Expr) : Expr = (l,r) match {
-      case (BooleanLiteral(false),_) => BooleanLiteral(false)
-      case (BooleanLiteral(true),_)  => r
-      case (_,BooleanLiteral(true))  => l
-      case _ => new And(Seq(l,r))
-    }
+    def apply(l: Expr, r: Expr) : Expr = And(Seq(l, r))
+
     def apply(exprs: Seq[Expr]) : Expr = {
-      val simpler = exprs.flatMap(_ match {
+      val flat = exprs.flatMap(_ match {
         case And(es) => es
         case o => Seq(o)
-      }).takeWhile(_ != BooleanLiteral(false)).filter(_ != BooleanLiteral(true))
-      if(simpler.isEmpty) BooleanLiteral(true) else new And(simpler)
+      })
+
+      var stop = false
+      val simpler = for(e <- flat if !stop && e != BooleanLiteral(true)) yield {
+        if(e == BooleanLiteral(false)) stop = true
+        e
+      }
+
+      simpler match {
+        case Seq() => BooleanLiteral(true)
+        case Seq(x) => x
+        case _ => new And(simpler)
+      }
     }
 
     def unapply(and: And) : Option[Seq[Expr]] = 
@@ -194,6 +201,8 @@ object Trees {
 
   class And private (val exprs: Seq[Expr]) extends Expr with FixedType {
     val fixedType = BooleanType
+
+    assert(exprs.size >= 2)
 
     override def equals(that: Any): Boolean = (that != null) && (that match {
       case t: And => t.exprs == exprs
@@ -211,12 +220,22 @@ object Trees {
       case _ => new Or(Seq(l,r))
     }
     def apply(exprs: Seq[Expr]) : Expr = {
-      val simpler = exprs.flatMap(_ match {
+      val flat = exprs.flatMap(_ match {
         case Or(es) => es
         case o => Seq(o)
-      }).takeWhile(_ != BooleanLiteral(true)).filter(_ != BooleanLiteral(false))
+      })
 
-      if(simpler.isEmpty) BooleanLiteral(false) else new Or(simpler)
+      var stop = false
+      val simpler = for(e <- flat if !stop && e != BooleanLiteral(false)) yield {
+        if(e == BooleanLiteral(true)) stop = true
+        e
+      }
+
+      simpler match {
+        case Seq() => BooleanLiteral(false)
+        case Seq(x) => x
+        case _ => new Or(simpler)
+      }
     }
 
     def unapply(or: Or) : Option[Seq[Expr]] = 
@@ -225,6 +244,8 @@ object Trees {
 
   class Or(val exprs: Seq[Expr]) extends Expr with FixedType {
     val fixedType = BooleanType
+
+    assert(exprs.size >= 2)
 
     override def equals(that: Any): Boolean = (that != null) && (that match {
       case t: Or => t.exprs == exprs

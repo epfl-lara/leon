@@ -8,7 +8,7 @@ import leon.SilentReporter
 
 import org.scalatest.FunSuite
 
-class TreeOpsTest extends FunSuite {
+class TreeOpsTests extends FunSuite {
   private val silentReporter = new SilentReporter
   
   private val emptyProgram = Program(
