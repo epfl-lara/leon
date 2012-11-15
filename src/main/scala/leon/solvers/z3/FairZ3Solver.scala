@@ -161,6 +161,11 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     }
   }
 
+  override def solveSATWithCores(expression: Expr, assumptions: Set[Expr]): (Option[Boolean], Map[Identifier, Expr], Set[Expr]) = {
+    restartZ3
+    decideWithModel(expression, false, None, Some(assumptions))
+  }
+
   private[this] def decideWithModel(vc: Expr, forValidity: Boolean, evaluator: Option[(Map[Identifier,Expr]) => Boolean] = None, assumptions: Option[Set[Expr]] = None): (Option[Boolean], Map[Identifier,Expr], Set[Expr]) = {
     val initializationStopwatch = new Stopwatch("init",               false)
     val blocking2Z3Stopwatch    = new Stopwatch("blocking-set-to-z3", false)

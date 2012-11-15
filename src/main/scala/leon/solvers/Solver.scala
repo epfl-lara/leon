@@ -33,6 +33,15 @@ abstract class Solver(val reporter: Reporter) extends Extension(reporter) {
     }
   }
 
+  def solveSATWithCores(expression: Expr, assumptions: Set[Expr]): (Option[Boolean], Map[Identifier, Expr], Set[Expr]) = {
+    solveSAT(And(expression +: assumptions.toSeq)) match {
+      case (Some(false), _) =>
+        (Some(false), Map(), assumptions)
+      case (r, m) =>
+        (r, m, Set())
+    }
+  }
+
   def superseeds : Seq[String] = Nil
 
   private var _forceStop = false
