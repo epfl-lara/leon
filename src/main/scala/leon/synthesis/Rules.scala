@@ -20,7 +20,7 @@ object Rules {
     new EqualitySplit(_),
     new CEGIS(_),
     new Assert(_),
-    new ADTSplit(_),
+//    new ADTSplit(_),
     new IntegerEquation(_)
   )
 }

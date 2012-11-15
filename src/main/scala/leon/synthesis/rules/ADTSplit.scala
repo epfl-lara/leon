@@ -9,7 +9,7 @@ import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.Definitions._
 
-class ADTSplit(synth: Synthesizer) extends Rule("ADT Split.", synth, 90) {
+class ADTSplit(synth: Synthesizer) extends Rule("ADT Split.", synth, 70) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
@@ -50,12 +50,14 @@ class ADTSplit(synth: Synthesizer) extends Rule("ADT Split.", synth, 90) {
 
         val subInfo = for(ccd <- cases) yield {
            val subId  = FreshIdentifier(ccd.id.name, true).setType(CaseClassType(ccd))
-           val subPre = CaseClassInstanceOf(ccd, Variable(id))
-           val subPhi = subst(id -> Variable(subId), p.phi)
-           val subProblem = Problem(subId :: oas, And(p.c, subPre), subPhi, p.xs)
-           val subPattern = CaseClassPattern(Some(subId), ccd, ccd.fieldsIds.map(id => WildcardPattern(None)))
+           val args   = ccd.fieldsIds.map(id => FreshIdentifier(id.name, true).setType(id.getType)).toList
+           val subPre = Equals(CaseClass(ccd, args.map(Variable(_))), Variable(subId))
 
-           (subProblem, subPre, subPattern)
+           val subPhi = subst(id -> Variable(subId), p.phi)
+           val subProblem = Problem(subId :: args ::: oas, And(p.c, subPre), subPhi, p.xs)
+           val subPattern = CaseClassPattern(Some(subId), ccd, args.map(id => WildcardPattern(Some(id))))
+
+           (ccd, subProblem, subPattern)
         }
 
 
@@ -63,8 +65,8 @@ class ADTSplit(synth: Synthesizer) extends Rule("ADT Split.", synth, 90) {
           case sols =>
             var globalPre = List[Expr]()
 
-            val cases = for ((sol, (problem, pre, pattern)) <- (sols zip subInfo)) yield {
-              globalPre ::= And(pre, sol.pre)
+            val cases = for ((sol, (ccd, problem, pattern)) <- (sols zip subInfo)) yield {
+              globalPre ::= And(CaseClassInstanceOf(ccd, Variable(id)), sol.pre)
 
               SimpleCase(pattern, sol.term)
             }
@@ -72,7 +74,7 @@ class ADTSplit(synth: Synthesizer) extends Rule("ADT Split.", synth, 90) {
             Solution(Or(globalPre), sols.flatMap(_.defs).toSet, MatchExpr(Variable(id), cases))
         }
 
-        HeuristicStep(synth, p, subInfo.map(_._1).toList, onSuccess)
+        HeuristicStep(synth, p, subInfo.map(_._2).toList, onSuccess)
       case _ =>
         RuleInapplicable
     }
