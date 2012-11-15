@@ -139,14 +139,12 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     })
   }
 
-
-  override def isUnsat(vc: Expr) = decide(vc, false)
-
   def solve(vc: Expr) = decide(vc, true)
 
   override def solveOrGetCounterexample(vc : Expr) : (Option[Boolean],Map[Identifier,Expr]) = {
     restartZ3
-    decideWithModel(vc, true)
+    val (res, model, core) = decideWithModel(vc, true)
+    (res, model)
   }
 
   def decide(vc: Expr, forValidity: Boolean):Option[Boolean] = {
@@ -163,7 +161,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     }
   }
 
-  def decideWithModel(vc: Expr, forValidity: Boolean, evaluator: Option[(Map[Identifier,Expr]) => Boolean] = None, assumptions: Option[Set[Expr]] = None): (Option[Boolean], Map[Identifier,Expr]) = {
+  private[this] def decideWithModel(vc: Expr, forValidity: Boolean, evaluator: Option[(Map[Identifier,Expr]) => Boolean] = None, assumptions: Option[Set[Expr]] = None): (Option[Boolean], Map[Identifier,Expr], Set[Expr]) = {
     val initializationStopwatch = new Stopwatch("init",               false)
     val blocking2Z3Stopwatch    = new Stopwatch("blocking-set-to-z3", false)
     val z3SearchStopwatch       = new Stopwatch("z3-search-1",        false)
@@ -193,11 +191,14 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     foundDefinitiveAnswer = false
 
     var definitiveAnswer : Option[Boolean] = None
-    var definitiveModel : Map[Identifier,Expr] = Map.empty
-    def foundAnswer(answer : Option[Boolean], model : Map[Identifier,Expr] = Map.empty) : Unit = {
+    var definitiveModel  : Map[Identifier,Expr] = Map.empty
+    var definitiveCore   : Set[Expr] = Set.empty
+
+    def foundAnswer(answer : Option[Boolean], model : Map[Identifier,Expr] = Map.empty, core: Set[Expr] = Set.empty) : Unit = {
       foundDefinitiveAnswer = true
       definitiveAnswer = answer
-      definitiveModel = model
+      definitiveModel  = model
+      definitiveCore   = core
       //timer.foreach(t => t.halt)
     }
 
@@ -241,27 +242,28 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
       // println("Blocking set : " + blockingSet)
       blocking2Z3Stopwatch.stop
 
-      if(Settings.useCores) {
-        // NOOP
-      } else {
-        z3.push
-        if(!blockingSetAsZ3.isEmpty)
-          z3.assertCnstr(z3.mkAnd(blockingSetAsZ3 : _*))
-      }
+      z3.push
+      if(!blockingSetAsZ3.isEmpty)
+        z3.assertCnstr(z3.mkAnd(blockingSetAsZ3 : _*))
 
       reporter.info(" - Running Z3 search...")
-      val answerModelCore : (Option[Boolean], Z3Model, Seq[Z3AST]) = if(Settings.useCores) {
-        // println(blockingSetAsZ3)
-        z3.checkAssumptions(blockingSetAsZ3 : _*)
-      } else {
+      val answerModelCore : (Option[Boolean], Z3Model, Set[Expr]) = {
         z3SearchStopwatch.start
-        val (a, m, _) = assumptionsAsZ3 match {
+        val (a, m, c) = assumptionsAsZ3 match {
           case Some(as) => z3.checkAssumptions(as: _*)
           case None => val res = z3.checkAndGetModel(); (res._1, res._2, Seq.empty[Z3AST])
         }
         z3SearchStopwatch.stop
-        (a, m, Seq.empty[Z3AST])
+
+        val core: Set[Expr] = c.map(ast => fromZ3Formula(m, ast, Some(BooleanType)) match {
+          case n @ Not(Variable(_)) => n
+          case v @ Variable(_) => v
+          case _ => scala.sys.error("Impossible element extracted from core: " + ast)
+        }).toSet
+
+        (a, m, core)
       }
+
       val (answer, model, core) = answerModelCore // to work around the stupid type inferer
 
       reporter.info(" - Finished search with blocked literals")
@@ -280,10 +282,6 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
           reporter.warning("Z3 doesn't know because: " + z3.getSearchFailure.message)
           foundAnswer(None)
           m.delete
-
-          if(!Settings.useCores) {
-            z3.pop(1)
-          }
         }
         case (Some(true), m) => { // SAT
           validatingStopwatch.start
@@ -306,18 +304,9 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
             reporter.error(model)
             foundAnswer(None, model)
           }
-
-          if(!Settings.useCores) {
-            z3.pop(1)
-          }
         }
-        case (Some(false), m) if Settings.useCores && core.isEmpty => {
-          reporter.info("Empty core, definitively valid.")
-          m.delete
-          foundAnswer(Some(true))
-        }
-        case (Some(false), m) if !Settings.useCores && blockingSet.isEmpty => {
-          foundAnswer(Some(true))
+        case (Some(false), m) if blockingSet.isEmpty => {
+          foundAnswer(Some(true), core = core)
           z3.pop(1)
         }
         // This branch is both for with and without unsat cores. The
@@ -340,7 +329,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
             reporter.info(" - Finished search without blocked literals")
 
             if (result2 == Some(false)) {
-              foundAnswer(Some(true))
+              foundAnswer(Some(true), core = core)
             } else {
               luckyStopwatch.start
               Logger.debug("Model Found: " + m2, 4, "z3solver")
@@ -363,7 +352,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
             reporter.info(" - Finished search without blocked literals")
 
             if (result2 == Some(false)) {
-              foundAnswer(Some(true))
+              foundAnswer(Some(true), core = core)
             }
           }
 
@@ -376,23 +365,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
 
             unrollingStopwatch.start
 
-            val toRelease : Set[Expr] = if(Settings.useCores) {
-              unrollingCounter = unrollingCounter + 1
-              if (unrollingCounter > unrollingThreshold) {
-                reporter.info(" - Reached threshold for unrolling all blocked literals, will unroll all now.")
-                unrollingCounter = 0
-                blockingSet
-              } else {
-                // reporter.info(" - Will only unroll literals from core")
-                core.map(ast => fromZ3Formula(m, ast, Some(BooleanType)) match {
-                  case n @ Not(Variable(_)) => n
-                  case v @ Variable(_) => v
-                  case _ => scala.sys.error("Impossible element extracted from core: " + ast)
-                }).toSet
-              }
-            } else {
-              blockingSet
-            }
+            val toRelease : Set[Expr] = blockingSet
 
             // reporter.info(" - toRelease   : " + toRelease)
             // reporter.info(" - blockingSet : " + blockingSet)
@@ -478,10 +451,10 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     validatingStopwatch.writeToSummary
 
     if(forceStop) {
-      (None, Map.empty)
+      (None, Map.empty, Set.empty)
     } else {
       assert(foundDefinitiveAnswer)
-      (definitiveAnswer, definitiveModel)
+      (definitiveAnswer, definitiveModel, definitiveCore)
     }
   }
 

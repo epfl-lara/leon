@@ -81,15 +81,15 @@ class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
         
       z3Solver.init()
       z3Solver.restartZ3
-      val (solverResult, model) = z3Solver.decideWithModel(pathCond, false)
+      val (solverResult, model) = z3Solver.solveSAT(pathCond)
 
       solverResult match {
         case None => Seq()
-        case Some(true) => {
+        case Some(false) => {
           reporter.info("The path is unreachable")
           Seq()
         }
-        case Some(false) => {
+        case Some(true) => {
           reporter.info("The model should be used as the testcase")
           Seq(model)
         }

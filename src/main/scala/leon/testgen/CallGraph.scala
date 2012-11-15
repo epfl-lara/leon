@@ -204,15 +204,15 @@ class CallGraph(val program: Program) {
 
               var testcase: Option[Map[Identifier, Expr]] = None
                 
-              val (solverResult, model) = z3Solver.decideWithModel(pc, false)
+              val (solverResult, model) = z3Solver.solveSAT(pc)
               solverResult match {
                 case None => {
                   false
                 }
-                case Some(true) => {
+                case Some(false) => {
                   false
                 }
-                case Some(false) => {
+                case Some(true) => {
                   val recPath = rec(x, xs, path ++ intermediatePath)
                   recPath match {
                     case None => false

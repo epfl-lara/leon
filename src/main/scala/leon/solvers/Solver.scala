@@ -33,7 +33,6 @@ abstract class Solver(val reporter: Reporter) extends Extension(reporter) {
     }
   }
 
-  def isUnsat(expression: Expr) : Option[Boolean] = solve(negate(expression))
   def superseeds : Seq[String] = Nil
 
   private var _forceStop = false
