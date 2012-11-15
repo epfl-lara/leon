@@ -181,8 +181,11 @@ object Trees {
       case _ => new And(Seq(l,r))
     }
     def apply(exprs: Seq[Expr]) : Expr = {
-      val simpler = exprs.filter(_ != BooleanLiteral(true))
-      if(simpler.isEmpty) BooleanLiteral(true) else simpler.reduceRight(And(_,_))
+      val simpler = exprs.flatMap(_ match {
+        case And(es) => es
+        case o => Seq(o)
+      }).takeWhile(_ != BooleanLiteral(false)).filter(_ != BooleanLiteral(true))
+      if(simpler.isEmpty) BooleanLiteral(true) else new And(simpler)
     }
 
     def unapply(and: And) : Option[Seq[Expr]] = 
@@ -202,13 +205,18 @@ object Trees {
 
   object Or {
     def apply(l: Expr, r: Expr) : Expr = (l,r) match {
+      case (BooleanLiteral(true),_)  => BooleanLiteral(true)
       case (BooleanLiteral(false),_) => r
       case (_,BooleanLiteral(false)) => l
       case _ => new Or(Seq(l,r))
     }
     def apply(exprs: Seq[Expr]) : Expr = {
-      val simpler = exprs.filter(_ != BooleanLiteral(false))
-      if(simpler.isEmpty) BooleanLiteral(false) else simpler.reduceRight(Or(_,_))
+      val simpler = exprs.flatMap(_ match {
+        case Or(es) => es
+        case o => Seq(o)
+      }).takeWhile(_ != BooleanLiteral(true)).filter(_ != BooleanLiteral(false))
+
+      if(simpler.isEmpty) BooleanLiteral(false) else new Or(simpler)
     }
 
     def unapply(or: Or) : Option[Seq[Expr]] = 
