@@ -81,7 +81,7 @@ class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth
               val id2res: Map[Expr, Expr] = 
                 freshsubxs.zip(subproblemxs).map{case (id1, id2) => (Variable(id1), Variable(id2))}.toMap ++
                 neqxs.map(id => (Variable(id), eqSubstMap(Variable(id)))).toMap
-              Solution(And(eqPre, pre), defs, LetTuple(subproblemxs, term, replace(id2res, Tuple(problem.xs.map(Variable(_))))))
+              Solution(And(eqPre, pre), defs, simplify(simplifyLets(LetTuple(subproblemxs, term, replace(id2res, Tuple(problem.xs.map(Variable(_))))))))
             }
             case _ => Solution.none
           }
