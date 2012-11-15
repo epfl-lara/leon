@@ -20,15 +20,13 @@ abstract class Solver(val reporter: Reporter) extends Extension(reporter) {
   // should halt as soon as possible with any result (Unknown is ok) as soon as forceStop is true
   def solve(expression: Expr) : Option[Boolean]
 
-  def solveOrGetCounterexample(expression : Expr) : (Option[Boolean],Map[Identifier,Expr]) = (solve(expression), Map.empty)
-
   def solveSAT(expression: Expr): (Option[Boolean], Map[Identifier, Expr]) = {
-    solveOrGetCounterexample(Not(expression)) match {
-      case (Some(true), _) =>
+    solve(Not(expression)) match {
+      case Some(true) =>
         (Some(false), Map())
-      case (Some(false), model) =>
-        (Some(true), model)
-      case (None, _) =>
+      case Some(false) =>
+        (Some(true), Map())
+      case None =>
         (None, Map())
     }
   }

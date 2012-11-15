@@ -141,9 +141,9 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
 
   def solve(vc: Expr) = decide(vc, true)
 
-  override def solveOrGetCounterexample(vc : Expr) : (Option[Boolean],Map[Identifier,Expr]) = {
+  override def solveSAT(vc : Expr) : (Option[Boolean],Map[Identifier,Expr]) = {
     restartZ3
-    val (res, model, core) = decideWithModel(vc, true)
+    val (res, model, core) = decideWithModel(vc, false)
     (res, model)
   }
 

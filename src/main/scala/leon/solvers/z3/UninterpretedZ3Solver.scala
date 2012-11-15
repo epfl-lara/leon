@@ -51,26 +51,26 @@ class UninterpretedZ3Solver(reporter : Reporter) extends Solver(reporter) with A
   protected[leon] def functionDeclToDef(decl: Z3FuncDecl) : FunDef = reverseFunctionMap(decl)
   protected[leon] def isKnownDecl(decl: Z3FuncDecl) : Boolean = reverseFunctionMap.isDefinedAt(decl)
 
-  override def solve(expression: Expr) : Option[Boolean] = solveOrGetCounterexample(expression)._1
+  override def solve(expression: Expr) : Option[Boolean] = solveSAT(Not(expression))._1.map(!_)
 
   // Where the solving occurs
-  override def solveOrGetCounterexample(expression : Expr) : (Option[Boolean],Map[Identifier,Expr]) = {
+  override def solveSAT(expression : Expr) : (Option[Boolean],Map[Identifier,Expr]) = {
     restartZ3
 
     val emptyModel    = Map.empty[Identifier,Expr]
     val unknownResult = (None, emptyModel)
-    val validResult   = (Some(true), emptyModel)
+    val unsatResult   = (Some(false), emptyModel)
 
     val result = toZ3Formula(expression).map { asZ3 => 
-      z3.assertCnstr(z3.mkNot(asZ3))
+      z3.assertCnstr(asZ3)
       z3.checkAndGetModel() match {
-        case (Some(false), _) => validResult
+        case (Some(false), _) => unsatResult
         case (Some(true), model) => {
           if(containsFunctionCalls(expression)) {
             unknownResult
           } else { 
             val variables = variablesOf(expression)
-            val r = (Some(false), modelToMap(model, variables))
+            val r = (Some(true), modelToMap(model, variables))
             model.delete
             r
           }
