@@ -107,21 +107,17 @@ object ArithmeticNormalization {
     simplePostTransform(simplify0)(expr)
   }
 
-  //assume the formula consist only of top level AND, find a top level
-  //Equals and extract it, return the remaining formula as well
-  //warning: also assume that And are always binary !
+  // Assume the formula consist only of top level AND, find a top level
+  // Equals and extract it, return the remaining formula as well
   def extractEquals(expr: Expr): (Option[Equals], Expr) = expr match {
-    case And(Seq(eq@Equals(_, _), f)) => (Some(eq), f)
-    case And(Seq(f, eq@Equals(_, _))) => (Some(eq), f)
-    case And(Seq(f1, f2)) => extractEquals(f1) match {
-      case (Some(eq), r) => (Some(eq), And(r, f2))
-      case (None, r1) => {
-        val (eq, r2) = extractEquals(f2)
-        (eq, And(r1, r2))
+    case And(es) =>
+      // OK now I'm just messing with you.
+      val (r, nes) = es.foldLeft[(Option[Equals],Seq[Expr])]((None, Seq())) {
+        case ((None, nes), eq @ Equals(_,_)) => (Some(eq), nes)
+        case ((o, nes), e) => (o, e +: nes)
       }
-    }
+      (r, And(nes.reverse))
+
     case e => (None, e)
   }
-
-
 }
