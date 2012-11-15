@@ -326,14 +326,20 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
             // we need the model to perform the additional test
             reporter.info(" - Running search without blocked literals (w/ lucky test)")
             secondZ3SearchStopwatch.start
-            val (result2,m2) = assumptionsAsZ3 match {
-              case Some(as) => val res = z3.checkAssumptions(as: _*); (res._1, res._2)
-              case None => z3.checkAndGetModel()
+            val (result2,m2,c2) = assumptionsAsZ3 match {
+              case Some(as) => z3.checkAssumptions(as: _*)
+              case None => val res = z3.checkAndGetModel(); (res._1, res._2, Seq.empty[Z3AST])
             }
             secondZ3SearchStopwatch.stop
             reporter.info(" - Finished search without blocked literals")
 
             if (result2 == Some(false)) {
+              val core: Set[Expr] = c2.map(ast => fromZ3Formula(m, ast, Some(BooleanType)) match {
+                case n @ Not(Variable(_)) => n
+                case v @ Variable(_) => v
+                case _ => scala.sys.error("Impossible element extracted from core: " + ast)
+              }).toSet
+
               foundAnswer(Some(true), core = core)
             } else {
               luckyStopwatch.start
