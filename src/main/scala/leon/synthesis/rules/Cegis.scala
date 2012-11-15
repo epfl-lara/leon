@@ -64,7 +64,8 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
       p.as.filter(a => isSubtypeOf(a.getType, t)).map(id => (Variable(id) : Expr, Set[Identifier]()))
     }
 
-    case class TentativeFormula(phi: Expr,
+    case class TentativeFormula(pathcond: Expr,
+                                phi: Expr,
                                 program: Expr,
                                 mappings: Map[Identifier, (Identifier, Expr)],
                                 recTerms: Map[Identifier, Set[Identifier]]) {
@@ -100,13 +101,13 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
           newProgram = newProgram ::: pre :: cases
         }
 
-        TentativeFormula(phi, And(program :: newProgram), mappings ++ newMappings, newRecTerms)
+        TentativeFormula(pathcond, phi, And(program :: newProgram), mappings ++ newMappings, newRecTerms)
       }
 
       def bounds = recTerms.keySet.map(id => Not(Variable(id))).toList
       def bss = mappings.keySet
 
-      def entireFormula = And(phi :: program :: bounds)
+      def entireFormula = And(pathcond :: phi :: program :: bounds)
     }
 
     var result: Option[RuleResult]   = None
@@ -114,11 +115,12 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
     var ass = p.as.toSet
     var xss = p.xs.toSet
 
-    var lastF     = TentativeFormula(Implies(p.c, p.phi), BooleanLiteral(true), Map(), Map() ++ p.xs.map(x => x -> Set(x)))
+    var lastF     = TentativeFormula(p.c, p.phi, BooleanLiteral(true), Map(), Map() ++ p.xs.map(x => x -> Set(x)))
     var currentF  = lastF.unroll
     var unrolings = 0
     val maxUnrolings = 2
     do {
+      //println("="*80)
       //println("Was: "+lastF.entireFormula)
       //println("Now Trying : "+currentF.entireFormula)
 
@@ -141,15 +143,43 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
             val fixedBss = And(bss.map(b => Equals(Variable(b), satModel(b))).toSeq)
             //println("Phi with fixed sat bss: "+fixedBss)
 
-            val counterPhi = Implies(And(fixedBss, currentF.program), currentF.phi)
+            val counterPhi = And(Seq(currentF.pathcond, fixedBss, currentF.program, Not(currentF.phi)))
             //println("Formula to validate: "+counterPhi)
 
-            synth.solver.solveSAT(Not(counterPhi)) match {
+            synth.solver.solveSAT(counterPhi) match {
               case (Some(true), invalidModel) =>
+                val fixedAss = And(ass.map(a => Equals(Variable(a), invalidModel(a))).toSeq)
+
+                val mustBeUnsat = And(currentF.pathcond :: currentF.program :: fixedAss :: currentF.phi :: Nil)
+
+                val bssAssumptions: Set[Expr] = bss.toSet.map { b: Identifier => satModel(b) match {
+                  case BooleanLiteral(true) => Variable(b)
+                  case BooleanLiteral(false) => Not(Variable(b))
+                }}
+
+                val unsatCore = synth.solver.solveSATWithCores(mustBeUnsat, bssAssumptions) match {
+                  case ((Some(false), _, core)) =>
+                    //println("Formula: "+mustBeUnsat)
+                    //println("Core:    "+core)
+                    //println(synth.solver.solveSAT(And(mustBeUnsat +: bssAssumptions.toSeq)))
+                    //println("maxcore: "+bssAssumptions)
+                    if (core.isEmpty) {
+                      synth.reporter.warning("Got empty core, must be unsat without assumptions!")
+                      Set()
+                    } else {
+                      core
+                    }
+                  case _ =>
+                    bssAssumptions
+                }
+
                 // Found as such as the xs break, refine predicates
                 //println("Found counter EX: "+invalidModel)
-                predicates = Not(And(bss.map(b => Equals(Variable(b), satModel(b))).toSeq)) +: predicates
-                //println("Let's avoid this case: "+bss.map(b => Equals(Variable(b), satModel(b))).mkString(" "))
+                if (unsatCore.isEmpty) {
+                  continue = false
+                } else {
+                  predicates = Not(And(unsatCore.toSeq)) +: predicates
+                }
 
               case (Some(false), _) =>
                 //println("Sat model: "+satModel.toSeq.sortBy(_._1.toString).map{ case (id, v) => id+" -> "+v }.mkString(", "))
