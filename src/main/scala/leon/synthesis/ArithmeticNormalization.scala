@@ -83,6 +83,7 @@ object ArithmeticNormalization {
   //simple, local simplifications
   //you should not assume anything smarter than some constant folding and simple cancelation
   def simplify(expr: Expr): Expr = {
+    println("simplify: " + expr)
     
     def simplify0(expr: Expr): Expr = expr match {
       case Plus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 + i2)
@@ -103,8 +104,13 @@ object ArithmeticNormalization {
       case Division(e, IntLiteral(1)) => e
       case e => e
     }
-    //need to do a fixpoint here
-    simplePostTransform(simplify0)(expr)
+    def fix[A](f: (A) => A)(a: A): A = {
+      val na = f(a)
+      if(a == na) a else fix(f)(na)
+    }
+    val res = fix(simplePostTransform(simplify0))(expr)
+    println("into: " + res)
+    res
   }
 
   //assume the formula consist only of top level AND, find a top level
