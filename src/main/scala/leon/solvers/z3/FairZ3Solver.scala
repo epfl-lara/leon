@@ -139,7 +139,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     })
   }
 
-  def solve(vc: Expr) = decide(vc, true)
+  override def solve(vc: Expr) = decide(vc, true)
 
   override def solveSAT(vc : Expr) : (Option[Boolean],Map[Identifier,Expr]) = {
     restartZ3
@@ -458,8 +458,13 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
     if(forceStop) {
       (None, Map.empty, Set.empty)
     } else {
-      assert(foundDefinitiveAnswer)
-      (definitiveAnswer, definitiveModel, definitiveCore)
+      val realAnswer = if(forValidity) {
+        definitiveAnswer
+      } else {
+        definitiveAnswer.map(!_)
+      }
+
+      (realAnswer, definitiveModel, definitiveCore)
     }
   }
 
