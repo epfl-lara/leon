@@ -83,8 +83,6 @@ object ArithmeticNormalization {
   //simple, local simplifications
   //you should not assume anything smarter than some constant folding and simple cancelation
   def simplify(expr: Expr): Expr = {
-    println("simplify: " + expr)
-    
     def simplify0(expr: Expr): Expr = expr match {
       case Plus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 + i2)
       case Plus(IntLiteral(0), e) => e
@@ -109,7 +107,6 @@ object ArithmeticNormalization {
       if(a == na) a else fix(f)(na)
     }
     val res = fix(simplePostTransform(simplify0))(expr)
-    println("into: " + res)
     res
   }
 
