@@ -44,6 +44,37 @@ object GCD {
     }
   }
 
+  def lcm(a: Int, b: Int): Int = {
+    val (na, nb) = (a.abs, b.abs)
+    na*nb/gcd(a, b)
+  }
+
+  def lcm(a1: Int, a2: Int, a3: Int, as: Int*): Int = {
+    var tmp = lcm(a1, a2)
+    tmp = lcm(tmp, a3)
+    var i = 0
+    while(i < as.size) {
+      tmp = lcm(tmp, as(i))
+      i += 1
+    }
+    tmp
+  }
+
+  def lcm(as: Seq[Int]): Int = {
+    require(as.length >= 1)
+    if(as.length == 1)
+      as(0).abs
+    else {
+      var tmp = lcm(as(0), as(1))
+      var i = 2
+      while(i < as.size) {
+        tmp = lcm(tmp, as(i))
+        i += 1
+      }
+      tmp
+    }
+  }
+
   //return (x, y) such that ax + by = gcd(a, b)
   def extendedEuclid(a: Int, b: Int): (Int, Int) = {
     def rec(a: Int, b: Int): (Int, Int) = {

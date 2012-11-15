@@ -121,6 +121,26 @@ class GCDSuite extends FunSuite {
     assert(gcd(Seq(-2,-4,-8,-11,-16,-4)) === 1)
   }
 
+  test("binary lcm") {
+    assert(lcm(1,3) === 3)
+    assert(lcm(1,1) === 1)
+    assert(lcm(0,1) === 0)
+    assert(lcm(2,3) === 6)
+    assert(lcm(4,3) === 12)
+    assert(lcm(4,6) === 12)
+    assert(lcm(8,6) === 24)
+  }
+  test("n-ary lcm") {
+    assert(lcm(1,2,3) === 6)
+    assert(lcm(1,2,3,4) === 12)
+    assert(lcm(5,2,3,4) === 60)
+  }
+  test("seq lcm") {
+    assert(lcm(Seq(1,2,3)) === 6)
+    assert(lcm(Seq(1,2,3,4)) === 12)
+    assert(lcm(Seq(5,2,3,4)) === 60)
+  }
+
   def checkExtendedEuclid(a: Int, b: Int) {
     val (x, y) = extendedEuclid(a, b)
     assert(x*a + y*b === gcd(a, b))
