@@ -12,22 +12,23 @@ class EqualitySplit(synth: Synthesizer) extends Rule("Eq. Split.", synth, 90) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
-    val TopLevelAnds(presSeq) = p.c
-    val pres = presSeq.toSet
-
-    def combinations(a1: Identifier, a2: Identifier): Set[Expr] = {
-      val v1 = Variable(a1)
-      val v2 = Variable(a2)
-      Set(
-        Equals(v1, v2),
-        Equals(v2, v1),
-        Not(Equals(v1, v2)),
-        Not(Equals(v2, v1))
-      )
-    }
-
     val candidate = p.as.groupBy(_.getType).map(_._2.toList).find {
-      case List(a1, a2) => (pres & combinations(a1, a2)).isEmpty
+      case List(a1, a2) =>
+        val toValEQ = Implies(p.c, Equals(Variable(a1), Variable(a2)))
+
+        val impliesEQ = synth.solver.solveSAT(Not(toValEQ)) match {
+          case (Some(false), _) => true
+          case _ => false
+        }
+
+        val toValNE = Implies(p.c, Not(Equals(Variable(a1), Variable(a2))))
+
+        val impliesNE = synth.solver.solveSAT(Not(toValNE)) match {
+          case (Some(false), _) => true
+          case _ => false
+        }
+
+        !impliesNE && !impliesEQ
       case _ => false
     }
 
