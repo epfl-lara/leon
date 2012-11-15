@@ -14,21 +14,16 @@ import ArithmeticNormalization.simplify
 class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth, 300) {
   def applyOn(task: Task): RuleResult = {
 
-    val p = task.problem
+    val problem = task.problem
 
-    val TopLevelAnds(exprs) = p.phi
-    val xs = p.xs
-    val as = p.as
-    val formula = p.phi
+    val TopLevelAnds(exprs) = problem.phi
 
     val (eqs, others) = exprs.partition(_.isInstanceOf[Equals])
     var candidates: Seq[Expr] = eqs
     var allOthers: Seq[Expr] = others
 
     var vars: Set[Identifier] = Set()
-    var eqas: Set[Identifier] = Set()
     var eqxs: List[Identifier] = List()
-    var ys: Set[Identifier] = Set()
 
     var optionNormalizedEq: Option[List[Expr]] = None
     while(!candidates.isEmpty && optionNormalizedEq == None) {
@@ -36,48 +31,65 @@ class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth
       candidates = candidates.tail
       
       vars = variablesOf(eq)
-      eqas = as.toSet.intersect(vars)
-
-      eqxs = xs.toSet.intersect(vars).toList
-      ys = xs.toSet.diff(vars)
+      eqxs = problem.xs.toSet.intersect(vars).toList
 
       try {
         optionNormalizedEq = Some(ArithmeticNormalization(Minus(eq.left, eq.right), eqxs.toArray).toList)
       } catch {
         case ArithmeticNormalization.NonLinearExpressionException(_) =>
+          allOthers = allOthers :+ eq
       }
     }
+    allOthers = allOthers ++ candidates
 
     optionNormalizedEq match {
       case None => RuleInapplicable
       case Some(normalizedEq0) => {
-        val (neqxs, normalizedEq) = eqxs.zip(normalizedEq0.tail).filterNot{ case (_, IntLiteral(0)) => true case _ => false}.unzip
 
-        //if(normalizedEq.size == 1) {
+        val eqas = problem.as.toSet.intersect(vars)
 
+        val (neqxs, normalizedEq1) = eqxs.zip(normalizedEq0.tail).filterNot{ case (_, IntLiteral(0)) => true case _ => false}.unzip
+        val normalizedEq = normalizedEq0.head :: normalizedEq1
 
-        //} else {
+        if(normalizedEq.size == 1) {
+          val eqPre = Equals(normalizedEq.head, IntLiteral(0))
+          val newProblem = Problem(problem.as, And(eqPre, problem.c), And(allOthers), problem.xs)
 
-        val (eqPre, eqWitness, eqFreshVars) = elimVariable(eqas, normalizedEq)
-
-        val eqSubstMap: Map[Expr, Expr] = neqxs.zip(eqWitness).map{case (id, e) => (Variable(id), simplify(e))}.toMap
-        val freshFormula = simplify(replace(eqSubstMap, And(allOthers)))
-        //}
-        //(eqPre, freshFormula)
-
-        val newProblem = Problem(as, And(eqPre, p.c), freshFormula, eqFreshVars)
-
-        val onSuccess: List[Solution] => Solution = { 
-          case List(Solution(pre, defs, term)) =>
-            if (eqFreshVars.isEmpty) {
-              Solution(pre, defs, replace(eqSubstMap, Tuple(neqxs.map(Variable(_)))))
-            } else {
-              Solution(pre, defs, LetTuple(eqFreshVars, term, replace(eqSubstMap, Tuple(neqxs.map(Variable(_))))))
+          val onSuccess: List[Solution] => Solution = { 
+            case List(Solution(pre, defs, term)) => {
+              Solution(And(eqPre, pre), defs, term)
             }
-          case _ => Solution.none
+            case _ => Solution.none
+          }
+
+          RuleStep(List(newProblem), onSuccess)
+
+        } else {
+          val (eqPre, eqWitness, freshxs) = elimVariable(eqas, normalizedEq)
+
+          val eqSubstMap: Map[Expr, Expr] = neqxs.zip(eqWitness).map{case (id, e) => (Variable(id), simplify(e))}.toMap
+          val freshFormula = simplify(replace(eqSubstMap, And(allOthers)))
+
+          val ys: List[Identifier] = problem.xs.filterNot(neqxs.contains(_))
+          val subproblemxs: List[Identifier] = freshxs ++ ys
+
+          val newProblem = Problem(problem.as, And(eqPre, problem.c), freshFormula, subproblemxs)
+
+          val onSuccess: List[Solution] => Solution = { 
+            case List(Solution(pre, defs, term)) => {
+              val freshsubxs = subproblemxs.map(id => FreshIdentifier(id.name).setType(id.getType))
+              val id2res: Map[Expr, Expr] = 
+                freshsubxs.zip(subproblemxs).map{case (id1, id2) => (Variable(id1), Variable(id2))}.toMap ++
+                neqxs.map(id => (Variable(id), eqSubstMap(Variable(id)))).toMap
+              Solution(And(eqPre, pre), defs, LetTuple(subproblemxs, term, replace(id2res, Tuple(problem.xs.map(Variable(_))))))
+            }
+            case _ => Solution.none
+          }
+
+          RuleStep(List(newProblem), onSuccess)
         }
 
-        RuleStep(List(newProblem), onSuccess)
+
       }
     }
 
