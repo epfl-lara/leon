@@ -80,6 +80,7 @@ class IntegerInequality(synth: Synthesizer) extends Rule("Integer Inequality", s
       val ceilingFun = new FunDef(FreshIdentifier("ceilingDiv"), Int32Type, Seq(
                                   VarDecl(FreshIdentifier("x"), Int32Type),
                                   VarDecl(FreshIdentifier("x"), Int32Type)))
+      ceilingFun.body = Some(IntLiteral(0))
       def floorDiv(x: Expr, y: Expr): Expr = FunctionInvocation(floorFun, Seq(x, y))
       def ceilingDiv(x: Expr, y: Expr): Expr = FunctionInvocation(ceilingFun, Seq(x, y))
 
@@ -95,7 +96,7 @@ class IntegerInequality(synth: Synthesizer) extends Rule("Integer Inequality", s
         val pre = And(
           for((ub, uc) <- upperBounds; (lb, lc) <- lowerBounds) 
             yield LessEquals(ceilingDiv(lb, IntLiteral(lc)), floorDiv(ub, IntLiteral(uc))))
-        RuleSuccess(Solution(pre, Set(), witness))
+        RuleSuccess(Solution(BooleanLiteral(true), Set(), IfExpr(pre, witness, Error("precondition violation"))))
       } else {
         val L = GCD.lcm((upperBounds ::: lowerBounds).map(_._2))
         val newUpperBounds: List[Expr] = upperBounds.map{case (bound, coef) => Times(IntLiteral(L/coef), bound)}
@@ -121,10 +122,12 @@ class IntegerInequality(synth: Synthesizer) extends Rule("Integer Inequality", s
               val newPre = And(
                 for((ub, uc) <- upperBounds; (lb, lc) <- lowerBounds) 
                   yield LessEquals(ceilingDiv(lb, IntLiteral(lc)), floorDiv(ub, IntLiteral(uc))))
-              Solution(And(newPre, pre), defs,
-                LetTuple(subProblemxs, term,
-                  Let(processedVar, witness,
-                    Tuple(problem.xs.map(Variable(_))))))
+              Solution(pre, defs,
+                IfExpr(newPre,
+                  LetTuple(subProblemxs, term,
+                    Let(processedVar, witness,
+                      Tuple(problem.xs.map(Variable(_))))),
+                  Error("Precondition violation")))
             } else if(upperBounds.isEmpty || lowerBounds.isEmpty) {
                 Solution(pre, defs,
                   LetTuple(otherVars++quotientIds, term,
