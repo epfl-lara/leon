@@ -9,7 +9,7 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
 
-class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 80) with Heuristic {
+class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 50) with Heuristic {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 

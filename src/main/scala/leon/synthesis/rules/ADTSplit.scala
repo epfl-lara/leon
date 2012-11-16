@@ -18,9 +18,9 @@ class ADTSplit(synth: Synthesizer) extends Rule("ADT Split.", synth, 70) {
 
         val optCases = for (dcd <- cd.knownDescendents) yield dcd match {
           case ccd : CaseClassDef =>
-            val toVal = Implies(p.c, CaseClassInstanceOf(ccd, Variable(id)))
+            val toSat = And(p.c, Not(CaseClassInstanceOf(ccd, Variable(id))))
 
-            val isImplied = synth.solver.solveSAT(Not(toVal)) match {
+            val isImplied = synth.solver.solveSAT(toSat) match {
               case (Some(false), _) => true
               case _ => false
             }
@@ -49,13 +49,11 @@ class ADTSplit(synth: Synthesizer) extends Rule("ADT Split.", synth, 70) {
         val oas = p.as.filter(_ != id)
 
         val subInfo = for(ccd <- cases) yield {
-           val subId  = FreshIdentifier(ccd.id.name, true).setType(CaseClassType(ccd))
            val args   = ccd.fieldsIds.map(id => FreshIdentifier(id.name, true).setType(id.getType)).toList
-           val subPre = Equals(CaseClass(ccd, args.map(Variable(_))), Variable(subId))
 
-           val subPhi = subst(id -> Variable(subId), p.phi)
-           val subProblem = Problem(subId :: args ::: oas, And(p.c, subPre), subPhi, p.xs)
-           val subPattern = CaseClassPattern(Some(subId), ccd, args.map(id => WildcardPattern(Some(id))))
+           val subPhi = subst(id -> CaseClass(ccd, args.map(Variable(_))), p.phi)
+           val subProblem = Problem(args ::: oas, p.c, subPhi, p.xs)
+           val subPattern = CaseClassPattern(None, ccd, args.map(id => WildcardPattern(Some(id))))
 
            (ccd, subProblem, subPattern)
         }
