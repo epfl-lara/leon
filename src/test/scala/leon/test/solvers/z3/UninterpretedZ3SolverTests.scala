@@ -45,6 +45,10 @@ class UninterpretedZ3SolverTests extends FunSuite {
   private val fDef : FunDef = new FunDef(FreshIdentifier("f"), Int32Type, VarDecl(fx, Int32Type) :: Nil)
   fDef.body = Some(Plus(Variable(fx), IntLiteral(1)))
 
+  // g is a function that is not in the program (on purpose)
+  private val gDef : FunDef = new FunDef(FreshIdentifier("g"), Int32Type, VarDecl(fx, Int32Type) :: Nil)
+  gDef.body = Some(Plus(Variable(fx), IntLiteral(1)))
+
   private val minimalProgram = Program(
     FreshIdentifier("Minimal"), 
     ObjectDef(FreshIdentifier("Minimal"), Seq(
@@ -55,6 +59,7 @@ class UninterpretedZ3SolverTests extends FunSuite {
   private val x : Expr = Variable(FreshIdentifier("x").setType(Int32Type))
   private val y : Expr = Variable(FreshIdentifier("y").setType(Int32Type))
   private def f(e : Expr) : Expr = FunctionInvocation(fDef, e :: Nil)
+  private def g(e : Expr) : Expr = FunctionInvocation(gDef, e :: Nil)
 
   private val solver = new UninterpretedZ3Solver(silentReporter)
   solver.setProgram(minimalProgram)
@@ -82,4 +87,10 @@ class UninterpretedZ3SolverTests extends FunSuite {
   // This is true, but that solver shouldn't know it.
   private val unknown1 : Expr = Equals(f(x), Plus(x, IntLiteral(1)))
   assertUnknown(solver, unknown1)
+
+  test("Expected crash on undefined functions.") {
+    intercept[Exception] {
+      solver.solve(Equals(g(x), g(x)))
+    }
+  }
 }
