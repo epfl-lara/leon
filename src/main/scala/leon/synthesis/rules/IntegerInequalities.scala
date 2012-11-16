@@ -11,7 +11,7 @@ import purescala.Definitions._
 import LinearEquations.elimVariable
 import ArithmeticNormalization.simplify
 
-class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequality", synth, 300) {
+class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities", synth, 300) {
   def applyOn(task: Task): RuleResult = {
     val problem = task.problem
     val TopLevelAnds(exprs) = problem.phi
