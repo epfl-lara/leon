@@ -51,6 +51,7 @@ class IntegerInequality(synth: Synthesizer) extends Rule("Integer Inequality", s
           println("processed var: " + processedVar)
           println("upperBounds: " + upperBounds)
           println("lowerBounds: " + lowerBounds)
+
           val L = GCD.lcm((upperBounds ::: lowerBounds).map(_._2))
           val newUpperBounds: List[Expr] = upperBounds.map{case (bound, coef) => Times(IntLiteral(L/coef), bound)}
           val newLowerBounds: List[Expr] = lowerBounds.map{case (bound, coef) => Times(IntLiteral(L/coef), bound)}
@@ -73,7 +74,15 @@ class IntegerInequality(synth: Synthesizer) extends Rule("Integer Inequality", s
 
           def onSuccess(sols: List[Solution]): Solution = sols match {
             case List(Solution(pre, defs, term)) => {
-              if(newUpperBounds.size > 1)
+              if(newUpperBounds.isEmpty) {
+                Solution(pre, defs,
+                  LetTuple(otherVars++quotientIds, term,
+                    Let(processedVar, newLowerBounds.head, Tuple(problem.xs.map(Variable(_))))))
+              } else if(newLowerBounds.isEmpty) {
+                Solution(pre, defs,
+                  LetTuple(otherVars++quotientIds, term,
+                    Let(processedVar, newUpperBounds.head, Tuple(problem.xs.map(Variable(_))))))
+              } else if(newUpperBounds.size > 1)
                 Solution.none
               else {
                 val k = remainderIds.head
@@ -83,7 +92,7 @@ class IntegerInequality(synth: Synthesizer) extends Rule("Integer Inequality", s
                 val returnType = TupleType(problem.xs.map(_.getType))
                 val funDef = new FunDef(FreshIdentifier("rec", true), returnType, Seq(VarDecl(loopCounter.id, Int32Type)))
                 val funBody = IfExpr(
-                  LessEquals(loopCounter, IntLiteral(0)),
+                  LessThan(loopCounter, IntLiteral(0)),
                   Error("No solution exists"),
                   IfExpr(
                     concretePre,
@@ -99,7 +108,7 @@ class IntegerInequality(synth: Synthesizer) extends Rule("Integer Inequality", s
 
                 println("generated code: " + funDef)
 
-                Solution(pre, defs + funDef, FunctionInvocation(funDef, Seq(IntLiteral(L))))
+                Solution(pre, defs + funDef, FunctionInvocation(funDef, Seq(IntLiteral(L-1))))
               }
             }
             case _ => Solution.none

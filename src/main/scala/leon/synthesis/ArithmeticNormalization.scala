@@ -95,9 +95,12 @@ object ArithmeticNormalization {
       case UMinus(UMinus(x)) => x
       case Times(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 * i2)
       case Times(IntLiteral(1), e) => e
+      case Times(IntLiteral(-1), e) => UMinus(e)
       case Times(e, IntLiteral(1)) => e
       case Times(IntLiteral(0), _) => IntLiteral(0)
       case Times(_, IntLiteral(0)) => IntLiteral(0)
+      case Times(IntLiteral(i1), Times(IntLiteral(i2), t)) => Times(IntLiteral(i1*i2), t)
+      case Times(IntLiteral(i1), Times(t, IntLiteral(i2))) => Times(IntLiteral(i1*i2), t)
       case Division(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 / i2)
       case Division(e, IntLiteral(1)) => e
       case e => e
