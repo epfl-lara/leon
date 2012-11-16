@@ -74,14 +74,46 @@ class IntegerInequality(synth: Synthesizer) extends Rule("Integer Inequality", s
 
           def onSuccess(sols: List[Solution]): Solution = sols match {
             case List(Solution(pre, defs, term)) => {
+
+              val maxVarDecls: Seq[VarDecl] = lowerBounds.map(_ => VarDecl(FreshIdentifier("b"), Int32Type))
+              val maxFun = new FunDef(FreshIdentifier("max"), Int32Type, maxVarDecls)
+              def maxRec(bounds: List[Expr]): Expr = bounds match {
+                case (x1 :: x2 :: xs) => {
+                  val v = FreshIdentifier("m").setType(Int32Type)
+                  Let(v, IfExpr(LessThan(x1, x2), x2, x1), maxRec(Variable(v) :: xs))
+                }
+                case (x :: Nil) => x
+                case Nil => sys.error("cannot build a max expression with no argument")
+              }
+              if(!lowerBounds.isEmpty)
+                maxFun.body = Some(maxRec(maxVarDecls.map(vd => Variable(vd.id)).toList))
+
+              val minVarDecls: Seq[VarDecl] = upperBounds.map(_ => VarDecl(FreshIdentifier("b"), Int32Type))
+              val minFun = new FunDef(FreshIdentifier("min"), Int32Type, minVarDecls)
+              def minRec(bounds: List[Expr]): Expr = bounds match {
+                case (x1 :: x2 :: xs) => {
+                  val v = FreshIdentifier("m").setType(Int32Type)
+                  Let(v, IfExpr(LessThan(x1, x2), x1, x2), minRec(Variable(v) :: xs))
+                }
+                case (x :: Nil) => x
+                case Nil => sys.error("cannot build a min expression with no argument")
+              }
+              if(!upperBounds.isEmpty)
+                minFun.body = Some(minRec(minVarDecls.map(vd => Variable(vd.id)).toList))
+
+
               if(newUpperBounds.isEmpty) {
                 Solution(pre, defs,
                   LetTuple(otherVars++quotientIds, term,
-                    Let(processedVar, newLowerBounds.head, Tuple(problem.xs.map(Variable(_))))))
+                    Let(processedVar, 
+                        FunctionInvocation(maxFun, lowerBounds.map(t => Division(t._1, IntLiteral(t._2)))),
+                        Tuple(problem.xs.map(Variable(_))))))
               } else if(newLowerBounds.isEmpty) {
                 Solution(pre, defs,
                   LetTuple(otherVars++quotientIds, term,
-                    Let(processedVar, newUpperBounds.head, Tuple(problem.xs.map(Variable(_))))))
+                    Let(processedVar, 
+                        FunctionInvocation(minFun, upperBounds.map(t => Division(t._1, IntLiteral(t._2)))),
+                        Tuple(problem.xs.map(Variable(_))))))
               } else if(newUpperBounds.size > 1)
                 Solution.none
               else {
@@ -98,7 +130,10 @@ class IntegerInequality(synth: Synthesizer) extends Rule("Integer Inequality", s
                     concretePre,
                     LetTuple(otherVars++quotientIds, term,
                       Let(processedVar, 
-                          if(newUpperBounds.isEmpty) newLowerBounds.head else newUpperBounds.head, 
+                          if(newUpperBounds.isEmpty)
+                            FunctionInvocation(maxFun, lowerBounds.map(t => Division(t._1, IntLiteral(t._2))))
+                          else
+                            FunctionInvocation(minFun, upperBounds.map(t => Division(t._1, IntLiteral(t._2)))),
                           Tuple(problem.xs.map(Variable(_))))
                     ),
                     FunctionInvocation(funDef, Seq(Minus(loopCounter, IntLiteral(1))))
