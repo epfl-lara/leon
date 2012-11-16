@@ -46,9 +46,6 @@ class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth
       case None => RuleInapplicable
       case Some(normalizedEq0) => {
 
-        println(problem.phi)
-        println(normalizedEq0)
-
         val eqas = problem.as.toSet.intersect(vars)
 
         val (neqxs, normalizedEq1) = eqxs.zip(normalizedEq0.tail).filterNot{ case (_, IntLiteral(0)) => true case _ => false}.unzip
