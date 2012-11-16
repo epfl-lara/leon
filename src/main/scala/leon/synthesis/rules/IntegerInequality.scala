@@ -96,7 +96,7 @@ class IntegerInequality(synth: Synthesizer) extends Rule("Integer Inequality", s
         val pre = And(
           for((ub, uc) <- upperBounds; (lb, lc) <- lowerBounds) 
             yield LessEquals(ceilingDiv(lb, IntLiteral(lc)), floorDiv(ub, IntLiteral(uc))))
-        RuleSuccess(Solution(BooleanLiteral(true), Set(), IfExpr(pre, witness, Error("precondition violation"))))
+        RuleSuccess(Solution(pre, Set(), witness))
       } else {
         val L = GCD.lcm((upperBounds ::: lowerBounds).map(_._2))
         val newUpperBounds: List[Expr] = upperBounds.map{case (bound, coef) => Times(IntLiteral(L/coef), bound)}
@@ -122,12 +122,10 @@ class IntegerInequality(synth: Synthesizer) extends Rule("Integer Inequality", s
               val newPre = And(
                 for((ub, uc) <- upperBounds; (lb, lc) <- lowerBounds) 
                   yield LessEquals(ceilingDiv(lb, IntLiteral(lc)), floorDiv(ub, IntLiteral(uc))))
-              Solution(pre, defs,
-                IfExpr(newPre,
-                  LetTuple(subProblemxs, term,
-                    Let(processedVar, witness,
-                      Tuple(problem.xs.map(Variable(_))))),
-                  Error("Precondition violation")))
+              Solution(And(newPre, pre), defs,
+                LetTuple(subProblemxs, term,
+                  Let(processedVar, witness,
+                    Tuple(problem.xs.map(Variable(_))))))
             } else if(upperBounds.isEmpty || lowerBounds.isEmpty) {
                 Solution(pre, defs,
                   LetTuple(otherVars++quotientIds, term,
