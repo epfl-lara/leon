@@ -80,19 +80,21 @@ class IntegerInequality(synth: Synthesizer) extends Rule("Integer Inequality", s
       val ceilingFun = new FunDef(FreshIdentifier("ceilingDiv"), Int32Type, Seq(
                                   VarDecl(FreshIdentifier("x"), Int32Type),
                                   VarDecl(FreshIdentifier("x"), Int32Type)))
-      def floor(x: Expr, y: Expr): Expr = FunctionInvocation(floorFun, Seq(x, y))
-      def ceiling(x: Expr, y: Expr): Expr = FunctionInvocation(ceilingFun, Seq(x, y))
+      def floorDiv(x: Expr, y: Expr): Expr = FunctionInvocation(floorFun, Seq(x, y))
+      def ceilingDiv(x: Expr, y: Expr): Expr = FunctionInvocation(ceilingFun, Seq(x, y))
 
       val witness: Expr = if(upperBounds.isEmpty) {
-        if(lowerBounds.size > 1) max(lowerBounds.map{case (b, c) => ceiling(b, IntLiteral(c))})
-        else ceiling(lowerBounds.head._1, IntLiteral(lowerBounds.head._2))
+        if(lowerBounds.size > 1) max(lowerBounds.map{case (b, c) => ceilingDiv(b, IntLiteral(c))})
+        else ceilingDiv(lowerBounds.head._1, IntLiteral(lowerBounds.head._2))
       } else {
-        if(upperBounds.size > 1) min(upperBounds.map{case (b, c) => floor(b, IntLiteral(c))})
-        else ceiling(upperBounds.head._1, IntLiteral(upperBounds.head._2))
+        if(upperBounds.size > 1) min(upperBounds.map{case (b, c) => floorDiv(b, IntLiteral(c))})
+        else floorDiv(upperBounds.head._1, IntLiteral(upperBounds.head._2))
       }
 
       if(otherVars.isEmpty) { //here we can simply evaluate the precondition and return a witness
-        val pre = if(lowerBounds.isEmpty || upperBounds.isEmpty) BooleanLiteral(true) else sys.error("TODO")
+        val pre = And(
+          for((ub, uc) <- upperBounds; (lb, lc) <- lowerBounds) 
+            yield LessEquals(ceilingDiv(lb, IntLiteral(lc)), floorDiv(ub, IntLiteral(uc))))
         RuleSuccess(Solution(pre, Set(), witness))
       } else {
         val L = GCD.lcm((upperBounds ::: lowerBounds).map(_._2))
@@ -128,13 +130,14 @@ class IntegerInequality(synth: Synthesizer) extends Rule("Integer Inequality", s
                   LetTuple(otherVars++quotientIds, term,
                     Let(processedVar, witness,
                       Tuple(problem.xs.map(Variable(_))))))
-            } else if(upperBounds.size > 1)
-              Solution.none
-            else {
+            } else if(upperBounds.size > 1) {
+              sys.error("TODO")
+            } else {
               val k = remainderIds.head
               
               val loopCounter = Variable(FreshIdentifier("i").setType(Int32Type))
               val concretePre = replace(Map(Variable(k) -> loopCounter), pre)
+              val concreteTerm = replace(Map(Variable(k) -> loopCounter), term)
               val returnType = TupleType(problem.xs.map(_.getType))
               val funDef = new FunDef(FreshIdentifier("rec", true), returnType, Seq(VarDecl(loopCounter.id, Int32Type)))
               val funBody = IfExpr(
@@ -142,13 +145,9 @@ class IntegerInequality(synth: Synthesizer) extends Rule("Integer Inequality", s
                 Error("No solution exists"),
                 IfExpr(
                   concretePre,
-                  LetTuple(otherVars++quotientIds, term,
-                    Let(processedVar, 
-                        if(newUpperBounds.isEmpty)
-                          FunctionInvocation(maxFun, lowerBounds.map(t => Division(t._1, IntLiteral(t._2))))
-                        else
-                          FunctionInvocation(minFun, upperBounds.map(t => Division(t._1, IntLiteral(t._2)))),
-                        Tuple(problem.xs.map(Variable(_))))
+                  LetTuple(otherVars++quotientIds, concreteTerm,
+                    Let(processedVar, witness,
+                      Tuple(problem.xs.map(Variable(_))))
                   ),
                   FunctionInvocation(funDef, Seq(Minus(loopCounter, IntLiteral(1))))
                 )
