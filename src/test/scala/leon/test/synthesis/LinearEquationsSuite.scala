@@ -208,6 +208,10 @@ class LinearEquationsSuite extends FunSuite {
     val c4 = List(IntLiteral(2), IntLiteral(4))
     val (pre4, wit4, f4) = elimVariable(Set(aId), t4::c4)
 
+    val t5 = Minus(a, b)
+    val c5 = List(IntLiteral(-60), IntLiteral(-3600))
+    val (pre5, wit5, f5) = elimVariable(Set(aId, bId), t5::c5)
+
   }
 
 }
