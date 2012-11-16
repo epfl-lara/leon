@@ -65,7 +65,11 @@ class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth
           RuleStep(List(newProblem), onSuccess)
 
         } else {
-          val (eqPre, eqWitness, freshxs) = elimVariable(eqas, normalizedEq)
+          val (eqPre0, eqWitness, freshxs) = elimVariable(eqas, normalizedEq)
+          val eqPre = eqPre0 match {
+            case Equals(Modulo(_, IntLiteral(1)), _) => BooleanLiteral(true)
+            case c => c
+          }
 
           val eqSubstMap: Map[Expr, Expr] = neqxs.zip(eqWitness).map{case (id, e) => (Variable(id), simplify(e))}.toMap
           val freshFormula = simplify(replace(eqSubstMap, And(allOthers)))
