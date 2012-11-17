@@ -136,7 +136,7 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
             } else {
               val k = remainderIds.head
               
-              val loopCounter = Variable(FreshIdentifier("i").setType(Int32Type))
+              val loopCounter = Variable(FreshIdentifier("i", true).setType(Int32Type))
               val concretePre = replace(Map(Variable(k) -> loopCounter), pre)
               val concreteTerm = replace(Map(Variable(k) -> loopCounter), term)
               val returnType = TupleType(problem.xs.map(_.getType))

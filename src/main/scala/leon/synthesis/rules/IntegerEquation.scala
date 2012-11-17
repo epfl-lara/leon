@@ -72,20 +72,35 @@ class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth
           }
 
           val eqSubstMap: Map[Expr, Expr] = neqxs.zip(eqWitness).map{case (id, e) => (Variable(id), simplify(e))}.toMap
-          val freshFormula = simplify(replace(eqSubstMap, And(allOthers)))
+          val freshFormula0 = simplify(replace(eqSubstMap, And(allOthers)))
+
+          var freshInputVariables: List[Identifier] = Nil
+          var equivalenceConstraints: Map[Expr, Expr] = Map()
+          val freshFormula = simplePreTransform({
+            case d@Division(_, _) => {
+              assert(variablesOf(d).intersect(problem.xs.toSet).isEmpty)
+              val newVar = FreshIdentifier("d", true).setType(Int32Type) 
+              freshInputVariables ::= newVar
+              equivalenceConstraints += (Variable(newVar) -> d)
+              Variable(newVar)
+            }
+            case e => e
+          })(freshFormula0)
 
           val ys: List[Identifier] = problem.xs.filterNot(neqxs.contains(_))
           val subproblemxs: List[Identifier] = freshxs ++ ys
 
-          val newProblem = Problem(problem.as, And(eqPre, problem.c), freshFormula, subproblemxs)
+          val newProblem = Problem(problem.as ++ freshInputVariables, And(eqPre, problem.c), freshFormula, subproblemxs)
 
           val onSuccess: List[Solution] => Solution = { 
             case List(Solution(pre, defs, term)) => {
+              val freshPre = replace(equivalenceConstraints, pre)
+              val freshTerm = replace(equivalenceConstraints, term)
               val freshsubxs = subproblemxs.map(id => FreshIdentifier(id.name).setType(id.getType))
               val id2res: Map[Expr, Expr] = 
                 freshsubxs.zip(subproblemxs).map{case (id1, id2) => (Variable(id1), Variable(id2))}.toMap ++
                 neqxs.map(id => (Variable(id), eqSubstMap(Variable(id)))).toMap
-              Solution(And(eqPre, pre), defs, simplify(simplifyLets(LetTuple(subproblemxs, term, replace(id2res, Tuple(problem.xs.map(Variable(_))))))))
+              Solution(And(eqPre, freshPre), defs, simplify(simplifyLets(LetTuple(subproblemxs, freshTerm, replace(id2res, Tuple(problem.xs.map(Variable(_))))))))
             }
             case _ => Solution.none
           }
