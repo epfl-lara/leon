@@ -51,7 +51,8 @@ class Synthesizer(val reporter: Reporter,
       }
     }
 
-    while (!workList.isEmpty) {
+    var continue = true
+    while (!workList.isEmpty && continue) {
       val task = workList.dequeue()
 
       val prefix = "[%-20s] ".format(Option(task.rule).map(_.toString).getOrElse("root"))
@@ -78,7 +79,19 @@ class Synthesizer(val reporter: Reporter,
 
       if (timeoutExpired()) {
         warning("Timeout reached")
-        workList.clear()
+        continue = false
+      }
+    }
+
+    if (!workList.isEmpty) {
+      // We flush the worklist by solving everything with chooses, that should
+      // rebuild a partial solution
+      while (!workList.isEmpty) {
+        val t = workList.dequeue()
+
+        if (t.parent ne null) {
+          t.parent.partlySolvedBy(t, Solution.choose(t.problem))          
+        }
       }
     }
 
