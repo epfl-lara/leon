@@ -6,6 +6,7 @@ import purescala.Definitions.{Program, FunDef}
 import purescala.TreeOps._
 import purescala.Trees.{Expr, Not}
 import purescala.ScalaPrinter
+import sun.misc.{Signal, SignalHandler}
 
 import solvers.Solver
 import java.io.File
@@ -36,7 +37,10 @@ class Synthesizer(val reporter: Reporter,
 
   val worstSolution = Solution.choose(problem)
 
+  var continue = true
+
   def synthesize(): Solution = {
+    continue = true
     workList.clear()
     workList += rootTask
 
@@ -51,7 +55,17 @@ class Synthesizer(val reporter: Reporter,
       }
     }
 
-    while (!workList.isEmpty) {
+    val sigINT = new Signal("INT")
+    var oldHandler: SignalHandler = null
+    oldHandler = Signal.handle(sigINT, new SignalHandler {
+      def handle(sig: Signal) {
+        reporter.info("Aborting...")
+        continue = false;
+        Signal.handle(sigINT, oldHandler)
+      }
+    })
+
+    while (!workList.isEmpty && continue) {
       val task = workList.dequeue()
 
       val prefix = "[%-20s] ".format(Option(task.rule).map(_.toString).getOrElse("root"))
@@ -78,7 +92,19 @@ class Synthesizer(val reporter: Reporter,
 
       if (timeoutExpired()) {
         warning("Timeout reached")
-        workList.clear()
+        continue = false
+      }
+    }
+
+    if (!workList.isEmpty) {
+      // We flush the worklist by solving everything with chooses, that should
+      // rebuild a partial solution
+      while (!workList.isEmpty) {
+        val t = workList.dequeue()
+
+        if (t.parent ne null) {
+          t.parent.partlySolvedBy(t, Solution.choose(t.problem))          
+        }
       }
     }
 

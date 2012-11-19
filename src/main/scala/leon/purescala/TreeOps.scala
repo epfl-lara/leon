@@ -1210,37 +1210,46 @@ object TreeOps {
 
   def simplifyTautologies(solver : Solver)(expr : Expr) : Expr = {
     def pre(e : Expr) = e match {
-      case IfExpr(cond, then, elze) => solver.solve(cond) match {
-        case Some(true)  => then
-        case Some(false) => solver.solve(Not(cond)) match {
-          case Some(true) => elze
-          case _ => e
+
+      case IfExpr(cond, then, elze) => 
+        try {
+          solver.solve(cond) match {
+            case Some(true)  => then
+            case Some(false) => solver.solve(Not(cond)) match {
+              case Some(true) => elze
+              case _ => e
+            }
+            case None => e
+          }
+        } catch {
+          // let's give up when the solver crashes
+          case _ : Exception => e 
         }
-        case None => e
-      }
+
       case _ => e
     }
 
     simplePreTransform(pre)(expr)
   }
 
-  // NOTE : this is currently untested, use at your own risk !
-  // (or better yet, write tests for it)
-  // TODO : test and remove this header.
-  // PS
+  // This function could be made ridiculously faster by using push/pop...
   def simplifyPaths(solver : Solver)(expr : Expr) : Expr = {
-    def impliedBy(e : Expr, path : Seq[Expr]) : Boolean = {
+    def impliedBy(e : Expr, path : Seq[Expr]) : Boolean = try {
       solver.solve(Implies(And(path), e)) match {
         case Some(true) => true
         case _ => false
       }
+    } catch {
+      case _ : Exception => false
     }
 
-    def contradictedBy(e : Expr, path : Seq[Expr]) : Boolean = {
+    def contradictedBy(e : Expr, path : Seq[Expr]) : Boolean = try {
       solver.solve(Implies(And(path), Not(e))) match {
         case Some(true) => true
         case _ => false
       }
+    } catch {
+      case _ : Exception => false
     }
 
     def rec(e : Expr, path : Seq[Expr]): Expr = e match {

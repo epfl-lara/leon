@@ -130,7 +130,7 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
 
       var continue = true
 
-      while (result.isEmpty && continue) {
+      while (result.isEmpty && continue && synth.continue) {
         val basePhi = currentF.entireFormula
         val constrainedPhi = And(basePhi +: predicates)
         //println("-"*80)
@@ -211,7 +211,7 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
       lastF = currentF
       currentF = currentF.unroll
       unrolings += 1
-    } while(unrolings < maxUnrolings && lastF != currentF && result.isEmpty)
+    } while(unrolings < maxUnrolings && lastF != currentF && result.isEmpty && synth.continue)
 
     result.getOrElse(RuleInapplicable)
   }
