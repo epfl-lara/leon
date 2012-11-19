@@ -118,7 +118,8 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
     var lastF     = TentativeFormula(p.c, p.phi, BooleanLiteral(true), Map(), Map() ++ p.xs.map(x => x -> Set(x)))
     var currentF  = lastF.unroll
     var unrolings = 0
-    val maxUnrolings = 2
+    val maxUnrolings = 3
+    var predicates: Seq[Expr]        = Seq()
     do {
       //println("="*80)
       //println("Was: "+lastF.entireFormula)
@@ -127,7 +128,6 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
       val tpe = TupleType(p.xs.map(_.getType))
       val bss = currentF.bss
 
-      var predicates: Seq[Expr]        = Seq()
       var continue = true
 
       while (result.isEmpty && continue) {
