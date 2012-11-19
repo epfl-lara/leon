@@ -86,7 +86,6 @@ class Synthesizer(val reporter: Reporter,
           val sub = rules.flatMap ( r => r.attemptToApplyOn(t.p).alternatives.map(TaskRunRule(t.p, r, _)) )
 
           if (!sub.isEmpty) {
-            println("Was able to apply rules: "+sub.map(_.rule))
             Expanded(sub.toList)
           } else {
             ExpandFailure

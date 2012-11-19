@@ -27,7 +27,7 @@ trait AOSolution {
 class AndOrGraph[T <: AOTask[S], S <: AOSolution](val root: T) {
   type C = AOCost
 
-  var tree: AndTree = RootNode
+  var tree: Tree = RootNode
 
   trait Tree {
     val task  : T
@@ -36,6 +36,7 @@ class AndOrGraph[T <: AOTask[S], S <: AOSolution](val root: T) {
     def minCost: C
 
     def isSolved: Boolean
+    def isUnsolvable: Boolean
   }
 
   abstract class AndTree extends Tree
@@ -48,6 +49,7 @@ class AndOrGraph[T <: AOTask[S], S <: AOSolution](val root: T) {
     def compare(that: Leaf) = this.minCost.compare(that.minCost)
 
     def isSolved: Boolean = false
+    def isUnsolvable: Boolean = false
     def expandWith(succ: List[T])
   }
 
@@ -57,6 +59,7 @@ class AndOrGraph[T <: AOTask[S], S <: AOSolution](val root: T) {
     def notifySolution(sub: Tree, sol: S)
 
     var solution: Option[S] = None
+    var isUnsolvable = false
 
     def isSolved: Boolean = solution.isDefined
   }
@@ -79,6 +82,7 @@ class AndOrGraph[T <: AOTask[S], S <: AOSolution](val root: T) {
     var minCost = computeCost
 
     def unsolvable(l: Tree) {
+      isUnsolvable = true
       parent.unsolvable(this)
     }
 
@@ -109,14 +113,22 @@ class AndOrGraph[T <: AOTask[S], S <: AOSolution](val root: T) {
     }
   }
 
-  object RootNode extends AndLeaf(null, root) {
+  object RootNode extends OrLeaf(null, root) {
     override def expandWith(succ: List[T]) {
-      val n = new AndNode(null, succ, task) {
-        override def unsolvable(l: Tree) { println("Root was unsolvable!") }
-        override def notifyParent(sol: S) {}
+      val n = new OrNode(null, Map(), task) {
+        override def unsolvable(l: Tree) {
+          alternatives -= l.task
+
+          if (alternatives.isEmpty) {
+            isUnsolvable = true
+          } else {
+            minAlternative = computeMin
+          }
+        }
       }
 
-      n.subProblems = succ.map(t => t -> OrLeaf(n, t)).toMap
+      n.alternatives = succ.map(t => t -> AndLeaf(n, t)).toMap
+      n.minAlternative = n.computeMin
 
       tree = n
     }
@@ -146,6 +158,7 @@ class AndOrGraph[T <: AOTask[S], S <: AOSolution](val root: T) {
       alternatives -= l.task
 
       if (alternatives.isEmpty) {
+        isUnsolvable = true
         parent.unsolvable(this)
       } else {
         minAlternative = computeMin
@@ -214,7 +227,7 @@ abstract class AndOrGraphSearch[T <: AOTask[S], S <: AOSolution](val g: AndOrGra
   var continue = true
 
   def search = {
-    while (!g.tree.isSolved && continue) {
+    while (!g.tree.isSolved && continue && !g.tree.isUnsolvable) {
       nextLeaf match {
         case Some(l) =>
           processLeaf(l) match {
