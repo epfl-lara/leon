@@ -25,6 +25,8 @@ class Task(synth: Synthesizer,
   }
 
   var solution: Option[Solution] = None
+  var solver: Option[RuleApplication] = None
+
   var alternatives = Set[RuleApplication]()
 
   var minComplexity: AbsSolComplexity = new FixedSolComplexity(0)
@@ -66,9 +68,12 @@ class Task(synth: Synthesizer,
             } else {
               onSuccess(solutions) match {
                 case (s, true) =>
-                  solution = Some(s)
+                  if (isBetterSolutionThan(s, solution)) {
+                    solution = Some(s)
+                    solver   = Some(this)
 
-                  parent.partlySolvedBy(Task.this, solution.get)
+                    parent.partlySolvedBy(Task.this, s)
+                  }
                 case _ =>
                   // solution is there, but it is incomplete (precondition not strongest)
                   //parent.partlySolvedBy(this, Solution.choose(problem))
@@ -117,18 +122,18 @@ class Task(synth: Synthesizer,
 }
 
 class RootTask(synth: Synthesizer, problem: Problem) extends Task(synth, null, problem, null) {
-  var solver: Option[Task] = None
+  var solverTask: Option[Task] = None
 
   override def run() = {
     List(problem)
   }
 
-  override def isSolvedFor(problem: Problem) = solver.isDefined
+  override def isSolvedFor(problem: Problem) = solverTask.isDefined
 
   override def partlySolvedBy(t: Task, s: Solution) {
     if (isBetterSolutionThan(s, solution)) {
-      solution = Some(s)
-      solver   = Some(t)
+      solution   = Some(s)
+      solverTask = Some(t)
     }
   }
 }

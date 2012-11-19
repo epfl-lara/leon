@@ -37,7 +37,7 @@ class DerivationTree(root: RootTask)  {
 
       res append " "+node+" [ label = <<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\"><TR><TD BORDER=\"0\">"+t.rule+"</TD></TR><TR><TD BGCOLOR=\"indianred1\">"+escapeHTML(t.problem.toString)+"</TD></TR><TR><TD BGCOLOR=\"greenyellow\">"+escapeHTML(t.solution.map(_.toString).getOrElse("?"))+"</TD></TR></TABLE>> shape = \"none\" ];\n"
 
-      for (st <- t.steps.flatMap(_.subSolvers.values)) {
+      for (st <- t.solver.map(_.allSteps).flatten.flatMap(_.subSolvers.values)) {
         res.append(" "+taskName(st)+" -> "+node+"\n")
         printTask(st)
       }
@@ -45,7 +45,7 @@ class DerivationTree(root: RootTask)  {
     }
 
 
-    root.solver.foreach(printTask)
+    root.solverTask.foreach(printTask)
 
     res append "}\n"
 
