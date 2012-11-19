@@ -17,8 +17,8 @@ class ADTInduction(synth: Synthesizer) extends Rule("ADT Induction", synth, 80) 
         case IsTyped(origId, AbstractClassType(cd)) => (origId, cd)
     }
 
-    if (!candidates.isEmpty) {
-      val (origId, cd) = candidates.head
+    val steps = for (candidate <- candidates) yield {
+      val (origId, cd) = candidate
       val oas = p.as.filterNot(_ == origId)
 
       val resType = TupleType(p.xs.map(_.getType))
@@ -98,12 +98,12 @@ class ADTInduction(synth: Synthesizer) extends Rule("ADT Induction", synth, 80) 
             Solution(Or(globalPre), sols.flatMap(_.defs).toSet+newFun, FunctionInvocation(newFun, p.as.map(Variable(_))))
         }
 
-        HeuristicOneStep(synth, p, subProblemsInfo.map(_._1).toList, onSuccess)
+        Some(HeuristicStep(synth, p, subProblemsInfo.map(_._1).toList, onSuccess))
       } else {
-        RuleInapplicable()
+        None
       }
-    } else {
-      RuleInapplicable()
     }
+
+    RuleAlternatives(steps.flatten)
   }
 }
