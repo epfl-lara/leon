@@ -22,15 +22,15 @@ trait Heuristic {
 }
 
 object HeuristicStep {
-  def verifyPre(synth: Synthesizer, problem: Problem)(s: Solution): (Solution, Boolean) = {
+  def verifyPre(synth: Synthesizer, problem: Problem)(s: Solution): Solution = {
     synth.solver.solveSAT(And(Not(s.pre), problem.phi)) match {
       case (Some(true), model) =>
         synth.reporter.warning("Heuristic failed to produce weakest precondition:")
         synth.reporter.warning(" - problem: "+problem)
         synth.reporter.warning(" - precondition: "+s.pre)
-        (s, false)
+        s
       case _ =>
-        (s, true)
+        s
     }
   }
 

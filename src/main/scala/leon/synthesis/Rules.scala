@@ -30,18 +30,21 @@ case class RuleResult(alternatives: Traversable[RuleApplication])
 object RuleInapplicable extends RuleResult(List())
 
 abstract class RuleApplication(val subProblemsCount: Int,
-                               val onSuccess: List[Solution] => (Solution, Boolean)) {
+                               val onSuccess: List[Solution] => Solution) {
 
   def apply(): RuleApplicationResult
 }
 
+abstract class RuleImmediateApplication extends RuleApplication(0, s => Solution.simplest)
+
 sealed abstract class RuleApplicationResult
 case class RuleSuccess(solution: Solution) extends RuleApplicationResult
-case class RuleDecomposed(sub: List[Problem], onSuccess: List[Solution] => (Solution, Boolean)) extends RuleApplicationResult
+case class RuleDecomposed(sub: List[Problem], onSuccess: List[Solution] => Solution) extends RuleApplicationResult
+case object RuleApplicationImpossible extends RuleApplicationResult
 
 object RuleFastApplication {
   def apply(sub: List[Problem], onSuccess: List[Solution] => Solution) = {
-    new RuleApplication(sub.size, ls => (onSuccess(ls), true)) {
+    new RuleApplication(sub.size, onSuccess) {
       def apply() = RuleDecomposed(sub, onSuccess)
     }
   }
@@ -55,7 +58,7 @@ object RuleFastStep {
 
 object RuleFastSuccess {
   def apply(solution: Solution) = {
-    RuleResult(List(new RuleApplication(0, ls => (solution, true)) {
+    RuleResult(List(new RuleApplication(0, ls => solution) {
       def apply() = RuleSuccess(solution)
     }))
   }

@@ -29,15 +29,15 @@ class Synthesizer(val reporter: Reporter,
 
   def synthesize(): Solution = {
 
-    val sigINT = new Signal("INT")
-    var oldHandler: SignalHandler = null
-    oldHandler = Signal.handle(sigINT, new SignalHandler {
-      def handle(sig: Signal) {
-        reporter.info("Aborting...")
-        continue = false
-        Signal.handle(sigINT, oldHandler)
-      }
-    })
+    //val sigINT = new Signal("INT")
+    //var oldHandler: SignalHandler = null
+    //oldHandler = Signal.handle(sigINT, new SignalHandler {
+    //  def handle(sig: Signal) {
+    //    reporter.info("Aborting...")
+    //    continue = false
+    //    Signal.handle(sigINT, oldHandler)
+    //  }
+    //})
 
     /*
     if (generateDerivationTrees) {
@@ -64,10 +64,10 @@ class Synthesizer(val reporter: Reporter,
     val subSols = (1 to app.subProblemsCount).map {i => Solution.simplest }.toList
     val simpleSol = app.onSuccess(subSols)
 
-    def cost = SolutionCost(simpleSol._1)
+    def cost = SolutionCost(simpleSol)
 
     def composeSolution(sols: List[Solution]): Solution = {
-      app.onSuccess(sols)._1
+      app.onSuccess(sols)
     }
   }
 
@@ -86,17 +86,18 @@ class Synthesizer(val reporter: Reporter,
           val sub = rules.flatMap ( r => r.attemptToApplyOn(t.p).alternatives.map(TaskRunRule(t.p, r, _)) )
 
           if (!sub.isEmpty) {
+            println("Was able to apply rules: "+sub.map(_.rule))
             Expanded(sub.toList)
           } else {
             ExpandFailure
           }
 
-        case t: TaskRunRule=>
+        case t: TaskRunRule =>
           val prefix = "[%-20s] ".format(Option(t.rule).getOrElse("?"))
 
+          info(prefix+"Got: "+t.problem)
           t.app.apply() match {
             case RuleSuccess(sol) =>
-              info(prefix+"Got: "+t.problem)
               info(prefix+"Solved with: "+sol)
 
               ExpandSuccess(sol)
@@ -108,6 +109,9 @@ class Synthesizer(val reporter: Reporter,
               }
 
               Expanded(sub.map(TaskTryRules(_)))
+
+            case RuleApplicationImpossible =>
+              ExpandFailure
           }
       }
     }

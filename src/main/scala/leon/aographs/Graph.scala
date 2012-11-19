@@ -112,7 +112,7 @@ class AndOrGraph[T <: AOTask[S], S <: AOSolution](val root: T) {
   object RootNode extends AndLeaf(null, root) {
     override def expandWith(succ: List[T]) {
       val n = new AndNode(null, succ, task) {
-        override def unsolvable(l: Tree) {}
+        override def unsolvable(l: Tree) { println("Root was unsolvable!") }
         override def notifyParent(sol: S) {}
       }
 
