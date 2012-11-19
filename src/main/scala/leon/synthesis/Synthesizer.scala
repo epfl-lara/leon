@@ -92,7 +92,7 @@ class Synthesizer(val reporter: Reporter,
           }
 
         case t: TaskRunRule=>
-          val prefix = "[%-20s] ".format(Option(t.rule))
+          val prefix = "[%-20s] ".format(Option(t.rule).getOrElse("?"))
 
           t.app.apply() match {
             case RuleSuccess(sol) =>
