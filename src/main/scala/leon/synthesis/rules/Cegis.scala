@@ -213,6 +213,6 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
       unrolings += 1
     } while(unrolings < maxUnrolings && lastF != currentF && result.isEmpty && synth.continue)
 
-    result.getOrElse(RuleInapplicable)
+    result.getOrElse(RuleInapplicable())
   }
 }

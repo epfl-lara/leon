@@ -27,13 +27,16 @@ object Rules {
 }
 
 sealed abstract class RuleResult
-case object RuleInapplicable extends RuleResult
 case class RuleSuccess(solution: Solution) extends RuleResult
-case class RuleAlternatives(steps: Set[RuleMultiSteps]) extends RuleResult
+case class RuleAlternatives(steps: Traversable[RuleMultiSteps]) extends RuleResult
 
 case class RuleMultiSteps(subProblems: List[Problem],
                           interSteps: List[List[Solution] => List[Problem]],
                           onSuccess: List[Solution] => (Solution, Boolean))
+
+object RuleInapplicable {
+  def apply() = RuleAlternatives(Seq())
+}
 
 object RuleStep {
   def apply(subProblems: List[Problem], onSuccess: List[Solution] => Solution) = {

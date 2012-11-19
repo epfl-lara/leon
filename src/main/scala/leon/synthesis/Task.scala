@@ -27,7 +27,7 @@ class Task(synth: Synthesizer,
   var solution: Option[Solution] = None
   var solver: Option[RuleApplication] = None
 
-  var alternatives = Set[RuleApplication]()
+  var alternatives = Traversable[RuleApplication]()
 
   var minComplexity: AbsSolComplexity = new FixedSolComplexity(0)
 
@@ -109,12 +109,14 @@ class Task(synth: Synthesizer,
 
         Nil
 
+      case RuleAlternatives(xs) if xs.isEmpty =>
+        // Inapplicable
+        Nil
+
       case RuleAlternatives(steps) =>
         this.alternatives = steps.map( step => new RuleApplication(step.subProblems, step.interSteps, step.onSuccess) )
 
         this.alternatives.flatMap(_.initProblems).toList
-      case RuleInapplicable =>
-        Nil
     }
   }
 

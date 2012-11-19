@@ -42,25 +42,25 @@ class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", syn
                 result = Some(RuleSuccess(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(satModel))).setType(tpe))))
 
               case _ =>
-                result = Some(RuleInapplicable)
+                result = Some(RuleInapplicable())
             }
 
           case (Some(false), _) =>
             if (predicates.isEmpty) {
               result = Some(RuleSuccess(Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe))))
             } else {
-              result = Some(RuleInapplicable)
+              result = Some(RuleInapplicable())
             }
           case _ =>
-            result = Some(RuleInapplicable)
+            result = Some(RuleInapplicable())
         }
 
         i += 1 
       }
 
-      result.getOrElse(RuleInapplicable)
+      result.getOrElse(RuleInapplicable())
     } else {
-      RuleInapplicable
+      RuleInapplicable()
     }
   }
 }

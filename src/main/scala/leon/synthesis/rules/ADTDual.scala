@@ -28,7 +28,7 @@ class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth, 200) {
 
       RuleOneStep(List(sub), forward)
     } else {
-      RuleInapplicable
+      RuleInapplicable()
     }
   }
 }

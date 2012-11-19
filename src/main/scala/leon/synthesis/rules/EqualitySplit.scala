@@ -12,7 +12,7 @@ class EqualitySplit(synth: Synthesizer) extends Rule("Eq. Split.", synth, 90) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
-    val candidate = p.as.groupBy(_.getType).map(_._2.toList).find {
+    val candidates = p.as.groupBy(_.getType).map(_._2.toList).filter {
       case List(a1, a2) =>
         val toValEQ = Implies(p.c, Equals(Variable(a1), Variable(a2)))
 
@@ -37,8 +37,8 @@ class EqualitySplit(synth: Synthesizer) extends Rule("Eq. Split.", synth, 90) {
     }
 
 
-    candidate match {
-      case Some(List(a1, a2)) =>
+    val steps = candidates.map(_ match {
+      case List(a1, a2) =>
 
         val sub1 = p.copy(c = And(Equals(Variable(a1), Variable(a2)), p.c))
         val sub2 = p.copy(c = And(Not(Equals(Variable(a1), Variable(a2))), p.c))
@@ -50,9 +50,11 @@ class EqualitySplit(synth: Synthesizer) extends Rule("Eq. Split.", synth, 90) {
             Solution.none
         }
 
-        RuleOneStep(List(sub1, sub2), onSuccess)
+        Some(RuleStep(List(sub1, sub2), onSuccess))
       case _ =>
-        RuleInapplicable
-    }
+        None
+    }).flatten
+
+    RuleAlternatives(steps)
   }
 }

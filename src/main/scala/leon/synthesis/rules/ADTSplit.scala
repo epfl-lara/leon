@@ -13,7 +13,7 @@ class ADTSplit(synth: Synthesizer) extends Rule("ADT Split.", synth, 70) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
 
-    val candidate = p.as.collect {
+    val candidates = p.as.collect {
       case IsTyped(id, AbstractClassType(cd)) =>
 
         val optCases = for (dcd <- cd.knownDescendents) yield dcd match {
@@ -44,8 +44,8 @@ class ADTSplit(synth: Synthesizer) extends Rule("ADT Split.", synth, 70) {
     }
 
 
-    candidate.find(_.isDefined) match {
-      case Some(Some((id, cases))) =>
+    val steps = candidates.collect{ _ match {
+      case Some((id, cases)) =>
         val oas = p.as.filter(_ != id)
 
         val subInfo = for(ccd <- cases) yield {
@@ -72,9 +72,11 @@ class ADTSplit(synth: Synthesizer) extends Rule("ADT Split.", synth, 70) {
             Solution(Or(globalPre), sols.flatMap(_.defs).toSet, MatchExpr(Variable(id), cases))
         }
 
-        RuleOneStep(subInfo.map(_._2).toList, onSuccess)
+        Some(RuleStep(subInfo.map(_._2).toList, onSuccess))
       case _ =>
-        RuleInapplicable
-    }
+        None
+    }}.flatten
+
+    RuleAlternatives(steps)
   }
 }

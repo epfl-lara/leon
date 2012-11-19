@@ -40,7 +40,7 @@ class OnePoint(synth: Synthesizer) extends Rule("One-point", synth, 300) {
 
       RuleOneStep(List(newProblem), onSuccess)
     } else {
-      RuleInapplicable
+      RuleInapplicable()
     }
   }
 }

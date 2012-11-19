@@ -40,7 +40,7 @@ class SelectiveInlining(synth: Synthesizer) extends Rule("Sel. Inlining", synth,
 
       HeuristicOneStep(synth, p, List(sub), forward)
     } else {
-      RuleInapplicable
+      RuleInapplicable()
     }
   }
 }

@@ -43,7 +43,7 @@ class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth
     allOthers = allOthers ++ candidates
 
     optionNormalizedEq match {
-      case None => RuleInapplicable
+      case None => RuleInapplicable()
       case Some(normalizedEq0) => {
 
         val eqas = problem.as.toSet.intersect(vars)

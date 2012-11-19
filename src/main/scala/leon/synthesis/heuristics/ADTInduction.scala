@@ -100,10 +100,10 @@ class ADTInduction(synth: Synthesizer) extends Rule("ADT Induction", synth, 80) 
 
         HeuristicOneStep(synth, p, subProblemsInfo.map(_._1).toList, onSuccess)
       } else {
-        RuleInapplicable
+        RuleInapplicable()
       }
     } else {
-      RuleInapplicable
+      RuleInapplicable()
     }
   }
 }

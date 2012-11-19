@@ -21,10 +21,10 @@ class Ground(synth: Synthesizer) extends Rule("Ground", synth, 500) {
         case (Some(false), model) =>
           RuleSuccess(Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe)))
         case _ =>
-          RuleInapplicable
+          RuleInapplicable()
       }
     } else {
-      RuleInapplicable
+      RuleInapplicable()
     }
   }
 }

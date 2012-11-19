@@ -31,7 +31,7 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
     val ineqVars = lhsSides.foldLeft(Set[Identifier]())((acc, lhs) => acc ++ variablesOf(lhs))
     val nonIneqVars = exprNotUsed.foldLeft(Set[Identifier]())((acc, x) => acc ++ variablesOf(x))
     val candidateVars = ineqVars.intersect(problem.xs.toSet).filterNot(nonIneqVars.contains(_))
-    if(candidateVars.isEmpty) RuleInapplicable else {
+    if(candidateVars.isEmpty) RuleInapplicable() else {
       val processedVar = candidateVars.head
       val otherVars: List[Identifier] = problem.xs.filterNot(_ == processedVar)
 

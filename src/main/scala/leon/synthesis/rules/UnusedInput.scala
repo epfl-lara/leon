@@ -16,7 +16,7 @@ class UnusedInput(synth: Synthesizer) extends Rule("UnusedInput", synth, 100) {
 
       RuleOneStep(List(sub), forward)
     } else {
-      RuleInapplicable
+      RuleInapplicable()
     }
   }
 }

@@ -31,7 +31,7 @@ object Unification {
 
         RuleOneStep(List(sub), forward)
       } else {
-        RuleInapplicable
+        RuleInapplicable()
       }
     }
   }
@@ -56,7 +56,7 @@ object Unification {
 
         RuleSuccess(Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe)))
       } else {
-        RuleInapplicable
+        RuleInapplicable()
       }
     }
   }

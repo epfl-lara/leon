@@ -40,7 +40,7 @@ class OptimisticInjection(synth: Synthesizer) extends Rule("Opt. Injection", syn
 
       HeuristicOneStep(synth, p, List(sub), forward)
     } else {
-      RuleInapplicable
+      RuleInapplicable()
     }
   }
 }

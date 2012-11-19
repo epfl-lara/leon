@@ -23,7 +23,7 @@ class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", sy
 
       RuleOneStep(List(sub), onSuccess)
     } else {
-      RuleInapplicable
+      RuleInapplicable()
     }
 
   }

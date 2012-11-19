@@ -10,7 +10,7 @@ class CaseSplit(synth: Synthesizer) extends Rule("Case-Split", synth, 200) {
   def applyOn(task: Task): RuleResult = {
     val p = task.problem
     p.phi match {
-      case Or(Seq(o1, o2)) =>
+      case Or(o1 :: o2 :: _) =>
         val sub1 = Problem(p.as, p.c, o1, p.xs)
         val sub2 = Problem(p.as, p.c, o2, p.xs)
 
@@ -21,7 +21,7 @@ class CaseSplit(synth: Synthesizer) extends Rule("Case-Split", synth, 200) {
 
         RuleOneStep(List(sub1, sub2), onSuccess)
       case _ =>
-        RuleInapplicable
+        RuleInapplicable()
     }
   }
 }

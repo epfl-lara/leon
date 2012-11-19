@@ -25,10 +25,10 @@ class Assert(synth: Synthesizer) extends Rule("Assert", synth, 200) {
             RuleOneStep(List(sub), forward)
           }
         } else {
-          RuleInapplicable
+          RuleInapplicable()
         }
       case _ =>
-        RuleInapplicable
+        RuleInapplicable()
     }
   }
 }
