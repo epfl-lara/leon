@@ -38,7 +38,7 @@ class SelectiveInlining(synth: Synthesizer) extends Rule("Sel. Inlining", synth,
 
       val sub = p.copy(phi = And(newExprs))
 
-      HeuristicStep(synth, p, List(sub), forward)
+      HeuristicOneStep(synth, p, List(sub), forward)
     } else {
       RuleInapplicable
     }

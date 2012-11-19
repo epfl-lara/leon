@@ -20,21 +20,30 @@ object Rules {
     new EqualitySplit(_),
     new CEGIS(_),
     new Assert(_),
-//    new ADTSplit(_),
-    new IntegerEquation(_)
+    new ADTSplit(_),
+    new IntegerEquation(_),
+    new IntegerInequalities(_)
   )
 }
 
 sealed abstract class RuleResult
 case object RuleInapplicable extends RuleResult
 case class RuleSuccess(solution: Solution) extends RuleResult
+case class RuleAlternatives(steps: Set[RuleMultiSteps]) extends RuleResult
+
 case class RuleMultiSteps(subProblems: List[Problem],
-                          steps: List[List[Solution] => List[Problem]],
-                          onSuccess: List[Solution] => (Solution, Boolean)) extends RuleResult
+                          interSteps: List[List[Solution] => List[Problem]],
+                          onSuccess: List[Solution] => (Solution, Boolean))
 
 object RuleStep {
   def apply(subProblems: List[Problem], onSuccess: List[Solution] => Solution) = {
     RuleMultiSteps(subProblems, Nil, onSuccess.andThen((_, true)))
+  }
+}
+
+object RuleOneStep {
+  def apply(subProblems: List[Problem], onSuccess: List[Solution] => Solution) = {
+    RuleAlternatives(Set(RuleStep(subProblems, onSuccess)))
   }
 }
 

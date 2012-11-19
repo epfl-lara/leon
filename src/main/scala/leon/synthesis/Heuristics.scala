@@ -7,10 +7,10 @@ import heuristics._
 
 object Heuristics {
   def all = Set[Synthesizer => Rule](
-    new IntInduction(_),
+    new IntInduction(_)
     //new OptimisticInjection(_),
     //new SelectiveInlining(_),
-    new ADTInduction(_)
+//    new ADTInduction(_)
   )
 }
 
@@ -40,6 +40,9 @@ object HeuristicStep {
 }
 
 
-
-
+object HeuristicOneStep {
+  def apply(synth: Synthesizer, problem: Problem, subProblems: List[Problem], onSuccess: List[Solution] => Solution) = {
+    RuleAlternatives(Set(HeuristicStep(synth, problem, subProblems, onSuccess)))
+  }
+}
 

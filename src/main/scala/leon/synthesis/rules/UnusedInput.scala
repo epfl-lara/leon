@@ -14,7 +14,7 @@ class UnusedInput(synth: Synthesizer) extends Rule("UnusedInput", synth, 100) {
     if (!unused.isEmpty) {
       val sub = p.copy(as = p.as.filterNot(unused))
 
-      RuleStep(List(sub), forward)
+      RuleOneStep(List(sub), forward)
     } else {
       RuleInapplicable
     }

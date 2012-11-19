@@ -38,7 +38,7 @@ class OptimisticInjection(synth: Synthesizer) extends Rule("Opt. Injection", syn
 
       val sub = p.copy(phi = And(newExprs))
 
-      HeuristicStep(synth, p, List(sub), forward)
+      HeuristicOneStep(synth, p, List(sub), forward)
     } else {
       RuleInapplicable
     }

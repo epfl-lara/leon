@@ -26,7 +26,7 @@ class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth, 200) {
     if (!toRemove.isEmpty) {
       val sub = p.copy(phi = And((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
-      RuleStep(List(sub), forward)
+      RuleOneStep(List(sub), forward)
     } else {
       RuleInapplicable
     }

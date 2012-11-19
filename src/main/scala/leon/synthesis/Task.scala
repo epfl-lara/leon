@@ -24,8 +24,9 @@ class Task(synth: Synthesizer,
     }
   }
 
-
   var solution: Option[Solution] = None
+  var alternatives = Set[RuleApplication]()
+
   var minComplexity: AbsSolComplexity = new FixedSolComplexity(0)
 
   class TaskStep(val subProblems: List[Problem]) {
@@ -34,52 +35,64 @@ class Task(synth: Synthesizer,
     var failures     = Set[Rule]()
   }
 
-  var steps: List[TaskStep]                            = Nil
-  var nextSteps: List[List[Solution] => List[Problem]] = Nil
-  var onSuccess: List[Solution] => (Solution, Boolean) = _
+  class RuleApplication(
+    val initProblems: List[Problem],
+    val allNextSteps: List[List[Solution] => List[Problem]], 
+    val onSuccess: List[Solution] => (Solution, Boolean)) {
 
-  def currentStep                 = steps.head
+    var allSteps    = List(new TaskStep(initProblems))
+    var nextSteps   = allNextSteps
+    def currentStep = allSteps.head
 
-  def isSolved(problem: Problem): Boolean = parent.isSolved(this.problem) || (currentStep.subSolutions contains problem)
+    def isSolvedFor(p: Problem) = allSteps.exists(_.subSolutions contains p) 
 
-  def partlySolvedBy(t: Task, s: Solution) {
-    if (isBetterSolutionThan(s, currentStep.subSolutions.get(t.problem))) {
-      currentStep.subSolutions += t.problem -> s
-      currentStep.subSolvers   += t.problem -> t
+    def partlySolvedBy(t: Task, s: Solution) {
+      if (currentStep.subProblems.contains(t.problem)) {
+        if (isBetterSolutionThan(s, currentStep.subSolutions.get(t.problem))) {
+          currentStep.subSolutions += t.problem -> s
+          currentStep.subSolvers   += t.problem -> t
 
-      if (currentStep.subSolutions.size == currentStep.subProblems.size) {
-        val solutions = currentStep.subProblems map currentStep.subSolutions
+          if (currentStep.subSolutions.size == currentStep.subProblems.size) {
+            val solutions = currentStep.subProblems map currentStep.subSolutions
 
-        if (!nextSteps.isEmpty) {
-          val newProblems = nextSteps.head.apply(solutions)
-          nextSteps = nextSteps.tail
+            if (!nextSteps.isEmpty) {
+              // Advance to the next step
+              val newProblems = nextSteps.head.apply(solutions)
+              nextSteps = nextSteps.tail
 
-          synth.addProblems(this, newProblems)
+              synth.addProblems(Task.this, newProblems)
 
-          steps = new TaskStep(newProblems) :: steps
-        } else {
-          onSuccess(solutions) match {
-            case (s, true) =>
-              solution = Some(s)
+              allSteps = new TaskStep(newProblems) :: allSteps
+            } else {
+              onSuccess(solutions) match {
+                case (s, true) =>
+                  solution = Some(s)
 
-              parent.partlySolvedBy(this, solution.get)
-            case _ =>
-              // solution is there, but it is incomplete (precondition not strongest)
-              //parent.partlySolvedBy(this, Solution.choose(problem))
+                  parent.partlySolvedBy(Task.this, solution.get)
+                case _ =>
+                  // solution is there, but it is incomplete (precondition not strongest)
+                  //parent.partlySolvedBy(this, Solution.choose(problem))
+              }
+            }
           }
         }
       }
     }
+
+    val minComplexity: AbsSolComplexity = {
+      val simplestSubSolutions = allNextSteps.foldLeft(initProblems.map(Solution.basic(_))){
+        (sols, step) => step(sols).map(Solution.basic(_)) 
+      }
+      val simplestSolution = onSuccess(simplestSubSolutions)._1
+      new FixedSolComplexity(parent.minComplexity.value + simplestSolution.complexity.value)
+    }
   }
 
-  def unsolvedBy(t: Task) {
-    currentStep.failures += t.rule
+  // Is this subproblem already fixed?
+  def isSolvedFor(problem: Problem): Boolean = parent.isSolvedFor(this.problem) || (alternatives.exists(_.isSolvedFor(problem)))
 
-    if (currentStep.failures.size == synth.rules.size) {
-      // We might want to report unsolved instead of solvedByChoose, depending
-      // on the cases
-      //parent.partlySolvedBy(this, Solution.choose(problem))
-    }
+  def partlySolvedBy(t: Task, s: Solution) {
+    alternatives.foreach(_.partlySolvedBy(t, s))
   }
 
   def run(): List[Problem] = {
@@ -91,22 +104,11 @@ class Task(synth: Synthesizer,
 
         Nil
 
-      case RuleMultiSteps(subProblems, interSteps, onSuccess) =>
-        this.steps = new TaskStep(subProblems) :: Nil
-        this.nextSteps = interSteps
-        this.onSuccess = onSuccess
+      case RuleAlternatives(steps) =>
+        this.alternatives = steps.map( step => new RuleApplication(step.subProblems, step.interSteps, step.onSuccess) )
 
-        // Compute simplest solution possible to evaluate whether this rule is worth it
-        // To each problem we assign the most basic solution, fold on all inner
-        // steps, and then reconstruct final solution
-        val simplestSubSolutions  = interSteps.foldLeft(subProblems.map(Solution.basic(_))){ (sols, step) => step(sols).map(Solution.basic(_)) }
-        val simplestSolution = onSuccess(simplestSubSolutions)._1
-        minComplexity = new FixedSolComplexity(parent.minComplexity.value + simplestSolution.complexity.value)
-
-        subProblems
-
+        this.alternatives.flatMap(_.initProblems).toList
       case RuleInapplicable =>
-        parent.unsolvedBy(this)
         Nil
     }
   }
@@ -121,7 +123,7 @@ class RootTask(synth: Synthesizer, problem: Problem) extends Task(synth, null, p
     List(problem)
   }
 
-  override def isSolved(problem: Problem) = solver.isDefined
+  override def isSolvedFor(problem: Problem) = solver.isDefined
 
   override def partlySolvedBy(t: Task, s: Solution) {
     if (isBetterSolutionThan(s, solution)) {
@@ -129,8 +131,4 @@ class RootTask(synth: Synthesizer, problem: Problem) extends Task(synth, null, p
       solver   = Some(t)
     }
   }
-
-  override def unsolvedBy(t: Task) {
-  }
-
 }

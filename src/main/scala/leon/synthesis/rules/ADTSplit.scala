@@ -72,7 +72,7 @@ class ADTSplit(synth: Synthesizer) extends Rule("ADT Split.", synth, 70) {
             Solution(Or(globalPre), sols.flatMap(_.defs).toSet, MatchExpr(Variable(id), cases))
         }
 
-        HeuristicStep(synth, p, subInfo.map(_._2).toList, onSuccess)
+        RuleOneStep(subInfo.map(_._2).toList, onSuccess)
       case _ =>
         RuleInapplicable
     }

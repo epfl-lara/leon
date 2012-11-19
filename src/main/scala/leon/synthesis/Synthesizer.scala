@@ -70,7 +70,7 @@ class Synthesizer(val reporter: Reporter,
 
       val prefix = "[%-20s] ".format(Option(task.rule).map(_.toString).getOrElse("root"))
 
-      if (!(firstOnly && (task.parent ne null) && task.parent.isSolved(task.problem))) {
+      if (!(firstOnly && (task.parent ne null) && task.parent.isSolvedFor(task.problem))) {
         val subProblems = task.run()
 
         if (task.minComplexity <= bestSolutionSoFar.complexity) {

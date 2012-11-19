@@ -29,7 +29,7 @@ object Unification {
         val sub = p.copy(phi = And((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
 
-        RuleStep(List(sub), forward)
+        RuleOneStep(List(sub), forward)
       } else {
         RuleInapplicable
       }

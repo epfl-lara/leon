@@ -41,6 +41,7 @@ class ADTInduction(synth: Synthesizer) extends Rule("ADT Induction", synth, 80) 
         val newFun = new FunDef(FreshIdentifier("rec", true), resType, VarDecl(inductOn, inductOn.getType) +: residualArgDefs)
 
         val innerPhi = substAll(residualMap + (origId -> Variable(inductOn)), p.phi)
+        val innerPC  = substAll(residualMap + (origId -> Variable(inductOn)), p.c)
 
         val subProblemsInfo = for (dcd <- cd.knownDescendents) yield dcd match {
           case ccd : CaseClassDef =>
@@ -64,10 +65,11 @@ class ADTInduction(synth: Synthesizer) extends Rule("ADT Induction", synth, 80) 
             }).flatten
 
             val subPhi = substAll(Map(inductOn -> CaseClass(ccd, newIds.map(Variable(_)))), innerPhi)
+            val subPC  = substAll(Map(inductOn -> CaseClass(ccd, newIds.map(Variable(_)))), innerPC)
 
             val subPre = CaseClassInstanceOf(ccd, Variable(origId))
 
-            val subProblem = Problem(inputs ::: residualArgs, And(p.c :: postFs), subPhi, p.xs)
+            val subProblem = Problem(inputs ::: residualArgs, And(subPC :: postFs), subPhi, p.xs)
 
             (subProblem, subPre, ccd, newIds, recCalls)
           case _ =>
@@ -96,7 +98,7 @@ class ADTInduction(synth: Synthesizer) extends Rule("ADT Induction", synth, 80) 
             Solution(Or(globalPre), sols.flatMap(_.defs).toSet+newFun, FunctionInvocation(newFun, p.as.map(Variable(_))))
         }
 
-        HeuristicStep(synth, p, subProblemsInfo.map(_._1).toList, onSuccess)
+        HeuristicOneStep(synth, p, subProblemsInfo.map(_._1).toList, onSuccess)
       } else {
         RuleInapplicable
       }

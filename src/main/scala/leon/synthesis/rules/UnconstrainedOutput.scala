@@ -21,7 +21,7 @@ class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", sy
           Solution.none
       }
 
-      RuleStep(List(sub), onSuccess)
+      RuleOneStep(List(sub), onSuccess)
     } else {
       RuleInapplicable
     }

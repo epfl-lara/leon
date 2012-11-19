@@ -56,7 +56,7 @@ class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 50) 
             Solution.none
         }
 
-        HeuristicStep(synth, p, List(subBase, subGT, subLT), onSuccess)
+        HeuristicOneStep(synth, p, List(subBase, subGT, subLT), onSuccess)
       case _ =>
         RuleInapplicable
     }

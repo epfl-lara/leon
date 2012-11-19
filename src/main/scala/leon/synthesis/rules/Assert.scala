@@ -22,7 +22,7 @@ class Assert(synth: Synthesizer) extends Rule("Assert", synth, 200) {
           } else {
             val sub = p.copy(c = And(p.c +: exprsA), phi = And(others))
 
-            RuleStep(List(sub), forward)
+            RuleOneStep(List(sub), forward)
           }
         } else {
           RuleInapplicable

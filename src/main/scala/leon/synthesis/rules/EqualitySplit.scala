@@ -50,7 +50,7 @@ class EqualitySplit(synth: Synthesizer) extends Rule("Eq. Split.", synth, 90) {
             Solution.none
         }
 
-        RuleStep(List(sub1, sub2), onSuccess)
+        RuleOneStep(List(sub1, sub2), onSuccess)
       case _ =>
         RuleInapplicable
     }

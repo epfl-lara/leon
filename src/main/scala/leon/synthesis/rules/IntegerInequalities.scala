@@ -161,7 +161,7 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
           case _ => Solution.none
         }
 
-        RuleStep(List(subProblem), onSuccess)
+        RuleOneStep(List(subProblem), onSuccess)
       }
     }
   }

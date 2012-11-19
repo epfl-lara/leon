@@ -19,7 +19,7 @@ class CaseSplit(synth: Synthesizer) extends Rule("Case-Split", synth, 200) {
           case _ => Solution.none
         }
 
-        RuleStep(List(sub1, sub2), onSuccess)
+        RuleOneStep(List(sub1, sub2), onSuccess)
       case _ =>
         RuleInapplicable
     }
