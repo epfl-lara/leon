@@ -1,6 +1,7 @@
 package leon
 package synthesis
 
+/*
 class Task(synth: Synthesizer,
            val parent: Task,
            val problem: Problem,
@@ -139,3 +140,4 @@ class RootTask(synth: Synthesizer, problem: Problem) extends Task(synth, null, p
     }
   }
 }
+*/

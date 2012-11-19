@@ -25,105 +25,93 @@ class Synthesizer(val reporter: Reporter,
 
   val rules = ruleConstructors.map(_.apply(this))
 
-  var derivationCounter = 1;
-
-  val rootTask: RootTask = new RootTask(this, problem)
-
-  val workList = new PriorityQueue[Task]()
-
-  def bestSolutionSoFar(): Solution = {
-    rootTask.solution.getOrElse(worstSolution)
-  }
-
-  val worstSolution = Solution.choose(problem)
-
   var continue = true
 
   def synthesize(): Solution = {
-    continue = true
-    workList.clear()
-    workList += rootTask
-
-    val ts = System.currentTimeMillis
-
-    def currentDurationMs = System.currentTimeMillis-ts
-
-    def timeoutExpired(): Boolean = {
-      timeoutMs match {
-        case Some(t) if currentDurationMs/1000 > t => true
-        case _ => false
-      }
-    }
 
     val sigINT = new Signal("INT")
     var oldHandler: SignalHandler = null
     oldHandler = Signal.handle(sigINT, new SignalHandler {
       def handle(sig: Signal) {
         reporter.info("Aborting...")
-        continue = false;
+        continue = false
         Signal.handle(sigINT, oldHandler)
       }
     })
 
-    while (!workList.isEmpty && continue) {
-      val task = workList.dequeue()
-
-      val prefix = "[%-20s] ".format(Option(task.rule).map(_.toString).getOrElse("root"))
-
-      if (!(firstOnly && (task.parent ne null) && task.parent.isSolvedFor(task.problem))) {
-        val subProblems = task.run()
-
-        if (task.minComplexity <= bestSolutionSoFar.complexity) {
-          if (task.solution.isDefined || !subProblems.isEmpty) {
-            if (task.solution.isDefined) {
-              info(prefix+"Got: "+task.problem)
-              info(prefix+"Solved with: "+task.solution.get)
-            } else {
-              info(prefix+"Got: "+task.problem)
-              info(prefix+"Decomposed into:")
-              for(p <- subProblems) {
-                info(prefix+" - "+p)
-              }
-            }
-          }
-          addProblems(task, subProblems)
-        }
-      }
-
-      if (timeoutExpired()) {
-        warning("Timeout reached")
-        continue = false
-      }
-    }
-
-    if (!workList.isEmpty) {
-      // We flush the worklist by solving everything with chooses, that should
-      // rebuild a partial solution
-      while (!workList.isEmpty) {
-        val t = workList.dequeue()
-
-        if (t.parent ne null) {
-          t.parent.partlySolvedBy(t, Solution.choose(t.problem))          
-        }
-      }
-    }
-
-    info("Finished in "+currentDurationMs+"ms")
-
+    /*
     if (generateDerivationTrees) {
       val deriv = new DerivationTree(rootTask)
       deriv.toDotFile("derivation"+derivationCounter+".dot")
       derivationCounter += 1
     }
+    */
 
-    bestSolutionSoFar()
+    val search = new AOSearch(problem, rules)
+
+    val res = search.search
+
+    println(res)
+
+    Solution.none
   }
 
-  def addProblems(task: Task, problems: Traversable[Problem]) {
-    // Check if solving this task has the slightest chance of improving the
-    // current solution
-    for (p <- problems; rule <- rules) yield {
-      workList += new Task(this, task, p, rule)
+
+  import aographs._
+
+  abstract class Task extends AOTask[Solution]
+  case class TaskRunRule(problem: Problem, rule: Rule, app: RuleApplication) extends Task {
+    val subSols = (1 to app.subProblemsCount).map {i => Solution.simplest }.toList
+    val simpleSol = app.onSuccess(subSols)
+
+    def cost = SolutionCost(simpleSol._1)
+
+    def composeSolution(sols: List[Solution]): Solution = {
+      app.onSuccess(sols)._1
+    }
+  }
+
+  case class TaskTryRules(p: Problem) extends Task {
+    def cost = ProblemCost(p)
+
+    def composeSolution(sols: List[Solution]): Solution = {
+      sys.error("Should not be called")
+    }
+  }
+
+  class AOSearch(problem: Problem, rules: Set[Rule]) extends AndOrGraphSearch[Task, Solution](new AndOrGraph(TaskTryRules(problem))) {
+    def processLeaf(l: g.Leaf) = {
+      l.task match {
+        case t: TaskTryRules =>
+          val sub = rules.flatMap ( r => r.attemptToApplyOn(t.p).alternatives.map(TaskRunRule(t.p, r, _)) )
+
+          if (!sub.isEmpty) {
+            Expanded(sub.toList)
+          } else {
+            ExpandFailure
+          }
+
+        case t: TaskRunRule=>
+          val prefix = "[%-20s] ".format(Option(t.rule))
+
+          t.app.apply() match {
+            case RuleSuccess(sol) =>
+              info(prefix+"Got: "+t.problem)
+              info(prefix+"Solved with: "+sol)
+
+              ExpandSuccess(sol)
+            case RuleDecomposed(sub, onSuccess) =>
+              info(prefix+"Got: "+t.problem)
+              info(prefix+"Decomposed into:")
+              for(p <- sub) {
+                info(prefix+" - "+p)
+              }
+
+              Expanded(sub.map(TaskTryRules(_)))
+          }
+      }
     }
   }
 }
+
+

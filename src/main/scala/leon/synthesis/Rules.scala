@@ -26,32 +26,43 @@ object Rules {
   )
 }
 
-sealed abstract class RuleResult
-case class RuleSuccess(solution: Solution) extends RuleResult
-case class RuleAlternatives(steps: Traversable[RuleMultiSteps]) extends RuleResult
+case class RuleResult(alternatives: Traversable[RuleApplication])
+object RuleInapplicable extends RuleResult(List())
 
-case class RuleMultiSteps(subProblems: List[Problem],
-                          interSteps: List[List[Solution] => List[Problem]],
-                          onSuccess: List[Solution] => (Solution, Boolean))
+abstract class RuleApplication(val subProblemsCount: Int,
+                               val onSuccess: List[Solution] => (Solution, Boolean)) {
 
-object RuleInapplicable {
-  def apply() = RuleAlternatives(Seq())
+  def apply(): RuleApplicationResult
 }
 
-object RuleStep {
-  def apply(subProblems: List[Problem], onSuccess: List[Solution] => Solution) = {
-    RuleMultiSteps(subProblems, Nil, onSuccess.andThen((_, true)))
+sealed abstract class RuleApplicationResult
+case class RuleSuccess(solution: Solution) extends RuleApplicationResult
+case class RuleDecomposed(sub: List[Problem], onSuccess: List[Solution] => (Solution, Boolean)) extends RuleApplicationResult
+
+object RuleFastApplication {
+  def apply(sub: List[Problem], onSuccess: List[Solution] => Solution) = {
+    new RuleApplication(sub.size, ls => (onSuccess(ls), true)) {
+      def apply() = RuleDecomposed(sub, onSuccess)
+    }
   }
 }
 
-object RuleOneStep {
-  def apply(subProblems: List[Problem], onSuccess: List[Solution] => Solution) = {
-    RuleAlternatives(Set(RuleStep(subProblems, onSuccess)))
+object RuleFastStep {
+  def apply(sub: List[Problem], onSuccess: List[Solution] => Solution) = {
+    RuleResult(List(RuleFastApplication(sub, onSuccess)))
+  }
+}
+
+object RuleFastSuccess {
+  def apply(solution: Solution) = {
+    RuleResult(List(new RuleApplication(0, ls => (solution, true)) {
+      def apply() = RuleSuccess(solution)
+    }))
   }
 }
 
 abstract class Rule(val name: String, val synth: Synthesizer, val priority: Priority) {
-  def applyOn(task: Task): RuleResult
+  def attemptToApplyOn(problem: Problem): RuleResult
 
   def subst(what: Tuple2[Identifier, Expr], in: Expr): Expr = replace(Map(Variable(what._1) -> what._2), in)
   def substAll(what: Map[Identifier, Expr], in: Expr): Expr = replace(what.map(w => Variable(w._1) -> w._2), in)

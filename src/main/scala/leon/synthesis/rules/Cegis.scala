@@ -10,9 +10,7 @@ import purescala.TreeOps._
 import purescala.Extractors._
 
 class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
-  def applyOn(task: Task): RuleResult = {
-    val p = task.problem
-
+  def attemptToApplyOn(p: Problem): RuleResult = {
     case class Generator(tpe: TypeTree, altBuilder: () => List[(Expr, Set[Identifier])]);
 
     var generators = Map[TypeTree, Generator]()
@@ -192,7 +190,7 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
                   mapping += c -> substAll(mapping, e)
                 }
 
-                result = Some(RuleSuccess(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(mapping))).setType(tpe))))
+                result = Some(RuleFastSuccess(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(mapping))).setType(tpe))))
 
               case _ =>
                 synth.reporter.warning("Solver returned 'UNKNOWN' in a CEGIS iteration.")
@@ -213,6 +211,6 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
       unrolings += 1
     } while(unrolings < maxUnrolings && lastF != currentF && result.isEmpty && synth.continue)
 
-    result.getOrElse(RuleInapplicable())
+    result.getOrElse(RuleInapplicable)
   }
 }

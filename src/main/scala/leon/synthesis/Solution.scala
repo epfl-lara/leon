@@ -4,13 +4,14 @@ package synthesis
 import leon.purescala.Trees._
 import leon.purescala.Definitions._
 import leon.purescala.TreeOps._
+import aographs._
 
 // Defines a synthesis solution of the form:
 // ⟨ P | T ⟩
-class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr) {
+class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr) extends AOSolution {
   override def toString = "⟨ "+pre+" | "+defs.mkString(" ")+" "+term+" ⟩" 
 
-  lazy val complexity: AbsSolComplexity = new SolComplexity(this)
+  val cost: AOCost = null
 
   def toExpr = {
     val result = if (pre == BooleanLiteral(true)) {
@@ -45,6 +46,10 @@ object Solution {
   // Generate the simplest, wrongest solution, used for complexity lowerbound
   def basic(p: Problem): Solution = {
     new Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(id => simplestValue(id.getType))))
+  }
+
+  def simplest: Solution = {
+    new Solution(BooleanLiteral(true), Set(), BooleanLiteral(true))
   }
 
   def none: Solution = {

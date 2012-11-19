@@ -7,8 +7,7 @@ import purescala.TreeOps._
 import purescala.Extractors._
 
 class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", synth, 100) {
-  def applyOn(task: Task): RuleResult = {
-    val p = task.problem
+  def attemptToApplyOn(p: Problem): RuleResult = {
     val unconstr = p.xs.toSet -- variablesOf(p.phi)
 
     if (!unconstr.isEmpty) {
@@ -21,9 +20,9 @@ class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", sy
           Solution.none
       }
 
-      RuleOneStep(List(sub), onSuccess)
+      RuleFastStep(List(sub), onSuccess)
     } else {
-      RuleInapplicable()
+      RuleInapplicable
     }
 
   }

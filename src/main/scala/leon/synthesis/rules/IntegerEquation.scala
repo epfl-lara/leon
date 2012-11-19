@@ -12,9 +12,7 @@ import LinearEquations.elimVariable
 import ArithmeticNormalization.simplify
 
 class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth, 300) {
-  def applyOn(task: Task): RuleResult = {
-
-    val problem = task.problem
+  def attemptToApplyOn(problem: Problem): RuleResult = {
 
     val TopLevelAnds(exprs) = problem.phi
 
@@ -43,7 +41,7 @@ class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth
     allOthers = allOthers ++ candidates
 
     optionNormalizedEq match {
-      case None => RuleInapplicable()
+      case None => RuleInapplicable
       case Some(normalizedEq0) => {
 
         val eqas = problem.as.toSet.intersect(vars)
@@ -62,7 +60,7 @@ class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth
             case _ => Solution.none
           }
 
-          RuleOneStep(List(newProblem), onSuccess)
+          RuleFastStep(List(newProblem), onSuccess)
 
         } else {
           val (eqPre0, eqWitness, freshxs) = elimVariable(eqas, normalizedEq)
@@ -105,7 +103,7 @@ class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth
             case _ => Solution.none
           }
 
-          RuleOneStep(List(newProblem), onSuccess)
+          RuleFastStep(List(newProblem), onSuccess)
         }
 
 

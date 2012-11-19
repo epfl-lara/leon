@@ -10,9 +10,7 @@ import purescala.TypeTrees._
 import purescala.Definitions._
 
 class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 50) with Heuristic {
-  def applyOn(task: Task): RuleResult = {
-    val p = task.problem
-
+  def attemptToApplyOn(p: Problem): RuleResult = {
     p.as match {
       case List(IsTyped(origId, Int32Type)) =>
         val tpe = TupleType(p.xs.map(_.getType))
@@ -56,9 +54,9 @@ class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 50) 
             Solution.none
         }
 
-        HeuristicOneStep(synth, p, List(subBase, subGT, subLT), onSuccess)
+        HeuristicFastStep(synth, p, List(subBase, subGT, subLT), onSuccess)
       case _ =>
-        RuleInapplicable()
+        RuleInapplicable
     }
   }
 }

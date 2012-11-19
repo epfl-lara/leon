@@ -1,6 +1,7 @@
 package leon
 package synthesis
 
+/*
 class DerivationTree(root: RootTask)  {
 
   private[this] var _nextID = 0
@@ -60,3 +61,4 @@ class DerivationTree(root: RootTask)  {
   }
 
 }
+*/

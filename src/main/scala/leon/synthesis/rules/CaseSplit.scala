@@ -7,8 +7,7 @@ import purescala.TreeOps._
 import purescala.Extractors._
 
 class CaseSplit(synth: Synthesizer) extends Rule("Case-Split", synth, 200) {
-  def applyOn(task: Task): RuleResult = {
-    val p = task.problem
+  def attemptToApplyOn(p: Problem): RuleResult = {
     p.phi match {
       case Or(o1 :: o2 :: _) =>
         val sub1 = Problem(p.as, p.c, o1, p.xs)
@@ -19,9 +18,9 @@ class CaseSplit(synth: Synthesizer) extends Rule("Case-Split", synth, 200) {
           case _ => Solution.none
         }
 
-        RuleOneStep(List(sub1, sub2), onSuccess)
+        RuleFastStep(List(sub1, sub2), onSuccess)
       case _ =>
-        RuleInapplicable()
+        RuleInapplicable
     }
   }
 }

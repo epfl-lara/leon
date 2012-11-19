@@ -10,9 +10,7 @@ import purescala.TypeTrees._
 import purescala.Definitions._
 
 class ADTInduction(synth: Synthesizer) extends Rule("ADT Induction", synth, 80) with Heuristic {
-  def applyOn(task: Task): RuleResult = {
-    val p = task.problem
-
+  def attemptToApplyOn(p: Problem): RuleResult = {
     val candidates = p.as.collect {
         case IsTyped(origId, AbstractClassType(cd)) => (origId, cd)
     }
@@ -104,6 +102,6 @@ class ADTInduction(synth: Synthesizer) extends Rule("ADT Induction", synth, 80) 
       }
     }
 
-    RuleAlternatives(steps.flatten)
+    RuleResult(steps.flatten)
   }
 }

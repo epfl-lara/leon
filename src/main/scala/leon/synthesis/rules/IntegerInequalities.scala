@@ -12,8 +12,7 @@ import LinearEquations.elimVariable
 import ArithmeticNormalization.simplify
 
 class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities", synth, 300) {
-  def applyOn(task: Task): RuleResult = {
-    val problem = task.problem
+  def attemptToApplyOn(problem: Problem): RuleResult = {
     val TopLevelAnds(exprs) = problem.phi
 
     //assume that we only have inequalities
@@ -31,7 +30,7 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
     val ineqVars = lhsSides.foldLeft(Set[Identifier]())((acc, lhs) => acc ++ variablesOf(lhs))
     val nonIneqVars = exprNotUsed.foldLeft(Set[Identifier]())((acc, x) => acc ++ variablesOf(x))
     val candidateVars = ineqVars.intersect(problem.xs.toSet).filterNot(nonIneqVars.contains(_))
-    if(candidateVars.isEmpty) RuleInapplicable() else {
+    if(candidateVars.isEmpty) RuleInapplicable else {
       val processedVar = candidateVars.head
       val otherVars: List[Identifier] = problem.xs.filterNot(_ == processedVar)
 
@@ -96,7 +95,7 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
         val pre = And(
           for((ub, uc) <- upperBounds; (lb, lc) <- lowerBounds) 
             yield LessEquals(ceilingDiv(lb, IntLiteral(lc)), floorDiv(ub, IntLiteral(uc))))
-        RuleSuccess(Solution(pre, Set(), witness))
+        RuleFastSuccess(Solution(pre, Set(), witness))
       } else {
         val L = GCD.lcm((upperBounds ::: lowerBounds).map(_._2))
         val newUpperBounds: List[Expr] = upperBounds.map{case (bound, coef) => Times(IntLiteral(L/coef), bound)}
@@ -161,7 +160,7 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
           case _ => Solution.none
         }
 
-        RuleOneStep(List(subProblem), onSuccess)
+        RuleFastStep(List(subProblem), onSuccess)
       }
     }
   }

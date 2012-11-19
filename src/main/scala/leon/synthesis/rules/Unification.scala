@@ -9,9 +9,7 @@ import purescala.Extractors._
 
 object Unification {
   class DecompTrivialClash(synth: Synthesizer) extends Rule("Unif Dec./Clash/Triv.", synth, 200) {
-    def applyOn(task: Task): RuleResult = {
-      val p = task.problem
-
+    def attemptToApplyOn(p: Problem): RuleResult = {
       val TopLevelAnds(exprs) = p.phi
 
       val (toRemove, toAdd) = exprs.collect {
@@ -29,17 +27,15 @@ object Unification {
         val sub = p.copy(phi = And((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
 
-        RuleOneStep(List(sub), forward)
+        RuleFastStep(List(sub), forward)
       } else {
-        RuleInapplicable()
+        RuleInapplicable
       }
     }
   }
 
   class OccursCheck(synth: Synthesizer) extends Rule("Unif OccursCheck", synth, 200) {
-    def applyOn(task: Task): RuleResult = {
-      val p = task.problem
-
+    def attemptToApplyOn(p: Problem): RuleResult = {
       val TopLevelAnds(exprs) = p.phi
 
       val isImpossible = exprs.exists {
@@ -54,9 +50,9 @@ object Unification {
       if (isImpossible) {
         val tpe = TupleType(p.xs.map(_.getType))
 
-        RuleSuccess(Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe)))
+        RuleFastSuccess(Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe)))
       } else {
-        RuleInapplicable()
+        RuleInapplicable
       }
     }
   }

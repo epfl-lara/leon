@@ -7,9 +7,7 @@ import purescala.TreeOps._
 import purescala.Extractors._
 
 class Assert(synth: Synthesizer) extends Rule("Assert", synth, 200) {
-  def applyOn(task: Task): RuleResult = {
-    val p = task.problem
-
+  def attemptToApplyOn(p: Problem): RuleResult = {
     p.phi match {
       case TopLevelAnds(exprs) =>
         val xsSet = p.xs.toSet
@@ -18,17 +16,17 @@ class Assert(synth: Synthesizer) extends Rule("Assert", synth, 200) {
 
         if (!exprsA.isEmpty) {
           if (others.isEmpty) {
-            RuleSuccess(Solution(And(exprsA), Set(), Tuple(p.xs.map(id => simplestValue(Variable(id))))))
+            RuleFastSuccess(Solution(And(exprsA), Set(), Tuple(p.xs.map(id => simplestValue(Variable(id))))))
           } else {
             val sub = p.copy(c = And(p.c +: exprsA), phi = And(others))
 
-            RuleOneStep(List(sub), forward)
+            RuleFastStep(List(sub), forward)
           }
         } else {
-          RuleInapplicable()
+          RuleInapplicable
         }
       case _ =>
-        RuleInapplicable()
+        RuleInapplicable
     }
   }
 }

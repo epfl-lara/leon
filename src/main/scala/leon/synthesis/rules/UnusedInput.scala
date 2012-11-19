@@ -7,16 +7,15 @@ import purescala.TreeOps._
 import purescala.Extractors._
 
 class UnusedInput(synth: Synthesizer) extends Rule("UnusedInput", synth, 100) {
-  def applyOn(task: Task): RuleResult = {
-    val p = task.problem
+  def attemptToApplyOn(p: Problem): RuleResult = {
     val unused = p.as.toSet -- variablesOf(p.phi) -- variablesOf(p.c)
 
     if (!unused.isEmpty) {
       val sub = p.copy(as = p.as.filterNot(unused))
 
-      RuleOneStep(List(sub), forward)
+      RuleFastStep(List(sub), forward)
     } else {
-      RuleInapplicable()
+      RuleInapplicable
     }
   }
 }

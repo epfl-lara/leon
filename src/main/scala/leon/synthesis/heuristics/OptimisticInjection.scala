@@ -10,9 +10,7 @@ import purescala.TypeTrees._
 import purescala.Definitions._
 
 class OptimisticInjection(synth: Synthesizer) extends Rule("Opt. Injection", synth, 50) with Heuristic {
-  def applyOn(task: Task): RuleResult = {
-    val p = task.problem
-
+  def attemptToApplyOn(p: Problem): RuleResult = {
     val TopLevelAnds(exprs) = p.phi
 
     val eqfuncalls = exprs.collect{
@@ -38,9 +36,9 @@ class OptimisticInjection(synth: Synthesizer) extends Rule("Opt. Injection", syn
 
       val sub = p.copy(phi = And(newExprs))
 
-      HeuristicOneStep(synth, p, List(sub), forward)
+      HeuristicFastStep(synth, p, List(sub), forward)
     } else {
-      RuleInapplicable()
+      RuleInapplicable
     }
   }
 }

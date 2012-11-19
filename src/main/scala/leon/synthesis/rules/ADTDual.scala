@@ -7,9 +7,7 @@ import purescala.TreeOps._
 import purescala.Extractors._
 
 class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth, 200) {
-  def applyOn(task: Task): RuleResult = {
-    val p = task.problem
-
+  def attemptToApplyOn(p: Problem): RuleResult = {
     val xs = p.xs.toSet
     val as = p.as.toSet
 
@@ -26,9 +24,9 @@ class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth, 200) {
     if (!toRemove.isEmpty) {
       val sub = p.copy(phi = And((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
-      RuleOneStep(List(sub), forward)
+      RuleFastStep(List(sub), forward)
     } else {
-      RuleInapplicable()
+      RuleInapplicable
     }
   }
 }
