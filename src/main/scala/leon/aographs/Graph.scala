@@ -15,58 +15,61 @@ object AOCost {
 }
 
 trait AOTask[S <: AOSolution] {
-  def composeSolution(sols: List[S]): S
   def cost: AOCost
+}
+
+trait AOAndTask[S <: AOSolution] extends AOTask[S] {
+  def composeSolution(sols: List[S]): S
+}
+
+trait AOOrTask[S <: AOSolution] extends AOTask[S] {
 }
 
 trait AOSolution {
   def cost: AOCost
 }
 
-
-class AndOrGraph[T <: AOTask[S], S <: AOSolution](val root: T) {
+class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val root: OT) {
   type C = AOCost
 
   var tree: Tree = RootNode
 
   trait Tree {
-    val task  : T
-    val parent: Node
+    val task : AOTask[S]
+    val parent: Node[_]
 
     def minCost: C
 
     def isSolved: Boolean
-    def isUnsolvable: Boolean
   }
 
-  abstract class AndTree extends Tree
-  abstract class OrTree extends Tree
+  abstract class AndTree extends Tree {
+    override val task: AT
+  }
+
+  abstract class OrTree extends Tree {
+    override val task: OT
+  }
 
 
-  trait Leaf extends Tree with Ordered[Leaf] {
+  trait Leaf extends Tree {
     val minCost: C = task.cost
 
-    def compare(that: Leaf) = this.minCost.compare(that.minCost)
-
     def isSolved: Boolean = false
-    def isUnsolvable: Boolean = false
-    def expandWith(succ: List[T])
   }
 
-  trait Node {
-    def expandLeaf(l: Leaf, succ: List[T])
-    def unsolvable(l: Tree)
-    def notifySolution(sub: Tree, sol: S)
+  trait Node[T <: Tree] extends Tree {
+    def unsolvable(l: T)
+    def notifySolution(sub: T, sol: S)
 
     var solution: Option[S] = None
-    var isUnsolvable = false
 
     def isSolved: Boolean = solution.isDefined
   }
 
-  case class AndNode(parent: OrNode, subTasks: List[T], task: T) extends AndTree with Node {
-    var subProblems         = Map[T, OrTree]()
-    var subSolutions        = Map[T, S]()
+  case class AndNode(parent: OrNode, subTasks: List[OT], task: AT) extends AndTree with Node[OrTree] {
+    var subProblems         = Map[OT, OrTree]()
+    var subSolutions        = Map[OT, S]()
 
     def computeCost = {
       solution match {
@@ -81,12 +84,11 @@ class AndOrGraph[T <: AOTask[S], S <: AOSolution](val root: T) {
 
     var minCost = computeCost
 
-    def unsolvable(l: Tree) {
-      isUnsolvable = true
+    def unsolvable(l: OrTree) {
       parent.unsolvable(this)
     }
 
-    def expandLeaf(l: Leaf, succ: List[T]) {
+    def expandLeaf(l: OrLeaf, succ: List[AT]) {
       val n = OrNode(this, Map(), l.task)
       n.alternatives = succ.map(t => t -> AndLeaf(n, t)).toMap
       n.minAlternative = n.computeMin
@@ -94,7 +96,7 @@ class AndOrGraph[T <: AOTask[S], S <: AOSolution](val root: T) {
       subProblems += l.task -> n
     }
 
-    def notifySolution(sub: Tree, sol: S) {
+    def notifySolution(sub: OrTree, sol: S) {
       subSolutions += sub.task -> sol
 
       if (subSolutions.size == subProblems.size) {
@@ -114,35 +116,18 @@ class AndOrGraph[T <: AOTask[S], S <: AOSolution](val root: T) {
   }
 
   object RootNode extends OrLeaf(null, root) {
-    override def expandWith(succ: List[T]) {
-      val n = new OrNode(null, Map(), task) {
-        override def unsolvable(l: Tree) {
-          alternatives -= l.task
 
-          if (alternatives.isEmpty) {
-            isUnsolvable = true
-          } else {
-            minAlternative = computeMin
-          }
-        }
-      }
-
-      n.alternatives = succ.map(t => t -> AndLeaf(n, t)).toMap
-      n.minAlternative = n.computeMin
-
-      tree = n
-    }
   }
 
-  case class AndLeaf(parent: OrNode, task: T) extends AndTree with Leaf {
-    def expandWith(succ: List[T]) {
+  case class AndLeaf(parent: OrNode, task: AT) extends AndTree with Leaf {
+    def expandWith(succ: List[OT]) {
       parent.expandLeaf(this, succ)
     }
 
   }
 
 
-  case class OrNode(parent: AndNode, var alternatives: Map[T, AndTree], task: T) extends OrTree with Node {
+  case class OrNode(parent: AndNode, var alternatives: Map[AT, AndTree], task: OT) extends OrTree with Node[AndTree] {
     var minAlternative: Tree    = _
     def minCost: C              = minAlternative.minCost
 
@@ -154,18 +139,17 @@ class AndOrGraph[T <: AOTask[S], S <: AOSolution](val root: T) {
       }
     }
 
-    def unsolvable(l: Tree) {
+    def unsolvable(l: AndTree) {
       alternatives -= l.task
 
       if (alternatives.isEmpty) {
-        isUnsolvable = true
         parent.unsolvable(this)
       } else {
         minAlternative = computeMin
       }
     }
 
-    def expandLeaf(l: Leaf, succ: List[T]) {
+    def expandLeaf(l: AndLeaf, succ: List[OT]) {
       val n = AndNode(this, succ, l.task)
       n.subProblems = succ.map(t => t -> OrLeaf(n, t)).toMap
       n.minCost     = n.computeCost
@@ -173,7 +157,7 @@ class AndOrGraph[T <: AOTask[S], S <: AOSolution](val root: T) {
       alternatives += l.task -> n
     }
 
-    def notifySolution(sub: Tree, sol: S) {
+    def notifySolution(sub: AndTree, sol: S) {
       solution match {
         case Some(preSol) if (preSol.cost < sol.cost) =>
           solution       = Some(sol)
@@ -189,14 +173,14 @@ class AndOrGraph[T <: AOTask[S], S <: AOSolution](val root: T) {
     }
   }
 
-  case class OrLeaf(parent: AndNode, task: T) extends OrTree with Leaf {
-    def expandWith(succ: List[T]) {
+  case class OrLeaf(parent: AndNode, task: OT) extends OrTree with Leaf {
+    def expandWith(succ: List[AT]) {
       parent.expandLeaf(this, succ)
     }
   }
 }
 
-abstract class AndOrGraphSearch[T <: AOTask[S], S <: AOSolution](val g: AndOrGraph[T, S]) {
+abstract class AndOrGraphSearch[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val g: AndOrGraph[AT, OT, S]) {
   import collection.mutable.PriorityQueue
 
   def nextLeaf: Option[g.Leaf] = {
@@ -220,23 +204,36 @@ abstract class AndOrGraphSearch[T <: AOTask[S], S <: AOSolution](val g: AndOrGra
   }
 
   abstract class ExpandResult
-  case class Expanded(sub: List[T]) extends ExpandResult
+  case class ExpandedAnd(sub: List[OT]) extends ExpandResult
+  case class ExpandedOr(sub: List[AT]) extends ExpandResult
   case class ExpandSuccess(sol: S) extends ExpandResult
   case object ExpandFailure extends ExpandResult
 
   var continue = true
 
   def search = {
-    while (!g.tree.isSolved && continue && !g.tree.isUnsolvable) {
+    while (!g.tree.isSolved && continue) {
       nextLeaf match {
         case Some(l) =>
-          processLeaf(l) match {
-            case r @ Expanded(ls) =>
-              l.expandWith(ls)
-            case r @ ExpandSuccess(sol) =>
-              l.parent.notifySolution(l, sol)
-            case r @ ExpandFailure =>
-              l.parent.unsolvable(l)
+          l match {
+            case al: g.AndLeaf =>
+              processLeaf(al) match {
+                case ExpandedAnd(ls) =>
+                  al.expandWith(ls)
+                case r @ ExpandSuccess(sol) =>
+                  al.parent.notifySolution(al, sol)
+                case _ =>
+                  al.parent.unsolvable(al)
+              }
+            case ol: g.OrLeaf =>
+              processLeaf(ol) match {
+                case ExpandedOr(ls) =>
+                  ol.expandWith(ls)
+                case r @ ExpandSuccess(sol) =>
+                  ol.parent.notifySolution(ol, sol)
+                case _ =>
+                  ol.parent.unsolvable(ol)
+              }
           }
         case None =>
           continue = false
