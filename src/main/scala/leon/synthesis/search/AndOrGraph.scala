@@ -123,6 +123,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
 
 
   class OrNode(val parent: AndNode, var alternatives: Map[AT, AndTree], val task: OT) extends OrTree with Node[AndTree] {
+    var triedAlternatives    = Map[AT, AndTree]()
     var minAlternative: Tree = _
     var minCost              = Cost.zero
 
@@ -141,7 +142,9 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
     }
 
     def unsolvable(l: AndTree) {
+      triedAlternatives += l.task -> alternatives(l.task)
       alternatives -= l.task
+
 
       if (alternatives.isEmpty) {
         parent.unsolvable(this)
