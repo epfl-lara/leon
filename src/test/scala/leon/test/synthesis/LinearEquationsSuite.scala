@@ -6,10 +6,9 @@ import leon.Evaluator
 import leon.purescala.Trees._
 import leon.purescala.TreeOps._
 import leon.purescala.Common._
+import leon.purescala.LikelyEq
 
 import leon.synthesis.LinearEquations._
-import leon.synthesis.LikelyEq
-import leon.synthesis.ArithmeticNormalization.simplify
 
 class LinearEquationsSuite extends FunSuite {
 

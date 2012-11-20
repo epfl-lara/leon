@@ -1,4 +1,4 @@
-package leon.synthesis
+package leon.purescala
 
 import leon.Evaluator._
 import leon.purescala.Trees._
@@ -6,7 +6,10 @@ import leon.purescala.TreeOps.replace
 import leon.purescala.Common._
 
 /*
- * determine if two expressions over arithmetic variables are likely to be the same
+ * Determine if two expressions over arithmetic variables are likely to be the same
+ *
+ * This is a probabilistic based approach, it does not rely on any external solver and can
+ * only prove the non equality of two expressions.
  */
 object LikelyEq {
 

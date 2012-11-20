@@ -9,7 +9,6 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
 import LinearEquations.elimVariable
-import ArithmeticNormalization.simplify
 
 class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities", synth, 300) {
   def attemptToApplyOn(problem: Problem): RuleResult = {
@@ -39,7 +38,7 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
       var lowerBounds: List[(Expr, Int)] = Nil // (t, c) means t <= c*x
       normalizedLhs.foreach{
         case List(t, IntLiteral(i)) => 
-          if(i > 0) upperBounds ::= (simplify(UMinus(t)), i)
+          if(i > 0) upperBounds ::= (simplifyArithmetic(UMinus(t)), i)
           else if(i < 0) lowerBounds ::= (simplify(t), -i)
           else /*if (i == 0)*/ exprNotUsed ::= LessEquals(t, IntLiteral(0))
         case err => sys.error("unexpected from normal form: " + err)

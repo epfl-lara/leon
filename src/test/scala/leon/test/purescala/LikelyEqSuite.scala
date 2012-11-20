@@ -1,4 +1,4 @@
-package leon.test.synthesis
+package leon.test.purescala
 
 import org.scalatest.FunSuite
 
@@ -6,7 +6,7 @@ import leon.Evaluator
 import leon.purescala.Trees._
 import leon.purescala.Common._
 
-import leon.synthesis.LikelyEq
+import leon.purescala.LikelyEq
 
 class LikelyEqSuite extends FunSuite {
 

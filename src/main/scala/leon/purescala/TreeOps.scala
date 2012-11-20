@@ -1359,4 +1359,74 @@ object TreeOps {
     replace(vars.map(id => Variable(id) -> valuator(id)).toMap, expr)
   }
 
+  //simple, local simplifications on arithmetic
+  //you should not assume anything smarter than some constant folding and simple cancelation
+  //to avoid infinite cycle we only apply simplification that reduce the size of the tree
+  //The only guarentee from this function is to not augment the size of the expression and to be sound 
+  //(note that an identity function would meet this specification)
+  def simplifyArithmetic(expr: Expr): Expr = {
+    def simplify0(expr: Expr): Expr = expr match {
+      case Plus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 + i2)
+      case Plus(IntLiteral(0), e) => e
+      case Plus(e, IntLiteral(0)) => e
+      case Plus(e1, UMinus(e2)) => Minus(e1, e2)
+
+      case Minus(e, IntLiteral(0)) => e
+      case Minus(IntLiteral(0), e) => UMinus(e)
+      case Minus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 - i2)
+      case Minus(e1, UMinus(e2)) => Plus(e1, e2)
+      case Minus(e1, Minus(UMinus(e2), e3)) => Plus(e1, Plus(e2, e3))
+
+      case UMinus(IntLiteral(x)) => IntLiteral(-x)
+      case UMinus(UMinus(x)) => x
+      case UMinus(Plus(UMinus(e1), e2)) => Plus(e1, UMinus(e2))
+      case UMinus(Minus(e1, e2)) => Minus(e2, e1)
+
+      case Times(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 * i2)
+      case Times(IntLiteral(1), e) => e
+      case Times(IntLiteral(-1), e) => UMinus(e)
+      case Times(e, IntLiteral(1)) => e
+      case Times(IntLiteral(0), _) => IntLiteral(0)
+      case Times(_, IntLiteral(0)) => IntLiteral(0)
+      case Times(IntLiteral(i1), Times(IntLiteral(i2), t)) => Times(IntLiteral(i1*i2), t)
+      case Times(IntLiteral(i1), Times(t, IntLiteral(i2))) => Times(IntLiteral(i1*i2), t)
+      case Times(IntLiteral(i), UMinus(e)) => Times(IntLiteral(-i), e)
+      case Times(UMinus(e), IntLiteral(i)) => Times(e, IntLiteral(-i))
+      case Times(IntLiteral(i1), Division(e, IntLiteral(i2))) if i2 != 0 && i1 % i2 == 0 => Times(IntLiteral(i1/i2), e)
+      case Times(IntLiteral(i1), Plus(Division(e1, IntLiteral(i2)), e2)) if i2 != 0 && i1 % i2 == 0 => Times(IntLiteral(i1/i2), Plus(e1, e2))
+
+      case Division(IntLiteral(i1), IntLiteral(i2)) if i2 != 0 => IntLiteral(i1 / i2)
+      case Division(e, IntLiteral(1)) => e
+
+      //here we put more expensive rules
+      case Minus(e1, e2) if e1 == e2 => IntLiteral(0) 
+      case e => e
+    }
+    def fix[A](f: (A) => A)(a: A): A = {
+      val na = f(a)
+      if(a == na) a else fix(f)(na)
+    }
+    val res = fix(simplePostTransform(simplify0))(expr)
+    res
+  }
+
+  //Simplify the expression, applying all the simplify for various theories
+  //Maybe it would be a good design decision to not have any simplify calling
+  //an underlying solver, to somehow keep it light and become a function we call often
+  def simplify(expr: Expr): Expr = simplifyArithmetic(expr)
+
+  //If the formula consist of some top level AND, find a top level
+  //Equals and extract it, return the remaining formula as well
+  def extractEquals(expr: Expr): (Option[Equals], Expr) = expr match {
+    case And(es) =>
+      // OK now I'm just messing with you.
+      val (r, nes) = es.foldLeft[(Option[Equals],Seq[Expr])]((None, Seq())) {
+        case ((None, nes), eq @ Equals(_,_)) => (Some(eq), nes)
+        case ((o, nes), e) => (o, e +: nes)
+      }
+      (r, And(nes.reverse))
+
+    case e => (None, e)
+  }
+
 }

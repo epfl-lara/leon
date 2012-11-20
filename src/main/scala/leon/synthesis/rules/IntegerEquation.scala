@@ -9,7 +9,6 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
 import LinearEquations.elimVariable
-import ArithmeticNormalization.simplify
 
 class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth, 300) {
   def attemptToApplyOn(problem: Problem): RuleResult = {
@@ -69,8 +68,8 @@ class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth
             case c => c
           }
 
-          val eqSubstMap: Map[Expr, Expr] = neqxs.zip(eqWitness).map{case (id, e) => (Variable(id), simplify(e))}.toMap
-          val freshFormula0 = simplify(replace(eqSubstMap, And(allOthers)))
+          val eqSubstMap: Map[Expr, Expr] = neqxs.zip(eqWitness).map{case (id, e) => (Variable(id), simplifyArithmetic(e))}.toMap
+          val freshFormula0 = simplifyArithmetic(replace(eqSubstMap, And(allOthers)))
 
           var freshInputVariables: List[Identifier] = Nil
           var equivalenceConstraints: Map[Expr, Expr] = Map()
@@ -98,7 +97,7 @@ class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth
               val id2res: Map[Expr, Expr] = 
                 freshsubxs.zip(subproblemxs).map{case (id1, id2) => (Variable(id1), Variable(id2))}.toMap ++
                 neqxs.map(id => (Variable(id), eqSubstMap(Variable(id)))).toMap
-              Solution(And(eqPre, freshPre), defs, simplify(simplifyLets(LetTuple(subproblemxs, freshTerm, replace(id2res, Tuple(problem.xs.map(Variable(_))))))))
+              Solution(And(eqPre, freshPre), defs, simplifyArithmetic(simplifyLets(LetTuple(subproblemxs, freshTerm, replace(id2res, Tuple(problem.xs.map(Variable(_))))))))
             }
             case _ => Solution.none
           }
