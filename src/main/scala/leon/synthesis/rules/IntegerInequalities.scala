@@ -109,7 +109,7 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
             case ((b, k), l) => Equals(b, Plus(Times(IntLiteral(L), Variable(l)), Variable(k))) :: 
                                 newLowerBounds.map(lbound => LessEquals(Variable(k), Minus(b, lbound)))
           } ++ exprNotUsed))
-        val subProblemxs: List[Identifier] = otherVars ++ quotientIds
+        val subProblemxs: List[Identifier] = quotientIds ++ otherVars
         val subProblem = Problem(problem.as ++ remainderIds, problem.c, subProblemFormula, subProblemxs)
 
         def onSuccess(sols: List[Solution]): Solution = sols match {
@@ -127,7 +127,7 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
                     Tuple(problem.xs.map(Variable(_))))))
             } else if(upperBounds.isEmpty || lowerBounds.isEmpty) {
                 Solution(pre, defs,
-                  LetTuple(otherVars++quotientIds, term,
+                  LetTuple(subProblemxs, term,
                     Let(processedVar, witness,
                       Tuple(problem.xs.map(Variable(_))))))
             } else if(upperBounds.size > 1) {
@@ -145,7 +145,7 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
                 Error("No solution exists"),
                 IfExpr(
                   concretePre,
-                  LetTuple(otherVars++quotientIds, concreteTerm,
+                  LetTuple(subProblemxs, concreteTerm,
                     Let(processedVar, witness,
                       Tuple(problem.xs.map(Variable(_))))
                   ),
