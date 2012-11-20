@@ -54,15 +54,9 @@ class Synthesizer(val reporter: Reporter,
     val diff = System.currentTimeMillis()-ts
     reporter.info("Finished in "+diff+"ms")
 
-    /*
     if (generateDerivationTrees) {
-      val deriv = new DerivationTree(rootTask)
-      deriv.toDotFile("derivation"+derivationCounter+".dot")
-      derivationCounter += 1
+      new AndOrGraphDotConverter(search.g).writeFile("derivation.dot")
     }
-    */
-
-    new AndOrGraphDotConverter(search.g).writeFile("test.dot")
 
     res.getOrElse(Solution.choose(problem))
   }

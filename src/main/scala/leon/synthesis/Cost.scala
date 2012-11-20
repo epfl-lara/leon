@@ -16,12 +16,12 @@ case class SolutionCost(s: Solution) extends Cost {
 }
 
 case class ProblemCost(p: Problem) extends Cost {
-  val value = math.pow(2, p.xs.size).toInt + formulaSize(p.phi)*1000
+  val value = math.pow(2, p.xs.size).toInt + formulaSize(p.phi)
 }
 
 case class RuleApplicationCost(rule: Rule, app: RuleApplication) extends Cost {
   val subSols = (1 to app.subProblemsCount).map {i => Solution.simplest }.toList
   val simpleSol = app.onSuccess(subSols)
 
-  val value = SolutionCost(simpleSol).value*1000 + 1000-rule.priority
+  val value = SolutionCost(simpleSol).value
 }

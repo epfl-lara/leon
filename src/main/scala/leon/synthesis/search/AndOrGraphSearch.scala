@@ -41,6 +41,7 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
                 case Expanded(ls) =>
                   al.expandWith(ls)
                 case r @ ExpandSuccess(sol) =>
+                  al.solution = Some(sol)
                   al.parent.notifySolution(al, sol)
                 case _ =>
                   al.parent.unsolvable(al)
@@ -50,6 +51,7 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
                 case Expanded(ls) =>
                   ol.expandWith(ls)
                 case r @ ExpandSuccess(sol) =>
+                  ol.solution = Some(sol)
                   ol.parent.notifySolution(ol, sol)
                 case _ =>
                   ol.parent.unsolvable(ol)

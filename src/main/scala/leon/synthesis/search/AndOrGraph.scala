@@ -16,15 +16,13 @@ trait AOSolution {
 }
 
 class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val root: OT) {
-  type C = Cost
-
   var tree: OrTree = RootNode
 
   trait Tree {
     val task : AOTask[S]
     val parent: Node[_]
 
-    def minCost: C
+    def minCost: Cost
 
     var solution: Option[S] = None
 
@@ -43,7 +41,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
 
 
   trait Leaf extends Tree {
-    def minCost: C = task.cost
+    def minCost = task.cost
   }
 
   trait Node[T <: Tree] extends Tree {
@@ -56,8 +54,11 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
     var subProblems         = Map[OT, OrTree]()
     var subSolutions        = Map[OT, S]()
 
-    def computeCost = {
-      solution match {
+    var minCost = Cost.zero
+
+    def updateMin() {
+      val old = minCost
+      minCost = solution match {
         case Some(s) =>
           s.cost
         case _ =>
@@ -65,9 +66,11 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
 
           subCosts.foldLeft(task.cost)(_ + _)
       }
+      if (minCost != old) {
+        Option(parent).foreach(_.updateMin())
+      }
     }
 
-    var minCost = computeCost
 
     def unsolvable(l: OrTree) {
       parent.unsolvable(this)
@@ -76,7 +79,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
     def expandLeaf(l: OrLeaf, succ: List[AT]) {
       val n = new OrNode(this, Map(), l.task)
       n.alternatives = succ.map(t => t -> new AndLeaf(n, t)).toMap
-      n.minAlternative = n.computeMin
+      n.updateMin()
 
       subProblems += l.task -> n
     }
@@ -86,19 +89,17 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
 
       if (subSolutions.size == subProblems.size) {
         solution = Some(task.composeSolution(subTasks.map(subSolutions)))
-        minCost = computeCost
+        updateMin()
 
         notifyParent(solution.get)
       } else {
-        minCost = computeCost
+        updateMin()
       }
 
     }
 
     def notifyParent(sol: S) {
-      if (parent ne null) {
-        parent.notifySolution(this, sol)
-      }
+      Option(parent).foreach(_.notifySolution(this, sol))
     }
   }
 
@@ -107,7 +108,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
     override def expandWith(succ: List[AT]) {
       val n = new OrNode(null, Map(), root)
       n.alternatives = succ.map(t => t -> new AndLeaf(n, t)).toMap
-      n.minAlternative = n.computeMin
+      n.updateMin()
 
       tree = n
     }
@@ -122,14 +123,20 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
 
 
   class OrNode(val parent: AndNode, var alternatives: Map[AT, AndTree], val task: OT) extends OrTree with Node[AndTree] {
-    var minAlternative: Tree    = _
-    def minCost: C              = minAlternative.minCost
+    var minAlternative: Tree = _
+    var minCost              = Cost.zero
 
-    def computeMin = {
+    def updateMin() {
       if (!alternatives.isEmpty) {
-        alternatives.values.minBy(_.minCost)
+        minAlternative = alternatives.values.minBy(_.minCost)
+        val old = minCost 
+        minCost        = minAlternative.minCost
+        if (minCost != old) {
+          Option(parent).foreach(_.updateMin())
+        }
       } else {
-        null
+        minAlternative = null
+        minCost        = Cost.zero
       }
     }
 
@@ -139,18 +146,18 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
       if (alternatives.isEmpty) {
         parent.unsolvable(this)
       } else {
-        minAlternative = computeMin
+        updateMin()
       }
     }
 
     def expandLeaf(l: AndLeaf, succ: List[OT]) {
       val n = new AndNode(this, succ, l.task)
       n.subProblems = succ.map(t => t -> new OrLeaf(n, t)).toMap
-      n.minCost     = n.computeCost
+      n.updateMin()
 
       alternatives += l.task -> n
 
-      minAlternative = computeMin
+      updateMin()
     }
 
     def notifySolution(sub: AndTree, sol: S) {

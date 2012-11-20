@@ -11,6 +11,6 @@ trait Cost extends Ordered[Cost] {
 case class CostFixed(value: Int) extends Cost
 
 object Cost {
-  val zero = new CostFixed(0)
+  val zero: Cost = new CostFixed(0)
 }
 
