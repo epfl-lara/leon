@@ -40,7 +40,9 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
 
     def minCost: C
 
-    def isSolved: Boolean
+    var solution: Option[S] = None
+
+    def isSolved: Boolean = solution.isDefined
   }
 
   abstract class AndTree extends Tree {
@@ -56,17 +58,12 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
 
   trait Leaf extends Tree {
     def minCost: C = task.cost
-
-    def isSolved: Boolean = false
   }
 
   trait Node[T <: Tree] extends Tree {
     def unsolvable(l: T)
     def notifySolution(sub: T, sol: S)
 
-    var solution: Option[S] = None
-
-    def isSolved: Boolean = solution.isDefined
   }
 
   case class AndNode(parent: OrNode, subTasks: List[OT], task: AT) extends AndTree with Node[OrTree] {
@@ -231,7 +228,7 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSo
 
   var continue = true
 
-  def search = {
+  def search(): Option[S] = {
     while (!g.tree.isSolved && continue && !g.tree.isUnsolvable) {
       nextLeaf match {
         case Some(l) =>
@@ -259,6 +256,8 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSo
           continue = false
       }
     }
+    
+    g.tree.solution
   }
 
   def processAndLeaf(l: AT): ExpandResult[OT]

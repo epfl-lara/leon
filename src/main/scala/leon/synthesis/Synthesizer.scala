@@ -29,15 +29,28 @@ class Synthesizer(val reporter: Reporter,
 
   def synthesize(): Solution = {
 
-    //val sigINT = new Signal("INT")
-    //var oldHandler: SignalHandler = null
-    //oldHandler = Signal.handle(sigINT, new SignalHandler {
-    //  def handle(sig: Signal) {
-    //    reporter.info("Aborting...")
-    //    continue = false
-    //    Signal.handle(sigINT, oldHandler)
-    //  }
-    //})
+    val search = new AOSearch(problem, rules)
+
+    val sigINT = new Signal("INT")
+    var oldHandler: SignalHandler = null
+    oldHandler = Signal.handle(sigINT, new SignalHandler {
+      def handle(sig: Signal) {
+        println
+        reporter.info("Aborting...")
+
+        continue = false
+        search.continue = false
+
+        Signal.handle(sigINT, oldHandler)
+      }
+    })
+
+    val ts = System.currentTimeMillis()
+
+    val res = search.search()
+
+    val diff = System.currentTimeMillis()-ts
+    reporter.info("Finished in "+diff+"ms")
 
     /*
     if (generateDerivationTrees) {
@@ -47,13 +60,7 @@ class Synthesizer(val reporter: Reporter,
     }
     */
 
-    val search = new AOSearch(problem, rules)
-
-    val res = search.search
-
-    println(res)
-
-    Solution.none
+    res.getOrElse(Solution.choose(problem))
   }
 
 
