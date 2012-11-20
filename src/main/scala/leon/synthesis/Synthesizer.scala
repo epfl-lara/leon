@@ -13,6 +13,8 @@ import java.io.File
 
 import collection.mutable.PriorityQueue
 
+import synthesis.search._
+
 class Synthesizer(val reporter: Reporter,
                   val solver: Solver,
                   val problem: Problem,
@@ -62,9 +64,6 @@ class Synthesizer(val reporter: Reporter,
 
     res.getOrElse(Solution.choose(problem))
   }
-
-
-  import aographs._
 
   case class TaskRunRule(problem: Problem, rule: Rule, app: RuleApplication) extends AOAndTask[Solution] {
     def cost = RuleApplicationCost(rule, app)

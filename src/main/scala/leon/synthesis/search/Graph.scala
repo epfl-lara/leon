@@ -1,21 +1,21 @@
-package leon.aographs
+package leon.synthesis.search
 
-trait AOCost extends Ordered[AOCost] {
-  def +(that: AOCost): AOCost = AOCostFixed(value + that.value)
+trait Cost extends Ordered[Cost] {
+  def +(that: Cost): Cost = CostFixed(value + that.value)
 
   def value: Int
 
-  def compare(that: AOCost) = this.value - that.value
+  def compare(that: Cost) = this.value - that.value
 }
 
-case class AOCostFixed(value: Int) extends AOCost
+case class CostFixed(value: Int) extends Cost
 
-object AOCost {
-  val zero = new AOCostFixed(0)
+object Cost {
+  val zero = new CostFixed(0)
 }
 
 trait AOTask[S <: AOSolution] {
-  def cost: AOCost
+  def cost: Cost
 }
 
 trait AOAndTask[S <: AOSolution] extends AOTask[S] {
@@ -26,11 +26,11 @@ trait AOOrTask[S <: AOSolution] extends AOTask[S] {
 }
 
 trait AOSolution {
-  def cost: AOCost
+  def cost: Cost
 }
 
 class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val root: OT) {
-  type C = AOCost
+  type C = Cost
 
   var tree: OrTree = RootNode
 
