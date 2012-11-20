@@ -62,6 +62,8 @@ class Synthesizer(val reporter: Reporter,
     }
     */
 
+    new AndOrGraphDotConverter(search.g).writeFile("test.dot")
+
     res.getOrElse(Solution.choose(problem))
   }
 
@@ -72,16 +74,17 @@ class Synthesizer(val reporter: Reporter,
       app.onSuccess(sols)
     }
 
-    override def toString = rule.name+" ON "+problem
+    override def toString = rule.name
   }
 
   case class TaskTryRules(p: Problem) extends AOOrTask[Solution] {
     def cost = ProblemCost(p)
 
-    override def toString = " Splitting "+problem
+    override def toString = p.toString
   }
 
-  class AOSearch(problem: Problem, rules: Set[Rule]) extends AndOrGraphSearch[TaskRunRule, TaskTryRules, Solution](new AndOrGraph(TaskTryRules(problem))) {
+  class AOSearch(problem: Problem,
+                 rules: Set[Rule]) extends AndOrGraphSearch[TaskRunRule, TaskTryRules, Solution](new AndOrGraph(TaskTryRules(problem))) {
 
     def processAndLeaf(t: TaskRunRule) = {
       val prefix = "[%-20s] ".format(Option(t.rule).getOrElse("?"))

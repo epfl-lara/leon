@@ -52,7 +52,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
 
   }
 
-  case class AndNode(parent: OrNode, subTasks: List[OT], task: AT) extends AndTree with Node[OrTree] {
+  class AndNode(val parent: OrNode, val subTasks: List[OT], val task: AT) extends AndTree with Node[OrTree] {
     var subProblems         = Map[OT, OrTree]()
     var subSolutions        = Map[OT, S]()
 
@@ -74,8 +74,8 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
     }
 
     def expandLeaf(l: OrLeaf, succ: List[AT]) {
-      val n = OrNode(this, Map(), l.task)
-      n.alternatives = succ.map(t => t -> AndLeaf(n, t)).toMap
+      val n = new OrNode(this, Map(), l.task)
+      n.alternatives = succ.map(t => t -> new AndLeaf(n, t)).toMap
       n.minAlternative = n.computeMin
 
       subProblems += l.task -> n
@@ -105,15 +105,15 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
   object RootNode extends OrLeaf(null, root) {
 
     override def expandWith(succ: List[AT]) {
-      val n = OrNode(null, Map(), root)
-      n.alternatives = succ.map(t => t -> AndLeaf(n, t)).toMap
+      val n = new OrNode(null, Map(), root)
+      n.alternatives = succ.map(t => t -> new AndLeaf(n, t)).toMap
       n.minAlternative = n.computeMin
 
       tree = n
     }
   }
 
-  case class AndLeaf(parent: OrNode, task: AT) extends AndTree with Leaf {
+  class AndLeaf(val parent: OrNode, val task: AT) extends AndTree with Leaf {
     def expandWith(succ: List[OT]) {
       parent.expandLeaf(this, succ)
     }
@@ -121,7 +121,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
   }
 
 
-  case class OrNode(parent: AndNode, var alternatives: Map[AT, AndTree], task: OT) extends OrTree with Node[AndTree] {
+  class OrNode(val parent: AndNode, var alternatives: Map[AT, AndTree], val task: OT) extends OrTree with Node[AndTree] {
     var minAlternative: Tree    = _
     def minCost: C              = minAlternative.minCost
 
@@ -144,8 +144,8 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
     }
 
     def expandLeaf(l: AndLeaf, succ: List[OT]) {
-      val n = AndNode(this, succ, l.task)
-      n.subProblems = succ.map(t => t -> OrLeaf(n, t)).toMap
+      val n = new AndNode(this, succ, l.task)
+      n.subProblems = succ.map(t => t -> new OrLeaf(n, t)).toMap
       n.minCost     = n.computeCost
 
       alternatives += l.task -> n
@@ -177,7 +177,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
     override def isUnsolvable: Boolean = alternatives.isEmpty
   }
 
-  case class OrLeaf(parent: AndNode, task: OT) extends OrTree with Leaf {
+  class OrLeaf(val parent: AndNode, val task: OT) extends OrTree with Leaf {
     def expandWith(succ: List[AT]) {
       parent.expandLeaf(this, succ)
     }
