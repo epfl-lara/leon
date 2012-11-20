@@ -16,8 +16,8 @@ object LinearEquations {
     val t: Expr = normalizedEquation.head
     val coefsVars: List[Int] = normalizedEquation.tail.map{case IntLiteral(i) => i}
     val orderedParams: Array[Identifier] = as.toArray
-    val coefsParams0: List[Int] = ArithmeticNormalization(t, orderedParams).map{case IntLiteral(i) => i}.toList
-    val coefsParams: List[Int] = if(coefsParams0.head == 0) coefsParams0.tail else coefsParams0
+    val coefsParams: List[Int] = ArithmeticNormalization(t, orderedParams).map{case IntLiteral(i) => i}.toList
+    //val coefsParams: List[Int] = if(coefsParams0.head == 0) coefsParams0.tail else coefsParams0
     val d: Int = gcd((coefsParams ++ coefsVars).toSeq)
 
     if(coefsVars.size == 1) {
