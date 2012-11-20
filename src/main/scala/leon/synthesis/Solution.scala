@@ -11,7 +11,7 @@ import aographs._
 class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr) extends AOSolution {
   override def toString = "⟨ "+pre+" | "+defs.mkString(" ")+" "+term+" ⟩" 
 
-  val cost: AOCost = null
+  val cost: AOCost = SolutionCost(this)
 
   def toExpr = {
     val result = if (pre == BooleanLiteral(true)) {

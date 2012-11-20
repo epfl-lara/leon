@@ -59,59 +59,54 @@ class Synthesizer(val reporter: Reporter,
 
   import aographs._
 
-  abstract class Task extends AOTask[Solution]
-  case class TaskRunRule(problem: Problem, rule: Rule, app: RuleApplication) extends Task {
-    val subSols = (1 to app.subProblemsCount).map {i => Solution.simplest }.toList
-    val simpleSol = app.onSuccess(subSols)
-
-    def cost = SolutionCost(simpleSol)
+  case class TaskRunRule(problem: Problem, rule: Rule, app: RuleApplication) extends AOAndTask[Solution] {
+    def cost = RuleApplicationCost(rule, app)
 
     def composeSolution(sols: List[Solution]): Solution = {
       app.onSuccess(sols)
     }
+
+    override def toString = rule.name+" ON "+problem
   }
 
-  case class TaskTryRules(p: Problem) extends Task {
+  case class TaskTryRules(p: Problem) extends AOOrTask[Solution] {
     def cost = ProblemCost(p)
 
-    def composeSolution(sols: List[Solution]): Solution = {
-      sys.error("Should not be called")
-    }
+    override def toString = " Splitting "+problem
   }
 
-  class AOSearch(problem: Problem, rules: Set[Rule]) extends AndOrGraphSearch[Task, Solution](new AndOrGraph(TaskTryRules(problem))) {
-    def processLeaf(l: g.Leaf) = {
-      l.task match {
-        case t: TaskTryRules =>
-          val sub = rules.flatMap ( r => r.attemptToApplyOn(t.p).alternatives.map(TaskRunRule(t.p, r, _)) )
+  class AOSearch(problem: Problem, rules: Set[Rule]) extends AndOrGraphSearch[TaskRunRule, TaskTryRules, Solution](new AndOrGraph(TaskTryRules(problem))) {
 
-          if (!sub.isEmpty) {
-            Expanded(sub.toList)
-          } else {
-            ExpandFailure
-          }
+    def processAndLeaf(t: TaskRunRule) = {
+      val prefix = "[%-20s] ".format(Option(t.rule).getOrElse("?"))
 
-        case t: TaskRunRule =>
-          val prefix = "[%-20s] ".format(Option(t.rule).getOrElse("?"))
-
+      t.app.apply() match {
+        case RuleSuccess(sol) =>
           info(prefix+"Got: "+t.problem)
-          t.app.apply() match {
-            case RuleSuccess(sol) =>
-              info(prefix+"Solved with: "+sol)
+          info(prefix+"Solved with: "+sol)
 
-              ExpandSuccess(sol)
-            case RuleDecomposed(sub, onSuccess) =>
-              info(prefix+"Got: "+t.problem)
-              info(prefix+"Decomposed into:")
-              for(p <- sub) {
-                info(prefix+" - "+p)
-              }
-
-              Expanded(sub.map(TaskTryRules(_)))
-
-            case RuleApplicationImpossible =>
-              ExpandFailure
+          ExpandSuccess(sol)
+        case RuleDecomposed(sub, onSuccess) =>
+          info(prefix+"Got: "+t.problem)
+          info(prefix+"Decomposed into:")
+          for(p <- sub) {
+            info(prefix+" - "+p)
           }
+
+          Expanded(sub.map(TaskTryRules(_)))
+
+        case RuleApplicationImpossible =>
+          ExpandFailure()
+      }
+    }
+
+    def processOrLeaf(t: TaskTryRules) = {
+      val sub = rules.flatMap ( r => r.attemptToApplyOn(t.p).alternatives.map(TaskRunRule(t.p, r, _)) )
+
+      if (!sub.isEmpty) {
+        Expanded(sub.toList)
+      } else {
+        ExpandFailure()
       }
     }
   }

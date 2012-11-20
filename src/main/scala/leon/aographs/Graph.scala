@@ -32,7 +32,7 @@ trait AOSolution {
 class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val root: OT) {
   type C = AOCost
 
-  var tree: Tree = RootNode
+  var tree: OrTree = RootNode
 
   trait Tree {
     val task : AOTask[S]
@@ -49,11 +49,13 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
 
   abstract class OrTree extends Tree {
     override val task: OT
+
+    def isUnsolvable: Boolean = false
   }
 
 
   trait Leaf extends Tree {
-    val minCost: C = task.cost
+    def minCost: C = task.cost
 
     def isSolved: Boolean = false
   }
@@ -110,13 +112,22 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
 
     }
 
-    def notifyParent(s: S) {
-      parent.notifySolution(this, s)
+    def notifyParent(sol: S) {
+      if (parent ne null) {
+        parent.notifySolution(this, sol)
+      }
     }
   }
 
   object RootNode extends OrLeaf(null, root) {
 
+    override def expandWith(succ: List[AT]) {
+      val n = OrNode(null, Map(), root)
+      n.alternatives = succ.map(t => t -> AndLeaf(n, t)).toMap
+      n.minAlternative = n.computeMin
+
+      tree = n
+    }
   }
 
   case class AndLeaf(parent: OrNode, task: AT) extends AndTree with Leaf {
@@ -155,6 +166,8 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
       n.minCost     = n.computeCost
 
       alternatives += l.task -> n
+
+      minAlternative = computeMin
     }
 
     def notifySolution(sub: AndTree, sol: S) {
@@ -163,14 +176,22 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
           solution       = Some(sol)
           minAlternative = sub
 
-          parent.notifySolution(this, solution.get)
+          notifyParent(solution.get)
         case None =>
           solution       = Some(sol)
           minAlternative = sub
 
-          parent.notifySolution(this, solution.get)
+          notifyParent(solution.get)
       }
     }
+
+    def notifyParent(sol: S) {
+      if (parent ne null) {
+        parent.notifySolution(this, sol)
+      }
+    }
+
+    override def isUnsolvable: Boolean = alternatives.isEmpty
   }
 
   case class OrLeaf(parent: AndNode, task: OT) extends OrTree with Leaf {
@@ -193,7 +214,7 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSo
           res = Some(l)
 
         case an: g.AndNode =>
-          c = an.subProblems.values.minBy(_.minCost)
+          c = (an.subProblems -- an.subSolutions.keySet).values.minBy(_.minCost)
 
         case on: g.OrNode =>
           c = on.minAlternative
@@ -203,22 +224,21 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSo
     res
   }
 
-  abstract class ExpandResult
-  case class ExpandedAnd(sub: List[OT]) extends ExpandResult
-  case class ExpandedOr(sub: List[AT]) extends ExpandResult
-  case class ExpandSuccess(sol: S) extends ExpandResult
-  case object ExpandFailure extends ExpandResult
+  abstract class ExpandResult[T <: AOTask[S]]
+  case class Expanded[T <: AOTask[S]](sub: List[T]) extends ExpandResult[T]
+  case class ExpandSuccess[T <: AOTask[S]](sol: S) extends ExpandResult[T]
+  case class ExpandFailure[T <: AOTask[S]]() extends ExpandResult[T]
 
   var continue = true
 
   def search = {
-    while (!g.tree.isSolved && continue) {
+    while (!g.tree.isSolved && continue && !g.tree.isUnsolvable) {
       nextLeaf match {
         case Some(l) =>
           l match {
             case al: g.AndLeaf =>
-              processLeaf(al) match {
-                case ExpandedAnd(ls) =>
+              processAndLeaf(al.task) match {
+                case Expanded(ls) =>
                   al.expandWith(ls)
                 case r @ ExpandSuccess(sol) =>
                   al.parent.notifySolution(al, sol)
@@ -226,8 +246,8 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSo
                   al.parent.unsolvable(al)
               }
             case ol: g.OrLeaf =>
-              processLeaf(ol) match {
-                case ExpandedOr(ls) =>
+              processOrLeaf(ol.task) match {
+                case Expanded(ls) =>
                   ol.expandWith(ls)
                 case r @ ExpandSuccess(sol) =>
                   ol.parent.notifySolution(ol, sol)
@@ -241,5 +261,6 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSo
     }
   }
 
-  def processLeaf(l: g.Leaf): ExpandResult
+  def processAndLeaf(l: AT): ExpandResult[OT]
+  def processOrLeaf(l: OT): ExpandResult[AT]
 }
