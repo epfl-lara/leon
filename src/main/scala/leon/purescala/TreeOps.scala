@@ -1393,7 +1393,6 @@ object TreeOps {
       case Times(IntLiteral(i), UMinus(e)) => Times(IntLiteral(-i), e)
       case Times(UMinus(e), IntLiteral(i)) => Times(e, IntLiteral(-i))
       case Times(IntLiteral(i1), Division(e, IntLiteral(i2))) if i2 != 0 && i1 % i2 == 0 => Times(IntLiteral(i1/i2), e)
-      case Times(IntLiteral(i1), Plus(Division(e1, IntLiteral(i2)), e2)) if i2 != 0 && i1 % i2 == 0 => Times(IntLiteral(i1/i2), Plus(e1, e2))
 
       case Division(IntLiteral(i1), IntLiteral(i2)) if i2 != 0 => IntLiteral(i1 / i2)
       case Division(e, IntLiteral(1)) => e
