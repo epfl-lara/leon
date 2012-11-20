@@ -4,6 +4,7 @@ import leon.purescala.Trees._
 import leon.purescala.TypeTrees._
 import leon.purescala.Common._
 import leon.Evaluator 
+import leon.synthesis.Algebra._
 
 object LinearEquations {
 
@@ -17,7 +18,7 @@ object LinearEquations {
     val orderedParams: Array[Identifier] = as.toArray
     val coefsParams0: List[Int] = ArithmeticNormalization(t, orderedParams).map{case IntLiteral(i) => i}.toList
     val coefsParams: List[Int] = if(coefsParams0.head == 0) coefsParams0.tail else coefsParams0
-    val d: Int = GCD.gcd((coefsParams ++ coefsVars).toSeq)
+    val d: Int = gcd((coefsParams ++ coefsVars).toSeq)
 
     if(coefsVars.size == 1) {
       val coef = coefsVars.head
@@ -45,33 +46,6 @@ object LinearEquations {
 
   }
 
-  //val that the sol vector with the term in the equation
-  def eval(sol: Array[Int], equation: Array[Int]): Int = {
-    require(sol.size == equation.size)
-    sol.zip(equation).foldLeft(0)((acc, p) => acc + p._1 * p._2)
-  }
-
-  //multiply the matrix by the vector: [M1 M2 .. Mn] * [v1 .. vn] = v1*M1 + ... + vn*Mn]
-  def mult(matrix: Array[Array[Int]], vector: Array[Int]): Array[Int] = {
-    require(vector.size == matrix(0).size && vector.size > 0)
-    val tmat = matrix.transpose
-    var tmp: Array[Int] = null
-    tmp = mult(vector(0), tmat(0))
-    var i = 1
-    while(i < vector.size) {
-      tmp = add(tmp, mult(vector(i), tmat(i)))
-      i += 1
-    }
-    tmp
-  }
-
-  def mult(c: Int, v: Array[Int]): Array[Int] = v.map(_ * c)
-
-  def add(v1: Array[Int], v2: Array[Int]): Array[Int] = {
-    require(v1.size == v2.size)
-    v1.zip(v2).map(p => p._1 + p._2)
-  }
-
   //compute a list of solution of the equation c1*x1 + ... + cn*xn where coef = [c1 ... cn]
   //return the solution in the form of a list of n-1 vectors that form a basis for the set
   //of solutions, that is res=(v1, ..., v{n-1}) and any solution x* to the original solution
@@ -87,7 +61,7 @@ object LinearEquations {
         if(i < j)
           K(i)(j) = 0
         else if(i == j) {
-          K(j)(j) = GCD.gcd(coef.drop(j+1))/GCD.gcd(coef.drop(j))
+          K(j)(j) = gcd(coef.drop(j+1))/gcd(coef.drop(j))
         }
       }
     }
@@ -117,8 +91,8 @@ object LinearEquations {
   //return a particular solution to t + c1x + c2y = 0, with (pre, (x0, y0))
   def particularSolution(as: Set[Identifier], t: Expr, c1: Expr, c2: Expr): (Expr, (Expr, Expr)) = {
     val (IntLiteral(i1), IntLiteral(i2)) = (c1, c2)
-    val (v1, v2) = GCD.extendedEuclid(i1, i2)
-    val d = GCD.gcd(i1, i2)
+    val (v1, v2) = extendedEuclid(i1, i2)
+    val d = gcd(i1, i2)
 
     val pre = Equals(Modulo(t, IntLiteral(d)), IntLiteral(0))
 
@@ -135,7 +109,7 @@ object LinearEquations {
     require(normalizedEquation.size >= 2)
     val t: Expr = normalizedEquation.head
     val coefs: List[Int] = normalizedEquation.tail.map{case IntLiteral(i) => i}
-    val d = GCD.gcd(coefs.toSeq)
+    val d = gcd(coefs.toSeq)
     val pre = Equals(Modulo(t, IntLiteral(d)), IntLiteral(0))
 
     if(normalizedEquation.size == 2) {
@@ -146,7 +120,7 @@ object LinearEquations {
     } else {
       val gamma1: Expr = normalizedEquation(1)
       val coefs: List[Int] = normalizedEquation.drop(2).map{case IntLiteral(i) => i}
-      val gamma2: Expr = IntLiteral(GCD.gcd(coefs.toSeq))
+      val gamma2: Expr = IntLiteral(gcd(coefs.toSeq))
       val (_, (w1, w)) = particularSolution(as, t, gamma1, gamma2)
       val (_, sols) = particularSolution(as, UMinus(Times(w, gamma2)) :: normalizedEquation.drop(2))
       (pre, w1 :: sols)

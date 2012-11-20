@@ -9,6 +9,7 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
 import LinearEquations.elimVariable
+import leon.synthesis.Algebra.lcm
 
 class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities", synth, 300) {
   def attemptToApplyOn(problem: Problem): RuleResult = {
@@ -96,7 +97,7 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
             yield LessEquals(ceilingDiv(lb, IntLiteral(lc)), floorDiv(ub, IntLiteral(uc))))
         RuleFastSuccess(Solution(pre, Set(), witness))
       } else {
-        val L = GCD.lcm((upperBounds ::: lowerBounds).map(_._2))
+        val L = lcm((upperBounds ::: lowerBounds).map(_._2))
         val newUpperBounds: List[Expr] = upperBounds.map{case (bound, coef) => Times(IntLiteral(L/coef), bound)}
         val newLowerBounds: List[Expr] = lowerBounds.map{case (bound, coef) => Times(IntLiteral(L/coef), bound)}
 

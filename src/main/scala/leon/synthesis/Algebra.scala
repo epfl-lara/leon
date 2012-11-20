@@ -1,6 +1,14 @@
 package leon.synthesis
 
-object GCD {
+/*
+ * This provides some algebra/number theory functions, including operation such as true division,
+ * GCD and LCM as well as some matrix computation.
+ *
+ * Notice that all those functionalities are independent of the Leon language and
+ * are working for Integer (by opposition to real numbers).
+ */
+
+object Algebra {
 
   def remainder(x: Int, y: Int) = ((x % y) + y.abs) % y.abs
 
@@ -90,6 +98,34 @@ object GCD {
     else if(a >= 0 && b < 0) {val (x, y) = rec(a, -b); (x, -y)}
     else if(a < 0 && b < 0) {val (x, y) = rec(-a, -b); (-x, -y)}
     else sys.error("shouldn't have forgot a case here")
+  }
+
+
+  //val that the sol vector with the term in the equation
+  def eval(sol: Array[Int], equation: Array[Int]): Int = {
+    require(sol.size == equation.size)
+    sol.zip(equation).foldLeft(0)((acc, p) => acc + p._1 * p._2)
+  }
+
+  //multiply the matrix by the vector: [M1 M2 .. Mn] * [v1 .. vn] = v1*M1 + ... + vn*Mn]
+  def mult(matrix: Array[Array[Int]], vector: Array[Int]): Array[Int] = {
+    require(vector.size == matrix(0).size && vector.size > 0)
+    val tmat = matrix.transpose
+    var tmp: Array[Int] = null
+    tmp = mult(vector(0), tmat(0))
+    var i = 1
+    while(i < vector.size) {
+      tmp = add(tmp, mult(vector(i), tmat(i)))
+      i += 1
+    }
+    tmp
+  }
+
+  def mult(c: Int, v: Array[Int]): Array[Int] = v.map(_ * c)
+
+  def add(v1: Array[Int], v2: Array[Int]): Array[Int] = {
+    require(v1.size == v2.size)
+    v1.zip(v2).map(p => p._1 + p._2)
   }
 
 }

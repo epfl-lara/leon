@@ -2,9 +2,38 @@ package leon.test.synthesis
 
 import org.scalatest.FunSuite
 
-import leon.synthesis.GCD._
+import leon.synthesis.Algebra._
 
-class GCDSuite extends FunSuite {
+class AlgebraSuite extends FunSuite {
+
+  test("remainder") {
+    assert(remainder(1,1) === 0)
+    assert(remainder(2,2) === 0)
+    assert(remainder(2,1) === 0)
+    assert(remainder(0,1) === 0)
+    assert(remainder(0,4) === 0)
+    assert(remainder(1,3) === 1)
+    assert(remainder(1,8) === 1)
+    assert(remainder(4,2) === 0)
+    assert(remainder(17,3) === 2)
+    assert(remainder(25,5) === 0)
+    assert(remainder(26,5) === 1)
+    assert(remainder(29,5) === 4)
+
+    assert(remainder(1,-1) === 0)
+    assert(remainder(-1,1) === 0)
+    assert(remainder(2,-2) === 0)
+    assert(remainder(-2,-2) === 0)
+    assert(remainder(-2,1) === 0)
+    assert(remainder(0,-1) === 0)
+    assert(remainder(1,-2) === 1)
+    assert(remainder(-1,2) === 1)
+    assert(remainder(-1,3) === 2)
+    assert(remainder(-1,-3) === 2)
+    assert(remainder(1,-3) === 1)
+    assert(remainder(17,-3) === 2)
+    assert(remainder(-25,5) === 0)
+  }
 
   test("divide") {
     assert(divide(1,1) === (1, 0))
@@ -170,3 +199,5 @@ class GCDSuite extends FunSuite {
     checkExtendedEuclid(10, -15)
   }
 }
+
+// vim: set ts=4 sw=4 et:

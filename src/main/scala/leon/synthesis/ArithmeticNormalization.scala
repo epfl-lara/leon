@@ -4,10 +4,6 @@ import leon.purescala.Trees._
 import leon.purescala.TreeOps._
 import leon.purescala.Common._
 
-/*
- * TODO: move those functions to TreeOps
- */
-
 object ArithmeticNormalization {
 
   case class NonLinearExpressionException(msg: String) extends Exception
