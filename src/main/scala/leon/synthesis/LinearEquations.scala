@@ -1,6 +1,7 @@
 package leon.synthesis
 
 import leon.purescala.Trees._
+import leon.purescala.TreeNormalizations.linearArithmeticForm
 import leon.purescala.TypeTrees._
 import leon.purescala.Common._
 import leon.Evaluator 
@@ -16,7 +17,7 @@ object LinearEquations {
     val t: Expr = normalizedEquation.head
     val coefsVars: List[Int] = normalizedEquation.tail.map{case IntLiteral(i) => i}
     val orderedParams: Array[Identifier] = as.toArray
-    val coefsParams: List[Int] = ArithmeticNormalization(t, orderedParams).map{case IntLiteral(i) => i}.toList
+    val coefsParams: List[Int] = linearArithmeticForm(t, orderedParams).map{case IntLiteral(i) => i}.toList
     //val coefsParams: List[Int] = if(coefsParams0.head == 0) coefsParams0.tail else coefsParams0
     val d: Int = gcd((coefsParams ++ coefsVars).toSeq)
 
@@ -83,7 +84,7 @@ object LinearEquations {
     val lhs = equation.left
     val rhs = equation.right
     val orderedXs = xs.toArray
-    val normalized: Array[Expr] = ArithmeticNormalization(Minus(lhs, rhs), orderedXs)
+    val normalized: Array[Expr] = linearArithmeticForm(Minus(lhs, rhs), orderedXs)
     val (pre, sols) = particularSolution(as, normalized.toList)
     (pre, orderedXs.zip(sols).toMap)
   }

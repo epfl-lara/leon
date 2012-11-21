@@ -6,6 +6,7 @@ import purescala.Common._
 import purescala.Trees._
 import purescala.Extractors._
 import purescala.TreeOps._
+import purescala.TreeNormalizations.linearArithmeticForm
 import purescala.TypeTrees._
 import purescala.Definitions._
 import LinearEquations.elimVariable
@@ -35,7 +36,7 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
       val otherVars: List[Identifier] = problem.xs.filterNot(_ == processedVar)
 
       println("lhsSides: " + lhsSides)
-      val normalizedLhs: List[List[Expr]] = lhsSides.map(ArithmeticNormalization(_, Array(processedVar)).toList)
+      val normalizedLhs: List[List[Expr]] = lhsSides.map(linearArithmeticForm(_, Array(processedVar)).toList)
       println("normalized: " + normalizedLhs.mkString("\n"))
       var upperBounds: List[(Expr, Int)] = Nil // (t, c) means c*x <= t
       var lowerBounds: List[(Expr, Int)] = Nil // (t, c) means t <= c*x

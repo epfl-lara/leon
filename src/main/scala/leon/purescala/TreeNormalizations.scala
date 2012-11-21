@@ -1,17 +1,40 @@
-package leon.synthesis
+package leon
+package purescala
 
-import leon.purescala.Trees._
-import leon.purescala.TreeOps._
-import leon.purescala.Common._
+object TreeNormalizations {
+  import Common._
+  import TypeTrees._
+  import Definitions._
+  import Trees._
+  import TreeOps._
+  import Extractors._
 
-object ArithmeticNormalization {
+  /* TODO: we should add CNF and DNF at least */
 
   case class NonLinearExpressionException(msg: String) extends Exception
 
   //assume the function is an arithmetic expression, not a relation
   //return a normal form where the [t a1 ... an] where
   //expr = t + a1*x1 + ... + an*xn and xs = [x1 ... xn]
-  def apply(expr: Expr, xs: Array[Identifier]): Array[Expr] = {
+  //do not keep the evaluation order
+  def linearArithmeticForm(expr: Expr, xs: Array[Identifier]): Array[Expr] = {
+
+    //assume the expr is a literal (mult of constants and variables) with degree one
+    def extractCoef(e: Expr): (Expr, Identifier) = {
+      var id: Option[Identifier] = None
+      var coef = 1
+
+      def rec(e: Expr): Unit = e match {
+        case IntLiteral(i) => coef = coef*i
+        case Variable(id2) => if(id.isEmpty) id = Some(id2) else throw NonLinearExpressionException("multiple variable")
+        case Times(e1, e2) => rec(e1); rec(e2)
+      }
+
+      rec(e)
+      assert(!id.isEmpty)
+      (IntLiteral(coef), id.get)
+    }
+
 
     def containsId(e: Expr, id: Identifier): Boolean = e match {
       case Times(e1, e2) => containsId(e1, id) || containsId(e2, id)
@@ -43,29 +66,14 @@ object ArithmeticNormalization {
     res
   }
 
-
-  //assume the expr is a literal (mult of constants and variables) with degree one
-  def extractCoef(e: Expr): (Expr, Identifier) = {
-    var id: Option[Identifier] = None
-    var coef = 1
-
-    def rec(e: Expr): Unit = e match {
-      case IntLiteral(i) => coef = coef*i
-      case Variable(id2) => if(id.isEmpty) id = Some(id2) else throw NonLinearExpressionException("multiple variable")
-      case Times(e1, e2) => rec(e1); rec(e2)
-    }
-
-    rec(e)
-    assert(!id.isEmpty)
-    (IntLiteral(coef), id.get)
-  }
-
-  //multiply two sums together and distribute in a bigger sum
+  //multiply two sums together and distribute in a larger sum
+  //do not keep the evaluation order
   def multiply(es1: Seq[Expr], es2: Seq[Expr]): Seq[Expr] = {
     es1.flatMap(e1 => es2.map(e2 => Times(e1, e2)))
   }
 
-
+  //expand the expr in a sum of "atoms"
+  //do not keep the evaluation order
   def expand(expr: Expr): Seq[Expr] = expr match {
     case Plus(es1, es2) => expand(es1) ++ expand(es2)
     case Minus(e1, e2) => expand(e1) ++ expand(e2).map(Times(IntLiteral(-1), _): Expr)
@@ -75,6 +83,5 @@ object ArithmeticNormalization {
     case n@IntLiteral(_) => Seq(n)
     case err => throw NonLinearExpressionException("unexpected in expand: " + err)
   }
-
 
 }

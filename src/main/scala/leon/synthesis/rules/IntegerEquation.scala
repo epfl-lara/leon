@@ -6,6 +6,7 @@ import purescala.Common._
 import purescala.Trees._
 import purescala.Extractors._
 import purescala.TreeOps._
+import purescala.TreeNormalizations._
 import purescala.TypeTrees._
 import purescala.Definitions._
 import LinearEquations.elimVariable
@@ -31,9 +32,9 @@ class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth
       eqxs = problem.xs.toSet.intersect(vars).toList
 
       try {
-        optionNormalizedEq = Some(ArithmeticNormalization(Minus(eq.left, eq.right), eqxs.toArray).toList)
+        optionNormalizedEq = Some(linearArithmeticForm(Minus(eq.left, eq.right), eqxs.toArray).toList)
       } catch {
-        case ArithmeticNormalization.NonLinearExpressionException(_) =>
+        case NonLinearExpressionException(_) =>
           allOthers = allOthers :+ eq
       }
     }

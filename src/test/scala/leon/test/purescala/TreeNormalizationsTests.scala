@@ -1,16 +1,16 @@
-package leon.test.synthesis
+package leon.test.purescala
+
+import leon.purescala.Common._
+import leon.purescala.Definitions._
+import leon.purescala.Trees._
+import leon.purescala.TreeOps._
+import leon.purescala.TreeNormalizations._
+import leon.purescala.LikelyEq
+import leon.SilentReporter
 
 import org.scalatest.FunSuite
 
-import leon.Evaluator
-import leon.purescala.Trees._
-import leon.purescala.Common._
-import leon.purescala.LikelyEq
-
-import leon.synthesis.ArithmeticNormalization._
-
-class ArithmeticNormalizationSuite extends FunSuite {
-
+class TreeNormalizationsTests extends FunSuite {
   def i(x: Int) = IntLiteral(x)
 
   val xId = FreshIdentifier("x")
@@ -66,18 +66,17 @@ class ArithmeticNormalizationSuite extends FunSuite {
     checkSameExpr(toSum(expand(e4)), e4, xs)
   }
 
-  test("apply") {
+  test("linearArithmeticForm") {
     val xsOrder = Array(xId, yId)
 
     val e1 = Plus(Times(Plus(x, i(2)), i(3)), Times(i(4), y))
-    checkSameExpr(coefToSum(apply(e1, xsOrder), Array(x, y)), e1, xs)
+    checkSameExpr(coefToSum(linearArithmeticForm(e1, xsOrder), Array(x, y)), e1, xs)
 
     val e2 = Plus(Times(Plus(x, i(2)), i(3)), Plus(Plus(a, Times(i(5), b)), Times(i(4), y)))
-    checkSameExpr(coefToSum(apply(e2, xsOrder), Array(x, y)), e2, xs ++ as)
+    checkSameExpr(coefToSum(linearArithmeticForm(e2, xsOrder), Array(x, y)), e2, xs ++ as)
 
     val e3 = Minus(Plus(x, i(3)), Plus(y, i(2)))
-    checkSameExpr(coefToSum(apply(e3, xsOrder), Array(x, y)), e3, xs)
+    checkSameExpr(coefToSum(linearArithmeticForm(e3, xsOrder), Array(x, y)), e3, xs)
 
   }
-  
 }
