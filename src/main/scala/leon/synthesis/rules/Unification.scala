@@ -34,6 +34,8 @@ object Unification {
     }
   }
 
+  // This rule is probably useless; it never happens except in crafted
+  // examples, and will be found by OptimisticGround anyway.
   class OccursCheck(synth: Synthesizer) extends Rule("Unif OccursCheck", synth, 200) {
     def attemptToApplyOn(p: Problem): RuleResult = {
       val TopLevelAnds(exprs) = p.phi

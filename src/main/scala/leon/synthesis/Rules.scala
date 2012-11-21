@@ -9,7 +9,8 @@ import rules._
 object Rules {
   def all = Set[Synthesizer => Rule](
     new Unification.DecompTrivialClash(_),
-    new Unification.OccursCheck(_),
+    new Unification.OccursCheck(_), // probably useless
+    new Disunification.Decomp(_),
     new ADTDual(_),
     new OnePoint(_),
     new Ground(_),
