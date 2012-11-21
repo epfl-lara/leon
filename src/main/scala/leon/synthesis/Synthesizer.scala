@@ -72,7 +72,7 @@ class Synthesizer(val reporter: Reporter,
   }
 
   case class TaskTryRules(p: Problem) extends AOOrTask[Solution] {
-    val cost = ProblemCost(p)
+    val cost = Cost.zero
 
     override def toString = p.toString
   }

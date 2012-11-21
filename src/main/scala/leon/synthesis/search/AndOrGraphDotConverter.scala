@@ -84,28 +84,28 @@ package leon.synthesis.search
     val ot = t.task
     val (color, style) = t match {
       case l: g.OrLeaf =>
-        (if (t.isSolved) "palegreen" else "white" , "filled,dashed")
+        (if (t.isSolved) "palegreen" else if (t.isUnsolvable) "firebrick" else "white" , "filled,dashed")
       case n: g.OrNode =>
-        (if (t.isSolved) "palegreen" else "white", "filled")
+        (if (t.isSolved) "palegreen" else if (t.isUnsolvable) "firebrick" else "white", "filled")
     }
 
-    drawNode(res, name, ot.cost, ot.toString, color, style)
+    drawNode(res, name, t.minCost, ot.cost, ot.toString, color, style)
   }
 
-  def drawNode(res: StringBuffer, name: String, cost: Cost, content: String, color: String, style: String) {
-    res append "  "+name+" [label=\""+cost.value+" | "+content+"\", shape=box, fillcolor=\""+color+"\", style=\""+style+"\"]\n"
+  def drawNode(res: StringBuffer, name: String, allCost: Cost, selfCost: Cost, content: String, color: String, style: String) {
+    res append "  "+name+" [label=\""+allCost.value+" | "+selfCost.value+" | "+content+"\", shape=box, fillcolor=\""+color+"\", style=\""+style+"\"]\n"
   }
 
   def drawAndNode(res: StringBuffer, name: String, t: g.AndTree) {
     val at = t.task
     val (color, style) = t match {
       case l: g.AndLeaf =>
-        (if (t.isSolved) "palegreen" else "white" , "filled,dashed")
+        (if (t.isSolved) "palegreen" else if (t.isUnsolvable) "firebrick" else "white", "filled,dashed")
       case n: g.AndNode =>
-        (if (t.isSolved) "palegreen" else "white", "filled")
+        (if (t.isSolved) "palegreen" else if (t.isUnsolvable) "firebrick" else "white", "filled")
     }
 
-    drawNode(res, name, at.cost, at.toString, color, style)
+    drawNode(res, name, t.minCost, at.cost, at.toString, color, style)
   }
 
   /** Writes the graph to a file readable with GraphViz. */

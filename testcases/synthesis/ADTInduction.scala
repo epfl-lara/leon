@@ -32,6 +32,11 @@ object SortedList {
       (content(out) == (content(in) -- Set(v)))
   }
 
+  def concatSynth(in1: List, in2: List) = choose {
+    (out : List) =>
+      content(out) == content(in1) ++ content(in2)
+  }
+
   def isSorted(l: List): Boolean = l match {
     case Nil() => true
     case Cons(x, Nil()) => true

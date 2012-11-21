@@ -59,6 +59,7 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
                   al.solution = Some(sol)
                   al.parent.notifySolution(al, sol)
                 case _ =>
+                  al.isUnsolvable = true
                   al.parent.unsolvable(al)
               }
             case ol: g.OrLeaf =>
@@ -69,6 +70,7 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
                   ol.solution = Some(sol)
                   ol.parent.notifySolution(ol, sol)
                 case _ =>
+                  ol.isUnsolvable = true
                   ol.parent.unsolvable(ol)
               }
           }

@@ -25,6 +25,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
     def minCost: Cost
 
     var solution: Option[S] = None
+    var isUnsolvable: Boolean = false
 
     def isSolved: Boolean = solution.isDefined
   }
@@ -60,7 +61,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
         case Some(s) =>
           s.cost
         case _ =>
-          val subCosts = subProblems.map { case (t, ot) => subSolutions.get(t).map(_.cost).getOrElse(ot.minCost) }
+          val subCosts = subProblems.values.map(_.minCost)
 
           subCosts.foldLeft(task.cost)(_ + _)
       }
@@ -71,6 +72,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
 
 
     def unsolvable(l: OrTree) {
+      isUnsolvable = true
       parent.unsolvable(this)
     }
 
@@ -123,19 +125,19 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
   class OrNode(val parent: AndNode, var alternatives: Map[AT, AndTree], val task: OT) extends OrTree with Node[AndTree] {
     var triedAlternatives    = Map[AT, AndTree]()
     var minAlternative: Tree = _
-    var minCost              = Cost.zero
+    var minCost              = task.cost
 
     def updateMin() {
       if (!alternatives.isEmpty) {
         minAlternative = alternatives.values.minBy(_.minCost)
         val old = minCost 
-        minCost        = minAlternative.minCost
+        minCost        = minAlternative.minCost + task.cost
         if (minCost != old) {
           Option(parent).foreach(_.updateMin())
         }
       } else {
         minAlternative = null
-        minCost        = Cost.zero
+        minCost        = task.cost
       }
     }
 
@@ -145,6 +147,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
 
 
       if (alternatives.isEmpty) {
+        isUnsolvable = true
         parent.unsolvable(this)
       } else {
         updateMin()
