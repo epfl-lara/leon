@@ -2,6 +2,7 @@ package leon.test.purescala
 
 import leon.purescala.Common._
 import leon.purescala.Definitions._
+import leon.purescala.TypeTrees._
 import leon.purescala.Trees._
 import leon.purescala.TreeOps._
 import leon.purescala.TreeNormalizations._
@@ -13,15 +14,15 @@ import org.scalatest.FunSuite
 class TreeNormalizationsTests extends FunSuite {
   def i(x: Int) = IntLiteral(x)
 
-  val xId = FreshIdentifier("x")
+  val xId = FreshIdentifier("x").setType(Int32Type)
   val x = Variable(xId)
-  val yId = FreshIdentifier("y")
+  val yId = FreshIdentifier("y").setType(Int32Type)
   val y = Variable(yId)
   val xs = Set(xId, yId)
 
-  val aId = FreshIdentifier("a")
+  val aId = FreshIdentifier("a").setType(Int32Type)
   val a = Variable(aId)
-  val bId = FreshIdentifier("b")
+  val bId = FreshIdentifier("b").setType(Int32Type)
   val b = Variable(bId)
   val as = Set(aId, bId)
   
@@ -52,18 +53,18 @@ class TreeNormalizationsTests extends FunSuite {
     checkSameExpr(Times(toSum(lhs2), toSum(rhs2)), toSum(multiply(lhs2, rhs2)), xs)
   }
 
-  test("expand") {
+  test("expandedForm") {
     val e1 = Times(Plus(x, i(2)), Plus(y, i(1)))
-    checkSameExpr(toSum(expand(e1)), e1, xs)
+    checkSameExpr(toSum(expandedForm(e1)), e1, xs)
 
     val e2 = Times(Plus(x, Times(i(2), y)), Plus(Plus(x, y), i(1)))
-    checkSameExpr(toSum(expand(e2)), e2, xs)
+    checkSameExpr(toSum(expandedForm(e2)), e2, xs)
 
     val e3 = Minus(Plus(x, Times(i(2), y)), Plus(Plus(x, y), i(1)))
-    checkSameExpr(toSum(expand(e3)), e3, xs)
+    checkSameExpr(toSum(expandedForm(e3)), e3, xs)
 
     val e4 = UMinus(Plus(x, Times(i(2), y)))
-    checkSameExpr(toSum(expand(e4)), e4, xs)
+    checkSameExpr(toSum(expandedForm(e4)), e4, xs)
   }
 
   test("linearArithmeticForm") {

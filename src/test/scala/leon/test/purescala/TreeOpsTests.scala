@@ -3,6 +3,7 @@ package leon.test.purescala
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Trees._
+import leon.purescala.TypeTrees._
 import leon.purescala.TreeOps._
 import leon.purescala.LikelyEq
 import leon.SilentReporter
@@ -31,15 +32,15 @@ class TreeOpsTests extends FunSuite {
 
   def i(x: Int) = IntLiteral(x)
 
-  val xId = FreshIdentifier("x")
+  val xId = FreshIdentifier("x").setType(Int32Type)
   val x = Variable(xId)
-  val yId = FreshIdentifier("y")
+  val yId = FreshIdentifier("y").setType(Int32Type)
   val y = Variable(yId)
   val xs = Set(xId, yId)
 
-  val aId = FreshIdentifier("a")
+  val aId = FreshIdentifier("a").setType(Int32Type)
   val a = Variable(aId)
-  val bId = FreshIdentifier("b")
+  val bId = FreshIdentifier("b").setType(Int32Type)
   val b = Variable(bId)
   val as = Set(aId, bId)
 

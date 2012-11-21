@@ -52,17 +52,17 @@ object TreeNormalizations {
       Times(IntLiteral(totalCoef), Variable(id))
     }
 
-    var expandedForm: Seq[Expr] = expand(expr)
+    var exprs: Seq[Expr] = expandedForm(expr)
     val res: Array[Expr] = new Array(xs.size + 1)
 
     xs.zipWithIndex.foreach{case (id, index) => {
-      val (terms, rests) = expandedForm.partition(containsId(_, id))
-      expandedForm = rests
+      val (terms, rests) = exprs.partition(containsId(_, id))
+      exprs = rests
       val Times(coef, Variable(_)) = group(terms, id)
       res(index+1) = coef
     }}
 
-    res(0) = simplifyArithmetic(expandedForm.foldLeft[Expr](IntLiteral(0))(Plus(_, _)))
+    res(0) = simplifyArithmetic(exprs.foldLeft[Expr](IntLiteral(0))(Plus(_, _)))
     res
   }
 
@@ -72,16 +72,16 @@ object TreeNormalizations {
     es1.flatMap(e1 => es2.map(e2 => Times(e1, e2)))
   }
 
-  //expand the expr in a sum of "atoms"
+  //expand the expr in a sum of "atoms", each atom being a product of literal and variable
   //do not keep the evaluation order
-  def expand(expr: Expr): Seq[Expr] = expr match {
-    case Plus(es1, es2) => expand(es1) ++ expand(es2)
-    case Minus(e1, e2) => expand(e1) ++ expand(e2).map(Times(IntLiteral(-1), _): Expr)
-    case UMinus(e) => expand(e).map(Times(IntLiteral(-1), _): Expr)
-    case Times(es1, es2) => multiply(expand(es1), expand(es2))
-    case v@Variable(_) => Seq(v)
+  def expandedForm(expr: Expr): Seq[Expr] = expr match {
+    case Plus(es1, es2) => expandedForm(es1) ++ expandedForm(es2)
+    case Minus(e1, e2) => expandedForm(e1) ++ expandedForm(e2).map(Times(IntLiteral(-1), _): Expr)
+    case UMinus(e) => expandedForm(e).map(Times(IntLiteral(-1), _): Expr)
+    case Times(es1, es2) => multiply(expandedForm(es1), expandedForm(es2))
+    case v@Variable(_) if v.getType == Int32Type => Seq(v)
     case n@IntLiteral(_) => Seq(n)
-    case err => throw NonLinearExpressionException("unexpected in expand: " + err)
+    case err => throw NonLinearExpressionException("unexpected in expandedForm: " + err)
   }
 
 }

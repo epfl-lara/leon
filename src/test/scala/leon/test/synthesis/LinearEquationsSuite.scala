@@ -4,6 +4,7 @@ import org.scalatest.FunSuite
 
 import leon.Evaluator
 import leon.purescala.Trees._
+import leon.purescala.TypeTrees._
 import leon.purescala.TreeOps._
 import leon.purescala.Common._
 import leon.purescala.LikelyEq
@@ -14,16 +15,16 @@ class LinearEquationsSuite extends FunSuite {
 
   def i(x: Int) = IntLiteral(x)
 
-  val xId = FreshIdentifier("x")
+  val xId = FreshIdentifier("x").setType(Int32Type)
   val x = Variable(xId)
-  val yId = FreshIdentifier("y")
+  val yId = FreshIdentifier("y").setType(Int32Type)
   val y = Variable(yId)
-  val zId = FreshIdentifier("z")
+  val zId = FreshIdentifier("z").setType(Int32Type)
   val z = Variable(zId)
 
-  val aId = FreshIdentifier("a")
+  val aId = FreshIdentifier("a").setType(Int32Type)
   val a = Variable(aId)
-  val bId = FreshIdentifier("b")
+  val bId = FreshIdentifier("b").setType(Int32Type)
   val b = Variable(bId)
 
   def toSum(es: Seq[Expr]) = es.reduceLeft(Plus(_, _))

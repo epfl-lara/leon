@@ -12,7 +12,7 @@ import purescala.Definitions._
 import LinearEquations.elimVariable
 
 class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth, 300) {
-  def attemptToApplyOn(problem: Problem): RuleResult = if(problem.xs.isEmpty) RuleInapplicable else {
+  def attemptToApplyOn(problem: Problem): RuleResult = if(!problem.xs.exists(_.getType == Int32Type)) RuleInapplicable else {
 
     val TopLevelAnds(exprs) = problem.phi
 
