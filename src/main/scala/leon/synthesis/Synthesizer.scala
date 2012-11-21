@@ -62,7 +62,7 @@ class Synthesizer(val reporter: Reporter,
   }
 
   case class TaskRunRule(problem: Problem, rule: Rule, app: RuleApplication) extends AOAndTask[Solution] {
-    def cost = RuleApplicationCost(rule, app)
+    val cost = RuleApplicationCost(rule, app)
 
     def composeSolution(sols: List[Solution]): Solution = {
       app.onSuccess(sols)
@@ -72,7 +72,7 @@ class Synthesizer(val reporter: Reporter,
   }
 
   case class TaskTryRules(p: Problem) extends AOOrTask[Solution] {
-    def cost = ProblemCost(p)
+    val cost = ProblemCost(p)
 
     override def toString = p.toString
   }

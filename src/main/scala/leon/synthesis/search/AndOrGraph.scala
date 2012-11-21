@@ -35,8 +35,6 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
 
   abstract class OrTree extends Tree {
     override val task: OT
-
-    def isUnsolvable: Boolean = false
   }
 
 
@@ -170,6 +168,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
           minAlternative = sub
 
           notifyParent(solution.get)
+
         case None =>
           solution       = Some(sol)
           minAlternative = sub
@@ -183,8 +182,6 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
         parent.notifySolution(this, sol)
       }
     }
-
-    override def isUnsolvable: Boolean = alternatives.isEmpty
   }
 
   class OrLeaf(val parent: AndNode, val task: OT) extends OrTree with Leaf {

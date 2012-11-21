@@ -86,7 +86,7 @@ package leon.synthesis.search
       case l: g.OrLeaf =>
         (if (t.isSolved) "palegreen" else "white" , "filled,dashed")
       case n: g.OrNode =>
-        (if (t.isSolved) "palegreen" else if (t.isUnsolvable) "indianred1" else "white", "filled")
+        (if (t.isSolved) "palegreen" else "white", "filled")
     }
 
     drawNode(res, name, ot.cost, ot.toString, color, style)
