@@ -36,14 +36,13 @@ class ADTInduction(synth: Synthesizer) extends Rule("ADT Induction", synth, 80) 
       }
 
       if (isRecursive) {
-        val newFun = new FunDef(FreshIdentifier("rec", true), resType, VarDecl(inductOn, inductOn.getType) +: residualArgDefs)
 
         val innerPhi = substAll(residualMap + (origId -> Variable(inductOn)), p.phi)
         val innerPC  = substAll(residualMap + (origId -> Variable(inductOn)), p.c)
 
         val subProblemsInfo = for (dcd <- cd.knownDescendents) yield dcd match {
           case ccd : CaseClassDef =>
-            var recCalls = Map[List[Identifier], Expr]()
+            var recCalls = Map[List[Identifier], List[Expr]]()
             var postFs   = List[Expr]()
 
             val newIds = ccd.fieldsIds.map(id => FreshIdentifier(id.name, true).setType(id.getType)).toList
@@ -53,7 +52,7 @@ class ADTInduction(synth: Synthesizer) extends Rule("ADT Induction", synth, 80) 
                 val postXs  = p.xs map (id => FreshIdentifier("r", true).setType(id.getType))
                 val postXsMap = (p.xs zip postXs).toMap.mapValues(Variable(_))
 
-                recCalls += postXs -> FunctionInvocation(newFun, Variable(id) +: residualArgs.map(id => Variable(id)))
+                recCalls += postXs -> (Variable(id) +: residualArgs.map(id => Variable(id)))
 
                 postFs ::= substAll(postXsMap + (inductOn -> Variable(id)), innerPhi)
                 id :: postXs
@@ -78,11 +77,13 @@ class ADTInduction(synth: Synthesizer) extends Rule("ADT Induction", synth, 80) 
           case sols =>
             var globalPre = List[Expr]()
 
+            val newFun = new FunDef(FreshIdentifier("rec", true), resType, VarDecl(inductOn, inductOn.getType) +: residualArgDefs)
+
             val cases = for ((sol, (problem, pre, ccd, ids, calls)) <- (sols zip subProblemsInfo)) yield {
               globalPre ::= And(pre, sol.pre)
 
               val caze = CaseClassPattern(None, ccd, ids.map(id => WildcardPattern(Some(id))))
-              SimpleCase(caze, calls.foldLeft(sol.term){ case (t, (binders, call)) => LetTuple(binders, call, t) })
+              SimpleCase(caze, calls.foldLeft(sol.term){ case (t, (binders, callargs)) => LetTuple(binders, FunctionInvocation(newFun, callargs), t) })
             }
 
             val funPre = subst(origId -> Variable(inductOn), Or(globalPre))
