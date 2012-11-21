@@ -4,35 +4,21 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
                                 OT <: AOOrTask[S],
                                 S <: AOSolution](val g: AndOrGraph[AT, OT, S]) {
 
-  def nextLeaf: Option[g.Leaf] = {
-    import collection.mutable.PriorityQueue
-
-    case class WT(t: g.Tree, prefixCost: Cost) extends Ordered[WT] {
-      val cost = t.minCost + prefixCost
-
-      def compare(that: WT) = that.cost.compare(this.cost) // DESC
-    }
-
-    val q = new PriorityQueue[WT]()
-    q += WT(g.tree, Cost.zero)
+  def nextLeafSimple: Option[g.Leaf] = {
+    var c : g.Tree = g.tree
 
     var res: Option[g.Leaf] = None
 
-    while(res.isEmpty && !q.isEmpty) {
-      q.dequeue() match {
-        case WT(l: g.Leaf, c) =>
+    while(res.isEmpty) {
+      c match {
+        case l: g.Leaf =>
           res = Some(l)
 
-        case WT(an: g.AndNode, c) =>
-          if (!an.isSolved) {
-            q ++= (an.subProblems -- an.subSolutions.keySet).values.map(n => WT(n, c + an.minCost))
-          }
+        case an: g.AndNode =>
+          c = (an.subProblems -- an.subSolutions.keySet).values.minBy(_.minCost)
 
-        case WT(on: g.OrNode, c) =>
-          if (!on.isSolved) {
-            q ++= on.alternatives.values.map(n => WT(n, c + on.minCost))
-          }
-
+        case on: g.OrNode =>
+          c = on.alternatives.values.minBy(_.minCost)
       }
     }
 
@@ -48,7 +34,7 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
 
   def search(): Option[S] = {
     while (!g.tree.isSolved && continue) {
-      nextLeaf match {
+      nextLeafSimple match {
         case Some(l) =>
           l match {
             case al: g.AndLeaf =>

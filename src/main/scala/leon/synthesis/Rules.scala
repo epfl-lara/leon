@@ -20,7 +20,7 @@ object Rules {
     new EqualitySplit(_),
     new CEGIS(_),
     new Assert(_),
-//    new ADTSplit(_),
+    new ADTSplit(_),
     new IntegerEquation(_),
     new IntegerInequalities(_)
   )
@@ -47,6 +47,14 @@ object RuleFastApplication {
     new RuleApplication(sub.size, onSuccess) {
       def apply() = RuleDecomposed(sub, onSuccess)
     }
+  }
+}
+
+object RuleFastInapplicable {
+  def apply() = {
+    RuleResult(List(new RuleApplication(0, ls => Solution.simplest) {
+      def apply() = RuleApplicationImpossible
+    }))
   }
 }
 

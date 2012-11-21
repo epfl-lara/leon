@@ -131,13 +131,13 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
       if (!alternatives.isEmpty) {
         minAlternative = alternatives.values.minBy(_.minCost)
         val old = minCost 
-        minCost        = minAlternative.minCost + task.cost
+        minCost        = minAlternative.minCost
         if (minCost != old) {
           Option(parent).foreach(_.updateMin())
         }
       } else {
         minAlternative = null
-        minCost        = task.cost
+        minCost        = Cost.zero
       }
     }
 

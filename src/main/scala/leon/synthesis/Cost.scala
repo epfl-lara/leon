@@ -16,7 +16,7 @@ case class SolutionCost(s: Solution) extends Cost {
 }
 
 case class ProblemCost(p: Problem) extends Cost {
-  val value = math.pow(2, p.xs.size).toInt + formulaSize(p.phi)
+  val value = p.xs.size
 }
 
 case class RuleApplicationCost(rule: Rule, app: RuleApplication) extends Cost {
