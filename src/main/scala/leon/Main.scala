@@ -9,7 +9,6 @@ object Main {
       xlang.EpsilonElimination,
       xlang.ImperativeCodeElimination,
       xlang.FunctionClosure,
-      Simplificator,
       synthesis.SynthesisPhase,
       verification.AnalysisPhase
     )
