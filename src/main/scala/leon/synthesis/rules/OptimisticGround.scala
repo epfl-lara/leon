@@ -22,7 +22,7 @@ class OptimisticGround(synth: Synthesizer) extends Rule("Optimistic Ground", syn
       var predicates: Seq[Expr]        = Seq()
 
       while (result.isEmpty && i < maxTries) {
-        val phi = And(p.phi +: predicates)
+        val phi = And(p.c +: p.phi +: predicates)
         //println("SOLVING " + phi + " ...")
         synth.solver.solveSAT(phi) match {
           case (Some(true), satModel) =>
