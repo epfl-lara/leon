@@ -1370,6 +1370,7 @@ object TreeOps {
       case Plus(IntLiteral(0), e) => e
       case Plus(e, IntLiteral(0)) => e
       case Plus(e1, UMinus(e2)) => Minus(e1, e2)
+      case Plus(Plus(e, IntLiteral(i1)), IntLiteral(i2)) => Plus(e, IntLiteral(i1+i2))
 
       case Minus(e, IntLiteral(0)) => e
       case Minus(IntLiteral(0), e) => UMinus(e)
