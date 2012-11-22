@@ -1371,6 +1371,7 @@ object TreeOps {
       case Plus(e, IntLiteral(0)) => e
       case Plus(e1, UMinus(e2)) => Minus(e1, e2)
       case Plus(Plus(e, IntLiteral(i1)), IntLiteral(i2)) => Plus(e, IntLiteral(i1+i2))
+      case Plus(Plus(IntLiteral(i1), e), IntLiteral(i2)) => Plus(IntLiteral(i1+i2), e)
 
       case Minus(e, IntLiteral(0)) => e
       case Minus(IntLiteral(0), e) => UMinus(e)
@@ -1399,7 +1400,14 @@ object TreeOps {
       case Division(e, IntLiteral(1)) => e
 
       //here we put more expensive rules
+      //btw, I know those are not the most general rules, but they lead to good optimizations :)
+      case Plus(UMinus(Plus(e1, e2)), e3) if e1 == e3 => UMinus(e2)
+      case Plus(UMinus(Plus(e1, e2)), e3) if e2 == e3 => UMinus(e1)
       case Minus(e1, e2) if e1 == e2 => IntLiteral(0) 
+      case Minus(Plus(e1, e2), Plus(e3, e4)) if e1 == e4 && e2 == e3 => IntLiteral(0)
+      case Minus(Plus(e1, e2), Plus(Plus(e3, e4), e5)) if e1 == e4 && e2 == e3 => UMinus(e5)
+
+      //default
       case e => e
     }
     def fix[A](f: (A) => A)(a: A): A = {
