@@ -43,6 +43,7 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
 
       val otherVars: List[Identifier] = problem.xs.filterNot(_ == processedVar)
 
+
       val normalizedLhs: List[List[Expr]] = lhsSides.map(linearArithmeticForm(_, Array(processedVar)).toList)
       var upperBounds: List[(Expr, Int)] = Nil // (t, c) means c*x <= t
       var lowerBounds: List[(Expr, Int)] = Nil // (t, c) means t <= c*x
@@ -54,15 +55,30 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
         case err => sys.error("unexpected from normal form: " + err)
       }
 
-      //optimization when coef = 1
+      val L = if(upperBounds.isEmpty && lowerBounds.isEmpty) -1 else lcm((upperBounds ::: lowerBounds).map(_._2))
+      println("LCM: " + L)
+
+      //optimization when coef = 1 and when ub - lb is a constant greater than LCM
       upperBounds = upperBounds.filterNot{case (ub, uc) => if(uc == 1) {
-        exprNotUsed ++= lowerBounds.map{case (lb, lc) => LessEquals(lb, Times(IntLiteral(lc), ub))}
-        true
-      } else false }
+          exprNotUsed ++= lowerBounds.map{case (lb, lc) => LessEquals(lb, Times(IntLiteral(lc), ub))}
+          true
+        } else
+          false
+      }
       lowerBounds = lowerBounds.filterNot{case (lb, lc) => if(lc == 1) {
-        exprNotUsed ++= upperBounds.map{case (ub, uc) => LessEquals(Times(IntLiteral(uc), lb), ub)}
-        true
-      } else false }
+          exprNotUsed ++= upperBounds.map{case (ub, uc) => LessEquals(Times(IntLiteral(uc), lb), ub)}
+          true
+        } else 
+          false 
+      }
+      upperBounds = upperBounds.filterNot{case (ub, uc) => {
+        lowerBounds.forall{case (lb, lc) => {
+          println(simplifyArithmetic(Minus(ub, lb)))
+          simplifyArithmetic(Minus(ub, lb)) match {
+          case IntLiteral(n) => println("found N: " + n); L - 1 <= n
+          case _ => false
+        }}}
+      }}
 
       println("lowerBounds: " + lowerBounds)
       println("upperBounds: " + upperBounds)
@@ -142,7 +158,6 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
         val remainderIds: List[Identifier] = upperBounds.map(_ => FreshIdentifier("k", true).setType(Int32Type))
         val quotientIds: List[Identifier] = lowerBounds.map(_ => FreshIdentifier("l", true).setType(Int32Type))
 
-        val L = if(remainderIds.isEmpty) -1 else lcm((upperBounds ::: lowerBounds).map(_._2))
         val newUpperBounds: List[Expr] = upperBounds.map{case (bound, coef) => Times(IntLiteral(L/coef), bound)}
         val newLowerBounds: List[Expr] = lowerBounds.map{case (bound, coef) => Times(IntLiteral(L/coef), bound)}
 
