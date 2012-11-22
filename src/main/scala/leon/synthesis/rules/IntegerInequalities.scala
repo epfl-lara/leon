@@ -12,7 +12,7 @@ import purescala.Definitions._
 import LinearEquations.elimVariable
 import leon.synthesis.Algebra.lcm
 
-class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities", synth, 300) {
+class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities", synth, 600) {
   def attemptToApplyOn(problem: Problem): RuleResult = {
     val TopLevelAnds(exprs) = problem.phi
 
@@ -31,8 +31,16 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
     val ineqVars = lhsSides.foldLeft(Set[Identifier]())((acc, lhs) => acc ++ variablesOf(lhs))
     val nonIneqVars = exprNotUsed.foldLeft(Set[Identifier]())((acc, x) => acc ++ variablesOf(x))
     val candidateVars = ineqVars.intersect(problem.xs.toSet).filterNot(nonIneqVars.contains(_))
+
     if(candidateVars.isEmpty) RuleInapplicable else {
-      val processedVar = candidateVars.head
+      val processedVar: Identifier = candidateVars.map(v => {
+        val normalizedLhs: List[List[Expr]] = lhsSides.map(linearArithmeticForm(_, Array(v)).toList)
+        if(normalizedLhs.isEmpty)
+          (v, 0)
+        else
+          (v, lcm(normalizedLhs.map{ case List(t, IntLiteral(i)) => if(i == 0) 1 else i.abs case _ => sys.error("shouldn't happen") }))
+      }).toList.sortWith((t1, t2) => t1._2 <= t2._2).head._1
+
       val otherVars: List[Identifier] = problem.xs.filterNot(_ == processedVar)
 
       val normalizedLhs: List[List[Expr]] = lhsSides.map(linearArithmeticForm(_, Array(processedVar)).toList)
