@@ -20,7 +20,10 @@ class Assert(synth: Synthesizer) extends Rule("Assert", synth, 200) {
           } else {
             val sub = p.copy(c = And(p.c +: exprsA), phi = And(others))
 
-            RuleFastStep(List(sub), forward)
+            RuleFastStep(List(sub), {
+              case Solution(pre, defs, term) :: Nil => Solution(And(exprsA :+ pre), defs, term)
+              case _ => Solution.none
+            })
           }
         } else {
           RuleInapplicable
