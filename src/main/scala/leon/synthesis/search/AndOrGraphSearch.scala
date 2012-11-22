@@ -28,7 +28,7 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
 
       ot match {
         case l: g.Leaf =>
-          collectLeaf(WL(l, newCosts.reverse)) 
+          collectLeaf(WL(l, newCosts.reverse))
         case o: g.OrNode =>
           for (a <- o.alternatives.values) {
             collectFromAnd(a, newCosts)

@@ -27,9 +27,9 @@ package leon.synthesis.search
 
       n match {
         case ot: g.OrTree =>
-          drawOrNode(res, name, ot)
+          drawNode(res, name, ot)
         case at: g.AndTree =>
-          drawAndNode(res, name, at)
+          drawNode(res, name, at)
       }
 
       nodesToNames += n -> name
@@ -80,32 +80,26 @@ package leon.synthesis.search
     (nodes, edges)
   }
 
-  def drawOrNode(res: StringBuffer, name: String, t: g.OrTree) {
-    val ot = t.task
+
+  def drawNode(res: StringBuffer, name: String, t: g.Tree) {
+
+    def escapeHTML(str: String) = str.replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+
     val (color, style) = t match {
-      case l: g.OrLeaf =>
-        (if (t.isSolved) "palegreen" else if (t.isUnsolvable) "firebrick" else "white" , "filled,dashed")
-      case n: g.OrNode =>
-        (if (t.isSolved) "palegreen" else if (t.isUnsolvable) "firebrick" else "white", "filled")
+      case l: g.Leaf =>
+        (if (t.isSolved) "palegreen" else if (t.isUnsolvable) "firebrick" else "white" , "dashed")
+      case n: g.Node[_] =>
+        (if (t.isSolved) "palegreen" else if (t.isUnsolvable) "firebrick" else "white", "")
     }
 
-    drawNode(res, name, t.minCost, ot.cost, ot.toString, color, style)
-  }
+    res append " "+name+" [ label = <<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\"><TR><TD BORDER=\"1\" BGCOLOR=\""+color+"\">"+t.task.toString+"</TD></TR>";
 
-  def drawNode(res: StringBuffer, name: String, allCost: Cost, selfCost: Cost, content: String, color: String, style: String) {
-    res append "  "+name+" [label=\""+allCost.value+" | "+selfCost.value+" | "+content+"\", shape=box, fillcolor=\""+color+"\", style=\""+style+"\"]\n"
-  }
-
-  def drawAndNode(res: StringBuffer, name: String, t: g.AndTree) {
-    val at = t.task
-    val (color, style) = t match {
-      case l: g.AndLeaf =>
-        (if (t.isSolved) "palegreen" else if (t.isUnsolvable) "firebrick" else "white", "filled,dashed")
-      case n: g.AndNode =>
-        (if (t.isSolved) "palegreen" else if (t.isUnsolvable) "firebrick" else "white", "filled")
+    if (t.isSolved) {
+      res append "<TR><TD BGCOLOR=\""+color+"\">"+escapeHTML(t.solution.get.toString)+"</TD></TR>"
     }
 
-    drawNode(res, name, t.minCost, at.cost, at.toString, color, style)
+    res append "</TABLE>>, shape = \"none\", style=\""+style+"\" ];\n"
+
   }
 
   /** Writes the graph to a file readable with GraphViz. */
