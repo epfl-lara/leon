@@ -35,9 +35,7 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
       val processedVar = candidateVars.head
       val otherVars: List[Identifier] = problem.xs.filterNot(_ == processedVar)
 
-      println("lhsSides: " + lhsSides)
       val normalizedLhs: List[List[Expr]] = lhsSides.map(linearArithmeticForm(_, Array(processedVar)).toList)
-      println("normalized: " + normalizedLhs.mkString("\n"))
       var upperBounds: List[(Expr, Int)] = Nil // (t, c) means c*x <= t
       var lowerBounds: List[(Expr, Int)] = Nil // (t, c) means t <= c*x
       normalizedLhs.foreach{
@@ -47,6 +45,24 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
           else exprNotUsed ::= LessEquals(t, IntLiteral(0)) //TODO: make sure that these are added as preconditions
         case err => sys.error("unexpected from normal form: " + err)
       }
+
+      //optimization when coef = 1
+      upperBounds = upperBounds.filterNot{case (ub, uc) => if(uc == 1) {
+        exprNotUsed ++= lowerBounds.map{case (lb, lc) => LessEquals(lb, Times(IntLiteral(lc), ub))}
+        true
+      } else false }
+      lowerBounds = lowerBounds.filterNot{case (lb, lc) => if(lc == 1) {
+        exprNotUsed ++= upperBounds.map{case (ub, uc) => LessEquals(Times(IntLiteral(uc), lb), ub)}
+        true
+      } else false }
+
+      println("lowerBounds: " + lowerBounds)
+      println("upperBounds: " + upperBounds)
+      println("exprNotUsed: " + exprNotUsed)
+      
+      //lowerBounds.exists{case (lb, lc) => {
+      //  if(uc == 1)
+      //}}}
 
       //define max function
       val maxVarDecls: Seq[VarDecl] = lowerBounds.map(_ => VarDecl(FreshIdentifier("b"), Int32Type))
