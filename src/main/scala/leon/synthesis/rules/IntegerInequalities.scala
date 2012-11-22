@@ -117,12 +117,27 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
         val pre = And(exprNotUsed ++ constraints)
         RuleFastSuccess(Solution(pre, Set(), witness))
       } else {
-        val L = lcm((upperBounds ::: lowerBounds).map(_._2))
+
+        val involvedVariables = (upperBounds++lowerBounds).foldLeft(Set[Identifier]())((acc, t) => {
+          acc ++ variablesOf(t._1)
+        }).intersect(problem.xs.toSet) //output variables involved in the bounds of the process variables
+        var newPre: Expr = BooleanLiteral(true)
+        if(involvedVariables.isEmpty) {
+          newPre = And(
+            for((ub, uc) <- upperBounds; (lb, lc) <- lowerBounds) 
+                yield LessEquals(ceilingDiv(lb, IntLiteral(lc)), floorDiv(ub, IntLiteral(uc)))
+          )
+          lowerBounds = Nil
+          upperBounds = Nil
+        }
+
+        val remainderIds: List[Identifier] = upperBounds.map(_ => FreshIdentifier("k", true).setType(Int32Type))
+        val quotientIds: List[Identifier] = lowerBounds.map(_ => FreshIdentifier("l", true).setType(Int32Type))
+
+        val L = if(remainderIds.isEmpty) -1 else lcm((upperBounds ::: lowerBounds).map(_._2))
         val newUpperBounds: List[Expr] = upperBounds.map{case (bound, coef) => Times(IntLiteral(L/coef), bound)}
         val newLowerBounds: List[Expr] = lowerBounds.map{case (bound, coef) => Times(IntLiteral(L/coef), bound)}
 
-        val remainderIds: List[Identifier] = newUpperBounds.map(_ => FreshIdentifier("k", true).setType(Int32Type))
-        val quotientIds: List[Identifier] = newUpperBounds.map(_ => FreshIdentifier("l", true).setType(Int32Type))
 
         val subProblemFormula = simplifyArithmetic(And(
           newUpperBounds.zip(remainderIds).zip(quotientIds).flatMap{
@@ -132,25 +147,15 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
         val subProblemxs: List[Identifier] = quotientIds ++ otherVars
         val subProblem = Problem(problem.as ++ remainderIds, problem.c, subProblemFormula, subProblemxs)
 
+
         def onSuccess(sols: List[Solution]): Solution = sols match {
           case List(Solution(pre, defs, term)) => {
-            val involvedVariables = (upperBounds++lowerBounds).foldLeft(Set[Identifier]())((acc, t) => {
-              acc ++ variablesOf(t._1)
-            }).intersect(problem.xs.toSet) //output variables involved in the bounds of the process variables
-            if(involvedVariables.isEmpty) { //here we can just evaluate the lower and upper bound
-              val newPre = And(
-                for((ub, uc) <- upperBounds; (lb, lc) <- lowerBounds) 
-                  yield LessEquals(ceilingDiv(lb, IntLiteral(lc)), floorDiv(ub, IntLiteral(uc))))
+            if(remainderIds.isEmpty) {
               Solution(And(newPre, pre), defs,
                 LetTuple(subProblemxs, term,
                   Let(processedVar, witness,
                     Tuple(problem.xs.map(Variable(_))))))
-            } else if(upperBounds.isEmpty || lowerBounds.isEmpty) {
-                Solution(pre, defs,
-                  LetTuple(subProblemxs, term,
-                    Let(processedVar, witness,
-                      Tuple(problem.xs.map(Variable(_))))))
-            } else if(upperBounds.size > 1) {
+            } else if(remainderIds.size > 1) {
               sys.error("TODO")
             } else {
               val k = remainderIds.head
@@ -174,7 +179,7 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
               ))
               funDef.body = Some(funBody)
 
-              Solution(pre, defs + funDef, FunctionInvocation(funDef, Seq(IntLiteral(L-1))))
+              Solution(And(newPre, pre), defs + funDef, FunctionInvocation(funDef, Seq(IntLiteral(L-1))))
             }
           }
           case _ => Solution.none
