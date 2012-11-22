@@ -4,6 +4,49 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
                                 OT <: AOOrTask[S],
                                 S <: AOSolution](val g: AndOrGraph[AT, OT, S]) {
 
+  def nextLeaves(k: Int): List[g.Leaf] = {
+    import scala.math.Ordering.Implicits._
+
+    case class WL(t: g.Leaf, costs: List[Int])
+
+    var leaves = List[WL]()
+
+    def collectFromAnd(at: g.AndTree, costs: List[Int]) {
+      val newCosts = at.task.cost.value :: costs
+      at match {
+        case l: g.Leaf =>
+          collectLeaf(WL(l, newCosts.reverse)) 
+        case a: g.AndNode =>
+          for (o <- (a.subProblems -- a.subSolutions.keySet).values) {
+            collectFromOr(o, newCosts)
+          }
+      }
+    }
+
+    def collectFromOr(ot: g.OrTree, costs: List[Int]) {
+      val newCosts = ot.task.cost.value :: costs
+
+      ot match {
+        case l: g.Leaf =>
+          collectLeaf(WL(l, newCosts.reverse)) 
+        case o: g.OrNode =>
+          for (a <- o.alternatives.values) {
+            collectFromAnd(a, newCosts)
+          }
+      }
+    }
+
+    def collectLeaf(wl: WL) {
+      leaves = wl :: leaves
+    }
+
+    collectFromOr(g.tree, Nil)
+
+    leaves.sortBy(_.costs).map(_.t)
+  }
+
+  def nextLeafNotSimple: Option[g.Leaf] = nextLeaves(1).headOption
+
   def nextLeafSimple: Option[g.Leaf] = {
     var c : g.Tree = g.tree
 
@@ -34,8 +77,8 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
 
   def search(): Option[S] = {
     while (!g.tree.isSolved && continue) {
-      nextLeafSimple match {
-        case Some(l) =>
+      nextLeaves(1) match {
+        case l :: _ =>
           l match {
             case al: g.AndLeaf =>
               processAndLeaf(al.task) match {
@@ -60,7 +103,7 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
                   ol.parent.unsolvable(ol)
               }
           }
-        case None =>
+        case Nil =>
           continue = false
       }
     }

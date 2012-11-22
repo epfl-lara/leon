@@ -104,127 +104,148 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
 
       def bounds = recTerms.keySet.map(id => Not(Variable(id))).toList
       def bss = mappings.keySet
+      def css = mappings.values.map(_._1)
 
       def entireFormula = And(pathcond :: phi :: program :: bounds)
     }
 
-    val res = new RuleImmediateApplication {
-      def apply() = {
-        var result: Option[RuleApplicationResult]   = None
+    val TopLevelAnds(ands) = p.phi
 
-        var ass = p.as.toSet
-        var xss = p.xs.toSet
+    val xsSet = p.xs.toSet
 
-        var lastF     = TentativeFormula(p.c, p.phi, BooleanLiteral(true), Map(), Map() ++ p.xs.map(x => x -> Set(x)))
-        var currentF  = lastF.unroll
-        var unrolings = 0
-        val maxUnrolings = 3
-        var predicates: Seq[Expr]        = Seq()
-        try {
-          do {
-            //println("="*80)
-            //println("Was: "+lastF.entireFormula)
-            //println("Now Trying : "+currentF.entireFormula)
+    val (exprsA, others) = ands.partition(e => (variablesOf(e) & xsSet).isEmpty)
+    if (exprsA.isEmpty) {
+      val res = new RuleImmediateApplication {
+        def apply() = {
+          var result: Option[RuleApplicationResult]   = None
 
-            val tpe = TupleType(p.xs.map(_.getType))
-            val bss = currentF.bss
+          var ass = p.as.toSet
+          var xss = p.xs.toSet
 
-            var continue = true
+          var lastF     = TentativeFormula(p.c, p.phi, BooleanLiteral(true), Map(), Map() ++ p.xs.map(x => x -> Set(x)))
+          var currentF  = lastF.unroll
+          var unrolings = 0
+          val maxUnrolings = 3
+          var predicates: Seq[Expr]        = Seq()
+          try {
+            do {
+              //println("="*80)
+              //println("Was: "+lastF.entireFormula)
+              //println("Now Trying : "+currentF.entireFormula)
 
-            while (result.isEmpty && continue && synth.continue) {
-              val basePhi = currentF.entireFormula
-              val constrainedPhi = And(basePhi +: predicates)
-              //println("-"*80)
-              //println("To satisfy: "+constrainedPhi)
-              synth.solver.solveSAT(constrainedPhi) match {
-                case (Some(true), satModel) =>
-                  //println("Found candidate!: "+satModel.filterKeys(bss))
+              val tpe = TupleType(p.xs.map(_.getType))
+              val bss = currentF.bss
 
-                  //println("Corresponding program: "+simplifyTautologies(synth.solver)(valuateWithModelIn(currentF.program, bss, satModel)))
-                  val fixedBss = And(bss.map(b => Equals(Variable(b), satModel(b))).toSeq)
-                  //println("Phi with fixed sat bss: "+fixedBss)
+              var continue = true
 
-                  val counterPhi = And(Seq(currentF.pathcond, fixedBss, currentF.program, Not(currentF.phi)))
-                  //println("Formula to validate: "+counterPhi)
+              while (result.isEmpty && continue && synth.continue) {
+                val basePhi = currentF.entireFormula
+                val constrainedPhi = And(basePhi +: predicates)
+                //println("-"*80)
+                //println("To satisfy: "+constrainedPhi)
+                synth.solver.solveSAT(constrainedPhi) match {
+                  case (Some(true), satModel) =>
+                    //println("Found candidate!: "+satModel.filterKeys(bss))
 
-                  synth.solver.solveSAT(counterPhi) match {
-                    case (Some(true), invalidModel) =>
-                      val fixedAss = And(ass.map(a => Equals(Variable(a), invalidModel(a))).toSeq)
+                    //println("Corresponding program: "+simplifyTautologies(synth.solver)(valuateWithModelIn(currentF.program, bss, satModel)))
+                    val fixedBss = And(bss.map(b => Equals(Variable(b), satModel(b))).toSeq)
+                    //println("Phi with fixed sat bss: "+fixedBss)
 
-                      val mustBeUnsat = And(currentF.pathcond :: currentF.program :: fixedAss :: currentF.phi :: Nil)
+                    val counterPhi = And(Seq(currentF.pathcond, fixedBss, currentF.program, Not(currentF.phi)))
+                    //println("Formula to validate: "+counterPhi)
 
-                      val bssAssumptions: Set[Expr] = bss.toSet.map { b: Identifier => satModel(b) match {
-                        case BooleanLiteral(true) => Variable(b)
-                        case BooleanLiteral(false) => Not(Variable(b))
-                      }}
+                    synth.solver.solveSAT(counterPhi) match {
+                      case (Some(true), invalidModel) =>
+                        val fixedAss = And(ass.map(a => Equals(Variable(a), invalidModel(a))).toSeq)
 
-                      val unsatCore = synth.solver.solveSATWithCores(mustBeUnsat, bssAssumptions) match {
-                        case ((Some(false), _, core)) =>
-                          //println("Formula: "+mustBeUnsat)
-                          //println("Core:    "+core)
-                          //println(synth.solver.solveSAT(And(mustBeUnsat +: bssAssumptions.toSeq)))
-                          //println("maxcore: "+bssAssumptions)
-                          if (core.isEmpty) {
-                            synth.reporter.warning("Got empty core, must be unsat without assumptions!")
-                            Set()
-                          } else {
-                            core
-                          }
-                        case _ =>
-                          bssAssumptions
-                      }
 
-                      // Found as such as the xs break, refine predicates
-                      //println("Found counter EX: "+invalidModel)
-                      if (unsatCore.isEmpty) {
+                        val mustBeUnsat = And(currentF.pathcond :: currentF.program :: fixedAss :: currentF.phi :: Nil)
+
+                        val bssAssumptions: Set[Expr] = bss.toSet.map { b: Identifier => satModel(b) match {
+                          case BooleanLiteral(true) => Variable(b)
+                          case BooleanLiteral(false) => Not(Variable(b))
+                        }}
+
+                        val unsatCore = synth.solver.solveSATWithCores(mustBeUnsat, bssAssumptions) match {
+                          case ((Some(false), _, core)) =>
+                            //println("Formula: "+mustBeUnsat)
+                            //println("Core:    "+core)
+                            //println(synth.solver.solveSAT(And(mustBeUnsat +: bssAssumptions.toSeq)))
+                            //println("maxcore: "+bssAssumptions)
+                            if (core.isEmpty) {
+                              synth.reporter.warning("Got empty core, must be unsat without assumptions!")
+                              Set()
+                            } else {
+                              core
+                            }
+                          case _ =>
+                            bssAssumptions
+                        }
+
+                        val freshCss = currentF.css.map(c => c -> Variable(FreshIdentifier(c.name, true).setType(c.getType))).toMap
+
+                        val ceIn     = ass.map(id => id -> invalidModel(id))
+
+                        val counterexemple = substAll(freshCss ++ ceIn, And(Seq(currentF.program, currentF.phi)))
+
+                        //println("#"*80)
+                        //println(currentF.phi)
+                        //println(substAll(freshCss ++ ceIn, currentF.phi))
+
+                        // Found as such as the xs break, refine predicates
+
+                        if (unsatCore.isEmpty) {
+                          continue = false
+                        } else {
+                          //predicates = Not(And(unsatCore.toSeq)) +: counterexemple +: predicates
+                          predicates = Not(And(unsatCore.toSeq)) +: predicates
+                        }
+
+                      case (Some(false), _) =>
+                        //println("Sat model: "+satModel.toSeq.sortBy(_._1.toString).map{ case (id, v) => id+" -> "+v }.mkString(", "))
+                        var mapping = currentF.mappings.filterKeys(satModel.mapValues(_ == BooleanLiteral(true))).values.toMap
+
+                        //println("Mapping: "+mapping)
+
+                        // Resolve mapping
+                        for ((c, e) <- mapping) {
+                          mapping += c -> substAll(mapping, e)
+                        }
+
+                        result = Some(RuleSuccess(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(mapping))).setType(tpe))))
+
+                      case _ =>
+                        synth.reporter.warning("Solver returned 'UNKNOWN' in a CEGIS iteration.")
                         continue = false
-                      } else {
-                        predicates = Not(And(unsatCore.toSeq)) +: predicates
-                      }
+                    }
 
-                    case (Some(false), _) =>
-                      //println("Sat model: "+satModel.toSeq.sortBy(_._1.toString).map{ case (id, v) => id+" -> "+v }.mkString(", "))
-                      var mapping = currentF.mappings.filterKeys(satModel.mapValues(_ == BooleanLiteral(true))).values.toMap
-
-                      //println("Mapping: "+mapping)
-
-                      // Resolve mapping
-                      for ((c, e) <- mapping) {
-                        mapping += c -> substAll(mapping, e)
-                      }
-
-                      result = Some(RuleSuccess(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(mapping))).setType(tpe))))
-
-                    case _ =>
-                      synth.reporter.warning("Solver returned 'UNKNOWN' in a CEGIS iteration.")
-                      continue = false
-                  }
-
-                case (Some(false), _) =>
-                  //println("%%%% UNSAT")
-                  continue = false
-                case _ =>
-                  //println("%%%% WOOPS")
-                  continue = false
+                  case (Some(false), _) =>
+                    //println("%%%% UNSAT")
+                    continue = false
+                  case _ =>
+                    //println("%%%% WOOPS")
+                    continue = false
+                }
               }
-            }
 
-            lastF = currentF
-            currentF = currentF.unroll
-            unrolings += 1
-          } while(unrolings < maxUnrolings && lastF != currentF && result.isEmpty && synth.continue)
+              lastF = currentF
+              currentF = currentF.unroll
+              unrolings += 1
+            } while(unrolings < maxUnrolings && lastF != currentF && result.isEmpty && synth.continue)
 
-          result.getOrElse(RuleApplicationImpossible)
+            result.getOrElse(RuleApplicationImpossible)
 
-        } catch {
-          case e: Throwable =>
-            synth.reporter.warning("CEGIS crashed: "+e.getMessage)
-            RuleApplicationImpossible
+          } catch {
+            case e: Throwable =>
+              synth.reporter.warning("CEGIS crashed: "+e.getMessage)
+              RuleApplicationImpossible
+          }
+
         }
-
       }
+      RuleResult(List(res))
+    } else {
+      RuleInapplicable
     }
-
-    RuleResult(List(res))
   }
 }
