@@ -263,7 +263,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
         val core: Set[Expr] = c.map(ast => fromZ3Formula(m, ast, Some(BooleanType)) match {
           case n @ Not(Variable(_)) => n
           case v @ Variable(_) => v
-          case _ => scala.sys.error("Impossible element extracted from core: " + ast)
+          case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
         }).toSet
 
         (a, m, core)
@@ -337,7 +337,7 @@ class FairZ3Solver(reporter: Reporter) extends Solver(reporter) with AbstractZ3S
               val core: Set[Expr] = c2.map(ast => fromZ3Formula(m, ast, Some(BooleanType)) match {
                 case n @ Not(Variable(_)) => n
                 case v @ Variable(_) => v
-                case _ => scala.sys.error("Impossible element extracted from core: " + ast)
+                case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
               }).toSet
 
               foundAnswer(Some(true), core = core)
