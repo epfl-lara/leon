@@ -13,20 +13,26 @@ abstract class AndOrGraphParallelSearch[WC,
 
   def initWorkerContext(w: ActorRef): WC
 
-  val system = ActorSystem("ParallelSearch")
+  val nWorkers = 5
+  val timeout = 600.seconds
 
-  val master = system.actorOf(Props(new Master), name = "Master")
+  var system: ActorSystem = _
 
   def search(): Option[S] = {
+    system = ActorSystem("ParallelSearch")
 
-    val workers = for (i <- 0 to 5) yield {
+    val master = system.actorOf(Props(new Master), name = "Master")
+
+    val workers = for (i <- 1 to nWorkers) yield {
       system.actorOf(Props(new Worker(master)), name = "Worker"+i)
     }
 
-    val timeout = 600.seconds
     Await.result(master.ask(Protocol.BeginSearch)(timeout), timeout)
 
-    system.shutdown
+    if (system ne null) {
+      system.shutdown
+      system = null
+    }
 
     g.tree.solution
   }
@@ -34,6 +40,10 @@ abstract class AndOrGraphParallelSearch[WC,
   override def stop() {
     super.stop()
 
+    if(system ne null) {
+      system.shutdown
+      system = null
+    }
   }
 
 
