@@ -62,7 +62,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       def actOnChoose(f: FunDef)(e: Expr, a: Expr): Expr = e match {
         case ch @ Choose(vars, pred) =>
           val problem = Problem.fromChoose(ch)
-          val synth = new Synthesizer(ctx.reporter, mainSolver, problem, Rules.all ++ Heuristics.all, genTrees, filterFun.map(_.toSet), firstOnly, timeoutMs)
+          val synth = new Synthesizer(ctx.reporter, mainSolver, p, problem, Rules.all ++ Heuristics.all, genTrees, filterFun.map(_.toSet), firstOnly, timeoutMs)
           val sol = synth.synthesize()
 
           solutions += ch -> sol

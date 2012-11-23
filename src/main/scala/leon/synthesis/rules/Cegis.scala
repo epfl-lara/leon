@@ -138,7 +138,7 @@ case object CEGIS extends Rule("CEGIS", 150) {
 
               var continue = true
 
-              while (result.isEmpty && continue && sctx.synth.continue) {
+              while (result.isEmpty && continue) {
                 val basePhi = currentF.entireFormula
                 val constrainedPhi = And(basePhi +: predicates)
                 //println("-"*80)
@@ -231,7 +231,7 @@ case object CEGIS extends Rule("CEGIS", 150) {
               lastF = currentF
               currentF = currentF.unroll
               unrolings += 1
-            } while(unrolings < maxUnrolings && lastF != currentF && result.isEmpty && sctx.synth.continue)
+            } while(unrolings < maxUnrolings && lastF != currentF && result.isEmpty)
 
             result.getOrElse(RuleApplicationImpossible)
 

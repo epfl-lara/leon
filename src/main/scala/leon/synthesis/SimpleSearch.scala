@@ -27,7 +27,7 @@ class SimpleSearch(synth: Synthesizer,
 
   val sctx = SynthesisContext.fromSynthesizer(synth)
 
-  def expandAndTask(t: TaskRunRule) = {
+  def expandAndTask(t: TaskRunRule): ExpandResult[TaskTryRules] = {
     val prefix = "[%-20s] ".format(Option(t.rule).getOrElse("?"))
 
     t.app.apply() match {
@@ -50,7 +50,7 @@ class SimpleSearch(synth: Synthesizer,
     }
   }
 
-  def expandOrTask(t: TaskTryRules) = {
+  def expandOrTask(t: TaskTryRules): ExpandResult[TaskRunRule] = {
     val sub = rules.flatMap ( r => r.attemptToApplyOn(sctx, t.p).alternatives.map(TaskRunRule(t.p, r, _)) )
 
     if (!sub.isEmpty) {
@@ -58,5 +58,24 @@ class SimpleSearch(synth: Synthesizer,
     } else {
       ExpandFailure()
     }
+  }
+
+  def search(): Option[Solution] = {
+    while (!g.tree.isSolved && continue) {
+      nextLeaf() match {
+        case Some(l)  =>
+          l match {
+            case al: g.AndLeaf =>
+              val sub = expandAndTask(al.task)
+              onExpansion(al, sub)
+            case ol: g.OrLeaf =>
+              val sub = expandOrTask(ol.task)
+              onExpansion(ol, sub)
+          }
+        case None =>
+          continue = false
+      }
+    }
+    g.tree.solution
   }
 }

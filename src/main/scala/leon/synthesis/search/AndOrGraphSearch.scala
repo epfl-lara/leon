@@ -58,6 +58,10 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
 
   var continue = true
 
+  def stop() {
+    continue = false
+  }
+
   def onExpansion(al: g.AndLeaf, res: ExpandResult[OT]) {
     res match {
       case Expanded(ls) =>
@@ -85,27 +89,4 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
     }
     processing -= ol
   }
-
-
-  def search(): Option[S] = {
-    while (!g.tree.isSolved && continue) {
-      nextLeaf() match {
-        case Some(l)  =>
-          l match {
-            case al: g.AndLeaf =>
-              val sub = expandAndTask(al.task)
-              onExpansion(al, sub)
-            case ol: g.OrLeaf =>
-              val sub = expandOrTask(ol.task)
-              onExpansion(ol, sub)
-          }
-        case None =>
-          continue = false
-      }
-    }
-    g.tree.solution
-  }
-
-  def expandAndTask(at: AT): ExpandResult[OT]
-  def expandOrTask(ot: OT): ExpandResult[AT]
 }

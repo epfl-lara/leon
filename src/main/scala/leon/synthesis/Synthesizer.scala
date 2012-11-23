@@ -17,6 +17,7 @@ import synthesis.search._
 
 class Synthesizer(val reporter: Reporter,
                   val solver: Solver,
+                  val program: Program,
                   val problem: Problem,
                   val rules: Set[Rule],
                   generateDerivationTrees: Boolean = false,
@@ -29,7 +30,7 @@ class Synthesizer(val reporter: Reporter,
 
   def synthesize(): Solution = {
 
-    val search = new SimpleSearch(this, problem, rules)
+    val search = new ParallelSearch(this, problem, rules)
 
     val sigINT = new Signal("INT")
     var oldHandler: SignalHandler = null
@@ -39,7 +40,7 @@ class Synthesizer(val reporter: Reporter,
         reporter.info("Aborting...")
 
         continue = false
-        search.continue = false
+        search.stop()
 
         Signal.handle(sigINT, oldHandler)
       }
