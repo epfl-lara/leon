@@ -26,6 +26,8 @@ abstract class AndOrGraphParallelSearch[WC,
     val timeout = 600.seconds
     Await.result(master.ask(Protocol.BeginSearch)(timeout), timeout)
 
+    system.shutdown
+
     g.tree.solution
   }
 
@@ -70,6 +72,7 @@ abstract class AndOrGraphParallelSearch[WC,
 
         case ls =>
           for ((w, leaf) <- idleWorkers.keySet zip ls) {
+            processing += leaf
             leaf match {
               case al: g.AndLeaf =>
                 workers += w -> Some(al)
@@ -85,6 +88,9 @@ abstract class AndOrGraphParallelSearch[WC,
     }
 
     def receive = {
+      case BeginSearch =>
+        outer = sender
+
       case WorkerNew(w) =>
         workers += w -> None
         context.watch(w)

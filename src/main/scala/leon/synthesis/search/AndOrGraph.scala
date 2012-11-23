@@ -177,6 +177,8 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
           minAlternative = sub
 
           notifyParent(solution.get)
+
+        case _ =>
       }
     }
 
