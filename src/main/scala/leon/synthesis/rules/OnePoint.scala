@@ -6,8 +6,8 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
-class OnePoint(synth: Synthesizer) extends Rule("One-point", synth, 300) {
-  def attemptToApplyOn(p: Problem): RuleResult = {
+case object OnePoint extends Rule("One-point", 300) {
+  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
     val TopLevelAnds(exprs) = p.phi
 
     val candidates = exprs.collect {
@@ -23,7 +23,7 @@ class OnePoint(synth: Synthesizer) extends Rule("One-point", synth, 300) {
       val others = exprs.filter(_ != eq)
       val oxs    = p.xs.filter(_ != x)
 
-      val newProblem = Problem(p.as, p.c, subst(x -> e, And(others)), oxs)
+      val newProblem = Problem(p.as, p.pc, subst(x -> e, And(others)), oxs)
 
       val onSuccess: List[Solution] => Solution = { 
         case List(Solution(pre, defs, term)) =>

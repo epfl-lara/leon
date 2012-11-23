@@ -12,8 +12,8 @@ import purescala.Definitions._
 import LinearEquations.elimVariable
 import leon.synthesis.Algebra.lcm
 
-class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities", synth, 600) {
-  def attemptToApplyOn(problem: Problem): RuleResult = {
+case object IntegerInequalities extends Rule("Integer Inequalities", 600) {
+  def attemptToApplyOn(sctx: SynthesisContext, problem: Problem): RuleResult = {
     val TopLevelAnds(exprs) = problem.phi
 
     //assume that we only have inequalities
@@ -168,7 +168,7 @@ class IntegerInequalities(synth: Synthesizer) extends Rule("Integer Inequalities
                                 newLowerBounds.map(lbound => LessEquals(Variable(k), Minus(b, lbound)))
           } ++ exprNotUsed))
         val subProblemxs: List[Identifier] = quotientIds ++ otherVars
-        val subProblem = Problem(problem.as ++ remainderIds, problem.c, subProblemFormula, subProblemxs)
+        val subProblem = Problem(problem.as ++ remainderIds, problem.pc, subProblemFormula, subProblemxs)
 
 
         def onSuccess(sols: List[Solution]): Solution = sols match {

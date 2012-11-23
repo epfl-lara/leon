@@ -9,8 +9,8 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
 
-class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 50) with Heuristic {
-  def attemptToApplyOn(p: Problem): RuleResult = {
+case object IntInduction extends Rule("Int Induction", 50) with Heuristic {
+  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
     p.as match {
       case List(IsTyped(origId, Int32Type)) =>
         val tpe = TupleType(p.xs.map(_.getType))
@@ -25,9 +25,9 @@ class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 50) 
         val postCondGT = substAll(postXsMap + (origId -> Minus(Variable(inductOn), IntLiteral(1))), p.phi)
         val postCondLT = substAll(postXsMap + (origId -> Plus(Variable(inductOn), IntLiteral(1))), p.phi)
 
-        val subBase = Problem(List(), p.c, subst(origId -> IntLiteral(0), p.phi), p.xs)
-        val subGT   = Problem(inductOn :: postXs, And(Seq(GreaterThan(Variable(inductOn), IntLiteral(0)), postCondGT, p.c)), newPhi, p.xs)
-        val subLT   = Problem(inductOn :: postXs, And(Seq(LessThan(Variable(inductOn), IntLiteral(0)), postCondLT, p.c)), newPhi, p.xs)
+        val subBase = Problem(List(), p.pc, subst(origId -> IntLiteral(0), p.phi), p.xs)
+        val subGT   = Problem(inductOn :: postXs, And(Seq(GreaterThan(Variable(inductOn), IntLiteral(0)), postCondGT, p.pc)), newPhi, p.xs)
+        val subLT   = Problem(inductOn :: postXs, And(Seq(LessThan(Variable(inductOn), IntLiteral(0)), postCondLT, p.pc)), newPhi, p.xs)
 
         val onSuccess: List[Solution] => Solution = {
           case List(base, gt, lt) =>
@@ -54,7 +54,7 @@ class IntInduction(synth: Synthesizer) extends Rule("Int Induction", synth, 50) 
             Solution.none
         }
 
-        HeuristicFastStep(synth, p, List(subBase, subGT, subLT), onSuccess)
+        HeuristicFastStep(sctx, p, List(subBase, subGT, subLT), onSuccess)
       case _ =>
         RuleInapplicable
     }

@@ -18,20 +18,18 @@ import synthesis.search._
 class Synthesizer(val reporter: Reporter,
                   val solver: Solver,
                   val problem: Problem,
-                  val ruleConstructors: Set[Synthesizer => Rule],
+                  val rules: Set[Rule],
                   generateDerivationTrees: Boolean = false,
                   filterFuns: Option[Set[String]]  = None,
                   firstOnly: Boolean               = false,
                   timeoutMs: Option[Long]          = None) {
   import reporter.{error,warning,info,fatalError}
 
-  val rules = ruleConstructors.map(_.apply(this))
-
   var continue = true
 
   def synthesize(): Solution = {
 
-    val search = new AOSearch(problem, rules)
+    val search = new AOSearch(this, problem, rules)
 
     val sigINT = new Signal("INT")
     var oldHandler: SignalHandler = null
@@ -77,8 +75,11 @@ class Synthesizer(val reporter: Reporter,
     override def toString = p.toString
   }
 
-  class AOSearch(problem: Problem,
+  class AOSearch(synth: Synthesizer,
+                 problem: Problem,
                  rules: Set[Rule]) extends AndOrGraphSearch[TaskRunRule, TaskTryRules, Solution](new AndOrGraph(TaskTryRules(problem))) {
+
+    val sctx = SynthesisContext.fromSynthesizer(synth)
 
     def processAndLeaf(t: TaskRunRule) = {
       val prefix = "[%-20s] ".format(Option(t.rule).getOrElse("?"))
@@ -104,7 +105,7 @@ class Synthesizer(val reporter: Reporter,
     }
 
     def processOrLeaf(t: TaskTryRules) = {
-      val sub = rules.flatMap ( r => r.attemptToApplyOn(t.p).alternatives.map(TaskRunRule(t.p, r, _)) )
+      val sub = rules.flatMap ( r => r.attemptToApplyOn(sctx, t.p).alternatives.map(TaskRunRule(t.p, r, _)) )
 
       if (!sub.isEmpty) {
         Expanded(sub.toList)

@@ -9,8 +9,8 @@ import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
-class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
-  def attemptToApplyOn(p: Problem): RuleResult = {
+case object CEGIS extends Rule("CEGIS", 150) {
+  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
     case class Generator(tpe: TypeTree, altBuilder: () => List[(Expr, Set[Identifier])]);
 
     var generators = Map[TypeTree, Generator]()
@@ -40,7 +40,7 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
             { () =>
               val alts: Seq[(Expr, Set[Identifier])] = cd.knownDescendents.flatMap(i => i match {
                   case acd: AbstractClassDef =>
-                    synth.reporter.error("Unnexpected abstract class in descendants!")
+                    sctx.reporter.error("Unnexpected abstract class in descendants!")
                     None
                   case cd: CaseClassDef =>
                     val ids = cd.fieldsIds.map(i => FreshIdentifier("c", true).setType(i.getType))
@@ -50,7 +50,7 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
             }
 
           case _ =>
-            synth.reporter.error("Can't construct generator. Unsupported type: "+t+"["+t.getClass+"]");
+            sctx.reporter.error("Can't construct generator. Unsupported type: "+t+"["+t.getClass+"]");
             { () => Nil }
         }
         val g = Generator(t, alternatives)
@@ -122,7 +122,7 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
           var ass = p.as.toSet
           var xss = p.xs.toSet
 
-          var lastF     = TentativeFormula(p.c, p.phi, BooleanLiteral(true), Map(), Map() ++ p.xs.map(x => x -> Set(x)))
+          var lastF     = TentativeFormula(p.pc, p.phi, BooleanLiteral(true), Map(), Map() ++ p.xs.map(x => x -> Set(x)))
           var currentF  = lastF.unroll
           var unrolings = 0
           val maxUnrolings = 3
@@ -138,12 +138,12 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
 
               var continue = true
 
-              while (result.isEmpty && continue && synth.continue) {
+              while (result.isEmpty && continue && sctx.synth.continue) {
                 val basePhi = currentF.entireFormula
                 val constrainedPhi = And(basePhi +: predicates)
                 //println("-"*80)
                 //println("To satisfy: "+constrainedPhi)
-                synth.solver.solveSAT(constrainedPhi) match {
+                sctx.solver.solveSAT(constrainedPhi) match {
                   case (Some(true), satModel) =>
                     //println("Found candidate!: "+satModel.filterKeys(bss))
 
@@ -154,7 +154,7 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
                     val counterPhi = And(Seq(currentF.pathcond, fixedBss, currentF.program, Not(currentF.phi)))
                     //println("Formula to validate: "+counterPhi)
 
-                    synth.solver.solveSAT(counterPhi) match {
+                    sctx.solver.solveSAT(counterPhi) match {
                       case (Some(true), invalidModel) =>
                         val fixedAss = And(ass.map(a => Equals(Variable(a), invalidModel(a))).toSeq)
 
@@ -166,14 +166,14 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
                           case BooleanLiteral(false) => Not(Variable(b))
                         }}
 
-                        val unsatCore = synth.solver.solveSATWithCores(mustBeUnsat, bssAssumptions) match {
+                        val unsatCore = sctx.solver.solveSATWithCores(mustBeUnsat, bssAssumptions) match {
                           case ((Some(false), _, core)) =>
                             //println("Formula: "+mustBeUnsat)
                             //println("Core:    "+core)
                             //println(synth.solver.solveSAT(And(mustBeUnsat +: bssAssumptions.toSeq)))
                             //println("maxcore: "+bssAssumptions)
                             if (core.isEmpty) {
-                              synth.reporter.warning("Got empty core, must be unsat without assumptions!")
+                              sctx.reporter.warning("Got empty core, must be unsat without assumptions!")
                               Set()
                             } else {
                               core
@@ -215,7 +215,7 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
                         result = Some(RuleSuccess(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(mapping))).setType(tpe))))
 
                       case _ =>
-                        synth.reporter.warning("Solver returned 'UNKNOWN' in a CEGIS iteration.")
+                        sctx.reporter.warning("Solver returned 'UNKNOWN' in a CEGIS iteration.")
                         continue = false
                     }
 
@@ -231,13 +231,13 @@ class CEGIS(synth: Synthesizer) extends Rule("CEGIS", synth, 150) {
               lastF = currentF
               currentF = currentF.unroll
               unrolings += 1
-            } while(unrolings < maxUnrolings && lastF != currentF && result.isEmpty && synth.continue)
+            } while(unrolings < maxUnrolings && lastF != currentF && result.isEmpty && sctx.synth.continue)
 
             result.getOrElse(RuleApplicationImpossible)
 
           } catch {
             case e: Throwable =>
-              synth.reporter.warning("CEGIS crashed: "+e.getMessage)
+              sctx.reporter.warning("CEGIS crashed: "+e.getMessage)
               RuleApplicationImpossible
           }
 

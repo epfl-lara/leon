@@ -7,23 +7,23 @@ import purescala.TreeOps._
 import rules._
 
 object Rules {
-  def all = Set[Synthesizer => Rule](
-    new Unification.DecompTrivialClash(_),
-    new Unification.OccursCheck(_), // probably useless
-    new Disunification.Decomp(_),
-    new ADTDual(_),
-    new OnePoint(_),
-    new Ground(_),
-    new CaseSplit(_),
-    new UnusedInput(_),
-    new UnconstrainedOutput(_),
-    new OptimisticGround(_),
-    new EqualitySplit(_),
-    new CEGIS(_),
-    new Assert(_),
-    new ADTSplit(_),
-    new IntegerEquation(_),
-    new IntegerInequalities(_)
+  def all = Set[Rule](
+    Unification.DecompTrivialClash,
+    Unification.OccursCheck, // probably useless
+    Disunification.Decomp,
+    ADTDual,
+    OnePoint,
+    Ground,
+    CaseSplit,
+    UnusedInput,
+    UnconstrainedOutput,
+    OptimisticGround,
+    EqualitySplit,
+    CEGIS,
+    Assert,
+    ADTSplit,
+    IntegerEquation,
+    IntegerInequalities
   )
 }
 
@@ -73,8 +73,8 @@ object RuleFastSuccess {
   }
 }
 
-abstract class Rule(val name: String, val synth: Synthesizer, val priority: Priority) {
-  def attemptToApplyOn(problem: Problem): RuleResult
+abstract class Rule(val name: String, val priority: Priority) {
+  def attemptToApplyOn(sctx: SynthesisContext, problem: Problem): RuleResult
 
   def subst(what: Tuple2[Identifier, Expr], in: Expr): Expr = replace(Map(Variable(what._1) -> what._2), in)
   def substAll(what: Map[Identifier, Expr], in: Expr): Expr = replace(what.map(w => Variable(w._1) -> w._2), in)

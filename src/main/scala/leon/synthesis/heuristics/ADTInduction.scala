@@ -9,8 +9,8 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
 
-class ADTInduction(synth: Synthesizer) extends Rule("ADT Induction", synth, 80) with Heuristic {
-  def attemptToApplyOn(p: Problem): RuleResult = {
+case object ADTInduction extends Rule("ADT Induction", 80) with Heuristic {
+  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
     val candidates = p.as.collect {
         case IsTyped(origId, AbstractClassType(cd)) => (origId, cd)
     }
@@ -38,7 +38,7 @@ class ADTInduction(synth: Synthesizer) extends Rule("ADT Induction", synth, 80) 
       if (isRecursive) {
 
         val innerPhi = substAll(residualMap + (origId -> Variable(inductOn)), p.phi)
-        val innerPC  = substAll(residualMap + (origId -> Variable(inductOn)), p.c)
+        val innerPC  = substAll(residualMap + (origId -> Variable(inductOn)), p.pc)
 
         val subProblemsInfo = for (dcd <- cd.knownDescendents) yield dcd match {
           case ccd : CaseClassDef =>
@@ -97,7 +97,7 @@ class ADTInduction(synth: Synthesizer) extends Rule("ADT Induction", synth, 80) 
             Solution(Or(globalPre), sols.flatMap(_.defs).toSet+newFun, FunctionInvocation(newFun, p.as.map(Variable(_))))
         }
 
-        Some(HeuristicStep(synth, p, subProblemsInfo.map(_._1).toList, onSuccess))
+        Some(HeuristicStep(sctx, p, subProblemsInfo.map(_._1).toList, onSuccess))
       } else {
         None
       }

@@ -8,21 +8,21 @@ import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
-class EqualitySplit(synth: Synthesizer) extends Rule("Eq. Split.", synth, 90) {
-  def attemptToApplyOn(p: Problem): RuleResult = {
+case object EqualitySplit extends Rule("Eq. Split.", 90) {
+  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
     val candidates = p.as.groupBy(_.getType).map(_._2.toList).filter {
       case List(a1, a2) =>
-        val toValEQ = Implies(p.c, Equals(Variable(a1), Variable(a2)))
+        val toValEQ = Implies(p.pc, Equals(Variable(a1), Variable(a2)))
 
-        val impliesEQ = synth.solver.solveSAT(Not(toValEQ)) match {
+        val impliesEQ = sctx.solver.solveSAT(Not(toValEQ)) match {
           case (Some(false), _) => true
           case _ => false
         }
 
         if (!impliesEQ) {
-          val toValNE = Implies(p.c, Not(Equals(Variable(a1), Variable(a2))))
+          val toValNE = Implies(p.pc, Not(Equals(Variable(a1), Variable(a2))))
 
-          val impliesNE = synth.solver.solveSAT(Not(toValNE)) match {
+          val impliesNE = sctx.solver.solveSAT(Not(toValNE)) match {
             case (Some(false), _) => true
             case _ => false
           }
@@ -38,8 +38,8 @@ class EqualitySplit(synth: Synthesizer) extends Rule("Eq. Split.", synth, 90) {
     val steps = candidates.map(_ match {
       case List(a1, a2) =>
 
-        val sub1 = p.copy(c = And(Equals(Variable(a1), Variable(a2)), p.c))
-        val sub2 = p.copy(c = And(Not(Equals(Variable(a1), Variable(a2))), p.c))
+        val sub1 = p.copy(pc = And(Equals(Variable(a1), Variable(a2)), p.pc))
+        val sub2 = p.copy(pc = And(Not(Equals(Variable(a1), Variable(a2))), p.pc))
 
         val onSuccess: List[Solution] => Solution = { 
           case List(s1, s2) =>

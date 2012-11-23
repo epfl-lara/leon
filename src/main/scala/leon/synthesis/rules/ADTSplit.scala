@@ -9,16 +9,16 @@ import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.Definitions._
 
-class ADTSplit(synth: Synthesizer) extends Rule("ADT Split.", synth, 70) {
-  def attemptToApplyOn(p: Problem): RuleResult = {
+case object ADTSplit extends Rule("ADT Split.", 70) {
+  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
     val candidates = p.as.collect {
       case IsTyped(id, AbstractClassType(cd)) =>
 
         val optCases = for (dcd <- cd.knownDescendents) yield dcd match {
           case ccd : CaseClassDef =>
-            val toSat = And(p.c, Not(CaseClassInstanceOf(ccd, Variable(id))))
+            val toSat = And(p.pc, Not(CaseClassInstanceOf(ccd, Variable(id))))
 
-            val isImplied = synth.solver.solveSAT(toSat) match {
+            val isImplied = sctx.solver.solveSAT(toSat) match {
               case (Some(false), _) => true
               case _ => false
             }
@@ -50,7 +50,7 @@ class ADTSplit(synth: Synthesizer) extends Rule("ADT Split.", synth, 70) {
            val args   = ccd.fieldsIds.map(id => FreshIdentifier(id.name, true).setType(id.getType)).toList
 
            val subPhi = subst(id -> CaseClass(ccd, args.map(Variable(_))), p.phi)
-           val subProblem = Problem(args ::: oas, p.c, subPhi, p.xs)
+           val subProblem = Problem(args ::: oas, p.pc, subPhi, p.xs)
            val subPattern = CaseClassPattern(None, ccd, args.map(id => WildcardPattern(Some(id))))
 
            (ccd, subProblem, subPattern)

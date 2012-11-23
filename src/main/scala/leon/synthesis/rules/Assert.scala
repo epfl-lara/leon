@@ -6,8 +6,8 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
-class Assert(synth: Synthesizer) extends Rule("Assert", synth, 200) {
-  def attemptToApplyOn(p: Problem): RuleResult = {
+case object Assert extends Rule("Assert", 200) {
+  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
     p.phi match {
       case TopLevelAnds(exprs) =>
         val xsSet = p.xs.toSet
@@ -18,7 +18,7 @@ class Assert(synth: Synthesizer) extends Rule("Assert", synth, 200) {
           if (others.isEmpty) {
             RuleFastSuccess(Solution(And(exprsA), Set(), Tuple(p.xs.map(id => simplestValue(Variable(id))))))
           } else {
-            val sub = p.copy(c = And(p.c +: exprsA), phi = And(others))
+            val sub = p.copy(pc = And(p.pc +: exprsA), phi = And(others))
 
             RuleFastStep(List(sub), {
               case Solution(pre, defs, term) :: Nil => Solution(And(exprsA :+ pre), defs, term)

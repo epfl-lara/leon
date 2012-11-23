@@ -11,8 +11,8 @@ import purescala.TypeTrees._
 import purescala.Definitions._
 import LinearEquations.elimVariable
 
-class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth, 600) {
-  def attemptToApplyOn(problem: Problem): RuleResult = if(!problem.xs.exists(_.getType == Int32Type)) RuleInapplicable else {
+case object IntegerEquation extends Rule("Integer Equation", 600) {
+  def attemptToApplyOn(sctx: SynthesisContext, problem: Problem): RuleResult = if(!problem.xs.exists(_.getType == Int32Type)) RuleInapplicable else {
 
     val TopLevelAnds(exprs) = problem.phi
 
@@ -51,7 +51,7 @@ class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth
 
         if(normalizedEq.size == 1) {
           val eqPre = Equals(normalizedEq.head, IntLiteral(0))
-          val newProblem = Problem(problem.as, And(eqPre, problem.c), And(allOthers), problem.xs)
+          val newProblem = Problem(problem.as, And(eqPre, problem.pc), And(allOthers), problem.xs)
 
           val onSuccess: List[Solution] => Solution = { 
             case List(Solution(pre, defs, term)) => {
@@ -88,7 +88,7 @@ class IntegerEquation(synth: Synthesizer) extends Rule("Integer Equation", synth
           val ys: List[Identifier] = problem.xs.filterNot(neqxs.contains(_))
           val subproblemxs: List[Identifier] = freshxs ++ ys
 
-          val newProblem = Problem(problem.as ++ freshInputVariables, And(eqPre, problem.c), freshFormula, subproblemxs)
+          val newProblem = Problem(problem.as ++ freshInputVariables, And(eqPre, problem.pc), freshFormula, subproblemxs)
 
           val onSuccess: List[Solution] => Solution = { 
             case List(Solution(pre, defs, term)) => {

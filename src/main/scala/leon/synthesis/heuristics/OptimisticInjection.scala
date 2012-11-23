@@ -9,8 +9,8 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
 
-class OptimisticInjection(synth: Synthesizer) extends Rule("Opt. Injection", synth, 50) with Heuristic {
-  def attemptToApplyOn(p: Problem): RuleResult = {
+case object OptimisticInjection extends Rule("Opt. Injection", 50) with Heuristic {
+  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
     val TopLevelAnds(exprs) = p.phi
 
     val eqfuncalls = exprs.collect{
@@ -36,7 +36,7 @@ class OptimisticInjection(synth: Synthesizer) extends Rule("Opt. Injection", syn
 
       val sub = p.copy(phi = And(newExprs))
 
-      HeuristicFastStep(synth, p, List(sub), forward)
+      HeuristicFastStep(sctx, p, List(sub), forward)
     } else {
       RuleInapplicable
     }

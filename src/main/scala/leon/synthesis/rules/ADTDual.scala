@@ -6,8 +6,8 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
-class ADTDual(synth: Synthesizer) extends Rule("ADTDual", synth, 200) {
-  def attemptToApplyOn(p: Problem): RuleResult = {
+case object ADTDual extends Rule("ADTDual", 200) {
+  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
     val xs = p.xs.toSet
     val as = p.as.toSet
 

@@ -6,8 +6,8 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
-class UnconstrainedOutput(synth: Synthesizer) extends Rule("Unconstr.Output", synth, 100) {
-  def attemptToApplyOn(p: Problem): RuleResult = {
+case object UnconstrainedOutput extends Rule("Unconstr.Output", 100) {
+  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
     val unconstr = p.xs.toSet -- variablesOf(p.phi)
 
     if (!unconstr.isEmpty) {

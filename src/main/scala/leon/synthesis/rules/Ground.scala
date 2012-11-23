@@ -7,13 +7,13 @@ import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
-class Ground(synth: Synthesizer) extends Rule("Ground", synth, 500) {
-  def attemptToApplyOn(p: Problem): RuleResult = {
+case object Ground extends Rule("Ground", 500) {
+  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
     if (p.as.isEmpty) {
 
       val tpe = TupleType(p.xs.map(_.getType))
 
-      synth.solver.solveSAT(p.phi) match {
+      sctx.solver.solveSAT(p.phi) match {
         case (Some(true), model) =>
           RuleFastSuccess(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(model))).setType(tpe)))
         case (Some(false), model) =>

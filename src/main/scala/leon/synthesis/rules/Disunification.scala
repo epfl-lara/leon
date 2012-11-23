@@ -8,8 +8,8 @@ import purescala.TreeOps._
 import purescala.Extractors._
 
 object Disunification {
-  class Decomp(synth: Synthesizer) extends Rule("Disunif. Decomp.", synth, 200) {
-    def attemptToApplyOn(p: Problem): RuleResult = {
+  case object Decomp extends Rule("Disunif. Decomp.", 200) {
+    def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
       val TopLevelAnds(exprs) = p.phi
 
       val (toRemove, toAdd) = exprs.collect {
