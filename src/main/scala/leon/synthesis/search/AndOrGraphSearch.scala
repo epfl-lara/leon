@@ -4,6 +4,8 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
                                 OT <: AOOrTask[S],
                                 S <: AOSolution](val g: AndOrGraph[AT, OT, S]) {
 
+  var processing = Set[g.Leaf]()
+
   def nextLeaves(k: Int): List[g.Leaf] = {
     import scala.math.Ordering.Implicits._
 
@@ -37,7 +39,9 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
     }
 
     def collectLeaf(wl: WL) {
-      leaves = wl :: leaves
+      if (!processing(wl.t)) {
+        leaves = wl :: leaves
+      }
     }
 
     collectFromOr(g.tree, Nil)
@@ -45,28 +49,7 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
     leaves.sortBy(_.costs).map(_.t)
   }
 
-  def nextLeafNotSimple: Option[g.Leaf] = nextLeaves(1).headOption
-
-  def nextLeafSimple: Option[g.Leaf] = {
-    var c : g.Tree = g.tree
-
-    var res: Option[g.Leaf] = None
-
-    while(res.isEmpty) {
-      c match {
-        case l: g.Leaf =>
-          res = Some(l)
-
-        case an: g.AndNode =>
-          c = (an.subProblems -- an.subSolutions.keySet).values.minBy(_.minCost)
-
-        case on: g.OrNode =>
-          c = on.alternatives.values.minBy(_.minCost)
-      }
-    }
-
-    res
-  }
+  def nextLeaf(): Option[g.Leaf] = nextLeaves(1).headOption
 
   abstract class ExpandResult[T <: AOTask[S]]
   case class Expanded[T <: AOTask[S]](sub: List[T]) extends ExpandResult[T]
@@ -75,41 +58,54 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
 
   var continue = true
 
+  def onExpansion(al: g.AndLeaf, res: ExpandResult[OT]) {
+    res match {
+      case Expanded(ls) =>
+        al.expandWith(ls)
+      case r @ ExpandSuccess(sol) =>
+        al.solution = Some(sol)
+        al.parent.notifySolution(al, sol)
+      case _ =>
+        al.isUnsolvable = true
+        al.parent.unsolvable(al)
+    }
+    processing -= al
+  }
+
+  def onExpansion(ol: g.OrLeaf, res: ExpandResult[AT]) {
+    res match {
+      case Expanded(ls) =>
+        ol.expandWith(ls)
+      case r @ ExpandSuccess(sol) =>
+        ol.solution = Some(sol)
+        ol.parent.notifySolution(ol, sol)
+      case _ =>
+        ol.isUnsolvable = true
+        ol.parent.unsolvable(ol)
+    }
+    processing -= ol
+  }
+
+
   def search(): Option[S] = {
     while (!g.tree.isSolved && continue) {
-      nextLeaves(1) match {
-        case l :: _ =>
+      nextLeaf() match {
+        case Some(l)  =>
           l match {
             case al: g.AndLeaf =>
-              processAndLeaf(al.task) match {
-                case Expanded(ls) =>
-                  al.expandWith(ls)
-                case r @ ExpandSuccess(sol) =>
-                  al.solution = Some(sol)
-                  al.parent.notifySolution(al, sol)
-                case _ =>
-                  al.isUnsolvable = true
-                  al.parent.unsolvable(al)
-              }
+              val sub = expandAndTask(al.task)
+              onExpansion(al, sub)
             case ol: g.OrLeaf =>
-              processOrLeaf(ol.task) match {
-                case Expanded(ls) =>
-                  ol.expandWith(ls)
-                case r @ ExpandSuccess(sol) =>
-                  ol.solution = Some(sol)
-                  ol.parent.notifySolution(ol, sol)
-                case _ =>
-                  ol.isUnsolvable = true
-                  ol.parent.unsolvable(ol)
-              }
+              val sub = expandOrTask(ol.task)
+              onExpansion(ol, sub)
           }
-        case Nil =>
+        case None =>
           continue = false
       }
     }
     g.tree.solution
   }
 
-  def processAndLeaf(l: AT): ExpandResult[OT]
-  def processOrLeaf(l: OT): ExpandResult[AT]
+  def expandAndTask(at: AT): ExpandResult[OT]
+  def expandOrTask(ot: OT): ExpandResult[AT]
 }

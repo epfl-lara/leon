@@ -20,6 +20,10 @@ if(System.getProperty("sun.arch.data.model") == "64") {
   unmanagedBase <<= baseDirectory { base => base / "unmanaged" / "32" }
 }
 
+resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
+
+libraryDependencies += "com.typesafe.akka" % "akka-actor" % "2.0.4"
+
 fork in run := true
 
 fork in test := true

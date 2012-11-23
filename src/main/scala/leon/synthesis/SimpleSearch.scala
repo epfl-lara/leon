@@ -27,7 +27,7 @@ class SimpleSearch(synth: Synthesizer,
 
   val sctx = SynthesisContext.fromSynthesizer(synth)
 
-  def processAndLeaf(t: TaskRunRule) = {
+  def expandAndTask(t: TaskRunRule) = {
     val prefix = "[%-20s] ".format(Option(t.rule).getOrElse("?"))
 
     t.app.apply() match {
@@ -50,7 +50,7 @@ class SimpleSearch(synth: Synthesizer,
     }
   }
 
-  def processOrLeaf(t: TaskTryRules) = {
+  def expandOrTask(t: TaskTryRules) = {
     val sub = rules.flatMap ( r => r.attemptToApplyOn(sctx, t.p).alternatives.map(TaskRunRule(t.p, r, _)) )
 
     if (!sub.isEmpty) {
