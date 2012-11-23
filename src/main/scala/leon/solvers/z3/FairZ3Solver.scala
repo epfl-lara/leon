@@ -11,7 +11,6 @@ import purescala.Trees._
 import purescala.Extractors._
 import purescala.TreeOps._
 import purescala.TypeTrees._
-import Extensions._
 
 import scala.collection.mutable.{Map => MutableMap}
 import scala.collection.mutable.{Set => MutableSet}

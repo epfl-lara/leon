@@ -1,6 +1,5 @@
 package leon.isabelle
 
-import leon.Extensions._
 import leon.Reporter
 import leon.Settings._
 
@@ -20,7 +19,8 @@ import scala.collection.mutable.ListMap
 
 class Main(reporter: Reporter) extends Analyser(reporter) {
   val description = "Generates Isabelle source"
-  override val shortDescription = "isabelle"
+  val shortDescription = "isabelle"
+
   var mapParentTypes = new ListMap[String, String]
 
   //map for each function keeps the functions that it calls inside it 

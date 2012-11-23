@@ -5,7 +5,6 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
-import Extensions._
 
 class TrivialSolver(reporter: Reporter) extends Solver(reporter) {
   val description = "Solver for syntactically trivial formulas"

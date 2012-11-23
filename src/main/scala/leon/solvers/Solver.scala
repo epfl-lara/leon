@@ -1,14 +1,16 @@
 package leon
 package solvers
 
-import Extensions.Extension
-
 import purescala.Common._
 import purescala.Definitions._
 import purescala.TreeOps._
 import purescala.Trees._
 
-abstract class Solver(val reporter: Reporter) extends Extension(reporter) {
+abstract class Solver(val reporter: Reporter) {
+  // This used to be in Extension
+  val description : String
+  val shortDescription : String
+
   // This can be used by solvers to "see" the programs from which the
   // formulas come. (e.g. to set up some datastructures for the defined
   // ADTs, etc.) 

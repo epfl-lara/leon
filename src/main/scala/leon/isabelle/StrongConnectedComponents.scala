@@ -1,6 +1,5 @@
 package leon.isabelle
 
-import leon.Extensions._
 import leon.Reporter
 import leon.Settings._
 

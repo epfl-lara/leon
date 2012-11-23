@@ -6,7 +6,6 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TreeOps._
 import purescala.TypeTrees._
-import Extensions._
 
 import Evaluator._
 

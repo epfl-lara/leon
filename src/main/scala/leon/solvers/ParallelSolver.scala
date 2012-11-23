@@ -5,7 +5,6 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
-import Extensions._
 
 import Evaluator._
 

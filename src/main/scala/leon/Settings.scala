@@ -18,7 +18,7 @@ object Settings {
   var useCores : Boolean = false
   var pruneBranches : Boolean = false
   var solverTimeout : Option[Int] = None
-  //var luckyTest : Boolean = true
+  var luckyTest : Boolean = true
   var verifyModel : Boolean = true
   var useQuickCheck : Boolean = false
   var useParallel : Boolean = false
