@@ -62,6 +62,8 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
     continue = false
   }
 
+  def search(): Option[S]
+
   def onExpansion(al: g.AndLeaf, res: ExpandResult[OT]) {
     res match {
       case Expanded(ls) =>

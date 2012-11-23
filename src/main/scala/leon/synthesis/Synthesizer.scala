@@ -22,6 +22,7 @@ class Synthesizer(val reporter: Reporter,
                   val rules: Set[Rule],
                   generateDerivationTrees: Boolean = false,
                   filterFuns: Option[Set[String]]  = None,
+                  parallel: Boolean                = false,
                   firstOnly: Boolean               = false,
                   timeoutMs: Option[Long]          = None) {
   import reporter.{error,warning,info,fatalError}
@@ -30,7 +31,11 @@ class Synthesizer(val reporter: Reporter,
 
   def synthesize(): Solution = {
 
-    val search = new ParallelSearch(this, problem, rules)
+    val search = if (parallel) {
+      new ParallelSearch(this, problem, rules)
+    } else {
+      new SimpleSearch(this, problem, rules)
+    }
 
     val sigINT = new Signal("INT")
     var oldHandler: SignalHandler = null

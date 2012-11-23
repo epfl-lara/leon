@@ -14,11 +14,12 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
   val description = "Synthesis"
 
   override def definedOptions = Set(
-    LeonFlagOptionDef( "inplace", "--inplace",           "Debug level"),
-    LeonFlagOptionDef( "derivtrees", "--derivtrees",     "Generate derivation trees"),
-    LeonFlagOptionDef( "firstonly", "--firstonly",       "Stop as soon as one synthesis solution is found"),
-    LeonValueOptionDef("timeout",   "--timeout=T",       "Timeout after T seconds when searching for synthesis solutions .."),
-    LeonValueOptionDef("functions", "--functions=f1:f2", "Limit synthesis of choose found within f1,f2,..")
+    LeonFlagOptionDef( "inplace",    "--inplace",         "Debug level"),
+    LeonFlagOptionDef( "parallel",   "--parallel",        "Parallel synthesis search"),
+    LeonFlagOptionDef( "derivtrees", "--derivtrees",      "Generate derivation trees"),
+    LeonFlagOptionDef( "firstonly",  "--firstonly",       "Stop as soon as one synthesis solution is found"),
+    LeonValueOptionDef("timeout",    "--timeout=T",       "Timeout after T seconds when searching for synthesis solutions .."),
+    LeonValueOptionDef("functions",  "--functions=f1:f2", "Limit synthesis of choose found within f1,f2,..")
   )
 
   def run(ctx: LeonContext)(p: Program): Program = {
@@ -33,6 +34,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     var inPlace                        = false
     var genTrees                       = false
     var firstOnly                      = false
+    var parallel                       = false
     var filterFun: Option[Seq[String]] = None 
     var timeoutMs: Option[Long]        = None
 
@@ -49,6 +51,8 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
         }
       case LeonFlagOption("firstonly") =>
         firstOnly = true
+      case LeonFlagOption("parallel") =>
+        parallel = true
       case LeonFlagOption("derivtrees") =>
         genTrees = true
       case _ =>
@@ -62,7 +66,16 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       def actOnChoose(f: FunDef)(e: Expr, a: Expr): Expr = e match {
         case ch @ Choose(vars, pred) =>
           val problem = Problem.fromChoose(ch)
-          val synth = new Synthesizer(ctx.reporter, mainSolver, p, problem, Rules.all ++ Heuristics.all, genTrees, filterFun.map(_.toSet), firstOnly, timeoutMs)
+          val synth = new Synthesizer(ctx.reporter,
+                                      mainSolver,
+                                      p,
+                                      problem,
+                                      Rules.all ++ Heuristics.all,
+                                      genTrees,
+                                      filterFun.map(_.toSet),
+                                      parallel,
+                                      firstOnly,
+                                      timeoutMs)
           val sol = synth.synthesize()
 
           solutions += ch -> sol
