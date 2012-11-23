@@ -35,7 +35,7 @@ class LeonPlugin(val global: PluginRunner) extends Plugin {
     "  --cores              Use UNSAT cores in the unrolling/refinement step" + "\n" +
     "  --quickcheck         Use QuickCheck-like random search" + "\n" +
     "  --parallel           Run all solvers in parallel" + "\n" +
-    "  --noLuckyTests       Do not perform additional tests to potentially find models early" + "\n" +
+    //"  --noLuckyTests       Do not perform additional tests to potentially find models early" + "\n" +
     "  --noverifymodel      Do not verify the correctness of models returned by Z3" + "\n" +
     "  --debug=[1-5]        Debug level" + "\n" +
     "  --tags=t1:...        Filter out debug information that are not of one of the given tags" + "\n" +
@@ -63,7 +63,7 @@ class LeonPlugin(val global: PluginRunner) extends Plugin {
         case "cores"         =>                     leon.Settings.useCores = true
         case "quickcheck"    =>                     leon.Settings.useQuickCheck = true
         case "parallel"      =>                     leon.Settings.useParallel = true
-        case "noLuckyTests"  =>                     leon.Settings.luckyTest = false
+        //case "noLuckyTests"  =>                     leon.Settings.luckyTest = false
         case "noverifymodel" =>                     leon.Settings.verifyModel = false
         case "imperative"     =>                    leon.Settings.synthesis = false;
                                                     leon.Settings.transformProgram = true;
