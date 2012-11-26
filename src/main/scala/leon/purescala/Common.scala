@@ -6,14 +6,14 @@ object Common {
   import TypeTrees.Typed
 
   // the type is left blank (Untyped) for Identifiers that are not variables
-  class Identifier private[Common](val name: String, val id: Int, alwaysShowUniqueID: Boolean = false) extends Typed {
+  class Identifier private[Common](val name: String, private val globalId: Int, val id: Int, alwaysShowUniqueID: Boolean = false) extends Typed {
     self : Serializable =>
 
     override def equals(other: Any): Boolean = {
       if(other == null || !other.isInstanceOf[Identifier])
         false
       else
-        other.asInstanceOf[Identifier].id == this.id
+        other.asInstanceOf[Identifier].globalId == this.globalId
     }
 
     override def hashCode: Int = id
@@ -23,7 +23,7 @@ object Common {
         // angle brackets: name + "\u3008" + id + "\u3009"
         name + "[" + id + "]"
       } else if(alwaysShowUniqueID) {
-        name + id
+        name + (if(id > 0) id else "")
       } else {
         name
       }
@@ -39,28 +39,22 @@ object Common {
   }
 
   private object UniqueCounter {
-    private var soFar: Int = -1
+    private var globalId = -1
+    private var nameIds = Map[String, Int]().withDefaultValue(-1)
 
-    def next: Int = {
-      soFar = soFar + 1
-      soFar
+    def next(name: String): Int = {
+      nameIds += name -> (1+nameIds(name))
+      nameIds(name)
     }
-
-    def last: Int = {
-      soFar
+    
+    def nextGlobal = {
+      globalId += 1
+      globalId
     }
   }
 
   object FreshIdentifier {
-    def forceSkip(i : Int) : Unit = {
-      while(UniqueCounter.last < i) {
-        UniqueCounter.next
-      }
-    }
-
-    def last: Int = UniqueCounter.last
-
-    def apply(name: String, alwaysShowUniqueID: Boolean = false) : Identifier = new Identifier(name, UniqueCounter.next, alwaysShowUniqueID)
+    def apply(name: String, alwaysShowUniqueID: Boolean = false) : Identifier = new Identifier(name, UniqueCounter.nextGlobal, UniqueCounter.next(name), alwaysShowUniqueID)
   }
 
   trait ScalacPositional {
