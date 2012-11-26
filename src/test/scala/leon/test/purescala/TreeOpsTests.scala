@@ -1,17 +1,19 @@
 package leon.test.purescala
 
+import leon.LeonContext
+import leon.SilentReporter
+
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Trees._
 import leon.purescala.TypeTrees._
 import leon.purescala.TreeOps._
 import leon.purescala.LikelyEq
-import leon.SilentReporter
 
 import org.scalatest.FunSuite
 
 class TreeOpsTests extends FunSuite {
-  private val silentReporter = new SilentReporter
+  private val silentContext = LeonContext(reporter = new SilentReporter)
   
   private val emptyProgram = Program(
     FreshIdentifier("Empty"),
@@ -20,7 +22,7 @@ class TreeOpsTests extends FunSuite {
 
   test("Path-aware simplifications") {
     import leon.solvers.z3.UninterpretedZ3Solver
-    val solver = new UninterpretedZ3Solver(silentReporter)
+    val solver = new UninterpretedZ3Solver(silentContext)
     solver.setProgram(emptyProgram)
 
     // TODO actually testing something here would be better, sorry

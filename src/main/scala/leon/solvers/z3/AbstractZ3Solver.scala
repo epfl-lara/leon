@@ -16,7 +16,8 @@ import scala.collection.mutable.{Set => MutableSet}
 trait AbstractZ3Solver {
   self: leon.solvers.Solver =>
 
-  val reporter: Reporter
+  val context : LeonContext
+  protected[z3] val reporter : Reporter = context.reporter
 
   protected[leon] val USEBV : Boolean = Settings.bitvectorBitwidth.isDefined
   protected[leon] val BVWIDTH : Int = Settings.bitvectorBitwidth.getOrElse(-1)

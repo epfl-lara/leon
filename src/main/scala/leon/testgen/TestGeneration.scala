@@ -1,4 +1,5 @@
-package leon.testgen
+package leon
+package testgen
 
 import leon.verification.Analyser
 
@@ -13,12 +14,14 @@ import leon.Reporter
 
 import scala.collection.mutable.{Set => MutableSet}
 
-class TestGeneration(reporter: Reporter) extends Analyser(reporter) {
+@deprecated("Unused, Untested, Unmaintained.", "")
+class TestGeneration(context : LeonContext) extends Analyser(context) {
 
   def description: String = "Generate random testcases"
   def shortDescription: String = "test"
 
-  private val z3Solver = new FairZ3Solver(reporter)
+  private val reporter = context.reporter
+  private val z3Solver = new FairZ3Solver(context)
 
   def analyse(program: Program) {
     z3Solver.setProgram(program)

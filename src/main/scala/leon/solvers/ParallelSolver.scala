@@ -14,9 +14,12 @@ import scala.actors.Actor._
 
 import scala.concurrent.Lock
 
-class ParallelSolver(solvers: Solver*) extends Solver(solvers(0).reporter) {
+@deprecated("Unused, Untested, Unmaintained", "")
+class ParallelSolver(solvers : Solver*) extends Solver(solvers(0).context) {
   private val nbSolvers = solvers.size
   require(nbSolvers >= 2)
+
+  private val reporter = context.reporter
 
   val description = "Solver running subsolvers in parallel " + solvers.map(_.description).mkString("(", ", ", ")")
   override val shortDescription = solvers.map(_.shortDescription).mkString("//")

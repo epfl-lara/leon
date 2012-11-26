@@ -1,4 +1,5 @@
-package leon.isabelle
+package leon
+package isabelle
 
 import leon.Reporter
 import leon.Settings._
@@ -17,9 +18,12 @@ import java.lang.StringBuffer
 import java.io._
 import scala.collection.mutable.ListMap
 
-class Main(reporter: Reporter) extends Analyser(reporter) {
+@deprecated("Unused, Untested, Unmaintained.", "")
+class Main(context : LeonContext) extends Analyser(context) {
   val description = "Generates Isabelle source"
   val shortDescription = "isabelle"
+
+  private val reporter = context.reporter
 
   var mapParentTypes = new ListMap[String, String]
 

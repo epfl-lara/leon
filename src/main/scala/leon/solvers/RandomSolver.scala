@@ -11,8 +11,11 @@ import Evaluator._
 
 import scala.util.Random
 
-class RandomSolver(reporter: Reporter, val nbTrial: Option[Int] = None) extends Solver(reporter) {
+@deprecated("Unused, Untested, Unmaintained", "")
+class RandomSolver(context: LeonContext, val nbTrial: Option[Int] = None) extends Solver(context) {
   require(nbTrial.forall(i => i >= 0))
+
+  private val reporter = context.reporter
 
   val description = "Solver applying random testing (QuickCheck-like)"
   override val shortDescription = "QC"

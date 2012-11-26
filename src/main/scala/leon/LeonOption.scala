@@ -1,12 +1,14 @@
 package leon
 
+/** Describes a command-line option. */
 sealed abstract class LeonOption {
   val name: String
 }
 
+/** Boolean (on/off) options. Present means "on". */
 case class LeonFlagOption(name: String) extends LeonOption
+/** Options of the form --option=value. */
 case class LeonValueOption(name: String, value: String) extends LeonOption {
-
   def splitList : Seq[String] = value.split(':').map(_.trim).filter(!_.isEmpty)
 }
 

@@ -1,12 +1,13 @@
 package leon.test.solvers.z3
 
+import leon.LeonContext
+import leon.SilentReporter
+
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Trees._
 import leon.purescala.TreeOps._
 import leon.purescala.TypeTrees._
-
-import leon.SilentReporter
 
 import leon.solvers.Solver
 import leon.solvers.z3.UninterpretedZ3Solver
@@ -38,7 +39,7 @@ class UninterpretedZ3SolverTests extends FunSuite {
     "Solver should not be able to decide the formula " + expr + "."
   )
 
-  private val silentReporter = new SilentReporter
+  private val silentContext = LeonContext(reporter = new SilentReporter)
 
   // def f(fx : Int) : Int = fx + 1
   private val fx   : Identifier = FreshIdentifier("x").setType(Int32Type)
@@ -61,7 +62,7 @@ class UninterpretedZ3SolverTests extends FunSuite {
   private def f(e : Expr) : Expr = FunctionInvocation(fDef, e :: Nil)
   private def g(e : Expr) : Expr = FunctionInvocation(gDef, e :: Nil)
 
-  private val solver = new UninterpretedZ3Solver(silentReporter)
+  private val solver = new UninterpretedZ3Solver(silentContext)
   solver.setProgram(minimalProgram)
 
   private val tautology1 : Expr = BooleanLiteral(true)

@@ -23,12 +23,12 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
   )
 
   def run(ctx: LeonContext)(p: Program): Program = {
-    val reporter = new SilentReporter
+    val silentContext : LeonContext = ctx.copy(reporter = new SilentReporter)
 
-    val mainSolver = new FairZ3Solver(reporter)
+    val mainSolver = new FairZ3Solver(silentContext)
     mainSolver.setProgram(p)
 
-    val uninterpretedZ3 = new UninterpretedZ3Solver(reporter)
+    val uninterpretedZ3 = new UninterpretedZ3Solver(silentContext)
     uninterpretedZ3.setProgram(p)
 
     var inPlace                        = false

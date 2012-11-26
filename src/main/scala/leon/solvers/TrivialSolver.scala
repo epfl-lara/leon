@@ -6,7 +6,7 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-class TrivialSolver(reporter: Reporter) extends Solver(reporter) {
+class TrivialSolver(context: LeonContext) extends Solver(context) {
   val description = "Solver for syntactically trivial formulas"
   override val shortDescription = "trivial"
 

@@ -6,7 +6,7 @@ import purescala.Definitions._
 import purescala.TreeOps._
 import purescala.Trees._
 
-abstract class Solver(val reporter: Reporter) {
+abstract class Solver(val context : LeonContext) {
   // This used to be in Extension
   val description : String
   val shortDescription : String

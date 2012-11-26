@@ -1,12 +1,13 @@
 package leon.test.solvers.z3
 
+import leon.LeonContext
+import leon.SilentReporter
+
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Trees._
 import leon.purescala.TreeOps._
 import leon.purescala.TypeTrees._
-
-import leon.SilentReporter
 
 import leon.solvers.Solver
 import leon.solvers.z3.UninterpretedZ3Solver
@@ -30,8 +31,8 @@ class BugWithEmptySet extends FunSuite {
 
     val f1 = Equals(e1, e2)
 
-    val silentReporter = new SilentReporter
-    val solver : Solver = new UninterpretedZ3Solver(silentReporter)
+    val silentContext = LeonContext(reporter = new SilentReporter)
+    val solver : Solver = new UninterpretedZ3Solver(silentContext)
     solver.setProgram(emptyProgram)
 
     assert(solver.solve(f1) === Some(true),
