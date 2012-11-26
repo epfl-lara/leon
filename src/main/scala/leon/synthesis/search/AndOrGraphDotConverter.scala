@@ -3,7 +3,7 @@ package leon.synthesis.search
 
  class AndOrGraphDotConverter[AT <: AOAndTask[S],
                               OT <: AOOrTask[S],
-                              S <: AOSolution](val g: AndOrGraph[AT, OT, S]) {
+                              S <: AOSolution](val g: AndOrGraph[AT, OT, S], firstOnly: Boolean) {
 
 
   private[this] var _nextID = 0
@@ -65,7 +65,13 @@ package leon.synthesis.search
             collect(sub, wasMin)
           }
         case on : g.OrNode =>
-          for (sub <- (on.alternatives ++ on.triedAlternatives).values) {
+          val alternatives:Traversable[g.AndTree] = if (firstOnly) {
+            Option(on.minAlternative)
+          } else {
+            on.alternatives.values
+          }
+
+          for (sub <- alternatives) {
             val isMin = sub == on.minAlternative
             edges += ((n, sub, isMin))
             collect(sub, isMin)

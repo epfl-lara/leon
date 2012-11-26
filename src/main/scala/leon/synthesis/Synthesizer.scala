@@ -59,7 +59,7 @@ class Synthesizer(val reporter: Reporter,
     reporter.info("Finished in "+diff+"ms")
 
     if (generateDerivationTrees) {
-      new AndOrGraphDotConverter(search.g).writeFile("derivation.dot")
+      new AndOrGraphDotConverter(search.g, firstOnly).writeFile("derivation.dot")
     }
 
     res.getOrElse(Solution.choose(problem))
