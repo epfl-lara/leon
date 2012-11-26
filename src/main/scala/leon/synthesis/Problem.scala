@@ -8,7 +8,7 @@ import leon.purescala.Common._
 // Defines a synthesis triple of the form:
 // ⟦ as ⟨ C | phi ⟩ xs ⟧
 case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifier]) {
-  override def toString = "⟦ "+as.mkString(";")+", "+(if (pc != BooleanLiteral(true)) pc+" ᚒ " else "")+" ⟨ "+phi+" ⟩ "+xs.mkString(";")+" ⟧ "
+  override def toString = "⟦ "+as.mkString(";")+", "+(if (pc != BooleanLiteral(true)) pc+" ≺ " else "")+" ⟨ "+phi+" ⟩ "+xs.mkString(";")+" ⟧ "
 }
 
 object Problem {

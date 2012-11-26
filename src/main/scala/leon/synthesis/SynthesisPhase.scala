@@ -107,7 +107,11 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       simplifyLets _
     )
 
-    val chooseToExprs = solutions.map { case (ch, sol) => (ch, simplifiers.foldLeft(sol.toExpr){ (x, sim) => sim(x) }) }
+    def simplify(e: Expr): Expr = simplifiers.foldLeft(e){ (x, sim) => sim(x) }
+
+    val chooseToExprs = solutions.map {
+      case (ch, sol) => (ch, simplify(sol.toExpr))
+    }
 
     if (inPlace) {
       for (file <- ctx.files) {
