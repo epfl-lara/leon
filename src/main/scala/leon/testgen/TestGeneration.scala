@@ -1,8 +1,6 @@
 package leon
 package testgen
 
-import leon.verification.Analyser
-
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Trees._
@@ -14,8 +12,9 @@ import leon.Reporter
 
 import scala.collection.mutable.{Set => MutableSet}
 
+// TODO FIXME if this class is to be resurrected, make it a proper LeonPhase.
 @deprecated("Unused, Untested, Unmaintained.", "")
-class TestGeneration(context : LeonContext) extends Analyser(context) {
+class TestGeneration(context : LeonContext) { 
 
   def description: String = "Generate random testcases"
   def shortDescription: String = "test"

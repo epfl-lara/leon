@@ -4,8 +4,6 @@ package isabelle
 import leon.Reporter
 import leon.Settings._
 
-import leon.verification.Analyser
-
 import leon.purescala.Common.Identifier
 import leon.purescala.Definitions._
 import leon.purescala.PrettyPrinter
@@ -18,8 +16,9 @@ import java.lang.StringBuffer
 import java.io._
 import scala.collection.mutable.ListMap
 
+// TODO FIXME If this class is to be resurrected, make it a proper phase
 @deprecated("Unused, Untested, Unmaintained.", "")
-class Main(context : LeonContext) extends Analyser(context) {
+class Main(context : LeonContext) { 
   val description = "Generates Isabelle source"
   val shortDescription = "isabelle"
 
