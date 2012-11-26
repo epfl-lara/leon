@@ -3,12 +3,8 @@ package leon
 // typically these settings can be changed through some command-line switch.
 // TODO this global object needs to die (or at least clean out of its var's)
 object Settings {
-  var experimental : Boolean = false
   var showIDs: Boolean = false
-  var functionsToAnalyse: Set[String] = Set.empty
-  var extensionNames: Seq[String] = Nil
   lazy val reporter: Reporter = new DefaultReporter
-  var runDefaultExtensions: Boolean = true
   var noForallAxioms: Boolean = true
   var unrollingLevel: Int = 0
   var useBAPA: Boolean = false
@@ -25,7 +21,6 @@ object Settings {
   // When this is None, use real integers
   var bitvectorBitwidth : Option[Int] = None
   var debugLevel: Int = 0
-  var debugTags: Set[String] = Set.empty
   var synthesis: Boolean = false
   var transformProgram: Boolean              = true
   var stopAfterExtraction: Boolean           = false

@@ -237,53 +237,6 @@ object Extractors {
     }
   }
 
-  object NotSoSimplePatternMatching {
-    def coversType(tpe: ClassTypeDef, patterns: Seq[Pattern]) : Boolean = {
-      if(patterns.isEmpty) {
-        false
-      } else if(patterns.exists(_.isInstanceOf[WildcardPattern])) {
-        true
-      } else {
-        val allSubtypes: Seq[CaseClassDef] = tpe match {
-          case acd @ AbstractClassDef(_,_) => acd.knownDescendents.filter(_.isInstanceOf[CaseClassDef]).map(_.asInstanceOf[CaseClassDef])
-          case ccd: CaseClassDef => List(ccd)
-        }
-
-        var seen: Set[CaseClassDef] = Set.empty
-        var secondLevel: Map[(CaseClassDef,Int),List[Pattern]] = Map.empty
-
-        for(pat <- patterns) if (pat.isInstanceOf[CaseClassPattern]) {
-          val pattern: CaseClassPattern = pat.asInstanceOf[CaseClassPattern]
-          val ccd: CaseClassDef = pattern.caseClassDef
-          seen = seen + ccd
-
-          for((subPattern,i) <- (pattern.subPatterns.zipWithIndex)) {
-            val seenSoFar = secondLevel.getOrElse((ccd,i), Nil)
-            secondLevel = secondLevel + ((ccd,i) -> (subPattern :: seenSoFar))
-          }
-        }
-
-        allSubtypes.forall(ccd => {
-          seen(ccd) && ccd.fields.zipWithIndex.forall(p => p._1.tpe match {
-            case t: ClassType => coversType(t.classDef, secondLevel.getOrElse((ccd, p._2), Nil))
-            case _ => true
-          })
-        })
-      }
-    }
-
-    def unapply(pm : MatchExpr) : Option[MatchExpr] = if(!Settings.experimental) None else (pm match {
-      case MatchExpr(scrutinee, cases) if cases.forall(_.isInstanceOf[SimpleCase]) => {
-        val allPatterns = cases.map(_.pattern)
-        Settings.reporter.info("This might be a complete pattern-matching expression:")
-        Settings.reporter.info(pm)
-        Settings.reporter.info("Covered? " + coversType(pm.scrutineeClassType.classDef, allPatterns))
-        None
-      }
-      case _ => None
-    })
-  }
-
   object TopLevelOrs { // expr1 AND (expr2 AND (expr3 AND ..)) => List(expr1, expr2, expr3)
     def unapply(e: Expr): Option[Seq[Expr]] = e match {
       case Or(exprs) =>

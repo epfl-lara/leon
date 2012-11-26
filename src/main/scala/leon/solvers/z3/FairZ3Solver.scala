@@ -223,10 +223,6 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
     reporter.info(" - Initial unrolling...")
     val (clauses, guards) = unrollingBank.initialUnrolling(expandedVC)
 
-    for(clause <- clauses) {
-      Logger.debug("we're getting a new clause " + clause, 4, "z3solver")
-    }
-
     val cc = toZ3Formula(And(clauses)).get
     z3.assertCnstr(cc)
 
@@ -271,7 +267,6 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
       val (answer, model, core) = answerModelCore // to work around the stupid type inferer
 
       reporter.info(" - Finished search with blocked literals")
-      Logger.debug("The blocking guards are: " + blockingSet.mkString(", "), 4, "z3solver")
 
       // if (Settings.useCores)
       //   reporter.info(" - Core is : " + core)
@@ -289,7 +284,6 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
         }
         case (Some(true), m) => { // SAT
           validatingStopwatch.start
-          Logger.debug("Model Found: " + m, 4, "z3solver")
           val (trueModel, model) = if(Settings.verifyModel)
               validateAndDeleteModel(m, toCheckAgainstModels, varsInVC, evaluator)
             else {
@@ -342,7 +336,6 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
               foundAnswer(Some(true), core = core)
             } else {
               luckyStopwatch.start
-              Logger.debug("Model Found: " + m2, 4, "z3solver")
               // we might have been lucky :D
               val (wereWeLucky, cleanModel) = validateAndDeleteModel(m2, toCheckAgainstModels, varsInVC, evaluator)
               if(wereWeLucky) {
@@ -429,9 +422,6 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
             reporter.info(" - more unrollings")
             for((id,polarity) <- toReleaseAsPairs) {
               val (newClauses,newBlockers) = unrollingBank.unlock(id, !polarity)
-               for(clause <- newClauses) {
-                 Logger.debug("we're getting a new clause " + clause, 4, "z3solver")
-               }
 
               for(ncl <- newClauses) {
                 z3.assertCnstr(toZ3Formula(ncl).get)
