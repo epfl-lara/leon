@@ -16,7 +16,7 @@ object Common {
         other.asInstanceOf[Identifier].globalId == this.globalId
     }
 
-    override def hashCode: Int = id
+    override def hashCode: Int = globalId
 
     override def toString: String = {
       if(Settings.showIDs) {
