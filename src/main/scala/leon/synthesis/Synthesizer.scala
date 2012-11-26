@@ -15,7 +15,7 @@ import collection.mutable.PriorityQueue
 
 import synthesis.search._
 
-class Synthesizer(val reporter: Reporter,
+class Synthesizer(val context : LeonContext,
                   val solver: Solver,
                   val program: Program,
                   val problem: Problem,
@@ -25,6 +25,8 @@ class Synthesizer(val reporter: Reporter,
                   parallel: Boolean                = false,
                   firstOnly: Boolean               = false,
                   timeoutMs: Option[Long]          = None) {
+  protected[synthesis] val reporter = context.reporter
+
   import reporter.{error,warning,info,fatalError}
 
   var continue = true

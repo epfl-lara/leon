@@ -14,8 +14,7 @@ class ParallelSearch(synth: Synthesizer,
 
   def initWorkerContext(wr: ActorRef) = {
     val reporter = new SilentReporter
-    // TODO FIXME : the proper LeonContext should make its way here.
-    val solver = new FairZ3Solver(LeonContext(reporter = reporter))
+    val solver = new FairZ3Solver(synth.context)
     solver.setProgram(synth.program)
 
     SynthesisContext(solver = solver, reporter = synth.reporter)
