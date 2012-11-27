@@ -114,7 +114,7 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
           // println("I'll assert now an axiom: " + axiom)
           // println("Case axiom:")
           // println(axiom)
-          z3.assertCnstr(axiom)
+          solver.assertCnstr(axiom)
         }
 
         if(fd.hasPostcondition) {
@@ -129,7 +129,7 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
           val postAxiom = z3.mkForAll(0, List(pattern), nameTypePairs, z3IzedPost)
           //println("Post axiom:")
           //println(postAxiom)
-          z3.assertCnstr(postAxiom)
+          solver.assertCnstr(postAxiom)
         }
 
         axiomatizedFunctions += fd
@@ -159,6 +159,19 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
         z3.softCheckCancel
     }
   }
+
+  override def getModel = {
+    modelToMap(solver.getModel, varsInVC)
+  }
+
+  override def getUnsatCore = {
+    solver.getUnsatCore.map(ast => fromZ3Formula(null, ast, None) match {
+      case n @ Not(Variable(_)) => n
+      case v @ Variable(_) => v
+      case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
+    }).toSet
+  }
+
 
   override def solveSATWithCores(expression: Expr, assumptions: Set[Expr]): (Option[Boolean], Map[Identifier, Expr], Set[Expr]) = {
     restartZ3
@@ -224,7 +237,7 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
     val (clauses, guards) = unrollingBank.initialUnrolling(expandedVC)
 
     val cc = toZ3Formula(And(clauses)).get
-    z3.assertCnstr(cc)
+    solver.assertCnstr(cc)
 
     // these are the optional sequence of assumption literals
     val assumptionsAsZ3: Option[Seq[Z3AST]] = assumptions.map(set => set.toSeq.map(toZ3Formula(_).get))
@@ -242,26 +255,38 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
       // println("Blocking set : " + blockingSet)
       blocking2Z3Stopwatch.stop
 
-      z3.push
+      solver.push
       if(!blockingSetAsZ3.isEmpty)
-        z3.assertCnstr(z3.mkAnd(blockingSetAsZ3 : _*))
+        solver.assertCnstr(z3.mkAnd(blockingSetAsZ3 : _*))
 
       reporter.info(" - Running Z3 search...")
       val answerModelCore : (Option[Boolean], Z3Model, Set[Expr]) = {
         z3SearchStopwatch.start
-        val (a, m, c) = assumptionsAsZ3 match {
-          case Some(as) => z3.checkAssumptions(as: _*)
-          case None => val res = z3.checkAndGetModel(); (res._1, res._2, Seq.empty[Z3AST])
+
+        val res = assumptionsAsZ3 match {
+          case Some(as) => solver.checkAssumptions(as: _*)
+          case None     => solver.check()
         }
+
+        val z3model = res match {
+          case Some(true) => solver.getModel
+          case _          => null
+        }
+
+        val z3core: Seq[Z3AST] = (res, assumptionsAsZ3) match {
+          case (Some(false), ass) if ass.isDefined => solver.getUnsatCore.toSeq
+          case _                                    => Seq()
+        }
+
         z3SearchStopwatch.stop
 
-        val core: Set[Expr] = c.map(ast => fromZ3Formula(m, ast, Some(BooleanType)) match {
+        val core: Set[Expr] = z3core.map(ast => fromZ3Formula(z3model, ast, Some(BooleanType)) match {
           case n @ Not(Variable(_)) => n
           case v @ Variable(_) => v
           case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
         }).toSet
 
-        (a, m, core)
+        (res, z3model, core)
       }
 
       val (answer, model, core) = answerModelCore // to work around the stupid type inferer
@@ -278,7 +303,8 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
 
       (reinterpretedAnswer, model) match {
         case (None, m) => { // UNKNOWN
-          reporter.warning("Z3 doesn't know because: " + z3.getSearchFailure.message)
+          // reporter.warning("Z3 doesn't know because: " + z3.getSearchFailure.message)
+          reporter.warning("Z3 doesn't know because ??")
           foundAnswer(None)
           m.delete
         }
@@ -305,7 +331,7 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
         }
         case (Some(false), m) if blockingSet.isEmpty => {
           foundAnswer(Some(true), core = core)
-          z3.pop(1)
+          solver.pop(1)
         }
         // This branch is both for with and without unsat cores. The
         // distinction is made inside.
@@ -313,31 +339,43 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
           //m.delete
 
           if(!Settings.useCores)
-            z3.pop(1)
+            solver.pop(1)
             
           if (Settings.luckyTest && !forceStop) {
             // we need the model to perform the additional test
             reporter.info(" - Running search without blocked literals (w/ lucky test)")
             secondZ3SearchStopwatch.start
-            val (result2,m2,c2) = assumptionsAsZ3 match {
-              case Some(as) => z3.checkAssumptions(as: _*)
-              case None => val res = z3.checkAndGetModel(); (res._1, res._2, Seq.empty[Z3AST])
+
+            val res2 = assumptionsAsZ3 match {
+              case Some(as) => solver.checkAssumptions(as: _*)
+              case None     => solver.check()
             }
+
+            val z3model2 = res2 match {
+              case Some(true) => solver.getModel
+              case _          => null
+            }
+
+            val z3core2: Seq[Z3AST] = (res2, assumptionsAsZ3) match {
+              case (Some(false), ass) if ass.isDefined => solver.getUnsatCore.toSeq
+              case _                                    => Seq()
+            }
+
             secondZ3SearchStopwatch.stop
             reporter.info(" - Finished search without blocked literals")
 
-            if (result2 == Some(false)) {
-              val core: Set[Expr] = c2.map(ast => fromZ3Formula(m, ast, Some(BooleanType)) match {
+            if (res2 == Some(false)) {
+              val core2: Set[Expr] = z3core2.map(ast => fromZ3Formula(z3model2, ast, Some(BooleanType)) match {
                 case n @ Not(Variable(_)) => n
                 case v @ Variable(_) => v
                 case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
               }).toSet
 
-              foundAnswer(Some(true), core = core)
+              foundAnswer(Some(true), core = core2)
             } else {
               luckyStopwatch.start
               // we might have been lucky :D
-              val (wereWeLucky, cleanModel) = validateAndDeleteModel(m2, toCheckAgainstModels, varsInVC, evaluator)
+              val (wereWeLucky, cleanModel) = validateAndDeleteModel(z3model2, toCheckAgainstModels, varsInVC, evaluator)
               if(wereWeLucky) {
                 foundAnswer(Some(false), cleanModel)
               } 
@@ -348,13 +386,21 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
             reporter.info(" - Running search without blocked literals (w/o lucky test)")
             secondZ3SearchStopwatch.start
             val result2 = assumptionsAsZ3 match {
-              case Some(as) => val res = z3.checkAssumptions(as: _*); res._1
-              case None => z3.check()
+              case Some(as) => solver.checkAssumptions(as: _*)
+              case None     => solver.check()
             }
             secondZ3SearchStopwatch.stop
             reporter.info(" - Finished search without blocked literals")
 
             if (result2 == Some(false)) {
+              val z3model = solver.getModel()
+
+              val core: Set[Expr] = solver.getUnsatCore.map(ast => fromZ3Formula(z3model, ast, Some(BooleanType)) match {
+                case n @ Not(Variable(_)) => n
+                case v @ Variable(_) => v
+                case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
+              }).toSet
+
               foundAnswer(Some(true), core = core)
             }
           }
@@ -362,7 +408,7 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
           if(forceStop) {
             foundAnswer(None)
           }
-            
+
           if(!foundDefinitiveAnswer) { 
             reporter.info("- We need to keep going.")
 
@@ -378,29 +424,29 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
             if(Settings.pruneBranches) {
               for(ex <- blockingSet) ex match {
                 case Not(Variable(b)) => {
-                  z3.push
-                  z3.assertCnstr(toZ3Formula(Variable(b)).get)
-                  z3.check match {
+                  solver.push
+                  solver.assertCnstr(toZ3Formula(Variable(b)).get)
+                  solver.check match {
                     case Some(false) => {
                       //println("We had ~" + b + " in the blocking set. We now know it should stay there forever.")
-                      z3.pop(1)
-                      z3.assertCnstr(toZ3Formula(Not(Variable(b))).get)
+                      solver.pop(1)
+                      solver.assertCnstr(toZ3Formula(Not(Variable(b))).get)
                       fixedForEver = fixedForEver + ex
                     }
-                    case _ => z3.pop(1)
+                    case _ => solver.pop(1)
                   }
                 }
                 case Variable(b) => {
-                  z3.push
-                  z3.assertCnstr(toZ3Formula(Not(Variable(b))).get)
-                  z3.check match {
+                  solver.push
+                  solver.assertCnstr(toZ3Formula(Not(Variable(b))).get)
+                  solver.check match {
                     case Some(false) => {
                       //println("We had " + b + " in the blocking set. We now know it should stay there forever.")
-                      z3.pop(1)
-                      z3.assertCnstr(toZ3Formula(Variable(b)).get)
+                      solver.pop(1)
+                      solver.assertCnstr(toZ3Formula(Variable(b)).get)
                       fixedForEver = fixedForEver + ex
                     }
-                    case _ => z3.pop(1)
+                    case _ => solver.pop(1)
                   }
                 }
                 case _ => scala.sys.error("Should not have happened.")
@@ -424,7 +470,7 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
               val (newClauses,newBlockers) = unrollingBank.unlock(id, !polarity)
 
               for(ncl <- newClauses) {
-                z3.assertCnstr(toZ3Formula(ncl).get)
+                solver.assertCnstr(toZ3Formula(ncl).get)
               }
               blockingSet = blockingSet ++ Set(newBlockers.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
             }

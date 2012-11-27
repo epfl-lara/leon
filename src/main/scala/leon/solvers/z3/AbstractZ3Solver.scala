@@ -24,7 +24,8 @@ trait AbstractZ3Solver {
 
   class CantTranslateException(t: Z3AST) extends Exception("Can't translate from Z3 tree: " + t)
 
-  protected[leon] var z3 : Z3Context = null
+  protected[leon] var z3 : Z3Context    = null
+  protected[leon] var solver : Z3Solver = null
   protected[leon] var program : Program = null
   protected[leon] val z3cfg : Z3Config
 
@@ -95,14 +96,35 @@ trait AbstractZ3Solver {
     }
   }
 
+  override def push() {
+    solver.push
+  }
+
+  override def pop(lvl: Int = 1) {
+    solver.pop(lvl)
+  }
+
+  override def assertCnstr(expression: Expr) {
+    solver.assertCnstr(toZ3Formula(expression).get)
+  }
+
+  override def check: Option[Boolean] = {
+    solver.check
+  }
+
+  override def checkAssumptions(assumptions: Seq[Expr]): Option[Boolean] = {
+    solver.checkAssumptions(assumptions.map(toZ3Formula(_).get) : _*)
+  }
+
   protected[leon] def restartZ3 : Unit = {
     counter = 0
     if (neverInitialized) {
       neverInitialized = false
+      z3 = new Z3Context(z3cfg)
+      solver = z3.mkSolver
     } else {
-      z3.delete
+      solver = z3.mkSolver
     }
-    z3 = new Z3Context(z3cfg)
 
     exprToZ3Id = Map.empty
     z3IdToExpr = Map.empty
