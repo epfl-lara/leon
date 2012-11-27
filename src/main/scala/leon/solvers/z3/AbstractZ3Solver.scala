@@ -122,36 +122,16 @@ trait AbstractZ3Solver {
       neverInitialized = false
       z3 = new Z3Context(z3cfg)
       solver = z3.mkSolver
+      prepareSorts
+      prepareFunctions
     } else {
       solver = z3.mkSolver
     }
 
     exprToZ3Id = Map.empty
     z3IdToExpr = Map.empty
-
-    fallbackSorts = Map.empty
-
-    mapSorts = Map.empty
-    arraySorts = Map.empty
-    funSorts = Map.empty
-    funDomainConstructors = Map.empty
-    funDomainSelectors = Map.empty
-
-    tupleSorts = Map.empty
-    tupleConstructors = Map.empty
-    tupleSelectors = Map.empty
-
-    mapRangeSorts.clear
-    mapRangeSomeConstructors.clear
-    mapRangeNoneConstructors.clear
-    mapRangeSomeTesters.clear
-    mapRangeNoneTesters.clear
-    mapRangeValueSelectors.clear
-
-    prepareSorts
-
-    prepareFunctions
   }
+
   protected[leon] def mapRangeSort(toType : TypeTree) : Z3Sort = mapRangeSorts.get(toType) match {
     case Some(z3sort) => z3sort
     case None => {

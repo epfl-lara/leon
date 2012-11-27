@@ -61,17 +61,17 @@ class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with 
     val unsatResult   = (Some(false), emptyModel)
 
     val result = toZ3Formula(expression).map { asZ3 => 
-      z3.assertCnstr(asZ3)
-      z3.checkAndGetModel() match {
-        case (Some(false), _) => unsatResult
-        case (Some(true), model) => {
+      solver.assertCnstr(asZ3)
+      solver.check match {
+        case Some(false) => unsatResult
+        case Some(true) => {
+          val model = solver.getModel
+
           if(containsFunctionCalls(expression)) {
             unknownResult
           } else { 
             val variables = variablesOf(expression)
-            val r = (Some(true), modelToMap(model, variables))
-            model.delete
-            r
+            (Some(true), modelToMap(model, variables))
           }
         }
         case _ => unknownResult

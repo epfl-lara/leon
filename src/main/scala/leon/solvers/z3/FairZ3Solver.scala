@@ -306,7 +306,6 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
           // reporter.warning("Z3 doesn't know because: " + z3.getSearchFailure.message)
           reporter.warning("Z3 doesn't know because ??")
           foundAnswer(None)
-          m.delete
         }
         case (Some(true), m) => { // SAT
           validatingStopwatch.start
@@ -336,8 +335,6 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
         // This branch is both for with and without unsat cores. The
         // distinction is made inside.
         case (Some(false), m) => {
-          //m.delete
-
           if(!Settings.useCores)
             solver.pop(1)
             
@@ -540,7 +537,6 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
       }).toMap
 
       val asMap = modelToMap(model, variables) ++ functionsAsMap ++ constantFunctionsAsMap
-      model.delete
       lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
       val evalResult = eval(asMap, formula, evaluator)
 
