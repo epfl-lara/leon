@@ -160,19 +160,6 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
     }
   }
 
-  override def getModel = {
-    modelToMap(solver.getModel, varsInVC)
-  }
-
-  override def getUnsatCore = {
-    solver.getUnsatCore.map(ast => fromZ3Formula(null, ast, None) match {
-      case n @ Not(Variable(_)) => n
-      case v @ Variable(_) => v
-      case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
-    }).toSet
-  }
-
-
   override def solveSATWithCores(expression: Expr, assumptions: Set[Expr]): (Option[Boolean], Map[Identifier, Expr], Set[Expr]) = {
     restartZ3
     decideWithModel(expression, false, None, Some(assumptions))
@@ -703,5 +690,44 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
 
     }
   }
+
+  def getNewSolver = new solvers.IncrementalSolver {
+    val solver = z3.mkSolver
+
+    def push() {
+      solver.push
+    }
+
+    def pop(lvl: Int = 1) {
+      solver.pop(lvl)
+    }
+
+    def assertCnstr(expression: Expr) {
+      solver.assertCnstr(toZ3Formula(expression).get)
+    }
+
+    def check: Option[Boolean] = {
+      solver.check
+    }
+
+    def checkAssumptions(assumptions: Seq[Expr]): Option[Boolean] = {
+      solver.checkAssumptions(assumptions.map(toZ3Formula(_).get) : _*)
+    }
+
+    def getModel = {
+      modelToMap(solver.getModel, varsInVC)
+    }
+
+    def getUnsatCore = {
+      solver.getUnsatCore.map(ast => fromZ3Formula(null, ast, None) match {
+        case n @ Not(Variable(_)) => n
+        case v @ Variable(_) => v
+        case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
+      }).toSet
+    }
+
+
+  }
+
 }
 

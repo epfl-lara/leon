@@ -8,7 +8,7 @@ import purescala.TypeTrees._
 
 import scala.sys.error
 
-class TimeoutSolver(solver : Solver, timeout : Int) extends Solver(solver.context) {
+class TimeoutSolver(solver : Solver, timeout : Int) extends Solver(solver.context) with NaiveIncrementalSolver {
 
   val description = solver.description + ", with timeout"
   override val shortDescription = solver.shortDescription + "+t"

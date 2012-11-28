@@ -12,7 +12,7 @@ import Evaluator._
 import scala.util.Random
 
 @deprecated("Unused, Untested, Unmaintained", "")
-class RandomSolver(context: LeonContext, val nbTrial: Option[Int] = None) extends Solver(context) {
+class RandomSolver(context: LeonContext, val nbTrial: Option[Int] = None) extends Solver(context) with NaiveIncrementalSolver {
   require(nbTrial.forall(i => i >= 0))
 
   private val reporter = context.reporter

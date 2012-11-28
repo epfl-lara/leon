@@ -13,7 +13,7 @@ import scala.collection.mutable.{Set => MutableSet}
 
 // This is just to factor out the things that are common in "classes that deal
 // with a Z3 instance"
-trait AbstractZ3Solver {
+trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
   self: leon.solvers.Solver =>
 
   val context : LeonContext
@@ -96,25 +96,6 @@ trait AbstractZ3Solver {
     }
   }
 
-  override def push() {
-    solver.push
-  }
-
-  override def pop(lvl: Int = 1) {
-    solver.pop(lvl)
-  }
-
-  override def assertCnstr(expression: Expr) {
-    solver.assertCnstr(toZ3Formula(expression).get)
-  }
-
-  override def check: Option[Boolean] = {
-    solver.check
-  }
-
-  override def checkAssumptions(assumptions: Seq[Expr]): Option[Boolean] = {
-    solver.checkAssumptions(assumptions.map(toZ3Formula(_).get) : _*)
-  }
 
   protected[leon] def restartZ3 : Unit = {
     counter = 0

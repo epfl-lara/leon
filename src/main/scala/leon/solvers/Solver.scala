@@ -6,7 +6,7 @@ import purescala.Definitions._
 import purescala.TreeOps._
 import purescala.Trees._
 
-abstract class Solver(val context : LeonContext) {
+abstract class Solver(val context : LeonContext) extends IncrementalSolverBuilder {
   // This used to be in Extension
   val description : String
   val shortDescription : String
@@ -55,47 +55,5 @@ abstract class Solver(val context : LeonContext) {
   }
 
   protected def forceStop = _forceStop
-
-  // New Solver API
-  // Moslty for z3 solvers since z3 4.3
-  private var stack = List[List[Expr]](Nil)
-  def push() {
-    stack = Nil :: stack
-  }
-
-  def pop(lvl: Int = 1) {
-    stack = stack.drop(lvl)
-  }
-
-  def assertCnstr(expression: Expr) {
-    stack = (expression :: stack.head) :: stack.tail
-  }
-
-  private def allConstraints() = stack.flatten
-
-  def check: Option[Boolean] = {
-    solveSAT(And(allConstraints()))._1
-  }
-
-  private var unsatCore = Set[Expr]()
-
-  def checkAssumptions(assumptions: Seq[Expr]): Option[Boolean] = {
-    solveSAT(And(assumptions ++ allConstraints()))._1 match {
-      case Some(true) =>
-        unsatCore = Set[Expr]()
-        Some(true)
-      case r =>
-        unsatCore = assumptions.toSet
-        r
-    }
-  }
-
-  def getModel: Map[Identifier, Expr] = {
-    Map[Identifier, Expr]()
-  }
-
-  def getUnsatCore: Set[Expr] = {
-    unsatCore
-  }
 }
 

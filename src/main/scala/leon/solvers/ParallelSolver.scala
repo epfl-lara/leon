@@ -15,7 +15,7 @@ import scala.actors.Actor._
 import scala.concurrent.Lock
 
 @deprecated("Unused, Untested, Unmaintained", "")
-class ParallelSolver(solvers : Solver*) extends Solver(solvers(0).context) {
+class ParallelSolver(solvers : Solver*) extends Solver(solvers(0).context) with NaiveIncrementalSolver {
   private val nbSolvers = solvers.size
   require(nbSolvers >= 2)
 

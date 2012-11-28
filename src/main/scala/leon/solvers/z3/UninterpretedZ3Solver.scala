@@ -80,4 +80,46 @@ class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with 
 
     result
   }
+
+  def getNewSolver = new solvers.IncrementalSolver {
+    val solver = z3.mkSolver
+
+    def push() {
+      solver.push
+    }
+
+    def pop(lvl: Int = 1) {
+      solver.pop(lvl)
+    }
+
+    private var variables = Set[Identifier]()
+
+    def assertCnstr(expression: Expr) {
+      variables ++= variablesOf(expression)
+      solver.assertCnstr(toZ3Formula(expression).get)
+    }
+
+    def check: Option[Boolean] = {
+      solver.check
+    }
+
+    def checkAssumptions(assumptions: Seq[Expr]): Option[Boolean] = {
+      variables ++= assumptions.flatMap(variablesOf(_))
+      solver.checkAssumptions(assumptions.map(toZ3Formula(_).get) : _*)
+    }
+
+    def getModel = {
+      modelToMap(solver.getModel, variables)
+    }
+
+    def getUnsatCore = {
+      solver.getUnsatCore.map(ast => fromZ3Formula(null, ast, None) match {
+        case n @ Not(Variable(_)) => n
+        case v @ Variable(_) => v
+        case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
+      }).toSet
+    }
+
+
+  }
 }
