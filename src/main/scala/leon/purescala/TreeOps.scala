@@ -1414,7 +1414,25 @@ object TreeOps {
       val na = f(a)
       if(a == na) a else fix(f)(na)
     }
+      
+
     val res = fix(simplePostTransform(simplify0))(expr)
+    res
+  }
+
+  def expandAndSimplifyArithmetic(expr: Expr): Expr = {
+    println("got: " + expr)
+    val expr0 = try {
+      val freeVars: Array[Identifier] = variablesOf(expr).toArray
+      val coefs: Array[Expr] = TreeNormalizations.linearArithmeticForm(expr, freeVars)
+      coefs.toList.zip(IntLiteral(1) :: freeVars.toList.map(Variable(_))).foldLeft[Expr](IntLiteral(0))((acc, t) => {
+        if(t._1 == IntLiteral(0)) acc else Plus(acc, Times(t._1, t._2))
+      })
+    } catch {
+      case _ => expr
+    }
+    val res = simplifyArithmetic(expr0)
+    println("simplified to: " + res)
     res
   }
 
