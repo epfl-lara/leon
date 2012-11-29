@@ -732,12 +732,12 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
         val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.toSeq.map(toZ3Formula(_).get)
         // println("Blocking set : " + blockingSet)
 
-        solver.push
-        if(!blockingSetAsZ3.isEmpty)
-          solver.assertCnstr(z3.mkAnd(blockingSetAsZ3 : _*))
+        solver.push()
+        for (block <- blockingSetAsZ3) {
+          solver.assertCnstr(block)
+        }
 
         reporter.info(" - Running Z3 search...")
-
 
         val res = solver.checkAssumptions(assumptionsAsZ3 :_*)
 
@@ -785,6 +785,7 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
 
             val core = z3CoreToCore(solver.getUnsatCore)  
 
+            // Removes blocking literals
             solver.pop(1)
               
             if (!forceStop) {
@@ -805,7 +806,8 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
                     // we might have been lucky :D
                     val (wereWeLucky, cleanModel) = validateAndDeleteModel(solver.getModel, toCheckAgainstModels, varsInVC)
                     if(wereWeLucky) {
-                      reporter.info("Found lucky to "+solver.getAssertions.toSeq+" with "+assumptions)
+                      reporter.info("Found lucky to "+solver.getAssertions.toSeq+" with "+assumptionsAsZ3)
+                      reporter.info("Stack: "+ownStack)
                       foundAnswer(Some(true), cleanModel)
                     }
                   }
