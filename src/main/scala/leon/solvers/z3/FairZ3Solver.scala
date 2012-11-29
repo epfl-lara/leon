@@ -753,77 +753,67 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
 
         reporter.info(" - Finished search with blocked literals")
 
-        val reinterpretedAnswer = if(!UNKNOWNASSAT) answer else (answer match {
-          case None | Some(true) => Some(true)
-          case Some(false) => Some(false)
-        })
-
-        (reinterpretedAnswer, model) match {
-          case (None, m) => { // UNKNOWN
+        answerModelCore match {
+          case (None, _, _) => { // UNKNOWN
             // reporter.warning("Z3 doesn't know because: " + z3.getSearchFailure.message)
             reporter.warning("Z3 doesn't know because ??")
             foundAnswer(None)
           }
-          case (Some(true), m) => { // SAT
-            val (trueModel, model) = if(Settings.verifyModel)
-                validateAndDeleteModel(m, toCheckAgainstModels, varsInVC)
-              else {
-                val res = (true, modelToMap(m, varsInVC))
-                lazy val modelAsString = res._2.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
-                reporter.info("- Found a model:")
-                reporter.info(modelAsString)
-                res
-              }
 
-            if (trueModel) {
-              foundAnswer(Some(true), model)
+          case (Some(true), m, _) => { // SAT
+            if (Settings.verifyModel && false) {
+              val (isValid, model) = validateAndDeleteModel(m, toCheckAgainstModels, varsInVC)
+
+              if (isValid) {
+                foundAnswer(Some(true), model)
+              } else {
+                reporter.error("Something went wrong. The model should have been valid, yet we got this : ")
+                reporter.error(model)
+                foundAnswer(None, model)
+              }
             } else {
-              reporter.error("Something went wrong. The model should have been valid, yet we got this : ")
-              reporter.error(model)
-              foundAnswer(None, model)
+              val model = modelToMap(m, varsInVC)
+
+              lazy val modelAsString = model.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
+              reporter.info("- Found a model:")
+              reporter.info(modelAsString)
+
+              foundAnswer(Some(true), model)
             }
           }
-          case (Some(false), m) if blockingSet.isEmpty => {
+
+          case (Some(false), _, core) if blockingSet.isEmpty => {
             foundAnswer(Some(false), core = core)
             solver.pop(1)
           }
+
           // This branch is both for with and without unsat cores. The
           // distinction is made inside.
-          case (Some(false), m) => {
+          case (Some(false), _, core) => {
             solver.pop(1)
               
-            if (Settings.luckyTest && !forceStop) {
-              // we need the model to perform the additional test
-              reporter.info(" - Running search without blocked literals (w/ lucky test)")
+            if (!forceStop) {
+              if (Settings.luckyTest) {
+                // we need the model to perform the additional test
+                reporter.info(" - Running search without blocked literals (w/ lucky test)")
+              } else {
+                reporter.info(" - Running search without blocked literals (w/o lucky test)")
+              }
 
               val res2 = solver.checkAssumptions(assumptionsAsZ3 : _*)
 
-              val z3model2 = res2 match {
-                case Some(true) => solver.getModel
-                case _          => null
-              }
-
-              reporter.info(" - Finished search without blocked literals")
-
-              if (res2 == Some(false)) {
-                foundAnswer(Some(false), core = z3CoreToCore(solver.getUnsatCore))
-              } else {
-                // we might have been lucky :D
-                val (wereWeLucky, cleanModel) = validateAndDeleteModel(z3model2, toCheckAgainstModels, varsInVC)
-                if(wereWeLucky) {
-                  foundAnswer(Some(true), cleanModel)
-                }
-              }
-            } else {
-              // only checking will suffice
-              reporter.info(" - Running search without blocked literals (w/o lucky test)")
-
-              val result2 = solver.checkAssumptions(assumptionsAsZ3 : _*)
-
-              reporter.info(" - Finished search without blocked literals")
-
-              if (result2 == Some(false)) {
-                foundAnswer(Some(false), core = z3CoreToCore(solver.getUnsatCore))
+              res2 match {
+                case Some(false) =>
+                  foundAnswer(Some(false), core = z3CoreToCore(solver.getUnsatCore))
+                case Some(true) =>
+                  if (Settings.luckyTest && !forceStop) {
+                    // we might have been lucky :D
+                    val (wereWeLucky, cleanModel) = validateAndDeleteModel(solver.getModel, toCheckAgainstModels, varsInVC)
+                    if(wereWeLucky) {
+                      foundAnswer(Some(true), cleanModel)
+                    }
+                  }
+                case None =>
               }
             }
 
