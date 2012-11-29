@@ -49,14 +49,13 @@ case object IntegerInequalities extends Rule("Integer Inequalities", 600) {
       var lowerBounds: List[(Expr, Int)] = Nil // (t, c) means t <= c*x
       normalizedLhs.foreach{
         case List(t, IntLiteral(i)) => 
-          if(i > 0) upperBounds ::= (simplifyArithmetic(UMinus(t)), i)
-          else if(i < 0) lowerBounds ::= (simplifyArithmetic(t), -i)
+          if(i > 0) upperBounds ::= (expandAndSimplifyArithmetic(UMinus(t)), i)
+          else if(i < 0) lowerBounds ::= (expandAndSimplifyArithmetic(t), -i)
           else exprNotUsed ::= LessEquals(t, IntLiteral(0)) //TODO: make sure that these are added as preconditions
         case err => sys.error("unexpected from normal form: " + err)
       }
 
       val L = if(upperBounds.isEmpty && lowerBounds.isEmpty) -1 else lcm((upperBounds ::: lowerBounds).map(_._2))
-      println("LCM: " + L)
 
       //optimization when coef = 1 and when ub - lb is a constant greater than LCM
       upperBounds = upperBounds.filterNot{case (ub, uc) => if(uc == 1) {
@@ -73,20 +72,11 @@ case object IntegerInequalities extends Rule("Integer Inequalities", 600) {
       }
       upperBounds = upperBounds.filterNot{case (ub, uc) => {
         lowerBounds.forall{case (lb, lc) => {
-          println(simplifyArithmetic(Minus(ub, lb)))
-          simplifyArithmetic(Minus(ub, lb)) match {
-          case IntLiteral(n) => println("found N: " + n); L - 1 <= n
+          expandAndSimplifyArithmetic(Minus(ub, lb)) match {
+          case IntLiteral(n) => L - 1 <= n
           case _ => false
         }}}
       }}
-
-      println("lowerBounds: " + lowerBounds)
-      println("upperBounds: " + upperBounds)
-      println("exprNotUsed: " + exprNotUsed)
-      
-      //lowerBounds.exists{case (lb, lc) => {
-      //  if(uc == 1)
-      //}}}
 
       //define max function
       val maxVarDecls: Seq[VarDecl] = lowerBounds.map(_ => VarDecl(FreshIdentifier("b"), Int32Type))
@@ -162,7 +152,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities", 600) {
         val newLowerBounds: List[Expr] = lowerBounds.map{case (bound, coef) => Times(IntLiteral(L/coef), bound)}
 
 
-        val subProblemFormula = simplifyArithmetic(And(
+        val subProblemFormula = expandAndSimplifyArithmetic(And(
           newUpperBounds.zip(remainderIds).zip(quotientIds).flatMap{
             case ((b, k), l) => Equals(b, Plus(Times(IntLiteral(L), Variable(l)), Variable(k))) :: 
                                 newLowerBounds.map(lbound => LessEquals(Variable(k), Minus(b, lbound)))
@@ -188,7 +178,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities", 600) {
               val concreteTerm = replace(Map(Variable(k) -> loopCounter), term)
               val returnType = TupleType(problem.xs.map(_.getType))
               val funDef = new FunDef(FreshIdentifier("rec", true), returnType, Seq(VarDecl(loopCounter.id, Int32Type)))
-              val funBody = simplifyArithmetic(IfExpr(
+              val funBody = expandAndSimplifyArithmetic(IfExpr(
                 LessThan(loopCounter, IntLiteral(0)),
                 Error("No solution exists"),
                 IfExpr(
