@@ -173,7 +173,8 @@ case object CEGIS extends Rule("CEGIS", 150) {
                             //println(synth.solver.solveSAT(And(mustBeUnsat +: bssAssumptions.toSeq)))
                             //println("maxcore: "+bssAssumptions)
                             if (core.isEmpty) {
-                              sctx.reporter.warning("Got empty core, must be unsat without assumptions!")
+                              // This happens if unrolling level is insufficient, it becomes unsat no matter what the assumptions are.
+                              //sctx.reporter.warning("Got empty core, must be unsat without assumptions!")
                               Set()
                             } else {
                               core
