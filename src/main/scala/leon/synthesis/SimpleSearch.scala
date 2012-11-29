@@ -61,7 +61,7 @@ class SimpleSearch(synth: Synthesizer,
   }
 
   def search(): Option[Solution] = {
-    while (!g.tree.isSolved && continue) {
+    while (!g.tree.isSolved && !isStopped) {
       nextLeaf() match {
         case Some(l)  =>
           l match {
@@ -73,7 +73,7 @@ class SimpleSearch(synth: Synthesizer,
               onExpansion(ol, sub)
           }
         case None =>
-          continue = false
+          stop()
       }
     }
     g.tree.solution

@@ -64,7 +64,12 @@ class Synthesizer(val context : LeonContext,
       new AndOrGraphDotConverter(search.g, firstOnly).writeFile("derivation.dot")
     }
 
-    res.getOrElse(Solution.choose(problem))
+    res match {
+      case Some(solution) =>
+        solution
+      case None =>
+        new AndOrGraphPartialSolution(search.g, (task: TaskRunRule) => Solution.choose(task.problem)).getSolution
+    }
   }
 
 }

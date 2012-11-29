@@ -56,10 +56,10 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
   case class ExpandSuccess[T <: AOTask[S]](sol: S) extends ExpandResult[T]
   case class ExpandFailure[T <: AOTask[S]]() extends ExpandResult[T]
 
-  var continue = true
+  var isStopped = false
 
   def stop() {
-    continue = false
+    isStopped = true
   }
 
   def search(): Option[S]

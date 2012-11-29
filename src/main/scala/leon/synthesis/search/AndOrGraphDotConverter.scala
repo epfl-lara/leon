@@ -1,9 +1,9 @@
 package leon.synthesis.search
 
 
- class AndOrGraphDotConverter[AT <: AOAndTask[S],
-                              OT <: AOOrTask[S],
-                              S <: AOSolution](val g: AndOrGraph[AT, OT, S], firstOnly: Boolean) {
+class AndOrGraphDotConverter[AT <: AOAndTask[S],
+                             OT <: AOOrTask[S],
+                             S <: AOSolution](val g: AndOrGraph[AT, OT, S], firstOnly: Boolean) {
 
 
   private[this] var _nextID = 0
