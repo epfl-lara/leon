@@ -694,6 +694,8 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
   def getNewSolver = new solvers.IncrementalSolver {
     val solver = z3.mkSolver
 
+    private var varsInVC = Set[Identifier]()
+
     def push() {
       solver.push
     }
@@ -703,6 +705,7 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
     }
 
     def assertCnstr(expression: Expr) {
+      varsInVC ++= variablesOf(expression)
       solver.assertCnstr(toZ3Formula(expression).get)
     }
 
@@ -710,8 +713,8 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
       solver.check
     }
 
-    def checkAssumptions(assumptions: Seq[Expr]): Option[Boolean] = {
-      solver.checkAssumptions(assumptions.map(toZ3Formula(_).get) : _*)
+    def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
+      solver.checkAssumptions(assumptions.toSeq.map(toZ3Formula(_).get) : _*)
     }
 
     def getModel = {

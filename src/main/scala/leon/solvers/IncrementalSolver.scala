@@ -19,7 +19,7 @@ trait IncrementalSolver {
   def assertCnstr(expression: Expr): Unit
 
   def check: Option[Boolean]
-  def checkAssumptions(assumptions: Seq[Expr]): Option[Boolean]
+  def checkAssumptions(assumptions: Set[Expr]): Option[Boolean]
   def getModel: Map[Identifier, Expr]
   def getUnsatCore: Set[Expr]
 }
@@ -50,8 +50,8 @@ trait NaiveIncrementalSolver extends IncrementalSolverBuilder {
       solveSAT(And(allConstraints()))._1
     }
 
-    def checkAssumptions(assumptions: Seq[Expr]): Option[Boolean] = {
-      solveSAT(And(assumptions ++ allConstraints()))._1 match {
+    def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
+      solveSAT(And((assumptions  ++ allConstraints()).toSeq))._1 match {
         case Some(true) =>
           unsatCore = Set[Expr]()
           Some(true)

@@ -138,36 +138,52 @@ case object CEGIS extends Rule("CEGIS", 150) {
 
               var continue = true
 
+              // solver1 is used for the initial SAT queries
+              val solver1 = sctx.solver.getNewSolver
+
+              val basePhi = currentF.entireFormula
+              solver1.assertCnstr(basePhi)
+
+              // solver2 is used for the CE search
+              val solver2 = sctx.solver.getNewSolver
+              solver2.assertCnstr(And(currentF.pathcond :: currentF.program :: Not(currentF.phi) :: Nil))
+
+              // solver3 is used for the unsatcore search
+              val solver3 = sctx.solver.getNewSolver
+              solver3.assertCnstr(And(currentF.pathcond :: currentF.program :: currentF.phi :: Nil))
+
               while (result.isEmpty && continue) {
-                val basePhi = currentF.entireFormula
-                val constrainedPhi = And(basePhi +: predicates)
                 //println("-"*80)
                 //println("To satisfy: "+constrainedPhi)
-                sctx.solver.solveSAT(constrainedPhi) match {
-                  case (Some(true), satModel) =>
-                    //println("Found candidate!: "+satModel.filterKeys(bss))
+                solver1.check match {
+                  case Some(true) =>
+                    val satModel = solver1.getModel
 
                     //println("Corresponding program: "+simplifyTautologies(synth.solver)(valuateWithModelIn(currentF.program, bss, satModel)))
                     val fixedBss = And(bss.map(b => Equals(Variable(b), satModel(b))).toSeq)
                     //println("Phi with fixed sat bss: "+fixedBss)
 
-                    val counterPhi = And(Seq(currentF.pathcond, fixedBss, currentF.program, Not(currentF.phi)))
+                    solver2.push()
+                    solver2.assertCnstr(fixedBss)
                     //println("Formula to validate: "+counterPhi)
 
-                    sctx.solver.solveSAT(counterPhi) match {
-                      case (Some(true), invalidModel) =>
+                    solver2.check match {
+                      case Some(true) =>
+                        val invalidModel = solver2.getModel
+
                         val fixedAss = And(ass.map(a => Equals(Variable(a), invalidModel(a))).toSeq)
 
-
-                        val mustBeUnsat = And(currentF.pathcond :: currentF.program :: fixedAss :: currentF.phi :: Nil)
+                        solver3.push()
+                        solver3.assertCnstr(fixedAss)
 
                         val bssAssumptions: Set[Expr] = bss.toSet.map { b: Identifier => satModel(b) match {
                           case BooleanLiteral(true) => Variable(b)
                           case BooleanLiteral(false) => Not(Variable(b))
                         }}
 
-                        val unsatCore = sctx.solver.solveSATWithCores(mustBeUnsat, bssAssumptions) match {
-                          case ((Some(false), _, core)) =>
+                        val unsatCore = solver3.checkAssumptions(bssAssumptions) match {
+                          case Some(false) =>
+                            val core = solver3.getUnsatCore
                             //println("Formula: "+mustBeUnsat)
                             //println("Core:    "+core)
                             //println(synth.solver.solveSAT(And(mustBeUnsat +: bssAssumptions.toSeq)))
@@ -182,6 +198,8 @@ case object CEGIS extends Rule("CEGIS", 150) {
                           case _ =>
                             bssAssumptions
                         }
+
+                        solver3.pop()
 
                         val freshCss = currentF.css.map(c => c -> Variable(FreshIdentifier(c.name, true).setType(c.getType))).toMap
 
@@ -199,10 +217,10 @@ case object CEGIS extends Rule("CEGIS", 150) {
                           continue = false
                         } else {
                           //predicates = Not(And(unsatCore.toSeq)) +: counterexemple +: predicates
-                          predicates = Not(And(unsatCore.toSeq)) +: predicates
+                          solver1.assertCnstr(Not(And(unsatCore.toSeq)))
                         }
 
-                      case (Some(false), _) =>
+                      case Some(false) =>
                         //println("Sat model: "+satModel.toSeq.sortBy(_._1.toString).map{ case (id, v) => id+" -> "+v }.mkString(", "))
                         var mapping = currentF.mappings.filterKeys(satModel.mapValues(_ == BooleanLiteral(true))).values.toMap
 
@@ -220,7 +238,9 @@ case object CEGIS extends Rule("CEGIS", 150) {
                         continue = false
                     }
 
-                  case (Some(false), _) =>
+                    solver2.pop()
+
+                  case Some(false) =>
                     //println("%%%% UNSAT")
                     continue = false
                   case _ =>
@@ -239,6 +259,7 @@ case object CEGIS extends Rule("CEGIS", 150) {
           } catch {
             case e: Throwable =>
               sctx.reporter.warning("CEGIS crashed: "+e.getMessage)
+              e.printStackTrace
               RuleApplicationImpossible
           }
 

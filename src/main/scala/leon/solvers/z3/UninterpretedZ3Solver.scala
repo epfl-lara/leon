@@ -103,9 +103,9 @@ class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with 
       solver.check
     }
 
-    def checkAssumptions(assumptions: Seq[Expr]): Option[Boolean] = {
+    def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
       variables ++= assumptions.flatMap(variablesOf(_))
-      solver.checkAssumptions(assumptions.map(toZ3Formula(_).get) : _*)
+      solver.checkAssumptions(assumptions.toSeq.map(toZ3Formula(_).get) : _*)
     }
 
     def getModel = {
