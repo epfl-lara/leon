@@ -737,32 +737,24 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
           solver.assertCnstr(z3.mkAnd(blockingSetAsZ3 : _*))
 
         reporter.info(" - Running Z3 search...")
-        val answerModelCore : (Option[Boolean], Z3Model, Set[Expr]) = {
 
-          val res = solver.checkAssumptions(assumptionsAsZ3 : _*)
 
-          val z3model = res match {
-            case Some(true) => solver.getModel
-            case _          => null
-          }
-
-          (res, z3model, z3CoreToCore(solver.getUnsatCore))
-        }
-
-        val (answer, model, core) = answerModelCore // to work around the stupid type inferer
+        val res = solver.checkAssumptions(assumptionsAsZ3 :_*)
 
         reporter.info(" - Finished search with blocked literals")
 
-        answerModelCore match {
-          case (None, _, _) => { // UNKNOWN
+        res match {
+          case None =>
             // reporter.warning("Z3 doesn't know because: " + z3.getSearchFailure.message)
             reporter.warning("Z3 doesn't know because ??")
             foundAnswer(None)
-          }
 
-          case (Some(true), m, _) => { // SAT
+          case Some(true) => // SAT
+
+            val z3model = solver.getModel
+
             if (Settings.verifyModel && false) {
-              val (isValid, model) = validateAndDeleteModel(m, toCheckAgainstModels, varsInVC)
+              val (isValid, model) = validateAndDeleteModel(z3model, toCheckAgainstModels, varsInVC)
 
               if (isValid) {
                 foundAnswer(Some(true), model)
@@ -772,7 +764,7 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
                 foundAnswer(None, model)
               }
             } else {
-              val model = modelToMap(m, varsInVC)
+              val model = modelToMap(z3model, varsInVC)
 
               lazy val modelAsString = model.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
               reporter.info("- Found a model:")
@@ -780,16 +772,19 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
 
               foundAnswer(Some(true), model)
             }
-          }
 
-          case (Some(false), _, core) if blockingSet.isEmpty => {
+          case Some(false) if blockingSet.isEmpty =>
+            val core = z3CoreToCore(solver.getUnsatCore)  
+
             foundAnswer(Some(false), core = core)
             solver.pop(1)
-          }
 
           // This branch is both for with and without unsat cores. The
           // distinction is made inside.
-          case (Some(false), _, core) => {
+          case Some(false) =>
+
+            val core = z3CoreToCore(solver.getUnsatCore)  
+
             solver.pop(1)
               
             if (!forceStop) {
@@ -810,6 +805,7 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
                     // we might have been lucky :D
                     val (wereWeLucky, cleanModel) = validateAndDeleteModel(solver.getModel, toCheckAgainstModels, varsInVC)
                     if(wereWeLucky) {
+                      reporter.info("Found lucky to "+solver.getAssertions.toSeq+" with "+assumptions)
                       foundAnswer(Some(true), cleanModel)
                     }
                   }
@@ -889,7 +885,6 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
               }
               reporter.info(" - finished unrolling")
             }
-          }
         }
 
         if(iterationsLeft <= 0) {
