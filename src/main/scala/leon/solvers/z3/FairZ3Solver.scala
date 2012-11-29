@@ -322,9 +322,8 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
         // This branch is both for with and without unsat cores. The
         // distinction is made inside.
         case (Some(false), m) => {
-          if(!Settings.useCores)
-            solver.pop(1)
-            
+          solver.pop(1)
+
           if (Settings.luckyTest && !forceStop) {
             // we need the model to perform the additional test
             reporter.info(" - Running search without blocked literals (w/ lucky test)")
@@ -493,7 +492,7 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
     }
   }
 
-  private def validateAndDeleteModel(model: Z3Model, formula: Expr, variables: Set[Identifier], evaluator: Option[(Map[Identifier,Expr])=>Boolean]) : (Boolean, Map[Identifier,Expr]) = {
+  private def validateAndDeleteModel(model: Z3Model, formula: Expr, variables: Set[Identifier], evaluator: Option[(Map[Identifier,Expr])=>Boolean] = None) : (Boolean, Map[Identifier,Expr]) = {
     import Evaluator._
 
     if(!forceStop) {
@@ -556,7 +555,7 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
     }
   }
 
-  class UnrollingBank { 
+  class UnrollingBank {
     private val blockMap : MutableMap[(Identifier,Boolean),Set[FunctionInvocation]] = MutableMap.empty
     private def registerBlocked(id: Identifier, pol: Boolean, fi: FunctionInvocation) : Boolean = 
       registerBlocked(id,pol,Set(fi))
@@ -579,6 +578,10 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
       }
     }
 
+    def scanForNewTemplates(expr: Expr): (Seq[Expr], Seq[(Identifier, Boolean)]) = {
+      (Seq(), Seq())
+    }
+
     private def treatFunctionInvocationSet(sVar : Identifier, pol : Boolean, fis : Set[FunctionInvocation]) : (Seq[Expr],Seq[(Identifier,Boolean)]) = {
       val allBlocks : MutableSet[(Identifier,Boolean)] = MutableSet.empty
       var allNewExprs : Seq[Expr] = Seq.empty
@@ -597,11 +600,14 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
       (allNewExprs, allBlocks.toSeq)
     }
 
-    // This is called just once, for the "initial unrolling".  FIXME: TODO:
-    // Wouldn't it be better/more uniform to pretend the initial formula is a
-    // function and generate a template for it?
     def initialUnrolling(formula : Expr) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
-      initialUnrolling0(formula)
+      val tmp = FunctionTemplate.mkTemplate(formula)
+
+      for (((p1, p2), calls) <- tmp.blockers) {
+        registerBlocked(p1, p2, calls)
+      }
+
+      (tmp.asClauses, tmp.blockers.keySet.toSeq)
     }
 
     def unlock(id: Identifier, pol: Boolean) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
@@ -613,123 +619,303 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
         treatFunctionInvocationSet(id, pol, copy)
       }
     }
-
-    //this is mostly copied from FunctionTemplate. This is sort of a quick hack to the problem
-    //of the initial unrolling
-    def initialUnrolling0(formula: Expr): (Seq[Expr], Seq[(Identifier,Boolean)]) = {
-
-      var guardedExprs : Map[(Identifier,Boolean),Seq[Expr]] = Map.empty
-      def storeGuarded(guardVar : Identifier, guardPol : Boolean, expr : Expr) : Unit = {
-        assert(expr.getType == BooleanType)
-        val p : (Identifier,Boolean) = (guardVar,guardPol)
-        if(guardedExprs.isDefinedAt(p)) {
-          val prev : Seq[Expr] = guardedExprs(p)
-          guardedExprs += (p -> (expr +: prev))
-        } else {
-          guardedExprs += (p -> Seq(expr))
-        }
-      }
-  
-      def rec(pathVar : Identifier, pathPol : Boolean, expr : Expr) : Expr = {
-        expr match {
-          case l : Let => sys.error("Let's should have been eliminated.")
-          case m : MatchExpr => sys.error("MatchExpr's should have been eliminated.")
-  
-          case i @ IfExpr(cond, then, elze) => {
-            if(!containsFunctionCalls(cond) && !containsFunctionCalls(then) && !containsFunctionCalls(elze)) {
-              i
-            } else {
-              val newBool : Identifier = FreshIdentifier("b", true).setType(BooleanType)
-              val newExpr : Identifier = FreshIdentifier("e", true).setType(i.getType)
-              
-              val crec = rec(pathVar, pathPol, cond)
-              val trec = rec(newBool, true, then)
-              val erec = rec(newBool, false, elze)
-  
-              storeGuarded(pathVar, pathPol, Iff(Variable(newBool), crec))
-              storeGuarded(newBool, true,  Equals(Variable(newExpr), trec))
-              storeGuarded(newBool, false, Equals(Variable(newExpr), erec))
-              Variable(newExpr)
-            }
-          }
-  
-          case n @ NAryOperator(as, r) => r(as.map(a => rec(pathVar, pathPol, a))).setType(n.getType)
-          case b @ BinaryOperator(a1, a2, r) => r(rec(pathVar, pathPol, a1), rec(pathVar, pathPol, a2)).setType(b.getType)
-          case u @ UnaryOperator(a, r) => r(rec(pathVar, pathPol, a)).setType(u.getType)
-          case t : Terminal => t
-          case a : AnonymousFunction => {
-            Settings.reporter.warning("AnonymousFunction literal showed up in the construction of a FunctionTemplate.")
-            a
-          }
-        }
-      }
-      val startingVar : Identifier = FreshIdentifier("start", true).setType(BooleanType)
-      storeGuarded(startingVar, false, BooleanLiteral(false))
-      val newFormula = rec(startingVar, true, formula)
-      storeGuarded(startingVar, true, newFormula)
-
-      val asClauses : Seq[Expr] = {
-        (for(((b,p),es) <- guardedExprs; e <- es) yield {
-          Implies(if(!p) Not(Variable(b)) else Variable(b), e)
-        }).toSeq
-      }
-
-      val blockers : Map[(Identifier,Boolean),Set[FunctionInvocation]] = {
-        Map((for((p, es) <- guardedExprs) yield {
-          val calls = es.foldLeft(Set.empty[FunctionInvocation])((s,e) => s ++ functionCallsOf(e))
-          if(calls.isEmpty) {
-            None
-          } else {
-            registerBlocked(p._1, p._2, calls)
-            Some((p, calls))
-          }
-        }).flatten.toSeq : _*)
-      }
-
-      (asClauses, blockers.keys.toSeq)
-
-    }
   }
 
   def getNewSolver = new solvers.IncrementalSolver {
     val solver = z3.mkSolver
 
-    private var varsInVC = Set[Identifier]()
+    private var ownStack        = List[Set[Z3AST]](Set())
+    private var assertionsStack = List[List[Expr]](Nil)
+    private var varsInVC        = Set[Identifier]()
+
+    def allClausePredicates = ownStack.flatten
 
     def push() {
-      solver.push
+      ownStack        = Set[Z3AST]() :: ownStack
+      assertionsStack = Nil :: assertionsStack
     }
 
     def pop(lvl: Int = 1) {
-      solver.pop(lvl)
-    }
+      val frame = ownStack.head
+      ownStack  = ownStack.tail
 
-    def assertCnstr(expression: Expr) {
-      varsInVC ++= variablesOf(expression)
-      solver.assertCnstr(toZ3Formula(expression).get)
+      assertionsStack = assertionsStack.tail
+
+      frame.foreach { b =>
+        solver.assertCnstr(z3.mkNot(b))
+      }
     }
 
     def check: Option[Boolean] = {
-      solver.check
+      fairCheck(Set())
     }
 
     def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
-      solver.checkAssumptions(assumptions.toSeq.map(toZ3Formula(_).get) : _*)
+      fairCheck(assumptions)
+    }
+
+    val unrollingBank = new UnrollingBank()
+    var isBankInitialized = false
+
+    var foundDefinitiveAnswer = false
+    var definitiveAnswer : Option[Boolean] = None
+    var definitiveModel  : Map[Identifier,Expr] = Map.empty
+    var definitiveCore   : Set[Expr] = Set.empty
+
+    // Unrolling state
+    private var blockingSet: Set[Expr] = Set.empty
+
+    def assertCnstr(expression: Expr) {
+      val b = z3.mkFreshConst("b", z3.mkBoolSort)
+      varsInVC ++= variablesOf(expression)
+
+      ownStack        = (ownStack.head + b) :: ownStack.tail
+      assertionsStack = (expression :: assertionsStack.head) :: assertionsStack.tail
+
+      solver.assertCnstr(z3.mkImplies(b, toZ3Formula(expression).get))
+
+      if (isBankInitialized) {
+        val (newClauses, newGuards) = unrollingBank.scanForNewTemplates(expression)
+        for (cl <- newClauses) {
+          solver.assertCnstr(toZ3Formula(cl).get)
+        }
+        blockingSet ++= newGuards.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1))
+      }
     }
 
     def getModel = {
-      modelToMap(solver.getModel, varsInVC)
+      definitiveModel
     }
 
     def getUnsatCore = {
-      solver.getUnsatCore.map(ast => fromZ3Formula(null, ast, None) match {
-        case n @ Not(Variable(_)) => n
-        case v @ Variable(_) => v
-        case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
-      }).toSet
+      definitiveCore
     }
 
+    def fairCheck(assumptions: Set[Expr]): Option[Boolean] = {
+      foundDefinitiveAnswer = false
 
+      def foundAnswer(answer : Option[Boolean], model : Map[Identifier,Expr] = Map.empty, core: Set[Expr] = Set.empty) : Unit = {
+        foundDefinitiveAnswer = true
+        definitiveAnswer = answer
+        definitiveModel  = model
+        definitiveCore   = core
+      }
+
+      def z3CoreToCore(core: Seq[Z3AST]): Set[Expr] = {
+        val internalAssumptions = allClausePredicates.toSet
+        val userlandAssumptions = core.filterNot(internalAssumptions)
+
+        userlandAssumptions.map(ast => fromZ3Formula(null, ast, None) match {
+            case n @ Not(Variable(_)) => n
+            case v @ Variable(_) => v
+            case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
+        }).toSet
+      }
+
+      if (!isBankInitialized) {
+        reporter.info(" - Initial unrolling...")
+        val (clauses, guards) = unrollingBank.initialUnrolling(And(assertionsStack.flatten))
+
+        solver.assertCnstr(toZ3Formula(And(clauses)).get)
+        blockingSet ++= guards.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1))
+      }
+
+      // these are the optional sequence of assumption literals
+      val assumptionsAsZ3: Seq[Z3AST] = allClausePredicates ++ assumptions.map(toZ3Formula(_).get)
+
+
+      var iterationsLeft : Int = if(Settings.unrollingLevel > 0) Settings.unrollingLevel else 16121984
+
+      while(!foundDefinitiveAnswer && !forceStop) {
+        iterationsLeft -= 1
+
+        val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.toSeq.map(toZ3Formula(_).get)
+        // println("Blocking set : " + blockingSet)
+
+        solver.push
+        if(!blockingSetAsZ3.isEmpty)
+          solver.assertCnstr(z3.mkAnd(blockingSetAsZ3 : _*))
+
+        reporter.info(" - Running Z3 search...")
+        val answerModelCore : (Option[Boolean], Z3Model, Set[Expr]) = {
+
+          val res = solver.checkAssumptions(assumptionsAsZ3 : _*)
+
+          val z3model = res match {
+            case Some(true) => solver.getModel
+            case _          => null
+          }
+
+          (res, z3model, z3CoreToCore(solver.getUnsatCore))
+        }
+
+        val (answer, model, core) = answerModelCore // to work around the stupid type inferer
+
+        reporter.info(" - Finished search with blocked literals")
+
+        val reinterpretedAnswer = if(!UNKNOWNASSAT) answer else (answer match {
+          case None | Some(true) => Some(true)
+          case Some(false) => Some(false)
+        })
+
+        (reinterpretedAnswer, model) match {
+          case (None, m) => { // UNKNOWN
+            // reporter.warning("Z3 doesn't know because: " + z3.getSearchFailure.message)
+            reporter.warning("Z3 doesn't know because ??")
+            foundAnswer(None)
+          }
+          case (Some(true), m) => { // SAT
+            val (trueModel, model) = if(Settings.verifyModel)
+                validateAndDeleteModel(m, toCheckAgainstModels, varsInVC)
+              else {
+                val res = (true, modelToMap(m, varsInVC))
+                lazy val modelAsString = res._2.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
+                reporter.info("- Found a model:")
+                reporter.info(modelAsString)
+                res
+              }
+
+            if (trueModel) {
+              foundAnswer(Some(true), model)
+            } else {
+              reporter.error("Something went wrong. The model should have been valid, yet we got this : ")
+              reporter.error(model)
+              foundAnswer(None, model)
+            }
+          }
+          case (Some(false), m) if blockingSet.isEmpty => {
+            foundAnswer(Some(false), core = core)
+            solver.pop(1)
+          }
+          // This branch is both for with and without unsat cores. The
+          // distinction is made inside.
+          case (Some(false), m) => {
+            solver.pop(1)
+              
+            if (Settings.luckyTest && !forceStop) {
+              // we need the model to perform the additional test
+              reporter.info(" - Running search without blocked literals (w/ lucky test)")
+
+              val res2 = solver.checkAssumptions(assumptionsAsZ3 : _*)
+
+              val z3model2 = res2 match {
+                case Some(true) => solver.getModel
+                case _          => null
+              }
+
+              reporter.info(" - Finished search without blocked literals")
+
+              if (res2 == Some(false)) {
+                foundAnswer(Some(false), core = z3CoreToCore(solver.getUnsatCore))
+              } else {
+                // we might have been lucky :D
+                val (wereWeLucky, cleanModel) = validateAndDeleteModel(z3model2, toCheckAgainstModels, varsInVC)
+                if(wereWeLucky) {
+                  foundAnswer(Some(true), cleanModel)
+                }
+              }
+            } else {
+              // only checking will suffice
+              reporter.info(" - Running search without blocked literals (w/o lucky test)")
+
+              val result2 = solver.checkAssumptions(assumptionsAsZ3 : _*)
+
+              reporter.info(" - Finished search without blocked literals")
+
+              if (result2 == Some(false)) {
+                foundAnswer(Some(false), core = z3CoreToCore(solver.getUnsatCore))
+              }
+            }
+
+            if(forceStop) {
+              foundAnswer(None)
+            }
+
+            if(!foundDefinitiveAnswer) { 
+              reporter.info("- We need to keep going.")
+
+              val toRelease : Set[Expr] = blockingSet
+
+              // reporter.info(" - toRelease   : " + toRelease)
+              // reporter.info(" - blockingSet : " + blockingSet)
+
+              var fixedForEver : Set[Expr] = Set.empty
+
+              if(Settings.pruneBranches) {
+                for(ex <- blockingSet) ex match {
+                  case Not(Variable(b)) => {
+                    solver.push
+                    solver.assertCnstr(toZ3Formula(Variable(b)).get)
+                    solver.check match {
+                      case Some(false) => {
+                        //println("We had ~" + b + " in the blocking set. We now know it should stay there forever.")
+                        solver.pop(1)
+                        solver.assertCnstr(toZ3Formula(Not(Variable(b))).get)
+                        fixedForEver = fixedForEver + ex
+                      }
+                      case _ => solver.pop(1)
+                    }
+                  }
+                  case Variable(b) => {
+                    solver.push
+                    solver.assertCnstr(toZ3Formula(Not(Variable(b))).get)
+                    solver.check match {
+                      case Some(false) => {
+                        //println("We had " + b + " in the blocking set. We now know it should stay there forever.")
+                        solver.pop(1)
+                        solver.assertCnstr(toZ3Formula(Variable(b)).get)
+                        fixedForEver = fixedForEver + ex
+                      }
+                      case _ => solver.pop(1)
+                    }
+                  }
+                  case _ => scala.sys.error("Should not have happened.")
+                }
+                if(fixedForEver.size > 0) {
+                  reporter.info("- Pruned out " + fixedForEver.size + " branches.")
+                }
+              }
+
+
+              blockingSet = blockingSet -- toRelease
+
+              val toReleaseAsPairs : Set[(Identifier,Boolean)] = (toRelease -- fixedForEver).map(b => b match {
+                case Variable(id) => (id, true)
+                case Not(Variable(id)) => (id, false)
+                case _ => scala.sys.error("Impossible value in release set: " + b)
+              })
+
+              reporter.info(" - more unrollings")
+              for((id,polarity) <- toReleaseAsPairs) {
+                val (newClauses,newBlockers) = unrollingBank.unlock(id, !polarity)
+
+                for(ncl <- newClauses) {
+                  solver.assertCnstr(toZ3Formula(ncl).get)
+                }
+                blockingSet = blockingSet ++ Set(newBlockers.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
+              }
+              reporter.info(" - finished unrolling")
+            }
+          }
+        }
+
+        if(iterationsLeft <= 0) {
+          reporter.error(" - Max. number of iterations reached.")
+          foundAnswer(None)
+        }
+      }
+
+      if(forceStop) {
+        None
+      } else {
+        definitiveAnswer
+      }
+    }
+
+    if (program == null) {
+      reporter.error("Z3 Solver was not initialized with a PureScala Program.")
+      None
+    }
   }
 
 }

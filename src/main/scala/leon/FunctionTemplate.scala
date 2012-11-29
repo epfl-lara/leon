@@ -11,23 +11,23 @@ import scala.collection.mutable.{Set=>MutableSet,Map=>MutableMap}
 
 // TODO: maybe a candidate for moving into purescala package?
 class FunctionTemplate private(
-  funDef : FunDef,
+  funDef : Option[FunDef],
   activatingBool : Identifier,
   condVars : Set[Identifier],
   exprVars : Set[Identifier],
   guardedExprs : Map[(Identifier,Boolean),Seq[Expr]]) {
   
-  private val asClauses : Seq[Expr] = {
+  val asClauses : Seq[Expr] = {
     (for(((b,p),es) <- guardedExprs; e <- es) yield {
       Implies(if(!p) Not(Variable(b)) else Variable(b), e)
     }).toSeq
   }
 
-  private val blockers : Map[(Identifier,Boolean),Set[FunctionInvocation]] = {
-    val idCall = FunctionInvocation(funDef, funDef.args.map(_.toVariable))
+  val blockers : Map[(Identifier,Boolean),Set[FunctionInvocation]] = {
+    val idCall = funDef.map(fd => FunctionInvocation(fd, fd.args.map(_.toVariable)))
 
     Map((for((p, es) <- guardedExprs) yield {
-      val calls = es.foldLeft(Set.empty[FunctionInvocation])((s,e) => s ++ functionCallsOf(e)) - idCall
+      val calls = es.foldLeft(Set.empty[FunctionInvocation])((s,e) => s ++ functionCallsOf(e)) -- idCall
       if(calls.isEmpty) {
         None
       } else {
@@ -35,11 +35,14 @@ class FunctionTemplate private(
       }
     }).flatten.toSeq : _*)
   }
-  
+
   // Returns two things:
   //  - a set of clauses representing the computation of the function/post
   //  - a map indicating which boolean variables guard which (recursive) fun. invoc.
   def instantiate(aVar : Identifier, aPol : Boolean, args : Seq[Expr]) : (Seq[Expr],Map[(Identifier,Boolean),Set[FunctionInvocation]]) = {
+    assert(this.funDef.isDefined)
+
+    val funDef = this.funDef.get
     assert(args.size == funDef.args.size)
 
     val idSubstMap : Map[Identifier,Identifier] = 
@@ -72,7 +75,11 @@ class FunctionTemplate private(
   }
 
   override def toString : String = {
-    "Template for def " + funDef.id + "(" + funDef.args.map(a => a.id + " : " + a.tpe).mkString(", ") + ") : " + funDef.returnType + " is :\n" +
+    if (funDef.isDefined) {
+      "Template for def " + funDef.get.id + "(" + funDef.get.args.map(a => a.id + " : " + a.tpe).mkString(", ") + ") : " + funDef.get.returnType + " is :\n"
+    } else {
+      "Template for expr is :\n"
+    } +
     " * Activating boolean : " + activatingBool + "\n" + 
     " * Control booleans   : " + condVars.toSeq.map(_.toString).mkString(", ") + "\n" +
     " * Expression vars    : " + exprVars.toSeq.map(_.toString).mkString(", ") + "\n" +
@@ -86,18 +93,18 @@ object FunctionTemplate {
   private val PREPENDPRECONDS : Boolean = true // always instantiate axioms guarded by the precond.
   private val KEEPLETS : Boolean = true // don't expand the lets, instantiate them with the rest
 
-  private val cache : MutableMap[FunDef,FunctionTemplate] = MutableMap.empty
+  private val cache : MutableMap[(Option[FunDef], Option[Expr]),FunctionTemplate] = MutableMap.empty
 
-  def mkTemplate(funDef : FunDef /*, program : Program*/) : FunctionTemplate = if(cache.isDefinedAt(funDef)) {
-    cache(funDef)
+  def mkTemplate(funDef: FunDef): FunctionTemplate =
+    mkTemplate(Some(funDef), funDef.body)
+
+  def mkTemplate(body: Expr): FunctionTemplate =
+    mkTemplate(None, Some(body))
+
+  private def mkTemplate(funDef: Option[FunDef], body : Option[Expr]) : FunctionTemplate = if(cache.isDefinedAt((funDef, body))) {
+    cache((funDef, body))
   } else {
     val result = {
-      /*
-      if(!funDef.hasImplementation) {
-        sys.error("Cannot create a FunctionTemplate out of a function with no body.")
-      }
-      */
-  
       val condVars : MutableSet[Identifier] = MutableSet.empty
       val exprVars : MutableSet[Identifier] = MutableSet.empty
   
@@ -163,76 +170,73 @@ object FunctionTemplate {
   
       // The precondition if it exists.
       val prec : Option[Expr] = if(KEEPLETS) {
-        funDef.precondition.map(p => matchToIfThenElse(p))
+        funDef.flatMap(_.precondition.map(p => matchToIfThenElse(p)))
       } else {
-        funDef.precondition.map(p => matchToIfThenElse(expandLets(p)))
+        funDef.flatMap(_.precondition.map(p => matchToIfThenElse(expandLets(p))))
       }
   
-      // Treating the body first.
-      /*
-      val body : Expr = if(KEEPLETS) {
-        matchToIfThenElse(funDef.getImplementation) 
+      val newBody : Option[Expr] = if(KEEPLETS) {
+        body.map(b => matchToIfThenElse(b))
       } else {
-        matchToIfThenElse(expandLets(funDef.getImplementation))
-      }
-      */
-      val body : Option[Expr] = if(KEEPLETS) {
-        funDef.body.map(b => matchToIfThenElse(b))
-      } else {
-        funDef.body.map(b => matchToIfThenElse(expandLets(b)))
+        body.map(b => matchToIfThenElse(expandLets(b)))
       }
 
-      val invocation : Expr = FunctionInvocation(funDef, funDef.args.map(_.toVariable))
+      val invocation : Option[Expr] = funDef.map(fd => FunctionInvocation(fd, fd.args.map(_.toVariable)))
   
-      /*
-      val invocationEqualsBody : Expr = {
-        val b : Expr = Equals(invocation, body)
-        if(PREPENDPRECONDS && funDef.hasPrecondition) {
-          Implies(prec.get, b)
-        } else {
-          b
-        }
+      val invocationEqualsBody : Option[Expr] = (invocation, newBody) match {
+        case (Some(inv), Some(body)) =>
+          val b : Expr = Equals(inv, body)
+
+          Some(if(PREPENDPRECONDS && prec.isDefined) {
+            Implies(prec.get, b)
+          } else {
+            b
+          })
+
+        case _ =>
+          None
       }
-      */
-      val invocationEqualsBody : Option[Expr] = body.map(body => {
-        val b : Expr = Equals(invocation, body)
-        if(PREPENDPRECONDS && funDef.hasPrecondition) {
-          Implies(prec.get, b)
-        } else {
-          b
-        }
-      })
   
       val activatingBool : Identifier = FreshIdentifier("a", true).setType(BooleanType)
   
-      //val finalPred : Expr = rec(activatingBool, true, invocationEqualsBody)
-      val finalPred : Option[Expr] = invocationEqualsBody.map(expr => rec(activatingBool, true, expr))
-      //storeGuarded(activatingBool, true, finalPred)
-      finalPred.foreach(p => storeGuarded(activatingBool, true, p))
-  
-      // Now the postcondition.
-      if(funDef.hasPostcondition) {
-        val postHolds : Expr = {
-          val post0 : Expr = if(KEEPLETS) {
-            matchToIfThenElse(funDef.getPostcondition)
-          } else {
-            matchToIfThenElse(expandLets(funDef.getPostcondition))
-          }
-          val post : Expr = replace(Map(ResultVariable() -> invocation), post0)
-          if(PREPENDPRECONDS && funDef.hasPrecondition) {
-            Implies(prec.get, post)
-          } else {
-            post
-          }
-        }
-        val finalPred2 : Expr = rec(activatingBool, true, postHolds)
-        storeGuarded(activatingBool, true, postHolds)
+      funDef match {
+        case Some(fd) => 
+          val finalPred : Option[Expr] = invocationEqualsBody.map(expr => rec(activatingBool, true, expr))
+          finalPred.foreach(p => storeGuarded(activatingBool, true, p))
+
+        case None =>
+         storeGuarded(activatingBool, false, BooleanLiteral(false))
+         val newFormula = rec(activatingBool, true, body.get)
+         storeGuarded(activatingBool, true, newFormula)
       }
   
-      val ft = new FunctionTemplate(funDef, activatingBool, Set(condVars.toSeq : _*), Set(exprVars.toSeq : _*), Map(guardedExprs.toSeq : _*))
-      ft
+      // Now the postcondition.
+      funDef match {
+        case Some(fd) if fd.hasPostcondition =>
+          val postHolds : Expr = {
+            val post0 : Expr = if(KEEPLETS) {
+              matchToIfThenElse(fd.getPostcondition)
+            } else {
+              matchToIfThenElse(expandLets(fd.getPostcondition))
+            }
+            val post : Expr = replace(Map(ResultVariable() -> invocation.get), post0)
+            if(PREPENDPRECONDS && fd.hasPrecondition) {
+              Implies(prec.get, post)
+            } else {
+              post
+            }
+          }
+          val finalPred2 : Expr = rec(activatingBool, true, postHolds)
+          storeGuarded(activatingBool, true, postHolds)
+        case _ => 
+          
+          
+      }
+  
+      new FunctionTemplate(funDef, activatingBool, Set(condVars.toSeq : _*), Set(exprVars.toSeq : _*), Map(guardedExprs.toSeq : _*))
     }
-    cache(funDef) = result
+
+    cache((funDef, body)) = result
     result
   }
 }
