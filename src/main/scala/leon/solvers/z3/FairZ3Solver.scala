@@ -833,39 +833,42 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
 
               if(Settings.pruneBranches) {
                 for(ex <- blockingSet) ex match {
-                  case Not(Variable(b)) => {
+                  case Not(Variable(b)) =>
                     solver.push
                     solver.assertCnstr(toZ3Formula(Variable(b)).get)
                     solver.check match {
-                      case Some(false) => {
+                      case Some(false) =>
                         //println("We had ~" + b + " in the blocking set. We now know it should stay there forever.")
                         solver.pop(1)
                         solver.assertCnstr(toZ3Formula(Not(Variable(b))).get)
                         fixedForEver = fixedForEver + ex
-                      }
-                      case _ => solver.pop(1)
+
+                      case _ =>
+                        solver.pop(1)
                     }
-                  }
-                  case Variable(b) => {
+
+                  case Variable(b) =>
                     solver.push
                     solver.assertCnstr(toZ3Formula(Not(Variable(b))).get)
                     solver.check match {
-                      case Some(false) => {
+                      case Some(false) =>
                         //println("We had " + b + " in the blocking set. We now know it should stay there forever.")
                         solver.pop(1)
                         solver.assertCnstr(toZ3Formula(Variable(b)).get)
                         fixedForEver = fixedForEver + ex
-                      }
-                      case _ => solver.pop(1)
+
+                      case _ =>
+                        solver.pop(1)
                     }
-                  }
-                  case _ => scala.sys.error("Should not have happened.")
+
+                  case _ =>
+                    scala.sys.error("Should not have happened.")
                 }
+
                 if(fixedForEver.size > 0) {
                   reporter.info("- Pruned out " + fixedForEver.size + " branches.")
                 }
               }
-
 
               blockingSet = blockingSet -- toRelease
 
