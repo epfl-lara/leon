@@ -69,6 +69,22 @@ class TreeOpsTests extends FunSuite {
     checkSameExpr(e6, simplify(e6), Set(xId))
   }
 
+  test("expandAndSimplifyArithmetic") {
+    val e1 = Plus(IntLiteral(3), IntLiteral(2))
+    checkSameExpr(e1, expandAndSimplifyArithmetic(e1), Set())
+    val e2 = Plus(x, Plus(IntLiteral(3), IntLiteral(2)))
+    checkSameExpr(e2, expandAndSimplifyArithmetic(e2), Set(xId))
+
+    val e3 = Minus(IntLiteral(3), IntLiteral(2))
+    checkSameExpr(e3, expandAndSimplifyArithmetic(e3), Set())
+    val e4 = Plus(x, Minus(IntLiteral(3), IntLiteral(2)))
+    checkSameExpr(e4, expandAndSimplifyArithmetic(e4), Set(xId))
+    val e5 = Plus(x, Minus(x, IntLiteral(2)))
+    checkSameExpr(e5, expandAndSimplifyArithmetic(e5), Set(xId))
+
+    val e6 = Times(IntLiteral(9), Plus(Division(x, IntLiteral(3)), Division(x, IntLiteral(6))))
+    checkSameExpr(e6, expandAndSimplifyArithmetic(e6), Set(xId))
+  }
 
   test("extractEquals") {
     val eq = Equals(a, b)

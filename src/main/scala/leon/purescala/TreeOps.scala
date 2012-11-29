@@ -1421,7 +1421,6 @@ object TreeOps {
   }
 
   def expandAndSimplifyArithmetic(expr: Expr): Expr = {
-    println("got: " + expr)
     val expr0 = try {
       val freeVars: Array[Identifier] = variablesOf(expr).toArray
       val coefs: Array[Expr] = TreeNormalizations.linearArithmeticForm(expr, freeVars)
@@ -1431,9 +1430,7 @@ object TreeOps {
     } catch {
       case _ => expr
     }
-    val res = simplifyArithmetic(expr0)
-    println("simplified to: " + res)
-    res
+    simplifyArithmetic(expr0)
   }
 
   //Simplify the expression, applying all the simplify for various theories
