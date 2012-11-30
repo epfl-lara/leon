@@ -9,6 +9,8 @@ import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
+import solvers.z3.FairZ3Solver
+
 case object CEGIS extends Rule("CEGIS", 150) {
   def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
     case class Generator(tpe: TypeTree, altBuilder: () => List[(Expr, Set[Identifier])]);
@@ -138,40 +140,50 @@ case object CEGIS extends Rule("CEGIS", 150) {
 
               var continue = true
 
+              val mainSolver: FairZ3Solver = sctx.solver.asInstanceOf[FairZ3Solver]
+
               // solver1 is used for the initial SAT queries
-              val solver1 = sctx.solver.getNewSolver
+              val solver1 = mainSolver.getNewSolver
 
               val basePhi = currentF.entireFormula
               solver1.assertCnstr(basePhi)
 
               // solver2 is used for the CE search
-              val solver2 = sctx.solver.getNewSolver
+              val solver2 = mainSolver.getNewSolver
               solver2.assertCnstr(And(currentF.pathcond :: currentF.program :: Not(currentF.phi) :: Nil))
 
               // solver3 is used for the unsatcore search
-              val solver3 = sctx.solver.getNewSolver
+              val solver3 = mainSolver.getNewSolver
               solver3.assertCnstr(And(currentF.pathcond :: currentF.program :: currentF.phi :: Nil))
 
               while (result.isEmpty && continue) {
                 //println("-"*80)
+                //println(basePhi)
+
                 //println("To satisfy: "+constrainedPhi)
                 solver1.check match {
                   case Some(true) =>
                     val satModel = solver1.getModel
 
+                    //println("Found solution: "+satModel)
                     //println("Corresponding program: "+simplifyTautologies(synth.solver)(valuateWithModelIn(currentF.program, bss, satModel)))
                     val fixedBss = And(bss.map(b => Equals(Variable(b), satModel(b))).toSeq)
                     //println("Phi with fixed sat bss: "+fixedBss)
 
                     solver2.push()
                     solver2.assertCnstr(fixedBss)
-                    //println("Formula to validate: "+counterPhi)
 
+                    //println("FORMULA: "+And(currentF.pathcond :: currentF.program :: Not(currentF.phi) :: fixedBss :: Nil))
+
+                    //println("#"*80)
                     solver2.check match {
                       case Some(true) =>
+                        //println("#"*80)
                         val invalidModel = solver2.getModel
 
                         val fixedAss = And(ass.map(a => Equals(Variable(a), invalidModel(a))).toSeq)
+
+                        //println("Found counter example: "+fixedAss)
 
                         solver3.push()
                         solver3.assertCnstr(fixedAss)
@@ -221,10 +233,11 @@ case object CEGIS extends Rule("CEGIS", 150) {
                         }
 
                       case Some(false) =>
+                        //println("#"*80)
+                        //println("UNSAT!")
                         //println("Sat model: "+satModel.toSeq.sortBy(_._1.toString).map{ case (id, v) => id+" -> "+v }.mkString(", "))
                         var mapping = currentF.mappings.filterKeys(satModel.mapValues(_ == BooleanLiteral(true))).values.toMap
 
-                        //println("Mapping: "+mapping)
 
                         // Resolve mapping
                         for ((c, e) <- mapping) {

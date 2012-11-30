@@ -197,7 +197,7 @@ object FunctionTemplate {
           None
       }
   
-      val activatingBool : Identifier = FreshIdentifier("a", true).setType(BooleanType)
+      val activatingBool : Identifier = FreshIdentifier("start", true).setType(BooleanType)
   
       funDef match {
         case Some(fd) => 
@@ -206,7 +206,7 @@ object FunctionTemplate {
 
         case None =>
          storeGuarded(activatingBool, false, BooleanLiteral(false))
-         val newFormula = rec(activatingBool, true, body.get)
+         val newFormula = rec(activatingBool, true, newBody.get)
          storeGuarded(activatingBool, true, newFormula)
       }
   
