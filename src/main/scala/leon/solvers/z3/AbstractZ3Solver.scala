@@ -24,10 +24,9 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
 
   class CantTranslateException(t: Z3AST) extends Exception("Can't translate from Z3 tree: " + t)
 
-  protected[leon] var z3 : Z3Context    = null
-  protected[leon] var solver : Z3Solver = null
-  protected[leon] var program : Program = null
   protected[leon] val z3cfg : Z3Config
+  protected[leon] var z3 : Z3Context    = null
+  protected[leon] var program : Program = null
 
   override def setProgram(prog: Program): Unit = {
     program = prog
@@ -86,7 +85,6 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
   protected[leon] val mapRangeNoneTesters: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
   protected[leon] val mapRangeValueSelectors: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
 
-  private var neverInitialized = true
   private var counter = 0
   private object nextIntForSymbol {
     def apply(): Int = {
@@ -96,18 +94,22 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
     }
   }
 
+  var isInitialized = false
+  protected[leon] def initZ3() {
+    if (!isInitialized) {
+      counter = 0
 
-  protected[leon] def restartZ3 : Unit = {
-    counter = 0
-    if (neverInitialized) {
-      neverInitialized = false
       z3 = new Z3Context(z3cfg)
-      solver = z3.mkSolver
       prepareSorts
       prepareFunctions
-    } else {
-      solver = z3.mkSolver
+
+      isInitialized = true
     }
+  }
+
+  protected[leon] def restartZ3() {
+    isInitialized = false
+    initZ3()
 
     exprToZ3Id = Map.empty
     z3IdToExpr = Map.empty

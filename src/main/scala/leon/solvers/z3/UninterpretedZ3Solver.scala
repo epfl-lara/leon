@@ -54,34 +54,32 @@ class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with 
 
   // Where the solving occurs
   override def solveSAT(expression : Expr) : (Option[Boolean],Map[Identifier,Expr]) = {
-    restartZ3
+    val solver = getNewSolver
 
     val emptyModel    = Map.empty[Identifier,Expr]
     val unknownResult = (None, emptyModel)
     val unsatResult   = (Some(false), emptyModel)
 
-    val result = toZ3Formula(expression).map { asZ3 => 
-      solver.assertCnstr(asZ3)
-      solver.check match {
-        case Some(false) => unsatResult
-        case Some(true) => {
-          val model = solver.getModel
+    solver.assertCnstr(expression)
 
-          if(containsFunctionCalls(expression)) {
-            unknownResult
-          } else { 
-            val variables = variablesOf(expression)
-            (Some(true), modelToMap(model, variables))
-          }
+    val result = solver.check match {
+      case Some(false) => unsatResult
+      case Some(true) => {
+        if(containsFunctionCalls(expression)) {
+          unknownResult
+        } else { 
+          (Some(true), solver.getModel)
         }
-        case _ => unknownResult
       }
-    } getOrElse unknownResult
+      case _ => unknownResult
+    }
 
     result
   }
 
   def getNewSolver = new solvers.IncrementalSolver {
+    initZ3
+
     val solver = z3.mkSolver
 
     def push() {
