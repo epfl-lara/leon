@@ -180,9 +180,9 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
           (true, asMap)
         }
         case RuntimeError(msg) => {
-          reporter.info("- Model leads to runtime error: " + msg)
-          reporter.error(modelAsString)
-          (true, asMap)
+          reporter.info("- Invalid model")
+          //reporter.error(modelAsString)
+          (false, asMap)
         }
         case OK(BooleanLiteral(false)) => {
           reporter.info("- Invalid model.")
@@ -381,6 +381,9 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
 
         reporter.info(" - Running Z3 search...")
 
+        //reporter.info("Searching in:\n"+solver.getAssertions.toSeq.mkString("\nAND\n"))
+        //reporter.info("Assumptions:\n"+(blockingSetAsZ3 ++ assumptionsAsZ3).mkString("  AND  "))
+
         val res = solver.checkAssumptions((blockingSetAsZ3 ++ assumptionsAsZ3) :_*)
 
         reporter.info(" - Finished search with blocked literals")
@@ -426,6 +429,8 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
 
             val core = z3CoreToCore(solver.getUnsatCore)  
 
+            reporter.info("UNSAT BECAUSE: "+core.mkString(" AND "))
+
             if (!forceStop) {
               if (Settings.luckyTest) {
                 // we need the model to perform the additional test
@@ -438,8 +443,10 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
 
               res2 match {
                 case Some(false) =>
+                  //reporter.info("UNSAT WITHOUT Blockers")
                   foundAnswer(Some(false), core = z3CoreToCore(solver.getUnsatCore))
                 case Some(true) =>
+                  //reporter.info("SAT WITHOUT Blockers")
                   if (Settings.luckyTest && !forceStop) {
                     // we might have been lucky :D
                     val (wereWeLucky, cleanModel) = validateAndDeleteModel(solver.getModel, entireFormula, varsInVC)
