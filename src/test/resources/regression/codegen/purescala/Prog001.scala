@@ -1,3 +1,5 @@
 object Prog001 {
-  def plus(x : Int, y : Int) : Int = x + y
+  def fortyTwo() = 42
+
+  // def plus(x : Int, y : Int) = x + y
 }
