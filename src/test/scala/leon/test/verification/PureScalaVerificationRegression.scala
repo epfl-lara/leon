@@ -1,5 +1,6 @@
 package leon
 package test
+package verification
 
 import leon.verification.{AnalysisPhase,VerificationReport}
 
@@ -7,7 +8,9 @@ import org.scalatest.FunSuite
 
 import java.io.File
 
-class PureScalaPrograms extends FunSuite {
+import TestUtils._
+
+class PureScalaVerificationRegression extends FunSuite {
   private var counter : Int = 0
   private def nextInt() : Int = {
     counter += 1
@@ -50,22 +53,17 @@ class PureScalaPrograms extends FunSuite {
     }
   }
 
-  private def forEachFileIn(dirName : String)(block : Output=>Unit) {
-    import scala.collection.JavaConversions._
+  private def forEachFileIn(cat : String)(block : Output=>Unit) {
+    val fs = filesInResourceDir(
+      "regression/verification/purescala/" + cat,
+      _.endsWith(".scala"))
 
-    val dir = this.getClass.getClassLoader.getResource(dirName)
-
-    if(dir == null || dir.getProtocol != "file") {
-      assert(false, "Tests have to be run from within `sbt`, for otherwise " +
-                    "the test files will be harder to access (and we dislike that).")
-    }
-
-    for(f <- (new File(dir.toURI())).listFiles() if f.getPath().endsWith(".scala")) {
+    for(f <- fs) {
       mkTest(f)(block)
     }
   }
   
-  forEachFileIn("regression/verification/purescala/valid") { output =>
+  forEachFileIn("valid") { output =>
     val Output(report, reporter) = output
     assert(report.totalConditions === report.totalValid,
            "All verification conditions ("+report.totalConditions+") should be valid.")
@@ -73,7 +71,7 @@ class PureScalaPrograms extends FunSuite {
     assert(reporter.warningCount === 0)
   }
 
-  forEachFileIn("regression/verification/purescala/invalid") { output =>
+  forEachFileIn("invalid") { output =>
     val Output(report, reporter) = output
     assert(report.totalInvalid > 0,
            "There should be at least one invalid verification condition.")

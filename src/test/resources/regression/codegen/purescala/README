@@ -1,0 +1,2 @@
+This directory contains PureScala programs for which compilation (codegen)
+should always succeed entirely.
