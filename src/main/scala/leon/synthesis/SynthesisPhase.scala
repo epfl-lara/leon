@@ -58,10 +58,10 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       case _ =>
     }
 
-    def synthesizeAll(program: Program): Map[Choose, Solution] = {
+    def synthesizeAll(program: Program): Map[Choose, (FunDef, Solution)] = {
       def noop(u:Expr, u2: Expr) = u
 
-      var solutions = Map[Choose, Solution]()
+      var solutions = Map[Choose, (FunDef, Solution)]()
 
       def actOnChoose(f: FunDef)(e: Expr, a: Expr): Expr = e match {
         case ch @ Choose(vars, pred) =>
@@ -78,7 +78,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
                                       timeoutMs)
           val sol = synth.synthesize()
 
-          solutions += ch -> sol
+          solutions += ch -> (f, sol)
 
           a
         case _ =>
@@ -110,16 +110,16 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     def simplify(e: Expr): Expr = simplifiers.foldLeft(e){ (x, sim) => sim(x) }
 
     val chooseToExprs = solutions.map {
-      case (ch, sol) => (ch, simplify(sol.toExpr))
+      case (ch, (fd, sol)) => (ch, (fd, simplify(sol.toExpr)))
     }
 
     if (inPlace) {
       for (file <- ctx.files) {
-        new FileInterface(ctx.reporter, file).updateFile(chooseToExprs)
+        new FileInterface(ctx.reporter, file).updateFile(chooseToExprs.mapValues(_._2))
       }
     } else {
-      for ((chs, ex) <- chooseToExprs) {
-        ctx.reporter.info("-"*32+" Synthesis of: "+"-"*32)
+      for ((chs, (fd, ex)) <- chooseToExprs) {
+        ctx.reporter.info("-"*32+" In "+fd.id.toString+", synthesis of: "+"-"*32)
         ctx.reporter.info(chs)
         ctx.reporter.info("-"*35+" Result: "+"-"*35)
         ctx.reporter.info(ScalaPrinter(ex))

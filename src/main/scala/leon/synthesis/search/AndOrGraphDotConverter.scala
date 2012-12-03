@@ -1,6 +1,5 @@
 package leon.synthesis.search
 
-
 class AndOrGraphDotConverter[AT <: AOAndTask[S],
                              OT <: AOOrTask[S],
                              S <: AOSolution](val g: AndOrGraph[AT, OT, S], firstOnly: Boolean) {
@@ -116,3 +115,13 @@ class AndOrGraphDotConverter[AT <: AOAndTask[S],
     out.close()
   }
 }
+
+object AndOrGraphDotConverterCounter {
+  private var nextId = 0;
+  def next() = {
+    nextId += 1
+    nextId
+  }
+}
+
+

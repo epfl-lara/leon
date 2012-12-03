@@ -61,7 +61,7 @@ class Synthesizer(val context : LeonContext,
     reporter.info("Finished in "+diff+"ms")
 
     if (generateDerivationTrees) {
-      new AndOrGraphDotConverter(search.g, firstOnly).writeFile("derivation.dot")
+      new AndOrGraphDotConverter(search.g, firstOnly).writeFile("derivation"+AndOrGraphDotConverterCounter.next()+".dot")
     }
 
     res match {
