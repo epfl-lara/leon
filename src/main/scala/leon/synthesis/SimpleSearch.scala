@@ -4,8 +4,6 @@ package synthesis
 import synthesis.search._
 
 case class TaskRunRule(problem: Problem, rule: Rule, app: RuleApplication) extends AOAndTask[Solution] {
-  val cost = RuleApplicationCost(rule, app)
-
   def composeSolution(sols: List[Solution]): Solution = {
     app.onSuccess(sols)
   }
@@ -14,14 +12,24 @@ case class TaskRunRule(problem: Problem, rule: Rule, app: RuleApplication) exten
 }
 
 case class TaskTryRules(p: Problem) extends AOOrTask[Solution] {
-  val cost = ProblemCost(p)
-
   override def toString = p.toString
+}
+
+case class SearchCostModel(cm: CostModel) extends AOCostModel[TaskRunRule, TaskTryRules, Solution] {
+  def taskCost(t: AOTask[Solution]) = t match {
+    case ttr: TaskRunRule =>
+      cm.ruleAppCost(ttr.rule, ttr.app)
+    case trr: TaskTryRules =>
+      cm.problemCost(trr.p)
+  }
+
+  def solutionCost(s: Solution) = cm.solutionCost(s)
 }
 
 class SimpleSearch(synth: Synthesizer,
                    problem: Problem,
-                   rules: Set[Rule]) extends AndOrGraphSearch[TaskRunRule, TaskTryRules, Solution](new AndOrGraph(TaskTryRules(problem))) {
+                   rules: Set[Rule],
+                   costModel: CostModel) extends AndOrGraphSearch[TaskRunRule, TaskTryRules, Solution](new AndOrGraph(TaskTryRules(problem), SearchCostModel(costModel))) {
 
   import synth.reporter._
 

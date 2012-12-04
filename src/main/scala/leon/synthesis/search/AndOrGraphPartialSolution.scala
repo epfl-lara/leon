@@ -2,7 +2,7 @@ package leon.synthesis.search
 
 class AndOrGraphPartialSolution[AT <: AOAndTask[S],
                                 OT <: AOOrTask[S],
-                                S <: AOSolution](val g: AndOrGraph[AT, OT, S], missing: AT => S) {
+                                S](val g: AndOrGraph[AT, OT, S], missing: AT => S) {
 
 
   def getSolution: S = {

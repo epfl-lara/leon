@@ -8,7 +8,8 @@ import solvers.TrivialSolver
 
 class ParallelSearch(synth: Synthesizer,
                      problem: Problem,
-                     rules: Set[Rule]) extends AndOrGraphParallelSearch[SynthesisContext, TaskRunRule, TaskTryRules, Solution](new AndOrGraph(TaskTryRules(problem))) {
+                     rules: Set[Rule],
+                     costModel: CostModel) extends AndOrGraphParallelSearch[SynthesisContext, TaskRunRule, TaskTryRules, Solution](new AndOrGraph(TaskTryRules(problem), SearchCostModel(costModel))) {
 
   import synth.reporter._
 

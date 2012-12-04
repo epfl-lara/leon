@@ -20,11 +20,8 @@ class Synthesizer(val context : LeonContext,
                   val program: Program,
                   val problem: Problem,
                   val rules: Set[Rule],
-                  generateDerivationTrees: Boolean = false,
-                  filterFuns: Option[Set[String]]  = None,
-                  parallel: Boolean                = false,
-                  firstOnly: Boolean               = false,
-                  timeoutMs: Option[Long]          = None) {
+                  val options: SynthesizerOptions) {
+
   protected[synthesis] val reporter = context.reporter
 
   import reporter.{error,warning,info,fatalError}
@@ -33,10 +30,10 @@ class Synthesizer(val context : LeonContext,
 
   def synthesize(): Solution = {
 
-    val search = if (parallel) {
-      new ParallelSearch(this, problem, rules)
+    val search = if (options.parallel) {
+      new ParallelSearch(this, problem, rules, options.costModel)
     } else {
-      new SimpleSearch(this, problem, rules)
+      new SimpleSearch(this, problem, rules, options.costModel)
     }
 
     val sigINT = new Signal("INT")
@@ -60,8 +57,9 @@ class Synthesizer(val context : LeonContext,
     val diff = System.currentTimeMillis()-ts
     reporter.info("Finished in "+diff+"ms")
 
-    if (generateDerivationTrees) {
-      new AndOrGraphDotConverter(search.g, firstOnly).writeFile("derivation"+AndOrGraphDotConverterCounter.next()+".dot")
+    if (options.generateDerivationTrees) {
+      val converter = new AndOrGraphDotConverter(search.g, options.firstOnly)
+      converter.writeFile("derivation"+AndOrGraphDotConverterCounter.next()+".dot")
     }
 
     res match {

@@ -1,21 +1,21 @@
 package leon.synthesis.search
 
-trait AOTask[S <: AOSolution] {
-  def cost: Cost
+trait AOTask[S] {
 }
 
-trait AOAndTask[S <: AOSolution] extends AOTask[S] {
+trait AOAndTask[S] extends AOTask[S] {
   def composeSolution(sols: List[S]): S
 }
 
-trait AOOrTask[S <: AOSolution] extends AOTask[S] {
+trait AOOrTask[S] extends AOTask[S] {
 }
 
-trait AOSolution {
-  def cost: Cost
+trait AOCostModel[AT <: AOAndTask[S], OT <: AOOrTask[S], S] {
+  def taskCost(at: AOTask[S]): Cost
+  def solutionCost(s: S): Cost
 }
 
-class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val root: OT) {
+class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S](val root: OT, val costModel: AOCostModel[AT, OT, S]) {
   var tree: OrTree = RootNode
 
   trait Tree {
@@ -40,7 +40,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
 
 
   trait Leaf extends Tree {
-    def minCost = task.cost
+    def minCost = costModel.taskCost(task)
   }
 
   trait Node[T <: Tree] extends Tree {
@@ -59,11 +59,11 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
       val old = minCost
       minCost = solution match {
         case Some(s) =>
-          s.cost
+          costModel.solutionCost(s)
         case _ =>
           val subCosts = subProblems.values.map(_.minCost)
 
-          subCosts.foldLeft(task.cost)(_ + _)
+          subCosts.foldLeft(costModel.taskCost(task))(_ + _)
       }
       if (minCost != old) {
         Option(parent).foreach(_.updateMin())
@@ -125,7 +125,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
   class OrNode(val parent: AndNode, var alternatives: Map[AT, AndTree], val task: OT) extends OrTree with Node[AndTree] {
     var triedAlternatives       = Map[AT, AndTree]()
     var minAlternative: AndTree = _
-    var minCost                 = task.cost
+    var minCost                 = costModel.taskCost(task)
 
     def updateMin() {
       if (!alternatives.isEmpty) {
@@ -166,7 +166,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S <: AOSolution](val roo
 
     def notifySolution(sub: AndTree, sol: S) {
       solution match {
-        case Some(preSol) if (preSol.cost < sol.cost) =>
+        case Some(preSol) if (costModel.solutionCost(preSol) < costModel.solutionCost(sol)) =>
           solution       = Some(sol)
           minAlternative = sub
 

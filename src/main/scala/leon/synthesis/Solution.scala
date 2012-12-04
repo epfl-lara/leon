@@ -5,14 +5,10 @@ import leon.purescala.Trees._
 import leon.purescala.Definitions._
 import leon.purescala.TreeOps._
 
-import synthesis.search._
-
 // Defines a synthesis solution of the form:
 // ⟨ P | T ⟩
-class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr) extends AOSolution {
+class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr) {
   override def toString = "⟨ "+pre+" | "+defs.mkString(" ")+" "+term+" ⟩" 
-
-  val cost: Cost = SolutionCost(this)
 
   def toExpr = {
     val result = if (pre == BooleanLiteral(true)) {

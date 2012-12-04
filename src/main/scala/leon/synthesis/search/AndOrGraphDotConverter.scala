@@ -2,7 +2,7 @@ package leon.synthesis.search
 
 class AndOrGraphDotConverter[AT <: AOAndTask[S],
                              OT <: AOOrTask[S],
-                             S <: AOSolution](val g: AndOrGraph[AT, OT, S], firstOnly: Boolean) {
+                             S](val g: AndOrGraph[AT, OT, S], firstOnly: Boolean) {
 
 
   private[this] var _nextID = 0
@@ -97,7 +97,7 @@ class AndOrGraphDotConverter[AT <: AOAndTask[S],
         (if (t.isSolved) "palegreen" else if (t.isUnsolvable) "firebrick" else "white", "")
     }
 
-    res append " "+name+" [ label = <<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\"><TR><TD BORDER=\"0\">self: "+t.task.cost.value+" | tree-min: "+t.minCost.value+"</TD></TR><TR><TD BORDER=\"1\" BGCOLOR=\""+color+"\">"+escapeHTML(t.task.toString)+"</TD></TR>";
+    res append " "+name+" [ label = <<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\"><TR><TD BORDER=\"0\">self: "+g.costModel.taskCost(t.task).value+" | tree-min: "+t.minCost.value+"</TD></TR><TR><TD BORDER=\"1\" BGCOLOR=\""+color+"\">"+escapeHTML(t.task.toString)+"</TD></TR>";
 
     if (t.isSolved) {
       res append "<TR><TD BGCOLOR=\""+color+"\">"+escapeHTML(t.solution.get.toString)+"</TD></TR>"

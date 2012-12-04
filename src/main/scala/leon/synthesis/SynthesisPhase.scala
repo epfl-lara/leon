@@ -31,30 +31,26 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     val uninterpretedZ3 = new UninterpretedZ3Solver(silentContext)
     uninterpretedZ3.setProgram(p)
 
+    var options = SynthesizerOptions()
     var inPlace                        = false
-    var genTrees                       = false
-    var firstOnly                      = false
-    var parallel                       = false
-    var filterFun: Option[Seq[String]] = None 
-    var timeoutMs: Option[Long]        = None
 
     for(opt <- ctx.options) opt match {
       case LeonFlagOption("inplace") =>
         inPlace = true
       case LeonValueOption("functions", ListValue(fs)) =>
-        filterFun = Some(fs)
+        options = options.copy(filterFuns = Some(fs.toSet))
       case LeonValueOption("timeout", t) =>
         try {
-          timeoutMs  = Some(t.toLong)
+          options = options.copy(timeoutMs  = Some(t.toLong))
         } catch {
           case _: Throwable => 
         }
       case LeonFlagOption("firstonly") =>
-        firstOnly = true
+        options = options.copy(firstOnly = true)
       case LeonFlagOption("parallel") =>
-        parallel = true
+        options = options.copy(parallel = true)
       case LeonFlagOption("derivtrees") =>
-        genTrees = true
+        options = options.copy(generateDerivationTrees = true)
       case _ =>
     }
 
@@ -71,11 +67,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
                                       p,
                                       problem,
                                       Rules.all ++ Heuristics.all,
-                                      genTrees,
-                                      filterFun.map(_.toSet),
-                                      parallel,
-                                      firstOnly,
-                                      timeoutMs)
+                                      options)
           val sol = synth.synthesize()
 
           solutions += ch -> (f, sol)
@@ -87,7 +79,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
       // Look for choose()
       for (f <- program.definedFunctions.sortBy(_.id.toString) if f.body.isDefined) {
-        if (filterFun.isEmpty || filterFun.get.contains(f.id.toString)) {
+        if (options.filterFuns.isEmpty || options.filterFuns.get.contains(f.id.toString)) {
           treeCatamorphism(x => x, noop, actOnChoose(f), f.body.get)
         }
       }

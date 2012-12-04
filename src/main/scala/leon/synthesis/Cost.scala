@@ -6,22 +6,30 @@ import purescala.TreeOps._
 
 import synthesis.search.Cost
 
-case class SolutionCost(s: Solution) extends Cost {
-  val value = {
-    val chooses = collectChooses(s.toExpr)
-    val chooseCost = chooses.foldLeft(0)((i, c) => i + ProblemCost(Problem.fromChoose(c)).value)
+abstract class CostModel(name: String) {
+  def solutionCost(s: Solution): Cost
+  def problemCost(p: Problem): Cost
+  def ruleAppCost(r: Rule, app: RuleApplication): Cost
+}
 
-    formulaSize(s.toExpr) + chooseCost
+case object NaiveCostModel extends CostModel("Naive") {
+  def solutionCost(s: Solution): Cost = new Cost {
+    val value = {
+      val chooses = collectChooses(s.toExpr)
+      val chooseCost = chooses.foldLeft(0)((i, c) => i + problemCost(Problem.fromChoose(c)).value)
+
+      formulaSize(s.toExpr) + chooseCost
+    }
   }
-}
 
-case class ProblemCost(p: Problem) extends Cost {
-  val value = p.xs.size
-}
+  def problemCost(p: Problem): Cost = new Cost {
+    val value = p.xs.size
+  }
 
-case class RuleApplicationCost(rule: Rule, app: RuleApplication) extends Cost {
-  val subSols = (1 to app.subProblemsCount).map {i => Solution.simplest }.toList
-  val simpleSol = app.onSuccess(subSols)
+  def ruleAppCost(r: Rule, app: RuleApplication): Cost = new Cost {
+    val subSols = (1 to app.subProblemsCount).map {i => Solution.simplest }.toList
+    val simpleSol = app.onSuccess(subSols)
 
-  val value = SolutionCost(simpleSol).value
+    val value = solutionCost(simpleSol).value
+  }
 }

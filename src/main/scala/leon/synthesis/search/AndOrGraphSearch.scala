@@ -2,7 +2,7 @@ package leon.synthesis.search
 
 abstract class AndOrGraphSearch[AT <: AOAndTask[S],
                                 OT <: AOOrTask[S],
-                                S <: AOSolution](val g: AndOrGraph[AT, OT, S]) {
+                                S](val g: AndOrGraph[AT, OT, S]) {
 
   var processing = Set[g.Leaf]()
 
