@@ -41,7 +41,8 @@ object SynthesisBenchmarks extends App {
   var nSuccessTotal, nInnapTotal, nDecompTotal, nAltTotal = 0
   var tTotal: Long = 0
 
-  forEachFileIn("testcases/synthesis/") { file => 
+  for (path <- args) {
+    val file = new File(path)
 
     val ctx = LeonContext(
       settings = Settings(
