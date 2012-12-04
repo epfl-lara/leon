@@ -8,7 +8,7 @@ object Prog001 {
     a + a
   }
 
-  // def implies(a : Boolean, b : Boolean) : Boolean = !a || b
+  def implies(a : Boolean, b : Boolean) : Boolean = !a || b
 
   def abs(x : Int) : Int = {
     if(x < 0) -x else x
