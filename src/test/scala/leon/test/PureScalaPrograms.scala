@@ -21,14 +21,12 @@ class PureScalaPrograms extends FunSuite {
   private def mkTest(file : File)(block: Output=>Unit) = {
     val fullName = file.getPath()
     val start = fullName.indexOf("regression")
-    val displayName = file.getAbsolutePath()
-/*
+
     val displayName = if(start != -1) {
       fullName.substring(start, fullName.length)
     } else {
       fullName
     }
-    */
 
     test("PureScala program %3d: [%s]".format(nextInt(), displayName)) {
       assert(file.exists && file.isFile && file.canRead,

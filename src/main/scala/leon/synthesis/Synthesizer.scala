@@ -28,7 +28,7 @@ class Synthesizer(val context : LeonContext,
 
   var continue = true
 
-  def synthesize(): Solution = {
+  def synthesize(): (Solution, Boolean) = {
 
     val search = if (options.parallel) {
       new ParallelSearch(this, problem, rules, options.costModel)
@@ -64,9 +64,9 @@ class Synthesizer(val context : LeonContext,
 
     res match {
       case Some(solution) =>
-        solution
+        (solution, true)
       case None =>
-        new AndOrGraphPartialSolution(search.g, (task: TaskRunRule) => Solution.choose(task.problem)).getSolution
+        (new AndOrGraphPartialSolution(search.g, (task: TaskRunRule) => Solution.choose(task.problem)).getSolution, false)
     }
   }
 

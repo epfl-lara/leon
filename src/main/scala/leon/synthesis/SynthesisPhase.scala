@@ -78,7 +78,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
                                       options)
           val sol = synth.synthesize()
 
-          solutions += ch -> (f, sol)
+          solutions += ch -> (f, sol._1)
 
           a
         case _ =>
