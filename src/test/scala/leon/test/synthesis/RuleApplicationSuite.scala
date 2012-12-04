@@ -77,28 +77,28 @@ class SynthesisSuite extends FunSuite {
       fullName
     }
 
-    test("Synthesizing %3d: [%s]".format(nextInt(), displayName)) {
-      assert(file.exists && file.isFile && file.canRead,
-             "Benchmark [%s] is not a readable file".format(displayName))
+    assert(file.exists && file.isFile && file.canRead,
+           "Benchmark [%s] is not a readable file".format(displayName))
 
 
-      val ctx = LeonContext(
-        settings = Settings(
-          synthesis = true,
-          xlang     = false,
-          verify    = false
-        ),
-        files = List(file),
-        reporter = new SilentReporter
-      )
+    val ctx = LeonContext(
+      settings = Settings(
+        synthesis = true,
+        xlang     = false,
+        verify    = false
+      ),
+      files = List(file),
+      reporter = new SilentReporter
+    )
 
-      val opts = SynthesizerOptions()
+    val opts = SynthesizerOptions()
 
-      val pipeline = leon.plugin.ExtractionPhase andThen ExtractProblemsPhase
+    val pipeline = leon.plugin.ExtractionPhase andThen ExtractProblemsPhase
 
-      val (results, solver) = pipeline.run(ctx)(file.getPath :: Nil)
+    val (results, solver) = pipeline.run(ctx)(file.getPath :: Nil)
 
-      for ((f, ps) <- results; p <- ps) {
+    for ((f, ps) <- results; p <- ps) {
+      test("Synthesizing %3d: %-20s [%s]".format(nextInt(), f.id.toString, displayName)) {
         block(solver, f, p)
       }
     }
