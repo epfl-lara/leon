@@ -161,7 +161,10 @@ case object CEGIS extends Rule("CEGIS", 150) {
 
               var continue = !clauses.isEmpty
 
+              //println("Unrolling #"+unrolings+" bss size: "+bss.size)
+
               while (result.isEmpty && continue) {
+                //println("Looking for CE...")
                 //println("-"*80)
                 //println(basePhi)
 
@@ -214,25 +217,20 @@ case object CEGIS extends Rule("CEGIS", 150) {
 
                         solver1.pop()
 
-                        val freshCss = unrolling.css.map(c => c -> Variable(FreshIdentifier(c.name, true).setType(c.getType))).toMap
-
-                        val ceIn     = ass.map(id => id -> invalidModel(id))
-
-                        val counterexemple = substAll(freshCss ++ ceIn, And(Seq(unrolling.program, unrolling.phi)))
-
-                        //println("#"*80)
-                        //println(currentF.phi)
-                        //println(substAll(freshCss ++ ceIn, currentF.phi))
-
-                        // Found as such as the xs break, refine predicates
-                        solver1.assertCnstr(counterexemple)
-                        solver2.assertCnstr(counterexemple)
-
                         if (unsatCore.isEmpty) {
                           continue = false
                         } else {
+
+                          val freshCss = unrolling.css.map(c => c -> Variable(FreshIdentifier(c.name, true).setType(c.getType))).toMap
+                          val ceIn     = ass.map(id => id -> invalidModel(id))
+                          val counterexemple = substAll(freshCss ++ ceIn, And(Seq(unrolling.program, unrolling.phi)))
+
+                          solver1.assertCnstr(counterexemple)
+                          solver2.assertCnstr(counterexemple)
+
                           //predicates = Not(And(unsatCore.toSeq)) +: counterexemple +: predicates
                           solver1.assertCnstr(Not(And(unsatCore.toSeq)))
+                          solver2.assertCnstr(Not(And(unsatCore.toSeq)))
                         }
 
                       case Some(false) =>
