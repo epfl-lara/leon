@@ -19,6 +19,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     LeonFlagOptionDef( "derivtrees", "--derivtrees",      "Generate derivation trees"),
     LeonFlagOptionDef( "firstonly",  "--firstonly",       "Stop as soon as one synthesis solution is found"),
     LeonValueOptionDef("timeout",    "--timeout=T",       "Timeout after T seconds when searching for synthesis solutions .."),
+    LeonValueOptionDef("costmodel",  "--costmodel=cm",    "Use a specific cost model for this search"),
     LeonValueOptionDef("functions",  "--functions=f1:f2", "Limit synthesis of choose found within f1,f2,..")
   )
 
@@ -39,6 +40,13 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
         inPlace = true
       case LeonValueOption("functions", ListValue(fs)) =>
         options = options.copy(filterFuns = Some(fs.toSet))
+      case LeonValueOption("costmodel", cm) =>
+        CostModel.all.find(_.name.toLowerCase == cm.toLowerCase) match {
+          case Some(model) =>
+            options = options.copy(costModel = model)
+          case None =>
+            ctx.reporter.fatalError("Unknown cost model: "+cm)
+        }
       case LeonValueOption("timeout", t) =>
         try {
           options = options.copy(timeoutMs  = Some(t.toLong))

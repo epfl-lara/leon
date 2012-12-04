@@ -6,10 +6,14 @@ import purescala.TreeOps._
 
 import synthesis.search.Cost
 
-abstract class CostModel(name: String) {
+abstract class CostModel(val name: String) {
   def solutionCost(s: Solution): Cost
   def problemCost(p: Problem): Cost
   def ruleAppCost(r: Rule, app: RuleApplication): Cost
+}
+
+object CostModel {
+  def all: Set[CostModel] = Set(NaiveCostModel)
 }
 
 case object NaiveCostModel extends CostModel("Naive") {
