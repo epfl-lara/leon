@@ -33,7 +33,7 @@ object RuleInapplicable extends RuleResult(List())
 abstract class RuleApplication(val subProblemsCount: Int,
                                val onSuccess: List[Solution] => Solution) {
 
-  def apply(): RuleApplicationResult
+  def apply(sctx: SynthesisContext): RuleApplicationResult
 }
 
 abstract class RuleImmediateApplication extends RuleApplication(0, s => Solution.simplest)
@@ -46,7 +46,7 @@ case object RuleApplicationImpossible extends RuleApplicationResult
 object RuleFastApplication {
   def apply(sub: List[Problem], onSuccess: List[Solution] => Solution) = {
     new RuleApplication(sub.size, onSuccess) {
-      def apply() = RuleDecomposed(sub, onSuccess)
+      def apply(sctx: SynthesisContext) = RuleDecomposed(sub, onSuccess)
     }
   }
 }
@@ -54,7 +54,7 @@ object RuleFastApplication {
 object RuleFastInapplicable {
   def apply() = {
     RuleResult(List(new RuleApplication(0, ls => Solution.simplest) {
-      def apply() = RuleApplicationImpossible
+      def apply(sctx: SynthesisContext) = RuleApplicationImpossible
     }))
   }
 }
@@ -68,7 +68,7 @@ object RuleFastStep {
 object RuleFastSuccess {
   def apply(solution: Solution) = {
     RuleResult(List(new RuleApplication(0, ls => solution) {
-      def apply() = RuleSuccess(solution)
+      def apply(sctx: SynthesisContext) = RuleSuccess(solution)
     }))
   }
 }

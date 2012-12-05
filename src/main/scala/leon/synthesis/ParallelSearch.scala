@@ -18,13 +18,15 @@ class ParallelSearch(synth: Synthesizer,
     val solver = new FairZ3Solver(synth.context.copy(reporter = reporter))
     solver.setProgram(synth.program)
 
+    solver.initZ3
+
     SynthesisContext(solver = solver, reporter = synth.reporter)
   }
 
   def expandAndTask(ref: ActorRef, sctx: SynthesisContext)(t: TaskRunRule) = {
     val prefix = "[%-20s] ".format(Option(t.rule).getOrElse("?"))
 
-    t.app.apply() match {
+    t.app.apply(sctx) match {
       case RuleSuccess(sol) =>
         info(prefix+"Got: "+t.problem)
         info(prefix+"Solved with: "+sol)
@@ -45,7 +47,9 @@ class ParallelSearch(synth: Synthesizer,
   }
 
   def expandOrTask(ref: ActorRef, sctx: SynthesisContext)(t: TaskTryRules) = {
-    val sub = rules.flatMap ( r => r.attemptToApplyOn(sctx, t.p).alternatives.map(TaskRunRule(t.p, r, _)) )
+    val sub = rules.flatMap { r => 
+      r.attemptToApplyOn(sctx, t.p).alternatives.map(TaskRunRule(t.p, r, _))
+    }
 
     if (!sub.isEmpty) {
       Expanded(sub.toList)

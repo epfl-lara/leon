@@ -36,7 +36,7 @@ object HeuristicStep {
 
   def apply(sctx: SynthesisContext, problem: Problem, subProblems: List[Problem], onSuccess: List[Solution] => Solution) = {
     new RuleApplication(subProblems.size, onSuccess.andThen(verifyPre(sctx, problem))) {
-      def apply() = RuleDecomposed(subProblems, onSuccess)
+      def apply(sctx: SynthesisContext) = RuleDecomposed(subProblems, onSuccess)
     }
   }
 }

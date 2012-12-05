@@ -100,6 +100,7 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
       counter = 0
 
       z3 = new Z3Context(z3cfg)
+
       prepareSorts
       prepareFunctions
 
@@ -109,6 +110,7 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
 
   protected[leon] def restartZ3() {
     isInitialized = false
+
     initZ3()
 
     exprToZ3Id = Map.empty

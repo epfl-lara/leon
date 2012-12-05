@@ -9,7 +9,13 @@ import synthesis.search.Cost
 abstract class CostModel(val name: String) {
   def solutionCost(s: Solution): Cost
   def problemCost(p: Problem): Cost
-  def ruleAppCost(r: Rule, app: RuleApplication): Cost
+
+  def ruleAppCost(r: Rule, app: RuleApplication): Cost = new Cost {
+    val subSols = (1 to app.subProblemsCount).map {i => Solution.simplest }.toList
+    val simpleSol = app.onSuccess(subSols)
+
+    val value = solutionCost(simpleSol).value
+  }
 }
 
 object CostModel {
@@ -30,10 +36,4 @@ case object NaiveCostModel extends CostModel("Naive") {
     val value = p.xs.size
   }
 
-  def ruleAppCost(r: Rule, app: RuleApplication): Cost = new Cost {
-    val subSols = (1 to app.subProblemsCount).map {i => Solution.simplest }.toList
-    val simpleSol = app.onSuccess(subSols)
-
-    val value = solutionCost(simpleSol).value
-  }
 }

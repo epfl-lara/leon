@@ -123,7 +123,7 @@ case object CEGIS extends Rule("CEGIS", 150) {
     val (exprsA, others) = ands.partition(e => (variablesOf(e) & xsSet).isEmpty)
     if (exprsA.isEmpty) {
       val res = new RuleImmediateApplication {
-        def apply() = {
+        def apply(sctx: SynthesisContext) = {
           var result: Option[RuleApplicationResult]   = None
 
           var ass = p.as.toSet

@@ -38,7 +38,7 @@ class SimpleSearch(synth: Synthesizer,
   def expandAndTask(t: TaskRunRule): ExpandResult[TaskTryRules] = {
     val prefix = "[%-20s] ".format(Option(t.rule).getOrElse("?"))
 
-    t.app.apply() match {
+    t.app.apply(sctx) match {
       case RuleSuccess(sol) =>
         info(prefix+"Got: "+t.problem)
         info(prefix+"Solved with: "+sol)
