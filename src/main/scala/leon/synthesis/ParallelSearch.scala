@@ -28,15 +28,19 @@ class ParallelSearch(synth: Synthesizer,
 
     t.app.apply(sctx) match {
       case RuleSuccess(sol) =>
-        info(prefix+"Got: "+t.problem)
-        info(prefix+"Solved with: "+sol)
+        synth.synchronized {
+          info(prefix+"Got: "+t.problem)
+          info(prefix+"Solved with: "+sol)
+        }
 
         ExpandSuccess(sol)
       case RuleDecomposed(sub, onSuccess) =>
-        info(prefix+"Got: "+t.problem)
-        info(prefix+"Decomposed into:")
-        for(p <- sub) {
-          info(prefix+" - "+p)
+        synth.synchronized {
+          info(prefix+"Got: "+t.problem)
+          info(prefix+"Decomposed into:")
+          for(p <- sub) {
+            info(prefix+" - "+p)
+          }
         }
 
         Expanded(sub.map(TaskTryRules(_)))
