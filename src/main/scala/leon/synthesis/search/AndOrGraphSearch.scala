@@ -60,10 +60,8 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
   case class ExpandSuccess[T <: AOTask[S]](sol: S) extends ExpandResult[T]
   case class ExpandFailure[T <: AOTask[S]]() extends ExpandResult[T]
 
-  var isStopped = false
-
   def stop() {
-    isStopped = true
+
   }
 
   def search(): Option[S]
@@ -79,6 +77,11 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
         al.isUnsolvable = true
         al.parent.unsolvable(al)
     }
+
+    if (g.tree.isSolved) {
+      stop()
+    }
+
     processing -= al
   }
 
@@ -93,6 +96,11 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
         ol.isUnsolvable = true
         ol.parent.unsolvable(ol)
     }
+
+    if (g.tree.isSolved) {
+      stop()
+    }
+
     processing -= ol
   }
 }

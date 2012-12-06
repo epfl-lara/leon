@@ -14,7 +14,7 @@ abstract class AndOrGraphParallelSearch[WC,
 
   def initWorkerContext(w: ActorRef): WC
 
-  val nWorkers = 5
+  val nWorkers = 7
   val timeout = 600.seconds
 
   var system: ActorSystem = _
@@ -128,8 +128,10 @@ abstract class AndOrGraphParallelSearch[WC,
         sendWork()
 
       case Terminated(w) =>
-        processing -= workers(w).get
-        workers -= w
+        if (workers contains w) {
+          processing -= workers(w).get
+          workers -= w
+        }
 
     }
   }
