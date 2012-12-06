@@ -104,22 +104,17 @@ class SynthesisSuite extends FunSuite {
     }
   }
 
-  def synthesisStep(s: Solver, r: Rule, p: Problem): RuleResult = {
-    val sctx = SynthesisContext(s, new SilentReporter)
-    r.attemptToApplyOn(sctx, p)
-  }
-
-  def assertRuleSuccess(rr: RuleResult) {
-    assert(rr.alternatives.isEmpty === false, "No rule alternative while the rule should have succeeded")
-    assert(rr.alternatives.exists(alt => alt.apply().isInstanceOf[RuleSuccess]) === true, "Rule did not succeed")
+  def assertRuleSuccess(sctx: SynthesisContext, rr: Traversable[RuleInstantiation]) {
+    assert(rr.isEmpty === false, "No rule alternative while the rule should have succeeded")
+    assert(rr.exists(alt => alt.apply(sctx).isInstanceOf[RuleSuccess]) === true, "Rule did not succeed")
   }
 
 
-  def assertFastEnough(rr: RuleResult, timeoutMs: Long) {
-    for (alt <- rr.alternatives) {
+  def assertFastEnough(sctx: SynthesisContext, rr: Traversable[RuleInstantiation], timeoutMs: Long) {
+    for (alt <- rr) {
       val ts = System.currentTimeMillis
 
-      val res = alt.apply()
+      val res = alt.apply(sctx)
 
       val t = System.currentTimeMillis - ts
 
@@ -130,7 +125,9 @@ class SynthesisSuite extends FunSuite {
 
   testFile("synthesis/Cegis1.scala") {
     case (solver, fd, p) => 
-      assertRuleSuccess(synthesisStep(solver, rules.CEGIS, p))
-      assertFastEnough(synthesisStep(solver, rules.CEGIS, p), 100)
+      val sctx = SynthesisContext(solver, new SilentReporter, new java.util.concurrent.atomic.AtomicBoolean)
+
+      assertRuleSuccess(sctx, rules.CEGIS.instantiateOn(sctx, p))
+      assertFastEnough(sctx, rules.CEGIS.instantiateOn(sctx, p), 100)
   }
 }

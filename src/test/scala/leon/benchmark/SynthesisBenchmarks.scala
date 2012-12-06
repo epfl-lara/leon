@@ -60,19 +60,19 @@ object SynthesisBenchmarks extends App {
 
     val (results, solver) = pipeline.run(ctx)(file.getPath :: Nil)
 
-    val sctx = SynthesisContext(solver, new SilentReporter)
+    val sctx = SynthesisContext(solver, new SilentReporter, new java.util.concurrent.atomic.AtomicBoolean)
 
 
     for ((f, ps) <- results; p <- ps) {
       val ts = System.currentTimeMillis
 
-      val rr = rules.CEGIS.attemptToApplyOn(sctx, p)
+      val rr = rules.CEGIS.instantiateOn(sctx, p)
       
-      val nAlt = rr.alternatives.size
+      val nAlt = rr.size
       var nSuccess, nInnap, nDecomp = 0
 
-      for (alt <- rr.alternatives) {
-        alt.apply() match {
+      for (alt <- rr) {
+        alt.apply(sctx) match {
           case RuleApplicationImpossible =>
             nInnap += 1
           case s: RuleDecomposed =>
