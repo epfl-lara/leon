@@ -8,21 +8,23 @@ import purescala.TreeOps._
 import purescala.Extractors._
 
 case object Ground extends Rule("Ground", 500) {
-  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
+  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     if (p.as.isEmpty) {
 
       val tpe = TupleType(p.xs.map(_.getType))
 
       sctx.solver.solveSAT(p.phi) match {
         case (Some(true), model) =>
-          RuleFastSuccess(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(model))).setType(tpe)))
+          val sol = Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(model))).setType(tpe))
+          Some(RuleInstantiation.immediateSuccess(sol))
         case (Some(false), model) =>
-          RuleFastSuccess(Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe)))
+          val sol = Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe))
+          Some(RuleInstantiation.immediateSuccess(sol))
         case _ =>
-          RuleInapplicable
+          None
       }
     } else {
-      RuleInapplicable
+      None
     }
   }
 }

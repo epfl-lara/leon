@@ -9,7 +9,7 @@ import purescala.Extractors._
 
 object Disunification {
   case object Decomp extends Rule("Disunif. Decomp.", 200) {
-    def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
+    def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
       val TopLevelAnds(exprs) = p.phi
 
       val (toRemove, toAdd) = exprs.collect {
@@ -26,9 +26,9 @@ object Disunification {
       if (!toRemove.isEmpty) {
         val sub = p.copy(phi = Or((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
-        RuleFastStep(List(sub), forward)
+        List(RuleInstantiation.immediateDecomp(List(sub), forward))
       } else {
-        RuleInapplicable
+        Nil
       }
     }
   }

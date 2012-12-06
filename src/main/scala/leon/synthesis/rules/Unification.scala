@@ -9,7 +9,7 @@ import purescala.Extractors._
 
 object Unification {
   case object DecompTrivialClash extends Rule("Unif Dec./Clash/Triv.", 200) {
-    def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
+    def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
       val TopLevelAnds(exprs) = p.phi
 
       val (toRemove, toAdd) = exprs.collect {
@@ -27,9 +27,9 @@ object Unification {
         val sub = p.copy(phi = And((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
 
-        RuleFastStep(List(sub), forward)
+        List(RuleInstantiation.immediateDecomp(List(sub), forward))
       } else {
-        RuleInapplicable
+        Nil
       }
     }
   }
@@ -37,7 +37,7 @@ object Unification {
   // This rule is probably useless; it never happens except in crafted
   // examples, and will be found by OptimisticGround anyway.
   case object OccursCheck extends Rule("Unif OccursCheck", 200) {
-    def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
+    def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
       val TopLevelAnds(exprs) = p.phi
 
       val isImpossible = exprs.exists {
@@ -52,9 +52,9 @@ object Unification {
       if (isImpossible) {
         val tpe = TupleType(p.xs.map(_.getType))
 
-        RuleFastSuccess(Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe)))
+        List(RuleInstantiation.immediateSuccess(Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe))))
       } else {
-        RuleInapplicable
+        Nil
       }
     }
   }

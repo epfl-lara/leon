@@ -13,7 +13,7 @@ import LinearEquations.elimVariable
 import leon.synthesis.Algebra.lcm
 
 case object IntegerInequalities extends Rule("Integer Inequalities", 600) {
-  def attemptToApplyOn(sctx: SynthesisContext, problem: Problem): RuleResult = {
+  def instantiateOn(sctx: SynthesisContext, problem: Problem): Traversable[RuleInstantiation] = {
     val TopLevelAnds(exprs) = problem.phi
 
     //assume that we only have inequalities
@@ -32,7 +32,9 @@ case object IntegerInequalities extends Rule("Integer Inequalities", 600) {
     val nonIneqVars = exprNotUsed.foldLeft(Set[Identifier]())((acc, x) => acc ++ variablesOf(x))
     val candidateVars = ineqVars.intersect(problem.xs.toSet).filterNot(nonIneqVars.contains(_))
 
-    if(candidateVars.isEmpty) RuleInapplicable else {
+    if (candidateVars.isEmpty) {
+      Nil
+    } else {
       val processedVar: Identifier = candidateVars.map(v => {
         val normalizedLhs: List[List[Expr]] = lhsSides.map(linearArithmeticForm(_, Array(v)).toList)
         if(normalizedLhs.isEmpty)
@@ -129,7 +131,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities", 600) {
         val constraints: List[Expr] = for((ub, uc) <- upperBounds; (lb, lc) <- lowerBounds) 
                                         yield LessEquals(ceilingDiv(lb, IntLiteral(lc)), floorDiv(ub, IntLiteral(uc)))
         val pre = And(exprNotUsed ++ constraints)
-        RuleFastSuccess(Solution(pre, Set(), witness))
+        List(RuleInstantiation.immediateSuccess(Solution(pre, Set(), witness)))
       } else {
 
         val involvedVariables = (upperBounds++lowerBounds).foldLeft(Set[Identifier]())((acc, t) => {
@@ -198,7 +200,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities", 600) {
           case _ => Solution.none
         }
 
-        RuleFastStep(List(subProblem), onSuccess)
+        List(RuleInstantiation.immediateDecomp(List(subProblem), onSuccess))
       }
     }
   }

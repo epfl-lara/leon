@@ -12,7 +12,7 @@ import purescala.Extractors._
 import solvers.z3.FairZ3Solver
 
 case object CEGIS extends Rule("CEGIS", 150) {
-  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
+  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     case class Generator(tpe: TypeTree, altBuilder: () => List[(Expr, Set[Identifier])]);
 
     var generators = Map[TypeTree, Generator]()
@@ -122,7 +122,7 @@ case object CEGIS extends Rule("CEGIS", 150) {
 
     val (exprsA, others) = ands.partition(e => (variablesOf(e) & xsSet).isEmpty)
     if (exprsA.isEmpty) {
-      val res = new RuleImmediateApplication {
+      val res = new RuleInstantiation(SolutionBuilder.none) {
         def apply(sctx: SynthesisContext) = {
           var result: Option[RuleApplicationResult]   = None
 
@@ -272,12 +272,11 @@ case object CEGIS extends Rule("CEGIS", 150) {
               e.printStackTrace
               RuleApplicationImpossible
           }
-
         }
       }
-      RuleResult(List(res))
+      List(res)
     } else {
-      RuleInapplicable
+      Nil
     }
   }
 }

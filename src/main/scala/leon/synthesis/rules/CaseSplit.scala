@@ -7,7 +7,7 @@ import purescala.TreeOps._
 import purescala.Extractors._
 
 case object CaseSplit extends Rule("Case-Split", 200) {
-  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
+  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     p.phi match {
       case Or(o1 :: o2 :: _) =>
         val sub1 = Problem(p.as, p.pc, o1, p.xs)
@@ -18,9 +18,9 @@ case object CaseSplit extends Rule("Case-Split", 200) {
           case _ => Solution.none
         }
 
-        RuleFastStep(List(sub1, sub2), onSuccess)
+        List(RuleInstantiation.immediateDecomp(List(sub1, sub2), onSuccess))
       case _ =>
-        RuleInapplicable
+        Nil
     }
   }
 }

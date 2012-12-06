@@ -3,8 +3,8 @@ package synthesis
 
 import synthesis.search._
 
-case class TaskRunRule(problem: Problem, rule: Rule, app: RuleApplication) extends AOAndTask[Solution] {
-  def composeSolution(sols: List[Solution]): Solution = {
+case class TaskRunRule(problem: Problem, rule: Rule, app: RuleInstantiation) extends AOAndTask[Solution] {
+  def composeSolution(sols: List[Solution]): Option[Solution] = {
     app.onSuccess(sols)
   }
 
@@ -44,7 +44,7 @@ class SimpleSearch(synth: Synthesizer,
         info(prefix+"Solved with: "+sol)
 
         ExpandSuccess(sol)
-      case RuleDecomposed(sub, onSuccess) =>
+      case RuleDecomposed(sub) =>
         info(prefix+"Got: "+t.problem)
         info(prefix+"Decomposed into:")
         for(p <- sub) {
@@ -59,7 +59,7 @@ class SimpleSearch(synth: Synthesizer,
   }
 
   def expandOrTask(t: TaskTryRules): ExpandResult[TaskRunRule] = {
-    val sub = rules.flatMap ( r => r.attemptToApplyOn(sctx, t.p).alternatives.map(TaskRunRule(t.p, r, _)) )
+    val sub = rules.flatMap ( r => r.instantiateOn(sctx, t.p).map(TaskRunRule(t.p, r, _)) )
 
     if (!sub.isEmpty) {
       Expanded(sub.toList)

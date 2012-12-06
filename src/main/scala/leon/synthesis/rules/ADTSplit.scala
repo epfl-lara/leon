@@ -10,7 +10,7 @@ import purescala.Extractors._
 import purescala.Definitions._
 
 case object ADTSplit extends Rule("ADT Split.", 70) {
-  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
+  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation]= {
     val candidates = p.as.collect {
       case IsTyped(id, AbstractClassType(cd)) =>
 
@@ -42,7 +42,7 @@ case object ADTSplit extends Rule("ADT Split.", 70) {
     }
 
 
-    val steps = candidates.collect{ _ match {
+    candidates.collect{ _ match {
       case Some((id, cases)) =>
         val oas = p.as.filter(_ != id)
 
@@ -70,11 +70,9 @@ case object ADTSplit extends Rule("ADT Split.", 70) {
             Solution(Or(globalPre), sols.flatMap(_.defs).toSet, MatchExpr(Variable(id), cases))
         }
 
-        Some(RuleFastApplication(subInfo.map(_._2).toList, onSuccess))
+        Some(RuleInstantiation.immediateDecomp(subInfo.map(_._2).toList, onSuccess))
       case _ =>
         None
     }}.flatten
-
-    RuleResult(steps)
   }
 }

@@ -12,7 +12,7 @@ import purescala.Definitions._
 import LinearEquations.elimVariable
 
 case object IntegerEquation extends Rule("Integer Equation", 600) {
-  def attemptToApplyOn(sctx: SynthesisContext, problem: Problem): RuleResult = if(!problem.xs.exists(_.getType == Int32Type)) RuleInapplicable else {
+  def instantiateOn(sctx: SynthesisContext, problem: Problem): Traversable[RuleInstantiation] = if(!problem.xs.exists(_.getType == Int32Type)) Nil else {
 
     val TopLevelAnds(exprs) = problem.phi
 
@@ -41,7 +41,7 @@ case object IntegerEquation extends Rule("Integer Equation", 600) {
     allOthers = allOthers ++ candidates
 
     optionNormalizedEq match {
-      case None => RuleInapplicable
+      case None => Nil
       case Some(normalizedEq0) => {
 
         val eqas = problem.as.toSet.intersect(vars)
@@ -60,7 +60,7 @@ case object IntegerEquation extends Rule("Integer Equation", 600) {
             case _ => Solution.none
           }
 
-          RuleFastStep(List(newProblem), onSuccess)
+          List(RuleInstantiation.immediateDecomp(List(newProblem), onSuccess))
 
         } else {
           val (eqPre0, eqWitness, freshxs) = elimVariable(eqas, normalizedEq)
@@ -103,10 +103,8 @@ case object IntegerEquation extends Rule("Integer Equation", 600) {
             case _ => Solution.none
           }
 
-          RuleFastStep(List(newProblem), onSuccess)
+          List(RuleInstantiation.immediateDecomp(List(newProblem), onSuccess))
         }
-
-
       }
     }
 

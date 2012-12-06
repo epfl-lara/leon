@@ -21,34 +21,31 @@ trait Heuristic {
 
 }
 
-object HeuristicStep {
-  def verifyPre(sctx: SynthesisContext, problem: Problem)(s: Solution): Solution = {
-    //sctx here is unsafe to use in parallel. onSuccess should take a sctx for
-    //this to be possible
-
+object HeuristicInstantiation {
+  def verifyPre(sctx: SynthesisContext, problem: Problem)(s: Solution): Option[Solution] = {
     //sctx.solver.solveSAT(And(Not(s.pre), problem.phi)) match {
     //  case (Some(true), model) =>
     //    sctx.reporter.warning("Heuristic failed to produce weakest precondition:")
     //    sctx.reporter.warning(" - problem: "+problem)
     //    sctx.reporter.warning(" - precondition: "+s.pre)
-    //    s
+    //    None
     //  case _ =>
-    //    s
+    //    Some(s)
     //}
-    s
+
+    Some(s)
   }
 
-  def apply(sctx: SynthesisContext, problem: Problem, subProblems: List[Problem], onSuccess: List[Solution] => Solution) = {
-    new RuleApplication(subProblems.size, onSuccess.andThen(verifyPre(sctx, problem))) {
-      def apply(sctx: SynthesisContext) = RuleDecomposed(subProblems, onSuccess)
+  def apply(problem: Problem, subProblems: List[Problem], onSuccess: List[Solution] => Solution) = {
+    val builder = new SolutionBuilder(subProblems.size) {
+      def apply(sols: List[Solution]) = {
+        Some(onSuccess(sols))
+      }
+    }
+
+    new RuleInstantiation(builder) {
+      def apply(sctx: SynthesisContext) = RuleDecomposed(subProblems)
+
     }
   }
 }
-
-
-object HeuristicFastStep {
-  def apply(sctx: SynthesisContext, problem: Problem, subProblems: List[Problem], onSuccess: List[Solution] => Solution) = {
-    RuleResult(List(HeuristicStep(sctx, problem, subProblems, onSuccess)))
-  }
-}
-

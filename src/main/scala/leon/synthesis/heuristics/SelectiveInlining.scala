@@ -10,7 +10,7 @@ import purescala.TypeTrees._
 import purescala.Definitions._
 
 case object SelectiveInlining extends Rule("Sel. Inlining", 20) with Heuristic {
-  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
+  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     val TopLevelAnds(exprs) = p.phi
 
     val eqfuncalls = exprs.collect{
@@ -36,9 +36,9 @@ case object SelectiveInlining extends Rule("Sel. Inlining", 20) with Heuristic {
 
       val sub = p.copy(phi = And(newExprs))
 
-      HeuristicFastStep(sctx, p, List(sub), forward)
+      Some(HeuristicInstantiation(p, List(sub), forward))
     } else {
-      RuleInapplicable
+      None
     }
   }
 }

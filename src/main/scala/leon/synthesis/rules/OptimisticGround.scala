@@ -8,7 +8,7 @@ import purescala.TreeOps._
 import purescala.Extractors._
 
 case object OptimisticGround extends Rule("Optimistic Ground", 150) {
-  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
+  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     if (!p.as.isEmpty && !p.xs.isEmpty) {
       val xss = p.xs.toSet
       val ass = p.as.toSet
@@ -18,10 +18,11 @@ case object OptimisticGround extends Rule("Optimistic Ground", 150) {
       var i = 0;
       var maxTries = 3;
 
-      var result: Option[RuleResult]   = None
-      var predicates: Seq[Expr]        = Seq()
+      var result: Option[RuleInstantiation] = None
+      var continue                          = true
+      var predicates: Seq[Expr]             = Seq()
 
-      while (result.isEmpty && i < maxTries) {
+      while (result.isEmpty && i < maxTries && continue) {
         val phi = And(p.pc +: p.phi +: predicates)
         //println("SOLVING " + phi + " ...")
         sctx.solver.solveSAT(phi) match {
@@ -37,28 +38,31 @@ case object OptimisticGround extends Rule("Optimistic Ground", 150) {
                 predicates = valuateWithModelIn(phi, ass, invalidModel) +: predicates
 
               case (Some(false), _) =>
-                result = Some(RuleFastSuccess(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(satModel))).setType(tpe))))
+                result = Some(RuleInstantiation.immediateSuccess(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(satModel))).setType(tpe))))
 
               case _ =>
-                result = Some(RuleFastInapplicable())
+                continue = false
+                result = None
             }
 
           case (Some(false), _) =>
             if (predicates.isEmpty) {
-              result = Some(RuleFastSuccess(Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe))))
+              result = Some(RuleInstantiation.immediateSuccess(Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe))))
             } else {
-              result = Some(RuleFastInapplicable())
+              continue = false
+              result = None
             }
           case _ =>
-            result = Some(RuleFastInapplicable())
+            continue = false
+            result = None
         }
 
         i += 1 
       }
 
-      result.getOrElse(RuleFastInapplicable())
+      result
     } else {
-      RuleInapplicable
+      Nil
     }
   }
 }

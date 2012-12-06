@@ -9,7 +9,7 @@ import purescala.TreeOps._
 import purescala.Extractors._
 
 case object EqualitySplit extends Rule("Eq. Split.", 90) {
-  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
+  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     val candidates = p.as.groupBy(_.getType).map(_._2.toList).filter {
       case List(a1, a2) =>
         val toValEQ = Implies(p.pc, Equals(Variable(a1), Variable(a2)))
@@ -35,7 +35,7 @@ case object EqualitySplit extends Rule("Eq. Split.", 90) {
     }
 
 
-    val steps = candidates.map(_ match {
+    candidates.map(_ match {
       case List(a1, a2) =>
 
         val sub1 = p.copy(pc = And(Equals(Variable(a1), Variable(a2)), p.pc))
@@ -48,11 +48,9 @@ case object EqualitySplit extends Rule("Eq. Split.", 90) {
             Solution.none
         }
 
-        Some(RuleFastApplication(List(sub1, sub2), onSuccess))
+        Some(RuleInstantiation.immediateDecomp(List(sub1, sub2), onSuccess))
       case _ =>
         None
     }).flatten
-
-    RuleResult(steps)
   }
 }

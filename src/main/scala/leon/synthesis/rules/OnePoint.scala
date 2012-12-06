@@ -7,7 +7,7 @@ import purescala.TreeOps._
 import purescala.Extractors._
 
 case object OnePoint extends Rule("One-point", 300) {
-  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
+  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     val TopLevelAnds(exprs) = p.phi
 
     val candidates = exprs.collect {
@@ -35,9 +35,9 @@ case object OnePoint extends Rule("One-point", 300) {
         case _ => Solution.none
       }
 
-      RuleFastStep(List(newProblem), onSuccess)
+      List(RuleInstantiation.immediateDecomp(List(newProblem), onSuccess))
     } else {
-      RuleInapplicable
+      Nil
     }
   }
 }

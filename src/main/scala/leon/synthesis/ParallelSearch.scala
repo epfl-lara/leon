@@ -34,7 +34,7 @@ class ParallelSearch(synth: Synthesizer,
         }
 
         ExpandSuccess(sol)
-      case RuleDecomposed(sub, onSuccess) =>
+      case RuleDecomposed(sub) =>
         synth.synchronized {
           info(prefix+"Got: "+t.problem)
           info(prefix+"Decomposed into:")
@@ -52,7 +52,7 @@ class ParallelSearch(synth: Synthesizer,
 
   def expandOrTask(ref: ActorRef, sctx: SynthesisContext)(t: TaskTryRules) = {
     val sub = rules.flatMap { r => 
-      r.attemptToApplyOn(sctx, t.p).alternatives.map(TaskRunRule(t.p, r, _))
+      r.instantiateOn(sctx, t.p).map(TaskRunRule(t.p, r, _))
     }
 
     if (!sub.isEmpty) {

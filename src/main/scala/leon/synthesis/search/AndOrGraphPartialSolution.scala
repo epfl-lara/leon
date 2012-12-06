@@ -17,7 +17,7 @@ class AndOrGraphPartialSolution[AT <: AOAndTask[S],
       case l: g.AndLeaf =>
         missing(t.task)
       case n: g.AndNode =>
-        n.task.composeSolution(n.subProblems.values.map(solveOr(_)).toList)
+        n.task.composeSolution(n.subProblems.values.map(solveOr(_)).toList).getOrElse(missing(t.task))
       }
     }
   }

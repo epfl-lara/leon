@@ -4,7 +4,7 @@ trait AOTask[S] {
 }
 
 trait AOAndTask[S] extends AOTask[S] {
-  def composeSolution(sols: List[S]): S
+  def composeSolution(sols: List[S]): Option[S]
 }
 
 trait AOOrTask[S] extends AOTask[S] {
@@ -88,7 +88,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S](val root: OT, val cos
       subSolutions += sub.task -> sol
 
       if (subSolutions.size == subProblems.size) {
-        solution = Some(task.composeSolution(subTasks.map(subSolutions)))
+        solution = task.composeSolution(subTasks.map(subSolutions))
         updateMin()
 
         notifyParent(solution.get)

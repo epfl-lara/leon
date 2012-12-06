@@ -10,7 +10,7 @@ import purescala.TypeTrees._
 import purescala.Definitions._
 
 case object ADTInduction extends Rule("ADT Induction", 80) with Heuristic {
-  def attemptToApplyOn(sctx: SynthesisContext, p: Problem): RuleResult = {
+  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     val candidates = p.as.collect {
         case IsTyped(origId, AbstractClassType(cd)) => (origId, cd)
     }
@@ -97,12 +97,12 @@ case object ADTInduction extends Rule("ADT Induction", 80) with Heuristic {
             Solution(Or(globalPre), sols.flatMap(_.defs).toSet+newFun, FunctionInvocation(newFun, p.as.map(Variable(_))))
         }
 
-        Some(HeuristicStep(sctx, p, subProblemsInfo.map(_._1).toList, onSuccess))
+        Some(HeuristicInstantiation(p, subProblemsInfo.map(_._1).toList, onSuccess))
       } else {
         None
       }
     }
 
-    RuleResult(steps.flatten)
+    steps.flatten
   }
 }
