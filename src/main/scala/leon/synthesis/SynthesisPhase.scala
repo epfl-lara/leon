@@ -119,9 +119,13 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       }
     } else {
       for ((chs, (fd, ex)) <- chooseToExprs) {
-        ctx.reporter.info("-"*32+" In "+fd.id.toString+", synthesis of: "+"-"*32)
+        val middle = " In "+fd.id.toString+", synthesis of: "
+
+        val remSize = (80-middle.length)
+
+        ctx.reporter.info("-"*math.floor(remSize/2).toInt+middle+"-"*math.ceil(remSize/2).toInt)
         ctx.reporter.info(chs)
-        ctx.reporter.info("-"*35+" Result: "+"-"*35)
+        ctx.reporter.info("-"*35+" Result: "+"-"*36)
         ctx.reporter.info(ScalaPrinter(ex))
         ctx.reporter.info("")
       }
