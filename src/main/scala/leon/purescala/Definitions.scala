@@ -43,6 +43,7 @@ object Definitions {
     def definedFunctions = mainObject.definedFunctions
     def definedClasses = mainObject.definedClasses
     def classHierarchyRoots = mainObject.classHierarchyRoots
+    def algebraicDataTypes = mainObject.algebraicDataTypes
     def callGraph = mainObject.callGraph
     def calls(f1: FunDef, f2: FunDef) = mainObject.calls(f1, f2)
     def callers(f1: FunDef) = mainObject.callers(f1)
@@ -83,6 +84,10 @@ object Definitions {
     }
 
     lazy val classHierarchyRoots : Seq[ClassTypeDef] = defs.filter(_.isInstanceOf[ClassTypeDef]).map(_.asInstanceOf[ClassTypeDef]).filter(!_.hasParent)
+
+    lazy val algebraicDataTypes : Map[AbstractClassDef,Seq[CaseClassDef]] = (defs.collect {
+      case c @ CaseClassDef(_, Some(_), _) => c
+    }).groupBy(_.parent.get)
 
     lazy val (callGraph, callers, callees) = {
       type CallGraph = Set[(FunDef,FunDef)]
