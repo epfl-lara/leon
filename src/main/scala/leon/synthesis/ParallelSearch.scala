@@ -20,7 +20,7 @@ class ParallelSearch(synth: Synthesizer,
 
     solver.initZ3
 
-    SynthesisContext(solver = solver, reporter = synth.reporter)
+    SynthesisContext(solver = solver, reporter = synth.reporter, shouldStop = synth.shouldStop)
   }
 
   def expandAndTask(ref: ActorRef, sctx: SynthesisContext)(t: TaskRunRule) = {

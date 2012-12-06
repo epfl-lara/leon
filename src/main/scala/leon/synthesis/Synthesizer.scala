@@ -15,6 +15,8 @@ import collection.mutable.PriorityQueue
 
 import synthesis.search._
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 class Synthesizer(val context : LeonContext,
                   val solver: Solver,
                   val program: Program,
@@ -26,7 +28,7 @@ class Synthesizer(val context : LeonContext,
 
   import reporter.{error,warning,info,fatalError}
 
-  var continue = true
+  var shouldStop = new AtomicBoolean(false)
 
   def synthesize(): (Solution, Boolean) = {
 
@@ -43,7 +45,7 @@ class Synthesizer(val context : LeonContext,
         println
         reporter.info("Aborting...")
 
-        continue = false
+        shouldStop.set(true)
         search.stop()
 
         Signal.handle(sigINT, oldHandler)

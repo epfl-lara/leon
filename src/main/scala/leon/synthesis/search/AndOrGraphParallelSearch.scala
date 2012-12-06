@@ -4,6 +4,7 @@ import akka.actor._
 import akka.util.duration._
 import akka.util.Timeout
 import akka.pattern.ask
+import akka.pattern.AskTimeoutException
 import akka.dispatch.Await
 
 abstract class AndOrGraphParallelSearch[WC,
@@ -27,7 +28,11 @@ abstract class AndOrGraphParallelSearch[WC,
       system.actorOf(Props(new Worker(master)), name = "Worker"+i)
     }
 
-    Await.result(master.ask(Protocol.BeginSearch)(timeout), timeout)
+    try {
+      Await.result(master.ask(Protocol.BeginSearch)(timeout), timeout)
+    } catch {
+      case e: AskTimeoutException =>
+    }
 
     if (system ne null) {
       system.shutdown
@@ -92,8 +97,6 @@ abstract class AndOrGraphParallelSearch[WC,
                 w ! RequestOrTask(ol.task)
             }
           }
-
-
       }
     }
 

@@ -163,7 +163,7 @@ case object CEGIS extends Rule("CEGIS", 150) {
 
               //println("Unrolling #"+unrolings+" bss size: "+bss.size)
 
-              while (result.isEmpty && continue) {
+              while (result.isEmpty && continue && !sctx.shouldStop.get) {
                 //println("Looking for CE...")
                 //println("-"*80)
                 //println(basePhi)
@@ -262,7 +262,7 @@ case object CEGIS extends Rule("CEGIS", 150) {
               }
 
               unrolings += 1
-            } while(unrolings < maxUnrolings && result.isEmpty)
+            } while(unrolings < maxUnrolings && result.isEmpty && !sctx.shouldStop.get)
 
             result.getOrElse(RuleApplicationImpossible)
 
