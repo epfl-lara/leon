@@ -1,39 +1,54 @@
 package leon
 
+class StopwatchCollection(name: String) {
+  var acc: Long = 0L
+
+  def +=(sw: Stopwatch) = synchronized { acc += sw.getMillis }
+
+  def getMillis = acc
+
+  override def toString = "%20s: %5dms".format(name, acc)
+}
+
 /** Implements a stopwatch for profiling purposes */
-class Stopwatch(description : String, verbose : Boolean = false) {
+class Stopwatch(name: String = "Stopwatch") {
   var beginning: Long = 0L
   var end: Long = 0L
   var acc: Long = 0L
 
-  def start : Stopwatch = {
+  def start: this.type = {
     beginning = System.currentTimeMillis
+    end       = 0L
     this
   }
 
-  def stop : Double = {
-    end = System.currentTimeMillis
-    acc += (end - beginning)
-    val seconds = (end - beginning) / 1000.0
-    if (verbose) println("Stopwatch %-25s: %-3.3fs" format (description, seconds))
-    seconds
+  def stop {
+    end        = System.currentTimeMillis
+    acc       += (end - beginning)
+    beginning  = 0L
   }
 
-  def writeToSummary : Unit = {
-    Stopwatch.timeLog += 
-      (description -> (Stopwatch.timeLog.getOrElse(description, Nil) :+ ((end - beginning) / 1000.0)))
+  def getMillis: Long = {
+    if (isRunning) {
+      acc + (System.currentTimeMillis-beginning)
+    } else {
+      acc
+    }
   }
+
+  def isRunning = beginning != 0L
+
+  override def toString = "%20s: %5d%sms".format(name, getMillis, if (isRunning) "..." else "")
 }
 
-object Stopwatch {
-  val timeLog = scala.collection.mutable.Map[String, Seq[Double]]()
+object StopwatchCollections {
+  private var all = Map[String, StopwatchCollection]()
 
-  def printSummary : Unit = {
-    val toPrint = timeLog.map{case (k, v) => ("%-25s" format k) + "Total time: " + v.foldLeft(0.0){case (a, b) => a + b}}.mkString("\n")
-    val forGraph = timeLog.map{ case (k, v) => "GRAPH: " + k + " " + v.mkString(" ")}.mkString("\n")
+  def get(name: String): StopwatchCollection = all.getOrElse(name, {
+    val sw = new StopwatchCollection(name)
+    all += name -> sw
+    sw
+  })
 
-    println("Total times per stopwatch description")
-    println(toPrint)
-    println(forGraph)
-  }
+  def getAll = all
 }

@@ -60,7 +60,7 @@ object SynthesisBenchmarks extends App {
 
     val (results, solver) = pipeline.run(ctx)(file.getPath :: Nil)
 
-    val sctx = SynthesisContext(solver, new SilentReporter, new java.util.concurrent.atomic.AtomicBoolean)
+    val sctx = SynthesisContext(solver, new DefaultReporter, new java.util.concurrent.atomic.AtomicBoolean)
 
 
     for ((f, ps) <- results; p <- ps) {
@@ -99,5 +99,17 @@ object SynthesisBenchmarks extends App {
 
   println(infoLine("TOTAL", "", tTotal, nAltTotal, nSuccessTotal, nInnapTotal, nDecompTotal))
 
+  println(infoFooter)
+
+  println
+
+  val infoHeader2 : String = ". ┌────────────┐\n" +
+                             "╔═╡ Timers     ╞" + ("═" * 71) + "╗\n" +
+                             "║ └────────────┘" + (" " * 71) + "║"
+
+  println(infoHeader2)
+  for ((name, sw) <- StopwatchCollections.getAll.toSeq.sortBy(_._1)) {
+    println("║ %-70s %10s ms ║".format(name, sw.getMillis))
+  }
   println(infoFooter)
 }

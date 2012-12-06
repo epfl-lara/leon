@@ -203,68 +203,66 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
   }
 
   class UnrollingBank {
-    private val blockMap : MutableMap[(Identifier,Boolean),Set[FunctionInvocation]] = MutableMap.empty
-    private def registerBlocked(id: Identifier, pol: Boolean, fi: FunctionInvocation) : Boolean = 
-      registerBlocked(id,pol,Set(fi))
-    private def registerBlocked(id: Identifier, pol: Boolean, fis: Set[FunctionInvocation]) : Boolean = {
-      val filtered = fis.filter(i => {
-        val FunctionInvocation(fd, _) = i
-        !axiomatizedFunctions(fd)
-      })
+    // Keep which function invocation is guarded by which guard with polarity,
+    // also specify the generation of the blocker
+    private val blockersInfo : MutableMap[(Identifier,Boolean), (Int, Z3AST, Set[FunctionInvocation])] = MutableMap.empty
 
-      if(!filtered.isEmpty) {
-        val pair = (id, pol)
-        val alreadyBlocked = blockMap.get(pair)
-        alreadyBlocked match {
-          case None => blockMap(pair) = filtered
-          case Some(prev) => blockMap(pair) = prev ++ filtered
-        }
-        true
-      } else {
-        false
+    def currentZ3Blockers = blockersInfo.map(_._2._2)
+
+    def canUnroll = !blockersInfo.isEmpty
+
+    def getBlockersToUnlock: Seq[(Identifier, Boolean)] = {
+      val minGeneration = blockersInfo.values.map(_._1).min
+
+      blockersInfo.filter(_._2._1 == minGeneration).toSeq.map(_._1)
+    }
+
+    private def registerBlocker(gen: Int, id: Identifier, pol: Boolean, fis: Set[FunctionInvocation]) {
+      val pair = (id, pol)
+
+      val z3ast          = toZ3Formula(if (pol) Not(Variable(id)) else Variable(id)).get
+
+      blockersInfo.get(pair) match {
+        case Some((exGen, _, exFis)) =>
+          assert(exGen == gen, "Mixing the same pair "+pair+" with various generations "+ exGen+" and "+gen)
+
+          blockersInfo(pair) = ((gen, z3ast, fis++exFis))
+        case None =>
+          blockersInfo(pair) = ((gen, z3ast, fis))
       }
     }
 
-    def scanForNewTemplates(expr: Expr): (Seq[Expr], Seq[(Identifier, Boolean)]) = {
+    def scanForNewTemplates(expr: Expr): Seq[Expr] = {
       val tmp = FunctionTemplate.mkTemplate(expr)
 
-      val allBlocks : MutableSet[(Identifier,Boolean)] = MutableSet.empty
-
       for (((i, p), fis) <- tmp.blockers) {
-        if(registerBlocked(i, p, fis)) {
-          allBlocks += i -> p
-        }
+        registerBlocker(0, i, p, fis)
       }
 
-      (tmp.asClauses, allBlocks.toSeq)
+      tmp.asClauses
     }
 
-    private def treatFunctionInvocationSet(sVar : Identifier, pol : Boolean, fis : Set[FunctionInvocation]) : (Seq[Expr],Seq[(Identifier,Boolean)]) = {
-      val allBlocks : MutableSet[(Identifier,Boolean)] = MutableSet.empty
-      var allNewExprs : Seq[Expr] = Seq.empty
+    def unlock(id: Identifier, pol: Boolean) : Seq[Expr] = {
+      val pair = (id, pol)
+      assert(blockersInfo contains pair)
+
+      val (gen, _, fis) = blockersInfo(pair)
+      blockersInfo -= pair
+
+      var newClauses : Seq[Expr] = Seq.empty
 
       for(fi <- fis) {
-        val temp = FunctionTemplate.mkTemplate(fi.funDef)
-        val (newExprs,newBlocks) = temp.instantiate(sVar, pol, fi.args)
+        val temp                  = FunctionTemplate.mkTemplate(fi.funDef)
+        val (newExprs, newBlocks) = temp.instantiate(id, pol, fi.args)
 
         for(((i, p), fis) <- newBlocks) {
-          if(registerBlocked(i, p, fis)) {
-            allBlocks += i -> p
-          }
+          registerBlocker(gen+1, i, p, fis)
         }
-        allNewExprs = allNewExprs ++ newExprs
-      }
-      (allNewExprs, allBlocks.toSeq)
-    }
 
-    def unlock(id: Identifier, pol: Boolean) : (Seq[Expr], Seq[(Identifier,Boolean)]) = {
-      if(!blockMap.isDefinedAt((id,pol))) {
-        (Seq.empty,Seq.empty)
-      } else {
-        val copy = blockMap((id,pol))
-        blockMap((id,pol)) = Set.empty
-        treatFunctionInvocationSet(id, pol, copy)
+        newClauses ++= newExprs
       }
+
+      newClauses
     }
   }
 
@@ -320,9 +318,6 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
     var definitiveModel  : Map[Identifier,Expr] = Map.empty
     var definitiveCore   : Set[Expr] = Set.empty
 
-    // Unrolling state
-    private var blockingSet: Set[Expr] = Set.empty
-
     def assertCnstr(expression: Expr) {
       val guard = frameGuards.head
 
@@ -330,13 +325,11 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
 
       frameExpressions = (expression :: frameExpressions.head) :: frameExpressions.tail
 
-      val (newClauses, newGuards) = unrollingBank.scanForNewTemplates(expression)
- 
+      val newClauses = unrollingBank.scanForNewTemplates(expression)
+
       for (cl <- newClauses) {
         solver.assertCnstr(z3.mkImplies(guard, toZ3Formula(cl).get))
       }
-
-      blockingSet ++= newGuards.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1))
     }
 
     def getModel = {
@@ -348,6 +341,11 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
     }
 
     def fairCheck(assumptions: Set[Expr]): Option[Boolean] = {
+      val totalTime     = new Stopwatch().start
+      val luckyTime     = new Stopwatch()
+      val z3Time        = new Stopwatch()
+      val unrollingTime = new Stopwatch()
+
       foundDefinitiveAnswer = false
 
       def foundAnswer(answer : Option[Boolean], model : Map[Identifier,Expr] = Map.empty, core: Set[Expr] = Set.empty) : Unit = {
@@ -376,15 +374,18 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
       while(!foundDefinitiveAnswer && !forceStop) {
         iterationsLeft -= 1
 
-        val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.toSeq.map(toZ3Formula(_).get)
+        //val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.toSeq.map(toZ3Formula(_).get)
         // println("Blocking set : " + blockingSet)
 
         reporter.info(" - Running Z3 search...")
 
         //reporter.info("Searching in:\n"+solver.getAssertions.toSeq.mkString("\nAND\n"))
-        //reporter.info("Assumptions:\n"+(blockingSetAsZ3 ++ assumptionsAsZ3).mkString("  AND  "))
+        //reporter.info("UAssumptions:\n"+unrollingBank.currentZ3Blockers.mkString("  &&  "))
+        //reporter.info("Assumptions:\n"+(unrollingBank.currentZ3Blockers ++ assumptionsAsZ3).mkString("  AND  "))
 
-        val res = solver.checkAssumptions((blockingSetAsZ3 ++ assumptionsAsZ3) :_*)
+        z3Time.start
+        val res = solver.checkAssumptions((assumptionsAsZ3 ++ unrollingBank.currentZ3Blockers) :_*)
+        z3Time.stop
 
         reporter.info(" - Finished search with blocked literals")
 
@@ -418,8 +419,8 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
               foundAnswer(Some(true), model)
             }
 
-          case Some(false) if blockingSet.isEmpty =>
-            val core = z3CoreToCore(solver.getUnsatCore)  
+          case Some(false) if !unrollingBank.canUnroll =>
+            val core = z3CoreToCore(solver.getUnsatCore)
 
             foundAnswer(Some(false), core = core)
 
@@ -427,7 +428,7 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
           // distinction is made inside.
           case Some(false) =>
 
-            val core = z3CoreToCore(solver.getUnsatCore)  
+            val core = z3CoreToCore(solver.getUnsatCore)
 
             reporter.info("UNSAT BECAUSE: "+core.mkString(" AND "))
 
@@ -439,7 +440,9 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
                 reporter.info(" - Running search without blocked literals (w/o lucky test)")
               }
 
+              z3Time.start
               val res2 = solver.checkAssumptions(assumptionsAsZ3 : _*)
+              z3Time.stop
 
               res2 match {
                 case Some(false) =>
@@ -449,7 +452,10 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
                   //reporter.info("SAT WITHOUT Blockers")
                   if (Settings.luckyTest && !forceStop) {
                     // we might have been lucky :D
+                    luckyTime.start
                     val (wereWeLucky, cleanModel) = validateAndDeleteModel(solver.getModel, entireFormula, varsInVC)
+                    luckyTime.stop
+
                     if(wereWeLucky) {
                       foundAnswer(Some(true), cleanModel)
                     }
@@ -465,69 +471,66 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
             if(!foundDefinitiveAnswer) { 
               reporter.info("- We need to keep going.")
 
-              val toRelease : Set[Expr] = blockingSet
-
               // reporter.info(" - toRelease   : " + toRelease)
               // reporter.info(" - blockingSet : " + blockingSet)
 
-              var fixedForEver : Set[Expr] = Set.empty
+              //var fixedForEver : Set[Expr] = Set.empty
 
-              if(Settings.pruneBranches) {
-                for(ex <- blockingSet) ex match {
-                  case Not(Variable(b)) =>
-                    solver.push
-                    solver.assertCnstr(toZ3Formula(Variable(b)).get)
-                    solver.check match {
-                      case Some(false) =>
-                        //println("We had ~" + b + " in the blocking set. We now know it should stay there forever.")
-                        solver.pop(1)
-                        solver.assertCnstr(toZ3Formula(Not(Variable(b))).get)
-                        fixedForEver = fixedForEver + ex
+              //if(Settings.pruneBranches) {
+              //  z3Time.start
+              //  for(ex <- blockingSet) ex match {
+              //    case Not(Variable(b)) =>
+              //      solver.push
+              //      solver.assertCnstr(toZ3Formula(Variable(b)).get)
+              //      solver.check match {
+              //        case Some(false) =>
+              //          //println("We had ~" + b + " in the blocking set. We now know it should stay there forever.")
+              //          solver.pop(1)
+              //          solver.assertCnstr(toZ3Formula(Not(Variable(b))).get)
+              //          fixedForEver = fixedForEver + ex
 
-                      case _ =>
-                        solver.pop(1)
-                    }
+              //        case _ =>
+              //          solver.pop(1)
+              //      }
 
-                  case Variable(b) =>
-                    solver.push
-                    solver.assertCnstr(toZ3Formula(Not(Variable(b))).get)
-                    solver.check match {
-                      case Some(false) =>
-                        //println("We had " + b + " in the blocking set. We now know it should stay there forever.")
-                        solver.pop(1)
-                        solver.assertCnstr(toZ3Formula(Variable(b)).get)
-                        fixedForEver = fixedForEver + ex
+              //    case Variable(b) =>
+              //      solver.push
+              //      solver.assertCnstr(toZ3Formula(Not(Variable(b))).get)
+              //      solver.check match {
+              //        case Some(false) =>
+              //          //println("We had " + b + " in the blocking set. We now know it should stay there forever.")
+              //          solver.pop(1)
+              //          solver.assertCnstr(toZ3Formula(Variable(b)).get)
+              //          fixedForEver = fixedForEver + ex
 
-                      case _ =>
-                        solver.pop(1)
-                    }
+              //        case _ =>
+              //          solver.pop(1)
+              //      }
 
-                  case _ =>
-                    scala.sys.error("Should not have happened.")
-                }
+              //    case _ =>
+              //      scala.sys.error("Should not have happened.")
+              //  }
 
-                if(fixedForEver.size > 0) {
-                  reporter.info("- Pruned out " + fixedForEver.size + " branches.")
-                }
-              }
+              //  if(fixedForEver.size > 0) {
+              //    reporter.info("- Pruned out " + fixedForEver.size + " branches.")
+              //  }
+              //  z3Time.stop
+              //}
 
-              blockingSet = blockingSet -- toRelease
-
-              val toReleaseAsPairs : Set[(Identifier,Boolean)] = (toRelease -- fixedForEver).map(b => b match {
-                case Variable(id) => (id, true)
-                case Not(Variable(id)) => (id, false)
-                case _ => scala.sys.error("Impossible value in release set: " + b)
-              })
+              val toReleaseAsPairs = unrollingBank.getBlockersToUnlock
 
               reporter.info(" - more unrollings")
-              for((id,polarity) <- toReleaseAsPairs) {
-                val (newClauses,newBlockers) = unrollingBank.unlock(id, !polarity)
+
+              for((id, polarity) <- toReleaseAsPairs) {
+                unrollingTime.start
+                val newClauses = unrollingBank.unlock(id, polarity)
+                unrollingTime.stop
 
                 for(ncl <- newClauses) {
                   solver.assertCnstr(toZ3Formula(ncl).get)
                 }
-                blockingSet = blockingSet ++ Set(newBlockers.map(p => if(p._2) Not(Variable(p._1)) else Variable(p._1)) : _*)
               }
+
               reporter.info(" - finished unrolling")
             }
         }
@@ -537,6 +540,12 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
           foundAnswer(None)
         }
       }
+
+      totalTime.stop
+      StopwatchCollections.get("FairZ3 Total")       += totalTime
+      StopwatchCollections.get("FairZ3 Lucky Tests") += luckyTime
+      StopwatchCollections.get("FairZ3 Z3")          += z3Time
+      StopwatchCollections.get("FairZ3 Unrolling")   += unrollingTime
 
       if(forceStop) {
         None
@@ -552,4 +561,3 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
   }
 
 }
-
