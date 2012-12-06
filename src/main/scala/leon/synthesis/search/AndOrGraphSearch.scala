@@ -15,7 +15,7 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
 
     def collectFromAnd(at: g.AndTree, costs: List[Int]) {
       val newCosts = at.minCost.value :: costs
-      if (!at.isSolved) {
+      if (!at.isSolved && !at.isUnsolvable) {
         at match {
           case l: g.Leaf =>
             collectLeaf(WL(l, newCosts.reverse)) 
@@ -30,7 +30,7 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
     def collectFromOr(ot: g.OrTree, costs: List[Int]) {
       val newCosts = ot.minCost.value :: costs
 
-      if (!ot.isSolved) {
+      if (!ot.isSolved && !ot.isUnsolvable) {
         ot match {
           case l: g.Leaf =>
             collectLeaf(WL(l, newCosts.reverse))

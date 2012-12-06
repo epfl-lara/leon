@@ -142,15 +142,19 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S](val root: OT, val cos
     }
 
     def unsolvable(l: AndTree) {
-      triedAlternatives += l.task -> alternatives(l.task)
-      alternatives -= l.task
+      if (alternatives contains l.task) {
+        triedAlternatives += l.task -> alternatives(l.task)
+        alternatives -= l.task
 
 
-      if (alternatives.isEmpty) {
-        isUnsolvable = true
-        parent.unsolvable(this)
-      } else {
-        updateMin()
+        if (alternatives.isEmpty) {
+          isUnsolvable = true
+          if (parent ne null) {
+            parent.unsolvable(this)
+          }
+        } else {
+          updateMin()
+        }
       }
     }
 

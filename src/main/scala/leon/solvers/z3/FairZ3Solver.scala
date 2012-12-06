@@ -447,7 +447,7 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
                   foundAnswer(Some(false), core = z3CoreToCore(solver.getUnsatCore))
                 case Some(true) =>
                   //reporter.info("SAT WITHOUT Blockers")
-                  if (Settings.luckyTest && !forceStop && false) {
+                  if (Settings.luckyTest && !forceStop) {
                     // we might have been lucky :D
                     val (wereWeLucky, cleanModel) = validateAndDeleteModel(solver.getModel, entireFormula, varsInVC)
                     if(wereWeLucky) {
