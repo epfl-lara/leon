@@ -5,4 +5,10 @@ object Prog003 {
   def fst(t : (Int,Boolean)) : Int = t._1
 
   def snd(t : (Int,Boolean)) : Boolean = t._2
+
+  def swap(t : (Int,Boolean)) : (Boolean,Int) = {
+    val (i,b) = t
+
+    (b,i)
+  }
 }
