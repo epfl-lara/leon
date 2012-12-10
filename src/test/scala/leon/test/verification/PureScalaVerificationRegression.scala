@@ -9,7 +9,7 @@ import org.scalatest.FunSuite
 import java.io.File
 
 import TestUtils._
-
+/*
 class PureScalaVerificationRegression extends FunSuite {
   private var counter : Int = 0
   private def nextInt() : Int = {
@@ -81,3 +81,4 @@ class PureScalaVerificationRegression extends FunSuite {
     assert(reporter.warningCount === 0)
   }
 }
+*/
