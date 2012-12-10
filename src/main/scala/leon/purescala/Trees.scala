@@ -429,6 +429,8 @@ object Trees {
   /* Set expressions */
   case class EmptySet(baseType: TypeTree) extends Expr with Terminal
   case class FiniteSet(elements: Seq[Expr]) extends Expr 
+  // TODO : Figure out what evaluation order is, for this.
+  // Perhaps then rewrite as "contains".
   case class ElementOfSet(element: Expr, set: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }
