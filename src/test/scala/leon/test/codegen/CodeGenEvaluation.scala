@@ -78,11 +78,24 @@ class CodeGenEvaluation extends FunSuite {
     cp.eval(Seq())
   }
 
+  def getFunction(unit: CompilationUnit, name: String): FunDef = {
+    unit.program.definedFunctions.find(_.id.toString == name) match {
+      case Some(fd) =>
+        fd
+      case _ =>
+        throw new AssertionError("Could not find any function named '"+name+"'")
+    }
+  }
+
+  def getCaseClass(unit: CompilationUnit, name: String): CaseClassDef = {
+    unit.program.mainObject.caseClassDef(name)
+  }
+
   forFile("Prog001.scala") { out =>
     assert(out.result.isDefined === true)
     val unit = out.result.get
 
-    val fact = unit.program.definedFunctions.find(_.id.toString == "factorial").get
+    val fact = getFunction(unit, "factorial")
 
     val expr1 = Plus(IntLiteral(5), IntLiteral(42))
     assert(javaEval(unit)(expr1) === IntLiteral(47))
@@ -90,5 +103,22 @@ class CodeGenEvaluation extends FunSuite {
 
     val expr2 = Plus(FunctionInvocation(fact, Seq(IntLiteral(5))), IntLiteral(42))
     assert(javaEval(unit)(expr2) === IntLiteral(162))
+
+    //Type error
+    val expr3 = FunctionInvocation(fact, Seq(BooleanLiteral(false)))
+    assert(javaEval(unit)(expr3) === IntLiteral(1))
   }
+
+  forFile("Prog002.scala") { out =>
+    assert(out.result.isDefined === true)
+    val unit = out.result.get
+
+    val ccNil  = getCaseClass(unit, "Nil")
+    val ccCons = getCaseClass(unit, "Cons")
+    val cons   = getFunction(unit, "conscons")
+
+    val expr1 = FunctionInvocation(cons, Seq(CaseClass(ccNil, Seq())))
+    assert(javaEval(unit)(expr1) === BooleanLiteral(false))
+  }
+
 }

@@ -11,4 +11,6 @@ object Prog002 {
     case Nil() => 0
     case Cons(_, xs) => 1 + size(xs)
   }
+
+  def conscons(l: List): List = Cons(0, Cons(1, l))
 }
