@@ -106,7 +106,7 @@ class CodeGenEvaluation extends FunSuite {
 
     //Type error
     val expr3 = FunctionInvocation(fact, Seq(BooleanLiteral(false)))
-    assert(javaEval(unit)(expr3) === IntLiteral(1))
+    assert(javaEval(unit)(expr3) != IntLiteral(1), "This should be a type error")
   }
 
   forFile("Prog002.scala") { out =>
