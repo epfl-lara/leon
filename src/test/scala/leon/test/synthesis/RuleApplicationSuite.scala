@@ -55,31 +55,7 @@ class SynthesisSuite extends FunSuite {
     counter
   }
 
-
-  def testFile(file: String): (((Solver, FunDef, Problem) => Unit) => Unit) = testFile{
-    val res = this.getClass.getClassLoader.getResource(file)
-
-    if(res == null || res.getProtocol != "file") {
-      assert(false, "Tests have to be run from within `sbt`, for otherwise " +
-                    "the test files will be harder to access (and we dislike that).")
-    }
-
-    new File(res.toURI)
-  }
-
-  def testFile(file: File)(block: (Solver, FunDef, Problem) => Unit) {
-    val fullName = file.getPath()
-    val start = fullName.indexOf("synthesis")
-
-    val displayName = if(start != -1) {
-      fullName.substring(start, fullName.length)
-    } else {
-      fullName
-    }
-
-    assert(file.exists && file.isFile && file.canRead,
-           "Benchmark [%s] is not a readable file".format(displayName))
-
+  def forProgram(title: String)(content: String)(block: (Solver, FunDef, Problem) => Unit) {
 
     val ctx = LeonContext(
       settings = Settings(
@@ -87,18 +63,18 @@ class SynthesisSuite extends FunSuite {
         xlang     = false,
         verify    = false
       ),
-      files = List(file),
+      files = List(),
       reporter = new SilentReporter
     )
 
     val opts = SynthesizerOptions()
 
-    val pipeline = leon.plugin.ExtractionPhase andThen ExtractProblemsPhase
+    val pipeline = leon.plugin.TemporaryInputPhase andThen leon.plugin.ExtractionPhase andThen ExtractProblemsPhase
 
-    val (results, solver) = pipeline.run(ctx)(file.getPath :: Nil)
+    val (results, solver) = pipeline.run(ctx)((content, Nil))
 
     for ((f, ps) <- results; p <- ps) {
-      test("Synthesizing %3d: %-20s [%s]".format(nextInt(), f.id.toString, displayName)) {
+      test("Synthesizing %3d: %-20s [%s]".format(nextInt(), f.id.toString, title)) {
         block(solver, f, p)
       }
     }
@@ -123,8 +99,28 @@ class SynthesisSuite extends FunSuite {
   }
 
 
-  testFile("synthesis/Cegis1.scala") {
-    case (solver, fd, p) => 
+  forProgram("Cegis 1")(
+    """
+import scala.collection.immutable.Set
+import leon.Annotations._
+import leon.Utils._
+
+object Injection {
+  sealed abstract class List
+  case class Cons(tail: List) extends List
+  case class Nil() extends List
+
+  // proved with unrolling=0
+  def size(l: List) : Int = (l match {
+      case Nil() => 0
+      case Cons(t) => 1 + size(t)
+  }) ensuring(res => res >= 0)
+
+  def simple(in: List) = choose{out: List => size(out) == size(in) }
+}
+    """
+  ) {
+    case (solver, fd, p) =>
       val sctx = SynthesisContext(solver, new SilentReporter, new java.util.concurrent.atomic.AtomicBoolean)
 
       assertRuleSuccess(sctx, rules.CEGIS.instantiateOn(sctx, p))
