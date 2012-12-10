@@ -2,15 +2,12 @@ package leon.test
 package codegen
 
 import leon._
-import leon.plugin.ExtractionPhase
-import leon.codegen.CodeGenPhase
+import leon.plugin.{TemporaryInputPhase, ExtractionPhase}
 import leon.codegen.CompilationUnit
 import leon.purescala.Definitions._
 import leon.purescala.TypeTrees.TypeErrorException
 
 import org.scalatest.FunSuite
-
-import java.io.File
 
 import TestUtils._
 
@@ -35,18 +32,8 @@ class CodeGenEvaluation extends FunSuite {
   private def mkPipeline : Pipeline[List[String], Option[CompilationUnit]] =
     ExtractionPhase andThen CodeTestPhase
 
-  private def mkTest(file : File)(block: Output => Unit) = {
-    val fullName = file.getPath()
-    val start = fullName.indexOf("regression")
-    val displayName = if(start != -1) {
-      fullName.substring(start, fullName.length)
-    } else {
-      fullName
-    }
-
-    test("PureScala program %3d: [%s]".format(nextInt(), displayName)) {
-      assert(file.exists && file.isFile && file.canRead,
-             "Benchmark [%s] is not a readable file".format(displayName))
+  private def forProgram(name: String)(content: String)(block: Output => Unit) = {
+    test("PureScala program %3d: [%s]".format(nextInt(), name)) {
 
       val ctx = LeonContext(
         settings = Settings(
@@ -54,21 +41,15 @@ class CodeGenEvaluation extends FunSuite {
           xlang     = false,
           verify    = false
         ),
-        files = List(file),
+        files = List(),
         reporter = new SilentReporter
       )
 
-      val pipeline = mkPipeline
+      val pipeline = TemporaryInputPhase andThen ExtractionPhase andThen CodeTestPhase
 
-      val result = pipeline.run(ctx)(file.getPath :: Nil)
+      val result = pipeline.run(ctx)((content, Nil))
 
       block(Output(result, ctx.reporter))
-    }
-  }
-
-  private def forFile(f: String)(block : Output => Unit) {
-    for (f <- filesInResourceDir("codegen/", _.endsWith(f))) {
-      mkTest(f)(block)
     }
   }
 
@@ -92,7 +73,28 @@ class CodeGenEvaluation extends FunSuite {
     unit.program.mainObject.caseClassDef(name)
   }
 
-  forFile("Prog001.scala") { out =>
+  forProgram("Simple Evaluation")(
+    """
+object Prog001 {
+  def fortyTwo() = 42
+
+  def plus(x : Int, y : Int) = x + y
+
+  def double(x : Int) : Int = {
+    val a = x
+    a + a
+  }
+
+  def implies(a : Boolean, b : Boolean) : Boolean = !a || b
+
+  def abs(x : Int) : Int = {
+    if(x < 0) -x else x
+  }
+
+  def factorial(i : Int) : Int = if(i <= 1) 1 else (i * factorial(i - 1))
+}
+    """
+  ){ out =>
     assert(out.result.isDefined === true)
     val unit = out.result.get
 
@@ -112,7 +114,26 @@ class CodeGenEvaluation extends FunSuite {
     }
   }
 
-  forFile("Prog002.scala") { out =>
+  forProgram("Case Classes Evaluation")(
+    """
+object Prog002 {
+  sealed abstract class List
+  case class Nil() extends List
+  case class Cons(head : Int, tail : List) extends List
+
+  def isNil(l : List) : Boolean = {
+    l == Nil()
+  }
+
+  def size(l : List) : Int = l match {
+    case Nil() => 0
+    case Cons(_, xs) => 1 + size(xs)
+  }
+
+  def conscons(l: List): List = Cons(0, Cons(1, l))
+}
+    """
+  ){ out =>
     assert(out.result.isDefined === true)
     val unit = out.result.get
 
