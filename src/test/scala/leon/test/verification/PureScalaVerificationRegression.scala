@@ -31,9 +31,9 @@ class PureScalaVerificationRegression extends FunSuite {
       fullName
     }
 
-    test("PureScala program %3d: [%s]".format(nextInt(), displayName)) {
+    test("%3d: %s".format(nextInt(), displayName)) {
       assert(file.exists && file.isFile && file.canRead,
-             "Benchmark [%s] is not a readable file".format(displayName))
+             "Benchmark %s is not a readable file".format(displayName))
 
       val ctx = LeonContext(
         settings = Settings(

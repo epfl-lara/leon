@@ -33,7 +33,7 @@ class CodeGenRegression extends FunSuite {
       fullName
     }
 
-    test("PureScala program %3d: [%s]".format(nextInt(), displayName)) {
+    test("%3d: %s".format(nextInt(), displayName)) {
       assert(file.exists && file.isFile && file.canRead,
              "Benchmark [%s] is not a readable file".format(displayName))
       val ctx = LeonContext(
@@ -55,16 +55,14 @@ class CodeGenRegression extends FunSuite {
   }
 
   private def forEachFileIn(cat : String)(block : Output=>Unit) {
-    val fs = filesInResourceDir(
-      "regression/codegen/" + cat,
-      _.endsWith(".scala"))
+    val fs = filesInResourceDir(cat, _.endsWith(".scala"))
 
     for(f <- fs) {
       mkTest(f)(block)
     }
   }
   
-  forEachFileIn("purescala") { output =>
+  forEachFileIn("regression/codegen/") { output =>
     val Output(result, reporter) = output
     assert(result.successful, "Compilation should be successful.")
     assert(reporter.errorCount === 0)
