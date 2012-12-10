@@ -5,7 +5,9 @@ import scala.tools.nsc._
 import scala.tools.nsc.plugins._
 
 import purescala.Definitions._
-import purescala.Trees.{Block => PBlock, _}
+import purescala.Trees._
+import xlang.Trees.{Block => PBlock, _}
+import xlang.TreeOps._
 import purescala.TypeTrees._
 import purescala.Common._
 import purescala.TreeOps._

@@ -2,6 +2,7 @@ package leon
 package purescala
 
 import Trees._
+import xlang.Trees._
 
 object Extractors {
   import Common._
@@ -74,6 +75,7 @@ object Extractors {
       case Concat(t1,t2) => Some((t1,t2,Concat))
       case ListAt(t1,t2) => Some((t1,t2,ListAt))
       case Let(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => Let(binders, e, body)))
+      case LetVar(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => LetVar(binders, e, body)))
       case LetTuple(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => LetTuple(binders, e, body)))
       case wh@While(t1, t2) => Some((t1,t2, (t1, t2) => While(t1, t2).setInvariant(wh.invariant).setPosInfo(wh)))
       case ex: BinaryExtractable => ex.extract

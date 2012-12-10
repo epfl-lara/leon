@@ -57,14 +57,6 @@ object TreeOps {
           else
             l
         }
-        case l @ LetVar(i,e,b) => {
-          val re = rec(e)
-          val rb = rec(b)
-          if(re != e || rb != b)
-            LetVar(i, re, rb).setType(l.getType)
-          else
-            l
-        }
         case l @ LetDef(fd, b) => {
           //TODO, not sure, see comment for the next LetDef
           fd.body = fd.body.map(rec(_))
@@ -180,15 +172,6 @@ object TreeOps {
         val rb = rec(b)
         applySubst(if(re != e || rb != b) {
           LetTuple(ids,re,rb).setType(l.getType)
-        } else {
-          l
-        })
-      }
-      case l @ LetVar(i,e,b) => {
-        val re = rec(e)
-        val rb = rec(b)
-        applySubst(if(re != e || rb != b) {
-          LetVar(i,re,rb).setType(l.getType)
         } else {
           l
         })
@@ -334,7 +317,6 @@ object TreeOps {
   def treeCatamorphism[A](convert: Expr=>A, combine: (A,A)=>A, compute: (Expr,A)=>A, expression: Expr) : A = {
     def rec(expr: Expr) : A = expr match {
       case l @ Let(_, e, b) => compute(l, combine(rec(e), rec(b)))
-      case l @ LetVar(_, e, b) => compute(l, combine(rec(e), rec(b)))
       case l @ LetDef(fd, b) => {//TODO, still not sure about the semantic
         val exprs: Seq[Expr] = fd.precondition.toSeq ++ fd.body.toSeq ++ fd.postcondition.toSeq ++ Seq(b)
         compute(l, exprs.map(rec(_)).reduceLeft(combine))
@@ -356,70 +338,6 @@ object TreeOps {
     }
 
     rec(expression)
-  }
-
-  def flattenBlocks(expr: Expr): Expr = {
-    def applyToTree(expr: Expr): Option[Expr] = expr match {
-      case Block(exprs, last) => {
-        val nexprs = (exprs :+ last).flatMap{
-          case Block(es2, el) => es2 :+ el
-          case UnitLiteral => Seq()
-          case e2 => Seq(e2)
-        }
-        val fexpr = nexprs match {
-          case Seq() => UnitLiteral
-          case Seq(e) => e
-          case es => Block(es.init, es.last).setType(es.last.getType)
-        }
-        Some(fexpr)
-      }
-      case _ => None
-    }
-    searchAndReplaceDFS(applyToTree)(expr)
-  }
-
-  //checking whether the expr is pure, that is do not contains any non-pure construct: assign, while, blocks, array, ...
-  //this is expected to be true when entering the "backend" of Leon
-  def isPure(expr: Expr): Boolean = {
-    def convert(t: Expr) : Boolean = t match {
-      case Block(_, _) => false
-      case Assignment(_, _) => false
-      case While(_, _) => false
-      case LetVar(_, _, _) => false
-      case LetDef(_, _) => false
-      case ArrayUpdate(_, _, _) => false
-      case ArrayMake(_) => false
-      case ArrayClone(_) => false
-      case Epsilon(_) => false
-      case _ => true
-    }
-    def combine(b1: Boolean, b2: Boolean) = b1 && b2
-    def compute(e: Expr, b: Boolean) = e match {
-      case Block(_, _) => false
-      case Assignment(_, _) => false
-      case While(_, _) => false
-      case LetVar(_, _, _) => false
-      case LetDef(_, _) => false
-      case ArrayUpdate(_, _, _) => false
-      case ArrayMake(_) => false
-      case ArrayClone(_) => false
-      case Epsilon(_) => false
-      case _ => b
-    }
-    treeCatamorphism(convert, combine, compute, expr)
-  }
-
-  def containsEpsilon(expr: Expr): Boolean = {
-    def convert(t : Expr) : Boolean = t match {
-      case (l : Epsilon) => true
-      case _ => false
-    }
-    def combine(c1 : Boolean, c2 : Boolean) : Boolean = c1 || c2
-    def compute(t : Expr, c : Boolean) = t match {
-      case (l : Epsilon) => true
-      case _ => c
-    }
-    treeCatamorphism(convert, combine, compute, expr)
   }
 
   def containsLetDef(expr: Expr): Boolean = {
@@ -526,7 +444,8 @@ object TreeOps {
 
   def allIdentifiers(expr: Expr) : Set[Identifier] = expr match {
     case l @ Let(binder, e, b) => allIdentifiers(e) ++ allIdentifiers(b) + binder
-    case l @ LetVar(binder, e, b) => allIdentifiers(e) ++ allIdentifiers(b) + binder
+    //TODO: Cannot have LetVar here, should not be visible at this point
+    //case l @ LetVar(binder, e, b) => allIdentifiers(e) ++ allIdentifiers(b) + binder
     case l @ LetDef(fd, b) => allIdentifiers(fd.getBody) ++ allIdentifiers(b) + fd.id
     case n @ NAryOperator(args, _) =>
       (args map (TreeOps.allIdentifiers(_))).foldLeft(Set[Identifier]())((a, b) => a ++ b)

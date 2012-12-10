@@ -1,5 +1,7 @@
 package leon.purescala
 
+import leon.xlang.Trees._
+
 /** This pretty-printer only print valid scala syntax */
 object ScalaPrinter {
   import Common._

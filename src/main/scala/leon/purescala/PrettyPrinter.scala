@@ -6,6 +6,7 @@ package purescala
 object PrettyPrinter {
   import Common._
   import Trees._
+  import xlang.Trees._
   import TypeTrees._
   import Definitions._
 

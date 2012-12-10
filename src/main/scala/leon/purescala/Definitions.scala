@@ -56,7 +56,7 @@ object Definitions {
     def isCatamorphism(f1: FunDef) = mainObject.isCatamorphism(f1)
     def caseClassDef(name: String) = mainObject.caseClassDef(name)
     def allIdentifiers : Set[Identifier] = mainObject.allIdentifiers + id
-    def isPure: Boolean = definedFunctions.forall(fd => fd.body.forall(TreeOps.isPure) && fd.precondition.forall(TreeOps.isPure) && fd.postcondition.forall(TreeOps.isPure))
+    //def isPure: Boolean = definedFunctions.forall(fd => fd.body.forall(TreeOps.isPure) && fd.precondition.forall(TreeOps.isPure) && fd.postcondition.forall(TreeOps.isPure))
 
     def writeScalaFile(filename: String) {
       import java.io.FileWriter

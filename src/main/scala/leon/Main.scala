@@ -107,6 +107,8 @@ object Main {
         settings = settings.copy(synthesis = false, xlang = false, verify = false)
       case LeonFlagOption("help") =>
         displayHelp(reporter)
+      case LeonFlagOption("noLuckyTests") =>
+        Settings.luckyTest = false
       case _ =>
     }
 

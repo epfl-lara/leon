@@ -18,30 +18,10 @@ object Trees {
     self: Expr =>
   }
 
-  case class Block(exprs: Seq[Expr], last: Expr) extends Expr {
-    //val t = last.getType
-    //if(t != Untyped)
-     // setType(t)
-  }
-
-  case class Assignment(varId: Identifier, expr: Expr) extends Expr with FixedType {
-    val fixedType = UnitType
-  }
-  case class While(cond: Expr, body: Expr) extends Expr with FixedType with ScalacPositional {
-    val fixedType = UnitType
-    var invariant: Option[Expr] = None
-
-    def getInvariant: Expr = invariant.get
-    def setInvariant(inv: Expr) = { invariant = Some(inv); this }
-    def setInvariant(inv: Option[Expr]) = { invariant = inv; this }
-  }
-
   /* This describes computational errors (unmatched case, taking min of an
    * empty set, division by zero, etc.). It should always be typed according to
    * the expected type. */
   case class Error(description: String) extends Expr with Terminal with ScalacPositional
-
-  case class Epsilon(pred: Expr) extends Expr with ScalacPositional
 
   case class Choose(vars: List[Identifier], pred: Expr) extends Expr with ScalacPositional with UnaryExtractable {
     def extract = Some((pred, (e: Expr) => Choose(vars, e).setPosInfo(this)))
@@ -49,13 +29,6 @@ object Trees {
 
   /* Like vals */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
-    binder.markAsLetBinder
-    val et = body.getType
-    if(et != Untyped)
-      setType(et)
-  }
-  //same as let, buf for mutable variable declaration
-  case class LetVar(binder: Identifier, value: Expr, body: Expr) extends Expr {
     binder.markAsLetBinder
     val et = body.getType
     if(et != Untyped)
@@ -94,8 +67,6 @@ object Trees {
   case class TupleSelect(tuple: Expr, index: Int) extends Expr {
     assert(index >= 1)
   }
-
-  case class Waypoint(i: Int, expr: Expr) extends Expr
 
   object MatchExpr {
     def apply(scrutinee: Expr, cases: Seq[MatchCase]) : MatchExpr = {
@@ -359,8 +330,6 @@ object Trees {
   // represents the result in post-conditions
   case class ResultVariable() extends Expr with Terminal
 
-  case class EpsilonVariable(pos: (Int, Int)) extends Expr with Terminal
-
   /* Literals */
   sealed abstract class Literal[T] extends Expr with Terminal {
     val value: T
@@ -476,11 +445,6 @@ object Trees {
   case class ArrayFill(length: Expr, defaultValue: Expr) extends Expr
   case class ArrayMake(defaultValue: Expr) extends Expr
   case class ArraySelect(array: Expr, index: Expr) extends Expr with ScalacPositional
-  //the difference between ArrayUpdate and ArrayUpdated is that the former has a side effect while the latter is the functional version
-  //ArrayUpdate should be eliminated soon in the analysis while ArrayUpdated is kept all the way to the backend
-  case class ArrayUpdate(array: Expr, index: Expr, newValue: Expr) extends Expr with ScalacPositional with FixedType {
-    val fixedType = UnitType
-  }
   case class ArrayUpdated(array: Expr, index: Expr, newValue: Expr) extends Expr with ScalacPositional
   case class ArrayLength(array: Expr) extends Expr with FixedType {
     val fixedType = Int32Type

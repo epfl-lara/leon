@@ -2,6 +2,7 @@ package leon.testgen
 
 import leon.purescala.Definitions._
 import leon.purescala.Trees._
+import leon.xlang.Trees._
 import leon.purescala.TreeOps._
 import leon.purescala.Extractors._
 import leon.purescala.TypeTrees._
