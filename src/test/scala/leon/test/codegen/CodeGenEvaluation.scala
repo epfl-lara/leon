@@ -118,7 +118,7 @@ class CodeGenEvaluation extends FunSuite {
     val cons   = getFunction(unit, "conscons")
 
     val expr1 = FunctionInvocation(cons, Seq(CaseClass(ccNil, Seq())))
-    assert(javaEval(unit)(expr1) === BooleanLiteral(false))
+    assert(javaEval(unit)(expr1) === CaseClass(ccCons, Seq(IntLiteral(0), CaseClass(ccCons, Seq(IntLiteral(1), CaseClass(ccNil, Seq()))))))
   }
 
 }
