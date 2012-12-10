@@ -145,4 +145,48 @@ object Prog002 {
     assert(javaEval(unit)(expr1) === CaseClass(ccCons, Seq(IntLiteral(0), CaseClass(ccCons, Seq(IntLiteral(1), CaseClass(ccNil, Seq()))))))
   }
 
+  forProgram("Set Evaluation")(
+    """
+object Sets {
+  def s0() : Set[Int] = Set()
+  def s1() : Set[Int] = Set(1, 2, 3)
+  def s2() : Set[Int] = Set(2, 4, 6)
+  def s3() : Set[Int] = s1() ++ s2()
+  def s4() : Set[Int] = s2() ++ s1()
+  def s5() : Set[Int] = s1() ** s2()
+  def s6() : Set[Int] = s2() ** s1()
+  def s7() : Set[Int] = s1() -- s2()
+  def s8() : Set[Int] = s2() -- s1()
+}
+    """
+  ){ out =>
+    assert(out.result.isDefined === true)
+    val unit = out.result.get
+
+    def asIntSet(e : Expr) : Option[Set[Int]] = e match {
+      case EmptySet(_) => Some(Set.empty)
+      case FiniteSet(es) =>
+        val ois = es.map(_ match {
+          case IntLiteral(v) => Some(v)
+          case _ => None
+        })
+        if(ois.forall(_.isDefined))
+          Some(ois.map(_.get).toSet)
+        else
+          None
+      case _ => None
+    }
+
+    def eval(f : String) : Option[Set[Int]] = asIntSet(javaEval(unit)(FunctionInvocation(getFunction(unit, f), Seq())))
+
+    assert(eval("s0") === Some(Set.empty[Int]))
+    assert(eval("s1") === Some(Set(1, 2, 3)))
+    assert(eval("s2") === Some(Set(2, 4, 6)))
+    assert(eval("s3") === Some(Set(1, 2, 3, 4, 6)))
+    assert(eval("s4") === Some(Set(2, 4, 6, 1, 3)))
+    assert(eval("s5") === Some(Set(2)))
+    assert(eval("s6") === Some(Set(2)))
+    assert(eval("s7") === Some(Set(1, 3)))
+    assert(eval("s8") === Some(Set(4, 6)))
+  }
 }
