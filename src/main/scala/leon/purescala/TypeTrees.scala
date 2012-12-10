@@ -23,6 +23,26 @@ object TypeTrees {
     }
   }
 
+  class TypeErrorException(msg: String) extends Exception(msg)
+
+  object TypeErrorException {
+    def apply(obj: Expr, exp: List[TypeTree]): TypeErrorException = {
+      new TypeErrorException("Type error: "+obj+", expected: "+exp.mkString(" or ")+", found "+obj.getType)
+    }
+
+    def apply(obj: Expr, exp: TypeTree): TypeErrorException = {
+      apply(obj, List(exp))
+    }
+  }
+
+  def typeCheck(obj: Expr, exps: TypeTree*) {
+    val res = exps.exists(e => isSubtypeOf(obj.getType, e))
+
+    if (!res) {
+      throw TypeErrorException(obj, exps.toList)
+    }
+  }
+
   trait FixedType extends Typed {
     self =>
 

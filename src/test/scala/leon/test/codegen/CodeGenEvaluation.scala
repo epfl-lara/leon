@@ -6,6 +6,7 @@ import leon.plugin.ExtractionPhase
 import leon.codegen.CodeGenPhase
 import leon.codegen.CompilationUnit
 import leon.purescala.Definitions._
+import leon.purescala.TypeTrees.TypeErrorException
 
 import org.scalatest.FunSuite
 
@@ -105,7 +106,7 @@ class CodeGenEvaluation extends FunSuite {
     assert(javaEval(unit)(expr2) === IntLiteral(162))
 
     //Type error
-    intercept[RuntimeException] {
+    intercept[TypeErrorException] {
       val expr3 = FunctionInvocation(fact, Seq(BooleanLiteral(false)))
       assert(javaEval(unit)(expr3) != IntLiteral(1), "This should be a type error")
     }
