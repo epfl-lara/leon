@@ -78,6 +78,12 @@ object Trees {
   /* Control flow */
   case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr with FixedType with ScalacPositional {
     val fixedType = funDef.returnType
+
+    funDef.args.zip(args).foreach{ case (a, c) =>
+      if (!isSubtypeOf(c.getType, a.tpe)) {
+        sys.error("Invalid invocation of "+funDef.id+": argument "+a.id+":"+a.tpe+" was passed "+c+":"+c.getType)
+      }
+    }
   }
   case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr 
 
