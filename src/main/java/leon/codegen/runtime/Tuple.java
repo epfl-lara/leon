@@ -20,4 +20,8 @@ public final class Tuple {
     }
     return this.elements[index];
   }
+
+  public final int getArity() {
+    return this.arity;
+  }
 }
