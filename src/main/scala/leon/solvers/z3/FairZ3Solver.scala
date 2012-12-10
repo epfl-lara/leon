@@ -433,7 +433,7 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
             reporter.info("UNSAT BECAUSE: "+core.mkString(" AND "))
 
             if (!forceStop) {
-              if (Settings.luckyTest && false) {
+              if (Settings.luckyTest && false) { //TODO: something with false
                 // we need the model to perform the additional test
                 reporter.info(" - Running search without blocked literals (w/ lucky test)")
               } else {
@@ -450,7 +450,7 @@ class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ
                   foundAnswer(Some(false), core = z3CoreToCore(solver.getUnsatCore))
                 case Some(true) =>
                   //reporter.info("SAT WITHOUT Blockers")
-                  if (Settings.luckyTest && !forceStop) {
+                  if (Settings.luckyTest && !forceStop) { //TODO: still with the above "false"
                     // we might have been lucky :D
                     luckyTime.start
                     val (wereWeLucky, cleanModel) = validateAndDeleteModel(solver.getModel, entireFormula, varsInVC)
