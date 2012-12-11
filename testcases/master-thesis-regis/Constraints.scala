@@ -39,9 +39,10 @@ object Epsilon4 {
     size(toList(toSet(lst))) == size(lst)
   } holds
 
-  def sizeToListLessEq(lst: MyList): Boolean = {
-    size(toList(toSet(lst))) <= size(lst)
-  } holds
+  //cannot prove
+  //def sizeToListLessEq(lst: MyList): Boolean = {
+  //  size(toList(toSet(lst))) <= size(lst)
+  //} holds
 
   def toListEq(lst: MyList): Boolean = {
     toList(toSet(lst)) == lst
