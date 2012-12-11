@@ -1,0 +1,32 @@
+@(exs: List[examples.Example], default: examples.Example)
+
+@main("Leon Online") {
+  <div id="allcontent">
+    <div id="title" class="contentbox"></div>
+
+    <div id="contact">
+      <p>
+        <i>Leon</i> is developed by the <a alt="LARA Group EPFL" href="http://lara.epfl.ch">LARA</a> group at <a href="http://www.epfl.ch">EPFL</a>. A good starting point is to copy-paste the source from an example in <a alt="Leon Examples" href="http://lara.epfl.ch/~psuter/leonexamples/">this list</a> and to click the <i>Verify&nbsp;!</i> button.
+      </p>
+    </div>
+    <div id="leonmain" class="contentbox">
+      <form id="leoninput" method="POST" action="">
+        <div id="codecolumn">
+          <div id="codebox">@default.code</div>
+          <input type="submit" id="askbutton" value="Ask Leon !">
+          <textarea id="consolebox"></textarea>
+        </div>
+        <div id="selectcolumn">
+          <h3>Load an Example:</h3>
+          <div>We provide you with a list of code-examples, select one from the list below to load it:</div>
+          <select id="example-loader" name="codeexample" onchange="loadExample();">
+            <option value="">-- Load Example --</option>
+            @exs.zipWithIndex.map{ case (ex, i) => 
+            <option value="@i">@ex.title</option>
+            }
+          </select>
+        </div>
+      </form>
+    </div>
+  </div>
+}
