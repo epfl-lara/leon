@@ -2,13 +2,8 @@ package leon
 
 import purescala.Definitions.Program
 
-abstract class LeonPhase[-F, +T] extends Pipeline[F, T] {
-  val name: String
-  val description: String
-
-  def definedOptions: Set[LeonOptionDef] = Set()
-
-  def run(ac: LeonContext)(v: F): T
+trait LeonPhase[-F, +T] extends Pipeline[F, T] with LeonComponent {
+  // def run(ac: LeonContext)(v: F): T
 }
 
 abstract class TransformationPhase extends LeonPhase[Program, Program] {
