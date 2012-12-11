@@ -108,43 +108,6 @@ object Extractors {
 
            MatchExpr(es(0), newcases)
            }))
-      case LetDef(fd, body) => 
-        fd.body match {
-          case Some(b) =>
-            (fd.precondition, fd.postcondition) match {
-              case (None, None) =>
-                  Some((Seq(b, body), (as: Seq[Expr]) => {
-                    val nfd = new FunDef(fd.id, fd.returnType, fd.args)
-                    nfd.body = Some(as(0))
-                    LetDef(nfd, as(1))
-                  }))
-              case (Some(pre), None) =>
-                  Some((Seq(b, body, pre), (as: Seq[Expr]) => {
-                    val nfd = new FunDef(fd.id, fd.returnType, fd.args)
-                    nfd.body = Some(as(0))
-                    nfd.precondition = Some(as(2))
-                    LetDef(nfd, as(1))
-                  }))
-              case (None, Some(post)) =>
-                  Some((Seq(b, body, post), (as: Seq[Expr]) => {
-                    val nfd = new FunDef(fd.id, fd.returnType, fd.args)
-                    nfd.body = Some(as(0))
-                    nfd.postcondition = Some(as(2))
-                    LetDef(nfd, as(1))
-                  }))
-              case (Some(pre), Some(post)) =>
-                  Some((Seq(b, body, pre, post), (as: Seq[Expr]) => {
-                    val nfd = new FunDef(fd.id, fd.returnType, fd.args)
-                    nfd.body = Some(as(0))
-                    nfd.precondition = Some(as(2))
-                    nfd.postcondition = Some(as(3))
-                    LetDef(nfd, as(1))
-                  }))
-            }
-            
-          case _ =>
-            None
-        }
       case (ex: NAryExtractable) => ex.extract
       case _ => None
     }

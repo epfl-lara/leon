@@ -88,15 +88,6 @@ object PrettyPrinter {
       sb.append(")")
       sb
     }
-    case LetDef(fd,e) => {
-      sb.append("\n")
-      pp(fd, sb, lvl+1)
-      sb.append("\n")
-      sb.append("\n")
-      ind(sb, lvl)
-      pp(e, sb, lvl)
-      sb
-    }
     case And(exprs) => ppNary(sb, exprs, "(", " \u2227 ", ")", lvl)            // \land
     case Or(exprs) => ppNary(sb, exprs, "(", " \u2228 ", ")", lvl)             // \lor
     case Not(Equals(l, r)) => ppBinary(sb, l, r, " \u2260 ", lvl)    // \neq
@@ -358,13 +349,17 @@ object PrettyPrinter {
       nsb
     }
 
-    case (expr: PrettyPrintable) => expr.pp(sb, lvl, pp)
+    case (expr: PrettyPrintable) => expr.pp(sb, lvl, pp, pp, pp)
 
     case _ => sb.append("Expr?")
   }
 
   trait PrettyPrintable {
-    def pp(sb: StringBuffer, lvl: Int, rp: (Expr, StringBuffer, Int) => StringBuffer): StringBuffer
+    def pp(sb: StringBuffer, lvl: Int, 
+      ep: (Expr, StringBuffer, Int) => StringBuffer, 
+      tp: (TypeTree, StringBuffer, Int) => StringBuffer,
+      dp: (Definition, StringBuffer, Int) => StringBuffer
+    ): StringBuffer
   }
 
   // TYPE TREES

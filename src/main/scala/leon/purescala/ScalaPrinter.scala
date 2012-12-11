@@ -1,7 +1,5 @@
 package leon.purescala
 
-import leon.xlang.Trees._
-
 /** This pretty-printer only print valid scala syntax */
 object ScalaPrinter {
   import Common._
@@ -98,27 +96,6 @@ object ScalaPrinter {
       sb.append("}\n")
       ind(sb, lvl)
     }
-    case LetVar(b,d,e) => {
-      sb.append("locally {\n")
-      ind(sb, lvl+1)
-      sb.append("var " + b + " = ")
-      pp(d, sb, lvl+1)
-      sb.append("\n")
-      ind(sb, lvl+1)
-      pp(e, sb, lvl+1)
-      sb.append("\n")
-      ind(sb, lvl)
-      sb.append("}\n")
-      ind(sb, lvl)
-    }
-    case LetDef(fd,e) => {
-      sb.append("\n")
-      pp(fd, sb, lvl+1)
-      sb.append("\n")
-      sb.append("\n")
-      ind(sb, lvl)
-      pp(e, sb, lvl)
-    }
     case And(exprs) => ppNary(sb, exprs, "(", " && ", ")", lvl)            // \land
     case Or(exprs) => ppNary(sb, exprs, "(", " || ", ")", lvl)             // \lor
     case Not(Equals(l, r)) => ppBinary(sb, l, r, " != ", lvl)    // \neq
@@ -130,45 +107,12 @@ object ScalaPrinter {
     case BooleanLiteral(v) => sb.append(v)
     case StringLiteral(s) => sb.append("\"" + s + "\"")
     case UnitLiteral => sb.append("()")
-    case Block(exprs, last) => {
-      sb.append("{\n")
-      (exprs :+ last).foreach(e => {
-        ind(sb, lvl+1)
-        pp(e, sb, lvl+1)
-        sb.append("\n")
-      })
-      ind(sb, lvl)
-      sb.append("}\n")
-    }
-    case Assignment(lhs, rhs) => ppBinary(sb, lhs.toVariable, rhs, " = ", lvl)
-    case wh@While(cond, body) => {
-      wh.invariant match {
-        case Some(inv) => {
-          sb.append("\n")
-          ind(sb, lvl)
-          sb.append("@invariant: ")
-          pp(inv, sb, lvl)
-          sb.append("\n")
-          ind(sb, lvl)
-        }
-        case None =>
-      }
-      sb.append("while(")
-      pp(cond, sb, lvl)
-      sb.append(")\n")
-      ind(sb, lvl+1)
-      pp(body, sb, lvl+1)
-      sb.append("\n")
-    }
 
     case t@Tuple(exprs) => ppNary(sb, exprs, "(", ", ", ")", lvl)
     case s@TupleSelect(t, i) => {
       pp(t, sb, lvl)
       sb.append("._" + i)
     }
-
-    case e@Epsilon(pred) => sys.error("Not Scala Code")
-    case Waypoint(i, expr) => pp(expr, sb, lvl)
 
     case OptionSome(a) => {
       sb.append("Some(")
@@ -277,13 +221,6 @@ object ScalaPrinter {
       sb.append("(")
       pp(i, sb, lvl)
       sb.append(")")
-    }
-    case up@ArrayUpdate(ar, i, v) => {
-      pp(ar, sb, lvl)
-      sb.append("(")
-      pp(i, sb, lvl)
-      sb.append(") = ")
-      pp(v, sb, lvl)
     }
     case up@ArrayUpdated(ar, i, v) => {
       pp(ar, sb, lvl)
@@ -398,7 +335,6 @@ object ScalaPrinter {
     }
 
     case ResultVariable() => sb.append("res")
-    case EpsilonVariable((row, col)) => sb.append("x" + row + "_" + col)
     case Not(expr) => ppUnary(sb, expr, "!(", ")", lvl)               // \neg
 
     case e @ Error(desc) => {
@@ -407,6 +343,7 @@ object ScalaPrinter {
       sb.append("](\"" + desc + "\")")
     }
 
+    case (expr: ScalaPrintable) => expr.ppScala(sb, lvl, pp, pp, pp)
     case _ => sb.append("Expr?")
   }
 
@@ -595,5 +532,13 @@ object ScalaPrinter {
 
       case _ => sb.append("Defn?")
     }
+  }
+
+  trait ScalaPrintable {
+    def ppScala(sb: StringBuffer, lvl: Int, 
+      ep: (Expr, StringBuffer, Int) => Unit, 
+      tp: (TypeTree, StringBuffer, Int) => Unit,
+      dp: (Definition, StringBuffer, Int) => Unit
+    ): StringBuffer
   }
 }

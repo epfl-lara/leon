@@ -4,6 +4,7 @@ package synthesis
 import leon.purescala.Trees._
 import leon.purescala.Definitions._
 import leon.purescala.TreeOps._
+import leon.xlang.Trees.LetDef
 
 // Defines a synthesis solution of the form:
 // ⟨ P | T ⟩
