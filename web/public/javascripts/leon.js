@@ -30,6 +30,7 @@ function loadExample() {
 $(document).ready(function() {
     editor = ace.edit("codebox");
     editor.getSession().setMode("ace/mode/scala");
+    editor.getSession().setUseWrapMode(true);
 
     $("#leoninput").submit(function () {
 
