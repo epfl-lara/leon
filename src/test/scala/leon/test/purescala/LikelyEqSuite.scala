@@ -2,13 +2,11 @@ package leon.test.purescala
 
 import org.scalatest.FunSuite
 
-import leon.Evaluator
-import leon.purescala.Trees._
 import leon.purescala.Common._
+import leon.purescala.Trees._
 
 
 class LikelyEqSuite extends FunSuite {
-
   def i(x: Int) = IntLiteral(x)
 
   val xId = FreshIdentifier("x")

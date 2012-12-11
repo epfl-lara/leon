@@ -1,10 +1,11 @@
 package leon.codegen.runtime;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.TreeMap;
 
 /** If someone wants to make it an efficient implementation of immutable
- *  sets, go ahead. */
+ *  maps, go ahead. */
 public final class Map {
   private final TreeMap<Object,Object> _underlying;
 
@@ -16,22 +17,25 @@ public final class Map {
     _underlying = new TreeMap<Object,Object>();
   }
 
-  // For Maps, it's simpler to build them by starting with empty and putting
-  // the elements in.
-  public void add(Object key, Object value) {
-    _underlying.put(key, value);
-  }
-
   private Map(TreeMap<Object,Object> u) {
     _underlying = u;
   }
 
+  // Uses mutation! Useful at building time.
+  public void add(Object key, Object value) {
+    _underlying.put(key, value);
+  }
+
+  public Iterator<java.util.Map.Entry<Object,Object>> getElements() {
+    return _underlying.entrySet().iterator();
+  }
+
   public boolean isDefinedAt(Object element) {
-    return underlying().containsKey(element);
+    return _underlying.containsKey(element);
   }
 
   public Object get(Object k) throws LeonCodeGenRuntimeException {
-    Object result = underlying().get(k);
+    Object result = _underlying.get(k);
     if(result == null) {
       throw new LeonCodeGenRuntimeException("Get of undefined key.");
     }
@@ -39,12 +43,52 @@ public final class Map {
   }
 
   public int size() {
-    return underlying().size();
+    return _underlying.size();
   }
 
   public Map union(Map s) {
-    TreeMap<Object,Object> n = new TreeMap<Object,Object>(underlying());
+    TreeMap<Object,Object> n = new TreeMap<Object,Object>(_underlying);
     n.putAll(s.underlying());
     return new Map(n);
+  }
+
+  @Override
+  public boolean equals(Object that) {
+    if(that == this) return true;
+    if(!(that instanceof Map)) return false;
+
+    Map other = (Map)that;
+
+    if(this.size() != other.size()) return false;
+
+    for(java.util.Map.Entry<Object,Object> entry : _underlying.entrySet()) {
+      Object there = other.underlying().get(entry.getKey());
+      if(there == null || !entry.getValue().equals(there)) return false;     
+    }
+
+    return true;
+  }
+
+  @Override
+  public String toString() {
+    StringBuilder sb = new StringBuilder();
+    sb.append("Map(");
+    boolean first = true;
+    for(java.util.Map.Entry<Object,Object> entry : _underlying.entrySet()) {
+      if(!first) {
+        sb.append(", ");
+        first = false;
+      }
+      sb.append(entry.getKey().toString());
+      sb.append(" -> ");
+      sb.append(entry.getValue().toString());
+    }
+    sb.append(")");
+    return sb.toString();
+  }
+
+  @Override
+  public int hashCode() {
+    return _underlying.hashCode();
   }
 }

@@ -14,15 +14,10 @@ import org.scalatest.FunSuite
 class TreeOpsTests extends FunSuite {
   private val silentContext = LeonContext(reporter = new SilentReporter)
   
-  private val emptyProgram = Program(
-    FreshIdentifier("Empty"),
-    ObjectDef(FreshIdentifier("Empty"), Seq.empty, Seq.empty)
-  )
-
   test("Path-aware simplifications") {
     import leon.solvers.z3.UninterpretedZ3Solver
     val solver = new UninterpretedZ3Solver(silentContext)
-    solver.setProgram(emptyProgram)
+    solver.setProgram(Program.empty)
 
     // TODO actually testing something here would be better, sorry
     // PS

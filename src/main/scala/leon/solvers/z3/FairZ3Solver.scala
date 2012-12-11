@@ -12,6 +12,8 @@ import purescala.Extractors._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 
+import evaluators._
+
 import scala.collection.mutable.{Map => MutableMap}
 import scala.collection.mutable.{Set => MutableSet}
 
@@ -27,24 +29,42 @@ class FairZ3Solver(context : LeonContext)
   val description = "Fair Z3 Solver"
 
   override val definedOptions : Set[LeonOptionDef] = Set(
-    LeonFlagOptionDef("checkmodels",  "--checkmodels",  "Double-check counter-examples"),
-    LeonFlagOptionDef("feelinglucky", "--feelinglucky", "Use evaluator to find counter-examples early")
+    LeonFlagOptionDef("checkmodels",  "--checkmodels",  "Double-check counter-examples with evaluator"),
+    LeonFlagOptionDef("feelinglucky", "--feelinglucky", "Use evaluator to find counter-examples early"),
+    LeonFlagOptionDef("codegen",      "--codegen",      "Use compiled evaluator instead of interpreter")
   )
 
-  val (feelingLucky, checkModels) = locally {
-    var lucky = false
-    var check = false
+  // What wouldn't we do to avoid defining vars?
+  val (feelingLucky, checkModels, useCodeGen) = locally {
+    var lucky   = false
+    var check   = false
+    var codegen = false
 
     for(opt <- context.options) opt match {
-      case LeonFlagOption("checkmodels") => check = true
-      case LeonFlagOption("feelinglucky") => lucky = true
+      case LeonFlagOption("checkmodels")  => check   = true
+      case LeonFlagOption("feelinglucky") => lucky   = true
+      case LeonFlagOption("codegen")      => codegen = true
       case _ =>
     }
 
-    (lucky,check)
+    (lucky,check,codegen)
   }
 
-  // this is fixed
+  private var evaluator : Evaluator = null
+
+  override def setProgram(prog : Program) {
+    super.setProgram(prog)
+
+    evaluator = if(useCodeGen) {
+      // TODO If somehow we could not recompile each time we create a solver,
+      // that would be good?
+      new CodeGenEvaluator(context, prog)
+    } else {
+      new DefaultEvaluator(context, prog)
+    }
+  }
+
+  // This is fixed.
   protected[leon] val z3cfg = new Z3Config(
     "MODEL" -> true,
     "MBQI" -> false,
@@ -67,7 +87,7 @@ class FairZ3Solver(context : LeonContext)
   private var reverseFunctionMap: Map[Z3FuncDecl, FunDef] = Map.empty
   private var axiomatizedFunctions : Set[FunDef] = Set.empty
 
-  def prepareFunctions: Unit = {
+  protected[leon] def prepareFunctions: Unit = {
     functionMap = Map.empty
     reverseFunctionMap = Map.empty
     for (funDef <- program.definedFunctions) {
@@ -105,9 +125,7 @@ class FairZ3Solver(context : LeonContext)
     (solver.checkAssumptions(assumptions), solver.getModel, solver.getUnsatCore)
   }
 
-  private def validateAndDeleteModel(model: Z3Model, formula: Expr, variables: Set[Identifier], evaluator: Option[(Map[Identifier,Expr])=>Boolean] = None) : (Boolean, Map[Identifier,Expr]) = {
-    import Evaluator._
-
+  private def validateModel(model: Z3Model, formula: Expr, variables: Set[Identifier]) : (Boolean, Map[Identifier,Expr]) = {
     if(!forceStop) {
 
       val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
@@ -137,31 +155,26 @@ class FairZ3Solver(context : LeonContext)
 
       val asMap = modelToMap(model, variables) ++ functionsAsMap ++ constantFunctionsAsMap
       lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
-      val evalResult = eval(asMap, formula, evaluator)
+      val evalResult = evaluator.eval(formula, asMap)
 
       evalResult match {
-        case OK(BooleanLiteral(true)) => {
+        case EvaluationSuccessful(BooleanLiteral(true)) =>
           reporter.info("- Model validated:")
           reporter.info(modelAsString)
           (true, asMap)
-        }
-        case RuntimeError(msg) => {
-          reporter.info("- Invalid model")
-          //reporter.error(modelAsString)
-          (false, asMap)
-        }
-        case OK(BooleanLiteral(false)) => {
+
+        case EvaluationSuccessful(BooleanLiteral(false)) =>
           reporter.info("- Invalid model.")
           (false, asMap)
-        }
-        case ImpossibleComputation() => {
-          reporter.info("- Invalid Model: the model could not be verified because of insufficient information.")
+
+        case EvaluationFailure(msg) =>
+          reporter.info("- Model leads to runtime error.")
           (false, asMap)
-        }
-        case other => {
-          reporter.error("Something went wrong. While evaluating the model, we got this: " + other)
+
+        case EvaluationError(msg) => 
+          reporter.error("Something went wrong. While evaluating the model, we got this : " + msg)
           (false, asMap)
-        }
+
       }
     } else {
       (false, Map.empty)
@@ -233,8 +246,10 @@ class FairZ3Solver(context : LeonContext)
   }
 
   def getNewSolver = new solvers.IncrementalSolver {
+    private val evaluator    = enclosing.evaluator
     private val feelingLucky = enclosing.feelingLucky
     private val checkModels  = enclosing.checkModels
+    private val useCodeGen   = enclosing.useCodeGen
 
     initZ3
 
@@ -246,15 +261,16 @@ class FairZ3Solver(context : LeonContext)
       }
     }
 
+    private var varsInVC         = Set[Identifier]()
+
     private var frameGuards      = List[Z3AST](z3.mkFreshConst("frame", z3.mkBoolSort))
     private var frameExpressions = List[List[Expr]](Nil)
-    private var varsInVC         = Set[Identifier]()
 
     def entireFormula  = And(frameExpressions.flatten)
 
     def push() {
-      frameGuards      = z3.mkFreshConst("frame", z3.mkBoolSort) :: frameGuards
-      frameExpressions = Nil :: frameExpressions
+      frameGuards         = z3.mkFreshConst("frame", z3.mkBoolSort) :: frameGuards
+      frameExpressions    = Nil :: frameExpressions
     }
 
     def halt() {
@@ -262,12 +278,15 @@ class FairZ3Solver(context : LeonContext)
     }
 
     def pop(lvl: Int = 1) {
+      // TODO FIXME : this is wrong if lvl != 1.
+      // We could fix it, or change the interface to remove the optional arg.
+
       // We make sure we discard the expressions guarded by this frame
       solver.assertCnstr(z3.mkNot(frameGuards.head))
 
       // Pop the frames
-      frameGuards      = frameGuards.tail
-      frameExpressions = frameExpressions.tail
+      frameGuards         = frameGuards.tail
+      frameExpressions    = frameExpressions.tail
     }
 
     def check: Option[Boolean] = {
@@ -364,7 +383,7 @@ class FairZ3Solver(context : LeonContext)
             val z3model = solver.getModel
 
             if (this.checkModels) {
-              val (isValid, model) = validateAndDeleteModel(z3model, entireFormula, varsInVC)
+              val (isValid, model) = validateModel(z3model, entireFormula, varsInVC)
 
               if (isValid) {
                 foundAnswer(Some(true), model)
@@ -417,7 +436,7 @@ class FairZ3Solver(context : LeonContext)
                   if (this.feelingLucky && !forceStop) {
                     // we might have been lucky :D
                     luckyTime.start
-                    val (wereWeLucky, cleanModel) = validateAndDeleteModel(solver.getModel, entireFormula, varsInVC)
+                    val (wereWeLucky, cleanModel) = validateModel(solver.getModel, entireFormula, varsInVC)
                     luckyTime.stop
 
                     if(wereWeLucky) {

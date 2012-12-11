@@ -68,6 +68,17 @@ object Definitions {
     }
   }
 
+  object Program {
+    lazy val empty : Program = Program(
+      FreshIdentifier("empty"),
+      ObjectDef(
+        FreshIdentifier("empty"),
+        Seq.empty,
+        Seq.empty
+      )
+    )
+  }
+
   /** Objects work as containers for class definitions, functions (def's) and
    * val's. */
   case class ObjectDef(id: Identifier, defs : Seq[Definition], invariants: Seq[Expr]) extends Definition {

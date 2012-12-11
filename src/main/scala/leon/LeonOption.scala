@@ -6,7 +6,10 @@ sealed abstract class LeonOption {
 }
 
 /** Boolean (on/off) options. Present means "on". */
-case class LeonFlagOption(name: String) extends LeonOption
+case class LeonFlagOption(name: String) extends LeonOption {
+  override def toString() : String = "--" + name
+}
+
 /** Options of the form --option=value. */
 case class LeonValueOption(name: String, value: String) extends LeonOption {
   def splitList : Seq[String] = value.split(':').map(_.trim).filter(!_.isEmpty)
@@ -18,6 +21,8 @@ case class LeonValueOption(name: String, value: String) extends LeonOption {
       ctx.reporter.error("Option --%s takes an integer as value.".format(name))
       None
   }
+
+  override def toString() : String = "--%s=%s".format(name, value)
 }
 
 sealed abstract class LeonOptionDef {

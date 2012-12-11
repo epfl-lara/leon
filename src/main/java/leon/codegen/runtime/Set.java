@@ -21,7 +21,7 @@ public final class Set {
     _underlying = new TreeSet<Object>(Arrays.asList(elements));
   }
 
-  // Uses mutation!
+  // Uses mutation! Useful at building time.
   public void add(Object e) {
     _underlying.add(e);
   }
@@ -52,7 +52,7 @@ public final class Set {
   }
 
   public Set union(Set s) {
-    TreeSet<Object> n = new TreeSet<Object>(underlying());
+    TreeSet<Object> n = new TreeSet<Object>(_underlying);
     n.addAll(s.underlying());
     return new Set(n);
   }
@@ -79,7 +79,32 @@ public final class Set {
   public boolean equals(Object that) {
     if(that == this) return true;
     if(!(that instanceof Set)) return false;
+
     Set other = (Set)that;
-    return this.subsetOf(other) && other.subsetOf(this);
+
+    if(this.size() != other.size()) return false;
+
+    return this.subsetOf(other);
+  }
+
+  @Override
+  public String toString() {
+    StringBuilder sb = new StringBuilder();
+    sb.append("Set(");
+    boolean first = true;
+    for(Object o : _underlying) {
+      if(!first) {
+        sb.append(", ");
+        first = false;
+      }
+      sb.append(o.toString());
+    }
+    sb.append(")");
+    return sb.toString();
+  }
+
+  @Override
+  public int hashCode() {
+    return _underlying.hashCode();
   }
 }

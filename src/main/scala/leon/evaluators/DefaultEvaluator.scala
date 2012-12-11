@@ -1,46 +1,29 @@
 package leon
+package evaluators
 
 import purescala.Common._
-import purescala.Trees._
-import xlang.Trees._
+import purescala.Definitions._
 import purescala.TreeOps._
+import purescala.Trees._
 import purescala.TypeTrees._
 
-object Evaluator {
-// Expr should be some ground term. We have call-by-value semantics.
-  type EvaluationContext = Map[Identifier,Expr]
-  
-  sealed abstract class EvaluationResult {
-    val finalResult: Option[Expr]
-  }
-  case class OK(result: Expr) extends EvaluationResult {
-    val finalResult = Some(result)
-  }
-  case class RuntimeError(msg: String) extends EvaluationResult {
-    val finalResult = None
-  }
-  case class TypeError(expression: Expr, expected: TypeTree) extends EvaluationResult {
-    lazy val msg = "When typing:\n" + expression + "\nexpected: " + expected + ", found: " + expression.getType
-    val finalResult = None
-  }
-  case class InfiniteComputation() extends EvaluationResult {
-    val finalResult = None
-  }
-  case class ImpossibleComputation() extends EvaluationResult {
-    val finalResult = None
-  }
-  
+import xlang.Trees._
 
-  def eval(context: EvaluationContext, expression: Expr, evaluator: Option[(EvaluationContext)=>Boolean], maxSteps: Int=500000) : EvaluationResult = {
-    case class RuntimeErrorEx(msg: String) extends Exception
-    case class InfiniteComputationEx() extends Exception
-    case class TypeErrorEx(typeError: TypeError) extends Exception
-    case class ImpossibleComputationEx() extends Exception
+class DefaultEvaluator(ctx : LeonContext, prog : Program) extends Evaluator(ctx, prog) {
+  val name = "evaluator"
+  val description = "Recursive interpreter for PureScala expressions"
 
+  private def typeErrorMsg(tree : Expr, expected : TypeTree) : String = "Type error : expected %s, found %s.".format(expected, tree)
+  private case class EvalError(msg : String) extends Exception
+  private case class RuntimeError(msg : String) extends Exception
+
+  private val maxSteps = 50000
+
+  def eval(expression: Expr, mapping : Map[Identifier,Expr]) : EvaluationResult = {
     var left: Int = maxSteps
 
-    def rec(ctx: EvaluationContext, expr: Expr) : Expr = if(left <= 0) {
-      throw InfiniteComputationEx()
+    def rec(ctx: Map[Identifier,Expr], expr: Expr) : Expr = if(left <= 0) {
+      throw RuntimeError("Diverging computation.")
     } else {
       // println("Step on : " + expr)
       // println(ctx)
@@ -50,12 +33,12 @@ object Evaluator {
           if(ctx.isDefinedAt(id)) {
             val res = ctx(id)
             if(!isGround(res)) {
-              throw RuntimeErrorEx("Substitution for identifier " + id.name + " is not ground.")
+              throw EvalError("Substitution for identifier " + id.name + " is not ground.")
             } else {
               res
             }
           } else {
-            throw RuntimeErrorEx("No value for identifier " + id.name + " in context.")
+            throw EvalError("No value for identifier " + id.name + " in mapping.")
           }
         }
         case Tuple(ts) => {
@@ -70,35 +53,35 @@ object Evaluator {
           val first = rec(ctx, e)
           rec(ctx + ((i -> first)), b)
         }
-        case Error(desc) => throw RuntimeErrorEx("Error reached in evaluation: " + desc)
+        case Error(desc) => throw RuntimeError("Error reached in evaluation: " + desc)
         case IfExpr(cond, then, elze) => {
           val first = rec(ctx, cond)
           first match {
             case BooleanLiteral(true) => rec(ctx, then)
             case BooleanLiteral(false) => rec(ctx, elze)
-            case _ => throw TypeErrorEx(TypeError(first, BooleanType))
+            case _ => throw EvalError(typeErrorMsg(first, BooleanType))
           }
         }
         case Waypoint(_, arg) => rec(ctx, arg)
         case FunctionInvocation(fd, args) => {
           val evArgs = args.map(a => rec(ctx, a))
-          // build a context for the function...
+          // build a mapping for the function...
           val frame = Map[Identifier,Expr]((fd.args.map(_.id) zip evArgs) : _*)
           
           if(fd.hasPrecondition) {
             rec(frame, matchToIfThenElse(fd.precondition.get)) match {
               case BooleanLiteral(true) => ;
               case BooleanLiteral(false) => {
-                throw RuntimeErrorEx("Precondition violation for " + fd.id.name + " reached in evaluation.: " + fd.precondition.get)
+                throw RuntimeError("Precondition violation for " + fd.id.name + " reached in evaluation.: " + fd.precondition.get)
               }
-              case other => throw TypeErrorEx(TypeError(other, BooleanType))
+              case other => throw RuntimeError(typeErrorMsg(other, BooleanType))
             }
           }
 
-          if(!fd.hasBody && !context.isDefinedAt(fd.id)) {
-            throw RuntimeErrorEx("Evaluation of function with unknown implementation.")
+          if(!fd.hasBody && !mapping.isDefinedAt(fd.id)) {
+            throw EvalError("Evaluation of function with unknown implementation.")
           }
-          val body = fd.body.getOrElse(context(fd.id))
+          val body = fd.body.getOrElse(mapping(fd.id))
           val callResult = rec(frame, matchToIfThenElse(body))
 
           if(fd.hasPostcondition) {
@@ -106,9 +89,8 @@ object Evaluator {
             val postBody = replace(Map(ResultVariable() -> Variable(freshResID)), matchToIfThenElse(fd.postcondition.get))
             rec(frame + ((freshResID -> callResult)), postBody) match {
               case BooleanLiteral(true) => ;
-              case BooleanLiteral(false) if !fd.hasImplementation => throw ImpossibleComputationEx()
-              case BooleanLiteral(false) => throw RuntimeErrorEx("Postcondition violation for " + fd.id.name + " reached in evaluation.")
-              case other => throw TypeErrorEx(TypeError(other, BooleanType))
+              case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for " + fd.id.name + " reached in evaluation.")
+              case other => throw EvalError(typeErrorMsg(other, BooleanType))
             }
           }
 
@@ -119,7 +101,7 @@ object Evaluator {
           rec(ctx, args.head) match {
             case BooleanLiteral(false) => BooleanLiteral(false)
             case BooleanLiteral(true) => rec(ctx, And(args.tail))
-            case other => throw TypeErrorEx(TypeError(other, BooleanType))
+            case other => throw EvalError(typeErrorMsg(other, BooleanType))
           }
         }
         case Or(args) if args.isEmpty => BooleanLiteral(false)
@@ -127,20 +109,20 @@ object Evaluator {
           rec(ctx, args.head) match {
             case BooleanLiteral(true) => BooleanLiteral(true)
             case BooleanLiteral(false) => rec(ctx, Or(args.tail))
-            case other => throw TypeErrorEx(TypeError(other, BooleanType))
+            case other => throw EvalError(typeErrorMsg(other, BooleanType))
           }
         }
         case Not(arg) => rec(ctx, arg) match {
           case BooleanLiteral(v) => BooleanLiteral(!v)
-          case other => throw TypeErrorEx(TypeError(other, BooleanType))
+          case other => throw EvalError(typeErrorMsg(other, BooleanType))
         }
         case Implies(l,r) => (rec(ctx,l), rec(ctx,r)) match {
           case (BooleanLiteral(b1),BooleanLiteral(b2)) => BooleanLiteral(!b1 || b2)
-          case (le,re) => throw TypeErrorEx(TypeError(le, BooleanType))
+          case (le,re) => throw EvalError(typeErrorMsg(le, BooleanType))
         }
         case Iff(le,re) => (rec(ctx,le),rec(ctx,re)) match {
           case (BooleanLiteral(b1),BooleanLiteral(b2)) => BooleanLiteral(b1 == b2)
-          case _ => throw TypeErrorEx(TypeError(le, BooleanType))
+          case _ => throw EvalError(typeErrorMsg(le, BooleanType))
         }
         case Equals(le,re) => {
           val lv = rec(ctx,le)
@@ -164,53 +146,55 @@ object Evaluator {
           val le = rec(ctx, expr)
           le match {
             case CaseClass(cd2, args) if cd == cd2 => args(cd.selectorID2Index(sel))
-            case _ => throw TypeErrorEx(TypeError(le, CaseClassType(cd)))
+            case _ => throw EvalError(typeErrorMsg(le, CaseClassType(cd)))
           }
         }
         case Plus(l,r) => (rec(ctx,l), rec(ctx,r)) match {
           case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 + i2)
-          case (le,re) => throw TypeErrorEx(TypeError(le, Int32Type))
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
         }
         case Minus(l,r) => (rec(ctx,l), rec(ctx,r)) match {
           case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 - i2)
-          case (le,re) => throw TypeErrorEx(TypeError(le, Int32Type))
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
         }
         case UMinus(e) => rec(ctx,e) match {
           case IntLiteral(i) => IntLiteral(-i)
-          case re => throw TypeErrorEx(TypeError(re, Int32Type))
+          case re => throw EvalError(typeErrorMsg(re, Int32Type))
         }
         case Times(l,r) => (rec(ctx,l), rec(ctx,r)) match {
           case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 * i2)
-          case (le,re) => throw TypeErrorEx(TypeError(le, Int32Type))
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
         }
         case Division(l,r) => (rec(ctx,l), rec(ctx,r)) match {
-          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 / i2)
-          case (le,re) => throw TypeErrorEx(TypeError(le, Int32Type))
+          case (IntLiteral(i1), IntLiteral(i2)) =>
+            if(i2 != 0) IntLiteral(i1 / i2) else throw RuntimeError("Division by 0.")
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
         }
         case Modulo(l,r) => (rec(ctx,l), rec(ctx,r)) match {
-          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 % i2)
-          case (le,re) => throw TypeErrorEx(TypeError(le, Int32Type))
+          case (IntLiteral(i1), IntLiteral(i2)) => 
+            if(i2 != 0) IntLiteral(i1 % i2) else throw RuntimeError("Modulo by 0.")
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
         }
         case LessThan(l,r) => (rec(ctx,l), rec(ctx,r)) match {
           case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 < i2)
-          case (le,re) => throw TypeErrorEx(TypeError(le, Int32Type))
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
         }
         case GreaterThan(l,r) => (rec(ctx,l), rec(ctx,r)) match {
           case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 > i2)
-          case (le,re) => throw TypeErrorEx(TypeError(le, Int32Type))
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
         }
         case LessEquals(l,r) => (rec(ctx,l), rec(ctx,r)) match {
           case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 <= i2)
-          case (le,re) => throw TypeErrorEx(TypeError(le, Int32Type))
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
         }
         case GreaterEquals(l,r) => (rec(ctx,l), rec(ctx,r)) match {
           case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 >= i2)
-          case (le,re) => throw TypeErrorEx(TypeError(le, Int32Type))
+          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
         }
 
         case SetUnion(s1,s2) => (rec(ctx,s1), rec(ctx,s2)) match {
           case (f@FiniteSet(els1),FiniteSet(els2)) => FiniteSet((els1 ++ els2).distinct).setType(f.getType)
-          case (le,re) => throw TypeErrorEx(TypeError(le, s1.getType))
+          case (le,re) => throw EvalError(typeErrorMsg(le, s1.getType))
         }
         case SetIntersection(s1,s2) => (rec(ctx,s1), rec(ctx,s2)) match {
           case (f@FiniteSet(els1),FiniteSet(els2)) => {
@@ -218,7 +202,7 @@ object Evaluator {
             val baseType = f.getType.asInstanceOf[SetType].base
             FiniteSet(newElems).setType(f.getType)
           }
-          case (le,re) => throw TypeErrorEx(TypeError(le, s1.getType))
+          case (le,re) => throw EvalError(typeErrorMsg(le, s1.getType))
         }
         case SetDifference(s1,s2) => (rec(ctx,s1), rec(ctx,s2)) match {
           case (f@FiniteSet(els1),FiniteSet(els2)) => {
@@ -226,17 +210,17 @@ object Evaluator {
             val baseType = f.getType.asInstanceOf[SetType].base
             FiniteSet(newElems).setType(f.getType)
           }
-          case (le,re) => throw TypeErrorEx(TypeError(le, s1.getType))
+          case (le,re) => throw EvalError(typeErrorMsg(le, s1.getType))
         }
         case ElementOfSet(el,s) => (rec(ctx,el), rec(ctx,s)) match {
           case (e, f @ FiniteSet(els)) => BooleanLiteral(els.contains(e))
-          case (l,r) => throw TypeErrorEx(TypeError(r, SetType(l.getType)))
+          case (l,r) => throw EvalError(typeErrorMsg(r, SetType(l.getType)))
         }
         case SetCardinality(s) => {
           val sr = rec(ctx, s)
           sr match {
             case FiniteSet(els) => IntLiteral(els.size)
-            case _ => throw TypeErrorEx(TypeError(sr, SetType(AnyType)))
+            case _ => throw EvalError(typeErrorMsg(sr, SetType(AnyType)))
           }
         }
 
@@ -279,9 +263,9 @@ object Evaluator {
         case g @ MapGet(m,k) => (rec(ctx,m), rec(ctx,k)) match {
           case (FiniteMap(ss), e) => ss.find(_._1 == e) match {
             case Some((_, v0)) => v0
-            case None => throw RuntimeErrorEx("key not found: " + e)
+            case None => throw RuntimeError("Key not found: " + e)
           }
-          case (l,r) => throw TypeErrorEx(TypeError(l, MapType(r.getType, g.getType)))
+          case (l,r) => throw EvalError(typeErrorMsg(l, MapType(r.getType, g.getType)))
         }
         case u @ MapUnion(m1,m2) => (rec(ctx,m1), rec(ctx,m2)) match {
           case (f1@FiniteMap(ss1), FiniteMap(ss2)) => {
@@ -289,11 +273,11 @@ object Evaluator {
             val newSs = filtered1 ++ ss2
             FiniteMap(newSs).setType(f1.getType)
           }
-          case (l, r) => throw TypeErrorEx(TypeError(l, m1.getType))
+          case (l, r) => throw EvalError(typeErrorMsg(l, m1.getType))
         }
         case i @ MapIsDefinedAt(m,k) => (rec(ctx,m), rec(ctx,k)) match {
           case (FiniteMap(ss), e) => BooleanLiteral(ss.exists(_._1 == e))
-          case (l, r) => throw TypeErrorEx(TypeError(l, m.getType))
+          case (l, r) => throw EvalError(typeErrorMsg(l, m.getType))
         }
         case Distinct(args) => {
           val newArgs = args.map(rec(ctx, _))
@@ -301,33 +285,22 @@ object Evaluator {
         } 
 
         case other => {
-          Settings.reporter.error("Error: don't know how to handle " + other + " in Evaluator.")
-          throw RuntimeErrorEx("unhandled case in Evaluator") 
+          context.reporter.error("Error: don't know how to handle " + other + " in Evaluator.")
+          throw EvalError("Unhandled case in Evaluator : " + other) 
         }
       }
     }
 
-    evaluator match {
-      case Some(evalFun) =>
-        try {
-          OK(BooleanLiteral(evalFun(context)))
-        } catch {
-          case e: Exception => RuntimeError(e.getMessage)
-        }
-      case None =>
-        try {
-          OK(rec(context, expression))
-        } catch {
-          case RuntimeErrorEx(msg) => RuntimeError(msg)
-          case InfiniteComputationEx() => InfiniteComputation()
-          case TypeErrorEx(te) => te
-          case ImpossibleComputationEx() => ImpossibleComputation()
-        }
+    try {
+      EvaluationSuccessful(rec(mapping, expression))
+    } catch {
+      case EvalError(msg) => EvaluationError(msg)
+      case RuntimeError(msg) => EvaluationFailure(msg)
     }
   }
 
   // quick and dirty.. don't overuse.
-  def isGround(expr: Expr) : Boolean = {
+  private def isGround(expr: Expr) : Boolean = {
     variablesOf(expr) == Set.empty
   }
 }

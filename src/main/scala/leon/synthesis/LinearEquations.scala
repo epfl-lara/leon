@@ -1,13 +1,18 @@
-package leon.synthesis
+package leon
+package synthesis
 
-import leon.purescala.Trees._
-import leon.purescala.TreeNormalizations.linearArithmeticForm
-import leon.purescala.TypeTrees._
-import leon.purescala.Common._
-import leon.Evaluator 
-import leon.synthesis.Algebra._
+import purescala.Definitions._
+import purescala.Trees._
+import purescala.TreeNormalizations.linearArithmeticForm
+import purescala.TypeTrees._
+import purescala.Common._
+
+import synthesis.Algebra._
 
 object LinearEquations {
+  // This is a hack, but the use of an evaluator in this file is itself beyond that.
+  import evaluators._
+  private lazy val evaluator = new DefaultEvaluator(LeonContext(), Program.empty)
 
   //eliminate one variable from normalizedEquation t + a1*x1 + ... + an*xn = 0
   //return a mapping for each of the n variables in (pre, map, freshVars)
@@ -70,7 +75,8 @@ object LinearEquations {
       val (_, sols) = particularSolution(as, IntLiteral(coef(j)*K(j)(j)) :: coef.drop(j+1).map(IntLiteral(_)).toList)
       var i = 0
       while(i < sols.size) {
-        K(i+j+1)(j) = Evaluator.eval(Map(), sols(i), None).asInstanceOf[Evaluator.OK].result.asInstanceOf[IntLiteral].value
+        // seriously ??? 
+        K(i+j+1)(j) = evaluator.eval(sols(i)).asInstanceOf[EvaluationSuccessful].value.asInstanceOf[IntLiteral].value
         i += 1
       }
     }

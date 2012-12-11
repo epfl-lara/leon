@@ -6,8 +6,6 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-import Evaluator._
-
 import scala.actors.Actor
 import scala.actors.DaemonActor
 import scala.actors.Actor._

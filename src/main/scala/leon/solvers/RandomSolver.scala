@@ -7,7 +7,7 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 
-import Evaluator._
+import evaluators._
 
 import scala.util.Random
 
@@ -16,6 +16,11 @@ class RandomSolver(context: LeonContext, val nbTrial: Option[Int] = None) extend
   require(nbTrial.forall(i => i >= 0))
 
   private val reporter = context.reporter
+  private var evaluator : Evaluator = null
+
+  override def setProgram(program : Program) : Unit = {
+    evaluator = new DefaultEvaluator(context, program)
+  }
 
   val name = "QC"
   val description = "Solver applying random testing (QuickCheck-like)"
@@ -110,29 +115,26 @@ class RandomSolver(context: LeonContext, val nbTrial: Option[Int] = None) extend
       val var2val: Map[Identifier, Expr] = Map(vars.map(v => (v, randomValue(v.getType, bound))).toList: _*)
       //reporter.info("Trying with: " + var2val)
 
-      val evalResult = eval(var2val, expression, None)
+      val evalResult = evaluator.eval(expression, var2val)
       evalResult match {
-        case OK(BooleanLiteral(true)) => {
+        case EvaluationSuccessful(BooleanLiteral(true)) => {
           //continue trying
         }
-        case OK(BooleanLiteral(false)) => {
+
+        case EvaluationSuccessful(BooleanLiteral(false)) => {
           reporter.info("Found counter example to formula: " + var2val)
           result = Some(false)
           stop = true
         }
-        /* in any of the following case, simply continue with another assignement */
-        case InfiniteComputation() => {
-          //reporter.info("Model seems to lead to divergent computation.")
+
+        case EvaluationFailure(_) => {
+          reporter.info("Input leads to runtime error: " + var2val)
+          result = Some(false)
+          stop = true
         }
-        case RuntimeError(msg) => {
-          //reporter.info("Model leads to runtime error: " + msg)
-        }
-        case t @ TypeError(_,_) => {
-          //reporter.info("Type error in model evaluation.\n" + t.msg)
-        }
-        case _ => {
-          //reporter.info("    -> candidate model discarded.")
-        }
+
+        // otherwise, simply continue with another assignement 
+        case EvaluationError(_) => ;
       }
 
       iteration += 1

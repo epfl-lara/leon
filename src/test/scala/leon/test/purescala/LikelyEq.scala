@@ -1,17 +1,20 @@
 package leon.test.purescala
 
-import leon.Evaluator._
-import leon.purescala.Trees._
-import leon.purescala.TreeOps.replace
+import leon._
+import leon.evaluators._
 import leon.purescala.Common._
+import leon.purescala.Definitions._
+import leon.purescala.TreeOps.replace
+import leon.purescala.Trees._
 
 /*
- * Determine if two expressions over arithmetic variables are likely to be the same
+ * Determine if two expressions over arithmetic variables are likely to be equal.
  *
  * This is a probabilistic based approach, it does not rely on any external solver and can
  * only prove the non equality of two expressions.
  */
 object LikelyEq {
+  private lazy val evaluator : Evaluator = new DefaultEvaluator(LeonContext(reporter = new SilentReporter), Program.empty)
 
   private val min = -5
   private val max = 5
@@ -29,9 +32,9 @@ object LikelyEq {
             compare: (Expr, Expr) => Boolean = (e1, e2) => e1 == e2, 
             defaultMap: Map[Identifier, Expr] = Map()): Boolean = {
     if(vs.isEmpty) {
-      val ndm = defaultMap.map{ case (id, expr) => (id, eval(Map(), expr, None).asInstanceOf[OK].result) } //TODO: not quite sure why I need to do this...
-      (eval(ndm, e1, None), eval(defaultMap, e2, None)) match {
-        case (OK(v1), OK(v2)) => compare(v1, v2)
+      val ndm = defaultMap.map { case (id, expr) => (id, evaluator.eval(expr).asInstanceOf[EvaluationSuccessful].value) } //TODO: not quite sure why I need to do this...
+      (evaluator.eval(e1, ndm), evaluator.eval(e2, defaultMap)) match {
+        case (EvaluationSuccessful(v1), EvaluationSuccessful(v2)) => compare(v1, v2)
         case (err1, err2) => sys.error("evaluation could not complete, got: (" + err1 + ", " + err2 + ")")
       }
     } else {
@@ -46,14 +49,14 @@ object LikelyEq {
         val ne1 = replace(m, e1)
         val ne2 = replace(m, e2)
         val npre = replace(m, pre)
-        val ndm = defaultMap.map{ case (id, expr) => (id, eval(m.map{case (Variable(id), t) => (id, t)}, expr, None).asInstanceOf[OK].result) }
-        eval(ndm, npre, None) match {
-          case OK(BooleanLiteral(false)) =>
-          case OK(BooleanLiteral(true)) =>
-            val ev1 = eval(ndm, ne1, None)
-            val ev2 = eval(ndm, ne2, None)
+        val ndm = defaultMap.map{ case (id, expr) => (id, evaluator.eval(expr, m.map{case (Variable(id), t) => (id, t)}).asInstanceOf[EvaluationSuccessful].value) }
+        evaluator.eval(npre, ndm) match {
+          case EvaluationSuccessful(BooleanLiteral(false)) =>
+          case EvaluationSuccessful(BooleanLiteral(true)) =>
+            val ev1 = evaluator.eval(ne1, ndm)
+            val ev2 = evaluator.eval(ne2, ndm)
             (ev1, ev2) match {
-              case (OK(v1), OK(v2)) => if(!compare(v1, v2)) isEq = false
+              case (EvaluationSuccessful(v1), EvaluationSuccessful(v2)) => if(!compare(v1, v2)) isEq = false
               case (err1, err2) => sys.error("evaluation could not complete, got: (" + err1 + ", " + err2 + ")")
             }
           case err => sys.error("evaluation of precondition could not complete, got: " + err)

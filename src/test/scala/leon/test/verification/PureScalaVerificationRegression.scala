@@ -21,7 +21,7 @@ class PureScalaVerificationRegression extends FunSuite {
   private def mkPipeline : Pipeline[List[String],VerificationReport] =
     leon.plugin.ExtractionPhase andThen leon.verification.AnalysisPhase
 
-  private def mkTest(file : File, forError: Boolean = false)(block: Output=>Unit) = {
+  private def mkTest(file : File, leonOptions : Seq[LeonOption], forError: Boolean)(block: Output=>Unit) = {
     val fullName = file.getPath()
     val start = fullName.indexOf("regression")
 
@@ -31,7 +31,7 @@ class PureScalaVerificationRegression extends FunSuite {
       fullName
     }
 
-    test("%3d: %s".format(nextInt(), displayName)) {
+    test("%3d: %s %s".format(nextInt(), displayName, leonOptions.mkString(" "))) {
       assert(file.exists && file.isFile && file.canRead,
              "Benchmark %s is not a readable file".format(displayName))
 
@@ -41,7 +41,7 @@ class PureScalaVerificationRegression extends FunSuite {
           xlang     = false,
           verify    = true
         ),
-        options = List(LeonFlagOption("feelinglucky")),
+        options = leonOptions.toList,
         files = List(file),
         reporter = new SilentReporter
       )
@@ -67,7 +67,8 @@ class PureScalaVerificationRegression extends FunSuite {
       _.endsWith(".scala"))
 
     for(f <- fs) {
-      mkTest(f, forError)(block)
+      mkTest(f, List(LeonFlagOption("feelinglucky")), forError)(block)
+      mkTest(f, List(LeonFlagOption("codegen"), LeonFlagOption("feelinglucky")), forError)(block)
     }
   }
   

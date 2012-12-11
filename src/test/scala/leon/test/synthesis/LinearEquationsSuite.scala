@@ -2,7 +2,6 @@ package leon.test.synthesis
 
 import org.scalatest.FunSuite
 
-import leon.Evaluator
 import leon.purescala.Trees._
 import leon.purescala.TypeTrees._
 import leon.purescala.TreeOps._
