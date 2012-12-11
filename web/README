@@ -1,0 +1,7 @@
+## HOWTO RUN LEON ONLINE
+
+1) go to leon-2.0 main directory
+2) sbt package
+3) cd web
+4) export LD_LIBRARY_PATH=../lib-bin/64
+4) play run

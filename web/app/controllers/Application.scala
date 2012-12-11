@@ -16,9 +16,8 @@ object Application extends Controller {
 
   def index = Action { implicit request =>
     val prefix = Play.current.configuration.getString("app.prefix").getOrElse("")
-    val wsURL  = Play.current.configuration.getString("app.wsURL").getOrElse(routes.Application.openConsole().webSocketURL())
 
-    Ok(views.html.index(examples, VerificationExamples.default, prefix, wsURL))
+    Ok(views.html.index(examples, VerificationExamples.default, prefix))
   }
 
   def getExample(id: Int) = Action { 

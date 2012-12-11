@@ -109,6 +109,8 @@ class ConsoleSession extends Actor {
 
           pipeline.run(ctx)((code, "--timeout=2" :: Nil))
 
+          event("stopped")
+
         case "synthesis" =>
           event("started")
           isStarted = true

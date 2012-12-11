@@ -4,12 +4,12 @@ function appendError(title, msg) {
     alert(title+": "+msg)
 }
 
-function loadExample() {
+function loadExample(prefix) {
     var value = $("#example-loader").val()
 
     if (value) { 
         $.ajax({
-          url: '/ajax/getExample/'+value,
+          url: prefix+'/ajax/getExample/'+value,
           dataType: "json",
           success: function(data, textStatus, jqXHR) {
             if (data.status == "success") {

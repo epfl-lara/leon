@@ -1,4 +1,4 @@
-@(exs: List[examples.Example], default: examples.Example, prefix: String, websocketURL: String)(implicit request: RequestHeader)
+@(exs: List[examples.Example], default: examples.Example, prefix: String)(implicit request: RequestHeader)
 
 @main("Leon Online", prefix) {
   <div id="allcontent">
@@ -19,7 +19,7 @@
         <div id="selectcolumn">
           <h3>Load an Example:</h3>
           <div>We provide you with a list of code-examples, select one from the list below to load it:</div>
-          <select id="example-loader" name="codeexample" onchange="loadExample();">
+          <select id="example-loader" name="codeexample" onchange="loadExample('@prefix');">
             <option value="">-- Load Example --</option>
             @exs.zipWithIndex.map{ case (ex, i) => 
             <option value="@i">@ex.title</option>
@@ -30,7 +30,7 @@
       <script>
         $(document).ready(function() {
             var WS = window['MozWebSocket'] ? MozWebSocket : WebSocket
-            var leonSocket = new WS("@websocketURL")
+            var leonSocket = new WS("@leon.web.controllers.routes.Application.openConsole().webSocketURL()")
             
             var sendMessage = function() {
             }
@@ -40,7 +40,10 @@
                 if (data.kind == "error") {
                     alert(data.message);
                 } else if (data.kind == "log") {
-                    $("#consolebox").val($("#consolebox").val()+"\n"+data.message);
+                    var txt = $("#consolebox")
+
+                    txt.val(txt.val()+"\n"+data.message);
+                    txt.scrollTop(txt[0].scrollHeight - txt.height())
                 } else if (data.kind == "event") {
                     if (data.event == "started") {
                         $("#askbutton").val("... processing ...")
