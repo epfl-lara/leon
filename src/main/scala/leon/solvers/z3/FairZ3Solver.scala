@@ -21,8 +21,28 @@ class FairZ3Solver(context : LeonContext)
      with Z3ModelReconstruction 
      with LeonComponent {
 
+  enclosing =>
+
   val name = "Z3-f"
   val description = "Fair Z3 Solver"
+
+  override val definedOptions : Set[LeonOptionDef] = Set(
+    LeonFlagOptionDef("checkmodels",  "--checkmodels",  "Double-check counter-examples"),
+    LeonFlagOptionDef("feelinglucky", "--feelinglucky", "Use evaluator to find counter-examples early")
+  )
+
+  val (feelingLucky, checkModels) = locally {
+    var lucky = false
+    var check = false
+
+    for(opt <- context.options) opt match {
+      case LeonFlagOption("checkmodels") => check = true
+      case LeonFlagOption("feelinglucky") => lucky = true
+      case _ =>
+    }
+
+    (lucky,check)
+  }
 
   // this is fixed
   protected[leon] val z3cfg = new Z3Config(
@@ -58,59 +78,6 @@ class FairZ3Solver(context : LeonContext)
       functionMap = functionMap + (funDef -> z3Decl)
       reverseFunctionMap = reverseFunctionMap + (z3Decl -> funDef)
     }
-  }
-
-  private def prepareAxioms(solver: Z3Solver): Unit = {
-    assert(!Settings.noForallAxioms)
-    program.definedFunctions.foreach(_ match {
-      case fd @ Catamorphism(acd, cases) => {
-        assert(!fd.hasPrecondition && fd.hasImplementation)
-        reporter.info("Will attempt to axiomatize the function definition:")
-        reporter.info(fd)
-        for(cse <- cases) {
-          val (cc @ CaseClass(ccd, args), expr) = cse
-          assert(args.forall(_.isInstanceOf[Variable]))
-          val argsAsIDs = args.map(_.asInstanceOf[Variable].id)
-          assert(variablesOf(expr) -- argsAsIDs.toSet == Set.empty)
-          val axiom : Z3AST = if(args.isEmpty) {
-            val eq = Equals(FunctionInvocation(fd, Seq(cc)), expr)
-            toZ3Formula(eq).get
-          } else {
-            val z3ArgSorts = argsAsIDs.map(i => typeToSort(i.getType))
-            val boundVars = z3ArgSorts.zipWithIndex.map(p => z3.mkBound(p._2, p._1))
-            val map : Map[Identifier,Z3AST] = (argsAsIDs zip boundVars).toMap
-            val eq = Equals(FunctionInvocation(fd, Seq(cc)), expr)
-            val z3IzedEq = toZ3Formula(eq, map).get
-            val z3IzedCC = toZ3Formula(cc, map).get
-            val pattern = z3.mkPattern(functionDefToDecl(fd)(z3IzedCC))
-            val nameTypePairs = z3ArgSorts.map(s => (z3.mkFreshIntSymbol, s))
-            z3.mkForAll(0, List(pattern), nameTypePairs, z3IzedEq)
-          }
-          // println("I'll assert now an axiom: " + axiom)
-          // println("Case axiom:")
-          // println(axiom)
-          solver.assertCnstr(axiom)
-        }
-
-        if(fd.hasPostcondition) {
-          // we know it doesn't contain any function invocation
-          val cleaned = matchToIfThenElse(expandLets(fd.postcondition.get))
-          val argSort = typeToSort(fd.args(0).getType)
-          val bound = z3.mkBound(0, argSort)
-          val subst = replace(Map(ResultVariable() -> FunctionInvocation(fd, Seq(fd.args(0).toVariable))), cleaned)
-          val z3IzedPost = toZ3Formula(subst, Map(fd.args(0).id -> bound)).get
-          val pattern = z3.mkPattern(functionDefToDecl(fd)(bound))
-          val nameTypePairs = Seq((z3.mkFreshIntSymbol, argSort))
-          val postAxiom = z3.mkForAll(0, List(pattern), nameTypePairs, z3IzedPost)
-          //println("Post axiom:")
-          //println(postAxiom)
-          solver.assertCnstr(postAxiom)
-        }
-
-        axiomatizedFunctions += fd
-      }
-      case _ => ;
-    })
   }
 
   override def solve(vc: Expr) = {
@@ -271,16 +238,11 @@ class FairZ3Solver(context : LeonContext)
 
     val solver = z3.mkSolver
 
-    if(!Settings.noForallAxioms) {
-      prepareAxioms(solver)
-    }
-
     for(funDef <- program.definedFunctions) {
       if (funDef.annotations.contains("axiomatize") && !axiomatizedFunctions(funDef)) {
         reporter.warning("Function " + funDef.id + " was marked for axiomatization but could not be handled.")
       }
     }
-
 
     private var frameGuards      = List[Z3AST](z3.mkFreshConst("frame", z3.mkBoolSort))
     private var frameExpressions = List[List[Expr]](Nil)
@@ -368,10 +330,7 @@ class FairZ3Solver(context : LeonContext)
       // these are the optional sequence of assumption literals
       val assumptionsAsZ3: Seq[Z3AST] = frameGuards ++ assumptions.map(toZ3Formula(_).get)
 
-      var iterationsLeft : Int = if(Settings.unrollingLevel > 0) Settings.unrollingLevel else 16121984
-
       while(!foundDefinitiveAnswer && !forceStop) {
-        iterationsLeft -= 1
 
         //val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.toSeq.map(toZ3Formula(_).get)
         // println("Blocking set : " + blockingSet)
@@ -398,7 +357,7 @@ class FairZ3Solver(context : LeonContext)
 
             val z3model = solver.getModel
 
-            if (Settings.verifyModel && false) {
+            if (enclosing.checkModels) {
               val (isValid, model) = validateAndDeleteModel(z3model, entireFormula, varsInVC)
 
               if (isValid) {
@@ -432,7 +391,7 @@ class FairZ3Solver(context : LeonContext)
             reporter.info("UNSAT BECAUSE: "+core.mkString(" AND "))
 
             if (!forceStop) {
-              if (Settings.luckyTest && false) { //TODO: something with false
+              if (enclosing.feelingLucky) {
                 // we need the model to perform the additional test
                 reporter.info(" - Running search without blocked literals (w/ lucky test)")
               } else {
@@ -449,7 +408,7 @@ class FairZ3Solver(context : LeonContext)
                   foundAnswer(Some(false), core = z3CoreToCore(solver.getUnsatCore))
                 case Some(true) =>
                   //reporter.info("SAT WITHOUT Blockers")
-                  if (Settings.luckyTest && !forceStop) { //TODO: still with the above "false"
+                  if (enclosing.feelingLucky) {
                     // we might have been lucky :D
                     luckyTime.start
                     val (wereWeLucky, cleanModel) = validateAndDeleteModel(solver.getModel, entireFormula, varsInVC)
@@ -470,52 +429,6 @@ class FairZ3Solver(context : LeonContext)
             if(!foundDefinitiveAnswer) { 
               reporter.info("- We need to keep going.")
 
-              // reporter.info(" - toRelease   : " + toRelease)
-              // reporter.info(" - blockingSet : " + blockingSet)
-
-              //var fixedForEver : Set[Expr] = Set.empty
-
-              //if(Settings.pruneBranches) {
-              //  z3Time.start
-              //  for(ex <- blockingSet) ex match {
-              //    case Not(Variable(b)) =>
-              //      solver.push
-              //      solver.assertCnstr(toZ3Formula(Variable(b)).get)
-              //      solver.check match {
-              //        case Some(false) =>
-              //          //println("We had ~" + b + " in the blocking set. We now know it should stay there forever.")
-              //          solver.pop(1)
-              //          solver.assertCnstr(toZ3Formula(Not(Variable(b))).get)
-              //          fixedForEver = fixedForEver + ex
-
-              //        case _ =>
-              //          solver.pop(1)
-              //      }
-
-              //    case Variable(b) =>
-              //      solver.push
-              //      solver.assertCnstr(toZ3Formula(Not(Variable(b))).get)
-              //      solver.check match {
-              //        case Some(false) =>
-              //          //println("We had " + b + " in the blocking set. We now know it should stay there forever.")
-              //          solver.pop(1)
-              //          solver.assertCnstr(toZ3Formula(Variable(b)).get)
-              //          fixedForEver = fixedForEver + ex
-
-              //        case _ =>
-              //          solver.pop(1)
-              //      }
-
-              //    case _ =>
-              //      scala.sys.error("Should not have happened.")
-              //  }
-
-              //  if(fixedForEver.size > 0) {
-              //    reporter.info("- Pruned out " + fixedForEver.size + " branches.")
-              //  }
-              //  z3Time.stop
-              //}
-
               val toReleaseAsPairs = unrollingBank.getBlockersToUnlock
 
               reporter.info(" - more unrollings")
@@ -532,11 +445,6 @@ class FairZ3Solver(context : LeonContext)
 
               reporter.info(" - finished unrolling")
             }
-        }
-
-        if(iterationsLeft <= 0) {
-          reporter.error(" - Max. number of iterations reached.")
-          foundAnswer(None)
         }
       }
 

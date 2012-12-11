@@ -15,9 +15,12 @@ object Main {
   }
 
   // Add whatever you need here.
-  lazy val allComponents : List[LeonComponent] = allPhases ++ Nil
+  lazy val allComponents : Set[LeonComponent] = allPhases.toSet ++ Set(
+    // It's a little unfortunate that we need to build one...
+    new solvers.z3.FairZ3Solver(LeonContext())
+  )
 
-  lazy val allOptions = allPhases.flatMap(_.definedOptions) ++ Set(
+  lazy val topLevelOptions : Set[LeonOptionDef] = Set(
       LeonFlagOptionDef ("synthesis",    "--synthesis",   "Partial synthesis of choose() constructs"),
       LeonFlagOptionDef ("xlang",        "--xlang",       "Support for extra program constructs (imperative,...)"),
       LeonFlagOptionDef ("parse",        "--parse",       "Checks only whether the program is valid PureScala"),
@@ -27,31 +30,26 @@ object Main {
       //  Unimplemented Options:
       //
       //  LeonFlagOptionDef("uniqid",        "--uniqid",             "When pretty-printing purescala trees, show identifiers IDs"),
-      //  LeonValueOptionDef("extensions",   "--extensions=ex1:...", "Specifies a list of qualified class names of extensions to be loaded"),
-      //  LeonFlagOptionDef("nodefaults",    "--nodefaults",         "Runs only the analyses provided by the extensions"),
-      //  LeonValueOptionDef("functions",    "--functions=fun1:...", "Only generates verification conditions for the specified functions"),
-      //  LeonFlagOptionDef("unrolling",     "--unrolling=[0,1,2]",  "Unrolling depth for recursive functions" ),
-      //  LeonFlagOptionDef("axioms",        "--axioms",             "Generate simple forall axioms for recursive functions when possible" ),
       //  LeonFlagOptionDef("tolerant",      "--tolerant",           "Silently extracts non-pure function bodies as ''unknown''"),
       //  LeonFlagOptionDef("bapa",          "--bapa",               "Use BAPA Z3 extension (incompatible with many other things)"),
       //  LeonFlagOptionDef("impure",        "--impure",             "Generate testcases only for impure functions"),
       //  LeonValueOptionDef("testcases",    "--testcases=[1,2]",    "Number of testcases to generate per function"),
       //  LeonValueOptionDef("testbounds",   "--testbounds=l:u",     "Lower and upper bounds for integers in recursive datatypes"),
       //  LeonValueOptionDef("timeout",      "--timeout=N",          "Sets a timeout of N seconds"),
-      //  LeonFlagOptionDef("XP",            "--XP",                 "Enable weird transformations and other bug-producing features"),
       //  LeonFlagOptionDef("BV",            "--BV",                 "Use bit-vectors for integers"),
-      //  LeonFlagOptionDef("prune",         "--prune",              "Use additional SMT queries to rule out some unrollings"),
-      //  LeonFlagOptionDef("cores",         "--cores",              "Use UNSAT cores in the unrolling/refinement step"),
       //  LeonFlagOptionDef("quickcheck",    "--quickcheck",         "Use QuickCheck-like random search"),
       //  LeonFlagOptionDef("parallel",      "--parallel",           "Run all solvers in parallel"),
-      //  LeonFlagOptionDef("noLuckyTests",  "--noLuckyTests",       "Do not perform additional tests to potentially find models early"),
-      //  LeonFlagOptionDef("noverifymodel", "--noverifymodel",      "Do not verify the correctness of models returned by Z3"),
       //  LeonValueOptionDef("tags",         "--tags=t1:...",        "Filter out debug information that are not of one of the given tags"),
     )
+
+  lazy val allOptions = allComponents.flatMap(_.definedOptions) ++ topLevelOptions
 
   def displayHelp(reporter: Reporter) {
     reporter.info("usage: leon [--xlang] [--synthesis] [--help] [--debug=<N>] [..] <files>")
     reporter.info("")
+    for (opt <- topLevelOptions.toSeq.sortBy(_.name)) {
+      reporter.info("%-20s %s".format(opt.usageOption, opt.usageDesc))
+    }
     reporter.info("(By default, Leon verifies PureScala programs.)")
     reporter.info("")
     reporter.info("Additional options, by component:")
@@ -96,7 +94,7 @@ object Main {
           case (false, LeonValueOption(name, value)) =>
             Some(leonOpt)
           case _ =>
-            reporter.error("Invalid option usage: "+opt)
+            reporter.error("Invalid option usage: " + opt)
             displayHelp(reporter)
             None
         }

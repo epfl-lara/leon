@@ -5,17 +5,11 @@ package leon
 object Settings {
   var showIDs: Boolean = false
   lazy val reporter: Reporter = new DefaultReporter
-  var noForallAxioms: Boolean = true
-  var unrollingLevel: Int = 0
   var useBAPA: Boolean = false
   var impureTestcases: Boolean = false
   var nbTestcases: Int = 1
   var testBounds: (Int, Int) = (0, 3)
-  var useCores : Boolean = false
-  var pruneBranches : Boolean = false
   var solverTimeout : Option[Int] = None
-  var luckyTest : Boolean = true
-  var verifyModel : Boolean = true
   var useQuickCheck : Boolean = false
   var useParallel : Boolean = false
   // When this is None, use real integers
