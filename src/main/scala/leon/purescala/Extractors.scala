@@ -2,7 +2,6 @@ package leon
 package purescala
 
 import Trees._
-import xlang.Trees._
 
 object Extractors {
   import Common._
@@ -24,14 +23,11 @@ object Extractors {
       case SetMax(s) => Some((s,SetMax))
       case CaseClassSelector(cd, e, sel) => Some((e, CaseClassSelector(cd, _, sel)))
       case CaseClassInstanceOf(cd, e) => Some((e, CaseClassInstanceOf(cd, _)))
-      case Assignment(id, e) => Some((e, Assignment(id, _)))
       case TupleSelect(t, i) => Some((t, TupleSelect(_, i)))
       case ArrayLength(a) => Some((a, ArrayLength))
       case ArrayClone(a) => Some((a, ArrayClone))
       case ArrayMake(t) => Some((t, ArrayMake))
-      case Waypoint(i, t) => Some((t, (expr: Expr) => Waypoint(i, expr)))
-      case e@Epsilon(t) => Some((t, (expr: Expr) => Epsilon(expr).setType(e.getType).setPosInfo(e)))
-      case ue: UnaryExtractable => ue.extract
+      case (ue: UnaryExtractable) => ue.extract
       case _ => None
     }
   }
@@ -74,11 +70,9 @@ object Extractors {
       case ArraySelect(t1, t2) => Some((t1, t2, ArraySelect))
       case Concat(t1,t2) => Some((t1,t2,Concat))
       case ListAt(t1,t2) => Some((t1,t2,ListAt))
-      case Let(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => Let(binders, e, body)))
-      case LetVar(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => LetVar(binders, e, body)))
-      case LetTuple(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => LetTuple(binders, e, body)))
-      case wh@While(t1, t2) => Some((t1,t2, (t1, t2) => While(t1, t2).setInvariant(wh.invariant).setPosInfo(wh)))
-      case ex: BinaryExtractable => ex.extract
+      case Let(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => Let(binders, e, body))) //TODO: shouldn't be "b" instead of "body" ?
+      case LetTuple(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => LetTuple(binders, e, body))) //TODO: shouldn't be "b" instead of "body" ?
+      case (ex: BinaryExtractable) => ex.extract
       case _ => None
     }
   }
@@ -97,11 +91,9 @@ object Extractors {
       case FiniteSet(args) => Some((args, FiniteSet))
       case FiniteMap(args) => Some((args, (as : Seq[Expr]) => FiniteMap(as.asInstanceOf[Seq[SingletonMap]])))
       case FiniteMultiset(args) => Some((args, FiniteMultiset))
-      case ArrayUpdate(t1, t2, t3) => Some((Seq(t1,t2,t3), (as: Seq[Expr]) => ArrayUpdate(as(0), as(1), as(2))))
       case ArrayUpdated(t1, t2, t3) => Some((Seq(t1,t2,t3), (as: Seq[Expr]) => ArrayUpdated(as(0), as(1), as(2))))
       case FiniteArray(args) => Some((args, FiniteArray))
       case Distinct(args) => Some((args, Distinct))
-      case Block(args, rest) => Some((args :+ rest, exprs => Block(exprs.init, exprs.last)))
       case Tuple(args) => Some((args, Tuple))
       case IfExpr(cond, then, elze) => Some((Seq(cond, then, elze), (as: Seq[Expr]) => IfExpr(as(0), as(1), as(2))))
       case MatchExpr(scrut, cases) =>
@@ -153,7 +145,7 @@ object Extractors {
           case _ =>
             None
         }
-      case ex: NAryExtractable => ex.extract
+      case (ex: NAryExtractable) => ex.extract
       case _ => None
     }
   }
