@@ -12,8 +12,6 @@ object Settings {
   var solverTimeout : Option[Int] = None
   var useQuickCheck : Boolean = false
   var useParallel : Boolean = false
-  // When this is None, use real integers
-  var bitvectorBitwidth : Option[Int] = None
   var debugLevel: Int = 0
   var synthesis: Boolean = false
   var transformProgram: Boolean              = true

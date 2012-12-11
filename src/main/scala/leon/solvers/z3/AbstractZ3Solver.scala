@@ -19,9 +19,6 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
   val context : LeonContext
   protected[z3] val reporter : Reporter = context.reporter
 
-  protected[leon] val USEBV : Boolean = Settings.bitvectorBitwidth.isDefined
-  protected[leon] val BVWIDTH : Int = Settings.bitvectorBitwidth.getOrElse(-1)
-
   class CantTranslateException(t: Z3AST) extends Exception("Can't translate from Z3 tree: " + t)
 
   protected[leon] val z3cfg : Z3Config
@@ -121,11 +118,8 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
     case Some(z3sort) => z3sort
     case None => {
       import Z3Context.{ADTSortReference, RecursiveType, RegularSort}
-      intSort = if(USEBV) {
-        z3.mkBVSort(BVWIDTH) 
-      } else {
-        z3.mkIntSort
-      }
+
+      intSort = z3.mkIntSort
       boolSort = z3.mkBoolSort
 
       def typeToSortRef(tt: TypeTree): ADTSortReference = tt match {
@@ -170,11 +164,8 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
     import Z3Context.{ADTSortReference, RecursiveType, RegularSort}
     // NOTE THAT abstract classes that extend abstract classes are not
     // currently supported in the translation
-    intSort = if(USEBV) {
-      z3.mkBVSort(BVWIDTH) 
-    } else {
-      z3.mkIntSort
-    }
+    
+    intSort = z3.mkIntSort
     boolSort = z3.mkBoolSort
     setSorts = Map.empty
     setCardFuns = Map.empty
@@ -438,16 +429,16 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
         case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()
         case UnitLiteral => unitValue
         case Equals(l, r) => z3.mkEq(rec(l), rec(r))
-        case Plus(l, r) => if(USEBV) z3.mkBVAdd(rec(l), rec(r)) else z3.mkAdd(rec(l), rec(r))
-        case Minus(l, r) => if(USEBV) z3.mkBVSub(rec(l), rec(r)) else z3.mkSub(rec(l), rec(r))
-        case Times(l, r) => if(USEBV) z3.mkBVMul(rec(l), rec(r)) else z3.mkMul(rec(l), rec(r))
-        case Division(l, r) => if(USEBV) z3.mkBVSdiv(rec(l), rec(r)) else z3.mkDiv(rec(l), rec(r))
-        case Modulo(l, r) => if(USEBV) sys.error("I don't know what to do here!") else z3.mkMod(rec(l), rec(r))
-        case UMinus(e) => if(USEBV) z3.mkBVNeg(rec(e)) else z3.mkUnaryMinus(rec(e))
-        case LessThan(l, r) => if(USEBV) z3.mkBVSlt(rec(l), rec(r)) else z3.mkLT(rec(l), rec(r))
-        case LessEquals(l, r) => if(USEBV) z3.mkBVSle(rec(l), rec(r)) else z3.mkLE(rec(l), rec(r))
-        case GreaterThan(l, r) => if(USEBV) z3.mkBVSgt(rec(l), rec(r)) else z3.mkGT(rec(l), rec(r))
-        case GreaterEquals(l, r) => if(USEBV) z3.mkBVSge(rec(l), rec(r)) else z3.mkGE(rec(l), rec(r))
+        case Plus(l, r) => z3.mkAdd(rec(l), rec(r))
+        case Minus(l, r) => z3.mkSub(rec(l), rec(r))
+        case Times(l, r) => z3.mkMul(rec(l), rec(r))
+        case Division(l, r) => z3.mkDiv(rec(l), rec(r))
+        case Modulo(l, r) => z3.mkMod(rec(l), rec(r))
+        case UMinus(e) => z3.mkUnaryMinus(rec(e))
+        case LessThan(l, r) => z3.mkLT(rec(l), rec(r))
+        case LessEquals(l, r) => z3.mkLE(rec(l), rec(r))
+        case GreaterThan(l, r) => z3.mkGT(rec(l), rec(r))
+        case GreaterEquals(l, r) => z3.mkGE(rec(l), rec(r))
         case c @ CaseClass(cd, args) => {
           val constructor = adtConstructors(cd)
           constructor(args.map(rec(_)): _*)

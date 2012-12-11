@@ -25,7 +25,6 @@ class LeonPlugin(val global: PluginRunner) extends Plugin {
     "  --testcases=[1,2]    Number of testcases to generate per function" + "\n" +
     "  --testbounds=l:u     Lower and upper bounds for integers in recursive datatypes" + "\n" +
     "  --timeout=N          Sets a timeout of N seconds" + "\n" +
-    "  --BV                 Use bit-vectors for integers" + "\n" +
     "  --quickcheck         Use QuickCheck-like random search" + "\n" +
     "  --parallel           Run all solvers in parallel" + "\n" +
     "  --debug=[1-5]        Debug level" + "\n" +
@@ -44,7 +43,6 @@ class LeonPlugin(val global: PluginRunner) extends Plugin {
         case "tolerant"      =>                     leon.Settings.silentlyTolerateNonPureBodies = true
         case "bapa"          =>                     leon.Settings.useBAPA = true
         case "impure"        =>                     leon.Settings.impureTestcases = true
-        case "BV"            =>                     leon.Settings.bitvectorBitwidth = Some(32)
         case "quickcheck"    =>                     leon.Settings.useQuickCheck = true
         case "parallel"      =>                     leon.Settings.useParallel = true
         case "imperative"     =>                    leon.Settings.synthesis = false;
