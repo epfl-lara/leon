@@ -6,7 +6,6 @@ package purescala
 object PrettyPrinter {
   import Common._
   import Trees._
-  import xlang.Trees._
   import TypeTrees._
   import Definitions._
 
@@ -28,8 +27,8 @@ object PrettyPrinter {
   }
 
   private def ind(sb: StringBuffer, lvl: Int) : StringBuffer = {
-      sb.append("  " * lvl)
-      sb
+    sb.append("  " * lvl)
+    sb
   }
 
   // EXPRESSIONS
@@ -89,15 +88,6 @@ object PrettyPrinter {
       sb.append(")")
       sb
     }
-    case LetVar(b,d,e) => {
-      sb.append("(letvar (" + b + " := ");
-      pp(d, sb, lvl)
-      sb.append(") in\n")
-      ind(sb, lvl+1)
-      pp(e, sb, lvl+1)
-      sb.append(")")
-      sb
-    }
     case LetDef(fd,e) => {
       sb.append("\n")
       pp(fd, sb, lvl+1)
@@ -118,51 +108,11 @@ object PrettyPrinter {
     case BooleanLiteral(v) => sb.append(v)
     case StringLiteral(s) => sb.append("\"" + s + "\"")
     case UnitLiteral => sb.append("()")
-    case Block(exprs, last) => {
-      sb.append("{\n")
-      (exprs :+ last).foreach(e => {
-        ind(sb, lvl+1)
-        pp(e, sb, lvl+1)
-        sb.append("\n")
-      })
-      ind(sb, lvl)
-      sb.append("}\n")
-      sb
-    }
-    case Assignment(lhs, rhs) => ppBinary(sb, lhs.toVariable, rhs, " = ", lvl)
-    case wh@While(cond, body) => {
-      wh.invariant match {
-        case Some(inv) => {
-          sb.append("\n")
-          ind(sb, lvl)
-          sb.append("@invariant: ")
-          pp(inv, sb, lvl)
-          sb.append("\n")
-          ind(sb, lvl)
-        }
-        case None =>
-      }
-      sb.append("while(")
-      pp(cond, sb, lvl)
-      sb.append(")\n")
-      ind(sb, lvl+1)
-      pp(body, sb, lvl+1)
-      sb.append("\n")
-    }
-
     case t@Tuple(exprs) => ppNary(sb, exprs, "(", ", ", ")", lvl)
     case s@TupleSelect(t, i) => {
       pp(t, sb, lvl)
       sb.append("._" + i)
       sb
-    }
-
-    case e@Epsilon(pred) => {
-      var nsb = sb
-      nsb.append("epsilon(x" + e.posIntInfo._1 + "_" + e.posIntInfo._2 + ". ")
-      nsb = pp(pred, nsb, lvl)
-      nsb.append(")")
-      nsb
     }
 
     case c@Choose(vars, pred) => {
@@ -171,12 +121,6 @@ object PrettyPrinter {
       nsb = pp(pred, nsb, lvl)
       nsb.append(")")
       nsb
-    }
-
-    case Waypoint(i, expr) => {
-      sb.append("waypoint_" + i + "(")
-      pp(expr, sb, lvl)
-      sb.append(")")
     }
 
     case OptionSome(a) => {
@@ -300,13 +244,6 @@ object PrettyPrinter {
       pp(i, sb, lvl)
       sb.append(")")
     }
-    case up@ArrayUpdate(ar, i, v) => {
-      pp(ar, sb, lvl)
-      sb.append("(")
-      pp(i, sb, lvl)
-      sb.append(") = ")
-      pp(v, sb, lvl)
-    }
     case up@ArrayUpdated(ar, i, v) => {
       pp(ar, sb, lvl)
       sb.append(".updated(")
@@ -411,7 +348,6 @@ object PrettyPrinter {
     }
 
     case ResultVariable() => sb.append("#res")
-    case EpsilonVariable((row, col)) => sb.append("x" + row + "_" + col)
     case Not(expr) => ppUnary(sb, expr, "\u00AC(", ")", lvl)               // \neg
 
     case e @ Error(desc) => {
@@ -422,7 +358,13 @@ object PrettyPrinter {
       nsb
     }
 
+    case (expr: PrettyPrintable) => expr.pp(sb, lvl, pp)
+
     case _ => sb.append("Expr?")
+  }
+
+  trait PrettyPrintable {
+    def pp(sb: StringBuffer, lvl: Int, rp: (Expr, StringBuffer, Int) => StringBuffer): StringBuffer
   }
 
   // TYPE TREES
