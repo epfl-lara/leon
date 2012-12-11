@@ -74,4 +74,12 @@ public final class Set {
     }
     return new Set(n);
   }
+
+  @Override
+  public boolean equals(Object that) {
+    if(that == this) return true;
+    if(!(that instanceof Set)) return false;
+    Set other = (Set)that;
+    return this.subsetOf(other) && other.subsetOf(this);
+  }
 }
