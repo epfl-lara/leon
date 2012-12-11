@@ -15,23 +15,22 @@ import purescala.TypeTrees._
 import scala.collection.mutable.{Map => MutableMap}
 import scala.collection.mutable.{Set => MutableSet}
 
-class FairZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ3Solver with Z3ModelReconstruction {
-  // have to comment this to use the solver for constraint solving...
-  // assert(Settings.useFairInstantiator)
+class FairZ3Solver(context : LeonContext)
+  extends Solver(context)
+     with AbstractZ3Solver
+     with Z3ModelReconstruction 
+     with LeonComponent {
 
-  private val UNKNOWNASSAT : Boolean = !Settings.noForallAxioms
-
+  val name = "Z3-f"
   val description = "Fair Z3 Solver"
-  override val shortDescription = "Z3-f"
 
   // this is fixed
   protected[leon] val z3cfg = new Z3Config(
     "MODEL" -> true,
     "MBQI" -> false,
-    // "SOFT_TIMEOUT" -> 100,
     "TYPE_CHECK" -> true,
     "WELL_SORTED_CHECK" -> true
-    )
+  )
   toggleWarningMessages(true)
 
   def isKnownDef(funDef: FunDef) : Boolean = functionMap.isDefinedAt(funDef)

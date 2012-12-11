@@ -7,8 +7,8 @@ import purescala.Trees._
 import purescala.TypeTrees._
 
 class TrivialSolver(context: LeonContext) extends Solver(context) with NaiveIncrementalSolver {
+  val name = "trivial"
   val description = "Solver for syntactically trivial formulas"
-  override val shortDescription = "trivial"
 
   def solve(expression: Expr) : Option[Boolean] = expression match {
     case BooleanLiteral(v) => Some(v)

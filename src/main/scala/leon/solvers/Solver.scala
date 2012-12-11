@@ -6,11 +6,7 @@ import purescala.Definitions._
 import purescala.TreeOps._
 import purescala.Trees._
 
-abstract class Solver(val context : LeonContext) extends IncrementalSolverBuilder {
-  // This used to be in Extension
-  val description : String
-  val shortDescription : String
-
+abstract class Solver(val context : LeonContext) extends IncrementalSolverBuilder with LeonComponent {
   // This can be used by solvers to "see" the programs from which the
   // formulas come. (e.g. to set up some datastructures for the defined
   // ADTs, etc.) 

@@ -17,8 +17,8 @@ class RandomSolver(context: LeonContext, val nbTrial: Option[Int] = None) extend
 
   private val reporter = context.reporter
 
+  val name = "QC"
   val description = "Solver applying random testing (QuickCheck-like)"
-  override val shortDescription = "QC"
 
   private val random = new Random()
 

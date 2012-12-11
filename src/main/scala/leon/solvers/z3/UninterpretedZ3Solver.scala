@@ -20,8 +20,8 @@ import purescala.TypeTrees._
  *  Results should come back very quickly.
  */
 class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ3Solver with Z3ModelReconstruction {
+  val name = "Z3-u"
   val description = "Uninterpreted Z3 Solver"
-  override val shortDescription = "Z3-u"
 
   // this is fixed
   protected[leon] val z3cfg = new Z3Config(

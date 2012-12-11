@@ -22,8 +22,8 @@ class ParallelSolver(solvers : Solver*) extends Solver(solvers(0).context) with 
   private val reporter = context.reporter
 
   val description = "Solver running subsolvers in parallel " + solvers.map(_.description).mkString("(", ", ", ")")
-  override val shortDescription = solvers.map(_.shortDescription).mkString("//")
-  override val superseeds : Seq[String] = solvers.map(_.shortDescription).toSeq
+  override val name = solvers.map(_.name).mkString("//")
+  override val superseeds : Seq[String] = solvers.map(_.name).toSeq
 
   case class Solve(expr: Expr)
   case object Init
@@ -39,10 +39,10 @@ class ParallelSolver(solvers : Solver*) extends Solver(solvers(0).context) with 
         while(true) {
           receive {
             case Solve(expr) => {
-              reporter.info("Starting solver " + s.shortDescription)
+              reporter.info("Starting solver " + s.name)
               val res = s.solve(expr)
               that ! Result(res)
-              reporter.info("Ending solver " + s.shortDescription)
+              reporter.info("Ending solver " + s.name)
             }
           }
         }
@@ -54,15 +54,15 @@ class ParallelSolver(solvers : Solver*) extends Solver(solvers(0).context) with 
       while(true) {
         receive {
           case Init => {
-            reporter.info("Init solver " + s.shortDescription)
+            reporter.info("Init solver " + s.name)
             s.init 
             coordinator ! Ready
           }
           case Solve(expr) => {
-            reporter.info("Starting solver " + s.shortDescription)
+            reporter.info("Starting solver " + s.name)
             val res = s.solve(expr)
             coordinator ! Result(res)
-            reporter.info("Ending solver " + s.shortDescription)
+            reporter.info("Ending solver " + s.name)
           }
         }
       }
@@ -140,7 +140,7 @@ class ParallelSolver(solvers : Solver*) extends Solver(solvers(0).context) with 
 
   class SolverRunner(s: Solver, expr: Expr) extends Actor {
     def act() {
-      reporter.info("Starting solver " + s.shortDescription)
+      reporter.info("Starting solver " + s.name)
       s.solve(expr) match {
         case Some(b) => {
           lock.acquire      
@@ -162,7 +162,7 @@ class ParallelSolver(solvers : Solver*) extends Solver(solvers(0).context) with 
       if(nbResponses >= nbSolvers)
         resultNotReady = false
       lock.release
-      reporter.info("Ending solver " + s.shortDescription)
+      reporter.info("Ending solver " + s.name)
     }
   }
   */
