@@ -12,5 +12,10 @@ object Settings {
 case class Settings(
   val synthesis: Boolean    = false,
   val xlang: Boolean        = false,
-  val verify: Boolean       = true
+  val verify: Boolean       = true,
+  val classPath: String     = 
+    List(
+      "/home/ekneuss/scala/scala-2.9.2/lib/",
+      "/home/ekneuss/git/leon-2.0/library/target/scala-2.9.2/"
+    ).mkString(":")
 )

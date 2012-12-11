@@ -20,6 +20,8 @@ import leon.{LeonContext, Settings, Reporter}
 import leon.plugin.{TemporaryInputPhase, ExtractionPhase}
 import leon.verification.AnalysisPhase
 
+import scala.tools.util.PathResolver
+
 
 object LeonConsole {
   def open: Promise[(Iteratee[JsValue,_],Enumerator[JsValue])] = {

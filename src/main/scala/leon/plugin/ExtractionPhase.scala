@@ -12,7 +12,7 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
   def run(ctx: LeonContext)(args: List[String]): Program = {
 
     val settings = new NSCSettings
-    settings.usejavacp.value = true
+    settings.extdirs.value = ctx.settings.classPath
 
     val compilerOpts = args.filterNot(_.startsWith("--"))
 
@@ -21,6 +21,12 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
     }
 
     if(command.ok) {
+      // Debugging code for classpath crap
+      //new scala.tools.util.PathResolver(settings).Calculated.basis.foreach { cp =>
+      //  cp.foreach( p => 
+      //    ctx.reporter.info(" => "+p.toString)
+      //  )
+      //}
       val runner = new PluginRunner(settings, ctx, None)
       val run = new runner.Run
       run.compile(command.files)

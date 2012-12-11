@@ -9,8 +9,8 @@ object VerificationExamples {
 
   val default = Example("Default", """
 import scala.collection.immutable.Set
-import funcheck.Annotations._
-import funcheck.Utils._
+import leon.Annotations._
+import leon.Utils._
 
 object Example {
   sealed abstract class List
@@ -34,8 +34,8 @@ object Example {
 
   newExample("Amortized Queue", """
 import scala.collection.immutable.Set
-import funcheck.Utils._
-import funcheck.Annotations._
+import leon.Utils._
+import leon.Annotations._
 
 object AmortizedQueue {
   sealed abstract class List
@@ -139,8 +139,8 @@ object AmortizedQueue {
 
   newExample("Associative List", """
 import scala.collection.immutable.Set
-import funcheck.Utils._
-import funcheck.Annotations._
+import leon.Utils._
+import leon.Annotations._
 
 object AssociativeList { 
   sealed abstract class KeyValuePairAbs
@@ -192,8 +192,8 @@ object AssociativeList {
 
   newExample("Insertion Sort", """
 import scala.collection.immutable.Set
-import funcheck.Annotations._
-import funcheck.Utils._
+import leon.Annotations._
+import leon.Utils._
 
 object InsertionSort {
   sealed abstract class List
@@ -274,8 +274,8 @@ object InsertionSort {
 
   newExample("List Operations", """
 import scala.collection.immutable.Set
-import funcheck.Annotations._
-import funcheck.Utils._
+import leon.Annotations._
+import leon.Utils._
 
 object ListOperations {
     sealed abstract class List
@@ -384,8 +384,8 @@ object ListOperations {
 
   newExample("Propositional Logic", """
 import scala.collection.immutable.Set
-import funcheck.Utils._
-import funcheck.Annotations._
+import leon.Utils._
+import leon.Annotations._
 
 object PropositionalLogic { 
 
@@ -488,8 +488,8 @@ object PropositionalLogic {
 
   newExample("Red-Black Tree", """
 import scala.collection.immutable.Set
-import funcheck.Annotations._
-import funcheck.Utils._
+import leon.Annotations._
+import leon.Utils._
 
 object RedBlackTree { 
   sealed abstract class Color
@@ -607,8 +607,8 @@ object RedBlackTree {
 
   newExample("Search Linked-List", """
 import scala.collection.immutable.Set
-import funcheck.Utils._
-import funcheck.Annotations._
+import leon.Utils._
+import leon.Annotations._
 
 object SearchLinkedList {
   sealed abstract class List
@@ -657,8 +657,8 @@ object SearchLinkedList {
   """.trim)
 
   newExample("Sum and Max", """
-import funcheck.Utils._
-import funcheck.Annotations._
+import leon.Utils._
+import leon.Annotations._
 
 object SumAndMax {
   sealed abstract class List
