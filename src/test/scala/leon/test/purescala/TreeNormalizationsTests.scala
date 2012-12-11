@@ -6,7 +6,6 @@ import leon.purescala.TypeTrees._
 import leon.purescala.Trees._
 import leon.purescala.TreeOps._
 import leon.purescala.TreeNormalizations._
-import leon.purescala.LikelyEq
 import leon.SilentReporter
 
 import org.scalatest.FunSuite

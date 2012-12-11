@@ -6,7 +6,6 @@ import leon.Evaluator
 import leon.purescala.Trees._
 import leon.purescala.Common._
 
-import leon.purescala.LikelyEq
 
 class LikelyEqSuite extends FunSuite {
 

@@ -1,4 +1,4 @@
-package leon.purescala
+package leon.test.purescala
 
 import leon.Evaluator._
 import leon.purescala.Trees._
