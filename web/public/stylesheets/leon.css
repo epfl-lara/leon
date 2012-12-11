@@ -6,7 +6,7 @@ body {
     font-family: Arial, Helvetica, Sans-serif;
     margin: 0px;
     padding: 0px;
-    background-image: url('/assets/images/lionbkg.png');
+    background-image: url('../images/lionbkg.png');
     background-color: #FFFFFF;
     background-repeat: no-repeat;
     background-position: 25px 15px;
@@ -52,7 +52,7 @@ div#title {
     width: 700px;
     min-height: 80px;
     max-height: 80px;
-    background-image: url('/assets/images/leonlogo.png');
+    background-image: url('../images/leonlogo.png');
     background-repeat: no-repeat;
     background-position: right bottom;
 }

@@ -1,6 +1,6 @@
-@(exs: List[examples.Example], default: examples.Example)(implicit request: RequestHeader)
+@(exs: List[examples.Example], default: examples.Example, prefix: String, websocketURL: String)(implicit request: RequestHeader)
 
-@main("Leon Online") {
+@main("Leon Online", prefix) {
   <div id="allcontent">
     <div id="title" class="contentbox"></div>
 
@@ -30,7 +30,7 @@
       <script>
         $(document).ready(function() {
             var WS = window['MozWebSocket'] ? MozWebSocket : WebSocket
-            var leonSocket = new WS("@leon.web.controllers.routes.Application.openConsole().webSocketURL()")
+            var leonSocket = new WS("@websocketURL")
             
             var sendMessage = function() {
             }

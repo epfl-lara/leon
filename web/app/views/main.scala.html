@@ -1,15 +1,15 @@
-@(title: String)(content: Html)
+@(title: String, prefix: String)(content: Html)
 
 <!DOCTYPE html>
 
 <html>
     <head>
         <title>@title</title>
-        <link href="@routes.Assets.at("images/lambda-ico.png")" type="image/png" rel="icon">
-        <link rel="stylesheet" media="screen" href="@routes.Assets.at("stylesheets/leon.css")">
-        <script src="@routes.Assets.at("javascripts/jquery-1.8.3.min.js")" type="text/javascript"></script>
+        <link href="@prefix@routes.Assets.at("images/lambda-ico.png")" type="image/png" rel="icon">
+        <link rel="stylesheet" media="screen" href="@prefix@routes.Assets.at("stylesheets/leon.css")">
+        <script src="@prefix@routes.Assets.at("javascripts/jquery-1.8.3.min.js")" type="text/javascript"></script>
         <script src="http://d1n0x3qji82z53.cloudfront.net/src-min-noconflict/ace.js" type="text/javascript" charset="utf-8"></script>
-        <script src="@routes.Assets.at("javascripts/leon.js")" type="text/javascript"></script>
+        <script src="@prefix@routes.Assets.at("javascripts/leon.js")" type="text/javascript"></script>
         <meta http-equiv="content-type" content="text/html; charset=UTF-8">
     </head>
     <body>
