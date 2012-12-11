@@ -31,15 +31,6 @@ object Main {
       //
       //  LeonFlagOptionDef("uniqid",        "--uniqid",             "When pretty-printing purescala trees, show identifiers IDs"),
       //  LeonFlagOptionDef("tolerant",      "--tolerant",           "Silently extracts non-pure function bodies as ''unknown''"),
-      //  LeonFlagOptionDef("bapa",          "--bapa",               "Use BAPA Z3 extension (incompatible with many other things)"),
-      //  LeonFlagOptionDef("impure",        "--impure",             "Generate testcases only for impure functions"),
-      //  LeonValueOptionDef("testcases",    "--testcases=[1,2]",    "Number of testcases to generate per function"),
-      //  LeonValueOptionDef("testbounds",   "--testbounds=l:u",     "Lower and upper bounds for integers in recursive datatypes"),
-      //  LeonValueOptionDef("timeout",      "--timeout=N",          "Sets a timeout of N seconds"),
-      //  LeonFlagOptionDef("BV",            "--BV",                 "Use bit-vectors for integers"),
-      //  LeonFlagOptionDef("quickcheck",    "--quickcheck",         "Use QuickCheck-like random search"),
-      //  LeonFlagOptionDef("parallel",      "--parallel",           "Run all solvers in parallel"),
-      //  LeonValueOptionDef("tags",         "--tags=t1:...",        "Filter out debug information that are not of one of the given tags"),
     )
 
   lazy val allOptions = allComponents.flatMap(_.definedOptions) ++ topLevelOptions
