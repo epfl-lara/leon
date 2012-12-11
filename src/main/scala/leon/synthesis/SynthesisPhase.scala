@@ -13,7 +13,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
   val name        = "Synthesis"
   val description = "Synthesis"
 
-  override def definedOptions = Set(
+  override val definedOptions : Set[LeonOptionDef] = Set(
     LeonFlagOptionDef( "inplace",    "--inplace",         "Debug level"),
     LeonFlagOptionDef( "parallel",   "--parallel",        "Parallel synthesis search"),
     LeonFlagOptionDef( "derivtrees", "--derivtrees",      "Generate derivation trees"),
