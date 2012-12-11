@@ -1,4 +1,4 @@
-@(exs: List[examples.Example], default: examples.Example)
+@(exs: List[examples.Example], default: examples.Example)(implicit request: RequestHeader)
 
 @main("Leon Online") {
   <div id="allcontent">
@@ -27,6 +27,43 @@
           </select>
         </div>
       </form>
+      <script>
+        $(document).ready(function() {
+            var WS = window['MozWebSocket'] ? MozWebSocket : WebSocket
+            var leonSocket = new WS("@leon.web.controllers.routes.Application.openConsole().webSocketURL()")
+            
+            var sendMessage = function() {
+            }
+            
+            var receiveEvent = function(event) {
+                var data = JSON.parse(event.data)
+                if (data.kind == "error") {
+                    alert(data.message);
+                } else if (data.kind == "log") {
+                    $("#consolebox").val($("#consolebox").val()+"\n"+data.message);
+                } else if (data.kind == "event") {
+                    if (data.event == "started") {
+                        $("#askbutton").val("... processing ...")
+                    } else if (data.event == "stopped") {
+                        $("#askbutton").val("Ask Leon!")
+                    }
+                }
+            }
+            
+            leonSocket.onmessage = receiveEvent
+
+            var leonStatus = "stopped"
+
+            $("#leoninput").submit(function () {
+                var msg = JSON.stringify(
+                  {action: "start", mode: "verification", code: editor.getValue()}
+                )
+
+                leonSocket.send(msg)
+                return false;
+            });
+        });
+      </script>
     </div>
   </div>
 }

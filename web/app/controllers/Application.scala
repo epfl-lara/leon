@@ -1,3 +1,4 @@
+package leon.web
 package controllers
 
 import play.api._
@@ -7,12 +8,13 @@ import play.api.libs.json.Json._
 import play.api.libs.json.Writes._
 
 import examples._
+import models.LeonConsole
 
 object Application extends Controller {
 
   val examples = VerificationExamples.allExamples
 
-  def index = Action {
+  def index = Action { implicit request =>
     Ok(views.html.index(examples, VerificationExamples.default))
   }
 
@@ -23,6 +25,10 @@ object Application extends Controller {
       case None =>
         Ok(toJson(Map("status" -> "error", "errormsg" -> "Unknown example")))
     }
+  }
+
+  def openConsole() = WebSocket.async[JsValue] { request =>
+    LeonConsole.open
   }
 
 }

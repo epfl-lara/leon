@@ -32,9 +32,5 @@ $(document).ready(function() {
     editor.getSession().setMode("ace/mode/scala");
     editor.getSession().setUseWrapMode(true);
 
-    $("#leoninput").submit(function () {
-
-        return false;
-    });
 });
 
