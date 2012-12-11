@@ -143,19 +143,26 @@ td.date {
 
 div#codebox {
     border-style: none;
-    background-color: #eee;
+    background-color: rgba(255,255,255,0.5);
     border: 1px dashed #333;
     width: 700px;
     height: 450px;
     position: absolute;
 }
 
+div#codebox div.ace_gutter {
+    background-color: rgba(220,220,220,0.3) !important;
+}
+div#codebox div.ace_gutter_active_line {
+    background-color: rgba(220,220,220,0.5) !important;
+}
+
 textarea#consolebox {
-    font-family: "Lucida Console", monospace;                                                     
-    font-size: 11px;                                                                              
-    width: 700px;                                                                                 
+    font-family: "Lucida Console", monospace;
+    font-size: 11px;
+    width: 700px;
     height: 250px;
-    border: none;                                                                                 
+    border: none;
     background-color: #EEEEEE;
     padding: 0px;
     margin: 0px; 
