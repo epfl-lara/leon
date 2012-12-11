@@ -291,6 +291,7 @@ class FairZ3Solver(context : LeonContext)
       val newClauses = unrollingBank.scanForNewTemplates(expression)
 
       for (cl <- newClauses) {
+        println("transforming to z3: " + cl)
         solver.assertCnstr(z3.mkImplies(guard, toZ3Formula(cl).get))
       }
     }

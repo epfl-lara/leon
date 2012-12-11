@@ -19,8 +19,12 @@ object ImperativeCodeElimination extends TransformationPhase {
   private var parent: FunDef = null //the enclosing fundef
 
   def apply(ctx: LeonContext, pgm: Program): Program = {
+    varInScope = Set()
+    parent = null
+
     val allFuns = pgm.definedFunctions
     allFuns.foreach(fd => fd.body.map(body => {
+      println("processing fun: " + fd)
       parent = fd
       val (res, scope, _) = toFunction(body)
       fd.body = Some(scope(res))
@@ -35,6 +39,7 @@ object ImperativeCodeElimination extends TransformationPhase {
   private def toFunction(expr: Expr): (Expr, Expr => Expr, Map[Identifier, Identifier]) = {
     val res = expr match {
       case LetVar(id, e, b) => {
+        println("in letvar with id: " + id)
         val newId = FreshIdentifier(id.name).setType(id.getType)
         val (rhsVal, rhsScope, rhsFun) = toFunction(e)
         varInScope += id

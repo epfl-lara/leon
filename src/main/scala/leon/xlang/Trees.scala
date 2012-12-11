@@ -260,39 +260,51 @@ object Trees {
           (fd.precondition, fd.postcondition) match {
             case (None, None) =>
                 Some((Seq(b, body), (as: Seq[Expr]) => {
-                  val nfd = new FunDef(fd.id, fd.returnType, fd.args)
-                  nfd.fromLoop = fd.fromLoop
-                  nfd.parent = fd.parent
-                  nfd.body = Some(as(0))
-                  LetDef(nfd, as(1))
+                  //val nfd = new FunDef(fd.id, fd.returnType, fd.args)
+                  //nfd.fromLoop = fd.fromLoop
+                  //nfd.parent = fd.parent
+                  //nfd.body = Some(as(0))
+                  //LetDef(nfd, as(1))
+                  fd.body = Some(as(0))
+                  LetDef(fd, as(1))
                 }))
             case (Some(pre), None) =>
                 Some((Seq(b, body, pre), (as: Seq[Expr]) => {
-                  val nfd = new FunDef(fd.id, fd.returnType, fd.args)
-                  nfd.fromLoop = fd.fromLoop
-                  nfd.parent = fd.parent
-                  nfd.body = Some(as(0))
-                  nfd.precondition = Some(as(2))
-                  LetDef(nfd, as(1))
+                  //val nfd = new FunDef(fd.id, fd.returnType, fd.args)
+                  //nfd.fromLoop = fd.fromLoop
+                  //nfd.parent = fd.parent
+                  //nfd.body = Some(as(0))
+                  //nfd.precondition = Some(as(2))
+                  //LetDef(nfd, as(1))
+                  fd.body = Some(as(0))
+                  fd.precondition = Some(as(2))
+                  LetDef(fd, as(1))
                 }))
             case (None, Some(post)) =>
                 Some((Seq(b, body, post), (as: Seq[Expr]) => {
-                  val nfd = new FunDef(fd.id, fd.returnType, fd.args)
-                  nfd.fromLoop = fd.fromLoop
-                  nfd.parent = fd.parent
-                  nfd.body = Some(as(0))
-                  nfd.postcondition = Some(as(2))
-                  LetDef(nfd, as(1))
+                  //val nfd = new FunDef(fd.id, fd.returnType, fd.args)
+                  //nfd.fromLoop = fd.fromLoop
+                  //nfd.parent = fd.parent
+                  //nfd.body = Some(as(0))
+                  //nfd.postcondition = Some(as(2))
+                  //LetDef(nfd, as(1))
+                  fd.body = Some(as(0))
+                  fd.postcondition = Some(as(2))
+                  LetDef(fd, as(1))
                 }))
             case (Some(pre), Some(post)) =>
                 Some((Seq(b, body, pre, post), (as: Seq[Expr]) => {
-                  val nfd = new FunDef(fd.id, fd.returnType, fd.args)
-                  nfd.fromLoop = fd.fromLoop
-                  nfd.parent = fd.parent
-                  nfd.body = Some(as(0))
-                  nfd.precondition = Some(as(2))
-                  nfd.postcondition = Some(as(3))
-                  LetDef(nfd, as(1))
+                  //val nfd = new FunDef(fd.id, fd.returnType, fd.args)
+                  //nfd.fromLoop = fd.fromLoop
+                  //nfd.parent = fd.parent
+                  //nfd.body = Some(as(0))
+                  //nfd.precondition = Some(as(2))
+                  //nfd.postcondition = Some(as(3))
+                  //LetDef(nfd, as(1))
+                  fd.body = Some(as(0))
+                  fd.precondition = Some(as(2))
+                  fd.postcondition = Some(as(3))
+                  LetDef(fd, as(1))
                 }))
           }
             
@@ -300,35 +312,43 @@ object Trees {
           (fd.precondition, fd.postcondition) match {
             case (None, None) =>
                 Some((Seq(body), (as: Seq[Expr]) => {
-                  val nfd = new FunDef(fd.id, fd.returnType, fd.args)
-                  nfd.fromLoop = fd.fromLoop
-                  nfd.parent = fd.parent
-                  LetDef(nfd, as(0))
+                  //val nfd = new FunDef(fd.id, fd.returnType, fd.args)
+                  //nfd.fromLoop = fd.fromLoop
+                  //nfd.parent = fd.parent
+                  //LetDef(nfd, as(0))
+                  LetDef(fd, as(0))
                 }))
             case (Some(pre), None) =>
                 Some((Seq(body, pre), (as: Seq[Expr]) => {
-                  val nfd = new FunDef(fd.id, fd.returnType, fd.args)
-                  nfd.fromLoop = fd.fromLoop
-                  nfd.parent = fd.parent
-                  nfd.precondition = Some(as(1))
-                  LetDef(nfd, as(0))
+                  //val nfd = new FunDef(fd.id, fd.returnType, fd.args)
+                  //nfd.fromLoop = fd.fromLoop
+                  //nfd.parent = fd.parent
+                  //nfd.precondition = Some(as(1))
+                  //LetDef(nfd, as(0))
+                  fd.precondition = Some(as(1))
+                  LetDef(fd, as(0))
                 }))
             case (None, Some(post)) =>
                 Some((Seq(body, post), (as: Seq[Expr]) => {
-                  val nfd = new FunDef(fd.id, fd.returnType, fd.args)
-                  nfd.fromLoop = fd.fromLoop
-                  nfd.parent = fd.parent
-                  nfd.postcondition = Some(as(1))
-                  LetDef(nfd, as(0))
+                  //val nfd = new FunDef(fd.id, fd.returnType, fd.args)
+                  //nfd.fromLoop = fd.fromLoop
+                  //nfd.parent = fd.parent
+                  //nfd.postcondition = Some(as(1))
+                  //LetDef(nfd, as(0))
+                  fd.postcondition = Some(as(1))
+                  LetDef(fd, as(0))
                 }))
             case (Some(pre), Some(post)) =>
                 Some((Seq(body, pre, post), (as: Seq[Expr]) => {
-                  val nfd = new FunDef(fd.id, fd.returnType, fd.args)
-                  nfd.fromLoop = fd.fromLoop
-                  nfd.parent = fd.parent
-                  nfd.precondition = Some(as(1))
-                  nfd.postcondition = Some(as(2))
-                  LetDef(nfd, as(0))
+                  //val nfd = new FunDef(fd.id, fd.returnType, fd.args)
+                  //nfd.fromLoop = fd.fromLoop
+                  //nfd.parent = fd.parent
+                  //nfd.precondition = Some(as(1))
+                  //nfd.postcondition = Some(as(2))
+                  //LetDef(nfd, as(0))
+                  fd.precondition = Some(as(1))
+                  fd.postcondition = Some(as(2))
+                  LetDef(fd, as(0))
                 }))
           }
       }

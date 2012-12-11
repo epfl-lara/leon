@@ -21,14 +21,20 @@ object FunctionClosure extends TransformationPhase{
   private var topLevelFuns: Set[FunDef] = Set()
 
   def apply(ctx: LeonContext, program: Program): Program = {
-    newFunDefs = Map()
+
+    pathConstraints = Nil
+    enclosingLets  = Nil
+    newFunDefs  = Map()
+    topLevelFuns = Set()
+
     val funDefs = program.definedFunctions
     funDefs.foreach(fd => {
       pathConstraints = fd.precondition.toList
       fd.body = fd.body.map(b => functionClosure(b, fd.args.map(_.id).toSet, Map(), Map()))
     })
     val Program(id, ObjectDef(objId, defs, invariants)) = program
-    Program(id, ObjectDef(objId, defs ++ topLevelFuns, invariants))
+    val res = Program(id, ObjectDef(objId, defs ++ topLevelFuns, invariants))
+    res
   }
 
   private def functionClosure(expr: Expr, bindedVars: Set[Identifier], id2freshId: Map[Identifier, Identifier], fd2FreshFd: Map[FunDef, (FunDef, Seq[Variable])]): Expr = expr match {

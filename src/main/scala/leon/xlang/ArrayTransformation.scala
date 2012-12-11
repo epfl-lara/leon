@@ -14,8 +14,11 @@ object ArrayTransformation extends TransformationPhase {
   val name = "Array Transformation"
   val description = "Add bound checking for array access and remove array update with side effect"
 
+  private var id2FreshId = Map[Identifier, Identifier]()
+
   def apply(ctx: LeonContext, pgm: Program): Program = {
 
+    id2FreshId = Map()
     val allFuns = pgm.definedFunctions
     allFuns.foreach(fd => {
       id2FreshId = Map()
@@ -26,7 +29,6 @@ object ArrayTransformation extends TransformationPhase {
     pgm
   }
 
-  private var id2FreshId = Map[Identifier, Identifier]()
 
   def transform(expr: Expr): Expr = expr match {
     case sel@ArraySelect(a, i) => {
