@@ -41,13 +41,14 @@ class PureScalaVerificationRegression extends FunSuite {
           xlang     = false,
           verify    = true
         ),
+        options = List(LeonFlagOption("feelinglucky")),
         files = List(file),
         reporter = new SilentReporter
       )
 
       val pipeline = mkPipeline
 
-      val report = pipeline.run(ctx)("--timeout=2" :: file.getPath :: Nil)
+      val report = pipeline.run(ctx)(file.getPath :: Nil)
 
       block(Output(report, ctx.reporter))
     }
