@@ -185,10 +185,12 @@ object TypeTrees {
     def apply(bases: Seq[TypeTree]): TupleType = {
       new TupleType(bases.map(bestRealType(_)))
     }
-    def unapply(expr: TupleType): Option[Seq[TypeTree]] = expr match {
-      case (t: TupleType) => Some(t.bases)
-      case _ => None
-    }
+    //TODO: figure out which of the two unapply is better
+    //def unapply(t: TypeTree): Option[Seq[TypeTree]] = t match {
+    //  case (tt: TupleType) => Some(tt.bases)
+    //  case _ => None
+    //}
+    def unapply(tt: TupleType): Option[Seq[TypeTree]] = Some(tt.bases)
   }
 
   case class ListType(base: TypeTree) extends TypeTree
