@@ -90,6 +90,7 @@ class ConsoleSession extends Actor {
       log("Welcome to LeonOnline!")
       log("Processing request...")
 
+      val classPath = Play.current.configuration.getString("app.classpath").getOrElse("")
 
       mode match {
         case "verification" =>
@@ -100,7 +101,8 @@ class ConsoleSession extends Actor {
             settings = Settings(
               synthesis = false,
               xlang     = false,
-              verify    = true
+              verify    = true,
+              classPath = classPath
             ),
             files = Nil,
             reporter = new WSReporter(channel)
@@ -120,7 +122,8 @@ class ConsoleSession extends Actor {
             settings = Settings(
               synthesis = true,
               xlang     = false,
-              verify    = false
+              verify    = false,
+              classPath = classPath
             ),
             files = Nil,
             reporter = new WSReporter(channel)
