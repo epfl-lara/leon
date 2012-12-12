@@ -5,7 +5,7 @@ package leon
 object Settings {
   lazy val reporter: Reporter = new DefaultReporter
 
-  var showIDs: Boolean = true
+  var showIDs: Boolean = false
   var silentlyTolerateNonPureBodies: Boolean = false
 }
 
