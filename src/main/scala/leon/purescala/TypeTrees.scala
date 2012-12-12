@@ -166,8 +166,32 @@ object TypeTrees {
   case object Int32Type extends TypeTree
   case object UnitType extends TypeTree
 
+  class TupleType private (val bases: Seq[TypeTree]) extends TypeTree {
+    lazy val dimension: Int = bases.length
+
+    override def equals(other: Any): Boolean = {
+      other match {
+        case (t: TupleType) => t.bases == bases
+        case _ => false
+      }
+    }
+
+    override def hashCode: Int = {
+      bases.foldLeft(42)((acc, t) => acc + t.hashCode)
+    }
+
+  }
+  object TupleType {
+    def apply(bases: Seq[TypeTree]): TupleType = {
+      new TupleType(bases.map(bestRealType(_)))
+    }
+    def unapply(expr: TupleType): Option[Seq[TypeTree]] = expr match {
+      case (t: TupleType) => Some(t.bases)
+      case _ => None
+    }
+  }
+
   case class ListType(base: TypeTree) extends TypeTree
-  case class TupleType(bases: Seq[TypeTree]) extends TypeTree { lazy val dimension: Int = bases.length }
   case class SetType(base: TypeTree) extends TypeTree
   case class MultisetType(base: TypeTree) extends TypeTree
   case class MapType(from: TypeTree, to: TypeTree) extends TypeTree
