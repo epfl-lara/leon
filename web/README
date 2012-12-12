@@ -10,5 +10,11 @@ $ export LD_LIBRARY_PATH=/localhome/leonweb/git/z3/build/
 $ play "start -Dconfig.file=conf/laraserver.conf"
 
 ** Locally **
+$ cd path/to/leon-2.0
+$ sbt package
+$ cd web
 
-... to come ...
+edit conf/local.conf to match your class-path!
+
+$ export LD_LIBRARY_PATH=../lib-bin/64/
+$ play "start -Dconfig.file=conf/local.conf"
