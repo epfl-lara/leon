@@ -1,7 +1,14 @@
-## HOWTO RUN LEON ONLINE
+HOWTO RUN LEON ONLINE
+*********************
 
-1) go to leon-2.0 main directory
-2) sbt package
-3) cd web
-4) export LD_LIBRARY_PATH=../lib-bin/64
-4) play run
+** On laraserver **
+
+$ cd path/to/leon-2.0
+$ sbt package
+$ cd web
+$ export LD_LIBRARY_PATH=/localhome/leonweb/git/z3/build/
+$ play "start -Dconfig.file=conf/laraserver.conf"
+
+** Locally **
+
+... to come ...
