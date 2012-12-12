@@ -18,6 +18,7 @@ import play.api.Play.current
 
 import leon.{LeonContext, Settings, Reporter}
 import leon.plugin.{TemporaryInputPhase, ExtractionPhase}
+import leon.synthesis.SynthesisPhase
 import leon.verification.AnalysisPhase
 
 object LeonConsole {
@@ -114,6 +115,22 @@ class ConsoleSession extends Actor {
         case "synthesis" =>
           event("started")
           isStarted = true
+
+          val ctx = LeonContext(
+            settings = Settings(
+              synthesis = true,
+              xlang     = false,
+              verify    = false
+            ),
+            files = Nil,
+            reporter = new WSReporter(channel)
+          )
+
+          val pipeline = TemporaryInputPhase andThen ExtractionPhase andThen SynthesisPhase
+
+          pipeline.run(ctx)((code, "--parallel" :: "--timeout=10" :: Nil))
+
+          event("stopped")
 
         case _ =>
           error("Invalid request mode: "+mode)

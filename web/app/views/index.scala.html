@@ -14,34 +14,50 @@
         <div id="codecolumn">
           <div id="codebox">@default.code</div>
           <input type="submit" id="askbutton" value="Ask Leon !">
-          <textarea id="consolebox"></textarea>
+          <div><textarea id="consolebox"></textarea></div>
         </div>
         <div id="selectcolumn">
-          <h3>Load an Example:</h3>
-          <div>We provide you with a list of code-examples, select one from the list below to load it:</div>
-          <select id="example-loader" name="codeexample" onchange="loadExample('@prefix');">
-            <option value="">-- Load Example --</option>
-            @exs.zipWithIndex.map{ case (ex, i) => 
-            <option value="@i">@ex.title</option>
-            }
-          </select>
+          <input type="hidden" id="leon-mode" value="">
+          <div id="tabs">
+            <a href="#verification">Verification</a>
+            <a href="#synthesis">Synthesis</a>
+          </div>
+          <div id="tabcontent">
+            <div id="tab-synthesis" class="tab synthesis">
+              <h3>Load an Example:</h3>
+              <div>We provide you with a list of code-examples, select one from the list below to load it:</div>
+              <select id="example-loader-synthesis" name="codeexample" onchange="loadExample('synthesis', '@prefix');">
+                <option value="">-- Load Example --</option>
+                @exs.zipWithIndex.collect{ case (ex, i) if ex.kind == "synthesis" =>
+                <option value="@i">@ex.title</option>
+                }
+              </select>
+            </div>
+            <div id="tab-verification" class="tab verification">
+              <h3>Load an Example:</h3>
+              <div>We provide you with a list of code-examples, select one from the list below to load it:</div>
+              <select id="example-loader-verification" name="codeexample" onchange="loadExample('verification', '@prefix');">
+                <option value="">-- Load Example --</option>
+                @exs.zipWithIndex.collect{ case (ex, i) if ex.kind == "verification" =>
+                <option value="@i">@ex.title</option>
+                }
+              </select>
+            </div>
+          </div>
+
         </div>
       </form>
       <script>
         $(document).ready(function() {
             var WS = window['MozWebSocket'] ? MozWebSocket : WebSocket
             var leonSocket = new WS("@leon.web.controllers.routes.Application.openConsole().webSocketURL()")
-            
-            var sendMessage = function() {
-            }
-            
+
             var receiveEvent = function(event) {
                 var data = JSON.parse(event.data)
                 if (data.kind == "error") {
                     alert(data.message);
                 } else if (data.kind == "log") {
                     var txt = $("#consolebox")
-
                     txt.val(txt.val()+"\n"+data.message);
                     txt.scrollTop(txt[0].scrollHeight - txt.height())
                 } else if (data.kind == "event") {
@@ -52,14 +68,14 @@
                     }
                 }
             }
-            
+
             leonSocket.onmessage = receiveEvent
 
             var leonStatus = "stopped"
 
             $("#leoninput").submit(function () {
                 var msg = JSON.stringify(
-                  {action: "start", mode: "verification", code: editor.getValue()}
+                  {action: "start", mode: $("#leon-mode").val(), code: editor.getValue()}
                 )
 
                 leonSocket.send(msg)

@@ -4,8 +4,8 @@ function appendError(title, msg) {
     alert(title+": "+msg)
 }
 
-function loadExample(prefix) {
-    var value = $("#example-loader").val()
+function loadExample(kind, prefix) {
+    var value = $("#example-loader-"+kind).val()
 
     if (value) { 
         $.ajax({
@@ -32,5 +32,32 @@ $(document).ready(function() {
     editor.getSession().setMode("ace/mode/scala");
     editor.getSession().setUseWrapMode(true);
 
+
+    $("#tabs a").click(function() {
+        activateTab($(this).attr("href"));
+    });
+
+    var hash = window.location.hash
+
+    if (hash == "") {
+        activateTab("#verification");
+    } else {
+        activateTab(hash);
+    }
 });
 
+
+function activateTab(tab) {
+
+    $("#tabs a").each(function() {
+        var wh = $(this).attr("href").substr(1);
+        if ($(this).attr("href") == tab) {
+            $(this).addClass("active");
+            $("#tab-"+wh).show();
+            $("#leon-mode").val(wh);
+        } else {
+            $(this).removeClass("active");
+            $("#tab-"+wh).hide();
+        }
+    });
+}

@@ -4,10 +4,10 @@ object VerificationExamples {
   var allExamples = List[Example]()
 
   def newExample(title: String, code: String) {
-    allExamples = allExamples ::: Example(title, code) :: Nil
+    allExamples = allExamples ::: Example(title, "verification", code) :: Nil
   }
 
-  val default = Example("Default", """
+  val default = Example("Default", "verification", """
 import scala.collection.immutable.Set
 import leon.Annotations._
 import leon.Utils._

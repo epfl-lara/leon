@@ -12,7 +12,7 @@ import models.LeonConsole
 
 object Application extends Controller {
 
-  val examples = VerificationExamples.allExamples
+  val examples = VerificationExamples.allExamples ++ SynthesisExamples.allExamples
 
   def index = Action { implicit request =>
     val prefix = Play.current.configuration.getString("app.prefix").getOrElse("")
