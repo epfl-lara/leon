@@ -20,10 +20,10 @@ class XLangVerificationRegression extends FunSuite {
 
   private def mkPipeline : Pipeline[List[String],VerificationReport] =
     leon.plugin.ExtractionPhase andThen       
+    xlang.ArrayTransformation andThen
     xlang.EpsilonElimination andThen
     xlang.ImperativeCodeElimination andThen
     xlang.FunctionClosure andThen
-    xlang.ArrayTransformation andThen
     leon.verification.AnalysisPhase
 
   private def mkTest(file : File)(block: Output=>Unit) = {
@@ -39,6 +39,8 @@ class XLangVerificationRegression extends FunSuite {
     test("%3d: %s".format(nextInt(), displayName)) {
       assert(file.exists && file.isFile && file.canRead,
              "Benchmark %s is not a readable file".format(displayName))
+
+      println("testing " + displayName)
 
       val ctx = LeonContext(
         settings = Settings(
