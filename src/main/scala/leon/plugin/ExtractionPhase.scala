@@ -12,7 +12,16 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
   def run(ctx: LeonContext)(args: List[String]): Program = {
 
     val settings = new NSCSettings
-    settings.extdirs.value = ctx.settings.classPath
+
+    val scalaHome = System.getenv("SCALA_HOME")
+
+    val fullClassPath = if (scalaHome != "") {
+      scalaHome+"/lib:"+ctx.settings.classPath
+    } else {
+      ctx.settings.classPath
+    }
+
+    settings.extdirs.value = fullClassPath
 
     val compilerOpts = args.filterNot(_.startsWith("--"))
 
@@ -22,11 +31,12 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
 
     if(command.ok) {
       // Debugging code for classpath crap
-      //new scala.tools.util.PathResolver(settings).Calculated.basis.foreach { cp =>
-      //  cp.foreach( p => 
-      //    ctx.reporter.info(" => "+p.toString)
-      //  )
-      //}
+      // new scala.tools.util.PathResolver(settings).Calculated.basis.foreach { cp =>
+      //   cp.foreach( p =>
+      //     ctx.reporter.info(" => "+p.toString)
+      //   )
+      // }
+
       val runner = new PluginRunner(settings, ctx, None)
       val run = new runner.Run
       run.compile(command.files)
