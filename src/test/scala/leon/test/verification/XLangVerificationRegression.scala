@@ -40,7 +40,7 @@ class XLangVerificationRegression extends FunSuite {
       assert(file.exists && file.isFile && file.canRead,
              "Benchmark %s is not a readable file".format(displayName))
 
-      println("testing " + displayName)
+      // println("testing " + displayName)
 
       val ctx = LeonContext(
         settings = Settings(
