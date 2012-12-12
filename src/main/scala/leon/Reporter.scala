@@ -53,7 +53,7 @@ class DefaultReporter extends Reporter {
   def errorFunction(msg: Any) = output(reline(errorPfx, msg.toString))
   def warningFunction(msg: Any) = output(reline(warningPfx, msg.toString))
   def infoFunction(msg: Any) = output(reline(infoPfx, msg.toString))
-  def fatalErrorFunction(msg: Any) = { output(reline(fatalPfx, msg.toString)); sys.exit(0) }
+  def fatalErrorFunction(msg: Any) = { output(reline(fatalPfx, msg.toString)); throw LeonFatalError() }
 }
 
 class QuietReporter extends DefaultReporter {

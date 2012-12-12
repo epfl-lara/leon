@@ -157,7 +157,11 @@ object Main {
     // Compute leon pipeline
     val pipeline = computePipeline(ctx.settings)
 
-    // Run pipeline
-    pipeline.run(ctx)(args.toList)
+    try {
+      // Run pipeline
+      pipeline.run(ctx)(args.toList)
+    } catch {
+      case LeonFatalError() => sys.exit(1)
+    }
   }
 }

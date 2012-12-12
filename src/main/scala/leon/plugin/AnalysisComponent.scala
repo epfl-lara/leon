@@ -24,7 +24,7 @@ class AnalysisComponent(val global: Global, val pluginInstance: LeonPlugin)
   
   protected def stopIfErrors: Unit = {
     if(reporter.hasErrors) {
-      sys.exit(1)
+      throw LeonFatalError()
     }
   }
 
