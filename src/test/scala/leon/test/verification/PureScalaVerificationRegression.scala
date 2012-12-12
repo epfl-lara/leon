@@ -21,7 +21,7 @@ class PureScalaVerificationRegression extends FunSuite {
   private def mkPipeline : Pipeline[List[String],VerificationReport] =
     leon.plugin.ExtractionPhase andThen leon.verification.AnalysisPhase
 
-  private def mkTest(file : File)(block: Output=>Unit) = {
+  private def mkTest(file : File, forError: Boolean = false)(block: Output=>Unit) = {
     val fullName = file.getPath()
     val start = fullName.indexOf("regression")
 
@@ -48,19 +48,26 @@ class PureScalaVerificationRegression extends FunSuite {
 
       val pipeline = mkPipeline
 
-      val report = pipeline.run(ctx)(file.getPath :: Nil)
+      if(forError) {
+        intercept[LeonFatalError]{
+          pipeline.run(ctx)(file.getPath :: Nil)
+        }
+      } else {
 
-      block(Output(report, ctx.reporter))
+        val report = pipeline.run(ctx)(file.getPath :: Nil)
+
+        block(Output(report, ctx.reporter))
+      }
     }
   }
 
-  private def forEachFileIn(cat : String)(block : Output=>Unit) {
+  private def forEachFileIn(cat : String, forError: Boolean = false)(block : Output=>Unit) {
     val fs = filesInResourceDir(
       "regression/verification/purescala/" + cat,
       _.endsWith(".scala"))
 
     for(f <- fs) {
-      mkTest(f)(block)
+      mkTest(f, forError)(block)
     }
   }
   
@@ -81,4 +88,6 @@ class PureScalaVerificationRegression extends FunSuite {
     assert(reporter.errorCount >= report.totalInvalid)
     assert(reporter.warningCount === 0)
   }
+  forEachFileIn("error", true) { output => () }
+
 }

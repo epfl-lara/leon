@@ -79,8 +79,6 @@ class XLangVerificationRegression extends FunSuite {
     }
   }
   
-  forEachFileIn("error", true) { output => () }
-
   forEachFileIn("valid") { output =>
     val Output(report, reporter) = output
     assert(report.totalConditions === report.totalValid,
@@ -98,4 +96,7 @@ class XLangVerificationRegression extends FunSuite {
     assert(reporter.errorCount >= report.totalInvalid)
     assert(reporter.warningCount === 0)
   }
+
+  forEachFileIn("error", true) { output => () }
+
 }
