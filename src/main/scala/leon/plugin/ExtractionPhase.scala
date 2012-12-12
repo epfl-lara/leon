@@ -13,15 +13,7 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
 
     val settings = new NSCSettings
 
-    val scalaHome = System.getenv("SCALA_HOME")
-
-    val fullClassPath = if (scalaHome != "") {
-      scalaHome+"/lib:"+ctx.settings.classPath
-    } else {
-      ctx.settings.classPath
-    }
-
-    settings.extdirs.value = fullClassPath
+    settings.extdirs.value = ctx.settings.classPath.mkString(":")
 
     val compilerOpts = args.filterNot(_.startsWith("--"))
 

@@ -90,7 +90,7 @@ class ConsoleSession extends Actor {
       log("Welcome to LeonOnline!")
       log("Processing request...")
 
-      val classPath = Play.current.configuration.getString("app.classpath").getOrElse("")
+      val classPath = Play.current.configuration.getString("app.classpath").map(_.split(":").toList).getOrElse(Settings.defaultClassPath())
 
       mode match {
         case "verification" =>

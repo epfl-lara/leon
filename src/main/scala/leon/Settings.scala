@@ -7,15 +7,20 @@ object Settings {
 
   var showIDs: Boolean = false
   var silentlyTolerateNonPureBodies: Boolean = false
+
+  def defaultClassPath() = {
+    val env = System.getenv("SCALA_HOME")
+    if (env != "") {
+      List(env+"/lib")
+    } else {
+      Nil
+    }
+  }
 }
 
 case class Settings(
-  val synthesis: Boolean    = false,
-  val xlang: Boolean        = false,
-  val verify: Boolean       = true,
-  val classPath: String     = 
-    List(
-      "/home/ekneuss/scala/scala-2.9.2/lib/",
-      "/home/ekneuss/git/leon-2.0/library/target/scala-2.9.2/"
-    ).mkString(":")
+  val synthesis: Boolean      = false,
+  val xlang: Boolean          = false,
+  val verify: Boolean         = true,
+  val classPath: List[String] = Settings.defaultClassPath()
 )
