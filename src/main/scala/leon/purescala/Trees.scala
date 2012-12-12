@@ -51,7 +51,7 @@ object Trees {
   case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr 
 
   case class Tuple(exprs: Seq[Expr]) extends Expr {
-    val subTpes = exprs.map(_.getType).map(bestRealType)
+    val subTpes = exprs.map(_.getType)
     if(subTpes.forall(_ != Untyped)) {
       setType(TupleType(subTpes))
     }

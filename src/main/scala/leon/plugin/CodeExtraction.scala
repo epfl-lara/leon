@@ -533,7 +533,7 @@ trait CodeExtraction extends Extractors {
         case None => nextExpr match {
           case ExTuple(tpes, exprs) => {
             val tupleExprs = exprs.map(e => rec(e))
-            val tupleType = TupleType(tupleExprs.map(expr => bestRealType(expr.getType)))
+            val tupleType = TupleType(tupleExprs.map(expr => expr.getType))
             Tuple(tupleExprs).setType(tupleType)
           }
           case ExErrorExpression(str, tpe) =>
