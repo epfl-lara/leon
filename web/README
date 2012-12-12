@@ -1,23 +1,21 @@
 HOWTO RUN LEON ONLINE
 *********************
 
+$ cd path/to/leon-2.0
+$ sbt package
+$ cd web
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! Make sure SCALA_HOME is SET! !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 ** On laraserver **
 
-$ cd path/to/leon-2.0
-$ sbt package
-$ cd web
-
-Make sure SCALA_HOME is SET!
-
-$ export LD_LIBRARY_PATH=/localhome/leonweb/git/z3/build/
-$ play "start -Dconfig.file=conf/laraserver.conf"
+    $ export LD_LIBRARY_PATH=/localhome/leonweb/git/z3/build/
+    $ play "run -Dapp.prefix=/leon"
 
 ** Locally **
-$ cd path/to/leon-2.0
-$ sbt package
-$ cd web
 
-Make sure SCALA_HOME is SET!
-
-$ export LD_LIBRARY_PATH=../lib-bin/64/
-$ play start
+    $ export LD_LIBRARY_PATH=../lib-bin/64/
+    $ play run
