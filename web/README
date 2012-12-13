@@ -2,8 +2,9 @@ HOWTO RUN LEON ONLINE
 *********************
 
 $ cd path/to/leon-2.0
-$ sbt package
+$ sbt package script
 $ cd web
+$ source ../setupenv
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -17,5 +18,4 @@ $ cd web
 
 ** Locally **
 
-    $ export LD_LIBRARY_PATH=../lib-bin/64/
     $ play run
