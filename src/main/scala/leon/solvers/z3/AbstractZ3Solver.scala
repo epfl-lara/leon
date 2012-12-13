@@ -315,19 +315,6 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
         arrayTupleSort
       }
     }
-    case ft @ FunctionType(fts, tt) => funSorts.get(ft) match {
-      case Some(s) => s
-      case None => {
-        val fss = fts map typeToSort
-        val ts = typeToSort(tt)
-        val (tupleSort, consFuncDecl, projFuncDecls) = z3.mkTupleSort(fts.map(_.toString).mkString("(",", ", ")"), fss: _*)
-        val funSort = z3.mkArraySort(tupleSort, ts)
-        funSorts += (ft -> funSort)
-        funDomainConstructors += (ft -> consFuncDecl)
-        funDomainSelectors += (ft -> projFuncDecls)
-        funSort
-      }
-    }
     case tt @ TupleType(tpes) => tupleSorts.get(tt) match {
       case Some(s) => s
       case None => {
@@ -544,16 +531,6 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
           val res = getLength(ar)
           res
         }
-        case AnonymousFunctionInvocation(id, args) => id.getType match {
-          case ft @ FunctionType(fts, tt) => {
-            val consFD = funDomainConstructors(ft)
-            val rid = rec(Variable(id))
-            val rargs = args map rec
-            z3.mkSelect(rid, consFD(rargs: _*))
-          }
-          case errorType => scala.sys.error("Unexpected type for function: " + (ex, errorType))
-        }
-        
         case Distinct(exs) => z3.mkDistinct(exs.map(rec(_)): _*)
   
         case _ => {
@@ -582,16 +559,6 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
               case ((index, value), Z3AppAST(someCons, arg :: Nil)) if someCons == mapRangeSomeConstructors(vt) => SingletonMap(rec(index, Some(kt)), rec(arg, Some(vt)))
             }
             (if (singletons.isEmpty) EmptyMap(kt, vt) else FiniteMap(singletons.toSeq)).setType(expType.get)
-        }
-      case funType @ Some(FunctionType(fts, tt)) =>
-        model.getArrayValue(t) match {
-          case None => throw new CantTranslateException(t)
-          case Some((es, ev)) =>
-            val entries: Seq[(Seq[Expr], Expr)] = es.toSeq.map(e => (e, z3.getASTKind(e._1))).collect {
-              case ((key, value), Z3AppAST(cons, args)) if cons == funDomainConstructors(funType.get) => ((args zip fts) map (p => rec(p._1, Some(p._2))), rec(value, Some(tt)))
-            }
-            val elseValue = rec(ev, Some(tt))
-            AnonymousFunction(entries, elseValue).setType(expType.get)
         }
       case Some(SetType(dt)) => 
         model.getSetValue(t) match {

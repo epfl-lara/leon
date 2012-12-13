@@ -457,10 +457,6 @@ object Trees {
   case class Concat(list1: Expr, list2: Expr) extends Expr 
   case class ListAt(list: Expr, index: Expr) extends Expr 
 
-  /* Function operations */
-  case class AnonymousFunction(entries: Seq[(Seq[Expr],Expr)], elseValue: Expr) extends Expr
-  case class AnonymousFunctionInvocation(id: Identifier, args: Seq[Expr]) extends Expr
-
   /* Constraint programming */
   case class Distinct(exprs: Seq[Expr]) extends Expr with FixedType {
     val fixedType = BooleanType

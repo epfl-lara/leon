@@ -137,23 +137,6 @@ object ScalaPrinter {
       sb.append(fd.id)
       ppNary(sb, args, "(", ", ", ")", lvl)
     }
-    case AnonymousFunction(es, ev) => {
-      sb.append("{")
-      es.foreach {
-        case (as, res) => 
-          ppNary(sb, as, "", " ", "", lvl)
-          sb.append(" -> ")
-          pp(res, sb, lvl)
-          sb.append(", ")
-      }
-      sb.append("else -> ")
-      pp(ev, sb, lvl)
-      sb.append("}")
-    }
-    case AnonymousFunctionInvocation(id, args) => {
-      sb.append(id)
-      ppNary(sb, args, "(", ", ", ")", lvl)
-    }
     case Plus(l,r) => ppBinary(sb, l, r, " + ", lvl)
     case Minus(l,r) => ppBinary(sb, l, r, " - ", lvl)
     case Times(l,r) => ppBinary(sb, l, r, " * ", lvl)
@@ -388,14 +371,6 @@ object ScalaPrinter {
       sb.append("Option[")
       pp(bt, sb, lvl)
       sb.append("]")
-    case FunctionType(fts, tt) => {
-      if (fts.size > 1)
-        ppNaryType(sb, fts, "(", ", ", ")", lvl)
-      else if (fts.size == 1)
-        pp(fts.head, sb, lvl)
-      sb.append(" => ")
-      pp(tt, sb, lvl)
-    }
     case TupleType(tpes) => ppNaryType(sb, tpes, "(", ", ", ")", lvl)
     case c: ClassType => sb.append(c.classDef.id)
     case _ => sb.append("Type?")

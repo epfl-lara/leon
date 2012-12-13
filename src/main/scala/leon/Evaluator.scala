@@ -319,18 +319,6 @@ object Evaluator {
           case (FiniteMap(ss), e) => BooleanLiteral(ss.exists(_.from == e))
           case (l, r) => throw TypeErrorEx(TypeError(l, m.getType))
         }
-        case AnonymousFunctionInvocation(i,as) => {
-          val fun = ctx(i)
-          fun match {
-            case AnonymousFunction(es, ev) => {
-              es.find(_._1 == as) match {
-                case Some(res) => res._2
-                case None => ev
-              }
-            }
-            case _ => scala.sys.error("function id has non-function interpretation")
-          }
-        }
         case Distinct(args) => {
           val newArgs = args.map(rec(ctx, _))
           BooleanLiteral(newArgs.distinct.size == newArgs.size)

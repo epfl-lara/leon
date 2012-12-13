@@ -76,7 +76,6 @@ class RandomSolver(context: LeonContext, val nbTrial: Option[Int] = None) extend
     case TupleType(bases) => sys.error("I don't know what to do")
     case MapType(from, to) => sys.error("I don't know what to do")
     case OptionType(base) => sys.error("I don't know what to do")
-    case f: FunctionType => sys.error("I don't know what to do")
     case _ => sys.error("Unexpected type: " + t)
   }
 

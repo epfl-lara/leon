@@ -331,7 +331,6 @@ object TreeOps {
       case u @ UnaryOperator(a,_) => compute(u, rec(a))
       case i @ IfExpr(a1,a2,a3) => compute(i, combine(combine(rec(a1), rec(a2)), rec(a3)))
       case m @ MatchExpr(scrut, cses) => compute(m, (scrut +: cses.flatMap(_.expressions)).map(rec(_)).reduceLeft(combine))
-      case a @ AnonymousFunction(es, ev) => compute(a, (es.flatMap(e => e._1 ++ Seq(e._2)) ++ Seq(ev)).map(rec(_)).reduceLeft(combine))
       case c @ Choose(args, body) => compute(c, rec(body))
       case t: Terminal => compute(t, convert(t))
       case unhandled => scala.sys.error("Non-terminal case should be handled in treeCatamorphism: " + unhandled)
@@ -362,7 +361,6 @@ object TreeOps {
     def compute(t: Expr, s: Set[Identifier]) = t match {
       case Let(i,_,_) => s -- Set(i)
       case MatchExpr(_, cses) => s -- (cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b))
-      case AnonymousFunctionInvocation(i,_) => s ++ Set[Identifier](i)
       case _ => s
     }
     treeCatamorphism(convert, combine, compute, expr)
@@ -826,7 +824,6 @@ object TreeOps {
       CaseClass(ccd, fields.map(f => simplestValue(f.getType)))
     case SetType(baseType) => EmptySet(baseType).setType(tpe)
     case MapType(fromType, toType) => EmptyMap(fromType, toType).setType(tpe)
-    case FunctionType(fromTypes, toType) => AnonymousFunction(Seq.empty, simplestValue(toType)).setType(tpe)
     case _ => throw new Exception("I can't choose simplest value for type " + tpe)
   }
 

@@ -84,7 +84,6 @@ object Extractors {
   object NAryOperator {
     def unapply(expr: Expr) : Option[(Seq[Expr],(Seq[Expr])=>Expr)] = expr match {
       case fi @ FunctionInvocation(fd, args) => Some((args, (as => FunctionInvocation(fd, as).setPosInfo(fi))))
-      case AnonymousFunctionInvocation(id, args) => Some((args, (as => AnonymousFunctionInvocation(id, as))))
       case CaseClass(cd, args) => Some((args, CaseClass(cd, _)))
       case And(args) => Some((args, And.apply))
       case Or(args) => Some((args, Or.apply))

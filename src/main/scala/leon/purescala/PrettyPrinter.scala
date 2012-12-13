@@ -143,26 +143,6 @@ object PrettyPrinter {
       nsb = ppNary(nsb, args, "(", ", ", ")", lvl)
       nsb
     }
-    case AnonymousFunction(es, ev) => {
-      var nsb = sb
-      nsb.append("{")
-      es.foreach {
-        case (as, res) => 
-          nsb = ppNary(nsb, as, "", " ", "", lvl)
-          nsb.append(" -> ")
-          nsb = pp(res, nsb, lvl)
-          nsb.append(", ")
-      }
-      nsb.append("else -> ")
-      nsb = pp(ev, nsb, lvl)
-      nsb.append("}")
-    }
-    case AnonymousFunctionInvocation(id, args) => {
-      var nsb = sb
-      nsb.append(id)
-      nsb = ppNary(nsb, args, "(", ", ", ")", lvl)
-      nsb
-    }
     case Plus(l,r) => ppBinary(sb, l, r, " + ", lvl)
     case Minus(l,r) => ppBinary(sb, l, r, " - ", lvl)
     case Times(l,r) => ppBinary(sb, l, r, " * ", lvl)
@@ -388,15 +368,6 @@ object PrettyPrinter {
     case MapType(ft,tt) => pp(tt, pp(ft, sb.append("Map["), lvl).append(","), lvl).append("]")
     case MultisetType(bt) => pp(bt, sb.append("Multiset["), lvl).append("]")
     case OptionType(bt) => pp(bt, sb.append("Option["), lvl).append("]")
-    case FunctionType(fts, tt) => {
-      var nsb = sb
-      if (fts.size > 1)
-        nsb = ppNaryType(nsb, fts, "(", ", ", ")", lvl)
-      else if (fts.size == 1)
-        nsb = pp(fts.head, nsb, lvl)
-      nsb.append(" => ")
-      pp(tt, nsb, lvl)
-    }
     case TupleType(tpes) => ppNaryType(sb, tpes, "(", ", ", ")", lvl)
     case c: ClassType => sb.append(c.classDef.id)
     case _ => sb.append("Type?")

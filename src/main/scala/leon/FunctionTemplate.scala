@@ -161,10 +161,6 @@ object FunctionTemplate {
           case b @ BinaryOperator(a1, a2, r) => r(rec(pathVar, pathPol, a1), rec(pathVar, pathPol, a2)).setType(b.getType)
           case u @ UnaryOperator(a, r) => r(rec(pathVar, pathPol, a)).setType(u.getType)
           case t : Terminal => t
-          case a : AnonymousFunction => {
-            Settings.reporter.warning("AnonymousFunction literal showed up in the construction of a FunctionTemplate.")
-            a
-          }
         }
       }
   

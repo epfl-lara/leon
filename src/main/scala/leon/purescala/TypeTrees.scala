@@ -146,16 +146,6 @@ object TypeTrees {
       case InfiniteSize => InfiniteSize
       case FiniteSize(n) => FiniteSize(n+1)
     }
-    case FunctionType(fts, tt) => {
-      val fromSizes = fts map domainSize
-      val toSize = domainSize(tt)
-      if (fromSizes.exists(_ == InfiniteSize) || toSize == InfiniteSize)
-        InfiniteSize
-      else {
-        val n = toSize.asInstanceOf[FiniteSize].size
-        FiniteSize(scala.math.pow(n, fromSizes.foldLeft(1)((acc, s) => acc * s.asInstanceOf[FiniteSize].size)).toInt)
-      }
-    }
     case c: ClassType => InfiniteSize
   }
 
@@ -198,7 +188,6 @@ object TypeTrees {
   case class MultisetType(base: TypeTree) extends TypeTree
   case class MapType(from: TypeTree, to: TypeTree) extends TypeTree
   case class OptionType(base: TypeTree) extends TypeTree
-  case class FunctionType(from: List[TypeTree], to: TypeTree) extends TypeTree
   case class ArrayType(base: TypeTree) extends TypeTree
 
   sealed abstract class ClassType extends TypeTree {

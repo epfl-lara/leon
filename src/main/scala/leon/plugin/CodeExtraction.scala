@@ -901,16 +901,6 @@ trait CodeExtraction extends Extractors {
               case MapType(_,tt) => 
                 assert(rargs.size == 1)
                 MapGet(rlhs, rargs.head).setType(tt).setPosInfo(app.pos.line, app.pos.column)
-              case FunctionType(fts, tt) => {
-                rlhs match {
-                  case Variable(id) =>
-                    AnonymousFunctionInvocation(id, rargs).setType(tt)
-                  case _ => {
-                    if (!silent) unit.error(tree.pos, "apply on non-variable or non-map expression")
-                    throw ImpureCodeEncounteredException(tree)
-                  }
-                }
-              }
               case ArrayType(bt) => {
                 assert(rargs.size == 1)
                 ArraySelect(rlhs, rargs.head).setType(bt).setPosInfo(app.pos.line, app.pos.column)
@@ -1065,7 +1055,6 @@ trait CodeExtraction extends Extractors {
       case TypeRef(_, sym, List(t1,t2,t3)) if isTuple3(sym) => TupleType(Seq(rec(t1),rec(t2),rec(t3)))
       case TypeRef(_, sym, List(t1,t2,t3,t4)) if isTuple4(sym) => TupleType(Seq(rec(t1),rec(t2),rec(t3),rec(t4)))
       case TypeRef(_, sym, List(t1,t2,t3,t4,t5)) if isTuple5(sym) => TupleType(Seq(rec(t1),rec(t2),rec(t3),rec(t4),rec(t5)))
-      case TypeRef(_, sym, ftt :: ttt :: Nil) if isFunction1TraitSym(sym) => FunctionType(List(rec(ftt)), rec(ttt))
       case TypeRef(_, sym, btt :: Nil) if isArrayClassSym(sym) => ArrayType(rec(btt))
       case TypeRef(_, sym, Nil) if classesToClasses.keySet.contains(sym) => classDefToClassType(classesToClasses(sym))
       case _ => {
