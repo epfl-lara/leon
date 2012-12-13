@@ -13,7 +13,8 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
 
     val settings = new NSCSettings
 
-    settings.extdirs.value = ctx.settings.classPath.mkString(":")
+    //settings.extdirs.value = ctx.settings.classPath.mkString(":")
+    settings.usejavacp.value = true
 
     val compilerOpts = args.filterNot(_.startsWith("--"))
 
