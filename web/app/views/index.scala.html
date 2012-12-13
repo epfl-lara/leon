@@ -17,33 +17,15 @@
           <div><textarea id="consolebox"></textarea></div>
         </div>
         <div id="selectcolumn">
-          <input type="hidden" id="leon-mode" value="">
-          <div id="tabs">
-            <a href="#verification">Verification</a>
-            <a href="#synthesis">Synthesis</a>
-          </div>
-          <div id="tabcontent">
-            <div id="tab-synthesis" class="tab synthesis">
-              <h3>Load an Example:</h3>
-              <div>We provide you with a list of code-examples, select one from the list below to load it:</div>
-              <select id="example-loader-synthesis" name="codeexample" onchange="loadExample('synthesis', '@prefix');">
-                <option value="">-- Load Example --</option>
-                @exs.zipWithIndex.collect{ case (ex, i) if ex.kind == "synthesis" =>
-                <option value="@i">@ex.title</option>
-                }
-              </select>
-            </div>
-            <div id="tab-verification" class="tab verification">
-              <h3>Load an Example:</h3>
-              <div>We provide you with a list of code-examples, select one from the list below to load it:</div>
-              <select id="example-loader-verification" name="codeexample" onchange="loadExample('verification', '@prefix');">
-                <option value="">-- Load Example --</option>
-                @exs.zipWithIndex.collect{ case (ex, i) if ex.kind == "verification" =>
-                <option value="@i">@ex.title</option>
-                }
-              </select>
-            </div>
-          </div>
+          <input type="hidden" id="leon-mode" value="verification">
+          <h3>Load an Example:</h3>
+          <div>We provide you with a list of code-examples, select one from the list below to load it:</div>
+          <select id="example-loader-verification" name="codeexample" onchange="loadExample('verification', '@prefix');">
+            <option value="">-- Load Example --</option>
+            @exs.zipWithIndex.collect{ case (ex, i) if ex.kind == "verification" =>
+            <option value="@i">@ex.title</option>
+            }
+          </select>
 
         </div>
       </form>
