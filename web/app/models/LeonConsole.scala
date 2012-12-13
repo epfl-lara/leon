@@ -97,20 +97,12 @@ class ConsoleSession extends Actor {
           event("started")
           isStarted = true
 
-          val ctx = LeonContext(
-            settings = Settings(
-              synthesis = false,
-              xlang     = false,
-              verify    = true,
-              classPath = classPath
-            ),
-            files = Nil,
-            reporter = new WSReporter(channel)
-          )
+          var ctx = leon.Main.processOptions(reporter, "--timeout=2" :: Nil)
+          ctx = ctx.copy(settings = ctx.settings.copy(classPath = classPath))
 
           val pipeline = TemporaryInputPhase andThen ExtractionPhase andThen AnalysisPhase
 
-          pipeline.run(ctx)((code, "--timeout=2" :: Nil))
+          pipeline.run(ctx)((code, Nil))
 
           event("stopped")
 
@@ -118,20 +110,12 @@ class ConsoleSession extends Actor {
           event("started")
           isStarted = true
 
-          val ctx = LeonContext(
-            settings = Settings(
-              synthesis = true,
-              xlang     = false,
-              verify    = false,
-              classPath = classPath
-            ),
-            files = Nil,
-            reporter = new WSReporter(channel)
-          )
+          var ctx = leon.Main.processOptions(reporter, "--synthesis" :: "--parallel" :: "--timeout=10" :: Nil)
+          ctx = ctx.copy(settings = ctx.settings.copy(classPath = classPath))
 
           val pipeline = TemporaryInputPhase andThen ExtractionPhase andThen SynthesisPhase
 
-          pipeline.run(ctx)((code, "--parallel" :: "--timeout=10" :: Nil))
+          pipeline.run(ctx)((code, Nil))
 
           event("stopped")
 
