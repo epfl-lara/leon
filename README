@@ -25,9 +25,10 @@ repository and are actually automatically handled by the default build configura
 
 To build, type this:
 
-    $ xsbt clean   
+    $ xsbt clean
     $ xsbt package # takes a while
     $ xsbt script
+    $ source ./setupenv
 
 Then you can try e.g.
 
