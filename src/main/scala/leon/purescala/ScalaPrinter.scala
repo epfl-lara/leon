@@ -114,14 +114,6 @@ object ScalaPrinter {
       sb.append("._" + i)
     }
 
-    case OptionSome(a) => {
-      sb.append("Some(")
-      pp(a, sb, lvl)
-      sb.append(")")
-    }
-
-    case OptionNone(_) => sb.append("None")
-
     case CaseClass(cd, args) => {
       sb.append(cd.id)
       ppNary(sb, args, "(", ", ", ")", lvl)
@@ -365,10 +357,6 @@ object ScalaPrinter {
       sb.append("]")
     case MultisetType(bt) =>
       sb.append("Multiset[")
-      pp(bt, sb, lvl)
-      sb.append("]")
-    case OptionType(bt) =>
-      sb.append("Option[")
       pp(bt, sb, lvl)
       sb.append("]")
     case TupleType(tpes) => ppNaryType(sb, tpes, "(", ", ", ")", lvl)

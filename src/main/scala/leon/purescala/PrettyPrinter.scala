@@ -114,16 +114,6 @@ object PrettyPrinter {
       nsb
     }
 
-    case OptionSome(a) => {
-      var nsb = sb
-      nsb.append("Some(")
-      nsb = pp(a, nsb, lvl)
-      nsb.append(")")
-      nsb
-    }
-
-    case OptionNone(_) => sb.append("None")
-
     case CaseClass(cd, args) => {
       var nsb = sb
       nsb.append(cd.id)
@@ -367,7 +357,6 @@ object PrettyPrinter {
     case SetType(bt) => pp(bt, sb.append("Set["), lvl).append("]")
     case MapType(ft,tt) => pp(tt, pp(ft, sb.append("Map["), lvl).append(","), lvl).append("]")
     case MultisetType(bt) => pp(bt, sb.append("Multiset["), lvl).append("]")
-    case OptionType(bt) => pp(bt, sb.append("Option["), lvl).append("]")
     case TupleType(tpes) => ppNaryType(sb, tpes, "(", ", ", ")", lvl)
     case c: ClassType => sb.append(c.classDef.id)
     case _ => sb.append("Type?")

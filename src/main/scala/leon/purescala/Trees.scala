@@ -383,12 +383,6 @@ object Trees {
     val fixedType = BooleanType
   }
 
-  /* Option expressions */
-  case class OptionSome(value: Expr) extends Expr 
-  case class OptionNone(baseType: TypeTree) extends Expr with Terminal with FixedType {
-    val fixedType = OptionType(baseType)
-  }
-
   /* Set expressions */
   case class EmptySet(baseType: TypeTree) extends Expr with Terminal
   case class FiniteSet(elements: Seq[Expr]) extends Expr 

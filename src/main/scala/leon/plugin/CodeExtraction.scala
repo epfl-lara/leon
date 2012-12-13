@@ -709,11 +709,6 @@ trait CodeExtraction extends Extractors {
             val IntLiteral(ri) = rec(i)
             Waypoint(ri, rec(tree)).setType(pstpe)
           }
-          case ExSomeConstruction(tpe, arg) => {
-            // println("Got Some !" + tpe + ":" + arg)
-            val underlying = scalaType2PureScala(unit, silent)(tpe)
-            OptionSome(rec(arg)).setType(OptionType(underlying))
-          }
           case ExCaseClassConstruction(tpt, args) => {
             val cctype = scalaType2PureScala(unit, silent)(tpt.tpe)
             if(!cctype.isInstanceOf[CaseClassType]) {
@@ -1049,7 +1044,6 @@ trait CodeExtraction extends Extractors {
       case tpe if tpe == NothingClass.tpe => BottomType
       case TypeRef(_, sym, btt :: Nil) if isSetTraitSym(sym) => SetType(rec(btt))
       case TypeRef(_, sym, btt :: Nil) if isMultisetTraitSym(sym) => MultisetType(rec(btt))
-      case TypeRef(_, sym, btt :: Nil) if isOptionClassSym(sym) => OptionType(rec(btt))
       case TypeRef(_, sym, List(ftt,ttt)) if isMapTraitSym(sym) => MapType(rec(ftt),rec(ttt))
       case TypeRef(_, sym, List(t1,t2)) if isTuple2(sym) => TupleType(Seq(rec(t1),rec(t2)))
       case TypeRef(_, sym, List(t1,t2,t3)) if isTuple3(sym) => TupleType(Seq(rec(t1),rec(t2),rec(t3)))
