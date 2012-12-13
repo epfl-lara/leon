@@ -9,12 +9,26 @@ object Settings {
   var silentlyTolerateNonPureBodies: Boolean = false
 
   def defaultClassPath() = {
-    val env = System.getenv("SCALA_HOME")
-    if (env != "") {
-      List(env+"/lib")
+    val leonLib = System.getenv("LEON_LIBRARY_PATH")
+    if (leonLib == "" || leonLib == null) {
+      sys.error("LEON_LIBRARY_PATH env variable is undefined")
+    }
+
+    val leonCPs = leonLib
+
+    val scalaHome = System.getenv("SCALA_HOME")
+    val scalaCPs = if (scalaHome != "") {
+      val f = new java.io.File(scalaHome+"/lib")
+
+      f.listFiles().collect {
+        case f if f.getPath().endsWith(".jar") => f.getAbsolutePath()
+      }.toList
+
     } else {
       Nil
     }
+
+    leonCPs :: scalaCPs
   }
 }
 

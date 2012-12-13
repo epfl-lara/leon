@@ -4,7 +4,11 @@ import Keys._
 
 object Leon extends Build {
   private val scriptName = "leon"
-  def scriptFile = file(".") / scriptName
+  private val setupScriptName = "setupenv"
+
+  def scriptFile      = file(".") / scriptName
+  def setupScriptFile = file(".") / setupScriptName
+
   def is64 = System.getProperty("sun.arch.data.model") == "64"
   def ldLibraryDir32 = file(".") / "lib-bin" / "32"
   def ldLibraryDir64 = file(".") / "lib-bin" / "64"
@@ -16,7 +20,7 @@ object Leon extends Build {
     }
   }
 
-  val scriptTask = TaskKey[Unit]("script", "Generate the " + scriptName + " Bash script") <<= (streams, dependencyClasspath in Compile, classDirectory in Compile) map { (s, deps, out) =>
+  val scriptTask = TaskKey[Unit]("script", "Generate the " + scriptName + " and " + setupScriptName + " Bash scriptes") <<= (streams, dependencyClasspath in Compile, classDirectory in Compile) map { (s, deps, out) =>
     if(scriptFile.exists) {
       s.log.info("Re-generating script ("+(if(is64) "64b" else "32b")+")...")
       scriptFile.delete
@@ -36,13 +40,13 @@ object Leon extends Build {
       val nl = System.getProperty("line.separator")
       val fw = new java.io.FileWriter(scriptFile)
       fw.write("#!/bin/bash --posix" + nl)
-      if (is64) {
+      val ldLibPath = if (is64) {
         fw.write("SCALACLASSPATH=\"")
         fw.write((out.absolutePath +: depsPaths).mkString(":"))
         fw.write("\"" + nl + nl)
 
         // Setting the dynamic lib path
-        fw.write("LIBRARY_PATH=\"" + ldLibraryDir64.absolutePath + "\"" + nl)
+        ldLibraryDir64.absolutePath
       } else {
         fw.write("if [ `uname -m` == \"x86_64\" ]; then "+nl)
 
@@ -56,12 +60,18 @@ object Leon extends Build {
           fw.write("\"" + nl)
 
           // Setting the dynamic lib path
-          fw.write("    LIBRARY_PATH=\"" + ldLibraryDir32.absolutePath + "\"" + nl)
         fw.write("fi" + nl + nl)
+
+        ldLibraryDir32.absolutePath
       }
 
+      val leonLibPath = depsPaths.find(_.endsWith("/library/target/scala-2.9.2/classes")) match {
+        case None => throw new Exception("Couldn't find leon-library in the classpath.")
+        case Some(p) => p
+      }
+
+      fw.write("source "+setupScriptFile.getAbsolutePath()+nl)
       // the Java command that uses sbt's local Scala to run the whole contraption.
-      fw.write("LD_LIBRARY_PATH=\"$LIBRARY_PATH\" \\"+nl)
       fw.write("java -Xmx2G -Xms512M -classpath ${SCALACLASSPATH} -Dscala.home=\"")
       fw.write(scalaHomeDir)
       fw.write("\" -Dscala.usejavacp=true ")
@@ -69,6 +79,16 @@ object Leon extends Build {
       fw.write("leon.Main $@" + nl)
       fw.close
       scriptFile.setExecutable(true)
+
+      s.log.info("Generating setup script ("+(if(is64) "64b" else "32b")+")...")
+      val sfw = new java.io.FileWriter(setupScriptFile)
+      sfw.write("#!/bin/bash --posix" + nl)
+      sfw.write("export LD_LIBRARY_PATH=\""+ldLibPath+"\"" + nl)
+      sfw.write("export LEON_LIBRARY_PATH=\""+leonLibPath+"\"" + nl)
+      sfw.write("export SCALA_HOME=\""+scalaHomeDir+"\"" + nl)
+      sfw.close
+      setupScriptFile.setExecutable(true)
+
     } catch {
       case e => s.log.error("There was an error while generating the script file: " + e.getLocalizedMessage)
     }

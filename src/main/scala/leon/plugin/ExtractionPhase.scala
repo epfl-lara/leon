@@ -13,8 +13,7 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
 
     val settings = new NSCSettings
 
-    //settings.extdirs.value = ctx.settings.classPath.mkString(":")
-    settings.usejavacp.value = true
+    settings.classpath.value = ctx.settings.classPath.mkString(":")
 
     val compilerOpts = args.filterNot(_.startsWith("--"))
 
@@ -26,7 +25,7 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
       // Debugging code for classpath crap
       // new scala.tools.util.PathResolver(settings).Calculated.basis.foreach { cp =>
       //   cp.foreach( p =>
-      //     ctx.reporter.info(" => "+p.toString)
+      //     println(" => "+p.toString)
       //   )
       // }
 
