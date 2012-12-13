@@ -10,6 +10,14 @@ case class LeonFlagOption(name: String) extends LeonOption
 /** Options of the form --option=value. */
 case class LeonValueOption(name: String, value: String) extends LeonOption {
   def splitList : Seq[String] = value.split(':').map(_.trim).filter(!_.isEmpty)
+
+  def asInt(ctx : LeonContext) : Option[Int] = try {
+    Some(value.toInt)
+  } catch {
+    case _ : Throwable =>
+      ctx.reporter.error("Option --%s takes an integer as value.".format(name))
+      None
+  }
 }
 
 sealed abstract class LeonOptionDef {

@@ -47,12 +47,10 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
           case None =>
             ctx.reporter.fatalError("Unknown cost model: "+cm)
         }
-      case LeonValueOption("timeout", t) =>
-        try {
+      case v @ LeonValueOption("timeout", _) =>
+        v.asInt(ctx).foreach { t =>
           options = options.copy(timeoutMs  = Some(t.toLong))
-        } catch {
-          case _: Throwable => 
-        }
+        } 
       case LeonFlagOption("firstonly") =>
         options = options.copy(firstOnly = true)
       case LeonFlagOption("parallel") =>
