@@ -201,9 +201,10 @@ object Sat {
   }
 
   def simplify(vars: VarList): VarList = vars match {
-    case VarNil() => VarNil()
+    case VarNil() => VarLit(false)
     case VarLit(b) => VarLit(b)
-    case VarCons(VarLit(b), vs) => if(b) VarList(true) else simplify(vs)
+    case VarCons(1, vs) => VarLit(true)
+    case VarCons(-1, vs) => simplify(vs)
     case VarCons(v, vs) => VarCons(v, simplify(vs))
   }
 
@@ -219,8 +220,8 @@ object Sat {
     case VarLit(b) => VarLit(b)
     case VarCons(v, vs) => 
       if     (v == variable && value)   VarLit(true)
-      else if(v == variable && !value)  VarCons(VarLit(false), substitute(vs, variable, value))
-      else if(v == -variable && value)  VarCons(VarLit(false), substitute(vs, variable, value))
+      else if(v == variable && !value)  VarCons(-1, substitute(vs, variable, value))
+      else if(v == -variable && value)  VarCons(-1, substitute(vs, variable, value))
       else if(v == -variable && !value) VarLit(true)
       else                              VarCons(v, substitute(vs, variable, value))
   }
@@ -275,46 +276,46 @@ object Sat {
   }
 
 
-//  def main(args: Array[String]) {
-//    val f1 = And(Var(1), Or(Var(1), Not(Var(2)), Var(3)), Var(2), Not(Var(3)))
-//    val dnff1 = clauses2list(dnfNaive(f1))
-//    val vars1 = vars(f1)
-//    vars.foreach(v => {
-//
-//
-//    })
-//    println(f1 + " translated in dnf as:\n\t" + dnff1.mkString("\n\t"))
-//  }
+  def main(args: Array[String]) {
+    val f1 = And(Var(1), Or(Var(1), Not(Var(2)), Var(3)), Var(2), Not(Var(3)))
+    val dnff1 = clauses2list(dnfNaive(f1))
+    val vars1 = vars(f1)
+    //vars.foreach(v => {
 
-  //some non-leon functions to test the program with scala
-//  object False {
-//    def apply(): Formula = And(Var(1), Not(Var(1)))
-//  }
-//  object True {
-//    def apply(): Formula = Or(Var(1), Not(Var(1)))
-//  }
-//  object Or {
-//    def apply(fs: Formula*): Formula = fs match {
-//      case Seq() => False()
-//      case Seq(f) => f
-//      case fs => fs.reduceLeft((f1, f2) => Or(f1, f2))
-//    }
-//  }
-//  object And {
-//    def apply(fs: Formula*): Formula = fs match {
-//      case Seq() => True()
-//      case Seq(f) => f
-//      case fs => fs.reduceLeft((f1, f2) => And(f1, f2))
-//    }
-//  }
-//  def clause2list(cl: VarList): List[Int] = cl match {
-//    case VarCons(v, vs) => v :: clause2list(vs)
-//    case VarNil() => Nil
-//    case VarLit(b) => if(b) List(1) else List(-1)
-//  }
-//  def clauses2list(cll: ClauseList): List[List[Int]] = cll match {
-//    case ClauseCons(cl, cls) => clause2list(cl) :: clauses2list(cls)
-//    case ClauseNil() => Nil
-//    case ClauseLit(b) => if(b) List(List(1)) else List(List(-1))
-//  }
+
+    //})
+    println(f1 + " translated in dnf as:\n\t" + dnff1.mkString("\n\t"))
+  }
+
+//some non-leon functions to test the program with scala
+  object False {
+    def apply(): Formula = And(Var(1), Not(Var(1)))
+  }
+  object True {
+    def apply(): Formula = Or(Var(1), Not(Var(1)))
+  }
+  object Or {
+    def apply(fs: Formula*): Formula = fs match {
+      case Seq() => False()
+      case Seq(f) => f
+      case fs => fs.reduceLeft((f1, f2) => Or(f1, f2))
+    }
+  }
+  object And {
+    def apply(fs: Formula*): Formula = fs match {
+      case Seq() => True()
+      case Seq(f) => f
+      case fs => fs.reduceLeft((f1, f2) => And(f1, f2))
+    }
+  }
+  def clause2list(cl: VarList): List[Int] = cl match {
+    case VarCons(v, vs) => v :: clause2list(vs)
+    case VarNil() => Nil
+    case VarLit(b) => if(b) List(1) else List(-1)
+  }
+  def clauses2list(cll: ClauseList): List[List[Int]] = cll match {
+    case ClauseCons(cl, cls) => clause2list(cl) :: clauses2list(cls)
+    case ClauseNil() => Nil
+    case ClauseLit(b) => if(b) List(List(1)) else List(List(-1))
+  }
 }
