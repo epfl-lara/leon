@@ -45,7 +45,12 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
           case Some(model) =>
             options = options.copy(costModel = model)
           case None =>
-            ctx.reporter.fatalError("Unknown cost model: "+cm)
+
+            val errorMsg = "Unknown cost model: " + cm + "\n" +
+                           "Defined cost models: \n" +
+                           (CostModel.all.map(_.name).mkString("  - ", "\n  - ", ""))
+
+            ctx.reporter.fatalError(errorMsg)
         }
       case v @ LeonValueOption("timeout", _) =>
         v.asInt(ctx).foreach { t =>
