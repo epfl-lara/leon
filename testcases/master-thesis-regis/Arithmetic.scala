@@ -70,4 +70,15 @@ object Arithmetic {
     r
   } ensuring(_ >= n)
 
+  def divide(x: Int, y: Int): (Int, Int) = {
+    require(x >= 0 && y > 0)
+    var r = x
+    var q = 0
+    (while(r >= y) {
+      r = r - y
+      q = q + 1
+    }) invariant(x == y*q + r && r >= 0)
+    (q, r)
+  } ensuring(res => x == y*res._1 + res._2 && res._2 >= 0 && res._2 < y)
+
 }
