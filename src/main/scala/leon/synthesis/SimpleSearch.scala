@@ -68,8 +68,12 @@ class SimpleSearch(synth: Synthesizer,
     }
   }
 
+  var shouldStop = false
+
   def search(): Option[Solution] = {
-    while (!g.tree.isSolved) {
+    shouldStop = false
+
+    while (!g.tree.isSolved && !shouldStop) {
       nextLeaf() match {
         case Some(l)  =>
           l match {
@@ -85,5 +89,11 @@ class SimpleSearch(synth: Synthesizer,
       }
     }
     g.tree.solution
+  }
+
+  override def stop() {
+    super.stop()
+    shouldStop = true
+    sctx.solver.halt()
   }
 }
