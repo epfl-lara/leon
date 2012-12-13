@@ -86,6 +86,10 @@ class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with 
       solver.push
     }
 
+    def halt() {
+      z3.interrupt
+    }
+
     def pop(lvl: Int = 1) {
       solver.pop(lvl)
     }

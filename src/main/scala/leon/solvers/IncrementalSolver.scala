@@ -18,6 +18,7 @@ trait IncrementalSolver {
   def pop(lvl: Int = 1): Unit
   def assertCnstr(expression: Expr): Unit
 
+  def halt(): Unit
   def check: Option[Boolean]
   def checkAssumptions(assumptions: Set[Expr]): Option[Boolean]
   def getModel: Map[Identifier, Expr]
@@ -25,6 +26,7 @@ trait IncrementalSolver {
 }
 
 trait NaiveIncrementalSolver extends IncrementalSolverBuilder {
+  def halt(): Unit
   def solveSAT(e: Expr): (Option[Boolean], Map[Identifier, Expr])
 
   def getNewSolver = new IncrementalSolver {
@@ -36,6 +38,10 @@ trait NaiveIncrementalSolver extends IncrementalSolverBuilder {
 
     def pop(lvl: Int = 1) {
       stack = stack.drop(lvl)
+    }
+
+    def halt() {
+      NaiveIncrementalSolver.this.halt()
     }
 
     def assertCnstr(expression: Expr) {

@@ -95,7 +95,7 @@ class FairZ3Solver(context : LeonContext)
   override def halt() {
     super.halt
     if(z3 ne null) {
-      z3.softCheckCancel
+      z3.interrupt
     }
   }
 
@@ -255,6 +255,10 @@ class FairZ3Solver(context : LeonContext)
     def push() {
       frameGuards      = z3.mkFreshConst("frame", z3.mkBoolSort) :: frameGuards
       frameExpressions = Nil :: frameExpressions
+    }
+
+    def halt() {
+      z3.interrupt
     }
 
     def pop(lvl: Int = 1) {
