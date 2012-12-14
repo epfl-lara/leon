@@ -164,7 +164,6 @@ object Sets {
     val unit = out.result.get
 
     def asIntSet(e : Expr) : Option[Set[Int]] = e match {
-      case EmptySet(_) => Some(Set.empty)
       case FiniteSet(es) =>
         val ois = es.map(_ match {
           case IntLiteral(v) => Some(v)

@@ -442,7 +442,6 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
         case f @ FunctionInvocation(fd, args) => {
           z3.mkApp(functionDefToDecl(fd), args.map(rec(_)): _*)
         }
-        case e @ EmptySet(_) => z3.mkEmptySet(typeToSort(e.getType.asInstanceOf[SetType].base))
         
         case SetEquals(s1, s2) => z3.mkEq(rec(s1), rec(s2))
         case ElementOfSet(e, s) => z3.mkSetSubset(z3.mkSetAdd(z3.mkEmptySet(typeToSort(e.getType)), rec(e)), rec(s))
@@ -457,25 +456,12 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
         }
         case SetMin(s) => intSetMinFun(rec(s))
         case SetMax(s) => intSetMaxFun(rec(s))
-        case s @ SingletonMap(from,to) => s.getType match {
-          case MapType(fromType, toType) =>
-            val fromSort = typeToSort(fromType)
-            val toSort = typeToSort(toType)
-            val constArray = z3.mkConstArray(fromSort, mapRangeNoneConstructors(toType)())
-            z3.mkStore(constArray, rec(from), mapRangeSomeConstructors(toType)(rec(to)))
-          case errorType => scala.sys.error("Unexpected type for singleton map: " + (ex, errorType))
-        }
-        case e @ EmptyMap(fromType, toType) => {
-          typeToSort(e.getType) //had to add this here because the mapRangeNoneConstructors was not yet constructed...
-          val fromSort = typeToSort(fromType)
-          val toSort = typeToSort(toType)
-          z3.mkConstArray(fromSort, mapRangeNoneConstructors(toType)())
-        }
         case f @ FiniteMap(elems) => f.getType match {
-          case MapType(fromType, toType) =>
+          case tpe@MapType(fromType, toType) =>
+            typeToSort(tpe) //had to add this here because the mapRangeNoneConstructors was not yet constructed...
             val fromSort = typeToSort(fromType)
             val toSort = typeToSort(toType)
-            elems.foldLeft(z3.mkConstArray(fromSort, mapRangeNoneConstructors(toType)())){ case (ast, SingletonMap(k,v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(toType)(rec(v))) }
+            elems.foldLeft(z3.mkConstArray(fromSort, mapRangeNoneConstructors(toType)())){ case (ast, (k,v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(toType)(rec(v))) }
           case errorType => scala.sys.error("Unexpected type for finite map: " + (ex, errorType))
         }
         case mg @ MapGet(m,k) => m.getType match {
@@ -488,9 +474,8 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
           case MapType(ft, tt) => m2 match {
             case FiniteMap(ss) =>
               ss.foldLeft(rec(m1)){
-                case (ast, SingletonMap(k, v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(tt)(rec(v)))
+                case (ast, (k, v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(tt)(rec(v)))
               }
-            case SingletonMap(k, v) => z3.mkStore(rec(m1), rec(k), mapRangeSomeConstructors(tt)(rec(v)))
             case _ => scala.sys.error("map updates can only be applied with concrete map instances")
           }
           case errorType => scala.sys.error("Unexpected type for map: " + (ex, errorType))
@@ -555,17 +540,17 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
         model.getArrayValue(t) match {
           case None => throw new CantTranslateException(t)
           case Some((map, elseValue)) => 
-            val singletons = map.map(e => (e, z3.getASTKind(e._2))).collect {
-              case ((index, value), Z3AppAST(someCons, arg :: Nil)) if someCons == mapRangeSomeConstructors(vt) => SingletonMap(rec(index, Some(kt)), rec(arg, Some(vt)))
-            }
-            (if (singletons.isEmpty) EmptyMap(kt, vt) else FiniteMap(singletons.toSeq)).setType(expType.get)
+            val singletons: Seq[(Expr, Expr)] = map.map(e => (e, z3.getASTKind(e._2))).collect {
+              case ((index, value), Z3AppAST(someCons, arg :: Nil)) if someCons == mapRangeSomeConstructors(vt) => (rec(index, Some(kt)), rec(arg, Some(vt)))
+            }.toSeq
+            FiniteMap(singletons).setType(expType.get)
         }
       case Some(SetType(dt)) => 
         model.getSetValue(t) match {
           case None => throw new CantTranslateException(t)
           case Some(set) => {
             val elems = set.map(e => rec(e, Some(dt)))
-            (if (elems.isEmpty) EmptySet(dt) else FiniteSet(elems.toSeq)).setType(expType.get)
+            FiniteSet(elems.toSeq).setType(expType.get)
           }
         }
       case Some(ArrayType(dt)) => {

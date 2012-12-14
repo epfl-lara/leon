@@ -140,7 +140,6 @@ object ScalaPrinter {
     case GreaterEquals(l,r) => ppBinary(sb, l, r, " >= ", lvl)   // \geq
     case FiniteSet(rs) => ppNary(sb, rs, "Set(", ", ", ")", lvl)
     case FiniteMultiset(rs) => ppNary(sb, rs, "{|", ", ", "|}", lvl)
-    case EmptySet(bt) => sb.append("Set()")                          // Ø
     case EmptyMultiset(_) => sys.error("Not Valid Scala")
     case ElementOfSet(s,e) => ppBinary(sb, s, e, " contains ", lvl)
     //case ElementOfSet(s,e) => ppBinary(sb, s, e, " \u2208 ", lvl)    // \in
@@ -163,9 +162,15 @@ object ScalaPrinter {
    // case MultisetCardinality(t) => ppUnary(sb, t, "|", "|", lvl)
    // case MultisetPlus(l,r) => ppBinary(sb, l, r, " \u228E ", lvl)    // U+
    // case MultisetToSet(e) => pp(e, sb, lvl).append(".toSet")
-    case EmptyMap(_,_) => sb.append("Map()")
-    case SingletonMap(f,t) => ppBinary(sb, f, t, " -> ", lvl)
-    case FiniteMap(rs) => ppNary(sb, rs, "Map(", ", ", ")", lvl)
+    case FiniteMap(rs) => {
+      sb.append("{")
+      val sz = rs.size
+      var c = 0
+      rs.foreach{case (k, v) => {
+        pp(k, sb, lvl); sb.append(" -> "); pp(v, sb, lvl); c += 1 ; if(c < sz) sb.append(", ")
+      }}
+      sb.append("}")
+    }
     case MapGet(m,k) => {
       pp(m, sb, lvl)
       ppNary(sb, Seq(k), "(", ",", ")", lvl)

@@ -402,7 +402,6 @@ object Trees {
   }
 
   /* Set expressions */
-  case class EmptySet(baseType: TypeTree) extends Expr with Terminal
   case class FiniteSet(elements: Seq[Expr]) extends Expr 
   // TODO : Figure out what evaluation order is, for this.
   // Perhaps then rewrite as "contains".
@@ -436,9 +435,7 @@ object Trees {
   case class MultisetToSet(multiset: Expr) extends Expr
 
   /* Map operations. */
-  case class EmptyMap(fromType: TypeTree, toType: TypeTree) extends Expr with Terminal
-  case class SingletonMap(from: Expr, to: Expr) extends Expr 
-  case class FiniteMap(singletons: Seq[SingletonMap]) extends Expr 
+  case class FiniteMap(singletons: Seq[(Expr, Expr)]) extends Expr 
 
   case class MapGet(map: Expr, key: Expr) extends Expr with ScalacPositional
   case class MapUnion(map1: Expr, map2: Expr) extends Expr 

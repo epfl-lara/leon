@@ -822,8 +822,8 @@ object TreeOps {
     case CaseClassType(ccd) =>
       val fields = ccd.fields
       CaseClass(ccd, fields.map(f => simplestValue(f.getType)))
-    case SetType(baseType) => EmptySet(baseType).setType(tpe)
-    case MapType(fromType, toType) => EmptyMap(fromType, toType).setType(tpe)
+    case SetType(baseType) => FiniteSet(Seq()).setType(tpe)
+    case MapType(fromType, toType) => FiniteMap(Seq()).setType(tpe)
     case _ => throw new Exception("I can't choose simplest value for type " + tpe)
   }
 

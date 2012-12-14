@@ -209,55 +209,38 @@ object Evaluator {
         }
 
         case SetUnion(s1,s2) => (rec(ctx,s1), rec(ctx,s2)) match {
-          case (EmptySet(_), f2) => f2
-          case (f1, EmptySet(_)) => f1
           case (f@FiniteSet(els1),FiniteSet(els2)) => FiniteSet((els1 ++ els2).distinct).setType(f.getType)
           case (le,re) => throw TypeErrorEx(TypeError(le, s1.getType))
         }
         case SetIntersection(s1,s2) => (rec(ctx,s1), rec(ctx,s2)) match {
-          case (e @ EmptySet(_), _) => e
-          case (_, e @ EmptySet(_)) => e
           case (f@FiniteSet(els1),FiniteSet(els2)) => {
             val newElems = (els1.toSet intersect els2.toSet).toSeq
             val baseType = f.getType.asInstanceOf[SetType].base
-            if(newElems.isEmpty) {
-              EmptySet(baseType).setType(f.getType)
-            } else {
-              FiniteSet(newElems).setType(f.getType)
-            }
+            FiniteSet(newElems).setType(f.getType)
           }
           case (le,re) => throw TypeErrorEx(TypeError(le, s1.getType))
         }
         case SetDifference(s1,s2) => (rec(ctx,s1), rec(ctx,s2)) match {
-          case (e @ EmptySet(_), _) => e
-          case (f , EmptySet(_)) => f
           case (f@FiniteSet(els1),FiniteSet(els2)) => {
             val newElems = (els1.toSet -- els2.toSet).toSeq
             val baseType = f.getType.asInstanceOf[SetType].base
-            if(newElems.isEmpty) {
-              EmptySet(baseType).setType(f.getType)
-            } else {
-              FiniteSet(newElems).setType(f.getType)
-            }
+            FiniteSet(newElems).setType(f.getType)
           }
           case (le,re) => throw TypeErrorEx(TypeError(le, s1.getType))
         }
         case ElementOfSet(el,s) => (rec(ctx,el), rec(ctx,s)) match {
-          case (_, EmptySet(_)) => BooleanLiteral(false)
           case (e, f @ FiniteSet(els)) => BooleanLiteral(els.contains(e))
           case (l,r) => throw TypeErrorEx(TypeError(r, SetType(l.getType)))
         }
         case SetCardinality(s) => {
           val sr = rec(ctx, s)
           sr match {
-            case EmptySet(_) => IntLiteral(0)
             case FiniteSet(els) => IntLiteral(els.size)
             case _ => throw TypeErrorEx(TypeError(sr, SetType(AnyType)))
           }
         }
 
         case f @ FiniteSet(els) => FiniteSet(els.map(rec(ctx,_)).distinct).setType(f.getType)
-        case e @ EmptySet(_) => e
         case i @ IntLiteral(_) => i
         case b @ BooleanLiteral(_) => b
         case u @ UnitLiteral => u
@@ -292,31 +275,24 @@ object Evaluator {
           FiniteArray(exprs.map(e => rec(ctx, e)))
         }
 
-        case f @ FiniteMap(ss) => FiniteMap(ss.map(rec(ctx,_)).distinct.asInstanceOf[Seq[SingletonMap]]).setType(f.getType)
-        case e @ EmptyMap(_,_) => e
-        case s @ SingletonMap(f,t) => SingletonMap(rec(ctx,f), rec(ctx,t)).setType(s.getType)
+        case f @ FiniteMap(ss) => FiniteMap(ss.map{ case (k, v) => (rec(ctx, k), rec(ctx, v)) }.distinct).setType(f.getType)
         case g @ MapGet(m,k) => (rec(ctx,m), rec(ctx,k)) match {
-          case (FiniteMap(ss), e) => ss.find(_.from == e) match {
-            case Some(SingletonMap(k0,v0)) => v0
+          case (FiniteMap(ss), e) => ss.find(_._1 == e) match {
+            case Some((_, v0)) => v0
             case None => throw RuntimeErrorEx("key not found: " + e)
           }
-          case (EmptyMap(ft,tt), e) => throw RuntimeErrorEx("key not found: " + e)
-          // case (SingletonMap(f,t), e) => if (f == e) t else throw RuntimeErrorEx("key not found: " + e)
           case (l,r) => throw TypeErrorEx(TypeError(l, MapType(r.getType, g.getType)))
         }
         case u @ MapUnion(m1,m2) => (rec(ctx,m1), rec(ctx,m2)) match {
-          case (EmptyMap(_,_), r) => r
-          case (l, EmptyMap(_,_)) => l
           case (f1@FiniteMap(ss1), FiniteMap(ss2)) => {
-            val filtered1 = ss1.filterNot(s1 => ss2.exists(s2 => s2.from == s1.from))
+            val filtered1 = ss1.filterNot(s1 => ss2.exists(s2 => s2._1 == s1._1))
             val newSs = filtered1 ++ ss2
             FiniteMap(newSs).setType(f1.getType)
           }
           case (l, r) => throw TypeErrorEx(TypeError(l, m1.getType))
         }
         case i @ MapIsDefinedAt(m,k) => (rec(ctx,m), rec(ctx,k)) match {
-          case (EmptyMap(_,_),_) => BooleanLiteral(false)
-          case (FiniteMap(ss), e) => BooleanLiteral(ss.exists(_.from == e))
+          case (FiniteMap(ss), e) => BooleanLiteral(ss.exists(_._1 == e))
           case (l, r) => throw TypeErrorEx(TypeError(l, m.getType))
         }
         case Distinct(args) => {

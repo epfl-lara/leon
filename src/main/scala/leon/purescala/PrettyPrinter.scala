@@ -142,9 +142,8 @@ object PrettyPrinter {
     case GreaterThan(l,r) => ppBinary(sb, l, r, " > ", lvl)
     case LessEquals(l,r) => ppBinary(sb, l, r, " \u2264 ", lvl)      // \leq
     case GreaterEquals(l,r) => ppBinary(sb, l, r, " \u2265 ", lvl)   // \geq
-    case FiniteSet(rs) => ppNary(sb, rs, "{", ", ", "}", lvl)
+    case FiniteSet(rs) => if(rs.isEmpty) sb.append("\u2205") /* Ø */ else ppNary(sb, rs, "{", ", ", "}", lvl)
     case FiniteMultiset(rs) => ppNary(sb, rs, "{|", ", ", "|}", lvl)
-    case EmptySet(_) => sb.append("\u2205")                          // Ø
     case EmptyMultiset(_) => sb.append("\u2205")                     // Ø
     case Not(ElementOfSet(s,e)) => ppBinary(sb, s, e, " \u2209 ", lvl) // \notin
     case ElementOfSet(s,e) => ppBinary(sb, s, e, " \u2208 ", lvl)    // \in
@@ -163,9 +162,15 @@ object PrettyPrinter {
     case MultisetCardinality(t) => ppUnary(sb, t, "|", "|", lvl)
     case MultisetPlus(l,r) => ppBinary(sb, l, r, " \u228E ", lvl)    // U+
     case MultisetToSet(e) => pp(e, sb, lvl).append(".toSet")
-    case EmptyMap(_,_) => sb.append("{}")
-    case SingletonMap(f,t) => ppBinary(sb, f, t, " -> ", lvl)
-    case FiniteMap(rs) => ppNary(sb, rs, "{", ", ", "}", lvl)
+    case FiniteMap(rs) => {
+      sb.append("{")
+      val sz = rs.size
+      var c = 0
+      rs.foreach{case (k, v) => {
+        pp(k, sb, lvl); sb.append(" -> "); pp(v, sb, lvl); c += 1 ; if(c < sz) sb.append(", ")
+      }}
+      sb.append("}")
+    }
     case MapGet(m,k) => {
       var nsb = sb
       pp(m, nsb, lvl)

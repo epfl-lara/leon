@@ -68,7 +68,7 @@ class RandomSolver(context: LeonContext, val nbTrial: Option[Int] = None) extend
       CaseClass(cd, cd.fields.map(f => randomValue(f.getType, size / nbFields))) 
     }
     case AnyType => randomValue(randomType(), size)
-    case SetType(base) => EmptySet(base)
+    case SetType(base) => FiniteSet(Seq())
     case MultisetType(base) => EmptyMultiset(base)
     case Untyped => sys.error("I don't know what to do")
     case BottomType => sys.error("I don't know what to do")

@@ -754,7 +754,7 @@ trait CodeExtraction extends Extractors {
           }
           case ExEmptySet(tt) => {
             val underlying = scalaType2PureScala(unit, silent)(tt.tpe)
-            EmptySet(underlying).setType(SetType(underlying))          
+            FiniteSet(Seq()).setType(SetType(underlying))          
           }
           case ExEmptyMultiset(tt) => {
             val underlying = scalaType2PureScala(unit, silent)(tt.tpe)
@@ -765,28 +765,23 @@ trait CodeExtraction extends Extractors {
             val toUnderlying   = scalaType2PureScala(unit, silent)(tt.tpe)
             val tpe = MapType(fromUnderlying, toUnderlying)
 
-            EmptyMap(fromUnderlying, toUnderlying).setType(tpe)
+            FiniteMap(Seq()).setType(tpe)
           }
           case ExLiteralMap(ft, tt, elems) => {
             val fromUnderlying = scalaType2PureScala(unit, silent)(ft.tpe)
             val toUnderlying   = scalaType2PureScala(unit, silent)(tt.tpe)
             val tpe = MapType(fromUnderlying, toUnderlying)
 
-            if (elems.isEmpty) {
-              EmptyMap(fromUnderlying, toUnderlying).setType(tpe)
-            } else {
-              val singletons = elems.collect { case ExTuple(tpes, trees) if (trees.size == 2) =>
-                SingletonMap(rec(trees(0)), rec(trees(1))).setType(tpe)
-              }
-
-
-              if (singletons.size != elems.size) {
-                unit.error(nextExpr.pos, "Some map elements could not be extracted as Tuple2")
-                throw ImpureCodeEncounteredException(nextExpr)
-              }
-
-              FiniteMap(singletons).setType(tpe)
+            val singletons: Seq[(Expr, Expr)] = elems.collect { case ExTuple(tpes, trees) if (trees.size == 2) =>
+              (rec(trees(0)), rec(trees(1)))
             }
+
+            if (singletons.size != elems.size) {
+              unit.error(nextExpr.pos, "Some map elements could not be extracted as Tuple2")
+              throw ImpureCodeEncounteredException(nextExpr)
+            }
+
+            FiniteMap(singletons).setType(tpe)
           }
 
           case ExSetMin(t) => {
@@ -890,8 +885,7 @@ trait CodeExtraction extends Extractors {
             val rt = rec(t)
             rm.getType match {
               case MapType(ft, tt) => {
-                val newSingleton = SingletonMap(rf, rt).setType(rm.getType)
-                MapUnion(rm, FiniteMap(Seq(newSingleton)).setType(rm.getType)).setType(rm.getType)
+                MapUnion(rm, FiniteMap(Seq((rf, rt))).setType(rm.getType)).setType(rm.getType)
               }
               case ArrayType(bt) => {
                 ArrayUpdated(rm, rf, rt).setType(rm.getType).setPosInfo(up.pos.line, up.pos.column)

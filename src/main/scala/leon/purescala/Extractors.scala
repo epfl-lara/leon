@@ -61,7 +61,6 @@ object Extractors {
       case MultisetUnion(t1,t2) => Some((t1,t2,MultisetUnion))
       case MultisetPlus(t1,t2) => Some((t1,t2,MultisetPlus))
       case MultisetDifference(t1,t2) => Some((t1,t2,MultisetDifference))
-      case SingletonMap(t1,t2) => Some((t1,t2,SingletonMap))
       case mg@MapGet(t1,t2) => Some((t1,t2, (t1, t2) => MapGet(t1, t2).setPosInfo(mg)))
       case MapUnion(t1,t2) => Some((t1,t2,MapUnion))
       case MapDifference(t1,t2) => Some((t1,t2,MapDifference))
@@ -88,7 +87,17 @@ object Extractors {
       case And(args) => Some((args, And.apply))
       case Or(args) => Some((args, Or.apply))
       case FiniteSet(args) => Some((args, FiniteSet))
-      case FiniteMap(args) => Some((args, (as : Seq[Expr]) => FiniteMap(as.asInstanceOf[Seq[SingletonMap]])))
+      case FiniteMap(args) => {
+        val subArgs = args.flatMap{case (k, v) => Seq(k, v)}
+        val builder: (Seq[Expr]) => Expr = (as: Seq[Expr]) => {
+          val (keys, values, isKey) = as.foldLeft[(List[Expr], List[Expr], Boolean)]((Nil, Nil, true)){
+            case ((keys, values, isKey), rExpr) => if(isKey) (rExpr::keys, values, false) else (keys, rExpr::values, true)
+          }
+          assert(isKey)
+          FiniteMap(keys.zip(values))
+        }
+        Some((subArgs, builder))
+      }
       case FiniteMultiset(args) => Some((args, FiniteMultiset))
       case ArrayUpdated(t1, t2, t3) => Some((Seq(t1,t2,t3), (as: Seq[Expr]) => ArrayUpdated(as(0), as(1), as(2))))
       case FiniteArray(args) => Some((args, FiniteArray))
