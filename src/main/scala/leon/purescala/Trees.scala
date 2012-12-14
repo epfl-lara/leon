@@ -275,8 +275,26 @@ object Trees {
     override def hashCode: Int = left.hashCode + right.hashCode
   }
 
-  case class Not(expr: Expr) extends Expr with FixedType {
+  object Not {
+    def apply(expr : Expr) : Expr = expr match {
+      case Not(e) => e
+      case _ => new Not(expr)
+    }
+
+    def unapply(not : Not) : Option[Expr] = {
+      if(not != null) Some(not.expr) else None
+    }
+  }
+
+  class Not private (val expr: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
+
+    override def equals(that: Any) : Boolean = (that != null) && (that match {
+      case n : Not => n.expr == expr
+      case _ => false
+    })
+
+    override def hashCode : Int = expr.hashCode ^ Int.MinValue
   }
 
   object Equals {
