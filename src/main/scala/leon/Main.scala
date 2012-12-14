@@ -56,7 +56,7 @@ object Main {
     sys.exit(1)
   }
 
-  def processOptions(reporter: Reporter, args: List[String]) = {
+  def processOptions(reporter: Reporter, args: Seq[String]): LeonContext = {
     val phases = allPhases
 
     val allOptions = this.allOptions

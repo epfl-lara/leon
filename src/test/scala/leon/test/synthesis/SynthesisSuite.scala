@@ -7,46 +7,12 @@ import leon.purescala.TreeOps._
 import leon.solvers.z3._
 import leon.solvers.Solver
 import leon.synthesis._
+import leon.synthesis.utils._
 
 import org.scalatest.FunSuite
 import org.scalatest.matchers.ShouldMatchers._
 
 import java.io.{BufferedWriter, FileWriter, File}
-
-object ExtractProblemsPhase extends LeonPhase[Program, (Map[FunDef, Seq[Problem]], Solver)] {
-  val name        = "Synthesis Problem Extraction"
-  val description = "Synthesis Problem Extraction"
-
-  def run(ctx: LeonContext)(p: Program): (Map[FunDef, Seq[Problem]], Solver) = {
-
-     val silentContext : LeonContext = ctx.copy(reporter = new SilentReporter)
-     val mainSolver = new FairZ3Solver(silentContext)
-     mainSolver.setProgram(p)
-
-    var results  = Map[FunDef, Seq[Problem]]()
-    def noop(u:Expr, u2: Expr) = u
-
-
-    def actOnChoose(f: FunDef)(e: Expr, a: Expr): Expr = e match {
-      case ch @ Choose(vars, pred) =>
-        val problem = Problem.fromChoose(ch)
-
-        results += f -> (results.getOrElse(f, Seq()) :+ problem)
-
-        a
-      case _ =>
-        a
-    }
-
-    // Look for choose()
-    for (f <- p.definedFunctions.sortBy(_.id.toString) if f.body.isDefined) {
-      treeCatamorphism(x => x, noop, actOnChoose(f), f.body.get)
-    }
-
-    (results, mainSolver)
-  }
-
-}
 
 class SynthesisSuite extends FunSuite {
   private var counter : Int = 0
@@ -69,7 +35,7 @@ class SynthesisSuite extends FunSuite {
 
     val opts = SynthesizerOptions()
 
-    val pipeline = leon.plugin.TemporaryInputPhase andThen leon.plugin.ExtractionPhase andThen ExtractProblemsPhase
+    val pipeline = leon.plugin.TemporaryInputPhase andThen leon.plugin.ExtractionPhase andThen SynthesisProblemExtractionPhase
 
     val (results, solver) = pipeline.run(ctx)((content, Nil))
 

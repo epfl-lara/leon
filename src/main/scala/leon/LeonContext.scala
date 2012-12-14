@@ -8,7 +8,7 @@ import java.io.File
  *  exception of the reporter). */
 case class LeonContext(
   val settings: Settings          = Settings(),
-  val options: List[LeonOption]   = Nil,
-  val files: List[File]           = Nil,
+  val options: Seq[LeonOption]    = Seq.empty,
+  val files: Seq[File]            = Seq.empty,
   val reporter: Reporter          = new DefaultReporter
 )

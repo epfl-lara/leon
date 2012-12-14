@@ -392,6 +392,9 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
             // if (id.isLetBinder) {
             //   scala.sys.error("Error in formula being translated to Z3: identifier " + id + " seems to have escaped its let-definition")
             // }
+
+            assert(!this.isInstanceOf[FairZ3Solver], "This should not happen using FairZ3Solver")
+
             val newAST = z3.mkFreshConst(id.uniqueName/*name*/, typeToSort(v.getType))
             z3Vars = z3Vars + (id -> newAST)
             exprToZ3Id += (v -> newAST)
@@ -691,6 +694,10 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
     } catch {
       case e: CantTranslateException => None
     }
+  }
+
+  def idToFreshZ3Id(id: Identifier): Z3AST = {
+    z3.mkFreshConst(id.uniqueName, typeToSort(id.getType))
   }
 
 }

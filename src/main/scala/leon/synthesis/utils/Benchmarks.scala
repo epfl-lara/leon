@@ -1,4 +1,4 @@
-package leon.benchmark
+package leon.synthesis.utils
 
 import leon._
 import leon.purescala.Definitions._
@@ -7,23 +7,53 @@ import leon.purescala.TreeOps._
 import leon.solvers.z3._
 import leon.solvers.Solver
 import leon.synthesis._
-import leon.test.synthesis._
+
+import java.util.Date
+import java.text.SimpleDateFormat
+
+import sys.process._
 
 import java.io.File
 
-object SynthesisBenchmarks extends App {
+object Benchmarks extends App {
 
-  private def forEachFileIn(dirName : String)(block : File=>Unit) {
-    import scala.collection.JavaConversions._
+  val allRules = Rules.all ++ Heuristics.all
 
-    for(f <- (new File(dirName)).listFiles() if f.getPath().endsWith(".scala")) {
-      block(f)
-    }
+  var rule: Rule = rules.CEGIS
+
+  // Parse arguments
+  val (options, others) = args.partition(_.startsWith("--"))
+
+  val newOptions = options flatMap {
+    case setting if setting.startsWith("--rule=") =>
+      val name = setting.drop(7)
+
+      allRules.find(_.name.toLowerCase == name.toLowerCase) match {
+        case Some(r) =>
+          rule = r
+        case None =>
+          println("Could not find rule: "+name)
+          println("Available rules: ")
+          for (r <- allRules) {
+            println(" - "+r.name)
+          }
+          sys.exit(1);
+      }
+
+      None
+
+    case setting =>
+      Some(setting)
   }
+
+  println("# Date: "+new SimpleDateFormat("dd.MM.yyyy HH:mm:ss").format(new Date()))
+  println("# Git tree: "+("git log -1 --format=\"%H\"".!!).trim)
+  println("# Using rule: "+rule.name)
+
 
   val infoSep    : String = "╟" + ("┄" * 86) + "╢"
   val infoFooter : String = "╚" + ("═" * 86) + "╝"
-  val infoHeader : String = ". ┌────────────┐\n" +
+  val infoHeader : String = "  ┌────────────┐\n" +
                             "╔═╡ Benchmarks ╞" + ("═" * 71) + "╗\n" +
                             "║ └────────────┘" + (" " * 71) + "║"
 
@@ -41,33 +71,26 @@ object SynthesisBenchmarks extends App {
   var nSuccessTotal, nInnapTotal, nDecompTotal, nAltTotal = 0
   var tTotal: Long = 0
 
-  for (path <- args) {
-    val file = new File(path)
+  val ctx = leon.Main.processOptions(new DefaultReporter, others ++ newOptions)
 
-    val ctx = LeonContext(
-      settings = Settings(
-        synthesis = true,
-        xlang     = false,
-        verify    = false
-      ),
-      files = List(file),
-      reporter = new DefaultReporter
-    )
+  for (file <- ctx.files) {
+    val innerCtx = ctx.copy(files = List(file))
 
     val opts = SynthesizerOptions()
 
-    val pipeline = leon.plugin.ExtractionPhase andThen ExtractProblemsPhase
+    val pipeline = leon.plugin.ExtractionPhase andThen SynthesisProblemExtractionPhase
 
-    val (results, solver) = pipeline.run(ctx)(file.getPath :: Nil)
+    val (results, solver) = pipeline.run(innerCtx)(file.getPath :: Nil)
+
 
     val sctx = SynthesisContext(solver, new DefaultReporter, new java.util.concurrent.atomic.AtomicBoolean)
 
 
-    for ((f, ps) <- results; p <- ps) {
+    for ((f, ps) <- results.toSeq.sortBy(_._1.id.toString); p <- ps) {
       val ts = System.currentTimeMillis
 
-      val rr = rules.CEGIS.instantiateOn(sctx, p)
-      
+      val rr = rule.instantiateOn(sctx, p)
+
       val nAlt = rr.size
       var nSuccess, nInnap, nDecomp = 0
 
@@ -103,7 +126,7 @@ object SynthesisBenchmarks extends App {
 
   println
 
-  val infoHeader2 : String = ". ┌────────────┐\n" +
+  val infoHeader2 : String = "  ┌────────────┐\n" +
                              "╔═╡ Timers     ╞" + ("═" * 71) + "╗\n" +
                              "║ └────────────┘" + (" " * 71) + "║"
 
