@@ -20,30 +20,41 @@ trait Extractors {
   private lazy val multisetTraitSym = definitions.getClass("scala.collection.immutable.Multiset")
   private lazy val optionClassSym = definitions.getClass("scala.Option")
 
-  object StructuralExtractors {
-    object ScalaPredef {
-      /** Extracts method calls from scala.Predef. */
-      def unapply(tree: Select): Option[String] = tree match {
-        case Select(Select(This(scalaName),predefName),symName)
-          if("scala".equals(scalaName.toString) && "Predef".equals(predefName.toString)) =>
-            Some(symName.toString)
-        case _ => None
+  object ExtractorHelpers {
+    object ExIdNamed {
+      def unapply(id: Ident): Option[String] = Some(id.toString)
+    }
+    object ExNamed {
+      def unapply(name: Name): Option[String] = Some(name.toString)
+    }
+
+    object ExSelected {
+      def unapplySeq(select: Select): Option[Seq[String]] = select match {
+        case Select(This(scalaName), name) =>
+          Some(Seq(scalaName.toString, name.toString))
+
+        case Select(from: Select, name) =>
+          unapplySeq(from).map(prefix => prefix :+ name.toString)
+
+        case Select(from: Ident, name) =>
+          Some(Seq(from.toString, name.toString))
+
+        case _ =>
+          None
       }
     }
+  }
+
+  object StructuralExtractors {
+    import ExtractorHelpers._
 
     object ExEnsuredExpression {
       /** Extracts the 'ensuring' contract from an expression. */
       def unapply(tree: Apply): Option[(Tree,Symbol,Tree)] = tree match {
-        case Apply(
-          Select(
-            Apply(
-              TypeApply(
-                ScalaPredef("any2Ensuring"),
-                TypeTree() :: Nil),
-              body :: Nil),
-            ensuringName),
+        case Apply(Select(Apply(TypeApply(ExSelected("scala", "Predef", "any2Ensuring"), TypeTree() :: Nil),
+              body :: Nil), ExNamed("ensuring")),
           (Function((vd @ ValDef(_, _, _, EmptyTree)) :: Nil, contractBody)) :: Nil)
-          if("ensuring".equals(ensuringName.toString)) => Some((body, vd.symbol, contractBody))
+          => Some((body, vd.symbol, contractBody))
         case _ => None
       }
     }
@@ -62,7 +73,7 @@ trait Extractors {
       /** Extracts the 'require' contract from an expression (only if it's the
        * first call in the block). */
       def unapply(tree: Block): Option[(Tree,Tree)] = tree match {
-        case Block(Apply(ScalaPredef("require"), contractBody :: Nil) :: rest, body) =>
+        case Block(Apply(ExSelected("scala", "Predef", "require"), contractBody :: Nil) :: rest, body) =>
           if(rest.isEmpty)
             Some((body,contractBody))
           else
@@ -147,6 +158,7 @@ trait Extractors {
   }
 
   object ExpressionExtractors {
+    import ExtractorHelpers._
 
     //object ExLocalFunctionDef {
     //  def unapply(tree: Block): Option[(DefDef,String,Seq[ValDef],Tree,Tree,Tree)] = tree match {
@@ -175,16 +187,9 @@ trait Extractors {
       }
     }
 
-    object ExIdNamed {
-      def unapply(id: Ident): Option[String] = Some(id.toString)
-    }
-    object ExNamed {
-      def unapply(name: Name): Option[String] = Some(name.toString)
-    }
-
     object ExErrorExpression {
       def unapply(tree: Apply) : Option[(String, Type)] = tree match {
-        case a @ Apply(TypeApply(Select(Select(ExIdNamed("leon"), ExNamed("Utils")), ExNamed("error")), List(tpe)), List(lit : Literal)) =>
+        case a @ Apply(TypeApply(ExSelected("leon", "Utils", "error"), List(tpe)), List(lit : Literal)) =>
           Some((lit.value.stringValue, tpe.tpe))
         case _ =>
           None
@@ -291,6 +296,10 @@ trait Extractors {
             case TypeRef(_, sym, List(t1, t2, t3, t4, t5)) => Some((Seq(t1, t2, t3, t4, t5), Seq(e1, e2, e3, e4, e5)))
             case _ => None
           }
+        // Match e1 -> e2
+        case Apply(TypeApply(Select(Apply(TypeApply(ExSelected("scala", "Predef", "any2ArrowAssoc"), List(tpeFrom)), List(from)), ExNamed("$minus$greater")), List(tpeTo)), List(to)) =>
+
+          Some((Seq(tpeFrom.tpe, tpeTo.tpe), Seq(from, to)))
         case _ => None
       }
     }
@@ -570,20 +579,22 @@ trait Extractors {
       }
     }
 
+    object ExLiteralMap {
+      def unapply(tree: Apply): Option[(Tree, Tree, Seq[Tree])] = tree match {
+        case Apply(TypeApply(ExSelected("scala", "Predef", "Map", "apply"), fromTypeTree :: toTypeTree :: Nil), args) =>
+          Some((fromTypeTree, toTypeTree, args))
+        case _ =>
+          None
+      }
+    }
     object ExEmptyMap {
-      def unapply(tree: TypeApply): Option[(Tree,Tree)] = tree match {
-        case TypeApply(
-          Select(
-            Select(
-              Select(
-                Select(Ident(s), collectionName),
-                immutableName),
-              mapName),
-            emptyName), fromTypeTree :: toTypeTree :: Nil) if (
-            collectionName.toString == "collection" && immutableName.toString == "immutable" && mapName.toString == "Map" && emptyName.toString == "empty"
-          ) => Some((fromTypeTree, toTypeTree))
-        case TypeApply(Select(Select(Select(This(scalaName), predefName), mapName), emptyName), fromTypeTree :: toTypeTree :: Nil) if (scalaName.toString == "scala" && predefName.toString == "Predef" && emptyName.toString == "empty") => Some((fromTypeTree, toTypeTree))
-        case _ => None
+      def unapply(tree: TypeApply): Option[(Tree, Tree)] = tree match {
+        case TypeApply(ExSelected("scala", "collection", "immutable", "Map", "empty"), fromTypeTree :: toTypeTree :: Nil) =>
+          Some((fromTypeTree, toTypeTree))
+        case TypeApply(ExSelected("scala", "Predef", "Map", "empty"), fromTypeTree :: toTypeTree :: Nil) =>
+          Some((fromTypeTree, toTypeTree))
+        case _ =>
+          None
       }
     }
 

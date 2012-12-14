@@ -763,8 +763,32 @@ trait CodeExtraction extends Extractors {
           case ExEmptyMap(ft, tt) => {
             val fromUnderlying = scalaType2PureScala(unit, silent)(ft.tpe)
             val toUnderlying   = scalaType2PureScala(unit, silent)(tt.tpe)
-            EmptyMap(fromUnderlying, toUnderlying).setType(MapType(fromUnderlying, toUnderlying))
+            val tpe = MapType(fromUnderlying, toUnderlying)
+
+            EmptyMap(fromUnderlying, toUnderlying).setType(tpe)
           }
+          case ExLiteralMap(ft, tt, elems) => {
+            val fromUnderlying = scalaType2PureScala(unit, silent)(ft.tpe)
+            val toUnderlying   = scalaType2PureScala(unit, silent)(tt.tpe)
+            val tpe = MapType(fromUnderlying, toUnderlying)
+
+            if (elems.isEmpty) {
+              EmptyMap(fromUnderlying, toUnderlying).setType(tpe)
+            } else {
+              val singletons = elems.collect { case ExTuple(tpes, trees) if (trees.size == 2) =>
+                SingletonMap(rec(trees(0)), rec(trees(1))).setType(tpe)
+              }
+
+
+              if (singletons.size != elems.size) {
+                unit.error(nextExpr.pos, "Some map elements could not be extracted as Tuple2")
+                throw ImpureCodeEncounteredException(nextExpr)
+              }
+
+              FiniteMap(singletons).setType(tpe)
+            }
+          }
+
           case ExSetMin(t) => {
             val set = rec(t)
             if(!set.getType.isInstanceOf[SetType]) {
@@ -1009,7 +1033,6 @@ trait CodeExtraction extends Extractors {
           // default behaviour is to complain :)
           case _ => {
             if(!silent) {
-              println(tr)
               reporter.info(tr.pos, "Could not extract as PureScala.", true)
             }
             throw ImpureCodeEncounteredException(tree)
