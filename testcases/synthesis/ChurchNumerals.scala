@@ -18,4 +18,9 @@ object ChurchNumerals {
       value(r) == value(x) + value(y)
     }
   }
+
+  def workingAdd(x : Num, y : Num) : Num = (x match {
+    case Zero() => y
+    case Succ(p) => workingAdd(p, Succ(y))
+  }) ensuring (value(_) == value(x) + value(y))
 }
