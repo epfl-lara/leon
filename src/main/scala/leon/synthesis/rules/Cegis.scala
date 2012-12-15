@@ -191,7 +191,9 @@ case object CEGIS extends Rule("CEGIS", 150) {
                         //println("#"*80)
                         val invalidModel = solver2.getModel
 
-                        val fixedAss = And(ass.map(a => Equals(Variable(a), invalidModel(a))).toSeq)
+                        val fixedAss = And(ass.collect {
+                          case a if invalidModel contains a => Equals(Variable(a), invalidModel(a))
+                        }.toSeq)
 
                         solver1.push()
                         solver1.assertCnstr(fixedAss)
@@ -222,7 +224,10 @@ case object CEGIS extends Rule("CEGIS", 150) {
                         } else {
 
                           val freshCss = unrolling.css.map(c => c -> Variable(FreshIdentifier(c.name, true).setType(c.getType))).toMap
-                          val ceIn     = ass.map(id => id -> invalidModel(id))
+                          val ceIn     = ass.collect { 
+                            case id if invalidModel contains id => id -> invalidModel(id)
+                          }
+
                           val counterexemple = substAll(freshCss ++ ceIn, And(Seq(unrolling.program, unrolling.phi)))
 
                           solver1.assertCnstr(counterexemple)
