@@ -8,6 +8,7 @@ import heuristics._
 object Heuristics {
   def all = Set[Rule](
     IntInduction,
+    InnerCaseSplit,
     //new OptimisticInjection(_),
     //new SelectiveInlining(_),
     ADTInduction

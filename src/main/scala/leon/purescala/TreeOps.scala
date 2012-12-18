@@ -918,19 +918,6 @@ object TreeOps {
     genericTransform[Unit]((e,c) => (e, None), newPost, noCombiner)(())(expr)._1
   }
 
-  def toDNF(e: Expr): Expr = {
-    def pre(e: Expr) = e match {
-      case And(Seq(l, Or(Seq(r1, r2)))) =>
-        Or(And(l, r1), And(l, r2))
-      case And(Seq(Or(Seq(l1, l2)), r)) =>
-        Or(And(l1, r), And(l2, r))
-      case _ =>
-        e
-    }
-
-    simplePreTransform(pre)(e)
-  }
-
   def toCNF(e: Expr): Expr = {
     def pre(e: Expr) = e match {
       case Or(Seq(l, And(Seq(r1, r2)))) =>
@@ -980,7 +967,7 @@ object TreeOps {
   def decomposeIfs(e: Expr): Expr = {
     def pre(e: Expr): Expr = e match {
       case IfExpr(cond, then, elze) =>
-        val TopLevelOrs(orcases) = toDNF(cond)
+        val TopLevelOrs(orcases) = cond
 
         if (orcases.exists{ case TopLevelAnds(ands) => ands.exists(_.isInstanceOf[CaseClassInstanceOf]) } ) {
           if (!orcases.tail.isEmpty) {

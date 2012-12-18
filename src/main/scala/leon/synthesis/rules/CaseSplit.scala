@@ -9,19 +9,32 @@ import purescala.Extractors._
 case object CaseSplit extends Rule("Case-Split", 200) {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     p.phi match {
-      case Or(o1 :: o2 :: _) =>
-        val sub1 = Problem(p.as, p.pc, o1, p.xs)
-        val sub2 = Problem(p.as, p.pc, o2, p.xs)
-
-        val onSuccess: List[Solution] => Solution = { 
-          case List(Solution(p1, d1, t1), Solution(p2, d2, t2)) => Solution(Or(p1, p2), d1++d2, IfExpr(p1, t1, t2))
-          case _ => Solution.none
-        }
-
-        List(RuleInstantiation.immediateDecomp(List(sub1, sub2), onSuccess))
+      case Or(os) =>
+        List(split(os, p))
       case _ =>
         Nil
     }
+  }
+
+  def split(alts: Seq[Expr], p: Problem): RuleInstantiation = {
+    val subs = alts.map(a => Problem(p.as, p.pc, a, p.xs)).toList
+
+    val onSuccess: List[Solution] => Solution = {
+      case sols if sols.size == subs.size =>
+        val pre = Or(sols.map(_.pre))
+        val defs = sols.map(_.defs).reduceLeft(_ ++ _)
+
+        val (prefix, last) = (sols.dropRight(1), sols.last)
+
+        val term = prefix.foldRight(last.term) { (s, t) => IfExpr(s.pre, s.term, t) }
+
+        Solution(pre, defs, term)
+
+      case _ =>
+        Solution.none
+    }
+
+    RuleInstantiation.immediateDecomp(subs, onSuccess)
   }
 }
 
