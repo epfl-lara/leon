@@ -19,12 +19,7 @@ class XLangVerificationRegression extends FunSuite {
   private case class Output(report : VerificationReport, reporter : Reporter)
 
   private def mkPipeline : Pipeline[List[String],VerificationReport] =
-    leon.plugin.ExtractionPhase andThen       
-    xlang.ArrayTransformation andThen
-    xlang.EpsilonElimination andThen
-    xlang.ImperativeCodeElimination andThen
-    xlang.FunctionClosure andThen
-    leon.verification.AnalysisPhase
+    leon.plugin.ExtractionPhase andThen xlang.XlangAnalysisPhase
 
   private def mkTest(file : File, forError: Boolean = false)(block: Output=>Unit) = {
     val fullName = file.getPath()

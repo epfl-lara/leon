@@ -1,4 +1,5 @@
-package leon.xlang
+package leon
+package xlang
 
 import leon.TransformationPhase
 import leon.LeonContext
@@ -10,31 +11,41 @@ import leon.purescala.TreeOps._
 import leon.purescala.TypeTrees._
 import leon.xlang.Trees._
 
-object FunctionClosure extends TransformationPhase{
+object FunctionClosure extends LeonPhase[Program, (Program, Map[FunDef, FunDef], Map[FunDef, FunDef])] {
 
   val name = "Function Closure"
   val description = "Closing function with its scoping variables"
 
+  /* I know, that's a lot of mutable variables */
   private var pathConstraints: List[Expr] = Nil
   private var enclosingLets: List[(Identifier, Expr)] = Nil
   private var newFunDefs: Map[FunDef, FunDef] = Map()
   private var topLevelFuns: Set[FunDef] = Set()
+  private var parent: FunDef = null //refers to the current toplevel parent
+  private var parents: Map[FunDef, FunDef] = null //each hoisted function mapped to its original parent
+  private var freshFunDefs: Map[FunDef, FunDef] = null //mapping from original FunDef in LetDef to the fresh ones
+  /* but notice the private keyword */
 
-  def apply(ctx: LeonContext, program: Program): Program = {
+  //return modified program, new funDef to their original parents, old FunDef to freshly introduced FunDef
+  def run(ctx: LeonContext)(program: Program): (Program, Map[FunDef, FunDef], Map[FunDef, FunDef]) = {
 
     pathConstraints = Nil
     enclosingLets  = Nil
     newFunDefs  = Map()
     topLevelFuns = Set()
+    parent = null
+    parents = Map()
+    freshFunDefs = Map()
 
     val funDefs = program.definedFunctions
     funDefs.foreach(fd => {
+      parent = fd
       pathConstraints = fd.precondition.toList
       fd.body = fd.body.map(b => functionClosure(b, fd.args.map(_.id).toSet, Map(), Map()))
     })
     val Program(id, ObjectDef(objId, defs, invariants)) = program
     val res = Program(id, ObjectDef(objId, defs ++ topLevelFuns, invariants))
-    res
+    (res, parents, freshFunDefs)
   }
 
   private def functionClosure(expr: Expr, bindedVars: Set[Identifier], id2freshId: Map[Identifier, Identifier], fd2FreshFd: Map[FunDef, (FunDef, Seq[Variable])]): Expr = expr match {
@@ -50,13 +61,13 @@ object FunctionClosure extends TransformationPhase{
       val extraVarDecls: Seq[VarDecl] = extraVarDeclFreshIds.map(id =>  VarDecl(id, id.getType))
       val newVarDecls: Seq[VarDecl] = fd.args ++ extraVarDecls
       val newBindedVars: Set[Identifier] = bindedVars ++ fd.args.map(_.id)
-      val newFunId = FreshIdentifier(fd.id.name)
+      val newFunId = FreshIdentifier(fd.id.uniqueName) //since we hoist this at the top level, we need to make it a unique name
 
       val newFunDef = new FunDef(newFunId, fd.returnType, newVarDecls).setPosInfo(fd)
       topLevelFuns += newFunDef
-      newFunDef.fromLoop = fd.fromLoop
-      newFunDef.parent = fd.parent
-      newFunDef.addAnnotation(fd.annotations.toSeq:_*)
+      newFunDef.addAnnotation(fd.annotations.toSeq:_*) //TODO: this is still some dangerous side effects
+      parents += (newFunDef -> parent)
+      freshFunDefs += (fd -> newFunDef)
 
       def introduceLets(expr: Expr, fd2FreshFd: Map[FunDef, (FunDef, Seq[Variable])]): Expr = {
         val (newExpr, _) = enclosingLets.foldLeft((expr, Map[Identifier, Identifier]()))((acc, p) => {

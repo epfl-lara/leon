@@ -9,6 +9,7 @@ object Main {
       xlang.EpsilonElimination,
       xlang.ImperativeCodeElimination,
       xlang.FunctionClosure,
+      xlang.XlangAnalysisPhase,
       synthesis.SynthesisPhase,
       verification.AnalysisPhase
     )
@@ -118,16 +119,6 @@ object Main {
 
     val pipeBegin : Pipeline[List[String],Program] = plugin.ExtractionPhase
 
-    val pipeTransforms: Pipeline[Program, Program] =
-      if (settings.xlang) {
-        xlang.ArrayTransformation andThen
-        xlang.EpsilonElimination andThen
-        xlang.ImperativeCodeElimination andThen
-        xlang.FunctionClosure
-      } else {
-        NoopPhase()
-      }
-
     val pipeSynthesis: Pipeline[Program, Program]=
       if (settings.synthesis) {
         synthesis.SynthesisPhase
@@ -136,14 +127,15 @@ object Main {
       }
 
     val pipeVerify: Pipeline[Program, Any] =
-      if (settings.verify) {
+      if (settings.xlang) {
+        xlang.XlangAnalysisPhase
+      } else if (settings.verify) {
         verification.AnalysisPhase
       } else {
         NoopPhase()
       }
 
     pipeBegin andThen
-    pipeTransforms andThen
     pipeSynthesis andThen
     pipeVerify
   }
@@ -159,7 +151,10 @@ object Main {
 
     try {
       // Run pipeline
-      pipeline.run(ctx)(args.toList)
+      pipeline.run(ctx)(args.toList) match {
+        case (report: verification.VerificationReport) => reporter.info(report.summaryString)
+        case _ =>
+      }
     } catch {
       case LeonFatalError() => sys.exit(1)
     }

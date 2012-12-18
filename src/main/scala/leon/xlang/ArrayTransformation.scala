@@ -142,8 +142,6 @@ object ArrayTransformation extends TransformationPhase {
     //      val freshFunName = FreshIdentifier(fd.id.name)
     //      val freshFunDef = new FunDef(freshFunName, transform(fd.returnType), newArgs)
     //      fd2fd += (fd -> freshFunDef)
-    //      freshFunDef.fromLoop = fd.fromLoop
-    //      freshFunDef.parent = fd.parent
     //      freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
     //      freshFunDef
     //    } else fd
@@ -272,8 +270,6 @@ object ArrayTransformation extends TransformationPhase {
   //          val freshFunName = FreshIdentifier(fd.id.name)
   //          val freshFunDef = new FunDef(freshFunName, transform(fd.returnType), newArgs)
   //          fd2fd += (fd -> freshFunDef)
-  //          freshFunDef.fromLoop = fd.fromLoop
-  //          freshFunDef.parent = fd.parent
   //          freshFunDef.precondition = fd.precondition.map(transform)
   //          freshFunDef.postcondition = fd.postcondition.map(transform)
   //          freshFunDef.addAnnotation(fd.annotations.toSeq:_*)

@@ -40,5 +40,6 @@ case class LeonValueOptionDef(name: String, usageOption: String, usageDesc: Stri
 }
 
 object ListValue {
+  def apply(values: Seq[String]) = values.mkString(":")
   def unapply(value: String): Option[Seq[String]] = Some(value.split(':').map(_.trim).filter(!_.isEmpty))
 }
