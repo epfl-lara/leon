@@ -103,7 +103,9 @@ case object CEGIS extends Rule("CEGIS", 150) {
         }
 
         program  = And(program :: newClauses)
+
         mappings = mappings ++ newMappings
+
         recTerms = newRecTerms
 
         (newClauses, newRecTerms.keySet)
@@ -111,7 +113,7 @@ case object CEGIS extends Rule("CEGIS", 150) {
 
       def bounds = recTerms.keySet.map(id => Not(Variable(id))).toList
       def bss = mappings.keySet
-      def css = mappings.values.map(_._1)
+      def css : Set[Identifier] = mappings.values.map(_._1).toSet ++ recTerms.flatMap(_._2)
 
       def entireFormula = And(pathcond :: phi :: program :: bounds)
     }
@@ -228,12 +230,12 @@ case object CEGIS extends Rule("CEGIS", 150) {
                             case id if invalidModel contains id => id -> invalidModel(id)
                           }
 
-                          val counterexemple = substAll(freshCss ++ ceIn, And(Seq(unrolling.program, unrolling.phi)))
+                          val counterexample = substAll(freshCss ++ ceIn, And(Seq(unrolling.program, unrolling.phi)))
 
-                          solver1.assertCnstr(counterexemple)
-                          solver2.assertCnstr(counterexemple)
+                          solver1.assertCnstr(counterexample)
+                          solver2.assertCnstr(counterexample)
 
-                          //predicates = Not(And(unsatCore.toSeq)) +: counterexemple +: predicates
+                          //predicates = Not(And(unsatCore.toSeq)) +: counterexample +: predicates
                           solver1.assertCnstr(Not(And(unsatCore.toSeq)))
                           solver2.assertCnstr(Not(And(unsatCore.toSeq)))
                         }
