@@ -141,7 +141,7 @@ object ScalaPrinter {
     case FiniteSet(rs) => ppNary(sb, rs, "Set(", ", ", ")", lvl)
     case FiniteMultiset(rs) => ppNary(sb, rs, "{|", ", ", "|}", lvl)
     case EmptyMultiset(_) => sys.error("Not Valid Scala")
-    case ElementOfSet(s,e) => ppBinary(sb, s, e, " contains ", lvl)
+    case ElementOfSet(e, s) => ppBinary(sb, s, e, " contains ", lvl)
     //case ElementOfSet(s,e) => ppBinary(sb, s, e, " \u2208 ", lvl)    // \in
     //case SubsetOf(l,r) => ppBinary(sb, l, r, " \u2286 ", lvl)        // \subseteq
     //case Not(SubsetOf(l,r)) => ppBinary(sb, l, r, " \u2288 ", lvl)        // \notsubseteq
