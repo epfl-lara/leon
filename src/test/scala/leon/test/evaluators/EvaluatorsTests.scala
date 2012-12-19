@@ -193,6 +193,8 @@ class EvaluatorsTests extends FunSuite {
                |def and2(x : Boolean, y : Boolean) : Boolean = !(!x || !y)
                |def or2(x : Boolean, y : Boolean)  : Boolean = !(!x && !y)
                |def safe(n : Int) : Boolean = (n != 0 && (1/n == n))
+               |def mkTrue() : Boolean = true
+               |def mkFalse() : Boolean = false
                |}""".stripMargin
 
     implicit val prog = parseString(p)
@@ -221,7 +223,18 @@ class EvaluatorsTests extends FunSuite {
       checkComp(e, mkCall("safe", IL(2)), F)
 
       // This one needs short-circuit.
-      checkComp(e, mkCall("safe", IL(0)), F) 
+      checkComp(e, mkCall("safe", IL(0)), F)
+
+      // We use mkTrue/mkFalse to avoid automatic simplifications.
+      checkComp(e, Iff(mkCall("mkTrue"),  mkCall("mkTrue")),  T)
+      checkComp(e, Iff(mkCall("mkTrue"),  mkCall("mkFalse")), F)
+      checkComp(e, Iff(mkCall("mkFalse"), mkCall("mkTrue")),  F)
+      checkComp(e, Iff(mkCall("mkFalse"), mkCall("mkFalse")), T)
+
+      checkComp(e, Implies(mkCall("mkTrue"),  mkCall("mkTrue")),  T)
+      checkComp(e, Implies(mkCall("mkTrue"),  mkCall("mkFalse")), F)
+      checkComp(e, Implies(mkCall("mkFalse"), mkCall("mkTrue")),  T)
+      checkComp(e, Implies(mkCall("mkFalse"), mkCall("mkFalse")), T)
     }
   }
 
