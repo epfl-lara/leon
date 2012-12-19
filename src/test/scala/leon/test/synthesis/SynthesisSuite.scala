@@ -139,7 +139,7 @@ object Injection {
       rules.ADTSplit.instantiateOn(sctx, p).head.apply(sctx) match {
         case RuleDecomposed(subs) =>
           for (sub <- subs; alt <- rules.CEGIS.instantiateOn(sctx, sub)) {
-            println(assertRuleSuccess(sctx, alt))
+            assertRuleSuccess(sctx, alt)
           }
         case _ =>
           assert(false, "Woot?")
