@@ -90,7 +90,7 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
             val outerPre = Or(globalPre)
 
             newFun.precondition = Some(funPre)
-            newFun.postcondition = Some(LetTuple(p.xs.toSeq, ResultVariable(), p.phi))
+            newFun.postcondition = Some(LetTuple(p.xs.toSeq, ResultVariable().setType(resType), p.phi))
 
             newFun.body = Some(MatchExpr(Variable(inductOn), cases))
 

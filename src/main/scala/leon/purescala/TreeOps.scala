@@ -461,7 +461,9 @@ object TreeOps {
    */
   def simplifyLets(expr: Expr) : Expr = {
     def simplerLet(t: Expr) : Option[Expr] = t match {
+
       case letExpr @ Let(i, t: Terminal, b) => Some(replace(Map((Variable(i) -> t)), b))
+
       case letExpr @ Let(i,e,b) => {
         val occurences = treeCatamorphism[Int]((e:Expr) => e match {
           case Variable(x) if x == i => 1
@@ -475,8 +477,6 @@ object TreeOps {
           None
         }
       }
-      //case letTuple @ LetTuple(ids, expr, body) if ids.size == 1 =>
-      //  simplerLet(Let(ids.head, TupleSelect(expr, 1).setType(ids.head.getType), body))
 
       case letTuple @ LetTuple(ids, Tuple(exprs), body) =>
 
@@ -511,6 +511,35 @@ object TreeOps {
         } else {
           Some(LetTuple(remIds, Tuple(remExprs), newBody))
         }
+
+      case l @ LetTuple(ids, tExpr, body) =>
+        val TupleType(types) = tExpr.getType
+        val arity = ids.size
+        // A map containing vectors of the form (0, ..., 1, ..., 0) where the one corresponds to the index of the identifier in the
+        // LetTuple. The idea is that we can sum such vectors up to compute the occurences of all variables in one traversal of the
+        // expression.
+        val zeroVec = Seq.fill(arity)(0)
+        val idMap   = ids.zipWithIndex.toMap.mapValues(i => zeroVec.updated(i, 1))
+
+        val occurences : Seq[Int] = treeCatamorphism[Seq[Int]]((e : Expr) => e match {
+          case Variable(x) => idMap.getOrElse(x, zeroVec)
+          case _ => zeroVec
+        }, (v1 : Seq[Int], v2 : Seq[Int]) => (v1 zip v2).map(p => p._1  + p._2), body)
+
+        val total = occurences.sum
+
+        if(total == 0) {
+          Some(body)
+        } else if(total == 1) {
+          val substMap : Map[Expr,Expr] = ids.map(Variable(_) : Expr).zipWithIndex.toMap.map {
+            case (v,i) => (v -> TupleSelect(tExpr, i + 1).setType(v.getType))
+          }
+
+          Some(replace(substMap, body))
+        } else {
+          None
+        }
+
       case _ => None 
     }
     searchAndReplaceDFS(simplerLet)(expr)

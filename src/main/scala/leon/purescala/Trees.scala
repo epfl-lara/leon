@@ -37,6 +37,7 @@ object Trees {
 
   case class LetTuple(binders: Seq[Identifier], value: Expr, body: Expr) extends Expr {
     binders.foreach(_.markAsLetBinder)
+    assert(value.getType.isInstanceOf[TupleType])
     val et = body.getType
     if(et != Untyped)
       setType(et)
@@ -58,8 +59,16 @@ object Trees {
   }
 
   // This must be 1-indexed ! (So are methods of Scala Tuples)
-  case class TupleSelect(tuple: Expr, index: Int) extends Expr {
+  case class TupleSelect(tuple: Expr, index: Int) extends Expr with FixedType {
     assert(index >= 1)
+
+    val fixedType : TypeTree = tuple.getType match {
+      case TupleType(ts) => 
+        assert(index <= ts.size)
+        ts(index - 1)
+
+      case _ => assert(false); Untyped
+    }
   }
 
   object MatchExpr {
