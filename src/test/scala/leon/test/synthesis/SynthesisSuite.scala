@@ -46,9 +46,22 @@ class SynthesisSuite extends FunSuite {
     }
   }
 
-  def assertRuleSuccess(sctx: SynthesisContext, rr: Traversable[RuleInstantiation]) {
-    assert(rr.isEmpty === false, "No rule alternative while the rule should have succeeded")
-    assert(rr.exists(alt => alt.apply(sctx).isInstanceOf[RuleSuccess]) === true, "Rule did not succeed")
+  def assertAllAlternativesSucceed(sctx: SynthesisContext, rr: Traversable[RuleInstantiation]) {
+    assert(!rr.isEmpty)
+
+    for (r <- rr) {
+      assertRuleSuccess(sctx, r)
+    }
+  }
+
+  def assertRuleSuccess(sctx: SynthesisContext, rr: RuleInstantiation): Option[Solution] = {
+    rr.apply(sctx) match {
+      case RuleSuccess(sol) =>
+        Some(sol)
+      case _ =>
+        assert(false, "Rule did not succeed")
+        None
+    }
   }
 
 
@@ -89,7 +102,47 @@ object Injection {
     case (solver, fd, p) =>
       val sctx = SynthesisContext(solver, new SilentReporter, new java.util.concurrent.atomic.AtomicBoolean)
 
-      assertRuleSuccess(sctx, rules.CEGIS.instantiateOn(sctx, p))
+      assertAllAlternativesSucceed(sctx, rules.CEGIS.instantiateOn(sctx, p))
       assertFastEnough(sctx, rules.CEGIS.instantiateOn(sctx, p), 100)
+  }
+
+  forProgram("Cegis 2")(
+    """
+import scala.collection.immutable.Set
+import leon.Annotations._
+import leon.Utils._
+
+object Injection {
+  sealed abstract class List
+  case class Cons(head: Int, tail: List) extends List
+  case class Nil() extends List
+
+  // simulates input/output spec.
+  def tail(in: List) = choose {
+    (out: List) =>
+      (in != Cons(0, Nil())                   || out == Nil()) &&
+      (in != Cons(0, Cons(1, Nil()))          || out == Cons(1, Nil())) &&
+      (in != Cons(0, Cons(1, Cons(2, Nil()))) || out == Cons(1, Cons(2, Nil())))
+  }
+}
+    """
+  ) {
+    case (solver, fd, p) =>
+      val sctx = SynthesisContext(solver, new DefaultReporter, new java.util.concurrent.atomic.AtomicBoolean)
+
+      rules.CEGIS.instantiateOn(sctx, p).head.apply(sctx) match {
+        case RuleSuccess(sol) =>
+          assert(false, "CEGIS should have failed, but found : %s".format(sol))
+        case _ =>
+      }
+
+      rules.ADTSplit.instantiateOn(sctx, p).head.apply(sctx) match {
+        case RuleDecomposed(subs) =>
+          for (sub <- subs; alt <- rules.CEGIS.instantiateOn(sctx, sub)) {
+            println(assertRuleSuccess(sctx, alt))
+          }
+        case _ =>
+          assert(false, "Woot?")
+      }
   }
 }
