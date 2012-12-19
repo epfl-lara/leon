@@ -71,6 +71,8 @@ class SimpleSearch(synth: Synthesizer,
   var shouldStop = false
 
   def search(): Option[Solution] = {
+    sctx.solver.init()
+
     shouldStop = false
 
     while (!g.tree.isSolved && !shouldStop) {
