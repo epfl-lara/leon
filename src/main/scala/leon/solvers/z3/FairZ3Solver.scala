@@ -159,8 +159,7 @@ class FairZ3Solver(context : LeonContext)
 
       evalResult match {
         case EvaluationSuccessful(BooleanLiteral(true)) =>
-          reporter.info("- Model validated:")
-          reporter.info(modelAsString)
+          reporter.info("- Model validated.")
           (true, asMap)
 
         case EvaluationSuccessful(BooleanLiteral(false)) =>
