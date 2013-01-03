@@ -16,11 +16,11 @@ case object Assert extends Rule("Assert") {
 
         if (!exprsA.isEmpty) {
           if (others.isEmpty) {
-            List(RuleInstantiation.immediateSuccess(Solution(And(exprsA), Set(), Tuple(p.xs.map(id => simplestValue(Variable(id)))))))
+            List(RuleInstantiation.immediateSuccess(p, this, Solution(And(exprsA), Set(), Tuple(p.xs.map(id => simplestValue(Variable(id)))))))
           } else {
             val sub = p.copy(pc = And(p.pc +: exprsA), phi = And(others))
 
-            List(RuleInstantiation.immediateDecomp(List(sub), {
+            List(RuleInstantiation.immediateDecomp(p, this, List(sub), {
               case Solution(pre, defs, term) :: Nil => Solution(And(exprsA :+ pre), defs, term)
               case _ => Solution.none
             }))

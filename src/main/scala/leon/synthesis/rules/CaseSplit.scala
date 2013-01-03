@@ -34,7 +34,7 @@ case object CaseSplit extends Rule("Case-Split") {
         Solution.none
     }
 
-    RuleInstantiation.immediateDecomp(subs, onSuccess)
+    RuleInstantiation.immediateDecomp(p, this, subs, onSuccess)
   }
 }
 

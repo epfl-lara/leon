@@ -20,7 +20,7 @@ case object UnconstrainedOutput extends Rule("Unconstr.Output") {
           Solution.none
       }
 
-      List(RuleInstantiation.immediateDecomp(List(sub), onSuccess))
+      List(RuleInstantiation.immediateDecomp(p, this, List(sub), onSuccess))
     } else {
       Nil
     }

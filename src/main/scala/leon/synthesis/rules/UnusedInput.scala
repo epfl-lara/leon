@@ -13,7 +13,7 @@ case object UnusedInput extends Rule("UnusedInput") {
     if (!unused.isEmpty) {
       val sub = p.copy(as = p.as.filterNot(unused))
 
-      List(RuleInstantiation.immediateDecomp(List(sub), forward))
+      List(RuleInstantiation.immediateDecomp(p, this, List(sub), forward))
     } else {
       Nil
     }

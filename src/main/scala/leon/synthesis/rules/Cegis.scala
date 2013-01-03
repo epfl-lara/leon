@@ -124,7 +124,7 @@ case object CEGIS extends Rule("CEGIS") {
 
     val (exprsA, others) = ands.partition(e => (variablesOf(e) & xsSet).isEmpty)
     if (exprsA.isEmpty) {
-      val res = new RuleInstantiation(SolutionBuilder.none) {
+      val res = new RuleInstantiation(p, this, SolutionBuilder.none) {
         def apply(sctx: SynthesisContext) = {
           var result: Option[RuleApplicationResult]   = None
 

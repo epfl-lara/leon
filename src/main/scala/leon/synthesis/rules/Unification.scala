@@ -27,7 +27,7 @@ object Unification {
         val sub = p.copy(phi = And((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
 
-        List(RuleInstantiation.immediateDecomp(List(sub), forward))
+        List(RuleInstantiation.immediateDecomp(p, this, List(sub), forward))
       } else {
         Nil
       }
@@ -52,7 +52,7 @@ object Unification {
       if (isImpossible) {
         val tpe = TupleType(p.xs.map(_.getType))
 
-        List(RuleInstantiation.immediateSuccess(Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe))))
+        List(RuleInstantiation.immediateSuccess(p, this, Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe))))
       } else {
         Nil
       }

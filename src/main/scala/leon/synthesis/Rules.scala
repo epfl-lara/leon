@@ -44,7 +44,7 @@ object SolutionBuilder {
   }
 }
 
-abstract class RuleInstantiation(val onSuccess: SolutionBuilder) {
+abstract class RuleInstantiation(val problem: Problem, val rule: Rule, val onSuccess: SolutionBuilder) {
   def apply(sctx: SynthesisContext): RuleApplicationResult
 }
 
@@ -62,14 +62,14 @@ case class RuleDecomposed(sub: List[Problem]) extends RuleApplicationResult
 case object RuleApplicationImpossible         extends RuleApplicationResult
 
 object RuleInstantiation {
-  def immediateDecomp(sub: List[Problem], onSuccess: List[Solution] => Solution) = {
-    new RuleInstantiation(new SolutionCombiner(sub.size, onSuccess)) {
+  def immediateDecomp(problem: Problem, rule: Rule, sub: List[Problem], onSuccess: List[Solution] => Solution) = {
+    new RuleInstantiation(problem, rule, new SolutionCombiner(sub.size, onSuccess)) {
       def apply(sctx: SynthesisContext) = RuleDecomposed(sub)
     }
   }
 
-  def immediateSuccess(solution: Solution) = {
-    new RuleInstantiation(new SolutionCombiner(0, ls => solution)) {
+  def immediateSuccess(problem: Problem, rule: Rule, solution: Solution) = {
+    new RuleInstantiation(problem, rule, new SolutionCombiner(0, ls => solution)) {
       def apply(sctx: SynthesisContext) = RuleSuccess(solution)
     }
   }

@@ -70,7 +70,7 @@ class ParallelSearch(synth: Synthesizer,
 
   def expandOrTask(ref: ActorRef, sctx: SynthesisContext)(t: TaskTryRules) = {
     val sub = rules.flatMap { r => 
-      r.instantiateOn(sctx, t.p).map(TaskRunRule(t.p, r, _))
+      r.instantiateOn(sctx, t.p).map(TaskRunRule(_))
     }
 
     if (!sub.isEmpty) {

@@ -3,7 +3,11 @@ package synthesis
 
 import synthesis.search._
 
-case class TaskRunRule(problem: Problem, rule: Rule, app: RuleInstantiation) extends AOAndTask[Solution] {
+case class TaskRunRule(app: RuleInstantiation) extends AOAndTask[Solution] {
+
+  val problem = app.problem
+  val rule    = app.rule
+
   def composeSolution(sols: List[Solution]): Option[Solution] = {
     app.onSuccess(sols)
   }
@@ -18,7 +22,7 @@ case class TaskTryRules(p: Problem) extends AOOrTask[Solution] {
 case class SearchCostModel(cm: CostModel) extends AOCostModel[TaskRunRule, TaskTryRules, Solution] {
   def taskCost(t: AOTask[Solution]) = t match {
     case ttr: TaskRunRule =>
-      cm.ruleAppCost(ttr.rule, ttr.app)
+      cm.ruleAppCost(ttr.app)
     case trr: TaskTryRules =>
       cm.problemCost(trr.p)
   }
@@ -59,7 +63,7 @@ class SimpleSearch(synth: Synthesizer,
   }
 
   def expandOrTask(t: TaskTryRules): ExpandResult[TaskRunRule] = {
-    val sub = rules.flatMap ( r => r.instantiateOn(sctx, t.p).map(TaskRunRule(t.p, r, _)) )
+    val sub = rules.flatMap ( r => r.instantiateOn(sctx, t.p).map(TaskRunRule(_)) )
 
     if (!sub.isEmpty) {
       Expanded(sub.toList)

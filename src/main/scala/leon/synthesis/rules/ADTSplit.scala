@@ -70,7 +70,7 @@ case object ADTSplit extends Rule("ADT Split.") {
             Solution(Or(globalPre), sols.flatMap(_.defs).toSet, MatchExpr(Variable(id), cases))
         }
 
-        Some(RuleInstantiation.immediateDecomp(subInfo.map(_._2).toList, onSuccess))
+        Some(RuleInstantiation.immediateDecomp(p, this, subInfo.map(_._2).toList, onSuccess))
       case _ =>
         None
     }}.flatten

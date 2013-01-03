@@ -35,7 +35,7 @@ case object OnePoint extends Rule("One-point") {
         case _ => Solution.none
       }
 
-      List(RuleInstantiation.immediateDecomp(List(newProblem), onSuccess))
+      List(RuleInstantiation.immediateDecomp(p, this, List(newProblem), onSuccess))
     } else {
       Nil
     }

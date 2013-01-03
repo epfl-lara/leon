@@ -24,7 +24,7 @@ case object ADTDual extends Rule("ADTDual") {
     if (!toRemove.isEmpty) {
       val sub = p.copy(phi = And((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
-      List(RuleInstantiation.immediateDecomp(List(sub), forward))
+      List(RuleInstantiation.immediateDecomp(p, this, List(sub), forward))
     } else {
       Nil
     }

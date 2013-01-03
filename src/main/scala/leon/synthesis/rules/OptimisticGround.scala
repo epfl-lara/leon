@@ -38,7 +38,7 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
                 predicates = valuateWithModelIn(phi, ass, invalidModel) +: predicates
 
               case (Some(false), _) =>
-                result = Some(RuleInstantiation.immediateSuccess(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(satModel))).setType(tpe))))
+                result = Some(RuleInstantiation.immediateSuccess(p, this, Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(satModel))).setType(tpe))))
 
               case _ =>
                 continue = false
@@ -47,7 +47,7 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
 
           case (Some(false), _) =>
             if (predicates.isEmpty) {
-              result = Some(RuleInstantiation.immediateSuccess(Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe))))
+              result = Some(RuleInstantiation.immediateSuccess(p, this, Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe))))
             } else {
               continue = false
               result = None

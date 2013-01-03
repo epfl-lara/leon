@@ -48,7 +48,7 @@ case object EqualitySplit extends Rule("Eq. Split.") {
             Solution.none
         }
 
-        Some(RuleInstantiation.immediateDecomp(List(sub1, sub2), onSuccess))
+        Some(RuleInstantiation.immediateDecomp(p, this, List(sub1, sub2), onSuccess))
       case _ =>
         None
     }).flatten

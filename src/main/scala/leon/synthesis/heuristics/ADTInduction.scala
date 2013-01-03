@@ -97,7 +97,7 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
             Solution(Or(globalPre), sols.flatMap(_.defs).toSet+newFun, FunctionInvocation(newFun, Variable(origId) :: oas.map(Variable(_))))
         }
 
-        Some(HeuristicInstantiation(p, subProblemsInfo.map(_._1).toList, onSuccess))
+        Some(HeuristicInstantiation(p, this, subProblemsInfo.map(_._1).toList, onSuccess))
       } else {
         None
       }

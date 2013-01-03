@@ -16,10 +16,10 @@ case object Ground extends Rule("Ground") {
       sctx.solver.solveSAT(p.phi) match {
         case (Some(true), model) =>
           val sol = Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(model))).setType(tpe))
-          Some(RuleInstantiation.immediateSuccess(sol))
+          Some(RuleInstantiation.immediateSuccess(p, this, sol))
         case (Some(false), model) =>
           val sol = Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe))
-          Some(RuleInstantiation.immediateSuccess(sol))
+          Some(RuleInstantiation.immediateSuccess(p, this, sol))
         case _ =>
           None
       }
