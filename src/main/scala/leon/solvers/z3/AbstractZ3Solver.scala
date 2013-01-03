@@ -690,6 +690,48 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
     rec(tree, expectedType)
   }
 
+  // Tries to convert a Z3AST into a *ground* Expr. Doesn't try very hard, because
+  //   1) we assume Z3 simplifies ground terms, so why match for +, etc, and
+  //   2) we use this precisely in one context, where we know function invocations won't show up, etc.
+  protected[leon] def asGround(tree : Z3AST) : Option[Expr] = {
+    val e = new Exception("Not ground.")
+
+    def rec(t : Z3AST) : Expr = z3.getASTKind(t) match {
+      case Z3AppAST(decl, args) => {
+        val argsSize = args.size
+        if(isKnownDecl(decl)) {
+          val fd = functionDeclToDef(decl)
+          FunctionInvocation(fd, args.map(rec))
+        } else if(argsSize == 1 && reverseADTTesters.isDefinedAt(decl)) {
+          CaseClassInstanceOf(reverseADTTesters(decl), rec(args(0)))
+        } else if(argsSize == 1 && reverseADTFieldSelectors.isDefinedAt(decl)) {
+          val (ccd, fid) = reverseADTFieldSelectors(decl)
+          CaseClassSelector(ccd, rec(args(0)), fid)
+        } else if(reverseADTConstructors.isDefinedAt(decl)) {
+          val ccd = reverseADTConstructors(decl)
+          CaseClass(ccd, args.map(rec))
+        } else if(reverseTupleConstructors.isDefinedAt(decl)) {
+          Tuple(args.map(rec))
+        } else {
+          import Z3DeclKind._
+          z3.getDeclKind(decl) match {
+            case OpTrue => BooleanLiteral(true)
+            case OpFalse => BooleanLiteral(false)
+            case _ => throw e
+          }
+        }
+      }
+      case Z3NumeralAST(Some(v)) => IntLiteral(v)
+      case _ => throw e
+    }
+
+    try {
+      Some(rec(tree))
+    } catch {
+      case e : Exception => None
+    }
+  }
+
   protected[leon] def softFromZ3Formula(model: Z3Model, tree : Z3AST, expectedType: TypeTree) : Option[Expr] = {
     try {
       Some(fromZ3Formula(model, tree, Some(expectedType)))

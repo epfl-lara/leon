@@ -68,7 +68,7 @@ class PureScalaVerificationRegression extends FunSuite {
 
     for(f <- fs) {
       mkTest(f, List(LeonFlagOption("feelinglucky")), forError)(block)
-      mkTest(f, List(LeonFlagOption("codegen"), LeonFlagOption("feelinglucky")), forError)(block)
+      mkTest(f, List(LeonFlagOption("codegen"), LeonFlagOption("evalground"), LeonFlagOption("feelinglucky")), forError)(block)
     }
   }
   

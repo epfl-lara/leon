@@ -29,28 +29,32 @@ class FairZ3Solver(context : LeonContext)
   val description = "Fair Z3 Solver"
 
   override val definedOptions : Set[LeonOptionDef] = Set(
+    LeonFlagOptionDef("evalground",   "--evalground",   "Use evaluator on functions applied to ground arguments"),
     LeonFlagOptionDef("checkmodels",  "--checkmodels",  "Double-check counter-examples with evaluator"),
     LeonFlagOptionDef("feelinglucky", "--feelinglucky", "Use evaluator to find counter-examples early"),
     LeonFlagOptionDef("codegen",      "--codegen",      "Use compiled evaluator instead of interpreter")
   )
 
   // What wouldn't we do to avoid defining vars?
-  val (feelingLucky, checkModels, useCodeGen) = locally {
-    var lucky   = false
-    var check   = false
-    var codegen = false
+  val (feelingLucky, checkModels, useCodeGen, evalGroundApps) = locally {
+    var lucky      = false
+    var check      = false
+    var codegen    = false
+    var evalground = false
 
     for(opt <- context.options) opt match {
-      case LeonFlagOption("checkmodels")  => check   = true
-      case LeonFlagOption("feelinglucky") => lucky   = true
-      case LeonFlagOption("codegen")      => codegen = true
+      case LeonFlagOption("checkmodels")  => check      = true
+      case LeonFlagOption("feelinglucky") => lucky      = true
+      case LeonFlagOption("codegen")      => codegen    = true
+      case LeonFlagOption("evalground")   => evalground = true
       case _ =>
     }
 
-    (lucky,check,codegen)
+    (lucky,check,codegen,evalground)
   }
 
   private var evaluator : Evaluator = null
+  protected[z3] def getEvaluator : Evaluator = evaluator
 
   override def setProgram(prog : Program) {
     super.setProgram(prog)

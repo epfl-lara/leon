@@ -1,7 +1,6 @@
 package leon
 package solvers.z3
 
-import z3.scala._
 import purescala.Common._
 import purescala.Trees._
 import purescala.Extractors._
@@ -9,18 +8,22 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
 
+import evaluators._
+
+import z3.scala._
+
 import scala.collection.mutable.{Set=>MutableSet,Map=>MutableMap}
 
 case class Z3FunctionInvocation(funDef: FunDef, args: Seq[Z3AST])
 
-// TODO: maybe a candidate for moving into purescala package?
 class FunctionTemplate private(
-  solver: AbstractZ3Solver,
+  solver: FairZ3Solver,
   val funDef : FunDef,
   activatingBool : Identifier,
   condVars : Set[Identifier],
   exprVars : Set[Identifier],
-  guardedExprs : Map[(Identifier,Boolean),Seq[Expr]]) {
+  guardedExprs : Map[(Identifier,Boolean),Seq[Expr]],
+  isRealFunDef : Boolean) {
 
   private val z3 = solver.z3
 
@@ -67,6 +70,24 @@ class FunctionTemplate private(
   def instantiate(aVar : Z3AST, aPol : Boolean, args : Seq[Z3AST]) : (Seq[Z3AST], Map[(Z3AST, Boolean), Set[Z3FunctionInvocation]]) = {
     assert(args.size == funDef.args.size)
 
+    // The "isRealFunDef" part is to prevent evaluation of "fake" function templates, as generated from FairZ3Solver.
+    if(solver.evalGroundApps && isRealFunDef) {
+      val ga = args.view.map(solver.asGround)
+      if(ga.forall(_.isDefined)) {
+        val leonArgs = ga.map(_.get).force
+        val invocation = FunctionInvocation(funDef, leonArgs)
+        solver.getEvaluator.eval(invocation) match {
+          case EvaluationSuccessful(result) =>
+            val z3Invocation = z3.mkApp(solver.functionDefToDecl(funDef), args: _*)
+            val z3Value      = solver.toZ3Formula(result).get
+            val asZ3         = z3.mkEq(z3Invocation, z3Value)
+            return (Seq(asZ3), Map.empty)
+
+          case _ => throw new Exception("Evaluation of ground term should have succeeded.")
+        }
+      }
+    }
+
     val idSubstMap : Map[Z3AST, Z3AST] =
       Map(z3ActivatingBool -> (if (aPol) aVar else z3.mkNot(aVar))) ++
       (zippedExprVars ++ zippedCondVars).map{ case (id, c) => c -> solver.idToFreshZ3Id(id) } ++
@@ -102,7 +123,7 @@ class FunctionTemplate private(
 }
 
 object FunctionTemplate {
-  def mkTemplate(solver: AbstractZ3Solver, funDef: FunDef, isRealFunDef : Boolean = true) : FunctionTemplate = {
+  def mkTemplate(solver: FairZ3Solver, funDef: FunDef, isRealFunDef : Boolean = true) : FunctionTemplate = {
     val condVars : MutableSet[Identifier] = MutableSet.empty
     val exprVars : MutableSet[Identifier] = MutableSet.empty
 
@@ -210,6 +231,7 @@ object FunctionTemplate {
       storeGuarded(activatingBool, true, finalPred2)
     }
 
-    new FunctionTemplate(solver, funDef, activatingBool, Set(condVars.toSeq : _*), Set(exprVars.toSeq : _*), Map(guardedExprs.toSeq : _*))
+    new FunctionTemplate(solver, funDef, activatingBool, Set(condVars.toSeq : _*), Set(exprVars.toSeq : _*), Map(guardedExprs.toSeq : _*),
+isRealFunDef)
   }
 }
