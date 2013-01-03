@@ -255,7 +255,9 @@ case object CEGIS extends Rule("CEGIS") {
                         result = Some(RuleSuccess(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(mapping))).setType(tpe))))
 
                       case _ =>
-                        sctx.reporter.warning("Solver returned 'UNKNOWN' in a CEGIS iteration.")
+                        if (!sctx.shouldStop.get) {
+                          sctx.reporter.warning("Solver returned 'UNKNOWN' in a CEGIS iteration.")
+                        }
                         continue = false
                     }
 

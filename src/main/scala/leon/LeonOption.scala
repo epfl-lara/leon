@@ -31,11 +31,16 @@ sealed abstract class LeonOptionDef {
   val usageDesc: String
   val isFlag: Boolean
 }
+
 case class LeonFlagOptionDef(name: String, usageOption: String, usageDesc: String) extends LeonOptionDef {
   val isFlag = true
 }
 
 case class LeonValueOptionDef(name: String, usageOption: String, usageDesc: String) extends LeonOptionDef {
+  val isFlag = false
+}
+
+case class LeonOptValueOptionDef(name: String, usageOption: String, usageDesc: String) extends LeonOptionDef {
   val isFlag = false
 }
 

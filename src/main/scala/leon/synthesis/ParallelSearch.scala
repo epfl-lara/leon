@@ -9,9 +9,13 @@ import solvers.TrivialSolver
 class ParallelSearch(synth: Synthesizer,
                      problem: Problem,
                      rules: Set[Rule],
-                     costModel: CostModel) extends AndOrGraphParallelSearch[SynthesisContext, TaskRunRule, TaskTryRules, Solution](new AndOrGraph(TaskTryRules(problem), SearchCostModel(costModel))) {
+                     costModel: CostModel,
+                     nWorkers: Int) extends AndOrGraphParallelSearch[SynthesisContext, TaskRunRule, TaskTryRules, Solution](new AndOrGraph(TaskTryRules(problem), SearchCostModel(costModel)), nWorkers) {
 
   import synth.reporter._
+
+  // This is HOT shared memory, used only in stop() for shutting down solvers!
+  private[this] var contexts = List[SynthesisContext]()
 
   def initWorkerContext(wr: ActorRef) = {
     val reporter = new SilentReporter
@@ -20,11 +24,20 @@ class ParallelSearch(synth: Synthesizer,
 
     solver.initZ3
 
-    SynthesisContext(solver = solver, reporter = synth.reporter, shouldStop = synth.shouldStop)
+    val ctx = SynthesisContext(solver = solver, reporter = synth.reporter, shouldStop = synth.shouldStop)
+
+    synchronized {
+      contexts = ctx :: contexts
+    }
+
+    ctx
   }
 
   override def stop() = {
     synth.shouldStop.set(true)
+    for (ctx <- contexts) {
+      ctx.solver.halt()
+    }
     super.stop()
   }
 

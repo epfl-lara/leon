@@ -32,8 +32,8 @@ class Synthesizer(val context : LeonContext,
 
   def synthesize(): (Solution, Boolean) = {
 
-    val search = if (options.parallel) {
-      new ParallelSearch(this, problem, rules, options.costModel)
+  val search = if (options.searchWorkers > 1) {
+      new ParallelSearch(this, problem, rules, options.costModel, options.searchWorkers)
     } else {
       new SimpleSearch(this, problem, rules, options.costModel)
     }

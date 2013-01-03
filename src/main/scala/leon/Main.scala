@@ -80,10 +80,10 @@ object Main {
       }
 
       if (allOptionsMap contains leonOpt.name) {
-        (allOptionsMap(leonOpt.name).isFlag, leonOpt) match {
-          case (true,  LeonFlagOption(name)) =>
+        (allOptionsMap(leonOpt.name), leonOpt) match {
+          case (_: LeonFlagOptionDef  | _: LeonOptValueOptionDef,  LeonFlagOption(name)) =>
             Some(leonOpt)
-          case (false, LeonValueOption(name, value)) =>
+          case (_: LeonValueOptionDef | _: LeonOptValueOptionDef, LeonValueOption(name, value)) =>
             Some(leonOpt)
           case _ =>
             reporter.error("Invalid option usage: " + opt)

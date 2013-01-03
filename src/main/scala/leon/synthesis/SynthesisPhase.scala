@@ -14,13 +14,13 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
   val description = "Synthesis"
 
   override val definedOptions : Set[LeonOptionDef] = Set(
-    LeonFlagOptionDef( "inplace",    "--inplace",         "Debug level"),
-    LeonFlagOptionDef( "parallel",   "--parallel",        "Parallel synthesis search"),
-    LeonFlagOptionDef( "derivtrees", "--derivtrees",      "Generate derivation trees"),
-    LeonFlagOptionDef( "firstonly",  "--firstonly",       "Stop as soon as one synthesis solution is found"),
-    LeonValueOptionDef("timeout",    "--timeout=T",       "Timeout after T seconds when searching for synthesis solutions .."),
-    LeonValueOptionDef("costmodel",  "--costmodel=cm",    "Use a specific cost model for this search"),
-    LeonValueOptionDef("functions",  "--functions=f1:f2", "Limit synthesis of choose found within f1,f2,..")
+    LeonFlagOptionDef(    "inplace",    "--inplace",         "Debug level"),
+    LeonOptValueOptionDef("parallel",   "--parallel[=N]",    "Parallel synthesis search using N workers"),
+    LeonFlagOptionDef(    "derivtrees", "--derivtrees",      "Generate derivation trees"),
+    LeonFlagOptionDef(    "firstonly",  "--firstonly",       "Stop as soon as one synthesis solution is found"),
+    LeonValueOptionDef(   "timeout",    "--timeout=T",       "Timeout after T seconds when searching for synthesis solutions .."),
+    LeonValueOptionDef(   "costmodel",  "--costmodel=cm",    "Use a specific cost model for this search"),
+    LeonValueOptionDef(   "functions",  "--functions=f1:f2", "Limit synthesis of choose found within f1,f2,..")
   )
 
   def run(ctx: LeonContext)(p: Program): Program = {
@@ -38,8 +38,10 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     for(opt <- ctx.options) opt match {
       case LeonFlagOption("inplace") =>
         inPlace = true
+
       case LeonValueOption("functions", ListValue(fs)) =>
         options = options.copy(filterFuns = Some(fs.toSet))
+
       case LeonValueOption("costmodel", cm) =>
         CostModel.all.find(_.name.toLowerCase == cm.toLowerCase) match {
           case Some(model) =>
@@ -52,16 +54,26 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
             ctx.reporter.fatalError(errorMsg)
         }
+
       case v @ LeonValueOption("timeout", _) =>
         v.asInt(ctx).foreach { t =>
           options = options.copy(timeoutMs  = Some(t.toLong))
         } 
+
       case LeonFlagOption("firstonly") =>
         options = options.copy(firstOnly = true)
+
       case LeonFlagOption("parallel") =>
-        options = options.copy(parallel = true)
+        options = options.copy(searchWorkers = 5)
+
+      case o @ LeonValueOption("parallel", nWorkers) =>
+        o.asInt(ctx).foreach { nWorkers =>
+          options = options.copy(searchWorkers = nWorkers)
+        }
+
       case LeonFlagOption("derivtrees") =>
         options = options.copy(generateDerivationTrees = true)
+
       case _ =>
     }
 
