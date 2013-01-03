@@ -6,7 +6,7 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
-case object CaseSplit extends Rule("Case-Split", 200) {
+case object CaseSplit extends Rule("Case-Split") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     p.phi match {
       case Or(os) =>

@@ -8,7 +8,7 @@ import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
-case object EqualitySplit extends Rule("Eq. Split.", 90) {
+case object EqualitySplit extends Rule("Eq. Split.") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     val candidates = p.as.groupBy(_.getType).map(_._2.toList).filter {
       case List(a1, a2) =>

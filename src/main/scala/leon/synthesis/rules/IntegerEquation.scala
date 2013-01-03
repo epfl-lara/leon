@@ -11,7 +11,7 @@ import purescala.TypeTrees._
 import purescala.Definitions._
 import LinearEquations.elimVariable
 
-case object IntegerEquation extends Rule("Integer Equation", 600) {
+case object IntegerEquation extends Rule("Integer Equation") {
   def instantiateOn(sctx: SynthesisContext, problem: Problem): Traversable[RuleInstantiation] = if(!problem.xs.exists(_.getType == Int32Type)) Nil else {
 
     val TopLevelAnds(exprs) = problem.phi

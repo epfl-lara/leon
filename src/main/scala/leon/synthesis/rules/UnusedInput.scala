@@ -6,7 +6,7 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
-case object UnusedInput extends Rule("UnusedInput", 100) {
+case object UnusedInput extends Rule("UnusedInput") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     val unused = p.as.toSet -- variablesOf(p.phi) -- variablesOf(p.pc)
 

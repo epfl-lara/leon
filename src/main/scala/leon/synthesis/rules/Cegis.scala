@@ -11,7 +11,7 @@ import purescala.Extractors._
 
 import solvers.z3.FairZ3Solver
 
-case object CEGIS extends Rule("CEGIS", 150) {
+case object CEGIS extends Rule("CEGIS") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     case class Generator(tpe: TypeTree, altBuilder: () => List[(Expr, Set[Identifier])]);
 

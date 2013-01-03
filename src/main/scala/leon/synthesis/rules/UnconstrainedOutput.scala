@@ -6,7 +6,7 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
-case object UnconstrainedOutput extends Rule("Unconstr.Output", 100) {
+case object UnconstrainedOutput extends Rule("Unconstr.Output") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     val unconstr = p.xs.toSet -- variablesOf(p.phi)
 

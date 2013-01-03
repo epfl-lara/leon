@@ -9,7 +9,7 @@ import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.Definitions._
 
-case object ADTSplit extends Rule("ADT Split.", 70) {
+case object ADTSplit extends Rule("ADT Split.") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation]= {
     val candidates = p.as.collect {
       case IsTyped(id, AbstractClassType(cd)) =>

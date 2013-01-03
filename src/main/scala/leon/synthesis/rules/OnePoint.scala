@@ -6,7 +6,7 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
-case object OnePoint extends Rule("One-point", 300) {
+case object OnePoint extends Rule("One-point") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     val TopLevelAnds(exprs) = p.phi
 

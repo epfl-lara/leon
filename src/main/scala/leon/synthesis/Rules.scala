@@ -75,7 +75,7 @@ object RuleInstantiation {
   }
 }
 
-abstract class Rule(val name: String, val priority: Priority) {
+abstract class Rule(val name: String) {
   def instantiateOn(scrx: SynthesisContext, problem: Problem): Traversable[RuleInstantiation]
 
   def subst(what: Tuple2[Identifier, Expr], in: Expr): Expr = replace(Map(Variable(what._1) -> what._2), in)

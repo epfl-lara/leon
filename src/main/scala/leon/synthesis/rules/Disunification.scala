@@ -8,7 +8,7 @@ import purescala.TreeOps._
 import purescala.Extractors._
 
 object Disunification {
-  case object Decomp extends Rule("Disunif. Decomp.", 200) {
+  case object Decomp extends Rule("Disunif. Decomp.") {
     def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
       val TopLevelAnds(exprs) = p.phi
 

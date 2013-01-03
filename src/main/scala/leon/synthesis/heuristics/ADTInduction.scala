@@ -9,7 +9,7 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
 
-case object ADTInduction extends Rule("ADT Induction", 80) with Heuristic {
+case object ADTInduction extends Rule("ADT Induction") with Heuristic {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     val candidates = p.as.collect {
         case IsTyped(origId, AbstractClassType(cd)) => (origId, cd)

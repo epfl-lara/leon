@@ -6,7 +6,7 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
-case object InnerCaseSplit extends Rule("Inner-Case-Split", 200) with Heuristic {
+case object InnerCaseSplit extends Rule("Inner-Case-Split") with Heuristic {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     p.phi match {
       case Or(_) =>

@@ -8,7 +8,7 @@ import purescala.TreeOps._
 import purescala.Extractors._
 
 object Unification {
-  case object DecompTrivialClash extends Rule("Unif Dec./Clash/Triv.", 200) {
+  case object DecompTrivialClash extends Rule("Unif Dec./Clash/Triv.") {
     def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
       val TopLevelAnds(exprs) = p.phi
 
@@ -36,7 +36,7 @@ object Unification {
 
   // This rule is probably useless; it never happens except in crafted
   // examples, and will be found by OptimisticGround anyway.
-  case object OccursCheck extends Rule("Unif OccursCheck", 200) {
+  case object OccursCheck extends Rule("Unif OccursCheck") {
     def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
       val TopLevelAnds(exprs) = p.phi
 

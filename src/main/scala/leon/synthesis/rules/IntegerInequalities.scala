@@ -12,7 +12,7 @@ import purescala.Definitions._
 import LinearEquations.elimVariable
 import leon.synthesis.Algebra.lcm
 
-case object IntegerInequalities extends Rule("Integer Inequalities", 600) {
+case object IntegerInequalities extends Rule("Integer Inequalities") {
   def instantiateOn(sctx: SynthesisContext, problem: Problem): Traversable[RuleInstantiation] = {
     val TopLevelAnds(exprs) = problem.phi
 

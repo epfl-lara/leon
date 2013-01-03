@@ -7,7 +7,7 @@ import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
-case object OptimisticGround extends Rule("Optimistic Ground", 150) {
+case object OptimisticGround extends Rule("Optimistic Ground") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     if (!p.as.isEmpty && !p.xs.isEmpty) {
       val xss = p.xs.toSet

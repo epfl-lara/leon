@@ -9,7 +9,7 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
 
-case object IntInduction extends Rule("Int Induction", 50) with Heuristic {
+case object IntInduction extends Rule("Int Induction") with Heuristic {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     p.as match {
       case List(IsTyped(origId, Int32Type)) =>

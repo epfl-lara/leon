@@ -7,7 +7,7 @@ import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
-case object Ground extends Rule("Ground", 500) {
+case object Ground extends Rule("Ground") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     if (p.as.isEmpty) {
 

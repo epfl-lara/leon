@@ -6,7 +6,7 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
-case object ADTDual extends Rule("ADTDual", 200) {
+case object ADTDual extends Rule("ADTDual") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     val xs = p.xs.toSet
     val as = p.as.toSet

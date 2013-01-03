@@ -9,7 +9,7 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
 
-case object SelectiveInlining extends Rule("Sel. Inlining", 20) with Heuristic {
+case object SelectiveInlining extends Rule("Sel. Inlining") with Heuristic {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     val TopLevelAnds(exprs) = p.phi
 
