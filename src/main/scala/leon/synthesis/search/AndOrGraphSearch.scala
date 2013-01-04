@@ -20,7 +20,7 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
           case l: g.Leaf =>
             collectLeaf(WL(l, newCosts.reverse)) 
           case a: g.AndNode =>
-            for (o <- (a.subProblems -- a.subSolutions.keySet).values) {
+            for (o <- a.subTasks.filterNot(a.subSolutions.keySet).map(a.subProblems)) {
               collectFromOr(o, newCosts)
             }
         }

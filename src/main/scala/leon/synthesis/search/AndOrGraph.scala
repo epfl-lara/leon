@@ -77,11 +77,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S](val root: OT, val cos
     }
 
     def expandLeaf(l: OrLeaf, succ: List[AT]) {
-      val n = new OrNode(this, Map(), l.task)
-      n.alternatives = succ.map(t => t -> new AndLeaf(n, t)).toMap
-      n.updateMin()
-
-      subProblems += l.task -> n
+      subProblems += l.task -> new OrNode(this, succ, l.task)
     }
 
     def notifySolution(sub: OrTree, sol: S) {
@@ -106,11 +102,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S](val root: OT, val cos
   object RootNode extends OrLeaf(null, root) {
 
     override def expandWith(succ: List[AT]) {
-      val n = new OrNode(null, Map(), root)
-      n.alternatives = succ.map(t => t -> new AndLeaf(n, t)).toMap
-      n.updateMin()
-
-      tree = n
+      tree = new OrNode(null, succ, root)
     }
   }
 
@@ -122,10 +114,13 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S](val root: OT, val cos
   }
 
 
-  class OrNode(val parent: AndNode, var alternatives: Map[AT, AndTree], val task: OT) extends OrTree with Node[AndTree] {
-    var triedAlternatives       = Map[AT, AndTree]()
-    var minAlternative: AndTree = _
-    var minCost                 = costModel.taskCost(task)
+  class OrNode(val parent: AndNode, val altTasks: List[AT], val task: OT) extends OrTree with Node[AndTree] {
+    var alternatives: Map[AT, AndTree] = altTasks.map(t => t -> new AndLeaf(this, t)).toMap
+    var triedAlternatives              = Map[AT, AndTree]()
+    var minAlternative: AndTree        = _
+    var minCost                        = costModel.taskCost(task)
+
+    updateMin()
 
     def updateMin() {
       if (!alternatives.isEmpty) {

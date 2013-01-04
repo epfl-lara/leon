@@ -40,7 +40,7 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
         val innerPhi = substAll(residualMap + (origId -> Variable(inductOn)), p.phi)
         val innerPC  = substAll(residualMap + (origId -> Variable(inductOn)), p.pc)
 
-        val subProblemsInfo = for (dcd <- cd.knownDescendents) yield dcd match {
+        val subProblemsInfo = for (dcd <- cd.knownDescendents.sortBy(_.id.name)) yield dcd match {
           case ccd : CaseClassDef =>
             var recCalls = Map[List[Identifier], List[Expr]]()
             var postFs   = List[Expr]()
