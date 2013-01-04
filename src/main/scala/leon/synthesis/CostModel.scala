@@ -25,6 +25,8 @@ abstract class CostModel(val name: String) {
 }
 
 object CostModel {
+  def default: CostModel = WeightedBranchesCostModel
+
   def all: Set[CostModel] = Set(
     NaiveCostModel,
     WeightedBranchesCostModel

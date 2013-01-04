@@ -48,9 +48,12 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
             options = options.copy(costModel = model)
           case None =>
 
-            val errorMsg = "Unknown cost model: " + cm + "\n" +
-                           "Defined cost models: \n" +
-                           (CostModel.all.map(_.name).mkString("  - ", "\n  - ", ""))
+            var errorMsg = "Unknown cost model: " + cm + "\n" +
+                           "Defined cost models: \n"
+
+            for (cm <- CostModel.all.toSeq.sortBy(_.name)) {
+              errorMsg += " - " + cm.name + (if(cm == CostModel.default) " (default)" else "") + "\n"
+            }
 
             ctx.reporter.fatalError(errorMsg)
         }

@@ -7,5 +7,5 @@ case class SynthesizerOptions(
   searchWorkers: Int               = 1,
   firstOnly: Boolean               = false,
   timeoutMs: Option[Long]          = None,
-  costModel: CostModel             = NaiveCostModel
+  costModel: CostModel             = CostModel.default
 )
