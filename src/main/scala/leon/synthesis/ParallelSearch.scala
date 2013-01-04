@@ -24,7 +24,7 @@ class ParallelSearch(synth: Synthesizer,
 
     solver.initZ3
 
-    val ctx = SynthesisContext(solver = solver, reporter = synth.reporter, shouldStop = synth.shouldStop)
+    val ctx = SynthesisContext.fromSynthesizer(synth).copy(solver = solver)
 
     synchronized {
       contexts = ctx :: contexts

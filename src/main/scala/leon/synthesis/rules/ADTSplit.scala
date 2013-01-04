@@ -41,7 +41,6 @@ case object ADTSplit extends Rule("ADT Split.") {
         }
     }
 
-
     candidates.collect{ _ match {
       case Some((id, cases)) =>
         val oas = p.as.filter(_ != id)

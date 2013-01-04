@@ -393,7 +393,9 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
             //   scala.sys.error("Error in formula being translated to Z3: identifier " + id + " seems to have escaped its let-definition")
             // }
 
-            assert(!this.isInstanceOf[FairZ3Solver], "Trying to convert unknown variable '"+id+"' while using FairZ3")
+            // Remove this safety check, since choose() expresions are now
+            // translated to non-unrollable variables, that end up here.
+            // assert(!this.isInstanceOf[FairZ3Solver], "Trying to convert unknown variable '"+id+"' while using FairZ3")
 
             val newAST = z3.mkFreshConst(id.uniqueName/*name*/, typeToSort(v.getType))
             z3Vars = z3Vars + (id -> newAST)

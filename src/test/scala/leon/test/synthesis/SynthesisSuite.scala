@@ -21,7 +21,7 @@ class SynthesisSuite extends FunSuite {
     counter
   }
 
-  def forProgram(title: String)(content: String)(block: (Solver, FunDef, Problem) => Unit) {
+  def forProgram(title: String)(content: String)(block: (SynthesisContext, FunDef, Problem) => Unit) {
 
     val ctx = LeonContext(
       settings = Settings(
@@ -37,11 +37,16 @@ class SynthesisSuite extends FunSuite {
 
     val pipeline = leon.plugin.TemporaryInputPhase andThen leon.plugin.ExtractionPhase andThen SynthesisProblemExtractionPhase
 
-    val (results, solver) = pipeline.run(ctx)((content, Nil))
+    val (program, results) = pipeline.run(ctx)((content, Nil))
+
+    val solver = new FairZ3Solver(ctx)
+    solver.setProgram(program)
 
     for ((f, ps) <- results; p <- ps) {
       test("Synthesizing %3d: %-20s [%s]".format(nextInt(), f.id.toString, title)) {
-        block(solver, f, p)
+        val sctx = SynthesisContext(opts, Some(f), program, solver, new DefaultReporter, new java.util.concurrent.atomic.AtomicBoolean)
+
+        block(sctx, f, p)
       }
     }
   }
@@ -99,9 +104,7 @@ object Injection {
 }
     """
   ) {
-    case (solver, fd, p) =>
-      val sctx = SynthesisContext(solver, new SilentReporter, new java.util.concurrent.atomic.AtomicBoolean)
-
+    case (sctx, fd, p) =>
       assertAllAlternativesSucceed(sctx, rules.CEGIS.instantiateOn(sctx, p))
       assertFastEnough(sctx, rules.CEGIS.instantiateOn(sctx, p), 100)
   }
@@ -127,9 +130,7 @@ object Injection {
 }
     """
   ) {
-    case (solver, fd, p) =>
-      val sctx = SynthesisContext(solver, new DefaultReporter, new java.util.concurrent.atomic.AtomicBoolean)
-
+    case (sctx, fd, p) =>
       rules.CEGIS.instantiateOn(sctx, p).head.apply(sctx) match {
         case RuleSuccess(sol) =>
           assert(false, "CEGIS should have failed, but found : %s".format(sol))

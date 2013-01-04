@@ -13,6 +13,13 @@ import solvers.z3.FairZ3Solver
 
 case object CEGIS extends Rule("CEGIS") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+
+    // CEGIS Flags to actiave or de-activate features
+    val useCounterExamples    = false
+    val useUninterpretedProbe = false
+    val useUnsatCores         = true
+    val useFunGenerators      = sctx.options.cegisGenerateFunCalls
+
     case class Generator(tpe: TypeTree, altBuilder: () => List[(Expr, Set[Identifier])]);
 
     var generators = Map[TypeTree, Generator]()
@@ -64,6 +71,31 @@ case object CEGIS extends Rule("CEGIS") {
       p.as.filter(a => isSubtypeOf(a.getType, t)).map(id => (Variable(id) : Expr, Set[Identifier]()))
     }
 
+    def funcAlternatives(t: TypeTree): List[(Expr, Set[Identifier])] = {
+      if (useFunGenerators) {
+        def isCandidate(fd: FunDef): Boolean = {
+          // Prevents recursive calls
+          val isRecursiveCall = sctx.functionContext match {
+            case Some(cfd) =>
+              (sctx.program.transitiveCallers(cfd) + cfd) contains fd
+
+            case None =>
+              false
+          }
+
+          isSubtypeOf(fd.returnType, t) && !isRecursiveCall
+        }
+
+        sctx.program.definedFunctions.filter(isCandidate).map{ fd =>
+          val ids = fd.args.map(vd => FreshIdentifier("c", true).setType(vd.getType))
+
+          (FunctionInvocation(fd, ids.map(Variable(_))), ids.toSet)
+        }.toList
+      } else {
+        Nil
+      }
+    }
+
     class TentativeFormula(val pathcond: Expr,
                            val phi: Expr,
                            var program: Expr,
@@ -77,7 +109,7 @@ case object CEGIS extends Rule("CEGIS") {
 
         for ((_, recIds) <- recTerms; recId <- recIds) {
           val gen  = getGenerator(recId.getType)
-          val alts = gen.altBuilder() ::: inputAlternatives(recId.getType)
+          val alts = gen.altBuilder() ::: inputAlternatives(recId.getType) ::: funcAlternatives(recId.getType)
 
           val altsWithBranches = alts.map(alt => FreshIdentifier("b", true).setType(BooleanType) -> alt)
 
@@ -122,6 +154,7 @@ case object CEGIS extends Rule("CEGIS") {
 
     val xsSet = p.xs.toSet
 
+
     val (exprsA, others) = ands.partition(e => (variablesOf(e) & xsSet).isEmpty)
     if (exprsA.isEmpty) {
       val res = new RuleInstantiation(p, this, SolutionBuilder.none) {
@@ -150,42 +183,35 @@ case object CEGIS extends Rule("CEGIS") {
           try {
             do {
               val (clauses, bounds) = unrolling.unroll
-              //println("UNROLLING: "+clauses+" WITH BOUNDS "+bounds)
-              solver1.assertCnstr(And(clauses))
-              solver2.assertCnstr(And(clauses))
+              //println("UNROLLING: ")
+              //for (c <- clauses) {
+              //  println(" - " + c)
+              //}
+              //println("BOUNDS "+bounds)
 
-              //println("="*80)
-              //println("Was: "+lastF.entireFormula)
-              //println("Now Trying : "+currentF.entireFormula)
+              val clause = And(clauses)
+              solver1.assertCnstr(clause)
+              solver2.assertCnstr(clause)
 
               val tpe = TupleType(p.xs.map(_.getType))
               val bss = unrolling.bss
 
               var continue = !clauses.isEmpty
 
-              //println("Unrolling #"+unrolings+" bss size: "+bss.size)
-
               while (result.isEmpty && continue && !sctx.shouldStop.get) {
                 //println("Looking for CE...")
                 //println("-"*80)
-                //println(basePhi)
 
-                //println("To satisfy: "+constrainedPhi)
                 solver1.checkAssumptions(bounds.map(id => Not(Variable(id)))) match {
                   case Some(true) =>
                     val satModel = solver1.getModel
-
-                    //println("Found solution: "+satModel)
-                    //println("Corresponding program: "+simplifyTautologies(synth.solver)(valuateWithModelIn(currentF.program, bss, satModel)))
-                    //val fixedBss = And(bss.map(b => Equals(Variable(b), satModel(b))).toSeq)
-                    //println("Phi with fixed sat bss: "+fixedBss)
 
                     val bssAssumptions: Set[Expr] = bss.map(b => satModel(b) match {
                       case BooleanLiteral(true)  => Variable(b)
                       case BooleanLiteral(false) => Not(Variable(b))
                     })
 
-                    //println("FORMULA: "+And(currentF.pathcond :: currentF.program :: Not(currentF.phi) :: fixedBss :: Nil))
+                    //println("Found solution: "+bssAssumptions)
 
                     //println("#"*80)
                     solver2.checkAssumptions(bssAssumptions) match {
@@ -201,22 +227,18 @@ case object CEGIS extends Rule("CEGIS") {
                         solver1.assertCnstr(fixedAss)
                         //println("Found counter example: "+fixedAss)
 
-                        val unsatCore = solver1.checkAssumptions(bssAssumptions) match {
-                          case Some(false) =>
-                            val core = solver1.getUnsatCore
-                            //println("Formula: "+mustBeUnsat)
-                            //println("Core:    "+core)
-                            //println(synth.solver.solveSAT(And(mustBeUnsat +: bssAssumptions.toSeq)))
-                            //println("maxcore: "+bssAssumptions)
-                            if (core.isEmpty) {
-                              // This happens if unrolling level is insufficient, it becomes unsat no matter what the assumptions are.
-                              //sctx.reporter.warning("Got empty core, must be unsat without assumptions!")
-                              Set()
-                            } else {
-                              core
-                            }
-                          case _ =>
-                            bssAssumptions
+                        val unsatCore = if (useUnsatCores) {
+                          solver1.checkAssumptions(bssAssumptions) match {
+                            case Some(false) =>
+                              // Core might be empty if unrolling level is
+                              // insufficient, it becomes unsat no matter what
+                              // the assumptions are.
+                              solver1.getUnsatCore
+                            case _ =>
+                              bssAssumptions
+                          }
+                        } else {
+                          bssAssumptions
                         }
 
                         solver1.pop()
@@ -224,28 +246,30 @@ case object CEGIS extends Rule("CEGIS") {
                         if (unsatCore.isEmpty) {
                           continue = false
                         } else {
+                          if (useCounterExamples) {
+                            val freshCss = unrolling.css.map(c => c -> Variable(FreshIdentifier(c.name, true).setType(c.getType))).toMap
+                            val ceIn     = ass.collect { 
+                              case id if invalidModel contains id => id -> invalidModel(id)
+                            }
 
-                          val freshCss = unrolling.css.map(c => c -> Variable(FreshIdentifier(c.name, true).setType(c.getType))).toMap
-                          val ceIn     = ass.collect { 
-                            case id if invalidModel contains id => id -> invalidModel(id)
+                            val ceMap = (freshCss ++ ceIn)
+
+                            val counterexample = substAll(ceMap, And(Seq(unrolling.program, unrolling.phi)))
+
+                            //val And(ands) = counterexample
+                            //println("CE:")
+                            //for (a <- ands) {
+                            //  println(" - "+a)
+                            //}
+
+                            solver1.assertCnstr(counterexample)
                           }
 
-                          val counterexample = substAll(freshCss ++ ceIn, And(Seq(unrolling.program, unrolling.phi)))
-
-                          solver1.assertCnstr(counterexample)
-                          solver2.assertCnstr(counterexample)
-
-                          //predicates = Not(And(unsatCore.toSeq)) +: counterexample +: predicates
                           solver1.assertCnstr(Not(And(unsatCore.toSeq)))
-                          solver2.assertCnstr(Not(And(unsatCore.toSeq)))
                         }
 
                       case Some(false) =>
-                        //println("#"*80)
-                        //println("UNSAT!")
-                        //println("Sat model: "+satModel.toSeq.sortBy(_._1.toString).map{ case (id, v) => id+" -> "+v }.mkString(", "))
                         var mapping = unrolling.mappings.filterKeys(satModel.mapValues(_ == BooleanLiteral(true))).values.toMap
-
 
                         // Resolve mapping
                         for ((c, e) <- mapping) {
@@ -263,7 +287,19 @@ case object CEGIS extends Rule("CEGIS") {
 
                   case Some(false) =>
                     //println("%%%% UNSAT")
+
+                    if (useUninterpretedProbe) {
+                      solver1.check match {
+                        case Some(false) =>
+                          // Unsat even without blockers (under which fcalls are then uninterpreted)
+                          result = Some(RuleApplicationImpossible)
+
+                        case _ =>
+                      }
+                    }
+
                     continue = false
+
                   case _ =>
                     //println("%%%% WOOPS")
                     continue = false

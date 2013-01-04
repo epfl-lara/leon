@@ -14,13 +14,14 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
   val description = "Synthesis"
 
   override val definedOptions : Set[LeonOptionDef] = Set(
-    LeonFlagOptionDef(    "inplace",    "--inplace",         "Debug level"),
-    LeonOptValueOptionDef("parallel",   "--parallel[=N]",    "Parallel synthesis search using N workers"),
-    LeonFlagOptionDef(    "derivtrees", "--derivtrees",      "Generate derivation trees"),
-    LeonFlagOptionDef(    "firstonly",  "--firstonly",       "Stop as soon as one synthesis solution is found"),
-    LeonValueOptionDef(   "timeout",    "--timeout=T",       "Timeout after T seconds when searching for synthesis solutions .."),
-    LeonValueOptionDef(   "costmodel",  "--costmodel=cm",    "Use a specific cost model for this search"),
-    LeonValueOptionDef(   "functions",  "--functions=f1:f2", "Limit synthesis of choose found within f1,f2,..")
+    LeonFlagOptionDef(    "inplace",         "--inplace",         "Debug level"),
+    LeonOptValueOptionDef("parallel",        "--parallel[=N]",    "Parallel synthesis search using N workers"),
+    LeonFlagOptionDef(    "derivtrees",      "--derivtrees",      "Generate derivation trees"),
+    LeonFlagOptionDef(    "firstonly",       "--firstonly",       "Stop as soon as one synthesis solution is found"),
+    LeonValueOptionDef(   "timeout",         "--timeout=T",       "Timeout after T seconds when searching for synthesis solutions .."),
+    LeonValueOptionDef(   "costmodel",       "--costmodel=cm",    "Use a specific cost model for this search"),
+    LeonValueOptionDef(   "functions",       "--functions=f1:f2", "Limit synthesis of choose found within f1,f2,.."),
+    LeonFlagOptionDef(    "cegis:gencalls",  "--cegis:gencalls",  "Include function calls in CEGIS generators")
   )
 
   def run(ctx: LeonContext)(p: Program): Program = {
@@ -74,6 +75,9 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
           options = options.copy(searchWorkers = nWorkers)
         }
 
+      case LeonFlagOption("cegis:gencalls") =>
+        options = options.copy(cegisGenerateFunCalls = true)
+
       case LeonFlagOption("derivtrees") =>
         options = options.copy(generateDerivationTrees = true)
 
@@ -89,6 +93,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
         case ch @ Choose(vars, pred) =>
           val problem = Problem.fromChoose(ch)
           val synth = new Synthesizer(ctx,
+                                      Some(f),
                                       mainSolver,
                                       p,
                                       problem,
@@ -117,9 +122,11 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
     // Simplify expressions
     val simplifiers = List[Expr => Expr](
-      simplifyTautologies(uninterpretedZ3)(_), 
+      simplifyTautologies(uninterpretedZ3)(_),
       simplifyLets _,
       decomposeIfs _,
+      matchToIfThenElse _,
+      simplifyPaths(uninterpretedZ3)(_),
       patternMatchReconstruction _,
       simplifyTautologies(uninterpretedZ3)(_),
       simplifyLets _,
@@ -129,7 +136,8 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     def simplify(e: Expr): Expr = simplifiers.foldLeft(e){ (x, sim) => sim(x) }
 
     val chooseToExprs = solutions.map {
-      case (ch, (fd, sol)) => (ch, (fd, simplify(sol.toExpr)))
+      case (ch, (fd, sol)) =>
+        (ch, (fd, simplify(sol.toExpr)))
     }
 
     if (inPlace) {

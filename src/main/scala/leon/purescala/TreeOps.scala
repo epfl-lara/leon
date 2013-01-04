@@ -1118,7 +1118,7 @@ object TreeOps {
               p
           }
 
-          MatchExpr(scrutinee, Seq(SimpleCase(simplifyPattern(pattern), newThen), SimpleCase(WildcardPattern(None), elze)))
+          MatchExpr(scrutinee, Seq(SimpleCase(simplifyPattern(pattern), newThen), SimpleCase(WildcardPattern(None), elze))).setType(e.getType)
         } else {
           e
         }
@@ -1196,6 +1196,36 @@ object TreeOps {
         // The path condition for the body of the Let is the same as outside, plus an equality to constrain the newly bound variable.
         val se = rec(e, path)
         Let(i, se, rec(b, Equals(Variable(i), se) +: path))
+
+      case MatchExpr(scrut, cases) =>
+        val rs = rec(scrut, path)
+
+        var stillPossible = true
+
+        if (cases.exists(_.hasGuard)) {
+          // unsupported for now
+          e
+        } else {
+          MatchExpr(rs, cases.flatMap { c => 
+            val patternExpr = conditionForPattern(rs, c.pattern)
+
+            if (stillPossible && !contradictedBy(patternExpr, path)) {
+
+              if (impliedBy(patternExpr, path)) {
+                stillPossible = false
+              }
+
+              c match {
+                case SimpleCase(p, rhs) =>
+                  Some(SimpleCase(p, rec(rhs, patternExpr +: path)))
+                case GuardedCase(_, _, _) =>
+                  sys.error("woot.")
+              }
+            } else {
+              None
+            }
+          })
+        }
 
       case LetTuple(is, e, b) =>
         // Similar to the Let case

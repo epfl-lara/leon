@@ -80,13 +80,21 @@ object Benchmarks extends App {
 
     val pipeline = leon.plugin.ExtractionPhase andThen SynthesisProblemExtractionPhase
 
-    val (results, solver) = pipeline.run(innerCtx)(file.getPath :: Nil)
+    val (program, results) = pipeline.run(innerCtx)(file.getPath :: Nil)
 
-
-    val sctx = SynthesisContext(solver, new DefaultReporter, new java.util.concurrent.atomic.AtomicBoolean)
+    val solver = new FairZ3Solver(ctx.copy(reporter = new SilentReporter))
 
 
     for ((f, ps) <- results.toSeq.sortBy(_._1.id.toString); p <- ps) {
+      val sctx = SynthesisContext(
+        options = opts,
+        functionContext = Some(f),
+        program = program,
+        solver = solver,
+        reporter = new DefaultReporter,
+        shouldStop = new java.util.concurrent.atomic.AtomicBoolean
+      )
+
       val ts = System.currentTimeMillis
 
       val rr = rule.instantiateOn(sctx, p)

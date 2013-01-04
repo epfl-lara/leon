@@ -8,16 +8,11 @@ import purescala.Definitions._
 import solvers.z3._
 import solvers.Solver
 
-object SynthesisProblemExtractionPhase extends LeonPhase[Program, (Map[FunDef, Seq[Problem]], Solver)] {
+object SynthesisProblemExtractionPhase extends LeonPhase[Program, (Program, Map[FunDef, Seq[Problem]])] {
   val name        = "Synthesis Problem Extraction"
   val description = "Synthesis Problem Extraction"
 
-  def run(ctx: LeonContext)(p: Program): (Map[FunDef, Seq[Problem]], Solver) = {
-
-     val silentContext : LeonContext = ctx.copy(reporter = new SilentReporter)
-     val mainSolver = new FairZ3Solver(silentContext)
-     mainSolver.setProgram(p)
-
+  def run(ctx: LeonContext)(p: Program): (Program, Map[FunDef, Seq[Problem]]) = {
     var results  = Map[FunDef, Seq[Problem]]()
     def noop(u:Expr, u2: Expr) = u
 
@@ -38,7 +33,7 @@ object SynthesisProblemExtractionPhase extends LeonPhase[Program, (Map[FunDef, S
       treeCatamorphism(x => x, noop, actOnChoose(f), f.body.get)
     }
 
-    (results, mainSolver)
+    (p, results)
   }
 
 }

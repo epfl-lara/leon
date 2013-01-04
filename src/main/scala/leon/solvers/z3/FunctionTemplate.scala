@@ -153,6 +153,8 @@ object FunctionTemplate {
           }
         }
 
+        case c @ Choose(_, _) => Variable(FreshIdentifier("choose", true).setType(c.getType))
+
         case n @ NAryOperator(as, r) => r(as.map(a => rec(pathVar, pathPol, a))).setType(n.getType)
         case b @ BinaryOperator(a1, a2, r) => r(rec(pathVar, pathPol, a1), rec(pathVar, pathPol, a2)).setType(b.getType)
         case u @ UnaryOperator(a, r) => r(rec(pathVar, pathPol, a)).setType(u.getType)

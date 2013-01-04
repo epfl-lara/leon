@@ -7,5 +7,6 @@ case class SynthesizerOptions(
   searchWorkers: Int               = 1,
   firstOnly: Boolean               = false,
   timeoutMs: Option[Long]          = None,
-  costModel: CostModel             = CostModel.default
+  costModel: CostModel             = CostModel.default,
+  cegisGenerateFunCalls: Boolean   = false
 )

@@ -107,6 +107,15 @@ object TypeTrees {
     case _ => None
   }
 
+  def leastUpperBound(ts: Seq[TypeTree]): Option[TypeTree] = {
+    def olub(ot1: Option[TypeTree], t2: Option[TypeTree]): Option[TypeTree] = ot1 match {
+      case Some(t1) => leastUpperBound(t1, t2.get)
+      case None => None
+    }
+
+    ts.map(Some(_)).reduceLeft(olub)
+  }
+
   def isSubtypeOf(t1: TypeTree, t2: TypeTree): Boolean = {
     leastUpperBound(t1, t2) == Some(t2)
   }

@@ -18,6 +18,7 @@ import synthesis.search._
 import java.util.concurrent.atomic.AtomicBoolean
 
 class Synthesizer(val context : LeonContext,
+                  val functionContext: Option[FunDef],
                   val solver: Solver,
                   val program: Program,
                   val problem: Problem,

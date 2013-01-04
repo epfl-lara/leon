@@ -49,7 +49,9 @@ object Trees {
 
     funDef.args.zip(args).foreach { case (a, c) => typeCheck(c, a.tpe) }
   }
-  case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr 
+  case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr with FixedType {
+    val fixedType = leastUpperBound(then.getType, elze.getType).getOrElse(AnyType)
+  }
 
   case class Tuple(exprs: Seq[Expr]) extends Expr {
     val subTpes = exprs.map(_.getType)
@@ -87,7 +89,10 @@ object Trees {
     def unapply(me: MatchExpr) : Option[(Expr,Seq[MatchCase])] = if (me == null) None else Some((me.scrutinee, me.cases))
   }
 
-  class MatchExpr(val scrutinee: Expr, val cases: Seq[MatchCase]) extends Expr with ScalacPositional {
+  class MatchExpr(val scrutinee: Expr, val cases: Seq[MatchCase]) extends Expr with ScalacPositional with FixedType {
+
+    val fixedType = leastUpperBound(cases.map(_.rhs.getType)).getOrElse(AnyType)
+
     def scrutineeClassType: ClassType = scrutinee.getType.asInstanceOf[ClassType]
 
     override def equals(that: Any): Boolean = (that != null) && (that match {
