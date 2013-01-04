@@ -7,6 +7,7 @@ object TreeOps {
   import Common._
   import TypeTrees._
   import Definitions._
+  import xlang.Trees.LetDef
   import Trees._
   import Extractors._
 
@@ -1130,6 +1131,23 @@ object TreeOps {
 
   def simplifyTautologies(solver : Solver)(expr : Expr) : Expr = {
     def pre(e : Expr) = e match {
+
+      case LetDef(fd, expr) if fd.hasPrecondition =>
+       val pre = fd.precondition.get 
+
+        solver.solve(pre) match {
+          case Some(true)  =>
+            fd.precondition = None
+            
+          case Some(false) => solver.solve(Not(pre)) match {
+            case Some(true) =>
+              fd.precondition = Some(BooleanLiteral(false))
+            case _ =>
+          }
+          case None =>
+        }
+
+        e
 
       case IfExpr(cond, then, elze) => 
         try {
