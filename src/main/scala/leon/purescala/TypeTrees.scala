@@ -176,7 +176,16 @@ object TypeTrees {
     //  case (tt: TupleType) => Some(tt.bases)
     //  case _ => None
     //}
-    def unapply(tt: TupleType): Option[Seq[TypeTree]] = Some(tt.bases)
+    def unapply(tt: TupleType): Option[Seq[TypeTree]] = if(tt == null) None else Some(tt.bases)
+  }
+  object TupleOneType {
+    def unapply(tt : TupleType) : Option[TypeTree] = if(tt == null) None else {
+      if(tt.bases.size == 1) {
+        Some(tt.bases.head)
+      } else {
+        None
+      }
+    }
   }
 
   case class ListType(base: TypeTree) extends TypeTree

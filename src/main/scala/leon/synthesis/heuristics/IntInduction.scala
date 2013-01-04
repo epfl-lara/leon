@@ -38,7 +38,7 @@ case object IntInduction extends Rule("Int Induction") with Heuristic {
 
             val newFun = new FunDef(FreshIdentifier("rec", true), tpe, Seq(VarDecl(inductOn, inductOn.getType)))
             newFun.precondition = Some(preIn)
-            newFun.postcondition = Some(LetTuple(p.xs.toSeq, ResultVariable(), p.phi))
+            newFun.postcondition = Some(LetTuple(p.xs.toSeq, ResultVariable().setType(tpe), p.phi))
 
             newFun.body = Some(
               IfExpr(Equals(Variable(inductOn), IntLiteral(0)),

@@ -47,7 +47,7 @@ object Trees {
   case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr with FixedType with ScalacPositional {
     val fixedType = funDef.returnType
 
-    funDef.args.zip(args).foreach{ case (a, c) => typeCheck(c, a.tpe) }
+    funDef.args.zip(args).foreach { case (a, c) => typeCheck(c, a.tpe) }
   }
   case class IfExpr(cond: Expr, then: Expr, elze: Expr) extends Expr 
 
@@ -67,7 +67,7 @@ object Trees {
         assert(index <= ts.size)
         ts(index - 1)
 
-      case _ => assert(false); Untyped
+      case _ => scala.sys.error("Applying TupleSelect on a non-tuple tree [%s] of type [%s].".format(tuple, tuple.getType))
     }
   }
 

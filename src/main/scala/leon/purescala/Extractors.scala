@@ -69,8 +69,8 @@ object Extractors {
       case ArraySelect(t1, t2) => Some((t1, t2, ArraySelect))
       case Concat(t1,t2) => Some((t1,t2,Concat))
       case ListAt(t1,t2) => Some((t1,t2,ListAt))
-      case Let(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => Let(binders, e, body))) //TODO: shouldn't be "b" instead of "body" ?
-      case LetTuple(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => LetTuple(binders, e, body))) //TODO: shouldn't be "b" instead of "body" ?
+      case Let(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => Let(binders, e, b)))
+      case LetTuple(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => LetTuple(binders, e, b)))
       case (ex: BinaryExtractable) => ex.extract
       case _ => None
     }

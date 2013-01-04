@@ -122,7 +122,8 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       decomposeIfs _,
       patternMatchReconstruction _,
       simplifyTautologies(uninterpretedZ3)(_),
-      simplifyLets _
+      simplifyLets _,
+      rewriteTuples _
     )
 
     def simplify(e: Expr): Expr = simplifiers.foldLeft(e){ (x, sim) => sim(x) }

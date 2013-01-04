@@ -1254,6 +1254,102 @@ object TreeOps {
     rec(expr, Nil)
   }
 
+  // Eliminates tuples of arity 0 and 1. This function also affects types!
+  // Only rewrites local fundefs (i.e. LetDef's).
+  def rewriteTuples(expr: Expr) : Expr = {
+    def mapType(tt : TypeTree) : Option[TypeTree] = tt match {
+      case TupleType(ts) => ts.size match {
+        case 0 => Some(UnitType)
+        case 1 => Some(ts(0))
+        case _ =>
+          val tss = ts.map(mapType)
+          if(tss.exists(_.isDefined)) {
+            Some(TupleType((tss zip ts).map(p => p._1.getOrElse(p._2))))
+          } else {
+            None
+          }
+      }
+      case ListType(t)           => mapType(t).map(ListType(_))
+      case SetType(t)            => mapType(t).map(SetType(_))
+      case MultisetType(t)       => mapType(t).map(MultisetType(_))
+      case ArrayType(t)          => mapType(t).map(ArrayType(_))
+      case MapType(f,t)          => 
+        val (f2,t2) = (mapType(f),mapType(t))
+        if(f2.isDefined || t2.isDefined) {
+          Some(MapType(f2.getOrElse(f), t2.getOrElse(t)))
+        } else {
+          None
+        }
+      case a : AbstractClassType => None
+      case c : CaseClassType     =>
+        // This is really just one big assertion. We don't rewrite class defs.
+        val ccd = c.classDef
+        val fieldTypes = ccd.fields.map(_.tpe)
+        if(fieldTypes.exists(t => t match {
+          case TupleType(ts) if ts.size <= 1 => true
+          case _ => false
+        })) {
+          scala.sys.error("Cannot rewrite case class def that contains degenerate tuple types.")
+        } else {
+          None
+        }
+      case Untyped | AnyType | BottomType | BooleanType | Int32Type | UnitType => None  
+    }
+
+    var funDefMap = Map.empty[FunDef,FunDef]
+
+    def fd2fd(funDef : FunDef) : FunDef = funDefMap.get(funDef) match {
+      case Some(fd) => fd
+      case None =>
+        if(funDef.args.map(vd => mapType(vd.tpe)).exists(_.isDefined)) {
+          scala.sys.error("Cannot rewrite function def that takes degenerate tuple arguments,")
+        }
+        val newFD = mapType(funDef.returnType) match {
+          case None => funDef
+          case Some(rt) =>
+            val fd = new FunDef(FreshIdentifier(funDef.id.name, true), rt, funDef.args)
+            // These will be taken care of in the recursive traversal.
+            fd.body = funDef.body
+            fd.precondition = funDef.precondition
+            fd.postcondition = funDef.postcondition
+            fd
+        }
+        funDefMap = funDefMap.updated(funDef, newFD)
+        newFD
+    }
+
+    def pre(e : Expr) : Expr = e match {
+      case Tuple(Seq()) => UnitLiteral
+
+      case Tuple(Seq(s)) => pre(s)
+
+      case ts @ TupleSelect(t, 1) => t.getType match {
+        case TupleOneType(_) => pre(t)
+        case _ => ts
+      }
+
+      case LetTuple(bs, v, bdy) if bs.size == 1 =>
+        Let(bs(0), v, bdy)
+
+      case l @ LetDef(fd, bdy) =>
+        LetDef(fd2fd(fd), bdy)
+
+      case r @ ResultVariable() =>
+        mapType(r.getType).map { newType =>
+          ResultVariable().setType(newType)
+        } getOrElse {
+          r
+        }
+
+      case FunctionInvocation(fd, args) =>
+        FunctionInvocation(fd2fd(fd), args)
+
+      case _ => e
+    }
+
+    simplePreTransform(pre)(expr)
+  }
+
   def formulaSize(e: Expr): Int = e match {
     case t: Terminal =>
       1
