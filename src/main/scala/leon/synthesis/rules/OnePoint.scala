@@ -25,14 +25,16 @@ case object OnePoint extends Rule("One-point") {
 
       val newProblem = Problem(p.as, p.pc, subst(x -> e, And(others)), oxs)
 
-      val onSuccess: List[Solution] => Solution = { 
+      val onSuccess: List[Solution] => Option[Solution] = { 
         case List(Solution(pre, defs, term)) =>
           if (oxs.isEmpty) {
-            Solution(pre, defs, Tuple(e :: Nil)) 
+            Some(Solution(pre, defs, Tuple(e :: Nil)))
           } else {
-            Solution(pre, defs, LetTuple(oxs, term, subst(x -> e, Tuple(p.xs.map(Variable(_)))))) 
+            Some(Solution(pre, defs, LetTuple(oxs, term, subst(x -> e, Tuple(p.xs.map(Variable(_)))))))
           }
-        case _ => Solution.none
+
+        case _ =>
+          None
       }
 
       List(RuleInstantiation.immediateDecomp(p, this, List(newProblem), onSuccess))

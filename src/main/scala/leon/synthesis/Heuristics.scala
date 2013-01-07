@@ -37,10 +37,10 @@ object HeuristicInstantiation {
     Some(s)
   }
 
-  def apply(problem: Problem, rule: Rule, subProblems: List[Problem], onSuccess: List[Solution] => Solution) = {
+  def apply(problem: Problem, rule: Rule, subProblems: List[Problem], onSuccess: List[Solution] => Option[Solution]): RuleInstantiation = {
     val builder = new SolutionBuilder(subProblems.size) {
       def apply(sols: List[Solution]) = {
-        Some(onSuccess(sols))
+        onSuccess(sols)
       }
     }
 

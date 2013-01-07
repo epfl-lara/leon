@@ -56,7 +56,7 @@ case object ADTSplit extends Rule("ADT Split.") {
         }
 
 
-        val onSuccess: List[Solution] => Solution = {
+        val onSuccess: List[Solution] => Option[Solution] = {
           case sols =>
             var globalPre = List[Expr]()
 
@@ -66,7 +66,7 @@ case object ADTSplit extends Rule("ADT Split.") {
               SimpleCase(pattern, sol.term)
             }
 
-            Solution(Or(globalPre), sols.flatMap(_.defs).toSet, MatchExpr(Variable(id), cases))
+            Some(Solution(Or(globalPre), sols.flatMap(_.defs).toSet, MatchExpr(Variable(id), cases)))
         }
 
         Some(RuleInstantiation.immediateDecomp(p, this, subInfo.map(_._2).toList, onSuccess))

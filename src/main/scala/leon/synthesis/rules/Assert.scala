@@ -21,8 +21,8 @@ case object Assert extends Rule("Assert") {
             val sub = p.copy(pc = And(p.pc +: exprsA), phi = And(others))
 
             List(RuleInstantiation.immediateDecomp(p, this, List(sub), {
-              case Solution(pre, defs, term) :: Nil => Solution(And(exprsA :+ pre), defs, term)
-              case _ => Solution.none
+              case Solution(pre, defs, term) :: Nil => Some(Solution(And(exprsA :+ pre), defs, term))
+              case _ => None
             }))
           }
         } else {

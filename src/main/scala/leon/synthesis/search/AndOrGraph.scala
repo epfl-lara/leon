@@ -84,10 +84,18 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S](val root: OT, val cos
       subSolutions += sub.task -> sol
 
       if (subSolutions.size == subProblems.size) {
-        solution = task.composeSolution(subTasks.map(subSolutions))
-        updateMin()
+        task.composeSolution(subTasks.map(subSolutions)) match {
+          case Some(sol) =>
+            solution = Some(sol)
+            updateMin()
 
-        notifyParent(solution.get)
+            notifyParent(sol)
+
+          case None =>
+            if (solution.isEmpty) {
+              unsolvable(sub)
+            }
+        }
       } else {
         updateMin()
       }

@@ -13,11 +13,11 @@ case object UnconstrainedOutput extends Rule("Unconstr.Output") {
     if (!unconstr.isEmpty) {
       val sub = p.copy(xs = p.xs.filterNot(unconstr))
 
-      val onSuccess: List[Solution] => Solution = { 
+      val onSuccess: List[Solution] => Option[Solution] = { 
         case List(s) =>
-          Solution(s.pre, s.defs, LetTuple(sub.xs, s.term, Tuple(p.xs.map(id => if (unconstr(id)) simplestValue(Variable(id)) else Variable(id)))))
+          Some(Solution(s.pre, s.defs, LetTuple(sub.xs, s.term, Tuple(p.xs.map(id => if (unconstr(id)) simplestValue(Variable(id)) else Variable(id))))))
         case _ =>
-          Solution.none
+          None
       }
 
       List(RuleInstantiation.immediateDecomp(p, this, List(sub), onSuccess))

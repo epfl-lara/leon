@@ -31,10 +31,10 @@ abstract class SolutionBuilder(val arity: Int) {
   def apply(sols: List[Solution]): Option[Solution]
 }
 
-class SolutionCombiner(arity: Int, f: List[Solution] => Solution) extends SolutionBuilder(arity) {
+class SolutionCombiner(arity: Int, f: List[Solution] => Option[Solution]) extends SolutionBuilder(arity) {
   def apply(sols: List[Solution]) = {
     assert(sols.size == arity)
-    Some(f(sols))
+    f(sols)
   }
 }
 
@@ -62,14 +62,14 @@ case class RuleDecomposed(sub: List[Problem]) extends RuleApplicationResult
 case object RuleApplicationImpossible         extends RuleApplicationResult
 
 object RuleInstantiation {
-  def immediateDecomp(problem: Problem, rule: Rule, sub: List[Problem], onSuccess: List[Solution] => Solution) = {
+  def immediateDecomp(problem: Problem, rule: Rule, sub: List[Problem], onSuccess: List[Solution] => Option[Solution]) = {
     new RuleInstantiation(problem, rule, new SolutionCombiner(sub.size, onSuccess)) {
       def apply(sctx: SynthesisContext) = RuleDecomposed(sub)
     }
   }
 
   def immediateSuccess(problem: Problem, rule: Rule, solution: Solution) = {
-    new RuleInstantiation(problem, rule, new SolutionCombiner(0, ls => solution)) {
+    new RuleInstantiation(problem, rule, new SolutionCombiner(0, ls => Some(solution))) {
       def apply(sctx: SynthesisContext) = RuleSuccess(solution)
     }
   }
@@ -81,9 +81,11 @@ abstract class Rule(val name: String) {
   def subst(what: Tuple2[Identifier, Expr], in: Expr): Expr = replace(Map(Variable(what._1) -> what._2), in)
   def substAll(what: Map[Identifier, Expr], in: Expr): Expr = replace(what.map(w => Variable(w._1) -> w._2), in)
 
-  val forward: List[Solution] => Solution = {
-    case List(s) => Solution(s.pre, s.defs, s.term)
-    case _ => Solution.none
+  val forward: List[Solution] => Option[Solution] = {
+    case List(s) =>
+      Some(Solution(s.pre, s.defs, s.term))
+    case _ =>
+      None
   }
 
   override def toString = "R: "+name

@@ -53,11 +53,11 @@ case object IntegerEquation extends Rule("Integer Equation") {
           val eqPre = Equals(normalizedEq.head, IntLiteral(0))
           val newProblem = Problem(problem.as, And(eqPre, problem.pc), And(allOthers), problem.xs)
 
-          val onSuccess: List[Solution] => Solution = { 
-            case List(Solution(pre, defs, term)) => {
-              Solution(And(eqPre, pre), defs, term)
-            }
-            case _ => Solution.none
+          val onSuccess: List[Solution] => Option[Solution] = { 
+            case List(Solution(pre, defs, term)) =>
+              Some(Solution(And(eqPre, pre), defs, term))
+            case _ =>
+              None
           }
 
           List(RuleInstantiation.immediateDecomp(problem, this, List(newProblem), onSuccess))
@@ -90,7 +90,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
 
           val newProblem = Problem(problem.as ++ freshInputVariables, And(eqPre, problem.pc), freshFormula, subproblemxs)
 
-          val onSuccess: List[Solution] => Solution = { 
+          val onSuccess: List[Solution] => Option[Solution] = { 
             case List(Solution(pre, defs, term)) => {
               val freshPre = replace(equivalenceConstraints, pre)
               val freshTerm = replace(equivalenceConstraints, term)
@@ -98,9 +98,11 @@ case object IntegerEquation extends Rule("Integer Equation") {
               val id2res: Map[Expr, Expr] = 
                 freshsubxs.zip(subproblemxs).map{case (id1, id2) => (Variable(id1), Variable(id2))}.toMap ++
                 neqxs.map(id => (Variable(id), eqSubstMap(Variable(id)))).toMap
-              Solution(And(eqPre, freshPre), defs, simplifyArithmetic(simplifyLets(LetTuple(subproblemxs, freshTerm, replace(id2res, Tuple(problem.xs.map(Variable(_))))))))
+              Some(Solution(And(eqPre, freshPre), defs, simplifyArithmetic(simplifyLets(LetTuple(subproblemxs, freshTerm, replace(id2res, Tuple(problem.xs.map(Variable(_)))))))))
             }
-            case _ => Solution.none
+
+            case _ =>
+              None
           }
 
           List(RuleInstantiation.immediateDecomp(problem, this, List(newProblem), onSuccess))

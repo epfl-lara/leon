@@ -73,7 +73,7 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
             sys.error("Woops, non case-class as descendent")
         }
 
-        val onSuccess: List[Solution] => Solution = {
+        val onSuccess: List[Solution] => Option[Solution] = {
           case sols =>
             var globalPre = List[Expr]()
 
@@ -86,15 +86,25 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
               SimpleCase(caze, calls.foldLeft(sol.term){ case (t, (binders, callargs)) => LetTuple(binders, FunctionInvocation(newFun, callargs), t) })
             }
 
-            val funPre = subst(origId -> Variable(inductOn), Or(globalPre))
-            val outerPre = Or(globalPre)
+            if (sols.exists(_.pre != BooleanLiteral(true))) {
+              // Required to avoid an impossible cases, which suffices to
+              // allow invalid programs. This might be too strong though: we
+              // might only have to enforce it on solutions of base cases.
+              None
+            } else {
+              val funPre = subst(origId -> Variable(inductOn), Or(globalPre))
+              val outerPre = Or(globalPre)
 
-            newFun.precondition = Some(funPre)
-            newFun.postcondition = Some(LetTuple(p.xs.toSeq, ResultVariable().setType(resType), p.phi))
+              newFun.precondition = Some(funPre)
+              newFun.postcondition = Some(LetTuple(p.xs.toSeq, ResultVariable().setType(resType), p.phi))
 
-            newFun.body = Some(MatchExpr(Variable(inductOn), cases))
+              newFun.body = Some(MatchExpr(Variable(inductOn), cases))
 
-            Solution(Or(globalPre), sols.flatMap(_.defs).toSet+newFun, FunctionInvocation(newFun, Variable(origId) :: oas.map(Variable(_))))
+              Some(Solution(Or(globalPre), 
+                            sols.flatMap(_.defs).toSet+newFun,
+                            FunctionInvocation(newFun, Variable(origId) :: oas.map(Variable(_)))
+                          ))
+            }
         }
 
         Some(HeuristicInstantiation(p, this, subProblemsInfo.map(_._1).toList, onSuccess))

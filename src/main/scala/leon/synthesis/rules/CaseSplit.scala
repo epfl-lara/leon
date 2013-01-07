@@ -19,7 +19,7 @@ case object CaseSplit extends Rule("Case-Split") {
   def split(alts: Seq[Expr], p: Problem): RuleInstantiation = {
     val subs = alts.map(a => Problem(p.as, p.pc, a, p.xs)).toList
 
-    val onSuccess: List[Solution] => Solution = {
+    val onSuccess: List[Solution] => Option[Solution] = {
       case sols if sols.size == subs.size =>
         val pre = Or(sols.map(_.pre))
         val defs = sols.map(_.defs).reduceLeft(_ ++ _)
@@ -28,10 +28,10 @@ case object CaseSplit extends Rule("Case-Split") {
 
         val term = prefix.foldRight(last.term) { (s, t) => IfExpr(s.pre, s.term, t) }
 
-        Solution(pre, defs, term)
+        Some(Solution(pre, defs, term))
 
       case _ =>
-        Solution.none
+        None
     }
 
     RuleInstantiation.immediateDecomp(p, this, subs, onSuccess)

@@ -28,7 +28,6 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr) {
 }
 
 object Solution {
-
   def simplify(e: Expr) = simplifyLets(e)
 
   def apply(pre: Expr, defs: Set[FunDef], term: Expr) = {
@@ -48,9 +47,5 @@ object Solution {
 
   def simplest: Solution = {
     new Solution(BooleanLiteral(true), Set(), BooleanLiteral(true))
-  }
-
-  def none: Solution = {
-    throw new Exception("Unexpected failure to construct solution")
   }
 }

@@ -29,29 +29,35 @@ case object IntInduction extends Rule("Int Induction") with Heuristic {
         val subGT   = Problem(inductOn :: postXs, And(Seq(GreaterThan(Variable(inductOn), IntLiteral(0)), postCondGT, p.pc)), newPhi, p.xs)
         val subLT   = Problem(inductOn :: postXs, And(Seq(LessThan(Variable(inductOn), IntLiteral(0)), postCondLT, p.pc)), newPhi, p.xs)
 
-        val onSuccess: List[Solution] => Solution = {
+        val onSuccess: List[Solution] => Option[Solution] = {
           case List(base, gt, lt) =>
-            val preIn = Or(Seq(And(Equals(Variable(inductOn), IntLiteral(0)),      base.pre),
-                               And(GreaterThan(Variable(inductOn), IntLiteral(0)), gt.pre),
-                               And(LessThan(Variable(inductOn), IntLiteral(0)),    lt.pre)))
-            val preOut = subst(inductOn -> Variable(origId), preIn)
+            if (base.pre != BooleanLiteral(true) || (gt.pre != BooleanLiteral(true) && lt.pre != BooleanLiteral(true))) {
+              // Required to avoid an impossible base-case, which suffices to
+              // allow invalid programs.
+              None
+            } else {
+              val preIn = Or(Seq(And(Equals(Variable(inductOn), IntLiteral(0)),      base.pre),
+                                 And(GreaterThan(Variable(inductOn), IntLiteral(0)), gt.pre),
+                                 And(LessThan(Variable(inductOn), IntLiteral(0)),    lt.pre)))
+              val preOut = subst(inductOn -> Variable(origId), preIn)
 
-            val newFun = new FunDef(FreshIdentifier("rec", true), tpe, Seq(VarDecl(inductOn, inductOn.getType)))
-            newFun.precondition = Some(preIn)
-            newFun.postcondition = Some(LetTuple(p.xs.toSeq, ResultVariable().setType(tpe), p.phi))
+              val newFun = new FunDef(FreshIdentifier("rec", true), tpe, Seq(VarDecl(inductOn, inductOn.getType)))
+              newFun.precondition = Some(preIn)
+              newFun.postcondition = Some(LetTuple(p.xs.toSeq, ResultVariable().setType(tpe), p.phi))
 
-            newFun.body = Some(
-              IfExpr(Equals(Variable(inductOn), IntLiteral(0)),
-                base.toExpr,
-              IfExpr(GreaterThan(Variable(inductOn), IntLiteral(0)),
-                LetTuple(postXs, FunctionInvocation(newFun, Seq(Minus(Variable(inductOn), IntLiteral(1)))), gt.toExpr)
-              , LetTuple(postXs, FunctionInvocation(newFun, Seq(Plus(Variable(inductOn), IntLiteral(1)))), lt.toExpr)))
-            )
+              newFun.body = Some(
+                IfExpr(Equals(Variable(inductOn), IntLiteral(0)),
+                  base.toExpr,
+                IfExpr(GreaterThan(Variable(inductOn), IntLiteral(0)),
+                  LetTuple(postXs, FunctionInvocation(newFun, Seq(Minus(Variable(inductOn), IntLiteral(1)))), gt.toExpr)
+                , LetTuple(postXs, FunctionInvocation(newFun, Seq(Plus(Variable(inductOn), IntLiteral(1)))), lt.toExpr)))
+              )
 
 
-            Solution(preOut, base.defs++gt.defs++lt.defs+newFun, FunctionInvocation(newFun, Seq(Variable(origId))))
+              Some(Solution(preOut, base.defs++gt.defs++lt.defs+newFun, FunctionInvocation(newFun, Seq(Variable(origId)))))
+            }
           case _ =>
-            Solution.none
+            None
         }
 
         Some(HeuristicInstantiation(p, this, List(subBase, subGT, subLT), onSuccess))

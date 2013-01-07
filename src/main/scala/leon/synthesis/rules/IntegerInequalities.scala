@@ -163,13 +163,13 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
         val subProblem = Problem(problem.as ++ remainderIds, problem.pc, subProblemFormula, subProblemxs)
 
 
-        def onSuccess(sols: List[Solution]): Solution = sols match {
+        def onSuccess(sols: List[Solution]): Option[Solution] = sols match {
           case List(Solution(pre, defs, term)) => {
             if(remainderIds.isEmpty) {
-              Solution(And(newPre, pre), defs,
+              Some(Solution(And(newPre, pre), defs,
                 LetTuple(subProblemxs, term,
                   Let(processedVar, witness,
-                    Tuple(problem.xs.map(Variable(_))))))
+                    Tuple(problem.xs.map(Variable(_)))))))
             } else if(remainderIds.size > 1) {
               sys.error("TODO")
             } else {
@@ -194,10 +194,11 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
               ))
               funDef.body = Some(funBody)
 
-              Solution(And(newPre, pre), defs + funDef, FunctionInvocation(funDef, Seq(IntLiteral(L-1))))
+              Some(Solution(And(newPre, pre), defs + funDef, FunctionInvocation(funDef, Seq(IntLiteral(L-1)))))
             }
           }
-          case _ => Solution.none
+          case _ =>
+            None
         }
 
         List(RuleInstantiation.immediateDecomp(problem, this, List(subProblem), onSuccess))

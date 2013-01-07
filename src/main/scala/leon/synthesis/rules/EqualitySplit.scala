@@ -41,11 +41,11 @@ case object EqualitySplit extends Rule("Eq. Split.") {
         val sub1 = p.copy(pc = And(Equals(Variable(a1), Variable(a2)), p.pc))
         val sub2 = p.copy(pc = And(Not(Equals(Variable(a1), Variable(a2))), p.pc))
 
-        val onSuccess: List[Solution] => Solution = { 
+        val onSuccess: List[Solution] => Option[Solution] = { 
           case List(s1, s2) =>
-            Solution(Or(s1.pre, s2.pre), s1.defs++s2.defs, IfExpr(Equals(Variable(a1), Variable(a2)), s1.term, s2.term))
+            Some(Solution(Or(s1.pre, s2.pre), s1.defs++s2.defs, IfExpr(Equals(Variable(a1), Variable(a2)), s1.term, s2.term)))
           case _ =>
-            Solution.none
+            None
         }
 
         Some(RuleInstantiation.immediateDecomp(p, this, List(sub1, sub2), onSuccess))
