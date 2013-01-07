@@ -205,7 +205,7 @@ object FunctionTemplate {
         }
 
       val finalPred2 : Expr = rec(activatingBool, true, postHolds)
-      storeGuarded(activatingBool, true, postHolds)
+      storeGuarded(activatingBool, true, finalPred2)
     }
 
     new FunctionTemplate(solver, funDef, activatingBool, Set(condVars.toSeq : _*), Set(exprVars.toSeq : _*), Map(guardedExprs.toSeq : _*))
