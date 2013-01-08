@@ -45,6 +45,9 @@ class CodeGenEvaluator(ctx : LeonContext, val unit : CompilationUnit) extends Ev
         // and the check above would fail.
         case t : Throwable if t.getClass.toString.endsWith("LeonCodeGenRuntimeException") => 
           EvaluationFailure(t.getMessage)
+
+        case t : Throwable if t.getClass.toString.endsWith("LeonCodeGenEvaluationException") => 
+          EvaluationError(t.getMessage)
       }
     })
   }

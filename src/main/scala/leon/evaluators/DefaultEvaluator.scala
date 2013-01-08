@@ -284,6 +284,9 @@ class DefaultEvaluator(ctx : LeonContext, prog : Program) extends Evaluator(ctx,
           BooleanLiteral(newArgs.distinct.size == newArgs.size)
         } 
 
+        case Choose(_, _) =>
+          throw EvalError("Cannot evaluate choose.")
+
         case other => {
           context.reporter.error("Error: don't know how to handle " + other + " in Evaluator.")
           throw EvalError("Unhandled case in Evaluator : " + other) 

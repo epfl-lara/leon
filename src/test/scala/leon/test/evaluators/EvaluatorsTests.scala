@@ -141,6 +141,19 @@ class EvaluatorsTests extends FunSuite {
     }
   }
 
+  private def checkEvaluatorError(evaluator : Evaluator, in : Expr) {
+    evaluator.eval(in) match {
+      case EvaluationFailure(msg) =>
+        throw new AssertionError("Evaluation of '%s' with evaluator '%s' should have produced an internal error, but it failed instead (%s).".format(in, evaluator.name, msg))
+
+      case EvaluationSuccessful(result) =>
+        throw new AssertionError("Evaluation of '%s' with evaluator '%s' should have produced an internal error, but it produced the result '%s' instead.".format(in, evaluator.name, result))
+
+      case EvaluationError(_) =>
+        // that's the desired outcome
+    }
+  }
+
   private def T = BooleanLiteral(true)
   private def F = BooleanLiteral(false)
   private def IL(i : Int) = IntLiteral(i)
@@ -355,6 +368,23 @@ class EvaluatorsTests extends FunSuite {
       checkMapComp(e, mkCall("toMap", cons1223), Map(1 -> 2, 2 -> 3))
       checkComp(e, MapIsDefinedAt(mkCall("finite2"), IL(2)), T)
       checkComp(e, MapIsDefinedAt(mkCall("finite2"), IL(3)), F)
+    }
+  }
+
+  test("Misc") {
+    val p = """|object Program {
+               |  import leon.Utils._
+               |
+               |  def c(i : Int) : Int = choose { (j : Int) => j > i }
+               |}
+               |""".stripMargin
+
+    implicit val prog = parseString(p)
+
+    val evaluators = prepareEvaluators
+
+    for(e <- evaluators) {
+      checkEvaluatorError(e, mkCall("c", IL(42)))
     }
   }
 }
