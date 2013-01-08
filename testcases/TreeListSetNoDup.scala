@@ -14,15 +14,6 @@ object BinaryTree {
     case Cons(i, t) => Set(i) ++ l2s(t)
   }
 
-  // list of t, in order, in from of l0
-  def seqWith(t:Tree,l0:List) : List = (t match {
-    case Leaf() => l0
-    case Node(l, v, r) => seqWith(l,Cons(v,seqWith(r,l0)))
-  }) ensuring (res => l2s(res) == t2s(t) ++ l2s(l0))
-
-  // list of tree t
-  def t2l(t:Tree) : List = seqWith(t,Nil())
-
   // l has no duplicates, nor elements from s
   def noDupWith(l:List,s:Set[Int]) : Boolean = l match {
     case Nil() => true
@@ -75,6 +66,15 @@ object BinaryTree {
     case Leaf() => Set.empty[Int]
     case Node(l, v, r) => t2s(l) ++ Set(v) ++ t2s(r)
   }
+
+  // list of t, in order, in from of l0
+  def seqWith(t:Tree,l0:List) : List = (t match {
+    case Leaf() => l0
+    case Node(l, v, r) => seqWith(l,Cons(v,seqWith(r,l0)))
+  }) ensuring (res => l2s(res) == t2s(t) ++ l2s(l0))
+
+  // list of tree t
+  def t2l(t:Tree) : List = seqWith(t,Nil())
 
   // list of elements of t, in order, without duplicates, in front of l0
   def seqNoDup(t:Tree,l0:List,s0:Set[Int]) : (List,Set[Int]) = ({
