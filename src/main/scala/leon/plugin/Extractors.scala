@@ -647,7 +647,7 @@ trait Extractors {
   
     object ExIntersection {
       def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
-        case Apply(Select(lhs, n), List(rhs)) if (n == encode("**")) => Some((lhs,rhs))
+        case Apply(Select(lhs, n), List(rhs)) if (n == encode("**") || n == encode("&")) => Some((lhs,rhs))
         case _ => None
       }
     }
