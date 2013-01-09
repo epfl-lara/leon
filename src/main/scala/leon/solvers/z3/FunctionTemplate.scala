@@ -142,6 +142,29 @@ object FunctionTemplate {
       }
     }
 
+    // Group elements that satisfy p toghether
+    // List(a, a, a, b, c, a, a), with p = _ == a will produce:
+    // List(List(a,a,a), List(b), List(c), List(a, a))
+    def groupWhile[T](p: T => Boolean, l: Seq[T]): Seq[Seq[T]] = {
+      var res: Seq[Seq[T]] = Nil
+
+      var c = l
+
+      while(!c.isEmpty) {
+        val (span, rest) = c.span(p)
+
+        if (span.isEmpty) {
+          res = res :+ Seq(rest.head)
+          c   = rest.tail
+        } else {
+          res = res :+ span
+          c  = rest
+        }
+      }
+
+      res
+    }
+
     def rec(pathVar : Identifier, pathPol : Boolean, expr : Expr) : Expr = {
       expr match {
         case l @ Let(i, e, b) =>
@@ -153,6 +176,35 @@ object FunctionTemplate {
           rb
 
         case m : MatchExpr => sys.error("MatchExpr's should have been eliminated.")
+
+        case i @ Implies(lhs, rhs) =>
+          if (containsFunctionCalls(i)) {
+            rec(pathVar, pathPol, IfExpr(lhs, rhs, BooleanLiteral(true)))
+          } else {
+            i
+          }
+
+        case a @ And(parts) =>
+          if (containsFunctionCalls(a)) {
+            val partitions = groupWhile((e: Expr) => !containsFunctionCalls(e), parts)
+
+            val ifExpr = partitions.map(And(_)).reduceRight{ (a: Expr, b: Expr) => IfExpr(a, b, BooleanLiteral(false)) }
+
+            rec(pathVar, pathPol, ifExpr)
+          } else {
+            a
+          }
+
+        case o @ Or(parts) =>
+          if (containsFunctionCalls(o)) {
+            val partitions = groupWhile((e: Expr) => !containsFunctionCalls(e), parts)
+
+            val ifExpr = partitions.map(Or(_)).reduceRight{ (a: Expr, b: Expr) => IfExpr(a, BooleanLiteral(true), b) }
+
+            rec(pathVar, pathPol, ifExpr)
+          } else {
+            o
+          }
 
         case i @ IfExpr(cond, then, elze) => {
           if(!containsFunctionCalls(cond) && !containsFunctionCalls(then) && !containsFunctionCalls(elze)) {

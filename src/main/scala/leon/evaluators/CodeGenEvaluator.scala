@@ -30,21 +30,30 @@ class CodeGenEvaluator(ctx : LeonContext, val unit : CompilationUnit) extends Ev
     import leon.codegen.runtime.LeonCodeGenRuntimeException
     import leon.codegen.runtime.LeonCodeGenEvaluationException
 
-    val ce = unit.compileExpression(expression, argorder)
+    try {
+      val ce = unit.compileExpression(expression, argorder)
 
-    Some((args : Seq[Expr]) => {
-      try {
-        EvaluationSuccessful(ce.eval(args))
-      } catch {
-        case e : ArithmeticException =>
-          EvaluationFailure(e.getMessage)
+      Some((args : Seq[Expr]) => {
+        try {
+          EvaluationSuccessful(ce.eval(args))
+        } catch {
+          case e : ArithmeticException =>
+            EvaluationFailure(e.getMessage)
 
-        case e : LeonCodeGenRuntimeException =>
-          EvaluationFailure(e.getMessage)
+          case e : ArrayIndexOutOfBoundsException =>
+            EvaluationFailure(e.getMessage)
 
-        case e : LeonCodeGenEvaluationException =>
-          EvaluationError(e.getMessage)
-      }
-    })
+          case e : LeonCodeGenRuntimeException =>
+            EvaluationFailure(e.getMessage)
+
+          case e : LeonCodeGenEvaluationException =>
+            EvaluationError(e.getMessage)
+        }
+      })
+    } catch {
+      case t: Throwable =>
+        ctx.reporter.warning("Error while compiling expression: "+t.getMessage)
+        None
+    }
   }
 }

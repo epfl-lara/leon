@@ -44,7 +44,7 @@ class SynthesisSuite extends FunSuite {
 
     for ((f, ps) <- results; p <- ps) {
       test("Synthesizing %3d: %-20s [%s]".format(nextInt(), f.id.toString, title)) {
-        val sctx = SynthesisContext(opts, Some(f), program, solver, new DefaultReporter, new java.util.concurrent.atomic.AtomicBoolean)
+        val sctx = SynthesisContext(ctx, opts, Some(f), program, solver, new DefaultReporter, new java.util.concurrent.atomic.AtomicBoolean)
 
         block(sctx, f, p)
       }

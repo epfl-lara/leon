@@ -9,6 +9,7 @@ import purescala.Common.Identifier
 import java.util.concurrent.atomic.AtomicBoolean
 
 case class SynthesisContext(
+  context: LeonContext,
   options: SynthesizerOptions,
   functionContext: Option[FunDef],
   program: Program,
@@ -20,6 +21,7 @@ case class SynthesisContext(
 object SynthesisContext {
   def fromSynthesizer(synth: Synthesizer) = {
     SynthesisContext(
+      synth.context,
       synth.options,
       synth.functionContext,
       synth.program,

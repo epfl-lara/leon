@@ -253,7 +253,11 @@ class DefaultEvaluator(ctx : LeonContext, prog : Program) extends Evaluator(ctx,
         case ArraySelect(a, i) => {
           val IntLiteral(index) = rec(ctx, i)
           val FiniteArray(exprs) = rec(ctx, a)
-          exprs(index)
+          try {
+            exprs(index)
+          } catch {
+            case e : IndexOutOfBoundsException => throw RuntimeError(e.getMessage)
+          }
         }
         case FiniteArray(exprs) => {
           FiniteArray(exprs.map(e => rec(ctx, e)))
@@ -297,6 +301,7 @@ class DefaultEvaluator(ctx : LeonContext, prog : Program) extends Evaluator(ctx,
     try {
       EvaluationSuccessful(rec(mapping, expression))
     } catch {
+      case so: StackOverflowError => EvaluationError("Stack overflow")
       case EvalError(msg) => EvaluationError(msg)
       case RuntimeError(msg) => EvaluationFailure(msg)
     }

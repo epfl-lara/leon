@@ -87,6 +87,7 @@ object Benchmarks extends App {
 
     for ((f, ps) <- results.toSeq.sortBy(_._1.id.toString); p <- ps) {
       val sctx = SynthesisContext(
+        context = ctx,
         options = opts,
         functionContext = Some(f),
         program = program,

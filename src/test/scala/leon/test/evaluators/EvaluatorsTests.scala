@@ -175,7 +175,6 @@ class EvaluatorsTests extends FunSuite {
                |""".stripMargin
 
     implicit val prog = parseString(p)
-
     val evaluators = prepareEvaluators
 
     for(e <- evaluators) {
@@ -211,7 +210,6 @@ class EvaluatorsTests extends FunSuite {
                |}""".stripMargin
 
     implicit val prog = parseString(p)
-
     val evaluators = prepareEvaluators
 
     for(e <- evaluators) {
@@ -274,7 +272,6 @@ class EvaluatorsTests extends FunSuite {
                |}""".stripMargin
 
     implicit val prog = parseString(p)
-
     val evaluators = prepareEvaluators
 
     val nil = mkCaseClass("Nil")
@@ -316,7 +313,6 @@ class EvaluatorsTests extends FunSuite {
                |}""".stripMargin
 
     implicit val prog = parseString(p)
-
     val evaluators = prepareEvaluators
 
     val nil = mkCaseClass("Nil")
@@ -362,7 +358,6 @@ class EvaluatorsTests extends FunSuite {
                |}""".stripMargin
 
     implicit val prog = parseString(p)
-
     val evaluators = prepareEvaluators
 
     val cons1223 = mkCaseClass("PCons", IL(1), IL(2), mkCaseClass("PCons", IL(2), IL(3), mkCaseClass("PNil")))
@@ -379,6 +374,31 @@ class EvaluatorsTests extends FunSuite {
     }
   }
 
+  test("Arrays") {
+    val p = """|object Program {
+               |  def boolArrayRead(bools : Array[Boolean], index : Int) : Boolean = bools(index)
+               |
+               |  def intArrayRead(bools : Array[Int], index : Int) : Int = bools(index)
+               |}
+               |""".stripMargin
+
+    implicit val progs = parseString(p)
+    val evaluators = prepareEvaluators
+    
+    val ba = FiniteArray(Seq(T, F)).setType(ArrayType(BooleanType))
+    val ia = FiniteArray(Seq(IL(41), IL(42), IL(43))).setType(ArrayType(Int32Type))
+
+    for(e <- evaluators) {
+      checkComp(e, mkCall("boolArrayRead", ba, IL(0)), T)
+      checkComp(e, mkCall("boolArrayRead", ba, IL(1)), F)
+      checkComp(e, mkCall("intArrayRead", ia, IL(0)), IL(41))
+      checkComp(e, mkCall("intArrayRead", ia, IL(1)), IL(42))
+      checkComp(e, ArrayLength(ia), IL(3))
+
+      checkError(e, mkCall("boolArrayRead", ba, IL(2)))
+    }
+  }
+
   test("Misc") {
     val p = """|object Program {
                |  import leon.Utils._
@@ -388,7 +408,6 @@ class EvaluatorsTests extends FunSuite {
                |""".stripMargin
 
     implicit val prog = parseString(p)
-
     val evaluators = prepareEvaluators
 
     for(e <- evaluators) {

@@ -79,7 +79,6 @@ class XLangVerificationRegression extends FunSuite {
     assert(report.totalConditions === report.totalValid,
            "All verification conditions ("+report.totalConditions+") should be valid.")
     assert(reporter.errorCount === 0)
-    assert(reporter.warningCount === 0)
   }
 
   forEachFileIn("invalid") { output =>
@@ -89,7 +88,6 @@ class XLangVerificationRegression extends FunSuite {
     assert(report.totalUnknown === 0,
            "There should not be unknown verification conditions.")
     assert(reporter.errorCount >= report.totalInvalid)
-    assert(reporter.warningCount === 0)
   }
 
   forEachFileIn("error", true) { output => () }
