@@ -25,7 +25,7 @@ object SynthesisContext {
       synth.program,
       synth.solver,
       synth.reporter,
-      new AtomicBoolean(false))
+      synth.shouldStop)
   }
 }
 
