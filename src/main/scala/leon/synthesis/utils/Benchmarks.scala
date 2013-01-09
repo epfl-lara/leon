@@ -83,7 +83,7 @@ object Benchmarks extends App {
     val (program, results) = pipeline.run(innerCtx)(file.getPath :: Nil)
 
     val solver = new FairZ3Solver(ctx.copy(reporter = new SilentReporter))
-
+    solver.setProgram(program)
 
     for ((f, ps) <- results.toSeq.sortBy(_._1.id.toString); p <- ps) {
       val sctx = SynthesisContext(
