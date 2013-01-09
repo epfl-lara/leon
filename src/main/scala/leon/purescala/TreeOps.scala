@@ -1255,8 +1255,8 @@ object TreeOps {
         var continue = true
         Or(for(e <- es if continue) yield {
           val se = rec(e, extPath)
-          if(se == BooleanLiteral(true)) continue = true
-          extPath = se +: extPath
+          if(se == BooleanLiteral(true)) continue = false
+          extPath = Not(se) +: extPath
           se 
         })
 
