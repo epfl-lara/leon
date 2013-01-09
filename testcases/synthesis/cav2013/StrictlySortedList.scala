@@ -2,12 +2,18 @@ import scala.collection.immutable.Set
 import leon.Annotations._
 import leon.Utils._
 
-object List {
+object SortedList {
   sealed abstract class List
   case class Cons(head: Int, tail: List) extends List
   case class Nil() extends List
 
-  def inv(l: List): Boolean = true
+  def isStrictSorted(l: List): Boolean = l match {
+    case Nil() => true
+    case Cons(x, Nil()) => true
+    case Cons(x, Cons(y, ys)) => x < y && isStrictSorted(Cons(y, ys))
+  }
+
+  def inv(l: List): Boolean = isStrictSorted(l)
 
   def size(l: List) : Int = (l match {
       case Nil() => 0
