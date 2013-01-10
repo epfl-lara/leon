@@ -99,8 +99,6 @@ object ScalaPrinter {
     case And(exprs) => ppNary(sb, exprs, "(", " && ", ")", lvl)            // \land
     case Or(exprs) => ppNary(sb, exprs, "(", " || ", ")", lvl)             // \lor
     case Not(Equals(l, r)) => ppBinary(sb, l, r, " != ", lvl)    // \neq
-    case Iff(l,r) => sys.error("Not Scala Code")
-    case Implies(l,r) => sys.error("Not Scala Code")
     case UMinus(expr) => ppUnary(sb, expr, "-(", ")", lvl)
     case Equals(l,r) => ppBinary(sb, l, r, " == ", lvl)
     case IntLiteral(v) => sb.append(v)
@@ -108,8 +106,12 @@ object ScalaPrinter {
     case StringLiteral(s) => sb.append("\"" + s + "\"")
     case UnitLiteral => sb.append("()")
 
-    case t@Tuple(exprs) => ppNary(sb, exprs, "(", ", ", ")", lvl)
-    case s@TupleSelect(t, i) => {
+    /* These two aren't really supported in Scala, but we know how to encode them. */
+    case Implies(l,r) => pp(Or(Not(l), r), sb, lvl)
+    case Iff(l,r) => ppBinary(sb, l, r, " == ", lvl)
+
+    case Tuple(exprs) => ppNary(sb, exprs, "(", ", ", ")", lvl)
+    case TupleSelect(t, i) => {
       pp(t, sb, lvl)
       sb.append("._" + i)
     }
@@ -188,21 +190,21 @@ object ScalaPrinter {
       pp(a, sb, lvl)
       sb.append(".clone")
     }
-    case fill@ArrayFill(size, v) => {
+    case ArrayFill(size, v) => {
       sb.append("Array.fill(")
       pp(size, sb, lvl)
       sb.append(")(")
       pp(v, sb, lvl)
       sb.append(")")
     }
-    case am@ArrayMake(v) => sys.error("Not Scala Code")
-    case sel@ArraySelect(ar, i) => {
+    case ArrayMake(v) => sys.error("Not Scala Code")
+    case ArraySelect(ar, i) => {
       pp(ar, sb, lvl)
       sb.append("(")
       pp(i, sb, lvl)
       sb.append(")")
     }
-    case up@ArrayUpdated(ar, i, v) => {
+    case ArrayUpdated(ar, i, v) => {
       pp(ar, sb, lvl)
       sb.append(".updated(")
       pp(i, sb, lvl)
