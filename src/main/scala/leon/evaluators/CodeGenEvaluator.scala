@@ -28,6 +28,7 @@ class CodeGenEvaluator(ctx : LeonContext, val unit : CompilationUnit) extends Ev
 
   override def compile(expression : Expr, argorder : Seq[Identifier]) : Option[Seq[Expr]=>EvaluationResult] = {
     import leon.codegen.runtime.LeonCodeGenRuntimeException
+    import leon.codegen.runtime.LeonCodeGenEvaluationException
 
     val ce = unit.compileExpression(expression, argorder)
 
@@ -41,13 +42,8 @@ class CodeGenEvaluator(ctx : LeonContext, val unit : CompilationUnit) extends Ev
         case e : LeonCodeGenRuntimeException =>
           EvaluationFailure(e.getMessage)
 
-        // Required, because the class may be loaded from a different classloader,
-        // and the check above would fail.
-        case t : Throwable if t.getClass.toString.endsWith("LeonCodeGenRuntimeException") => 
-          EvaluationFailure(t.getMessage)
-
-        case t : Throwable if t.getClass.toString.endsWith("LeonCodeGenEvaluationException") => 
-          EvaluationError(t.getMessage)
+        case e : LeonCodeGenEvaluationException =>
+          EvaluationError(e.getMessage)
       }
     })
   }

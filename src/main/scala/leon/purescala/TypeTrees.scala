@@ -21,6 +21,8 @@ object TypeTrees {
       case Some(o) if o != tt => scala.sys.error("Resetting type information! Type [" + o + "] is modified to [" + tt)
       case _ => this
     }
+
+    def isTyped : Boolean = (getType != Untyped)
   }
 
   class TypeErrorException(msg: String) extends Exception(msg)
