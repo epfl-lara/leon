@@ -257,6 +257,8 @@ class EvaluatorsTests extends FunSuite {
                |  case class Nil() extends List
                |  case class Cons(head : Int, tail : List) extends List
                |
+               |  case class MySingleton(i : Int)
+               |
                |  def size(l : List) : Int = l match {
                |    case Nil() => 0
                |    case Cons(_, xs) => 1 + size(xs)
@@ -267,6 +269,8 @@ class EvaluatorsTests extends FunSuite {
                |  def head(l : List) : Int = l match {
                |    case Cons(h, _) => h
                |  }
+               |
+               |  def wrap(i : Int) : MySingleton = MySingleton(i)
                |}""".stripMargin
 
     implicit val prog = parseString(p)
@@ -276,6 +280,8 @@ class EvaluatorsTests extends FunSuite {
     val nil = mkCaseClass("Nil")
     val cons12a = mkCaseClass("Cons", IL(1), mkCaseClass("Cons", IL(2), mkCaseClass("Nil")))
     val cons12b = mkCaseClass("Cons", IL(1), mkCaseClass("Cons", IL(2), mkCaseClass("Nil")))
+    val sing1 = mkCaseClass("MySingleton", IL(1))
+    val sing2 = mkCaseClass("MySingleton", IL(2))
 
     for(e <- evaluators) {
       checkComp(e, mkCall("size", nil), IL(0))
@@ -283,6 +289,8 @@ class EvaluatorsTests extends FunSuite {
       checkComp(e, mkCall("compare", nil, cons12a), F)
       checkComp(e, mkCall("compare", cons12a, cons12b), T)
       checkComp(e, mkCall("head", cons12a), IL(1))
+
+      checkComp(e, Equals(mkCall("wrap", IL(1)), sing1), T)
 
       // Match error
       checkError(e, mkCall("head", nil))

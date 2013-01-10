@@ -60,7 +60,7 @@ object TypeTrees {
   def bestRealType(t: TypeTree) : TypeTree = t match {
     case c: ClassType if c.classDef.isInstanceOf[CaseClassDef] => {
       c.classDef.parent match {
-        case None => scala.sys.error("Asking for real type of a case class without abstract parent")
+        case None => CaseClassType(c.classDef.asInstanceOf[CaseClassDef])
         case Some(p) => AbstractClassType(p)
       }
     }
