@@ -37,7 +37,9 @@ object Trees {
 
   case class LetTuple(binders: Seq[Identifier], value: Expr, body: Expr) extends Expr {
     binders.foreach(_.markAsLetBinder)
-    assert(value.getType.isInstanceOf[TupleType])
+    assert(value.getType.isInstanceOf[TupleType],
+           "The definition value in LetTuple must be of some tuple type; yet we got [%s]. In expr: \n%s".format(value.getType, this))
+
     val et = body.getType
     if(et != Untyped)
       setType(et)
