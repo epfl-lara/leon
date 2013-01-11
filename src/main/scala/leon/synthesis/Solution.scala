@@ -2,6 +2,7 @@ package leon
 package synthesis
 
 import leon.purescala.Trees._
+import leon.purescala.TypeTrees.TypeTree
 import leon.purescala.Definitions._
 import leon.purescala.TreeOps._
 import leon.xlang.Trees.LetDef
@@ -45,7 +46,7 @@ object Solution {
     new Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(id => simplestValue(id.getType))))
   }
 
-  def simplest: Solution = {
-    new Solution(BooleanLiteral(true), Set(), BooleanLiteral(true))
+  def simplest(t: TypeTree): Solution = {
+    new Solution(BooleanLiteral(true), Set(), simplestValue(t))
   }
 }

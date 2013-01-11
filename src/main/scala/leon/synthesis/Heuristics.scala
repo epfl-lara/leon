@@ -2,6 +2,7 @@ package leon
 package synthesis
 
 import purescala.Trees._
+import purescala.TypeTrees.TupleType
 
 import heuristics._
 
@@ -38,7 +39,9 @@ object HeuristicInstantiation {
   }
 
   def apply(problem: Problem, rule: Rule, subProblems: List[Problem], onSuccess: List[Solution] => Option[Solution]): RuleInstantiation = {
-    val builder = new SolutionBuilder(subProblems.size) {
+    val subTypes = subProblems.map(p => TupleType(p.xs.map(_.getType)))
+
+    val builder = new SolutionBuilder(subProblems.size, subTypes) {
       def apply(sols: List[Solution]) = {
         onSuccess(sols)
       }

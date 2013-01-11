@@ -12,7 +12,7 @@ abstract class CostModel(val name: String) {
   def problemCost(p: Problem): Cost
 
   def ruleAppCost(app: RuleInstantiation): Cost = new Cost {
-    val subSols = (1 to app.onSuccess.arity).map {i => Solution.simplest }.toList
+    val subSols = app.onSuccess.types.map {t => Solution.simplest(t) }.toList
     val simpleSol = app.onSuccess(subSols)
 
     val value = simpleSol match {

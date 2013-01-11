@@ -3,6 +3,7 @@ package synthesis
 
 import purescala.Common._
 import purescala.Trees._
+import purescala.TypeTrees._
 import purescala.TreeOps._
 import rules._
 
@@ -27,11 +28,13 @@ object Rules {
   )
 }
 
-abstract class SolutionBuilder(val arity: Int) {
+abstract class SolutionBuilder(val arity: Int, val types: Seq[TypeTree]) {
   def apply(sols: List[Solution]): Option[Solution]
+
+  assert(types.size == arity)
 }
 
-class SolutionCombiner(arity: Int, f: List[Solution] => Option[Solution]) extends SolutionBuilder(arity) {
+class SolutionCombiner(arity: Int, types: Seq[TypeTree],  f: List[Solution] => Option[Solution]) extends SolutionBuilder(arity, types) {
   def apply(sols: List[Solution]) = {
     assert(sols.size == arity)
     f(sols)
@@ -39,7 +42,7 @@ class SolutionCombiner(arity: Int, f: List[Solution] => Option[Solution]) extend
 }
 
 object SolutionBuilder {
-  val none = new SolutionBuilder(0) {
+  val none = new SolutionBuilder(0, Seq()) {
     def apply(sols: List[Solution]) = None
   }
 }
@@ -48,14 +51,6 @@ abstract class RuleInstantiation(val problem: Problem, val rule: Rule, val onSuc
   def apply(sctx: SynthesisContext): RuleApplicationResult
 }
 
-//abstract class RuleApplication(val subProblemsCount: Int,
-//                               val onSuccess: List[Solution] => Solution) {
-//
-//  def apply(sctx: SynthesisContext): RuleApplicationResult
-//}
-//
-//abstract class RuleImmediateApplication extends RuleApplication(0, s => Solution.simplest)
-
 sealed abstract class RuleApplicationResult
 case class RuleSuccess(solution: Solution)    extends RuleApplicationResult
 case class RuleDecomposed(sub: List[Problem]) extends RuleApplicationResult
@@ -63,13 +58,15 @@ case object RuleApplicationImpossible         extends RuleApplicationResult
 
 object RuleInstantiation {
   def immediateDecomp(problem: Problem, rule: Rule, sub: List[Problem], onSuccess: List[Solution] => Option[Solution]) = {
-    new RuleInstantiation(problem, rule, new SolutionCombiner(sub.size, onSuccess)) {
+    val subTypes = sub.map(p => TupleType(p.xs.map(_.getType)))
+
+    new RuleInstantiation(problem, rule, new SolutionCombiner(sub.size, subTypes, onSuccess)) {
       def apply(sctx: SynthesisContext) = RuleDecomposed(sub)
     }
   }
 
   def immediateSuccess(problem: Problem, rule: Rule, solution: Solution) = {
-    new RuleInstantiation(problem, rule, new SolutionCombiner(0, ls => Some(solution))) {
+    new RuleInstantiation(problem, rule, new SolutionCombiner(0, Seq(), ls => Some(solution))) {
       def apply(sctx: SynthesisContext) = RuleSuccess(solution)
     }
   }
