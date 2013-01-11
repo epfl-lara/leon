@@ -11,6 +11,7 @@ object Main {
       xlang.FunctionClosure,
       xlang.XlangAnalysisPhase,
       synthesis.SynthesisPhase,
+      termination.TerminationPhase,
       verification.AnalysisPhase
     )
   }
@@ -22,6 +23,7 @@ object Main {
   )
 
   lazy val topLevelOptions : Set[LeonOptionDef] = Set(
+      LeonFlagOptionDef ("termination",  "--termination", "Check program termination"),
       LeonFlagOptionDef ("synthesis",    "--synthesis",   "Partial synthesis of choose() constructs"),
       LeonFlagOptionDef ("xlang",        "--xlang",       "Support for extra program constructs (imperative,...)"),
       LeonFlagOptionDef ("parse",        "--parse",       "Checks only whether the program is valid PureScala"),
@@ -37,7 +39,7 @@ object Main {
   lazy val allOptions = allComponents.flatMap(_.definedOptions) ++ topLevelOptions
 
   def displayHelp(reporter: Reporter) {
-    reporter.info("usage: leon [--xlang] [--synthesis] [--help] [--debug=<N>] [..] <files>")
+    reporter.info("usage: leon [--xlang] [--termination] [--synthesis] [--help] [--debug=<N>] [..] <files>")
     reporter.info("")
     for (opt <- topLevelOptions.toSeq.sortBy(_.name)) {
       reporter.info("%-20s %s".format(opt.usageOption, opt.usageDesc))
@@ -100,6 +102,8 @@ object Main {
 
     // Process options we understand:
     for(opt <- leonOptions) opt match {
+      case LeonFlagOption("termination") =>
+        settings = settings.copy(termination = true, xlang = false, verify = false, synthesis = false)
       case LeonFlagOption("synthesis") =>
         settings = settings.copy(synthesis = true, xlang = false, verify = false)
       case LeonFlagOption("xlang") =>
@@ -127,7 +131,10 @@ object Main {
       }
 
     val pipeVerify: Pipeline[Program, Any] =
-      if (settings.xlang) {
+      if (settings.termination) {
+        // OK, OK, that's not really verification...
+        termination.TerminationPhase
+      } else if (settings.xlang) {
         xlang.XlangAnalysisPhase
       } else if (settings.verify) {
         verification.AnalysisPhase
@@ -152,7 +159,12 @@ object Main {
     try {
       // Run pipeline
       pipeline.run(ctx)(args.toList) match {
-        case (report: verification.VerificationReport) => reporter.info(report.summaryString)
+        case report: verification.VerificationReport =>
+          reporter.info(report.summaryString)
+
+        case report: termination.TerminationReport =>
+          reporter.info(report.summaryString)
+
         case _ =>
       }
     } catch {
