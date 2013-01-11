@@ -14,6 +14,8 @@ import purescala.TypeTrees._
 
 import evaluators._
 
+import termination._
+
 import scala.collection.mutable.{Map => MutableMap}
 import scala.collection.mutable.{Set => MutableSet}
 
@@ -37,13 +39,12 @@ class FairZ3Solver(context : LeonContext)
   )
 
   // What wouldn't we do to avoid defining vars?
-  val (feelingLucky, checkModels, useCodeGen, evalGroundApps, unrollUnsatCores, pruneUnsatCores) = locally {
+  val (feelingLucky, checkModels, useCodeGen, evalGroundApps, unrollUnsatCores) = locally {
     var lucky            = false
     var check            = false
     var codegen          = false
     var evalground       = false
     var unrollUnsatCores = false
-    var pruneUnsatCores  = true
 
     for(opt <- context.options) opt match {
       case LeonFlagOption("checkmodels")        => check            = true
@@ -54,11 +55,14 @@ class FairZ3Solver(context : LeonContext)
       case _ =>
     }
 
-    (lucky, check, codegen, evalground, unrollUnsatCores, pruneUnsatCores)
+    (lucky, check, codegen, evalground, unrollUnsatCores)
   }
 
   private var evaluator : Evaluator = null
   protected[z3] def getEvaluator : Evaluator = evaluator
+
+  private var terminator : TerminationChecker = null
+  protected[z3] def getTerminator : TerminationChecker = terminator
 
   override def setProgram(prog : Program) {
     super.setProgram(prog)
@@ -70,6 +74,8 @@ class FairZ3Solver(context : LeonContext)
     } else {
       new DefaultEvaluator(context, prog)
     }
+
+    terminator = new SimpleTerminationChecker(context, prog)
   }
 
   // This is fixed.
@@ -211,10 +217,10 @@ class FairZ3Solver(context : LeonContext)
   }
 
   class UnrollingBank {
-    // Keep which function invocation is guarded by which guard with polarity,
-    // also specify the generation of the blocker
+    // Keep which function invocation is guarded by which guard,
+    // also specify the generation of the blocker.
 
-    private var blockersInfoStack : List[MutableMap[(Z3AST,Boolean), (Int, Int, Z3AST, Set[Z3FunctionInvocation])]] = List(MutableMap())
+    private var blockersInfoStack : List[MutableMap[Z3AST,(Int,Int,Z3AST,Set[Z3FunctionInvocation])]] = List(MutableMap())
 
     def blockersInfo = blockersInfoStack.head
 
@@ -232,15 +238,15 @@ class FairZ3Solver(context : LeonContext)
       blockersInfo.groupBy(_._2._1).toSeq.sortBy(_._1).foreach { case (gen, entries) =>
         reporter.info("--- "+gen)
 
-        for (((bast, bpol), (gen, origGen, ast, fis)) <- entries) {
-          reporter.info(".     "+(if(!bpol) "¬" else "")+bast +" ~> "+fis.map(_.funDef.id))
+        for (((bast), (gen, origGen, ast, fis)) <- entries) {
+          reporter.info(".     "+bast +" ~> "+fis.map(_.funDef.id))
         }
       }
     }
 
     def canUnroll = !blockersInfo.isEmpty
 
-    def getZ3BlockersToUnlock: Seq[(Z3AST, Boolean)] = {
+    def getZ3BlockersToUnlock: Seq[Z3AST] = {
       if (!blockersInfo.isEmpty) {
         val minGeneration = blockersInfo.values.map(_._1).min
 
@@ -250,22 +256,22 @@ class FairZ3Solver(context : LeonContext)
       }
     }
 
-    private def registerBlocker(gen: Int, id: Z3AST, pol: Boolean, fis: Set[Z3FunctionInvocation]) {
-      val pair = (id, pol)
-
-      val z3ast          = if (pol) z3.mkNot(id) else id
-
-      blockersInfo.get(pair) match {
+    private def registerBlocker(gen: Int, id: Z3AST, fis: Set[Z3FunctionInvocation]) {
+      val z3ast = z3.mkNot(id)
+      blockersInfo.get(id) match {
         case Some((exGen, origGen, _, exFis)) =>
-          assert(exGen == gen, "Mixing the same pair "+pair+" with various generations "+ exGen+" and "+gen)
+          assert(exGen == gen, "Mixing the same id "+id+" with various generations "+ exGen+" and "+gen)
 
-          blockersInfo(pair) = ((gen, origGen, z3ast, fis++exFis))
+          blockersInfo(id) = ((gen, origGen, z3ast, fis++exFis))
         case None =>
-          blockersInfo(pair) = ((gen, gen, z3ast, fis))
+          blockersInfo(id) = ((gen, gen, z3ast, fis))
       }
     }
 
     def scanForNewTemplates(expr: Expr): Seq[Z3AST] = {
+      // OK, now this is subtle. This `getTemplate` will return
+      // a template for a "fake" function. Now, this template will
+      // define an activating boolean...
       val template = getTemplate(expr)
 
       val z3args = for (vd <- template.funDef.args) yield {
@@ -280,15 +286,18 @@ class FairZ3Solver(context : LeonContext)
         }
       }
 
-      val (newClauses, newBlocks) = template.instantiate(template.z3ActivatingBool, true, z3args)
+      // ...now this template defines clauses that are all guarded
+      // by that activating boolean. If that activating boolean is 
+      // undefined (or false) these clauses have no effect...
+      val (newClauses, newBlocks) =
+        template.instantiate(template.z3ActivatingBool, z3args)
 
-      val extraClauses = for(((i, p), fis) <- newBlocks) yield {
-        registerBlocker(nextGeneration(0), i, p, fis)
-        //unlock(i, p)
-        Nil
+      for((i, fis) <- newBlocks) {
+        registerBlocker(nextGeneration(0), i, fis)
       }
-
-      newClauses ++ extraClauses.flatten
+      
+      // ...so we must force it to true!
+      template.z3ActivatingBool +: newClauses
     }
 
     def nextGeneration(gen: Int) = gen + 3
@@ -300,35 +309,31 @@ class FairZ3Solver(context : LeonContext)
       }
     }
 
-    def prune(ast: Z3AST, pol: Boolean) = {
-      val b = (ast, pol)
-      blockersInfo -= b
-    }
-
-    def promoteBlocker(bast: Z3AST, pol: Boolean) = {
-      val b = (bast, pol)
+    def promoteBlocker(b: Z3AST) = {
       if (blockersInfo contains b) {
         val (gen, origGen, ast, finvs) = blockersInfo(b)
         blockersInfo(b) = (1, origGen, ast, finvs)
       }
     }
 
-    def unlock(id: Z3AST, pol: Boolean) : Seq[Z3AST] = {
-      val pair = (id, pol)
-      assert(blockersInfo contains pair)
+    def unlock(id: Z3AST) : Seq[Z3AST] = {
+      assert(blockersInfo contains id)
 
-      val (gen, origGen, _, fis) = blockersInfo(pair)
-      blockersInfo -= pair
+      val (gen, origGen, _, fis) = blockersInfo(id)
+      blockersInfo -= id
 
       var newClauses : Seq[Z3AST] = Seq.empty
 
       for(fi <- fis) {
         val template              = getTemplate(fi.funDef)
-        val (newExprs, newBlocks) = template.instantiate(id, pol, fi.args)
+        val (newExprs, newBlocks) = template.instantiate(id, fi.args)
 
-        for(((i, p), fis) <- newBlocks) {
-          // We use origGen here
-          registerBlocker(nextGeneration(origGen), i, p, fis)
+        // println("In unlock :")
+        // println("CLAUSES")
+        // newExprs.foreach(println) 
+
+        for((i, fis) <- newBlocks) {
+          registerBlocker(nextGeneration(gen), i, fis)
         }
 
         newClauses ++= newExprs
@@ -440,7 +445,6 @@ class FairZ3Solver(context : LeonContext)
         }).toSet
       }
 
-
       while(!foundDefinitiveAnswer && !forceStop) {
 
         //val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.toSeq.map(toZ3Formula(_).get)
@@ -524,22 +528,11 @@ class FairZ3Solver(context : LeonContext)
 
               for (c <- solver.getUnsatCore) {
                 val (z3ast, pol) = coreElemToBlocker(c)
+                assert(pol == true)
 
-                unrollingBank.promoteBlocker(z3ast, pol)
+                unrollingBank.promoteBlocker(z3ast)
               }
 
-            }
-
-            if (pruneUnsatCores) {
-              z3Core.toSeq match {
-                case Seq(c) => 
-                  // If there is only one element in the Seq, we can prune
-                  val (z3ast, pol) = coreElemToBlocker(c)
-
-                  unrollingBank.prune(z3ast, !pol)
-                  solver.assertCnstr(if (pol) z3ast else z3.mkNot(z3ast))
-                case _ =>
-              }
             }
 
             reporter.info("UNSAT BECAUSE: "+solver.getUnsatCore.mkString("\n  AND  \n"))
@@ -593,16 +586,10 @@ class FairZ3Solver(context : LeonContext)
 
               reporter.info(" - more unrollings")
 
-              unrollingBank.dumpBlockers
-
-              for((id, polarity) <- toReleaseAsPairs) {
+              for(id <- toReleaseAsPairs) {
                 unlockingTime.start
-                val newClauses = unrollingBank.unlock(id, polarity)
+                val newClauses = unrollingBank.unlock(id)
                 unlockingTime.stop
-                reporter.info(" - - Unrolling behind "+(if(!polarity) "¬" else "")+id)
-                //for (cl <- newClauses) {
-                //  reporter.info(" - - - "+cl)
-                //}
 
                 unrollingTime.start
                 for(ncl <- newClauses) {

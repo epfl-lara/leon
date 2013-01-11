@@ -413,7 +413,8 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
           val rl = rec(l)
           val rr = rec(r)
           // z3.mkIff used to trigger a bug
-          z3.mkAnd(z3.mkImplies(rl, rr), z3.mkImplies(rr, rl))
+          // z3.mkAnd(z3.mkImplies(rl, rr), z3.mkImplies(rr, rl))
+          z3.mkIff(rl, rr)
         }
         case Not(Iff(l, r)) => z3.mkXor(rec(l), rec(r))
         case Not(Equals(l, r)) => z3.mkDistinct(rec(l), rec(r))
