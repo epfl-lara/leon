@@ -10,7 +10,7 @@ import purescala.Extractors._
 
 case object EqualitySplit extends Rule("Eq. Split.") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
-    val candidates = p.as.groupBy(_.getType).map(_._2.toList).filter {
+    val candidates = p.as.groupBy(_.getType).mapValues(_.combinations(2).filter {
       case List(a1, a2) =>
         val toValEQ = Implies(p.pc, Equals(Variable(a1), Variable(a2)))
 
@@ -32,10 +32,10 @@ case object EqualitySplit extends Rule("Eq. Split.") {
           false
         }
       case _ => false
-    }
+    }).values.flatten
 
 
-    candidates.map(_ match {
+    candidates.flatMap(_ match {
       case List(a1, a2) =>
 
         val sub1 = p.copy(pc = And(Equals(Variable(a1), Variable(a2)), p.pc))
@@ -51,6 +51,6 @@ case object EqualitySplit extends Rule("Eq. Split.") {
         Some(RuleInstantiation.immediateDecomp(p, this, List(sub1, sub2), onSuccess))
       case _ =>
         None
-    }).flatten
+    })
   }
 }

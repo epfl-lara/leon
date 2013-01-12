@@ -20,6 +20,7 @@ object Rules {
     UnconstrainedOutput,
     OptimisticGround,
     EqualitySplit,
+    InequalitySplit,
     CEGIS,
     Assert,
     DetupleOutput,
