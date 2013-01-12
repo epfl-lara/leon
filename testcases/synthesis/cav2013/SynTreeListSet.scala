@@ -30,15 +30,28 @@ object BinaryTree {
       case Cons(i, t) => Set(i) ++ l2s(t)
   }
 
-  def l2s_syn(l:List):Set[Int] = {
+  def listFrom(k:Int) : List = {
+    require(0 <= k)
+    if (k==0) Nil()
+    else Cons(k, listFrom(k-1))
+  }
+  def setFrom(k:Int) : Set[Int] = {
+    require(0 <= k)
+    if (k==0) Set.empty[Int]
+    else Set(k) ++ setFrom(k-1)
+  }
+
+  def l2s_syn(l:List,k:Int):Set[Int] = {
+    require(0 <= k)
     choose((res:Set[Int]) =>
-      l match {
+      (l!=listFrom(k) || res==setFrom(k)) &&
+      (l match {
 	case Nil() => (res==Set.empty[Int])
 	case Cons(x,Nil()) => res==Set(x)
 	case Cons(x,Cons(y,Nil())) => res==Set(x,y)
 	case Cons(x1,Cons(x2,Cons(x3,Cons(x4,Nil())))) => res==Set(x1,x2,x3,x4)
 	case _ => true
-      }
+      })
    )
   }
 
