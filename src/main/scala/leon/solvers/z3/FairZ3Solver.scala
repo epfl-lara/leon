@@ -224,12 +224,19 @@ class FairZ3Solver(context : LeonContext)
 
     def blockersInfo = blockersInfoStack.head
 
+    // Note that this computes cumulated sets.
+    private var unlockedStack : List[MutableSet[Z3AST]] = List(MutableSet())
+    def unlockedSet : MutableSet[Z3AST] = unlockedStack.head
+    def wasUnlocked(id : Z3AST) : Boolean = unlockedStack.head(id)
+
     def push() {
       blockersInfoStack = (MutableMap() ++ blockersInfo) :: blockersInfoStack
+      unlockedStack     = (MutableSet() ++ unlockedStack.head) :: unlockedStack
     }
 
     def pop(lvl: Int) {
       blockersInfoStack = blockersInfoStack.drop(lvl)
+      unlockedStack     = unlockedStack.drop(lvl)
     }
 
     def z3CurrentZ3Blockers = blockersInfo.map(_._2._3)
@@ -260,9 +267,13 @@ class FairZ3Solver(context : LeonContext)
       val z3ast = z3.mkNot(id)
       blockersInfo.get(id) match {
         case Some((exGen, origGen, _, exFis)) =>
-          assert(exGen == gen, "Mixing the same id "+id+" with various generations "+ exGen+" and "+gen)
+          // PS: when recycling `b`s, this assertion becomes dangerous.
+          // It's better to simply take the min of the generations.
+          // assert(exGen == gen, "Mixing the same id "+id+" with various generations "+ exGen+" and "+gen)
 
-          blockersInfo(id) = ((gen, origGen, z3ast, fis++exFis))
+          val minGen = gen min exGen
+
+          blockersInfo(id) = ((minGen, origGen, z3ast, fis++exFis))
         case None =>
           blockersInfo(id) = ((gen, gen, z3ast, fis))
       }
@@ -319,24 +330,33 @@ class FairZ3Solver(context : LeonContext)
     def unlock(id: Z3AST) : Seq[Z3AST] = {
       assert(blockersInfo contains id)
 
+      if(unlockedSet(id)) return Seq.empty
+
       val (gen, origGen, _, fis) = blockersInfo(id)
+
       blockersInfo -= id
+      val twice = wasUnlocked(id)
 
       var newClauses : Seq[Z3AST] = Seq.empty
+
+      var reintroducedSelf : Boolean = false
 
       for(fi <- fis) {
         val template              = getTemplate(fi.funDef)
         val (newExprs, newBlocks) = template.instantiate(id, fi.args)
 
-        // println("In unlock :")
-        // println("CLAUSES")
-        // newExprs.foreach(println) 
-
-        for((i, fis) <- newBlocks) {
-          registerBlocker(nextGeneration(gen), i, fis)
+        for((i, fis2) <- newBlocks) {
+          registerBlocker(nextGeneration(gen), i, fis2)
+          if(i == id) {
+            reintroducedSelf = true
+          }
         }
 
         newClauses ++= newExprs
+      }
+
+      if(!reintroducedSelf) {
+        unlockedSet += id
       }
 
       newClauses
@@ -580,13 +600,11 @@ class FairZ3Solver(context : LeonContext)
             if(!foundDefinitiveAnswer) { 
               reporter.info("- We need to keep going.")
 
-              //val toReleaseAsPairs = unrollingBank.getBlockersToUnlock
-              // unrollingBank.dumpBlockers
-              val toReleaseAsPairs = unrollingBank.getZ3BlockersToUnlock
+              val toRelease = unrollingBank.getZ3BlockersToUnlock
 
               reporter.info(" - more unrollings")
 
-              for(id <- toReleaseAsPairs) {
+              for(id <- toRelease) {
                 unlockingTime.start
                 val newClauses = unrollingBank.unlock(id)
                 unlockingTime.stop

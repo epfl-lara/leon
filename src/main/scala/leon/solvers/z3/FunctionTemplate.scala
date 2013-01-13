@@ -78,6 +78,9 @@ class FunctionTemplate private(
       (idToZ3Ids(b) -> funs.map(fi => Z3FunctionInvocation(fi.funDef, fi.args.map(solver.toZ3Formula(_, idToZ3Ids).get))))
   }
 
+  // We use a cache to create the same boolean variables.
+  private val cache : MutableMap[Seq[Z3AST],Map[Z3AST,Z3AST]] = MutableMap.empty
+
   def instantiate(aVar : Z3AST, args : Seq[Z3AST]) : (Seq[Z3AST], Map[Z3AST,Set[Z3FunctionInvocation]]) = {
     assert(args.size == funDef.args.size)
 
@@ -99,11 +102,19 @@ class FunctionTemplate private(
         }
       }
     }
+    // ...end of ground evaluation part.
 
-    val idSubstMap : Map[Z3AST, Z3AST] =
-      Map(z3ActivatingBool -> aVar) ++
-      (zippedExprVars ++ zippedCondVars).map{ case (id, c) => c -> solver.idToFreshZ3Id(id) } ++
-      (z3FunDefArgs zip args)
+    val (wasHit,baseIDSubstMap) = cache.get(args) match {
+      case Some(m) => (true,m)
+      case None =>
+        val newMap : Map[Z3AST,Z3AST] = 
+          (zippedExprVars ++ zippedCondVars).map(p => p._2 -> solver.idToFreshZ3Id(p._1)).toMap ++
+          (z3FunDefArgs zip args)
+        cache(args) = newMap
+        (false,newMap)
+    }
+
+    val idSubstMap : Map[Z3AST,Z3AST] = baseIDSubstMap + (z3ActivatingBool -> aVar)
 
     val (from, to) = idSubstMap.unzip
     val (fromArray, toArray) = (from.toArray, to.toArray)
