@@ -1192,7 +1192,6 @@ object TreeOps {
     }
 
     def rec(e : Expr, path : Seq[Expr]): Expr = e match {
-
       case Let(i, e, b) => 
         // The path condition for the body of the Let is the same as outside, plus an equality to constrain the newly bound variable.
         val se = rec(e, path)
@@ -1241,25 +1240,29 @@ object TreeOps {
           case _ => IfExpr(rc, rec(then, rc +: path), rec(elze, Not(rc) +: path))
         }
 
-      case And(es) =>
+      case And(es) => {
         var extPath = path
         var continue = true
-        And(for(e <- es if continue) yield {
+	var r = And(for(e <- es if continue) yield {
           val se = rec(e, extPath)
           if(se == BooleanLiteral(false)) continue = false
           extPath = se +: extPath
           se 
         })
+	if (continue) r else BooleanLiteral(false)
+      }
 
-      case Or(es) =>
+      case Or(es) => {
         var extPath = path
         var continue = true
-        Or(for(e <- es if continue) yield {
+        val r = Or(for(e <- es if continue) yield {
           val se = rec(e, extPath)
           if(se == BooleanLiteral(true)) continue = false
           extPath = Not(se) +: extPath
-          se 
+          se
         })
+	if (continue) r else BooleanLiteral(true)
+      }
 
       case b if b.getType == BooleanType && impliedBy(b, path) =>
         BooleanLiteral(true)

@@ -22,6 +22,7 @@ object Rules {
     EqualitySplit,
     CEGIS,
     Assert,
+    DetupleOutput,
     ADTSplit,
     IntegerEquation,
     IntegerInequalities

@@ -24,7 +24,7 @@ object Trees {
   case class Error(description: String) extends Expr with Terminal with ScalacPositional
 
   case class Choose(vars: List[Identifier], pred: Expr) extends Expr with ScalacPositional with UnaryExtractable {
-    def extract = Some((pred, (e: Expr) => Choose(vars, e).setPosInfo(this)))
+    def extract = Some((pred, (e: Expr) => Choose(vars, e).setPosInfo(this).setType(TupleType(vars.map(_.getType)))))
   }
 
   /* Like vals */

@@ -14,8 +14,40 @@ object ManyTimeSec {
     choose((seconds:Seconds) => timeAndSec(t,seconds))
   def sec2time(seconds:Seconds):Time = 
     choose((t:Time) => timeAndSec(t,seconds))
+
   def incTime(t0:Time,k:Int) : Time =
     choose((t1:Time) => time2sec(t1).total == time2sec(t0).total + k)
+
+  def testDetuple1(k:Int) : Seconds = {
+    choose((seconds0:Seconds) => 
+      k == 2*seconds0.total
+    )
+  }
+  def testDetuple2(total:Int) : Time = {
+    require(0 <= total)
+    choose((t:Time) => 
+      3600*t.h + 60*t.m + t.s == total && 
+	   t.h >= 0 && t.m >= 0 && t.m < 60 && t.s >= 0 && t.s < 60
+    )
+  }
+
+  def incTimeUnfolded(t0:Time,k:Int) : Time = {
+    require(0 <= t0.h && 0 <= t0.m && t0.m < 60 && 0 <= t0.s && t0.s < 60)
+    choose((t1:Time,seconds0:Seconds) => 
+      3600*t0.h + 60*t0.m + t0.s == seconds0.total && 
+      3600*t1.h + 60*t1.m + t1.s == seconds0.total + k && 
+      t1.h >= 0 && t1.m >= 0 && t1.m < 60 && t1.s >= 0 && t1.s < 60      
+    )._1
+  }
+
+  def incTimeUnfoldedOutOnly(t0:Time,k:Int) : Time = {
+    require(0 <= t0.h && 0 <= t0.m && t0.m < 60 && 0 <= t0.s && t0.s < 60)
+    val total = k + 3600*t0.h + 60*t0.m + t0.s
+    choose((t1:Time) => 
+      3600*t1.h + 60*t1.m + t1.s == total + k && 
+      t1.h >= 0 && t1.m >= 0 && t1.m < 60 && t1.s >= 0 && t1.s < 60      
+    )
+  }
 
   def incTime2(h1:Int,m1:Int,s1:Int,k:Int) : (Int,Int,Int) = {
     require(0 <= k && 0 <= h1 && 0 <= m1 && m1 < 60 && 0 <= s1 && s1 < 60)

@@ -2,7 +2,7 @@ package leon
 package synthesis
 
 import leon.purescala.Trees._
-import leon.purescala.TypeTrees.TypeTree
+import leon.purescala.TypeTrees.{TypeTree,TupleType}
 import leon.purescala.Definitions._
 import leon.purescala.TreeOps._
 import leon.xlang.Trees.LetDef
@@ -38,7 +38,7 @@ object Solution {
   def unapply(s: Solution): Option[(Expr, Set[FunDef], Expr)] = if (s eq null) None else Some((s.pre, s.defs, s.term))
 
   def choose(p: Problem): Solution = {
-    new Solution(BooleanLiteral(true), Set(), Choose(p.xs, p.phi))
+    new Solution(BooleanLiteral(true), Set(), Choose(p.xs, p.phi).setType(TupleType(p.xs.map(_.getType))))
   }
 
   // Generate the simplest, wrongest solution, used for complexity lowerbound
