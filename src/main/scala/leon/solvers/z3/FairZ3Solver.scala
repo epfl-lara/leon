@@ -271,7 +271,7 @@ class FairZ3Solver(context : LeonContext)
           // It's better to simply take the min of the generations.
           // assert(exGen == gen, "Mixing the same id "+id+" with various generations "+ exGen+" and "+gen)
 
-          val minGen = gen min exGen
+          val minGen = gen max exGen
 
           blockersInfo(id) = ((minGen, origGen, z3ast, fis++exFis))
         case None =>
