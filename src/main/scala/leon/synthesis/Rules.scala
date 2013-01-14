@@ -13,20 +13,23 @@ object Rules {
     Unification.OccursCheck, // probably useless
     Disunification.Decomp,
     ADTDual,
-    OnePoint,
-    Ground,
     CaseSplit,
-    UnusedInput,
-    UnconstrainedOutput,
     OptimisticGround,
     EqualitySplit,
     InequalitySplit,
+    Ground,
     CEGIS,
-    Assert,
     DetupleOutput,
     ADTSplit,
     IntegerEquation,
     IntegerInequalities
+  )
+
+  def normalizationRules = Set[Rule](
+    OnePoint,
+    Assert,
+    UnusedInput,
+    UnconstrainedOutput
   )
 }
 
