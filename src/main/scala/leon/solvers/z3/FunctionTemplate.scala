@@ -201,33 +201,45 @@ object FunctionTemplate {
 
         case m : MatchExpr => sys.error("MatchExpr's should have been eliminated.")
 
-        case i @ Implies(lhs, rhs) if splitAndOrImplies =>
-          if (containsFunctionCalls(i)) {
-            rec(pathVar, IfExpr(lhs, rhs, BooleanLiteral(true)))
+        case i @ Implies(lhs, rhs) =>
+          if (splitAndOrImplies) {
+            if (containsFunctionCalls(i)) {
+              rec(pathVar, IfExpr(lhs, rhs, BooleanLiteral(true)))
+            } else {
+              i
+            }
           } else {
-            i
+            Implies(rec(pathVar, lhs), rec(pathVar, rhs))
           }
 
-        case a @ And(parts) if splitAndOrImplies =>
-          if (containsFunctionCalls(a)) {
-            val partitions = groupWhile((e: Expr) => !containsFunctionCalls(e), parts)
+        case a @ And(parts) =>
+          if (splitAndOrImplies) {
+            if (containsFunctionCalls(a)) {
+              val partitions = groupWhile((e: Expr) => !containsFunctionCalls(e), parts)
 
-            val ifExpr = partitions.map(And(_)).reduceRight{ (a: Expr, b: Expr) => IfExpr(a, b, BooleanLiteral(false)) }
+              val ifExpr = partitions.map(And(_)).reduceRight{ (a: Expr, b: Expr) => IfExpr(a, b, BooleanLiteral(false)) }
 
-            rec(pathVar, ifExpr)
+              rec(pathVar, ifExpr)
+            } else {
+              a
+            }
           } else {
-            a
+            And(parts.map(rec(pathVar, _)))
           }
 
-        case o @ Or(parts) if splitAndOrImplies =>
-          if (containsFunctionCalls(o)) {
-            val partitions = groupWhile((e: Expr) => !containsFunctionCalls(e), parts)
+        case o @ Or(parts) =>
+          if (splitAndOrImplies) {
+            if (containsFunctionCalls(o)) {
+              val partitions = groupWhile((e: Expr) => !containsFunctionCalls(e), parts)
 
-            val ifExpr = partitions.map(Or(_)).reduceRight{ (a: Expr, b: Expr) => IfExpr(a, BooleanLiteral(true), b) }
+              val ifExpr = partitions.map(Or(_)).reduceRight{ (a: Expr, b: Expr) => IfExpr(a, BooleanLiteral(true), b) }
 
-            rec(pathVar, ifExpr)
+              rec(pathVar, ifExpr)
+            } else {
+              o
+            }
           } else {
-            o
+            Or(parts.map(rec(pathVar, _)))
           }
 
         case i @ IfExpr(cond, then, elze) => {
