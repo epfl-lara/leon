@@ -10,7 +10,7 @@ trait IncrementalSolverBuilder {
   def getNewSolver: IncrementalSolver
 }
 
-trait IncrementalSolver {
+trait IncrementalSolver extends InterruptibleSolver {
   // New Solver API
   // Moslty for z3 solvers since z3 4.3
 
@@ -19,6 +19,8 @@ trait IncrementalSolver {
   def assertCnstr(expression: Expr): Unit
 
   def halt(): Unit
+  def init(): Unit = {}
+
   def check: Option[Boolean]
   def checkAssumptions(assumptions: Set[Expr]): Option[Boolean]
   def getModel: Map[Identifier, Expr]

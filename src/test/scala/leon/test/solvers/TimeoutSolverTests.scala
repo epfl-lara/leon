@@ -27,7 +27,7 @@ class TimeoutSolverTests extends FunSuite {
   }
 
   private def getTOSolver : Solver = {
-    val s = new TimeoutSolver(new IdioticSolver(LeonContext()), 1)
+    val s = new TimeoutSolver(new IdioticSolver(LeonContext()), 1000L)
     s.setProgram(Program.empty)
     s
   }

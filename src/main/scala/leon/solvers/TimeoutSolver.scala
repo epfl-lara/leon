@@ -8,12 +8,12 @@ import purescala.TypeTrees._
 
 import scala.sys.error
 
-class TimeoutSolver(solver : Solver with  IncrementalSolverBuilder, timeout : Int) extends Solver(solver.context) with IncrementalSolverBuilder {
+class TimeoutSolver(solver : Solver with  IncrementalSolverBuilder, timeoutMs : Long) extends Solver(solver.context) with IncrementalSolverBuilder {
   // I'm making this an inner class to fight the temptation of using it for anything meaningful.
   // We have Akka, these days, which whould be better in any respect for non-trivial things.
   private class Timer(onTimeout: => Unit) extends Thread {
     private var keepRunning = true
-    private val asMillis : Long = 1000L * timeout
+    private val asMillis : Long = timeoutMs
 
     override def run : Unit = {
       val startTime : Long = System.currentTimeMillis
@@ -23,7 +23,7 @@ class TimeoutSolver(solver : Solver with  IncrementalSolverBuilder, timeout : In
         if(asMillis < (System.currentTimeMillis - startTime)) {
           exceeded = true
         }
-        Thread.sleep(10) 
+        Thread.sleep(10)
       }
       if(exceeded && keepRunning) {
         onTimeout
@@ -35,12 +35,26 @@ class TimeoutSolver(solver : Solver with  IncrementalSolverBuilder, timeout : In
     }
   }
 
-  def withTimeout[T](onTimeout: => Unit)(body: => T): T = {
-    val timer = new Timer(onTimeout)
+  def withTimeout[T](solver: InterruptibleSolver)(body: => T): T = {
+    val timer = new Timer(timeout(solver))
     timer.start
     val res = body
     timer.halt
+    recoverFromTimeout(solver)
     res
+  }
+
+  var reachedTimeout = false
+  def timeout(solver: InterruptibleSolver) {
+    solver.halt
+    reachedTimeout = true
+  }
+
+  def recoverFromTimeout(solver: InterruptibleSolver) {
+    if (reachedTimeout) {
+      solver.init
+      reachedTimeout = false
+    }
   }
 
   val description = solver.description + ", with timeout"
@@ -51,19 +65,19 @@ class TimeoutSolver(solver : Solver with  IncrementalSolverBuilder, timeout : In
   }
 
   def solve(expression: Expr) : Option[Boolean] = {
-    withTimeout(solver.halt) {
+    withTimeout(solver) {
       solver.solve(expression)
     }
   }
 
   override def solveSAT(expression: Expr): (Option[Boolean], Map[Identifier, Expr]) = {
-    withTimeout(solver.halt) {
+    withTimeout(solver) {
       solver.solveSAT(expression)
     }
   }
 
   override def solveSATWithCores(expression: Expr, assumptions: Set[Expr]): (Option[Boolean], Map[Identifier, Expr], Set[Expr]) = {
-    withTimeout(solver.halt) {
+    withTimeout(solver) {
       solver.solveSATWithCores(expression, assumptions)
     }
   }
@@ -88,13 +102,13 @@ class TimeoutSolver(solver : Solver with  IncrementalSolverBuilder, timeout : In
     }
 
     def check: Option[Boolean] = {
-      withTimeout(solver.halt){
+      withTimeout(solver){
         solver.check
       }
     }
 
     def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
-      withTimeout(solver.halt){
+      withTimeout(solver){
         solver.checkAssumptions(assumptions)
       }
     }
