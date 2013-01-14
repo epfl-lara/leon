@@ -146,6 +146,8 @@ class FunctionTemplate private(
 }
 
 object FunctionTemplate {
+  val splitAndOrImplies = false
+
   def mkTemplate(solver: FairZ3Solver, funDef: FunDef, isRealFunDef : Boolean = true) : FunctionTemplate = {
     val condVars : MutableSet[Identifier] = MutableSet.empty
     val exprVars : MutableSet[Identifier] = MutableSet.empty
@@ -199,14 +201,14 @@ object FunctionTemplate {
 
         case m : MatchExpr => sys.error("MatchExpr's should have been eliminated.")
 
-        case i @ Implies(lhs, rhs) =>
+        case i @ Implies(lhs, rhs) if splitAndOrImplies =>
           if (containsFunctionCalls(i)) {
             rec(pathVar, IfExpr(lhs, rhs, BooleanLiteral(true)))
           } else {
             i
           }
 
-        case a @ And(parts) =>
+        case a @ And(parts) if splitAndOrImplies =>
           if (containsFunctionCalls(a)) {
             val partitions = groupWhile((e: Expr) => !containsFunctionCalls(e), parts)
 
@@ -217,7 +219,7 @@ object FunctionTemplate {
             a
           }
 
-        case o @ Or(parts) =>
+        case o @ Or(parts) if splitAndOrImplies =>
           if (containsFunctionCalls(o)) {
             val partitions = groupWhile((e: Expr) => !containsFunctionCalls(e), parts)
 
