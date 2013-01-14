@@ -557,8 +557,12 @@ case object CEGIS extends Rule("CEGIS") {
                                 // the assumptions are.
                                 solver1.getUnsatCore
 
-                              case _ =>
+                              case Some(true) =>
+                                // Can't be!
                                 bssAssumptions
+
+                              case None =>
+                                return RuleApplicationImpossible
                             }
 
                             solver1.pop()
@@ -602,10 +606,7 @@ case object CEGIS extends Rule("CEGIS") {
                           result = Some(RuleSuccess(Solution(BooleanLiteral(true), Set(), expr)))
 
                         case _ =>
-                          if (!sctx.shouldStop.get) {
-                            sctx.reporter.warning("Solver returned 'UNKNOWN' in a CEGIS iteration.")
-                          }
-                          needMoreUnrolling = true
+                          return RuleApplicationImpossible
                       }
                     }
 
@@ -617,7 +618,7 @@ case object CEGIS extends Rule("CEGIS") {
                       solver1.check match {
                         case Some(false) =>
                           // Unsat even without blockers (under which fcalls are then uninterpreted)
-                          result = Some(RuleApplicationImpossible)
+                          return RuleApplicationImpossible
 
                         case _ =>
                       }
@@ -626,11 +627,8 @@ case object CEGIS extends Rule("CEGIS") {
                     needMoreUnrolling = true
 
                   case _ =>
-                    if (!sctx.shouldStop.get) {
-                      sctx.reporter.warning("Solver returned 'UNKNOWN' in a CEGIS iteration.")
-                    }
                     //println("%%%% WOOPS")
-                    needMoreUnrolling = true
+                    return RuleApplicationImpossible
                 }
               }
 
