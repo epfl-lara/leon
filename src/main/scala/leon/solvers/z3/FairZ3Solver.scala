@@ -29,26 +29,28 @@ class FairZ3Solver(context : LeonContext)
   val description = "Fair Z3 Solver"
 
   override val definedOptions : Set[LeonOptionDef] = Set(
-    LeonFlagOptionDef("evalground",   "--evalground",   "Use evaluator on functions applied to ground arguments"),
-    LeonFlagOptionDef("checkmodels",  "--checkmodels",  "Double-check counter-examples with evaluator"),
-    LeonFlagOptionDef("feelinglucky", "--feelinglucky", "Use evaluator to find counter-examples early"),
-    LeonFlagOptionDef("codegen",      "--codegen",      "Use compiled evaluator instead of interpreter")
+    LeonFlagOptionDef("evalground",         "--evalground",         "Use evaluator on functions applied to ground arguments"),
+    LeonFlagOptionDef("checkmodels",        "--checkmodels",        "Double-check counter-examples with evaluator"),
+    LeonFlagOptionDef("feelinglucky",       "--feelinglucky",       "Use evaluator to find counter-examples early"),
+    LeonFlagOptionDef("codegen",            "--codegen",            "Use compiled evaluator instead of interpreter"),
+    LeonFlagOptionDef("fairz3:unrollcores", "--fairz3:unrollcores", "Use unsat-cores to drive unrolling while remaining fair")
   )
 
   // What wouldn't we do to avoid defining vars?
   val (feelingLucky, checkModels, useCodeGen, evalGroundApps, unrollUnsatCores, pruneUnsatCores) = locally {
-    var lucky            = true
+    var lucky            = false
     var check            = false
     var codegen          = false
     var evalground       = false
-    var unrollUnsatCores = true
+    var unrollUnsatCores = false
     var pruneUnsatCores  = true
 
     for(opt <- context.options) opt match {
-      case LeonFlagOption("checkmodels")  => check      = true
-      case LeonFlagOption("feelinglucky") => lucky      = true
-      case LeonFlagOption("codegen")      => codegen    = true
-      case LeonFlagOption("evalground")   => evalground = true
+      case LeonFlagOption("checkmodels")        => check            = true
+      case LeonFlagOption("feelinglucky")       => lucky            = true
+      case LeonFlagOption("codegen")            => codegen          = true
+      case LeonFlagOption("evalground")         => evalground       = true
+      case LeonFlagOption("fairz3:unrollcores") => unrollUnsatCores = true
       case _ =>
     }
 
