@@ -2,6 +2,7 @@ package leon
 package synthesis
 package rules
 
+import solvers.TimeoutSolver
 import purescala.Trees._
 import purescala.Common._
 import purescala.Definitions._
@@ -384,7 +385,7 @@ case object CEGIS extends Rule("CEGIS") {
           var unrolings = 0
           val maxUnrolings = 3
 
-          val mainSolver: FairZ3Solver = sctx.solver.asInstanceOf[FairZ3Solver]
+          val mainSolver = new TimeoutSolver(sctx.solver, 2000L) // 2sec
 
           var exampleInputs = Set[Seq[Expr]]()
 
