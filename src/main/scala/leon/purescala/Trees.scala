@@ -62,8 +62,20 @@ object Trees {
     }
   }
 
+  object TupleSelect {
+    def apply(tuple: Expr, index: Int): Expr = {
+      tuple match {
+        case Tuple(exprs) => exprs(index-1) // indexes as 1-based
+        case _ => new TupleSelect(tuple, index)
+      }
+    }
+
+    def unapply(e: TupleSelect): Option[(Expr, Int)] = {
+      if (e eq null) None else Some((e.tuple, e.index))
+    }
+  }
   // This must be 1-indexed ! (So are methods of Scala Tuples)
-  case class TupleSelect(tuple: Expr, index: Int) extends Expr with FixedType {
+  class TupleSelect(val tuple: Expr, val index: Int) extends Expr with FixedType {
     assert(index >= 1)
 
     val fixedType : TypeTree = tuple.getType match {
@@ -73,6 +85,13 @@ object Trees {
 
       case _ => scala.sys.error("Applying TupleSelect on a non-tuple tree [%s] of type [%s].".format(tuple, tuple.getType))
     }
+
+    override def equals(that: Any): Boolean = (that != null) && (that match {
+      case t: TupleSelect => t.tuple == tuple && t.index == index
+      case _ => false
+    })
+
+    override def hashCode: Int = tuple.hashCode + index.hashCode
   }
 
   object MatchExpr {
@@ -381,8 +400,29 @@ object Trees {
   case class CaseClassInstanceOf(classDef: CaseClassDef, expr: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }
-  case class CaseClassSelector(classDef: CaseClassDef, caseClass: Expr, selector: Identifier) extends Expr with FixedType {
+
+  object CaseClassSelector {
+    def apply(classDef: CaseClassDef, caseClass: Expr, selector: Identifier): Expr = {
+      caseClass match {
+        case CaseClass(cd, fields)  if cd == classDef => fields(cd.selectorID2Index(selector))
+        case _ => new CaseClassSelector(classDef, caseClass, selector)
+      }
+    }
+
+    def unapply(e: CaseClassSelector): Option[(CaseClassDef, Expr, Identifier)] = {
+      if (e eq null) None else Some((e.classDef, e.caseClass, e.selector))
+    }
+  }
+
+  class CaseClassSelector(val classDef: CaseClassDef, val caseClass: Expr, val selector: Identifier) extends Expr with FixedType {
     val fixedType = classDef.fields.find(_.id == selector).get.getType
+
+    override def equals(that: Any): Boolean = (that != null) && (that match {
+      case t: CaseClassSelector => (t.classDef, t.caseClass, t.selector) == (classDef, caseClass, selector)
+      case _ => false
+    })
+
+    override def hashCode: Int = (classDef, caseClass, selector).hashCode
   }
 
   /* Arithmetic */
