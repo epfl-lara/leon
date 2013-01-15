@@ -472,9 +472,9 @@ class FairZ3Solver(context : LeonContext)
 
         reporter.info(" - Running Z3 search...")
 
-        reporter.info("Searching in:\n"+solver.getAssertions.toSeq.mkString("\nAND\n"))
-        reporter.info("Unroll.  Assumptions:\n"+unrollingBank.z3CurrentZ3Blockers.mkString("  &&  "))
-        reporter.info("Userland Assumptions:\n"+assumptionsAsZ3.mkString("  &&  "))
+        // reporter.info("Searching in:\n"+solver.getAssertions.toSeq.mkString("\nAND\n"))
+        // reporter.info("Unroll.  Assumptions:\n"+unrollingBank.z3CurrentZ3Blockers.mkString("  &&  "))
+        // reporter.info("Userland Assumptions:\n"+assumptionsAsZ3.mkString("  &&  "))
 
         z3Time.start
         solver.push() // FIXME: remove when z3 bug is fixed
@@ -555,7 +555,7 @@ class FairZ3Solver(context : LeonContext)
 
             }
 
-            reporter.info("UNSAT BECAUSE: "+solver.getUnsatCore.mkString("\n  AND  \n"))
+            //reporter.info("UNSAT BECAUSE: "+solver.getUnsatCore.mkString("\n  AND  \n"))
             //reporter.info("UNSAT BECAUSE: "+core.mkString("  AND  "))
 
             if (!forceStop) {
@@ -574,10 +574,10 @@ class FairZ3Solver(context : LeonContext)
 
               res2 match {
                 case Some(false) =>
-                  reporter.info("UNSAT WITHOUT Blockers")
+                  //reporter.info("UNSAT WITHOUT Blockers")
                   foundAnswer(Some(false), core = z3CoreToCore(solver.getUnsatCore))
                 case Some(true) =>
-                  reporter.info("SAT WITHOUT Blockers")
+                  //reporter.info("SAT WITHOUT Blockers")
                   if (this.feelingLucky && !forceStop) {
                     // we might have been lucky :D
                     luckyTime.start
@@ -629,7 +629,7 @@ class FairZ3Solver(context : LeonContext)
       StopwatchCollections.get("FairZ3 Unlocking")   += unlockingTime
       StopwatchCollections.get("FairZ3 ScalaTime")   += scalaTime
 
-      reporter.info(" !! DONE !! ")
+      //reporter.info(" !! DONE !! ")
 
       if(forceStop) {
         None
