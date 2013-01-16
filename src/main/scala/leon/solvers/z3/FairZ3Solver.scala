@@ -391,8 +391,15 @@ class FairZ3Solver(context : LeonContext)
       frameExpressions = Nil :: frameExpressions
     }
 
+    override def init() {
+      FairZ3Solver.super.init
+    }
+
     def halt() {
-      z3.interrupt
+      FairZ3Solver.super.halt
+      if(z3 ne null) {
+        z3.interrupt
+      }
     }
 
     def pop(lvl: Int = 1) {
@@ -590,6 +597,7 @@ class FairZ3Solver(context : LeonContext)
                   }
 
                 case None =>
+                  foundAnswer(None)
               }
             }
 

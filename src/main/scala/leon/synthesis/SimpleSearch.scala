@@ -15,7 +15,7 @@ case class TaskRunRule(app: RuleInstantiation) extends AOAndTask[Solution] {
   override def toString = rule.name
 }
 
-case class TaskTryRules(p: Problem) extends AOOrTask[Solution] {
+case class TaskTryRules(val p: Problem) extends AOOrTask[Solution] {
   override def toString = p.toString
 }
 
@@ -64,7 +64,34 @@ class SimpleSearch(synth: Synthesizer,
   }
 
   def expandOrTask(t: TaskTryRules): ExpandResult[TaskRunRule] = {
-    val sub = rules.flatMap ( r => r.instantiateOn(sctx, t.p).map(TaskRunRule(_)) )
+    // First, we normalize the problem
+    var cur : Problem = t.p
+    var old: Problem = t.p
+
+    do {
+      old = cur;
+
+      for (r <- Rules.normalizationRules) {
+        r.instantiateOn(sctx, cur) match {
+          case app :: _ =>
+            app.apply(sctx) match {
+              case RuleDecomposed(Seq(sub)) =>
+                cur = sub
+
+              case RuleApplicationImpossible =>
+                // Ignore this
+
+              case res =>
+                sctx.reporter.error("Unexpected rule application result: "+res)
+            }
+          case _ =>
+        }
+      }
+
+    } while(cur != old)
+
+
+    val sub = rules.flatMap ( r => r.instantiateOn(sctx, cur).map(TaskRunRule(_)) )
 
     if (!sub.isEmpty) {
       Expanded(sub.toList)
