@@ -2,6 +2,7 @@ package leon
 package synthesis
 package rules
 
+import solvers.TimeoutSolver
 import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.TreeOps._
@@ -12,6 +13,9 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
     if (!p.as.isEmpty && !p.xs.isEmpty) {
       val res = new RuleInstantiation(p, this, SolutionBuilder.none) {
         def apply(sctx: SynthesisContext) = {
+
+          val solver = new TimeoutSolver(sctx.solver, 100L) // We give that 100ms
+
           val xss = p.xs.toSet
           val ass = p.as.toSet
 
@@ -27,14 +31,14 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
           while (result.isEmpty && i < maxTries && continue) {
             val phi = And(p.pc +: p.phi +: predicates)
             //println("SOLVING " + phi + " ...")
-            sctx.solver.solveSAT(phi) match {
+            solver.solveSAT(phi) match {
               case (Some(true), satModel) =>
                 val satXsModel = satModel.filterKeys(xss) 
 
                 val newPhi = valuateWithModelIn(phi, xss, satModel)
 
                 //println("REFUTING " + Not(newPhi) + "...")
-                sctx.solver.solveSAT(Not(newPhi)) match {
+                solver.solveSAT(Not(newPhi)) match {
                   case (Some(true), invalidModel) =>
                     // Found as such as the xs break, refine predicates
                     predicates = valuateWithModelIn(phi, ass, invalidModel) +: predicates

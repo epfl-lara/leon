@@ -2,6 +2,7 @@ package leon
 package synthesis
 package rules
 
+import solvers.TimeoutSolver
 import purescala.Trees._
 import purescala.Common._
 import purescala.TypeTrees._
@@ -10,11 +11,13 @@ import purescala.Extractors._
 
 case object EqualitySplit extends Rule("Eq. Split.") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+    val solver = new TimeoutSolver(sctx.solver, 100L) // We give that 100ms
+
     val candidates = p.as.groupBy(_.getType).mapValues(_.combinations(2).filter {
       case List(a1, a2) =>
         val toValEQ = Implies(p.pc, Equals(Variable(a1), Variable(a2)))
 
-        val impliesEQ = sctx.solver.solveSAT(Not(toValEQ)) match {
+        val impliesEQ = solver.solveSAT(Not(toValEQ)) match {
           case (Some(false), _) => true
           case _ => false
         }
@@ -22,7 +25,7 @@ case object EqualitySplit extends Rule("Eq. Split.") {
         if (!impliesEQ) {
           val toValNE = Implies(p.pc, Not(Equals(Variable(a1), Variable(a2))))
 
-          val impliesNE = sctx.solver.solveSAT(Not(toValNE)) match {
+          val impliesNE = solver.solveSAT(Not(toValNE)) match {
             case (Some(false), _) => true
             case _ => false
           }
