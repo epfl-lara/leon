@@ -130,8 +130,18 @@ li {
     margin-bottom: 5px;
 }
 
+#subcodebox {
+    margin: 460px 0px 0px 0px;
+}
+
+#powerflags {
+    margin: 0px 0px 5px 0px;
+    border: 1px solid #666666;
+    width: 700px;
+}
+
 #askbutton {
-    margin: 460px 0px 5px 0px;
+    margin: 0px 0px 5px 0px;
     background-color: transparent;
     border: 1px solid #666666;
     width: 700px;

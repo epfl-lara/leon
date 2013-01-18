@@ -35,6 +35,8 @@ object LeonConsole {
           (event \ "action").as[String] match {
             case "start" =>
               session ! Start((event \ "mode").as[String], (event \ "code").as[String])
+            case "startpower" =>
+              session ! StartPower((event \ "flags").asOpt[String].getOrElse(""), (event \ "code").as[String])
             case "stop" =>
               session ! Stop
             case _ =>
@@ -102,7 +104,9 @@ class ConsoleSession extends Actor {
 
           val pipeline = TemporaryInputPhase andThen ExtractionPhase andThen AnalysisPhase
 
-          pipeline.run(ctx)((code, Nil))
+          val analysisResults = pipeline.run(ctx)((code, Nil))
+
+          log(analysisResults.summaryString)
 
           event("stopped")
 
@@ -123,6 +127,30 @@ class ConsoleSession extends Actor {
           error("Invalid request mode: "+mode)
       }
 
+    case StartPower(flags, code) =>
+      val classPath = Play.current.configuration.getString("app.classpath").map(_.split(":").toList).getOrElse(Settings.defaultClassPath())
+
+      event("started")
+      isStarted = true
+
+      log(""">     ____                          __  __           _        _ 
+             > __ |  _ \ _____      _____ _ __  |  \/  | ___   __| | ___  | | __
+             > __ | |_) / _ \ \ /\ / / _ \ '__| | |\/| |/ _ \ / _` |/ _ \ | | __
+             > __ |  __/ (_) \ V  V /  __/ |    | |  | | (_) | (_| |  __/ |_| __
+             >    |_|   \___/ \_/\_/ \___|_|    |_|  |_|\___/ \__,_|\___| (_)""".stripMargin('>'))
+
+      var ctx = leon.Main.processOptions(reporter, flags.split(" ").filterNot(_.isEmpty).toList)
+      ctx = ctx.copy(settings = ctx.settings.copy(classPath = classPath))
+
+      val pipeline = TemporaryInputPhase andThen leon.Main.computePipeline(ctx.settings)
+
+      pipeline.run(ctx)((code, Nil)) match {
+        case report: leon.verification.VerificationReport => log(report.summaryString)
+        case report: leon.termination.TerminationReport   => log(report.summaryString)
+        case _ => 
+      }
+
+      event("stopped")
 
     case Stop =>
       isStarted = false
@@ -140,6 +168,7 @@ object ConsoleProtocol {
 
 
   case class Start(mode: String, code: String)
+  case class StartPower(flags : String, code : String)
 
   case object Stop
 

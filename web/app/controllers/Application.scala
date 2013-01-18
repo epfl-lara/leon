@@ -14,10 +14,10 @@ object Application extends Controller {
 
   val examples = VerificationExamples.allExamples ++ SynthesisExamples.allExamples
 
-  def index = Action { implicit request =>
+  def index(powermode : Boolean) = Action { implicit request =>
     val prefix = Play.current.configuration.getString("app.prefix").getOrElse("")
 
-    Ok(views.html.index(examples, VerificationExamples.default, prefix))
+    Ok(views.html.index(examples, VerificationExamples.default, prefix, powermode))
   }
 
   def getExample(id: Int) = Action { 
