@@ -3,7 +3,7 @@
 # ~~~~
 
 # Home page
-GET     /                        leon.web.controllers.Application.index
+GET     /                        leon.web.controllers.Application.index(powermode : Boolean ?= false)
 
 GET     /ajax/getExample/:id     leon.web.controllers.Application.getExample(id: Int)
 GET     /openConsole             leon.web.controllers.Application.openConsole

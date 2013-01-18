@@ -14,7 +14,7 @@ $ source ../setupenv
 ** On laraserver **
 
     $ export LD_LIBRARY_PATH=/localhome/leonweb/git/z3/build/
-    $ play "run -Dapp.prefix=/leon"
+    $ play "start -Dapp.prefix=/leon"
 
 ** Locally **
 

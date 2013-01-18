@@ -1,4 +1,4 @@
-@(exs: List[examples.Example], default: examples.Example, prefix: String)(implicit request: RequestHeader)
+@(exs: List[examples.Example], default: examples.Example, prefix: String, powermode : Boolean)(implicit request: RequestHeader)
 
 @main("Leon Online", prefix) {
   <div id="allcontent">
@@ -12,8 +12,13 @@
     <div id="leonmain" class="contentbox">
       <form id="leoninput" method="POST" action="">
         <div id="codecolumn">
-          <div id="codebox">@default.code</div>
-          <input type="submit" id="askbutton" value="Ask Leon !">
+            <div id="codebox">@default.code</div>
+            <div id="subcodebox">
+                @if(powermode) {
+                  <input type="text" id="powerflags" value="--timeout=2" placeholder="add any flags here">
+                }
+                <input type="submit" id="askbutton" value="Run Leon !">
+            </div>
           <div><textarea id="consolebox"></textarea></div>
         </div>
         <div id="selectcolumn">
@@ -51,16 +56,24 @@
                 }
             }
 
-            leonSocket.onmessage = receiveEvent
+            leonSocket.onmessage = receiveEvent;
 
-            var leonStatus = "stopped"
+            var leonStatus = "stopped";
 
             $("#leoninput").submit(function () {
+                $("#consolebox").val("");
+
+                @if(!powermode) {
                 var msg = JSON.stringify(
                   {action: "start", mode: $("#leon-mode").val(), code: editor.getValue()}
-                )
+                );
+                } else {
+                var msg = JSON.stringify(
+                  {action: "startpower", flags: $("#powerflags").val(), code: editor.getValue()}
+                );
+                }
 
-                leonSocket.send(msg)
+                leonSocket.send(msg);
                 return false;
             });
         });
