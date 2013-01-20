@@ -22,7 +22,7 @@ class Synthesizer(val context : LeonContext,
                   val solver: Solver,
                   val program: Program,
                   val problem: Problem,
-                  val rules: Set[Rule],
+                  val rules: Seq[Rule],
                   val options: SynthesizerOptions) {
 
   protected[synthesis] val reporter = context.reporter

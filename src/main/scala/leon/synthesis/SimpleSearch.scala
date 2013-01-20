@@ -32,7 +32,7 @@ case class SearchCostModel(cm: CostModel) extends AOCostModel[TaskRunRule, TaskT
 
 class SimpleSearch(synth: Synthesizer,
                    problem: Problem,
-                   rules: Set[Rule],
+                   rules: Seq[Rule],
                    costModel: CostModel) extends AndOrGraphSearch[TaskRunRule, TaskTryRules, Solution](new AndOrGraph(TaskTryRules(problem), SearchCostModel(costModel))) {
 
   import synth.reporter._
@@ -64,12 +64,22 @@ class SimpleSearch(synth: Synthesizer,
   }
 
   def expandOrTask(t: TaskTryRules): ExpandResult[TaskRunRule] = {
-    val sub = rules.flatMap ( r => r.instantiateOn(sctx, t.p).map(TaskRunRule(_)) )
+    val (normRules, otherRules) = rules.partition(_.isInstanceOf[NormalizingRule])
 
-    if (!sub.isEmpty) {
-      Expanded(sub.toList)
+    val normApplications = normRules.flatMap(_.instantiateOn(sctx, t.p))
+
+    if (!normApplications.isEmpty) {
+      Expanded(List(TaskRunRule(normApplications.head)))
     } else {
-      ExpandFailure()
+      val sub = otherRules.flatMap { r =>
+        r.instantiateOn(sctx, t.p).map(TaskRunRule(_))
+      }
+
+      if (!sub.isEmpty) {
+        Expanded(sub.toList)
+      } else {
+        ExpandFailure()
+      }
     }
   }
 

@@ -8,7 +8,7 @@ import purescala.TreeOps._
 import rules._
 
 object Rules {
-  def all = Set[Rule](
+  def all = List[Rule](
     Unification.DecompTrivialClash,
     Unification.OccursCheck, // probably useless
     Disunification.Decomp,
@@ -88,4 +88,11 @@ abstract class Rule(val name: String) {
   }
 
   override def toString = "R: "+name
+}
+
+// Note: Rules that extend NormalizingRule should all be commutative, The will
+// be applied before others in a deterministic order and their application
+// should never fail!
+abstract class NormalizingRule(name: String) extends Rule(name) {
+  override def toString = "N: "+name
 }

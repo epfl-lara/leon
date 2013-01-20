@@ -7,7 +7,7 @@ import purescala.TypeTrees.TupleType
 import heuristics._
 
 object Heuristics {
-  def all = Set[Rule](
+  def all = List[Rule](
     IntInduction,
     InnerCaseSplit,
     //new OptimisticInjection(_),
