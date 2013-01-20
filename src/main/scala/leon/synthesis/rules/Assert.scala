@@ -6,7 +6,7 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
-case object Assert extends Rule("Assert") {
+case object Assert extends NormalizingRule("Assert") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     p.phi match {
       case TopLevelAnds(exprs) =>

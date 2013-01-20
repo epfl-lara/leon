@@ -8,7 +8,7 @@ import solvers.TrivialSolver
 
 class ParallelSearch(synth: Synthesizer,
                      problem: Problem,
-                     rules: Set[Rule],
+                     rules: Seq[Rule],
                      costModel: CostModel,
                      nWorkers: Int) extends AndOrGraphParallelSearch[SynthesisContext, TaskRunRule, TaskTryRules, Solution](new AndOrGraph(TaskTryRules(problem), SearchCostModel(costModel)), nWorkers) {
 
@@ -69,14 +69,22 @@ class ParallelSearch(synth: Synthesizer,
   }
 
   def expandOrTask(ref: ActorRef, sctx: SynthesisContext)(t: TaskTryRules) = {
-    val sub = rules.flatMap { r => 
-      r.instantiateOn(sctx, t.p).map(TaskRunRule(_))
-    }
+    val (normRules, otherRules) = rules.partition(_.isInstanceOf[NormalizingRule])
 
-    if (!sub.isEmpty) {
-      Expanded(sub.toList)
+    val normApplications = normRules.flatMap(_.instantiateOn(sctx, t.p))
+
+    if (!normApplications.isEmpty) {
+      Expanded(List(TaskRunRule(normApplications.head)))
     } else {
-      ExpandFailure()
+      val sub = otherRules.flatMap { r =>
+        r.instantiateOn(sctx, t.p).map(TaskRunRule(_))
+      }
+
+      if (!sub.isEmpty) {
+        Expanded(sub.toList)
+      } else {
+        ExpandFailure()
+      }
     }
   }
 }
