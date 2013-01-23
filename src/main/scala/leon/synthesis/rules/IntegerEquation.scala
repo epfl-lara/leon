@@ -60,7 +60,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
               None
           }
 
-          List(RuleInstantiation.immediateDecomp(problem, this, List(newProblem), onSuccess))
+          List(RuleInstantiation.immediateDecomp(problem, this, List(newProblem), onSuccess, this.name))
 
         } else {
           val (eqPre0, eqWitness, freshxs) = elimVariable(eqas, normalizedEq)
@@ -105,7 +105,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
               None
           }
 
-          List(RuleInstantiation.immediateDecomp(problem, this, List(newProblem), onSuccess))
+          List(RuleInstantiation.immediateDecomp(problem, this, List(newProblem), onSuccess, this.name))
         }
       }
     }

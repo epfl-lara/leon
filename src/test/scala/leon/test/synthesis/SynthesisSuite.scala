@@ -33,7 +33,7 @@ class SynthesisSuite extends FunSuite {
       reporter = new SilentReporter
     )
 
-    val opts = SynthesizerOptions()
+    val opts = SynthesisOptions()
 
     val pipeline = leon.plugin.TemporaryInputPhase andThen leon.plugin.ExtractionPhase andThen SynthesisProblemExtractionPhase
 
@@ -42,9 +42,19 @@ class SynthesisSuite extends FunSuite {
     val solver = new FairZ3Solver(ctx)
     solver.setProgram(program)
 
+    val simpleSolver = new FairZ3Solver(ctx)
+    simpleSolver.setProgram(program)
+
     for ((f, ps) <- results; p <- ps) {
       test("Synthesizing %3d: %-20s [%s]".format(nextInt(), f.id.toString, title)) {
-        val sctx = SynthesisContext(ctx, opts, Some(f), program, solver, new DefaultReporter, new java.util.concurrent.atomic.AtomicBoolean)
+        val sctx = SynthesisContext(ctx,
+                                    opts,
+                                    Some(f),
+                                    program,
+                                    solver,
+                                    simpleSolver,
+                                    new DefaultReporter,
+                                    new java.util.concurrent.atomic.AtomicBoolean)
 
         block(sctx, f, p)
       }

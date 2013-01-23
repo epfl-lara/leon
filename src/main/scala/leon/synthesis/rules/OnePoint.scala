@@ -37,7 +37,7 @@ case object OnePoint extends NormalizingRule("One-point") {
           None
       }
 
-      List(RuleInstantiation.immediateDecomp(p, this, List(newProblem), onSuccess))
+      List(RuleInstantiation.immediateDecomp(p, this, List(newProblem), onSuccess, this.name))
     } else {
       Nil
     }

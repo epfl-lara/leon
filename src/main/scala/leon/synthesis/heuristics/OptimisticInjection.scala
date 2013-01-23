@@ -36,7 +36,7 @@ case object OptimisticInjection extends Rule("Opt. Injection") with Heuristic {
 
       val sub = p.copy(phi = And(newExprs))
 
-      Some(HeuristicInstantiation(p, this, List(sub), forward))
+      Some(HeuristicInstantiation(p, this, List(sub), forward, this.name))
     } else {
       None
     }

@@ -5,9 +5,9 @@ import purescala.Trees._
 import purescala.ScalaPrinter
 
 import java.io.File
-class FileInterface(reporter: Reporter, origFile: File) {
+class FileInterface(reporter: Reporter) {
 
-  def updateFile(solutions: Map[Choose, Expr], ignoreMissing: Boolean = false) {
+  def updateFile(origFile: File, solutions: Map[ChooseInfo, Expr], ignoreMissing: Boolean = false) {
     import java.io.{File, BufferedWriter, FileWriter}
     val FileExt = """^(.+)\.([^.]+)$""".r
 
@@ -35,7 +35,7 @@ class FileInterface(reporter: Reporter, origFile: File) {
     }
   }
 
-  def substitueChooses(str: String, solutions: Map[Choose, Expr], ignoreMissing: Boolean = false): String = {
+  def substitueChooses(str: String, solutions: Map[ChooseInfo, Expr], ignoreMissing: Boolean = false): String = {
     var lines = List[Int]()
 
     // Compute line positions
@@ -58,6 +58,27 @@ class FileInterface(reporter: Reporter, origFile: File) {
       }
     }
 
+    def getLineIndentation(offset: Int): Int = {
+      var i = str.lastIndexOf('\n', offset)+1
+
+      var res = 0;
+
+      while (i < str.length) {
+        val c = str.charAt(i)
+        i += 1
+
+        if (c == ' ') {
+          res += 1
+        } else if (c == '\t') {
+          res += 4
+        } else {
+          i = str.length
+        }
+      }
+
+      res
+    }
+
     lastFound = -1
 
     var newStr = str
@@ -71,7 +92,9 @@ class FileInterface(reporter: Reporter, origFile: File) {
         // compute scala equivalent of the position:
         val scalaOffset = str.substring(lineoffset, lastFound).replaceAll("\t", " "*8).length
 
-        solutions.find(_._1.posIntInfo == (lineno, scalaOffset)) match {
+        val indent = getLineIndentation(lastFound)
+
+        solutions.find(_._1.ch.posIntInfo == (lineno, scalaOffset)) match {
           case Some((choose, solution)) =>
             var lvl      = 0;
             var i        = lastFound + 6;
@@ -89,7 +112,7 @@ class FileInterface(reporter: Reporter, origFile: File) {
               i += 1
             } while(continue)
 
-            val newCode = ScalaPrinter(solution)
+            val newCode = ScalaPrinter(solution, indent/2)
             newStr = (newStr.substring(0, lastFound+newStrOffset))+newCode+(newStr.substring(i+newStrOffset, newStr.length))
 
             newStrOffset += -(i-lastFound)+newCode.length

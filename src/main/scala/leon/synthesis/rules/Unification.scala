@@ -27,7 +27,7 @@ object Unification {
         val sub = p.copy(phi = And((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
 
-        List(RuleInstantiation.immediateDecomp(p, this, List(sub), forward))
+        List(RuleInstantiation.immediateDecomp(p, this, List(sub), forward, this.name))
       } else {
         Nil
       }

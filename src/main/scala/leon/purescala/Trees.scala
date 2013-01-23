@@ -23,8 +23,15 @@ object Trees {
    * the expected type. */
   case class Error(description: String) extends Expr with Terminal with ScalacPositional
 
-  case class Choose(vars: List[Identifier], pred: Expr) extends Expr with ScalacPositional with UnaryExtractable {
-    def extract = Some((pred, (e: Expr) => Choose(vars, e).setPosInfo(this).setType(TupleType(vars.map(_.getType)))))
+  case class Choose(vars: List[Identifier], pred: Expr) extends Expr with ScalacPositional with UnaryExtractable with FixedType {
+
+    assert(!vars.isEmpty)
+
+    val fixedType = if (vars.size > 1) TupleType(vars.map(_.getType)) else  vars.head.getType
+
+    def extract = {
+      Some((pred, (e: Expr) => Choose(vars, e).setPosInfo(this)))
+    }
   }
 
   /* Like vals */

@@ -57,6 +57,9 @@ object Common {
 
   object FreshIdentifier {
     def apply(name: String, alwaysShowUniqueID: Boolean = false) : Identifier = new Identifier(name, UniqueCounter.nextGlobal, UniqueCounter.next(name), alwaysShowUniqueID)
+
+    def apply(name: String, forceId: Int): Identifier = new Identifier(name, UniqueCounter.nextGlobal, forceId, true)
+
   }
 
   trait ScalacPositional {

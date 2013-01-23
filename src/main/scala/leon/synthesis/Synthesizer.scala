@@ -6,6 +6,7 @@ import purescala.Definitions.{Program, FunDef}
 import purescala.TreeOps._
 import purescala.Trees.{Expr, Not}
 import purescala.ScalaPrinter
+import solvers.z3._
 import sun.misc.{Signal, SignalHandler}
 
 import solvers.Solver
@@ -19,25 +20,31 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class Synthesizer(val context : LeonContext,
                   val functionContext: Option[FunDef],
-                  val solver: Solver,
                   val program: Program,
                   val problem: Problem,
-                  val rules: Seq[Rule],
-                  val options: SynthesizerOptions) {
+                  val options: SynthesisOptions) {
 
-  protected[synthesis] val reporter = context.reporter
+  val silentContext = context.copy(reporter = new SilentReporter)
 
-  import reporter.{error,warning,info,fatalError}
+  val rules: Seq[Rule] = options.rules
+
+  val solver: FairZ3Solver = new FairZ3Solver(silentContext)
+  solver.setProgram(program)
+
+  val simpleSolver: Solver = new UninterpretedZ3Solver(silentContext)
+  simpleSolver.setProgram(program)
+
+  val reporter = context.reporter
 
   var shouldStop = new AtomicBoolean(false)
 
   def synthesize(): (Solution, Boolean) = {
 
-  val search = if (options.searchWorkers > 1) {
-      new ParallelSearch(this, problem, rules, options.costModel, options.searchWorkers)
-    } else {
-      new SimpleSearch(this, problem, rules, options.costModel)
-    }
+    val search = if (options.searchWorkers > 1) {
+        new ParallelSearch(this, problem, options.searchWorkers)
+      } else {
+        new SimpleSearch(this, problem)
+      }
 
     val sigINT = new Signal("INT")
     var oldHandler: SignalHandler = null
@@ -72,7 +79,4 @@ class Synthesizer(val context : LeonContext,
         (new AndOrGraphPartialSolution(search.g, (task: TaskRunRule) => Solution.choose(task.problem)).getSolution, false)
     }
   }
-
 }
-
-

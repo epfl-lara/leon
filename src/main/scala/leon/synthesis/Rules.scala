@@ -49,8 +49,10 @@ object SolutionBuilder {
   }
 }
 
-abstract class RuleInstantiation(val problem: Problem, val rule: Rule, val onSuccess: SolutionBuilder) {
+abstract class RuleInstantiation(val problem: Problem, val rule: Rule, val onSuccess: SolutionBuilder, val description: String) {
   def apply(sctx: SynthesisContext): RuleApplicationResult
+
+  override def toString = description
 }
 
 sealed abstract class RuleApplicationResult
@@ -59,16 +61,16 @@ case class RuleDecomposed(sub: List[Problem]) extends RuleApplicationResult
 case object RuleApplicationImpossible         extends RuleApplicationResult
 
 object RuleInstantiation {
-  def immediateDecomp(problem: Problem, rule: Rule, sub: List[Problem], onSuccess: List[Solution] => Option[Solution]) = {
+  def immediateDecomp(problem: Problem, rule: Rule, sub: List[Problem], onSuccess: List[Solution] => Option[Solution], description: String) = {
     val subTypes = sub.map(p => TupleType(p.xs.map(_.getType)))
 
-    new RuleInstantiation(problem, rule, new SolutionCombiner(sub.size, subTypes, onSuccess)) {
+    new RuleInstantiation(problem, rule, new SolutionCombiner(sub.size, subTypes, onSuccess), description) {
       def apply(sctx: SynthesisContext) = RuleDecomposed(sub)
     }
   }
 
   def immediateSuccess(problem: Problem, rule: Rule, solution: Solution) = {
-    new RuleInstantiation(problem, rule, new SolutionCombiner(0, Seq(), ls => Some(solution))) {
+    new RuleInstantiation(problem, rule, new SolutionCombiner(0, Seq(), ls => Some(solution)), "Solve with "+solution) {
       def apply(sctx: SynthesisContext) = RuleSuccess(solution)
     }
   }

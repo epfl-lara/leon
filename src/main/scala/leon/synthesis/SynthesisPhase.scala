@@ -24,21 +24,12 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     LeonFlagOptionDef(    "cegis:gencalls",  "--cegis:gencalls",  "Include function calls in CEGIS generators")
   )
 
-  def run(ctx: LeonContext)(p: Program): Program = {
-    val silentContext : LeonContext = ctx.copy(reporter = new SilentReporter)
-
-    val mainSolver = new FairZ3Solver(silentContext)
-    mainSolver.setProgram(p)
-
-    val uninterpretedZ3 = new UninterpretedZ3Solver(silentContext)
-    uninterpretedZ3.setProgram(p)
-
-    var options = SynthesizerOptions()
-    var inPlace                        = false
+  def processOptions(ctx: LeonContext): SynthesisOptions = {
+    var options = SynthesisOptions()
 
     for(opt <- ctx.options) opt match {
       case LeonFlagOption("inplace") =>
-        inPlace = true
+        options = options.copy(inPlace = true)
 
       case LeonValueOption("functions", ListValue(fs)) =>
         options = options.copy(filterFuns = Some(fs.toSet))
@@ -84,74 +75,36 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       case _ =>
     }
 
-    def synthesizeAll(program: Program): Map[Choose, (FunDef, Solution)] = {
-      def noop(u:Expr, u2: Expr) = u
+    options
+  }
 
-      var solutions = Map[Choose, (FunDef, Solution)]()
+  def run(ctx: LeonContext)(p: Program): Program = {
+    val options = processOptions(ctx)
 
-      def actOnChoose(f: FunDef)(e: Expr, a: Expr): Expr = e match {
-        case ch @ Choose(vars, pred) =>
-          val problem = Problem.fromChoose(ch)
-          val synth = new Synthesizer(ctx,
-                                      Some(f),
-                                      mainSolver,
-                                      p,
-                                      problem,
-                                      Rules.all ++ Heuristics.all,
-                                      options)
-          val sol = synth.synthesize()
-
-          solutions += ch -> (f, sol._1)
-
-          a
-        case _ =>
-          a
-      }
-
-      // Look for choose()
-      for (f <- program.definedFunctions.sortBy(_.id.toString) if f.body.isDefined) {
-        if (options.filterFuns.isEmpty || options.filterFuns.get.contains(f.id.toString)) {
-          treeCatamorphism(x => x, noop, actOnChoose(f), f.body.get)
-        }
-      }
-
-      solutions
+    def toProcess(ci: ChooseInfo) = {
+      options.filterFuns.isEmpty || options.filterFuns.get.contains(ci.fd.id.toString)
     }
 
-    val solutions = synthesizeAll(p)
+    var chooses = ChooseInfo.extractFromProgram(ctx, p, options).filter(toProcess)
 
-    // Simplify expressions
-    val simplifiers = List[Expr => Expr](
-      simplifyTautologies(uninterpretedZ3)(_),
-      simplifyLets _,
-      decomposeIfs _,
-      matchToIfThenElse _,
-      simplifyPaths(uninterpretedZ3)(_),
-      patternMatchReconstruction _,
-      simplifyTautologies(uninterpretedZ3)(_),
-      simplifyLets _,
-      rewriteTuples _
-    )
+    val results = chooses.map { ci =>
+      val (sol, isComplete) = ci.synthesizer.synthesize()
 
-    def simplify(e: Expr): Expr = simplifiers.foldLeft(e){ (x, sim) => sim(x) }
+      ci -> sol.toSimplifiedExpr(ctx, p)
+    }.toMap
 
-    val chooseToExprs = solutions.map {
-      case (ch, (fd, sol)) =>
-        (ch, (fd, simplify(sol.toExpr)))
-    }
-
-    if (inPlace) {
+    if (options.inPlace) {
       for (file <- ctx.files) {
-        new FileInterface(ctx.reporter, file).updateFile(chooseToExprs.mapValues(_._2))
+        new FileInterface(ctx.reporter).updateFile(file, results)
       }
     } else {
-      for ((chs, (fd, ex)) <- chooseToExprs) {
-        val middle = " In "+fd.id.toString+", synthesis of: "
+      for ((ci, ex) <- results) {
+        val middle = " In "+ci.fd.id.toString+", synthesis of: "
 
         val remSize = (80-middle.length)
 
         ctx.reporter.info("-"*math.floor(remSize/2).toInt+middle+"-"*math.ceil(remSize/2).toInt)
-        ctx.reporter.info(chs)
+        ctx.reporter.info(ci.ch)
         ctx.reporter.info("-"*35+" Result: "+"-"*36)
         ctx.reporter.info(ScalaPrinter(ex))
         ctx.reporter.info("")

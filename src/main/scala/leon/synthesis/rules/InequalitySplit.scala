@@ -2,8 +2,6 @@ package leon
 package synthesis
 package rules
 
-import solvers.TimeoutSolver
-
 import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.Common._
@@ -13,7 +11,7 @@ import purescala.Extractors._
 
 case object InequalitySplit extends Rule("Ineq. Split.") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
-    val solver = new TimeoutSolver(sctx.solver, 100L) // We give that 100ms
+    val solver = sctx.simpleSolver
 
     val candidates = p.as.filter(_.getType == Int32Type).combinations(2).toList.filter {
       case List(a1, a2) =>
@@ -74,7 +72,7 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
             None
         }
 
-        Some(RuleInstantiation.immediateDecomp(p, this, List(subLT, subEQ, subGT), onSuccess))
+        Some(RuleInstantiation.immediateDecomp(p, this, List(subLT, subEQ, subGT), onSuccess, "Ineq. Split on '"+a1+"' and '"+a2+"'"))
       case _ =>
         None
     })

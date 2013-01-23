@@ -10,10 +10,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 case class SynthesisContext(
   context: LeonContext,
-  options: SynthesizerOptions,
+  options: SynthesisOptions,
   functionContext: Option[FunDef],
   program: Program,
   solver: Solver,
+  simpleSolver: Solver,
   reporter: Reporter,
   shouldStop: AtomicBoolean
 )
@@ -26,6 +27,7 @@ object SynthesisContext {
       synth.functionContext,
       synth.program,
       synth.solver,
+      synth.simpleSolver,
       synth.reporter,
       synth.shouldStop)
   }
