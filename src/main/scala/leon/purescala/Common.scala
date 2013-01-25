@@ -36,6 +36,8 @@ object Common {
     private var _islb: Boolean = false
     def markAsLetBinder : Identifier = { _islb = true; this }
     def isLetBinder : Boolean = _islb
+
+    def freshen: Identifier = FreshIdentifier(name, alwaysShowUniqueID).setType(getType)
   }
 
   private object UniqueCounter {
