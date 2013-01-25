@@ -1501,11 +1501,6 @@ object TreeOps {
     simplifyArithmetic(expr0)
   }
 
-  //Simplify the expression, applying all the simplify for various theories
-  //Maybe it would be a good design decision to not have any simplify calling
-  //an underlying solver, to somehow keep it light and become a function we call often
-  def simplify(expr: Expr): Expr = simplifyArithmetic(expr)
-
   //If the formula consist of some top level AND, find a top level
   //Equals and extract it, return the remaining formula as well
   def extractEquals(expr: Expr): (Option[Equals], Expr) = expr match {
