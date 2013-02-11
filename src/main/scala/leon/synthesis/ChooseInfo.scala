@@ -24,7 +24,9 @@ object ChooseInfo {
 
     // Look for choose()
     for (f <- prog.definedFunctions.sortBy(_.id.toString) if f.body.isDefined) {
-      for ((ch, path) <- new ChooseCollectorWithPaths().traverse(f.body.get)) {
+      val actualBody = And(f.precondition.getOrElse(BooleanLiteral(true)), f.body.get)
+
+      for ((ch, path) <- new ChooseCollectorWithPaths().traverse(actualBody)) {
         results = ChooseInfo(ctx, prog, f, path, ch, options) :: results
       }
     }
