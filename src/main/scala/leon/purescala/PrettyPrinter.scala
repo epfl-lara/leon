@@ -117,7 +117,11 @@ object PrettyPrinter {
     case CaseClass(cd, args) => {
       var nsb = sb
       nsb.append(cd.id)
-      nsb = ppNary(nsb, args, "(", ", ", ")", lvl)
+      if (cd.isCaseObject) {
+        nsb = ppNary(nsb, args, "", "", "", lvl)
+      } else {
+        nsb = ppNary(nsb, args, "(", ", ", ")", lvl)
+      }
       nsb
     }
     case CaseClassInstanceOf(cd, e) => {
