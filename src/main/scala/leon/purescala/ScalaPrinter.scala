@@ -124,7 +124,11 @@ object ScalaPrinter {
 
     case CaseClass(cd, args) => {
       sb.append(cd.id)
-      ppNary(sb, args, "(", ", ", ")", lvl)
+      if (cd.isCaseObject) {
+        ppNary(sb, args, "", "", "", lvl)
+      } else {
+        ppNary(sb, args, "(", ", ", ")", lvl)
+      }
     }
     case CaseClassInstanceOf(cd, e) => {
       pp(e, sb, lvl)

@@ -19,6 +19,7 @@ trait CodeExtraction extends Extractors {
   import global.definitions._
   import StructuralExtractors._
   import ExpressionExtractors._
+  import ExtractorHelpers._
 
 
   private lazy val setTraitSym = definitions.getClass("scala.collection.immutable.Set")
@@ -156,7 +157,9 @@ trait CodeExtraction extends Extractors {
           if(p._1.isAbstractClass) {
             classesToClasses += (p._1 -> new AbstractClassDef(p._2))
           } else if(p._1.isCase) {
-            classesToClasses += (p._1 -> new CaseClassDef(p._2))
+            val ccd = new CaseClassDef(p._2)
+            ccd.isCaseObject = p._1.isModuleClass
+            classesToClasses += (p._1 -> ccd)
           }
       })
 
@@ -367,51 +370,48 @@ trait CodeExtraction extends Extractors {
    * errors. */
   private def scala2PureScala(unit: CompilationUnit, silent: Boolean)(tree: Tree): Expr = {
     def rewriteCaseDef(cd: CaseDef): MatchCase = {
-      def pat2pat(p: Tree): Pattern = p match {
-        case Ident(nme.WILDCARD) => WildcardPattern(None)
-        case b @ Bind(name, Ident(nme.WILDCARD)) => {
-          val newID = FreshIdentifier(name.toString).setType(scalaType2PureScala(unit,silent)(b.symbol.tpe))
-          varSubsts(b.symbol) = (() => Variable(newID))
-          WildcardPattern(Some(newID))
-        }
-        case b @ Bind(name, Typed(Ident(nme.WILDCARD), tpe)) => {
+
+      def pat2pat(p: Tree, binder: Option[Identifier] = None): Pattern = p match {
+        case b @ Bind(name, Typed(pat, tpe)) =>
           val newID = FreshIdentifier(name.toString).setType(scalaType2PureScala(unit,silent)(tpe.tpe))
           varSubsts(b.symbol) = (() => Variable(newID))
-          WildcardPattern(Some(newID))
-        }
-        case a @ Apply(fn, args) if fn.isType && a.tpe.typeSymbol.isCase && classesToClasses.keySet.contains(a.tpe.typeSymbol) => {
-          val cd = classesToClasses(a.tpe.typeSymbol).asInstanceOf[CaseClassDef]
-          assert(args.size == cd.fields.size)
-          CaseClassPattern(None, cd, args.map(pat2pat(_)))
-        }
-        case b @ Bind(name, a @ Apply(fn, args)) if fn.isType && a.tpe.typeSymbol.isCase && classesToClasses.keySet.contains(a.tpe.typeSymbol) => {
+          pat2pat(pat, Some(newID))
+
+        case b @ Bind(name, pat) =>
           val newID = FreshIdentifier(name.toString).setType(scalaType2PureScala(unit,silent)(b.symbol.tpe))
           varSubsts(b.symbol) = (() => Variable(newID))
+          pat2pat(pat, Some(newID))
+
+        case Ident(nme.WILDCARD) =>
+          WildcardPattern(binder)
+
+        case s @ Select(This(_), b) if s.tpe.typeSymbol.isCase &&
+                                       classesToClasses.keySet.contains(s.tpe.typeSymbol) =>
+          // case Obj =>
+          val cd = classesToClasses(s.tpe.typeSymbol).asInstanceOf[CaseClassDef]
+          assert(cd.fields.size == 0)
+          CaseClassPattern(binder, cd, Seq())
+
+        case a @ Apply(fn, args) if fn.isType &&
+                                    a.tpe.typeSymbol.isCase &&
+                                    classesToClasses.keySet.contains(a.tpe.typeSymbol) =>
+
           val cd = classesToClasses(a.tpe.typeSymbol).asInstanceOf[CaseClassDef]
           assert(args.size == cd.fields.size)
-          CaseClassPattern(Some(newID), cd, args.map(pat2pat(_)))
-        }
-        case a@Apply(fn, args) => {
+          CaseClassPattern(binder, cd, args.map(pat2pat(_)))
+
+        case a @ Apply(fn, args) =>
           val pst = scalaType2PureScala(unit, silent)(a.tpe)
           pst match {
-            case TupleType(argsTpes) => TuplePattern(None, args.map(pat2pat))
+            case TupleType(argsTpes) => TuplePattern(binder, args.map(pat2pat(_)))
             case _ => throw ImpureCodeEncounteredException(p)
           }
-        }
-        case b @ Bind(name, a @ Apply(fn, args)) => {
-          val newID = FreshIdentifier(name.toString).setType(scalaType2PureScala(unit,silent)(b.symbol.tpe))
-          varSubsts(b.symbol) = (() => Variable(newID))
-          val pst = scalaType2PureScala(unit, silent)(a.tpe)
-          pst match {
-            case TupleType(argsTpes) => TuplePattern(Some(newID), args.map(pat2pat))
-            case _ => throw ImpureCodeEncounteredException(p)
-          }
-        }
-        case _ => {
-          if(!silent)
+
+        case _ =>
+          if (!silent) {
             unit.error(p.pos, "Unsupported pattern.")
+          }
           throw ImpureCodeEncounteredException(p)
-        }
       }
 
       if(cd.guard == EmptyTree) {
@@ -508,6 +508,14 @@ trait CodeExtraction extends Extractors {
       }
 
       val e2: Option[Expr] = nextExpr match {
+        case ExCaseObject(sym) =>
+          classesToClasses.get(sym) match {
+            case Some(ccd: CaseClassDef) =>
+              Some(CaseClass(ccd, Seq()))
+            case _ =>
+              None
+          }
+
         case ExParameterlessMethodCall(t,n) => {
           val selector = rec(t)
           val selType = selector.getType
@@ -726,6 +734,7 @@ trait CodeExtraction extends Extractors {
             val cct = cctype.asInstanceOf[CaseClassType]
             CaseClass(cct.classDef, nargs).setType(cct)
           }
+
           case ExAnd(l, r) => And(rec(l), rec(r)).setType(BooleanType)
           case ExOr(l, r) => Or(rec(l), rec(r)).setType(BooleanType)
           case ExNot(e) => Not(rec(e)).setType(BooleanType)

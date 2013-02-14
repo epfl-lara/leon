@@ -253,6 +253,7 @@ object Definitions {
   class CaseClassDef(val id: Identifier, prnt: Option[AbstractClassDef] = None) extends ClassTypeDef with ExtractorTypeDef {
     private var parent_ = prnt
     var fields: VarDecls = Nil
+    var isCaseObject = false
     val isAbstract = false
 
     def setParent(newParent: AbstractClassDef) = {

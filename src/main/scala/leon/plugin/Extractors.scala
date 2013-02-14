@@ -123,6 +123,16 @@ trait Extractors {
       }
     }
 
+    object ExCaseObject {
+      def unapply(s: Select): Option[Symbol] = {
+        if (s.tpe.typeSymbol.isModuleClass) {
+          Some(s.tpe.typeSymbol)
+        } else {
+          None
+        }
+      }
+    }
+
     object ExCaseClassSyntheticJunk {
       def unapply(cd: ClassDef): Boolean = cd match {
         case ClassDef(_, _, _, _) if (cd.symbol.isSynthetic && cd.symbol.isFinal) => true
