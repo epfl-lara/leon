@@ -78,31 +78,37 @@ class Synthesizer(val context : LeonContext,
 
     res match {
       case Some((solution, true)) =>
-        val ssol = solution.toSimplifiedExpr(context, program)
         (solution, true)
       case Some((sol, false)) =>
-        val ssol = sol.toSimplifiedExpr(context, program)
-        reporter.info("Solution requires validation")
-
-        val (npr, fds) = solutionToProgram(sol)
-
-        val tsolver = new TimeoutSolver(new FairZ3Solver(silentContext), 10000L)
-        tsolver.setProgram(npr)
-
-        import verification.AnalysisPhase._
-        val vcs = generateVerificationConditions(reporter, npr, fds.map(_.id.name))
-        val vcreport = checkVerificationConditions(silentReporter, Seq(tsolver), vcs)
-
-        if (vcreport.totalValid == vcreport.totalConditions) {
-          (sol, true)
-        } else {
-          reporter.warning("Solution was invalid:")
-          reporter.warning(fds.map(ScalaPrinter(_)).mkString("\n\n"))
-          reporter.warning(vcreport.summaryString)
-          (new AndOrGraphPartialSolution(search.g, (task: TaskRunRule) => Solution.choose(task.problem), false).getSolution, false)
-        }
+        validateSolution(search, sol, 5000L)
       case None =>
         (new AndOrGraphPartialSolution(search.g, (task: TaskRunRule) => Solution.choose(task.problem), true).getSolution, false)
+    }
+  }
+
+  def validateSolution(search: AndOrGraphSearch[TaskRunRule, TaskTryRules, Solution], sol: Solution, timeoutMs: Long): (Solution, Boolean) = {
+    import verification.AnalysisPhase._
+    import verification.VerificationContext
+
+    val ssol = sol.toSimplifiedExpr(context, program)
+    reporter.info("Solution requires validation")
+
+    val (npr, fds) = solutionToProgram(sol)
+
+    val tsolver = new TimeoutSolver(new FairZ3Solver(silentContext), timeoutMs)
+    tsolver.setProgram(npr)
+
+    val vcs = generateVerificationConditions(reporter, npr, fds.map(_.id.name))
+    val vctx = VerificationContext(context, Seq(tsolver), silentReporter)
+    val vcreport = checkVerificationConditions(vctx, vcs)
+
+    if (vcreport.totalValid == vcreport.totalConditions) {
+      (sol, true)
+    } else {
+      reporter.warning("Solution was invalid:")
+      reporter.warning(fds.map(ScalaPrinter(_)).mkString("\n\n"))
+      reporter.warning(vcreport.summaryString)
+      (new AndOrGraphPartialSolution(search.g, (task: TaskRunRule) => Solution.choose(task.problem), false).getSolution, false)
     }
   }
 

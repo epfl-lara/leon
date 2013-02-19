@@ -44,7 +44,12 @@ object XlangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
       }
       case opt => opt
     }
+
     val vr = AnalysisPhase.run(ctx.copy(options = newOptions))(pgm4)
+    completeVerificationReport(vr, parents, functionWasLoop _)
+  }
+
+  def completeVerificationReport(vr: VerificationReport, parents: Map[FunDef, FunDef], functionWasLoop: FunDef => Boolean): VerificationReport = {
     val vcs = vr.conditions
 
     //this is enough to convert invariant postcondition and inductive conditions. However the initial validity
@@ -52,7 +57,9 @@ object XlangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
     //To fix this, we need some information in the VCs about which function the precondtion refers to
     //although we could arguably say that the term precondition is general enough to refer both to a loop invariant
     //precondition and a function invocation precondition
-    val freshVcs = vcs.map(vc => {
+    var freshFtoVcs = Map[FunDef, List[VerificationCondition]]()
+
+    for (vc <- vcs) {
       val funDef = vc.funDef
       if(functionWasLoop(funDef)) {
         val freshVc = new VerificationCondition(
@@ -64,17 +71,13 @@ object XlangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
         freshVc.value = vc.value
         freshVc.solvedWith = vc.solvedWith
         freshVc.time = vc.time
-        freshVc
-      } else vc
-    })
+        freshFtoVcs += freshVc.funDef -> (freshVc :: freshFtoVcs.getOrElse(freshVc.funDef, List()))
+      } else {
+        freshFtoVcs += vc.funDef -> (vc :: freshFtoVcs.getOrElse(vc.funDef, List()))
+      }
+    }
 
-    val sortedFreshVcs = freshVcs.sortWith((vc1, vc2) => {
-      val id1 = vc1.funDef.id.name
-      val id2 = vc2.funDef.id.name
-      if(id1 != id2) id1 < id2 else vc1 < vc2
-    })
-
-    new VerificationReport(sortedFreshVcs)
+    new VerificationReport(freshFtoVcs)
   }
 
 }
