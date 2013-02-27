@@ -542,6 +542,8 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
 
   protected[leon] def fromZ3Formula(model: Z3Model, tree : Z3AST, expectedType: Option[TypeTree] = None) : Expr = {
     def rec(t: Z3AST, expType: Option[TypeTree] = None) : Expr = expType match {
+      case _ if z3IdToExpr contains t => z3IdToExpr(t)
+
       case Some(MapType(kt,vt)) => 
         model.getArrayValue(t) match {
           case None => throw new CantTranslateException(t)
