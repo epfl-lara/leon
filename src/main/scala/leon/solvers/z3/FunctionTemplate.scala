@@ -9,12 +9,10 @@ import purescala.Extractors._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
-
 import evaluators._
-
 import z3.scala._
-
 import scala.collection.mutable.{Set=>MutableSet,Map=>MutableMap}
+import leon.purescala.NondeterminismExtension
 
 case class Z3FunctionInvocation(tfd: TypedFunDef, args: Seq[Z3AST]) {
   override def toString = tfd.signature + args.mkString("(", ",", ")")
@@ -37,9 +35,17 @@ class FunctionTemplate private(
 
   private val z3 = solver.z3
 
-  private val asClauses : Seq[Expr] = {
+  /**
+   * This code is changed to handle non-determinism
+   * @author: ravi 
+   */
+  private def asClauses : Seq[Expr] = {
     (for((b,es) <- guardedExprs; e <- es) yield {
-      Implies(Variable(b), e)
+      
+      //replaces every non-det variable by a unique variable
+      val finale = NondeterminismExtension.makeUniqueNondetIds(e)           
+      
+      Implies(Variable(b), finale)
     }).toSeq
   }
 
@@ -193,13 +199,21 @@ object FunctionTemplate {
 
     def rec(pathVar : Identifier, expr : Expr) : Expr = {
       expr match {
+        //special case for handling lets with assumes
+        case Let(i, Assume(c), b) => { 
+          val re = rec(pathVar, c)
+          storeGuarded(pathVar, re)
+          val rb = rec(pathVar, b)
+          rb
+        }
+          
         case l @ Let(i, e, b) =>
           val newExpr : Identifier = FreshIdentifier("lt", true).setType(i.getType)
           exprVars += newExpr
           val re = rec(pathVar, e)
           storeGuarded(pathVar, Equals(Variable(newExpr), re))
           val rb = rec(pathVar, replace(Map(Variable(i) -> Variable(newExpr)), b))
-          rb
+          rb                 
 
         case l @ LetTuple(is, e, b) =>
           val tuple : Identifier = FreshIdentifier("t", true).setType(TupleType(is.map(_.getType)))
@@ -219,7 +233,7 @@ object FunctionTemplate {
           rb
 
         case m : MatchExpr => sys.error("MatchExpr's should have been eliminated.")
-
+              
         case i @ Implies(lhs, rhs) =>
           if (splitAndOrImplies) {
             if (containsFunctionCalls(i)) {
@@ -278,10 +292,11 @@ object FunctionTemplate {
             val erec = rec(newBool2, elze)
 
             storeGuarded(pathVar, Or(Variable(newBool1), Variable(newBool2)))
-            storeGuarded(pathVar, Or(Not(Variable(newBool1)), Not(Variable(newBool2))))
+            storeGuarded(pathVar, Or(Not(Variable(newBool1)), Not(Variable(newBool2))))            
             // TODO can we improve this? i.e. make it more symmetrical?
             // Probably it's symmetrical enough to Z3.
             storeGuarded(pathVar, Iff(Variable(newBool1), crec)) 
+            storeGuarded(pathVar, Iff(Variable(newBool2), Not(crec)))
             storeGuarded(newBool1, Equals(Variable(newExpr), trec))
             storeGuarded(newBool2, Equals(Variable(newExpr), erec))
             Variable(newExpr)
@@ -354,7 +369,6 @@ object FunctionTemplate {
         val finalPred2 : Expr = rec(activatingBool,  postHolds)
         storeGuarded(activatingBool, finalPred2)
       case None =>
-
     }
 
     new FunctionTemplate(solver, tfd, activatingBool, Set(condVars.toSeq : _*), Set(exprVars.toSeq : _*), Map(guardedExprs.toSeq : _*),

@@ -1,0 +1,13 @@
+A note on optimizations incorporated into the tool
+==================================================
+
+a) Incremental discovery of disjuncts. Disjuncts are not just paths in the program they are also include predicates obtained by assertionizing the UIFs/ADTs/monotonicity properties.
+b) Simplifying non-linear constraints using simple quantifier elimination rules of presburger arithmetic
+c) Targetted unrolling (new)
+d) Using CEGIS when non-linear solving timesout at a particular stage (not very helpful though)
+
+TODO
+====
+
+d) Modular analysis for time bounds
+e) Tightening the bound

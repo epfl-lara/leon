@@ -562,11 +562,44 @@ trait CodeExtraction extends ASTExtractors {
 
 
       val (body2, ensuring) = body match {
-        case ExEnsuredExpression(body2, resSym, contract) =>
-          val resId = FreshIdentifier(resSym.name.toString).setType(funDef.returnType).setPos(resSym.pos)
+        case ExEnsuredExpression(body2, resSym, contract) => {
+          /*val resId = FreshIdentifier(resSym.name.toString).setType(funDef.returnType).setPos(resSym.pos)
           val post = toPureScala(contract)(fctx.withNewVar(resSym -> (() => Variable(resId)))).map( r => (resId, r))
+          (body2, post)*/                           
+          
+          val resId = FreshIdentifier(resSym.name.toString).setType(funDef.returnType).setPos(resSym.pos)
+          val resvar = Variable(resId)
+          //here we need to check if the contract body has some templates
+          val (postcond, templateSyms, templateBody) = contract match {
+            case ExTemplateExpression(pcond, tempSyms, tempBody) => {
+              (pcond, tempSyms, Some(tempBody))
+            }
+            case _ => (contract, List(), None)
+          }
 
-          (body2, post)
+          //extract the postcondition
+          val fctxWithRes = fctx.withNewVar(resSym -> (() => resvar))
+          val post = toPureScala(postcond)(fctxWithRes).map( r => (resId, r))                    
+          //if the template body exists then create a template expression          
+          if(templateBody.isDefined) {
+            
+            //create a template variable for each template symbol
+            val symmap = templateSyms.map((sym) => (sym,leon.invariant.factories.TemplateIdFactory.freshTemplateVar(sym.nameString))).toMap 
+            //creating a new context
+            val newfctx = templateSyms.foldLeft(fctxWithRes)((acc,tempSym) => {              
+              acc.withNewVar(tempSym -> (() => symmap(tempSym)))              
+            })
+            //println("variables to be substituted: "+templateSyms.map(sym => (sym, newfctx.vars(sym)())))
+            
+            val tempExpr = toPureScala(templateBody.get)(newfctx)                    
+            if(tempExpr == None)
+              throw new IllegalStateException("Cannot extract template as pure scala!!")
+            //println("Template expression : "+tempExpr)
+            val funinfo = leon.invariant.structure.FunctionInfoFactory.getOrMakeInfo(funDef)
+            funinfo.setTemplate(tempExpr.get)              
+          }
+          (body2,post)
+        }
 
         case t @ ExHoldsExpression(body2) =>
           val resId = FreshIdentifier("holds").setType(BooleanType).setPos(body.pos)
@@ -730,6 +763,15 @@ trait CodeExtraction extends ASTExtractors {
       var rest = tmpRest
 
       val res = current match {
+        case ExTimeVariable() => invariant.util.TimeVariable()
+        
+        case ExDepthVariable() => invariant.util.DepthVariable()
+        
+        case ExNondetExpression(tpe) => {
+          //create a new variable with name nondet
+          Variable(NondeterminismExtension.nondetId.setType(extractType(tpe)(dctx, current.pos)))
+        }
+        
         case ExArrayLiteral(tpe, args) =>
           FiniteArray(args.map(extractTree)).setType(ArrayType(extractType(tpe)(dctx, current.pos)))
 

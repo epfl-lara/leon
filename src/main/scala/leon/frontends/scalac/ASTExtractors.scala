@@ -118,6 +118,60 @@ trait ASTExtractors {
   object StructuralExtractors {
     import ExtractorHelpers._
 
+    /**
+     * Extracts the templates from the ensuring expression
+     */
+    object ExTemplateExpression {
+      def unapply(tree: Apply): Option[(Tree, List[Symbol], Tree)] = {        
+        tree match {
+          case Apply(Select(Apply(ExSelected("leon", "lang", "invariantLang","package","any2Template"), postcondTree :: Nil), ExNamed("template")),
+            (Function(vardefs, templateBody)) :: Nil) => {
+            //for each vardefs extract the term name
+            val varnames = vardefs.map(_.symbol)
+            //println("postcond: "+postcondTree + "params: "+varnames+" templateBody: "+templateBody)
+            Some(postcondTree, varnames, templateBody)
+          }
+          case _ => None
+        }
+      }
+    }
+    
+    /**
+     * Extracts time variable from the templates and postconditions
+     */
+    object ExTimeVariable {
+      def unapply(tree: Select) : Boolean = tree match {
+        case ExSelected("leon", "lang", "invariantLang","package", "time") =>
+          true
+        case _ => false
+      }
+    }
+    
+    /**
+     * Extracts depth variable from the templates and postconditions
+     */
+    object ExDepthVariable {
+      def unapply(tree: Select) : Boolean = tree match {
+        case ExSelected("leon", "lang", "invariantLang","package","depth") =>
+          true
+        case _ => false
+      }
+    }
+    
+    /**
+     * Extracts nondet constructs
+     */
+    object ExNondetExpression {
+      def unapply(tree: TypeApply) : Option[Type] = tree match {
+        case a @ TypeApply(ExSelected("leon", "lang", "invariantLang", "nondet"), List(tpe)) =>{
+          //println("Found nondet, type: "+tpe.tpe)
+          Some(tpe.tpe)
+        }
+        case _ =>
+          None
+      }
+    }
+
     object ExEnsuredExpression {
       /** Extracts the 'ensuring' contract from an expression. */
       def unapply(tree: Apply): Option[(Tree,Symbol,Tree)] = tree match {

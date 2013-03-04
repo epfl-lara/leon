@@ -61,7 +61,7 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
   override def check: Option[Boolean] = {
     solver.check match {
       case Some(true) =>
-        if (containsFunCalls) {
+        if (containsFunCalls) {          
           None
         } else {
           Some(true)
@@ -88,4 +88,4 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
       case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
     }).toSet
   }
-}
+}  

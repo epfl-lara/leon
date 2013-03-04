@@ -33,7 +33,8 @@ object TypingPhase extends LeonPhase[Program, Program] {
       // Part (1)
       fd.precondition = {
         val argTypesPreconditions = fd.params.flatMap(arg => arg.tpe match {
-          case cct : CaseClassType => Seq(CaseClassInstanceOf(cct, arg.id.toVariable))
+          //check if the case class inherits from a type
+          case cct : CaseClassType if cct.classDef.parent.isDefined => Seq(CaseClassInstanceOf(cct, arg.id.toVariable))
           case _ => Seq()
         })
         argTypesPreconditions match {
@@ -46,7 +47,7 @@ object TypingPhase extends LeonPhase[Program, Program] {
       }
 
       fd.postcondition = fd.returnType match {
-        case cct : CaseClassType => {
+        case cct : CaseClassType if cct.classDef.parent.isDefined => {
 
           fd.postcondition match {
             case Some((id, p)) =>

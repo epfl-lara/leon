@@ -4,7 +4,6 @@ package leon
 package solvers.z3
 
 import leon.utils._
-
 import z3.scala._
 import solvers._
 import purescala.Common._
@@ -14,9 +13,9 @@ import purescala.TypeTreeOps._
 import xlang.Trees._
 import purescala.TreeOps._
 import purescala.TypeTrees._
-
 import scala.collection.mutable.{Map => MutableMap}
 import scala.collection.mutable.{Set => MutableSet}
+import leon.purescala.Extractors._
 
 // This is just to factor out the things that are common in "classes that deal
 // with a Z3 instance"
@@ -87,7 +86,7 @@ trait AbstractZ3Solver
 
   object LeonType {
     def unapply(a: Z3Sort): Option[(TypeTree)] = {
-      sorts.getLeon(a).map(tt => (tt))
+      sorts.getLeon(a).map(tt => (tt))      
     }
   }
 
@@ -161,6 +160,8 @@ trait AbstractZ3Solver
   protected[leon] var reverseADTTesters: Map[Z3FuncDecl, CaseClassType] = Map.empty
   protected[leon] var reverseADTConstructors: Map[Z3FuncDecl, CaseClassType] = Map.empty
   protected[leon] var reverseADTFieldSelectors: Map[Z3FuncDecl, (CaseClassType,Identifier)] = Map.empty
+  protected[leon] var reverseTupleConstructors: Map[Z3FuncDecl, TupleType] = Map.empty
+  protected[leon] var reverseTupleSelectors: Map[Z3FuncDecl, (TupleType, Int)] = Map.empty
 
   protected[leon] val mapRangeSorts: MutableMap[TypeTree, Z3Sort] = MutableMap.empty
   protected[leon] val mapRangeSomeConstructors: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
@@ -304,7 +305,7 @@ trait AbstractZ3Solver
 
       case _=>
         RegularSort(typeToSort(tt))
-    }
+    }     
 
     // Define stuff
     val defs = for ((root, childrenList) <- newHierarchies) yield {
@@ -315,14 +316,14 @@ trait AbstractZ3Solver
       )
     }
 
-    //for ((n, sub, cstrs) <- defs) {
-    //  println(n+":")
-    //  for ((s,css) <- sub zip cstrs) {
-    //    println("  "+s)
-    //    println("    -> "+css)
-    //  }
-    //}
-
+    /*for ((n, sub, cstrs) <- defs) {
+      println(n+":")
+      for ((s,css) <- sub zip cstrs) {
+        println("  "+s)
+        println("    -> "+css)
+      }
+    }*/
+       
     val resultingZ3Info = z3.mkADTSorts(defs)
 
     for ((z3Inf, (root, childrenList)) <- (resultingZ3Info zip newHierarchies)) {
@@ -361,6 +362,7 @@ trait AbstractZ3Solver
     )
 
     sorts += Int32Type -> z3.mkIntSort
+    sorts += RealType -> z3.mkRealSort
     sorts += BooleanType -> z3.mkBoolSort
     sorts += UnitType -> us
 
@@ -387,7 +389,7 @@ trait AbstractZ3Solver
 
   // assumes prepareSorts has been called....
   protected[leon] def typeToSort(oldtt: TypeTree): Z3Sort = normalizeType(oldtt) match {
-    case Int32Type | BooleanType | UnitType =>
+    case Int32Type | BooleanType | UnitType | RealType =>
       sorts.toZ3(oldtt)
 
     case act: AbstractClassType =>
@@ -437,8 +439,8 @@ trait AbstractZ3Solver
         val (tupleSort, consTuple, projsTuple) = z3.mkTupleSort(sortSymbol, tpesSorts: _*)
 
         tupleMetaDecls += tt -> TupleDecls(consTuple, projsTuple)
-
-        tupleSort
+        reverseTupleConstructors += (consTuple -> tt)
+        tupleSort        
       }
 
     case tt @ TypeParameter(id) =>
@@ -491,6 +493,17 @@ trait AbstractZ3Solver
         z3Vars = z3Vars - i
         rb
       }
+      case LetTuple(ids, e, b) => {
+        var ix = 1
+        z3Vars = z3Vars ++ ids.map((id) => {
+          val entry = (id -> rec(TupleSelect(e, ix)))
+          ix += 1
+          entry
+        })
+        val rb = rec(b)
+        z3Vars = z3Vars -- ids
+        rb
+      }
       case Waypoint(_, e) => rec(e)
       case e @ Error(_) => {
         val tpe = e.getType
@@ -522,6 +535,7 @@ trait AbstractZ3Solver
       case Not(Equals(l, r)) => z3.mkDistinct(rec(l), rec(r))
       case Not(e) => z3.mkNot(rec(e))
       case IntLiteral(v) => z3.mkInt(v, typeToSort(Int32Type))
+      case RealLiteral(num,denom) => z3.mkReal(num, denom)
       case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()
       case UnitLiteral() => unitValue
       case Equals(l, r) => z3.mkEq(rec( l ), rec( r ) )
@@ -654,14 +668,185 @@ trait AbstractZ3Solver
       case e: CantTranslateException => None
     }
   }
+   
+  var encodedAsBV = false
+  var bvSize = 0
+  var maxval = 0
+  var maxBits = 800
+  
+  def computationBits(expr: Expr, varsize : Int) : Int = {
+    
+    def max(x: Int, y: Int) = if(x >= y) x else y
+
+    def bitsInVal(x: Int): Int = {
+      var count = 0;
+      var value = x
+      while (value > 0) {
+        count += 1
+        value = value >> 1;
+      }
+      count
+    }
+
+    def rec(expr: Expr): Int = {
+      val bits = expr match {
+        case IntLiteral(v) => bitsInVal(v)
+        //here assuming that denominator is 1
+        case RealLiteral(num,dnum) => bitsInVal(num)
+        case BooleanLiteral(_) => 1
+        case t : Terminal => varsize
+        case Plus(a1,a2) =>  max(rec(a1), rec(a2)) + 1
+        case Minus(a1,a2) =>  max(rec(a1), rec(a2)) + 1
+        case Times(a1,a2) =>  rec(a1) + rec(a2)        
+        case UnaryOperator(a, _) => rec(a)
+        case BinaryOperator(a1, a2, _) => max(rec(a1), rec(a2))
+        case NAryOperator(args, _) => args.tail.foldLeft(rec(args.head))((acc, arg) => max(acc, rec(arg)))
+      }
+      if(bits > maxBits) {
+        //println("Computation requires more than 16bits: "+ expr)
+        maxBits        
+      } else 
+    	 bits
+    }
+    rec(expr)
+  }
+  
+  /**
+   * This converts Integers/reals in the expr to bit vectors of a specified size and 
+   * converts the arithmetic operations accordingly
+   */  
+  protected[leon] def toBitVectorFormula(expr: Expr, bitvecSize: Int) : Option[Z3AST] = {   
+    class CantTranslateException extends Exception
+   
+    val varsInformula: Set[Identifier] = variablesOf(expr)
+
+    var z3Vars: Map[Identifier,Z3AST] = {
+      variables.leonToZ3.filter(p => p._1.isInstanceOf[Variable]).map(p => (p._1.asInstanceOf[Variable].id -> p._2))
+    }
+    
+    //set the bit vector flags for later use
+    encodedAsBV = true
+    bvSize = bitvecSize
+    maxval = (1 << (bitvecSize - 1)) - 1
+    var lb = IntLiteral(-maxval)
+    var ub = IntLiteral(maxval)
+    var boundedExpr = And(varsInformula.foldLeft(Seq(expr))((acc, id) => 
+      acc ++ Seq(LessEquals(lb, id.toVariable),LessEquals(id.toVariable, ub)))) 
+      
+   //over-approximate the bits required for the computation
+   //this is necessary for soundness
+   val cbits = computationBits(expr, bitvecSize)
+   reporter.info("Bits required for the computation: "+cbits)
+   var bvsort = z3.mkBVSort(cbits)   
+
+    def rec(ex: Expr): Z3AST = { 
+      //println("Stacking up call for:")
+      //println(ex)
+      val recResult = (ex match {        
+        case v @ Variable(id) => z3Vars.get(id) match {
+          case Some(ast) => {           
+            ast
+          }
+          case None => {
+            if (id.getType == Int32Type || id.getType == RealType) {              
+              val newAST = z3.mkFreshConst(id.uniqueName, bvsort)
+              z3Vars = z3Vars + (id -> newAST)
+              variables += (v -> newAST)                            
+              //println("Creating a bitvector sort for: "+id+" sort: "+newAST.getSort)
+              newAST
+            } else {
+              reporter.warning("non-numerical variable: "+v)
+              throw new CantTranslateException  
+            }            
+          }
+        }
+        //logical operations
+        case ite @ IfExpr(c, t, e) => z3.mkITE(rec(c), rec(t), rec(e))
+        case And(exs) => z3.mkAnd(exs.map(rec(_)): _*)
+        case Or(exs) => z3.mkOr(exs.map(rec(_)): _*)
+        case Implies(l, r) => z3.mkImplies(rec(l), rec(r))
+        case Iff(l, r) => {
+          val rl = rec(l)
+          val rr = rec(r)
+          // z3.mkIff used to trigger a bug
+          // z3.mkAnd(z3.mkImplies(rl, rr), z3.mkImplies(rr, rl))
+          z3.mkIff(rl, rr)
+        }
+        case Not(Iff(l, r)) => z3.mkXor(rec(l), rec(r))
+        case Not(Equals(l, r)) => z3.mkDistinct(rec(l), rec(r))
+        case Not(e) => z3.mkNot(rec(e))
+        
+        //arithmetic operations
+        case IntLiteral(v) => z3.mkNumeral(v.toString, bvsort)
+        case rl@RealLiteral(num,denom) => if(denom == 1) {
+          val ast = z3.mkNumeral(num.toString, bvsort)
+          //println("Converted: "+num+" to "+ast)
+          ast
+        } else {
+          reporter.warning("denominator not one: "+rl)
+          throw new CantTranslateException
+        }
+        case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()        
+        case Equals(l, r) => z3.mkEq(rec( l ), rec( r ) )
+        case Plus(l, r) => z3.mkBVAdd(rec(l), rec(r))
+        case Minus(l, r) => z3.mkBVSub(rec(l), rec(r))
+        case Times(l, r) => z3.mkBVMul(rec(l), rec(r))
+        case Division(l, r) => z3.mkBVSdiv(rec(l), rec(r))        
+        case UMinus(e) => z3.mkBVSub(z3.mkNumeral("0", bvsort), rec(e))
+        case LessThan(l, r) => z3.mkBVSlt(rec(l), rec(r))
+        case LessEquals(l, r) => z3.mkBVSle(rec(l), rec(r))
+        case GreaterThan(l, r) => z3.mkBVSgt(rec(l), rec(r))
+        case GreaterEquals(l, r) => z3.mkBVSge(rec(l), rec(r))
+          
+        case _ => {
+          reporter.warning("Can't handle this in translation to Z3: " + ex)
+          throw new CantTranslateException
+        }
+      })
+      recResult
+    }
+
+    try {
+      val res = Some(rec(boundedExpr))
+      res
+    } catch {
+      case e: CantTranslateException => None
+    }
+  }
 
   protected[leon] def fromZ3Formula(model: Z3Model, tree : Z3AST) : Expr = {
     def rec(t: Z3AST): Expr = {
       val kind = z3.getASTKind(t)
-      val sort = z3.getSort(t)
+      val sort = z3.getSort(t)      
 
       kind match {
-        case Z3NumeralIntAST(Some(v)) => IntLiteral(v)
+        case Z3NumeralIntAST(None) => {
+          throw IllegalStateException("Encountered Overflow while translation from z3 to Leon AST: value = "+t)
+        }
+        case Z3NumeralIntAST(Some(v)) => {
+          //println("Int AST: "+t+" value: "+v)
+          if (encodedAsBV) {
+            //need to sign extend the value
+            val signMask = maxval + 1
+            if ((v & signMask) > 0) {
+              //here we need to fill up the higher order bits by '1'
+              val newv = v | ~(maxval)
+              IntLiteral(newv)
+
+            } else IntLiteral(v)
+          } else {
+            IntLiteral(v)
+          }
+        }
+        case Z3NumeralRealAST(num: BigInt, dem: BigInt) => {
+          //TODO : denominator could be zero
+          /*if(dem.intValue == 0) 
+              throw IllegalStateException("Denominator is zero!! ")*/
+          val rl = RealLiteral(num.intValue, dem.intValue)
+          if (num < Int.MinValue || num > Int.MaxValue || dem < Int.MinValue || dem > Int.MaxValue)
+            rl.setOverflow
+          rl
+        } 
         case Z3AppAST(decl, args) =>
           val argsSize = args.size
           if(argsSize == 0 && (variables containsZ3 t)) {
@@ -682,15 +867,20 @@ trait AbstractZ3Solver
             CaseClass(cct, args.map(rec))
           } else if (generics containsZ3 decl)  {
             generics.toLeon(decl)
-          } else {
-            sort match {
-              case LeonType(tp: TypeParameter) =>
-                val id = t.toString.split("!").last.toInt
-                GenericValue(tp, id)
-
+          } else if(reverseTupleConstructors contains decl) {
+              val TupleType(subTypes) = reverseTupleConstructors(decl)
+              val rargs = args.map(rec)
+              Tuple(rargs)
+          } 
+          else {
+            sort match {              
               case LeonType(tp: TupleType) =>
                 val rargs = args.map(rec)
                 Tuple(rargs)
+                
+              case LeonType(tp: TypeParameter) =>
+                val id = t.toString.split("!").last.toInt
+                GenericValue(tp, id)              
 
               case LeonType(at @ ArrayType(dt)) =>
                 assert(args.size == 2)
@@ -758,20 +948,20 @@ trait AbstractZ3Solver
                   case OpIDiv =>    Division(rargs(0), rargs(1))
                   case OpMod =>     Modulo(rargs(0), rargs(1))
                   case other =>
-                    System.err.println("Don't know what to do with this declKind : " + other)
+                    System.err.println("Don't know what to do with this sort : " + sort)
                     System.err.println("The arguments are : " + args)
                     throw new CantTranslateException(t)
                 }
             }
           }
         case _ =>
-          System.err.println("Can't handle "+t)
+          System.err.println("Can't handle "+t+" kind: "+kind+" sort: "+sort)
           throw new CantTranslateException(t)
       }
     }
     rec(tree)
   }
-
+  
   // Tries to convert a Z3AST into a *ground* Expr. Doesn't try very hard, because
   //   1) we assume Z3 simplifies ground terms, so why match for +, etc, and
   //   2) we use this precisely in one context, where we know function invocations won't show up, etc.

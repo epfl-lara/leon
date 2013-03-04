@@ -93,7 +93,11 @@ object Trees {
       Untyped
     }
   }
-
+  /* a construct for assuming a condition at a specific point in the body*/
+  case class Assume(cond: Expr) extends Expr with FixedType {
+    val fixedType = UnitType
+  }
+  
   case class Tuple(exprs: Seq[Expr]) extends Expr with FixedType {
     val fixedType = TupleType(exprs.map(_.getType))
   }
@@ -410,6 +414,32 @@ object Trees {
   case class IntLiteral(value: Int) extends Literal[Int] with FixedType {
     val fixedType = Int32Type
   }
+  
+  //The real constants allowed by the language are only rationals
+  case class RealLiteral(numerator: Int, denominator: Int) extends Literal[(Int,Int)] with FixedType {    
+    val value = (numerator,denominator)
+    val fixedType = RealType 
+    
+    private var overflow = false
+    def setOverflow =  {
+      overflow = true
+    }    
+    def hasOverflow = overflow
+    override def toString =  {
+      if(denominator == 1) numerator.toString      
+      else numerator + "/" + denominator
+    }
+  }
+  
+  //a wrapper for real and integer literals (that are wholenumbers and not fractions)
+  /*object WholeNumber{
+    def apply(x: Int) : IntLiteral = IntLiteral(x)
+    def unapply(e : Expr) : Option[Int] = e match {
+      case IntLiteral(x) => Some(x)
+      case RealLiteral(x,1) => Some(x)
+      case _ => None
+    }
+  }*/
 
   case class BooleanLiteral(value: Boolean) extends Literal[Boolean] with FixedType {
     val fixedType = BooleanType
@@ -419,7 +449,7 @@ object Trees {
   case class UnitLiteral() extends Literal[Unit] with FixedType {
     val fixedType = UnitType
     val value = ()
-  }
+  } 
 
   case class CaseClass(ct: CaseClassType, args: Seq[Expr]) extends Expr with FixedType {
     val fixedType = ct
@@ -459,23 +489,34 @@ object Trees {
   }
 
   /* Arithmetic */
-  case class Plus(lhs: Expr, rhs: Expr) extends Expr with FixedType {
-    val fixedType = Int32Type
+  case class Plus(lhs: Expr, rhs: Expr) extends Expr with FixedType {    
+    //val fixedType = Int32Type
+    val lubType = leastUpperBound(lhs.getType,rhs.getType)
+    val fixedType = if(lubType.isDefined) lubType.get else Int32Type
   }
   case class Minus(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    //val fixedType = Int32Type
+    val lubType = leastUpperBound(lhs.getType,rhs.getType)
+    val fixedType = if(lubType.isDefined) lubType.get else Int32Type
   }
   case class UMinus(expr: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    //val fixedType = Int32Type
+    val fixedType = expr.getType
   }
   case class Times(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    //val fixedType = Int32Type
+    val lubType = leastUpperBound(lhs.getType,rhs.getType)
+    val fixedType = if(lubType.isDefined) lubType.get else Int32Type
   }
   case class Division(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    //val fixedType = Int32Type
+    val lubType = leastUpperBound(lhs.getType,rhs.getType)
+    val fixedType = if(lubType.isDefined) lubType.get else Int32Type
   }
   case class Modulo(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    //val fixedType = Int32Type
+    val lubType = leastUpperBound(lhs.getType,rhs.getType)
+    val fixedType = if(lubType.isDefined) lubType.get else Int32Type
   }
   case class LessThan(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     val fixedType = BooleanType
@@ -537,9 +578,8 @@ object Trees {
   case class MultisetDifference(multiset1: Expr, multiset2: Expr) extends Expr 
   case class MultisetToSet(multiset: Expr) extends Expr
 
-  /* Map operations. */
+  /*Map Ooperations. */  
   case class FiniteMap(singletons: Seq[(Expr, Expr)]) extends Expr 
-
   case class MapGet(map: Expr, key: Expr) extends Expr
   case class MapUnion(map1: Expr, map2: Expr) extends Expr 
   case class MapDifference(map: Expr, keys: Expr) extends Expr 

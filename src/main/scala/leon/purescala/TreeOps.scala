@@ -4,8 +4,9 @@ package leon
 package purescala
 
 import leon.solvers._
-
 import scala.collection.concurrent.TrieMap
+import leon.invariant.transformations.NondeterminismConverter
+import leon.invariant.transformations.NondeterminismConverter
 
 object TreeOps {
   import Common._
@@ -343,7 +344,7 @@ object TreeOps {
       case InstanceOfPattern(Some(b), ctd) => InstanceOfPattern(Some(sm(b)), ctd)
       case WildcardPattern(Some(b)) => WildcardPattern(Some(sm(b)))
       case TuplePattern(ob, sps) => TuplePattern(ob.map(sm(_)), sps.map(rewritePattern(_, sm)))
-      case CaseClassPattern(ob, ccd, sps) => CaseClassPattern(ob.map(sm(_)), ccd, sps.map(rewritePattern(_, sm)))
+      case CaseClassPattern(ob, ccd, sps) => CaseClassPattern(ob.map(sm(_)), ccd, sps.map(rewritePattern(_, sm)))      
       case other => other
     }
 
@@ -367,6 +368,12 @@ object TreeOps {
         val newID = FreshIdentifier(i.name, true).copiedFrom(i)
         Some(Let(newID, e, replace(Map(Variable(i) -> Variable(newID)), b)))
 
+      case lt @ LetTuple(ids,e,b) => {
+        val newIDs = ids.map((i) => FreshIdentifier(i.name, true).setType(i.getType))
+        val substsMap = ids.zip(newIDs).map((elem) => { val (id,newid) = elem; (id.toVariable -> newid.toVariable) }).toMap[Expr,Expr]
+        Some(LetTuple(newIDs, e, replace(substsMap, b)))
+      }
+      
       case _ => None
     })(expr)
   }
@@ -667,9 +674,9 @@ object TreeOps {
 
     def rewritePM(e: Expr) : Option[Expr] = e match {
       case m @ MatchExpr(scrut, cases) => {
-        // println("Rewriting the following PM: " + e)
+        //println("Rewriting the following PM: " + e)
 
-        val condsAndRhs = for(cse <- cases) yield {
+        val condsAndRhs = for(cse <- cases) yield {          
           val map = mapForPattern(scrut, cse.pattern)
           val patCond = conditionForPattern(scrut, cse.pattern, includeBinders = false)
           val realCond = cse.theGuard match {
@@ -679,8 +686,17 @@ object TreeOps {
           val newRhs = replaceFromIDs(map, cse.rhs)
           (realCond, newRhs)
         }
+        
+        //Remark: this is hack re-introduced by ravi
+        val optCondsAndRhs = if(isMatchExhaustive(m)) {
+          // this is a hackish optimization: because we know all cases are covered, we replace the last condition by true (and that drops the check)
+          val lastExpr = condsAndRhs.last._2
+          condsAndRhs.dropRight(1) ++ Seq((BooleanLiteral(true),lastExpr))
+        } else {
+          condsAndRhs
+        }
 
-        val bigIte = condsAndRhs.foldRight[Expr](Error("non-exhaustive match").copiedFrom(m))((p1, ex) => {
+        val bigIte = optCondsAndRhs.foldRight[Expr](Error("non-exhaustive match").copiedFrom(m))((p1, ex) => {
           if(p1._1 == BooleanLiteral(true)) {
             p1._2
           } else {
@@ -726,6 +742,7 @@ object TreeOps {
    */
   def simplestValue(tpe: TypeTree) : Expr = tpe match {
     case Int32Type                  => IntLiteral(0)
+    case RealType 					=> RealLiteral(0,1)
     case BooleanType                => BooleanLiteral(false)
     case SetType(baseType)          => FiniteSet(Seq()).setType(tpe)
     case MapType(fromType, toType)  => FiniteMap(Seq()).setType(tpe)
@@ -1440,6 +1457,7 @@ object TreeOps {
 
     def fix[A](f: (A) => A)(a: A): A = {
       val na = f(a)
+      //println("New value: "+na)
       if(a == na) a else fix(f)(na)
     }
 

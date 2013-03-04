@@ -47,4 +47,6 @@ object VCKind extends Enumeration {
   val InvariantInd = Value("inv ind.")
   val InvariantPost = Value("inv post.")
   val InvariantPre = Value("inv pre.")
+  val Inference = Value("inference")
 }
+	

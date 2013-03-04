@@ -20,7 +20,7 @@ object TypeTrees {
     }
 
     def setType(tt: TypeTree): self.type = _type match {
-      case None => _type = Some(tt); this
+      case None => _type = Some(tt); this      
       case Some(o) if o != tt => scala.sys.error("Resetting type information! Type [" + o + "] is modified to [" + tt)
       case _ => this
     }
@@ -61,6 +61,7 @@ object TypeTrees {
     case BooleanType => FiniteSize(2)
     case UnitType => FiniteSize(1)
     case Int32Type => InfiniteSize
+    case RealType => InfiniteSize
     case ListType(_) => InfiniteSize
     case ArrayType(_) => InfiniteSize
     case TypeParameter(_) => InfiniteSize
@@ -96,8 +97,12 @@ object TypeTrees {
 
   case object Untyped extends TypeTree
   case object BooleanType extends TypeTree
-  case object Int32Type extends TypeTree
+  //case object Int32Type extends TypeTree  
   case object UnitType extends TypeTree
+  
+  trait NumericType 
+  case object Int32Type extends TypeTree with NumericType
+  case object RealType extends TypeTree with NumericType //A real variable. 
 
   case class TypeParameter(id: Identifier) extends TypeTree
 

@@ -1,0 +1,38 @@
+* Make all the intermediate template auotmatically synthesized and solved as postconditions
+* Incorporate CEGAR using template based interpolant into the tool
+* Perform modular analysis
+
+Solve callees in isolation using templates. If the callee templates are not strong enough (i.e, if the caller verification did not succeed)
+Try to find a stonger invariant belonging to the template for the callee, i.e, VC condition && (I_{new} ^ ~I_{old}) is unsat. But this may 
+have a trivial solution which is I_{old}. Hence, we want (I_{old} ^ ~I_{new}) satisfiable. This can be added directly to the Farkas constraints.
+Note that this has program variables which are integers. To solve this we can actually treat integers as reals. However, we may not be 
+guaranteed to find stronger one. But will we eventually find one ? (unless the invariant polygon is bounded, finding a real is equivalent to finding an integer.)
+If its a bounded polygon all that we need to do is check if its diameter is atleast one (this enforces an integer to be present in the polygon).
+
+* Abstract interpretation over programs with arbitrary recursive functions
+* Handling "sets" and "maps"
+* Infer templates using quantifier elimination and abduction
+* Extend the approach to graph algorithms
+
+############Short term goals###############
+* Should we add positivity constraints for depth and time variables ?
+* Need to handle overflows while translating z3 model to Leon ASTs. One way is to get a different model. 
+  Note that bounding values may only produce small models for integers and not for reals
+* How to scale up minimization ?
+* Can we use guards to block disjuncts ? In this case, we cannot block selective cases of UFADT axiom but only on the whole
+* Eliminate transitivite equalities when choosing axioms (for distributivity or monotonicity)
+* Add support for finding counter examples for inferred time bounds
+* Profile and check if we can improve performace
+* Provide a way to enable/disable axioms. 
+* Make multiplication, as something that is commutative, associative, distributive and monotonic.
+* use ?(0) as a lightweight syntax for templates.
+* Fix warnings
+* Should we try to use other optimization functions for CEGIS
+* Need to check the correctness of the following after rebase: nondet, assume.
+* Some programs still to handle: HeapSort, MergeSort (needs more axioms) , QuickSort (needs more axioms of multiplication), Union-find, Binary-search (need random access arrays)
+* Try the space bound examples
+
+#########Experimental comparisons###########
+* Try cegis over the entire program (not the intermediate one) 
+* Try HSF by coding up the numerical versions of the programs as horn-clauses
+* 

@@ -2,7 +2,9 @@
 
 package leon
 
-import leon.utils._
+import utils._
+import invariant.transformations._
+import invariant.engine._
 
 object Main {
 
@@ -15,9 +17,11 @@ object Main {
       xlang.ImperativeCodeElimination,
       purescala.FunctionClosure,
       xlang.XlangAnalysisPhase,
+      InferInvariantsPhase,
+      smtlib.LeonToHornPhase,
       synthesis.SynthesisPhase,
       termination.TerminationPhase,
-      verification.AnalysisPhase
+      verification.AnalysisPhase      
     )
   }
 
@@ -28,6 +32,8 @@ object Main {
 
   lazy val topLevelOptions : Set[LeonOptionDef] = Set(
       LeonFlagOptionDef ("termination", "--termination",        "Check program termination"),
+      LeonFlagOptionDef ("inferInv",   "--inferInv",          "Invariant Inference"),
+      LeonFlagOptionDef ("genHorn",   "--genHorn",          "Dumping Leon programs as Horn Clauses in SMTLIBv2 format"),
       LeonFlagOptionDef ("synthesis",   "--synthesis",          "Partial synthesis of choose() constructs"),
       LeonFlagOptionDef ("xlang",       "--xlang",              "Support for extra program constructs (imperative,...)"),
       LeonFlagOptionDef ("library",     "--library",            "Inject Leon standard library"),
@@ -38,7 +44,7 @@ object Main {
   lazy val allOptions = allComponents.flatMap(_.definedOptions) ++ topLevelOptions
 
   def displayHelp(reporter: Reporter) {
-    reporter.info("usage: leon [--xlang] [--termination] [--synthesis] [--help] [--debug=<N>] [..] <files>")
+    reporter.info("usage: leon [--xlang] [--termination] [--inferInv] [--synthesis] [--help] [--debug=<N>] [..] <files>")
     reporter.info("")
     for (opt <- topLevelOptions.toSeq.sortBy(_.name)) {
       reporter.info("%-20s %s".format(opt.usageOption, opt.usageDesc))
@@ -135,6 +141,10 @@ object Main {
     for(opt <- leonOptions) opt match {
       case LeonFlagOption("termination", value) =>
         settings = settings.copy(termination = value)
+      case LeonFlagOption("inferInv", value) =>
+        settings = settings.copy(inferInv = value)
+      case LeonFlagOption("genHorn", value) =>
+        settings = settings.copy(genHorn = value)
       case LeonFlagOption("synthesis", value) =>
         settings = settings.copy(synthesis = value)
       case LeonFlagOption("library", value) =>
@@ -195,13 +205,19 @@ object Main {
 
     val pipeBegin : Pipeline[List[String],Program] =
       ExtractionPhase andThen
-      PreprocessingPhase
+      PreprocessingPhase andThen      
+      invariant.transformations.TimeStepsPhase andThen
+      invariant.transformations.DepthInstPhase
 
     val pipeProcess: Pipeline[Program, Any] = {
       if (settings.synthesis) {
         SynthesisPhase
       } else if (settings.termination) {
         TerminationPhase
+      } else if (settings.inferInv){
+        InferInvariantsPhase
+      } else if (settings.genHorn){
+        smtlib.LeonToHornPhase
       } else if (settings.xlang) {
         XlangAnalysisPhase
       } else if (settings.verify) {

@@ -77,8 +77,8 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
           sb.append(")")
         } else {
           pp(id, p)
-        }
-
+        }      
+        
       case LetTuple(bs,d,e) =>
         sb.append("(let ")
         ppNary(bs, "(", ",", " :=");
@@ -114,6 +114,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case UMinus(expr) => ppUnary(expr, "-(", ")")
       case Equals(l,r) => ppBinary(l, r, " == ")
       case IntLiteral(v) => sb.append(v)
+      case RealLiteral(n,d) => if(d == 1) sb.append(n) else sb.append(n+"/"+d) 
       case BooleanLiteral(v) => sb.append(v)
       case StringLiteral(s) => sb.append("\"" + s + "\"")
       case UnitLiteral() => sb.append("()")
@@ -351,6 +352,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case Untyped => sb.append("<untyped>")
       case UnitType => sb.append("Unit")
       case Int32Type => sb.append("Int")
+      case RealType => sb.append("Real")
       case BooleanType => sb.append("Boolean")
       case ArrayType(bt) =>
         sb.append("Array[")
@@ -541,7 +543,11 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case TypeParameter(id) =>
         pp(id, p)
 
+      case leon.invariant.util.ResultVariable() => sb.append("#res")
+      case leon.invariant.util.TimeVariable() => sb.append("#time")
+      case leon.invariant.util.DepthVariable() => sb.append("#depth")
       case _ => sb.append("Tree? (" + tree.getClass + ")")
+        //sb.append(tree.toString)
     }
     if (opts.printPositions) {
       ppos(tree.getPos)
