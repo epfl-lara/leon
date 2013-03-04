@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry excluding="src/main/scala/|src/main/java/|library/|library/src/|library/src/main/|library/target/|library/target/streams/|library/target/streams/$global/|library/target/streams/$global/compilers/|library/target/streams/$global/compilers/$global/|library/target/streams/$global/update/|library/target/streams/$global/update/$global/|library/target/streams/compile/|library/target/streams/compile/$global/|library/target/streams/compile/$global/$global/|library/target/streams/compile/compile/|library/target/streams/compile/compile/$global/|mytestcases/|project/|project/target/|project/target/streams/|project/target/streams/$global/|project/target/streams/$global/compilers/|project/target/streams/$global/compilers/$global/|project/target/streams/$global/update/|project/target/streams/$global/update/$global/|project/target/streams/compile/|project/target/streams/compile/$global/|project/target/streams/compile/$global/$global/|project/target/streams/compile/compile/|project/target/streams/compile/compile/$global/|regression/|regression/invalid/|regression/valid/|src/|src/main/|src/main/resources/|src/main/resources/leon/|src/test/|src/test/resources/|src/test/resources/regression/|src/test/resources/regression/verification/|src/test/resources/regression/verification/purescala/|src/test/resources/regression/verification/xlang/|target/|target/streams/|target/streams/$global/|target/streams/$global/compilers/|target/streams/$global/compilers/$global/|target/streams/$global/script/|target/streams/$global/script/$global/|target/streams/$global/setup/|target/streams/$global/setup/$global/|target/streams/$global/update/|target/streams/$global/update/$global/|target/streams/compile/|target/streams/compile/$global/|target/streams/compile/$global/$global/|target/streams/compile/compile/|target/streams/compile/compile/$global/|unmanaged/|unmanaged/common/|web/|web/conf/|web/lib/|testcases/graph/|testcases/graph/dijkstras/|testcases/graph/MST/|testcases/malkis/|testcases/synthesis/|testcases/synthesis/cav2013/|testcases/testgen/|testcases/vstte10competition/|testcases/" kind="src" path=""/>
+	<classpathentry kind="src" path="src/main/java"/>
+	<classpathentry kind="src" path="src/main/scala"/>
+	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_COMPILER_CONTAINER"/>
+	<classpathentry kind="lib" path="unmanaged/64/cafebabe_2.9.2-1.2.jar"/>
+	<classpathentry kind="lib" path="unmanaged/64/scalaz3.jar"/>
+	<classpathentry kind="lib" path="unmanaged/common/cafebabe_2.9.2-1.2.jar"/>
+	<classpathentry kind="lib" path="unmanaged/64/akka-actor-2.0-SNAPSHOT.jar"/>
+	<classpathentry kind="output" path="target/scala-2.9.2/classes"/>
+</classpath>
