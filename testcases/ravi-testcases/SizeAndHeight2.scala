@@ -14,8 +14,7 @@ object SizeAndHeight
 	} ensuring(res => res != height(t) - 1)
 	//ensuring(res => res >= height(t))	
 	//ensuring(res => res >= height(t) && res  >= 0)
-		
-	
+			
 	def height(t: Tree): Int = {
 	  t match{
 	    case Leaf() => 0
