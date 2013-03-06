@@ -30,10 +30,7 @@ object CompleteBinTreee
 	} ensuring (res => (!complete(t) || twopower(height(t)) - 1 != res - 1))    
 	//ensuring (res => (!complete(t) || twopower(height(t)) - 1 <= res))
 	
-	def twopower(x: Int) : Int = {
-    //require(x >= 0)
-    
-    	if(x < 1) 1 else 2* twopower(x - 1)
-    
-	}//ensuring (res => res >= 1)
+	def twopower(x: Int) : Int = {		   
+    	if(x < 1) 1 else 2* twopower(x - 1)    
+	}
 } 

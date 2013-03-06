@@ -23,13 +23,13 @@ object CountDiff
 	  	  }
 	  	}
 	  }	  
-	}  ensuring(res => res == size(a) - size(b))
-	//ensuring(res => res._1 >= res_2.1)
+	}  ensuring(res => res != size(a) - size(b) - 1)
+	 //ensuring(res => res == size(a) - size(b))
 	
 	def size(t: Tree) : Int = {
 	  t match {
 	  	case Leaf() => 0
 	  	case Node(l,x,r) => size(l) + size(r) + 1
 	  }
-	} //ensuring (res => res >= 0)
+	} 
 } 
