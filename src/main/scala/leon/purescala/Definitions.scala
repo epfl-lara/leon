@@ -140,32 +140,28 @@ object Definitions {
     def calls(f1: FunDef, f2: FunDef) : Boolean = callGraph((f1,f2))
 
     lazy val (transitiveCallGraph, transitiveCallers, transitiveCallees) = {
-      var resSet : Set[(FunDef,FunDef)] = callGraph
+      var tCallees: Map[FunDef, Set[FunDef]] = callGraph.groupBy(_._1).mapValues(_.map(_._2).toSet)
       var change = true
 
       while(change) {
         change = false
-        for(f1 <- definedFunctions; f2 <- callers(f1); f3 <- callees(f1)) {
-          if(!resSet(f2,f3)) {
+        for ((fd, calls) <- tCallees) {
+          val newCalls = calls ++ calls.flatMap(tCallees.getOrElse(_, Set()))
+
+          if (newCalls != calls) {
             change = true
-            resSet = resSet + ((f2,f3))
+            tCallees += fd -> newCalls
           }
         }
       }
 
-      var tCallers: Map[FunDef,Set[FunDef]] =
-        new scala.collection.immutable.HashMap[FunDef,Set[FunDef]]
-      var tCallees: Map[FunDef,Set[FunDef]] =
-        new scala.collection.immutable.HashMap[FunDef,Set[FunDef]]
+      val tCallGraph: Set[(FunDef, FunDef)] = tCallees.toSeq.flatMap {
+        case (fd, calls) => calls.map(fd -> _)
+      }.toSet
 
-      for(funDef <- definedFunctions) {
-        val clrs = resSet.filter(_._2 == funDef).map(_._1)
-        val cles = resSet.filter(_._1 == funDef).map(_._2)
-        tCallers = tCallers + (funDef -> clrs)
-        tCallees = tCallees + (funDef -> cles)
-      }
+      val tCallers: Map[FunDef, Set[FunDef]] = tCallGraph.groupBy(_._2).mapValues(_.map(_._1).toSet)
 
-      (resSet, tCallers, tCallees)
+      (tCallGraph, tCallers, tCallees)
     }
 
     def transitivelyCalls(f1: FunDef, f2: FunDef) : Boolean = transitiveCallGraph((f1,f2))
