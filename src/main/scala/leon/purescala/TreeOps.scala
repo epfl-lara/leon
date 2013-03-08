@@ -1191,17 +1191,6 @@ object TreeOps {
     protected def register(cond: Expr, path: C): C
 
     protected def rec(e: Expr, path: C): Expr = e match {
-      case Let(i, e @ FunctionInvocation(fd, callArgs), b) if fd.hasPostcondition =>
-        val argsMap = fd.args.map(vd => Variable(vd.id)) zip callArgs
-
-        val newPost = TreeOps.replace(Map(ResultVariable() -> Variable(i)) ++ argsMap, fd.postcondition.get)
-
-        val pred = newPost
-
-        val se = rec(e, path)
-        val sb = rec(b, register(pred, path))
-        Let(i, se, sb)
-
       case Let(i, e, b) =>
         val se = rec(e, path)
         val sb = rec(b, register(Equals(Variable(i), se), path))
