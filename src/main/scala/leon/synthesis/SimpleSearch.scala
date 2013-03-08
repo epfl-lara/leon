@@ -35,6 +35,10 @@ class SimpleSearch(synth: Synthesizer,
                    rules: Seq[Rule],
                    costModel: CostModel) extends AndOrGraphSearch[TaskRunRule, TaskTryRules, Solution](new AndOrGraph(TaskTryRules(problem), SearchCostModel(costModel))) {
 
+  def this(synth: Synthesizer, problem: Problem) = {
+    this(synth, problem, synth.rules, synth.options.costModel)
+  }
+
   import synth.reporter._
 
   val sctx = SynthesisContext.fromSynthesizer(synth)
@@ -85,25 +89,29 @@ class SimpleSearch(synth: Synthesizer,
 
   var shouldStop = false
 
+  def searchStep() {
+    nextLeaf() match {
+      case Some(l)  =>
+        l match {
+          case al: g.AndLeaf =>
+            val sub = expandAndTask(al.task)
+            onExpansion(al, sub)
+          case ol: g.OrLeaf =>
+            val sub = expandOrTask(ol.task)
+            onExpansion(ol, sub)
+        }
+      case None =>
+        stop()
+    }
+  }
+
   def search(): Option[Solution] = {
     sctx.solver.init()
 
     shouldStop = false
 
     while (!g.tree.isSolved && !shouldStop) {
-      nextLeaf() match {
-        case Some(l)  =>
-          l match {
-            case al: g.AndLeaf =>
-              val sub = expandAndTask(al.task)
-              onExpansion(al, sub)
-            case ol: g.OrLeaf =>
-              val sub = expandOrTask(ol.task)
-              onExpansion(ol, sub)
-          }
-        case None =>
-          stop()
-      }
+      searchStep()
     }
     g.tree.solution
   }

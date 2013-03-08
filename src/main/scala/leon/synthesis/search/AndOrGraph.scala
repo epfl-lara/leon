@@ -201,5 +201,30 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S](val root: OT, val cos
       parent.expandLeaf(this, succ)
     }
   }
+
+  def getStatus: (Int, Int) = {
+    var total: Int = 0
+    var closed: Int = 0
+
+    def tr(t: Tree, isParentClosed: Boolean) {
+      val isClosed = isParentClosed || t.isSolved || t.isUnsolvable
+      if (isClosed) {
+        closed += 1
+      }
+      total += 1
+
+      t match {
+        case an: AndNode =>
+          an.subProblems.values.foreach(tr(_, isClosed))
+        case on: OrNode =>
+          (on.alternatives.values ++ on.triedAlternatives.values).foreach(tr(_, isClosed))
+        case _ =>
+      }
+    }
+
+    tr(tree, false)
+
+    (closed, total)
+  }
 }
 

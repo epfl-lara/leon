@@ -357,12 +357,13 @@ object Trees {
       tp: (TypeTree, StringBuffer, Int) => Unit,
       dp: (Definition, StringBuffer, Int) => Unit
     ): StringBuffer = {
-      sb.append("\n")
+      sb.append("{\n")
       dp(fd, sb, lvl+1)
       sb.append("\n")
       sb.append("\n")
       ind(sb, lvl)
       ep(body, sb, lvl)
+      sb.append("}\n")
       sb
     }
 

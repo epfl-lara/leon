@@ -12,11 +12,11 @@ case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifie
 }
 
 object Problem {
-  def fromChoose(ch: Choose): Problem = {
+  def fromChoose(ch: Choose, pc: Expr = BooleanLiteral(true)): Problem = {
     val xs = ch.vars
     val phi = ch.pred
-    val as = (variablesOf(phi)--xs).toList
+    val as = (variablesOf(And(pc, phi))--xs).toList
 
-    Problem(as, BooleanLiteral(true), phi, xs)
+    Problem(as, pc, phi, xs)
   }
 }

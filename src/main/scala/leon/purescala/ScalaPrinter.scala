@@ -15,6 +15,12 @@ object ScalaPrinter {
     retSB.toString
   }
 
+  def apply(tree: Expr, lvl: Int): String = {
+    val retSB = new StringBuffer
+    pp(tree, retSB, lvl)
+    retSB.toString
+  }
+
   def apply(tpe: TypeTree): String = {
     val retSB = new StringBuffer
     pp(tpe, retSB, 0)

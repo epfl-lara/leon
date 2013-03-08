@@ -58,7 +58,9 @@ class FunctionTemplate private(
     zippedFunDefArgs
   }
 
-  val asZ3Clauses: Seq[Z3AST] = asClauses.map(solver.toZ3Formula(_, idToZ3Ids).get)
+  val asZ3Clauses: Seq[Z3AST] = asClauses.map {
+    solver.toZ3Formula(_, idToZ3Ids).getOrElse(sys.error("Could not translate to z3. Did you forget --xlang?"))
+  }
 
   private val blockers : Map[Identifier,Set[FunctionInvocation]] = {
     val idCall = FunctionInvocation(funDef, funDef.args.map(_.toVariable))

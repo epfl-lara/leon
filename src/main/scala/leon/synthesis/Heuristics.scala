@@ -38,7 +38,7 @@ object HeuristicInstantiation {
     Some(s)
   }
 
-  def apply(problem: Problem, rule: Rule, subProblems: List[Problem], onSuccess: List[Solution] => Option[Solution]): RuleInstantiation = {
+  def apply(problem: Problem, rule: Rule, subProblems: List[Problem], onSuccess: List[Solution] => Option[Solution], description: String): RuleInstantiation = {
     val subTypes = subProblems.map(p => TupleType(p.xs.map(_.getType)))
 
     val builder = new SolutionBuilder(subProblems.size, subTypes) {
@@ -47,7 +47,7 @@ object HeuristicInstantiation {
       }
     }
 
-    new RuleInstantiation(problem, rule, builder) {
+    new RuleInstantiation(problem, rule, builder, description) {
       def apply(sctx: SynthesisContext) = RuleDecomposed(subProblems)
 
     }

@@ -12,6 +12,10 @@ class ParallelSearch(synth: Synthesizer,
                      costModel: CostModel,
                      nWorkers: Int) extends AndOrGraphParallelSearch[SynthesisContext, TaskRunRule, TaskTryRules, Solution](new AndOrGraph(TaskTryRules(problem), SearchCostModel(costModel)), nWorkers) {
 
+  def this(synth: Synthesizer, problem: Problem, nWorkers: Int) = {
+    this(synth, problem, synth.rules, synth.options.costModel, nWorkers)
+  }
+
   import synth.reporter._
 
   // This is HOT shared memory, used only in stop() for shutting down solvers!

@@ -20,7 +20,7 @@ case object UnconstrainedOutput extends NormalizingRule("Unconstr.Output") {
           None
       }
 
-      List(RuleInstantiation.immediateDecomp(p, this, List(sub), onSuccess))
+      List(RuleInstantiation.immediateDecomp(p, this, List(sub), onSuccess, this.name))
     } else {
       Nil
     }

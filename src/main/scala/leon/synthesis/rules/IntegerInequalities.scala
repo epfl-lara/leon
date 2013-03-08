@@ -131,7 +131,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
         val constraints: List[Expr] = for((ub, uc) <- upperBounds; (lb, lc) <- lowerBounds) 
                                         yield LessEquals(ceilingDiv(lb, IntLiteral(lc)), floorDiv(ub, IntLiteral(uc)))
         val pre = And(exprNotUsed ++ constraints)
-        List(RuleInstantiation.immediateSuccess(problem, this, Solution(pre, Set(), witness)))
+        List(RuleInstantiation.immediateSuccess(problem, this, Solution(pre, Set(), Tuple(Seq(witness)))))
       } else {
 
         val involvedVariables = (upperBounds++lowerBounds).foldLeft(Set[Identifier]())((acc, t) => {
@@ -201,7 +201,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
             None
         }
 
-        List(RuleInstantiation.immediateDecomp(problem, this, List(subProblem), onSuccess))
+        List(RuleInstantiation.immediateDecomp(problem, this, List(subProblem), onSuccess, this.name))
       }
     }
   }

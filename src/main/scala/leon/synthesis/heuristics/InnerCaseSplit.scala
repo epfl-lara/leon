@@ -26,13 +26,13 @@ case object InnerCaseSplit extends Rule("Inner-Case-Split") with Heuristic {
 
         phi match {
           case Or(os) =>
-            List(rules.CaseSplit.split(os, p))
+            List(rules.CaseSplit.split(os, p, "Inner case-split"))
 
           case And(as) =>
             val optapp = for ((a, i) <- as.zipWithIndex) yield {
               a match {
                 case Or(os) =>
-                  Some(rules.CaseSplit.split(os.map(o => And(as.updated(i, o))), p))
+                  Some(rules.CaseSplit.split(os.map(o => And(as.updated(i, o))), p, "Inner case-split"))
 
                 case _ =>
                   None

@@ -1,11 +1,13 @@
 package leon
 package synthesis
 
-import leon.purescala.Trees._
-import leon.purescala.TypeTrees.{TypeTree,TupleType}
-import leon.purescala.Definitions._
-import leon.purescala.TreeOps._
-import leon.xlang.Trees.LetDef
+import purescala.Trees._
+import purescala.TypeTrees.{TypeTree,TupleType}
+import purescala.Definitions._
+import purescala.TreeOps._
+import xlang.Trees.LetDef
+import xlang.TreeOps.{ScopeSimplifier => XLangScopeSimplifier}
+import solvers.z3.UninterpretedZ3Solver
 
 // Defines a synthesis solution of the form:
 // ⟨ P | T ⟩
@@ -26,6 +28,26 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr) {
 
   def fullTerm =
     defs.foldLeft(term){ case (t, fd) => LetDef(fd, t) }
+
+  def toSimplifiedExpr(ctx: LeonContext, p: Program): Expr = {
+    val uninterpretedZ3 = new UninterpretedZ3Solver(ctx.copy(reporter = new SilentReporter))
+    uninterpretedZ3.setProgram(p)
+
+    val simplifiers = List[Expr => Expr](
+      simplifyTautologies(uninterpretedZ3)(_),
+      simplifyLets _,
+      decomposeIfs _,
+      matchToIfThenElse _,
+      simplifyPaths(uninterpretedZ3)(_),
+      patternMatchReconstruction _,
+      simplifyTautologies(uninterpretedZ3)(_),
+      simplifyLets _,
+      rewriteTuples _,
+      (new ScopeSimplifier with XLangScopeSimplifier).transform _
+    )
+
+    simplifiers.foldLeft(toExpr){ (x, sim) => sim(x) }
+  }
 }
 
 object Solution {

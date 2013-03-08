@@ -15,7 +15,7 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
         case IsTyped(origId, AbstractClassType(cd)) => (origId, cd)
     }
 
-    val steps = for (candidate <- candidates) yield {
+    val instances = for (candidate <- candidates) yield {
       val (origId, cd) = candidate
       val oas = p.as.filterNot(_ == origId)
 
@@ -35,10 +35,13 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
         case _ => false
       }
 
+      // Map for getting a formula in the context of within the recursive function
+      val substMap = residualMap + (origId -> Variable(inductOn))
+
       if (isRecursive) {
 
-        val innerPhi = substAll(residualMap + (origId -> Variable(inductOn)), p.phi)
-        val innerPC  = substAll(residualMap + (origId -> Variable(inductOn)), p.pc)
+        val innerPhi = substAll(substMap, p.phi)
+        val innerPC  = substAll(substMap, p.pc)
 
         val subProblemsInfo = for (dcd <- cd.knownDescendents.sortBy(_.id.name)) yield dcd match {
           case ccd : CaseClassDef =>
@@ -92,11 +95,12 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
               // might only have to enforce it on solutions of base cases.
               None
             } else {
-              val funPre = subst(origId -> Variable(inductOn), Or(globalPre))
+              val funPre = substAll(substMap, Or(globalPre))
+              val funPost = substAll(substMap, p.phi)
               val outerPre = Or(globalPre)
 
               newFun.precondition = Some(funPre)
-              newFun.postcondition = Some(LetTuple(p.xs.toSeq, ResultVariable().setType(resType), p.phi))
+              newFun.postcondition = Some(LetTuple(p.xs.toSeq, ResultVariable().setType(resType), funPost))
 
               newFun.body = Some(MatchExpr(Variable(inductOn), cases))
 
@@ -107,12 +111,12 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
             }
         }
 
-        Some(HeuristicInstantiation(p, this, subProblemsInfo.map(_._1).toList, onSuccess))
+        Some(HeuristicInstantiation(p, this, subProblemsInfo.map(_._1).toList, onSuccess, "ADT Induction on '"+origId+"'"))
       } else {
         None
       }
     }
 
-    steps.flatten
+    instances.flatten
   }
 }

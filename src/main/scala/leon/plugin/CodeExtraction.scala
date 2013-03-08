@@ -374,6 +374,11 @@ trait CodeExtraction extends Extractors {
           varSubsts(b.symbol) = (() => Variable(newID))
           WildcardPattern(Some(newID))
         }
+        case b @ Bind(name, Typed(Ident(nme.WILDCARD), tpe)) => {
+          val newID = FreshIdentifier(name.toString).setType(scalaType2PureScala(unit,silent)(tpe.tpe))
+          varSubsts(b.symbol) = (() => Variable(newID))
+          WildcardPattern(Some(newID))
+        }
         case a @ Apply(fn, args) if fn.isType && a.tpe.typeSymbol.isCase && classesToClasses.keySet.contains(a.tpe.typeSymbol) => {
           val cd = classesToClasses(a.tpe.typeSymbol).asInstanceOf[CaseClassDef]
           assert(args.size == cd.fields.size)
@@ -660,7 +665,7 @@ trait CodeExtraction extends Extractors {
           case ExInt32Literal(v) => IntLiteral(v).setType(Int32Type)
           case ExBooleanLiteral(v) => BooleanLiteral(v).setType(BooleanType)
           case ExUnitLiteral() => UnitLiteral
-
+          case ExLocally(body) => rec(body)
           case ExTyped(e,tpt) => rec(e)
           case ExIdentifier(sym,tpt) => varSubsts.get(sym) match {
             case Some(fun) => fun()
@@ -1016,6 +1021,7 @@ trait CodeExtraction extends Extractors {
             val fd = defsToDefs(sy)
             FunctionInvocation(fd, ar.map(rec(_))).setType(fd.returnType).setPosInfo(lc.pos.line,lc.pos.column) 
           }
+
           case pm @ ExPatternMatching(sel, cses) => {
             val rs = rec(sel)
             val rc = cses.map(rewriteCaseDef(_))

@@ -103,4 +103,37 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
 
     processing -= ol
   }
+
+  def traversePathFrom(n: g.Tree, path: List[Int]): Option[g.Tree] = {
+    n match {
+      case l: g.Leaf =>
+        assert(path.isEmpty)
+        Some(l)
+      case an: g.AndNode =>
+        path match {
+          case x :: xs =>
+            traversePathFrom(an.subProblems(an.subTasks(x)), xs)
+          case Nil =>
+            Some(an)
+        }
+
+      case on: g.OrNode =>
+        path match {
+          case x :: xs =>
+            val t = on.altTasks(x)
+            if (on.triedAlternatives contains t) {
+              None
+            } else {
+              traversePathFrom(on.alternatives(t), xs)
+            }
+
+          case Nil =>
+            Some(on)
+        }
+    }
+  }
+
+  def traversePath(path: List[Int]): Option[g.Tree] = {
+    traversePathFrom(g.tree, path)
+  }
 }

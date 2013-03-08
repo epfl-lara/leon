@@ -25,12 +25,21 @@ object SortedList {
   //    content(out) == (content(Nil()) -- Set(v))
   //}
 
-  def deleteSynth(in: List, v: Int) = choose {
-    (out: List) =>
-      // This spec is too weak. Maybe use later as bad example?
-      //!(content(out) contains v) && size(out)+1 >= size(in)
-      (content(out) == (content(in) -- Set(v)))
-  }
+  def deleteSynth(in: List, v: Int) = (in match {
+    case Cons(head22, tail21) =>
+      (tail21 match {
+        case Cons(head23, tail23) =>
+          (choose { (out: List) =>
+            (content(out) == (content(Cons(head22, Cons(head23, tail23))) -- Set(v)))
+          })
+        case _ =>
+          (choose { (out: List) =>
+            (content(out) == (content(Cons(head22, Nil())) -- Set(v)))
+          })
+      })
+    case _ =>
+      Nil()
+  })
 
   def concatSynth(in1: List, in2: List) = choose {
     (out : List) =>

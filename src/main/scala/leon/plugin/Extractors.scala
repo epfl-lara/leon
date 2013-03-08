@@ -304,6 +304,16 @@ trait Extractors {
       }
     }
 
+    object ExLocally {
+      def unapply(tree: Apply) : Option[Tree] = tree match {
+        case Apply(TypeApply(ExSelected("scala", "Predef", "locally"), _), List(body)) =>
+          Some(body)
+
+        case _ =>
+          None
+      }
+    }
+
     object ExTupleExtract {
       def unapply(tree: Select) : Option[(Tree,Int)] = tree match {
         case Select(lhs, n) => {

@@ -76,7 +76,7 @@ object Benchmarks extends App {
   for (file <- ctx.files) {
     val innerCtx = ctx.copy(files = List(file))
 
-    val opts = SynthesizerOptions()
+    val opts = SynthesisOptions()
 
     val pipeline = leon.plugin.ExtractionPhase andThen SynthesisProblemExtractionPhase
 
@@ -85,15 +85,19 @@ object Benchmarks extends App {
     val solver = new FairZ3Solver(ctx.copy(reporter = new SilentReporter))
     solver.setProgram(program)
 
+    val simpleSolver = new UninterpretedZ3Solver(ctx.copy(reporter = new SilentReporter))
+    simpleSolver.setProgram(program)
+
     for ((f, ps) <- results.toSeq.sortBy(_._1.id.toString); p <- ps) {
       val sctx = SynthesisContext(
-        context = ctx,
-        options = opts,
+        context         = ctx,
+        options         = opts,
         functionContext = Some(f),
-        program = program,
-        solver = solver,
-        reporter = new DefaultReporter,
-        shouldStop = new java.util.concurrent.atomic.AtomicBoolean
+        program         = program,
+        solver          = solver,
+        simpleSolver    = simpleSolver,
+        reporter        = new DefaultReporter,
+        shouldStop      = new java.util.concurrent.atomic.AtomicBoolean
       )
 
       val ts = System.currentTimeMillis

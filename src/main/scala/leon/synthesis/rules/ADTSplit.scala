@@ -2,8 +2,6 @@ package leon
 package synthesis
 package rules
 
-import solvers.TimeoutSolver
-
 import purescala.Trees._
 import purescala.Common._
 import purescala.TypeTrees._
@@ -13,7 +11,7 @@ import purescala.Definitions._
 
 case object ADTSplit extends Rule("ADT Split.") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation]= {
-    val solver = new TimeoutSolver(sctx.solver, 100L) // We give that 100ms
+    val solver = sctx.simpleSolver
 
     val candidates = p.as.collect {
       case IsTyped(id, AbstractClassType(cd)) =>
@@ -73,7 +71,7 @@ case object ADTSplit extends Rule("ADT Split.") {
             Some(Solution(Or(globalPre), sols.flatMap(_.defs).toSet, MatchExpr(Variable(id), cases)))
         }
 
-        Some(RuleInstantiation.immediateDecomp(p, this, subInfo.map(_._2).toList, onSuccess))
+        Some(RuleInstantiation.immediateDecomp(p, this, subInfo.map(_._2).toList, onSuccess, "ADT Split on '"+id+"'"))
       case _ =>
         None
     }}.flatten

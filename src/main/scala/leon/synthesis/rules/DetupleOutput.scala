@@ -49,7 +49,7 @@ case object DetupleOutput extends Rule("Detuple Out") {
       }
 
 
-      Some(RuleInstantiation.immediateDecomp(p, this, List(sub), onSuccess))
+      Some(RuleInstantiation.immediateDecomp(p, this, List(sub), onSuccess, this.name))
     } else {
       Nil
     }
