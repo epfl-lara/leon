@@ -14,6 +14,8 @@
 (declare-fun resPos2 () Bool)
 (declare-fun resPos3 () Bool)
 (declare-fun resPos4 () Bool)
+(declare-fun res () (Array Int Int))
+(declare-fun new-array () (Array Int Int))
 
 ;(declare-fun is-pos ((Array Int Int) Int Int Int) Bool)
 (declare-fun abs ((Array Int Int) Int Int) (Array Int Int))
@@ -23,30 +25,22 @@
     (=> (and (>= i from) (< i length) (< i to))
         (>= (select a i) 0))))
 
-;precondition
 (assert (>= index 0))
 (assert (>= length 0))
 (assert (is-pos array length 0 index))
-;(assert b3)
-(assert (= b3 (or (>= 0 index) (>= 0 length))))
-(assert (=> b3 (= resPos1 true)))
-(assert (=> (not b3) (= resPos1 
-  (and (>= (select array 0) 0) (is-pos array length 1 index)))))
-(assert resPos1)
 
-;body as res1
-(assert b1)
+(assert (= new-array 
+                  (store array index
+                    (ite (< (select array index) 0) (- (select array index)) (select array index))
+                  )))
+(assert (= res (abs new-array length (+ index 1))))
+
 (assert (= b1 (>= index length)))
 (assert (=> b1 (= res1 array)))
-(assert (=> (not b1) (= res1 (abs (store array index 0) length (+ index 1)))))
+(assert (=> (not b1) (= res1 res)))
 
-;postcondition
-;(assert b2)
-(assert (= b2 (or (>= 0 (+ index 1)) (>= 0 length))))
-(assert (=> b2 (= resPos2 true)))
-(assert (=> (not b2) (= resPos2 
-  (and (>= (select array 0) 0) (is-pos array length 1 (+ index 1))))))
-(assert (not resPos2))
+(assert (is-pos res length 0 (+ index 1)))
+(assert (not (is-pos res1 length 0 (+ index 1))))
 
 (check-sat)
-;(get-model)
+(get-model)
