@@ -1,0 +1,4 @@
+* use the induction formula for ruling out invalid invariant. Here we need to check if the formula after pluggin in the interpolant is unsat.
+* Get the counter-example to induction. Negate the counter example and get an interpolant (in the restricted language) for the negation of the counter example.
+* Use the conjunction of original interpolant and the new interpolant as the new interpolant. This is stronger and can possibly be invalidated faster.
+
