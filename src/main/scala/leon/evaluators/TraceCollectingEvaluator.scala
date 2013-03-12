@@ -39,6 +39,9 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
     def rec(ctx: Map[Identifier,Expr], expr: Expr) : (Expr,SymVal) = if(left <= 0) {
       throw RuntimeError("Diverging computation.")
     } else {
+      val fal = BooleanLiteral(false)
+      val tru = BooleanLiteral(true)
+      
       // println("Step on : " + expr)
       // println(ctx)
       left -= 1
@@ -85,75 +88,156 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
         
         case Error(desc) => throw RuntimeError("Error reached in evaluation: " + desc)
         case IfExpr(cond, then, elze) => {
-          val first = rec(ctx, cond)
-          first match {
-            case BooleanLiteral(true) => rec(ctx, then)
-            case BooleanLiteral(false) => rec(ctx, elze)
-            case _ => throw EvalError(typeErrorMsg(first, BooleanType))
+          val (cval,sval) = rec(ctx, cond)
+          cval match {
+            case BooleanLiteral(true) => {
+             val (cval2,sval2) = rec(ctx, then)
+             (cval2,SymVal(And(And(sval.guard,sval2.guard),sval.value),sval2.value))
+            }
+            case BooleanLiteral(false) => {
+             val (cval2,sval2) = rec(ctx, elze)
+             (cval2,SymVal(And(And(sval.guard,sval2.guard),sval.value),sval2.value))
+            }
+            case _ => throw EvalError(typeErrorMsg(cval, BooleanType))
           }
         }
-        case Waypoint(_, arg) => rec(ctx, arg)
+        case Waypoint(_, arg) => throw EvalError("Waypoint not handled")
         case FunctionInvocation(fd, args) => {
-          val evArgs = args.map(a => rec(ctx, a))
-          // build a mapping for the function...
-          val frame = Map[Identifier,Expr]((fd.args.map(_.id) zip evArgs) : _*)
           
-          if(fd.hasPrecondition) {
-            rec(frame, matchToIfThenElse(fd.precondition.get)) match {
-              case BooleanLiteral(true) => ;
+          var guard : Expr = BooleanLiteral(true)
+          var svalList = Seq[Expr]() 
+          
+          //recursively compute the symbolic and concrete values of all the arguments
+          val evArgs = args.map(x => { 
+            val (cval,sval) = rec(ctx, x)
+            guard = And(guard,sval.guard)
+            svalList = svalList ++ Seq(sval.value)
+            cval
+          }) 
+          
+          if(!fd.hasBody && !mapping.isDefinedAt(fd.id)) {
+            throw EvalError("Evaluation of function with unknown implementation.")
+          }
+          //create a new function body that uses new local variable names and parameter names
+          val newparams = fd.args.map(x => Variable(FreshIdentifier(x.id.name, true).setType(x.id.getType)))
+          val argmap = Map[Identifier,Expr]() ++ (fd.args.map(_.id) zip newparams) 
+          							        
+          val replacefun  = (e: Expr) => e match { case Variable(id) => argmap.get(id) }
+          val funbody = freshenLocals(searchAndReplaceDFS(replacefun)(fd.body.get))
+                    
+          //rename pre and post conditions
+          val precond = if(fd.hasPrecondition) Some(freshenLocals(searchAndReplaceDFS(replacefun)(fd.precondition.get)))
+          				else None
+          val postcond = if(fd.hasPostcondition) Some(freshenLocals(searchAndReplaceDFS(replacefun)(fd.postcondition.get)))
+          				else None
+          
+          //build a guard mapping parameters to symvals of actual arguments
+          val paramguard = (newparams zip svalList).foldLeft(BooleanLiteral(true) : Expr)((g,elem)=> And(g,Equals(elem._1,elem._2)))
+          var callerguard = And(guard,paramguard)
+                    
+          // build a concrete mapping for the function...
+          val frame = Map[Identifier,Expr]((fd.args.map(_.id) zip evArgs) : _*)                   
+          
+          //handle precondition here
+          if(precond.isDefined) {
+            val (preCval,preSval) = rec(frame, matchToIfThenElse(precond.get)) 
+             preCval match {
+              case BooleanLiteral(true) => callerguard = And(And(callerguard,preSval.guard),preSval.value) //update caller guard
               case BooleanLiteral(false) => {
-                throw RuntimeError("Precondition violation for " + fd.id.name + " reached in evaluation.: " + fd.precondition.get)
+                throw RuntimeError("Precondition violation for " + fd.id.name + " reached in evaluation.: " + precond.get)
               }
               case other => throw RuntimeError(typeErrorMsg(other, BooleanType))
             }
           }
 
-          if(!fd.hasBody && !mapping.isDefinedAt(fd.id)) {
-            throw EvalError("Evaluation of function with unknown implementation.")
-          }
-          val body = fd.body.getOrElse(mapping(fd.id))
-          val callResult = rec(frame, matchToIfThenElse(body))
+          val (cres,sres) = rec(frame, matchToIfThenElse(funbody))
+          
+          //create a new variable to store the return value (this is necessary to handle post-condition)
+          val freshResID = FreshIdentifier("result").setType(fd.returnType)
+          val resvar = Variable(freshResID)
+          var calleeguard = And(sres.guard,Equals(resvar,sres.value))
 
-          if(fd.hasPostcondition) {
-            val freshResID = FreshIdentifier("result").setType(fd.returnType)
-            val postBody = replace(Map(ResultVariable() -> Variable(freshResID)), matchToIfThenElse(fd.postcondition.get))
-            rec(frame + ((freshResID -> callResult)), postBody) match {
-              case BooleanLiteral(true) => ;
+          //handle postcondition here
+          if(postcond.isDefined) {
+            
+            val postBody = replace(Map(ResultVariable() -> resvar), matchToIfThenElse(postcond.get))
+            val (postCval,postSval) = rec(frame + ((freshResID -> cres)), postBody)
+            postCval match {
+              case BooleanLiteral(true) => calleeguard = And(And(calleeguard,postSval.guard),postSval.value)
               case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for " + fd.id.name + " reached in evaluation.")
               case other => throw EvalError(typeErrorMsg(other, BooleanType))
             }
           }
-
-          callResult
+          //construct a final guard
+          val composedguard = And(callerguard,calleeguard)
+          (cres,SymVal(composedguard,resvar))
         }
-        case And(args) if args.isEmpty => BooleanLiteral(true)
-        case And(args) => {
-          rec(ctx, args.head) match {
-            case BooleanLiteral(false) => BooleanLiteral(false)
-            case BooleanLiteral(true) => rec(ctx, And(args.tail))
+        
+        case And(args) if args.isEmpty => {           
+          (tru,SymVal(tru,tru))
+        }
+        
+        case And(args) => {          
+          val (cval,sval) = rec(ctx, args.head)
+           cval match {            
+            case BooleanLiteral(false) => {
+              val guard = And(sval.guard,Not(sval.value))
+              (fal,SymVal(guard,fal))
+            }
+            case BooleanLiteral(true) => {
+            	val (cval2,sval2) = rec(ctx, And(args.tail))
+            	val guard = And(Seq[Expr]{sval.guard; sval.value; sval2.guard; sval2.value})
+            	(cval2,SymVal(guard,tru))
+            }
             case other => throw EvalError(typeErrorMsg(other, BooleanType))
           }
         }
-        case Or(args) if args.isEmpty => BooleanLiteral(false)
+        case Or(args) if args.isEmpty => (fal,SymVal(tru,fal))
         case Or(args) => {
-          rec(ctx, args.head) match {
-            case BooleanLiteral(true) => BooleanLiteral(true)
-            case BooleanLiteral(false) => rec(ctx, Or(args.tail))
+          val (cval,sval) = rec(ctx, args.head)
+           cval match {
+            case BooleanLiteral(true) => {
+            	val guard = And(sval.guard,sval.value)
+            	(tru,SymVal(guard,tru))
+            }
+            case BooleanLiteral(false) => {
+            	val (cval2,sval2) = rec(ctx, And(args.tail))
+            	//note that guard only keep tracks of the facts that hold
+            	val guard = And(Seq[Expr]{sval.guard; sval.value; sval2.guard; Not(sval2.value)})
+            	(cval2,SymVal(guard,fal))
+            }
             case other => throw EvalError(typeErrorMsg(other, BooleanType))
-          }
+          }          
         }
-        case Not(arg) => rec(ctx, arg) match {
-          case BooleanLiteral(v) => BooleanLiteral(!v)
-          case other => throw EvalError(typeErrorMsg(other, BooleanType))
+        
+        case Not(arg) =>  {
+          val (cval,sval) = rec(ctx, arg)
+           cval match {
+            case BooleanLiteral(true) => { 
+            	val guard = And(sval.guard,sval.value)
+            	(fal,SymVal(guard,fal))
+            }
+            case BooleanLiteral(false) => {            	            
+            	val guard = And(sval.guard,Not(sval.value))
+            	(tru,SymVal(guard,tru))
+            }
+            case other => throw EvalError(typeErrorMsg(other, BooleanType))
+          }          
         }
-        case Implies(l,r) => (rec(ctx,l), rec(ctx,r)) match {
+        
+        case Implies(l,r) => rec(ctx,Or(Not(l),r)) 
+          
+        case Iff(le,re) => rec(ctx,And(Implies(le,re),Implies(re,le)))
+        
+        /*case Implies(l,r) => (rec(ctx,l), rec(ctx,r)) match {
           case (BooleanLiteral(b1),BooleanLiteral(b2)) => BooleanLiteral(!b1 || b2)
           case (le,re) => throw EvalError(typeErrorMsg(le, BooleanType))
         }
         case Iff(le,re) => (rec(ctx,le),rec(ctx,re)) match {
           case (BooleanLiteral(b1),BooleanLiteral(b2)) => BooleanLiteral(b1 == b2)
           case _ => throw EvalError(typeErrorMsg(le, BooleanType))
-        }
+        }*/
+        
         case Equals(le,re) => {
           val lv = rec(ctx,le)
           val rv = rec(ctx,re)
@@ -164,6 +248,7 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
             case _ => BooleanLiteral(lv == rv)
           }
         }
+        
         case CaseClass(cd, args) => CaseClass(cd, args.map(rec(ctx,_)))
         case CaseClassInstanceOf(cd, expr) => {
           val le = rec(ctx,expr)
