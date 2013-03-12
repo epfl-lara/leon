@@ -28,8 +28,8 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
     //debugging 
     ctx.reporter.info("collecting execution traces...");
     
-    //a symbol evaluation of an expression
-    case class SymVal(guard :Expr, value: Expr)
+    //a symbolic evaluation of an expression 
+    case class SymVal(guard :List[Expr], value: Expr)
 
     /**   
      * The result of rec is a pair of expression and SymVal, the expression is the result of evaluation 
@@ -52,21 +52,21 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
             if(!isGround(res)) {
               throw EvalError("Substitution for identifier " + id.name + " is not ground.")
             } else {              
-              (res,SymVal(BooleanLiteral(true),Variable(id)))              
+              (res,SymVal(List(tru),Variable(id)))              
             }
           } else {
             throw EvalError("No value for identifier " + id.name + " in mapping.")
           }
         }
         case Tuple(ts) => {
-          var guard : Expr = BooleanLiteral(true)
+          var guard = List[Expr]()
           var list = Seq[Expr]() 
           
           //recursively compute the symbolic and concrete values of all the elements of the tuple
           val tsRec = ts.map(x => { 
             val res = rec(ctx, x)
-            guard = And(guard,res._2.guard)
-            list = list ++ Seq(res._2.value)
+            guard = guard ++ res._2.guard
+            list = list :+ res._2.value
             res._1
           })         
           (Tuple(tsRec),SymVal(guard,Tuple(list)))
@@ -82,7 +82,7 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
         case Let(i,e,b) => {
           val (cval,sval) = rec(ctx, e)
           val (cval2,sval2) = rec(ctx + ((i -> cval)), b)
-          val guard = And(And(sval.guard,Equals(Variable(i),sval.value)),sval2.guard)          
+          val guard = (sval.guard :+ Equals(Variable(i),sval.value)) ++ sval2.guard          
           (cval2,SymVal(guard,sval2.value))          
         }
         
@@ -92,11 +92,11 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
           cval match {
             case BooleanLiteral(true) => {
              val (cval2,sval2) = rec(ctx, then)
-             (cval2,SymVal(And(And(sval.guard,sval2.guard),sval.value),sval2.value))
+             (cval2,SymVal(sval.guard ++ sval2.guard :+ sval.value,sval2.value))
             }
             case BooleanLiteral(false) => {
              val (cval2,sval2) = rec(ctx, elze)
-             (cval2,SymVal(And(And(sval.guard,sval2.guard),sval.value),sval2.value))
+             (cval2,SymVal(sval.guard ++ sval2.guard :+ sval.value, sval2.value))
             }
             case _ => throw EvalError(typeErrorMsg(cval, BooleanType))
           }
@@ -104,14 +104,14 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
         case Waypoint(_, arg) => throw EvalError("Waypoint not handled")
         case FunctionInvocation(fd, args) => {
           
-          var guard : Expr = BooleanLiteral(true)
+          var guard = List[Expr]()
           var svalList = Seq[Expr]() 
           
           //recursively compute the symbolic and concrete values of all the arguments
           val evArgs = args.map(x => { 
             val (cval,sval) = rec(ctx, x)
-            guard = And(guard,sval.guard)
-            svalList = svalList ++ Seq(sval.value)
+            guard =  guard ++ sval.guard
+            svalList = svalList :+ sval.value
             cval
           }) 
           
@@ -132,8 +132,8 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
           				else None
           
           //build a guard mapping parameters to symvals of actual arguments
-          val paramguard = (newparams zip svalList).foldLeft(BooleanLiteral(true) : Expr)((g,elem)=> And(g,Equals(elem._1,elem._2)))
-          var callerguard = And(guard,paramguard)
+          val paramguard = (newparams zip svalList).foldLeft(List[Expr]())((g,elem)=> g :+ Equals(elem._1,elem._2))
+          var callerguard = guard ++ paramguard
                     
           // build a concrete mapping for the function...
           val frame = Map[Identifier,Expr]((fd.args.map(_.id) zip evArgs) : _*)                   
@@ -142,7 +142,7 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
           if(precond.isDefined) {
             val (preCval,preSval) = rec(frame, matchToIfThenElse(precond.get)) 
              preCval match {
-              case BooleanLiteral(true) => callerguard = And(And(callerguard,preSval.guard),preSval.value) //update caller guard
+              case BooleanLiteral(true) => callerguard = callerguard ++ preSval.guard :+ preSval.value //update caller guard
               case BooleanLiteral(false) => {
                 throw RuntimeError("Precondition violation for " + fd.id.name + " reached in evaluation.: " + precond.get)
               }
@@ -155,7 +155,7 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
           //create a new variable to store the return value (this is necessary to handle post-condition)
           val freshResID = FreshIdentifier("result").setType(fd.returnType)
           val resvar = Variable(freshResID)
-          var calleeguard = And(sres.guard,Equals(resvar,sres.value))
+          var calleeguard = sres.guard :+ Equals(resvar,sres.value)
 
           //handle postcondition here
           if(postcond.isDefined) {
@@ -163,48 +163,47 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
             val postBody = replace(Map(ResultVariable() -> resvar), matchToIfThenElse(postcond.get))
             val (postCval,postSval) = rec(frame + ((freshResID -> cres)), postBody)
             postCval match {
-              case BooleanLiteral(true) => calleeguard = And(And(calleeguard,postSval.guard),postSval.value)
+              case BooleanLiteral(true) => calleeguard = calleeguard ++ postSval.guard :+ postSval.value
               case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for " + fd.id.name + " reached in evaluation.")
               case other => throw EvalError(typeErrorMsg(other, BooleanType))
             }
           }
           //construct a final guard
-          val composedguard = And(callerguard,calleeguard)
+          val composedguard = callerguard ++ calleeguard
           (cres,SymVal(composedguard,resvar))
         }
         
+        //because of the recursuve 
         case And(args) if args.isEmpty => {           
-          (tru,SymVal(tru,tru))
+          (tru,SymVal(List(tru),tru))
         }
         
         case And(args) => {          
           val (cval,sval) = rec(ctx, args.head)
            cval match {            
-            case BooleanLiteral(false) => {
-              val guard = And(sval.guard,Not(sval.value))
-              (fal,SymVal(guard,fal))
+            case BooleanLiteral(false) => {              
+              (fal,SymVal(sval.guard,sval.value))
             }
             case BooleanLiteral(true) => {
             	val (cval2,sval2) = rec(ctx, And(args.tail))
-            	val guard = And(Seq[Expr]{sval.guard; sval.value; sval2.guard; sval2.value})
-            	(cval2,SymVal(guard,tru))
+            	val guard = sval.guard ++ sval2.guard
+            	(cval2,SymVal(guard,And(sval.value,sval2.value)))
             }
             case other => throw EvalError(typeErrorMsg(other, BooleanType))
           }
         }
-        case Or(args) if args.isEmpty => (fal,SymVal(tru,fal))
+        case Or(args) if args.isEmpty => (fal,SymVal(List(tru),fal))
         case Or(args) => {
           val (cval,sval) = rec(ctx, args.head)
            cval match {
-            case BooleanLiteral(true) => {
-            	val guard = And(sval.guard,sval.value)
-            	(tru,SymVal(guard,tru))
+            case BooleanLiteral(true) => {            	
+            	(tru,SymVal(sval.guard,sval.value))
             }
             case BooleanLiteral(false) => {
             	val (cval2,sval2) = rec(ctx, And(args.tail))
             	//note that guard only keep tracks of the facts that hold
-            	val guard = And(Seq[Expr]{sval.guard; sval.value; sval2.guard; Not(sval2.value)})
-            	(cval2,SymVal(guard,fal))
+            	val guard = sval.guard ++ sval2.guard
+            	(cval2,SymVal(guard,Or(sval.value,sval2.value)))
             }
             case other => throw EvalError(typeErrorMsg(other, BooleanType))
           }          
@@ -213,14 +212,7 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
         case Not(arg) =>  {
           val (cval,sval) = rec(ctx, arg)
            cval match {
-            case BooleanLiteral(true) => { 
-            	val guard = And(sval.guard,sval.value)
-            	(fal,SymVal(guard,fal))
-            }
-            case BooleanLiteral(false) => {            	            
-            	val guard = And(sval.guard,Not(sval.value))
-            	(tru,SymVal(guard,tru))
-            }
+            case BooleanLiteral(v) => (BooleanLiteral(!v),SymVal(sval.guard,Not(sval.value)))            
             case other => throw EvalError(typeErrorMsg(other, BooleanType))
           }          
         }
@@ -239,75 +231,152 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
         }*/
         
         case Equals(le,re) => {
-          val lv = rec(ctx,le)
-          val rv = rec(ctx,re)
-
-          (lv,rv) match {
-            case (FiniteSet(el1),FiniteSet(el2)) => BooleanLiteral(el1.toSet == el2.toSet)
-            case (FiniteMap(el1),FiniteMap(el2)) => BooleanLiteral(el1.toSet == el2.toSet)
-            case _ => BooleanLiteral(lv == rv)
+          val (lc,ls) = rec(ctx,le)
+          val (rc,rs) = rec(ctx,re)
+          val guard = ls.guard ++ rs.guard
+          val value = Equals(ls.value,rs.value)
+          val symval = SymVal(guard,value)
+            
+          (lc,rc) match {
+            case (FiniteSet(el1),FiniteSet(el2)) => (BooleanLiteral(el1.toSet == el2.toSet),symval)
+            case (FiniteMap(el1),FiniteMap(el2)) => (BooleanLiteral(el1.toSet == el2.toSet),symval)
+            case _ => (BooleanLiteral(lc == rc), symval)
           }
         }
         
-        case CaseClass(cd, args) => CaseClass(cd, args.map(rec(ctx,_)))
+        case CaseClass(cd, args) => {
+          var guard = List[Expr]()
+          var svalList = Seq[Expr]() 
+          
+          //recursively compute the symbolic and concrete values of all the arguments of the constructor
+          val evArgs = args.map(x => {  
+            val (cval,sval) = rec(ctx, x)
+            guard = guard ++ sval.guard
+            svalList = svalList :+ sval.value
+            cval
+          })          
+          (CaseClass(cd,evArgs),SymVal(guard,CaseClass(cd,svalList)))           
+        }         
         case CaseClassInstanceOf(cd, expr) => {
-          val le = rec(ctx,expr)
-          BooleanLiteral(le.getType match {
-            case CaseClassType(cd2) if cd2 == cd => true
-            case _ => false
-          })
-        }
+          val (cval,sval) = rec(ctx,expr)
+          val symval = SymVal(sval.guard,CaseClassInstanceOf(cd, sval.value))
+          cval.getType match {
+            case CaseClassType(cd2) if cd2 == cd => (tru,symval)
+            case _ => (fal,symval)
+          }          
+        }        
         case CaseClassSelector(cd, expr, sel) => {
-          val le = rec(ctx, expr)
-          le match {
-            case CaseClass(cd2, args) if cd == cd2 => args(cd.selectorID2Index(sel))
-            case _ => throw EvalError(typeErrorMsg(le, CaseClassType(cd)))
+          val (cval,sval) = rec(ctx,expr)          
+          cval match {
+            case CaseClass(cd2, args) if cd == cd2 => {              
+              val index = cd.selectorID2Index(sel)
+              val cres = args(index)
+              val CaseClass(cd3,evArgs) = sval.value
+              
+              if(!cd3.equals(cd2))
+                throw EvalError("types of concrete and symbolic values did not match, contype: "
+                    +CaseClassType(cd2)+", symtype: "+CaseClassType(cd3))
+              
+              val sres = evArgs(index)
+              (cres,SymVal(sval.guard,sres))
+            }
+            case _ => throw EvalError(typeErrorMsg(cval, CaseClassType(cd)))
           }
         }
-        case Plus(l,r) => (rec(ctx,l), rec(ctx,r)) match {
-          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 + i2)
+        
+        case Plus(l,r) => {         
+          val (lc,ls) = rec(ctx,l)
+          val (rc,rs) = rec(ctx,r)          
+          val symval = SymVal(ls.guard ++ rs.guard,Plus(ls.value,rs.value))
+          (lc,rc) match {
+          	case (IntLiteral(i1), IntLiteral(i2)) => (IntLiteral(i1 + i2),symval)
+          	case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+          }
+        }        
+        case Minus(l,r) => {
+          val (lc,ls) = rec(ctx,l)
+          val (rc,rs) = rec(ctx,r)          
+          val symval = SymVal(ls.guard ++ rs.guard,Minus(ls.value,rs.value))  
+          (lc,rc) match {
+          	case (IntLiteral(i1), IntLiteral(i2)) => (IntLiteral(i1 - i2),symval)
+          	case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+          }
+        }
+        case UMinus(e) => {
+          val (c,s) = rec(ctx,e)                    
+          val symval = SymVal(s.guard,UMinus(s.value))
+          c match {          
+            case IntLiteral(i) => (IntLiteral(-i),symval)
+            case re => throw EvalError(typeErrorMsg(re, Int32Type))
+          }          
+        }
+        case Times(l,r) => {
+          val (lc,ls) = rec(ctx,l)
+          val (rc,rs) = rec(ctx,r)          
+          val symval = SymVal(ls.guard ++ rs.guard,Times(ls.value,rs.value))  
+          (lc,rc) match {
+          case (IntLiteral(i1), IntLiteral(i2)) => (IntLiteral(i1 * i2),symval)
           case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        	}
+      	}
+        case Division(l,r) => {
+          val (lc,ls) = rec(ctx,l)
+          val (rc,rs) = rec(ctx,r)          
+          val symval = SymVal(ls.guard ++ rs.guard,Division(ls.value,rs.value))  
+          (lc,rc) match {
+          	case (IntLiteral(i1), IntLiteral(i2)) =>
+             if(i2 != 0) (IntLiteral(i1 / i2),symval) else throw RuntimeError("Division by 0.")
+          	case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+          }
         }
-        case Minus(l,r) => (rec(ctx,l), rec(ctx,r)) match {
-          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 - i2)
-          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+        case Modulo(l,r) => {
+          val (lc,ls) = rec(ctx,l)
+          val (rc,rs) = rec(ctx,r)          
+          val symval = SymVal(ls.guard ++ rs.guard,Modulo(ls.value,rs.value))  
+          (lc,rc) match {
+          	case (IntLiteral(i1), IntLiteral(i2)) =>
+             if(i2 != 0) (IntLiteral(i1 % i2),symval) else throw RuntimeError("Modulo by 0.")
+          	case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+          }
         }
-        case UMinus(e) => rec(ctx,e) match {
-          case IntLiteral(i) => IntLiteral(-i)
-          case re => throw EvalError(typeErrorMsg(re, Int32Type))
-        }
-        case Times(l,r) => (rec(ctx,l), rec(ctx,r)) match {
-          case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 * i2)
-          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
-        }
-        case Division(l,r) => (rec(ctx,l), rec(ctx,r)) match {
-          case (IntLiteral(i1), IntLiteral(i2)) =>
-            if(i2 != 0) IntLiteral(i1 / i2) else throw RuntimeError("Division by 0.")
-          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
-        }
-        case Modulo(l,r) => (rec(ctx,l), rec(ctx,r)) match {
-          case (IntLiteral(i1), IntLiteral(i2)) => 
-            if(i2 != 0) IntLiteral(i1 % i2) else throw RuntimeError("Modulo by 0.")
-          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
-        }
-        case LessThan(l,r) => (rec(ctx,l), rec(ctx,r)) match {
-          case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 < i2)
-          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
-        }
-        case GreaterThan(l,r) => (rec(ctx,l), rec(ctx,r)) match {
-          case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 > i2)
-          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
-        }
-        case LessEquals(l,r) => (rec(ctx,l), rec(ctx,r)) match {
-          case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 <= i2)
-          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
-        }
-        case GreaterEquals(l,r) => (rec(ctx,l), rec(ctx,r)) match {
-          case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 >= i2)
-          case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
-        }
+        case LessThan(l,r) => {
+          val (lc,ls) = rec(ctx,l)
+          val (rc,rs) = rec(ctx,r)          
+          val symval = SymVal(ls.guard ++ rs.guard,LessThan(ls.value,rs.value))  
+          (lc,rc) match {
+          	case (IntLiteral(i1), IntLiteral(i2)) => (BooleanLiteral(i1 < i2),symval) 
+          	case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+          }
+        } 
+        case GreaterThan(l,r) => {
+          val (lc,ls) = rec(ctx,l)
+          val (rc,rs) = rec(ctx,r)          
+          val symval = SymVal(ls.guard ++ rs.guard,GreaterThan(ls.value,rs.value))  
+          (lc,rc) match {
+          	case (IntLiteral(i1), IntLiteral(i2)) => (BooleanLiteral(i1 > i2),symval) 
+          	case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+          }
+        } 
+        case LessEquals(l,r) => {
+          val (lc,ls) = rec(ctx,l)
+          val (rc,rs) = rec(ctx,r)          
+          val symval = SymVal(ls.guard ++ rs.guard,LessEquals(ls.value,rs.value))  
+          (lc,rc) match {
+          	case (IntLiteral(i1), IntLiteral(i2)) => (BooleanLiteral(i1 <= i2),symval) 
+          	case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+          }
+        } 
+        case GreaterEquals(l,r) => {
+          val (lc,ls) = rec(ctx,l)
+          val (rc,rs) = rec(ctx,r)          
+          val symval = SymVal(ls.guard ++ rs.guard,GreaterEquals(ls.value,rs.value))  
+          (lc,rc) match {
+          	case (IntLiteral(i1), IntLiteral(i2)) => (BooleanLiteral(i1 >= i2),symval) 
+          	case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+          }
+        } 
 
-        case SetUnion(s1,s2) => (rec(ctx,s1), rec(ctx,s2)) match {
+        /*case SetUnion(s1,s2) => (rec(ctx,s1), rec(ctx,s2)) match {
           case (f@FiniteSet(els1),FiniteSet(els2)) => FiniteSet((els1 ++ els2).distinct).setType(f.getType)
           case (le,re) => throw EvalError(typeErrorMsg(le, s1.getType))
         }
@@ -338,13 +407,13 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
             case _ => throw EvalError(typeErrorMsg(sr, SetType(AnyType)))
           }
         }
+*/
+        //case f @ FiniteSet(els) => FiniteSet(els.map(rec(ctx,_)).distinct).setType(f.getType)
+        case i @ IntLiteral(_) => (i,SymVal(List(tru),i))
+        case b @ BooleanLiteral(_) => (b,SymVal(List(tru),b))
+        case u @ UnitLiteral => (u,SymVal(List(tru),u))
 
-        case f @ FiniteSet(els) => FiniteSet(els.map(rec(ctx,_)).distinct).setType(f.getType)
-        case i @ IntLiteral(_) => i
-        case b @ BooleanLiteral(_) => b
-        case u @ UnitLiteral => u
-
-        case f @ ArrayFill(length, default) => {
+        /*case f @ ArrayFill(length, default) => {
           val rDefault = rec(ctx, default)
           val rLength = rec(ctx, length)
           val IntLiteral(iLength) = rLength
@@ -401,7 +470,7 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
         case Distinct(args) => {
           val newArgs = args.map(rec(ctx, _))
           BooleanLiteral(newArgs.distinct.size == newArgs.size)
-        } 
+        }*/ 
 
         case Choose(_, _) =>
           throw EvalError("Cannot evaluate choose.")
@@ -414,7 +483,17 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
     }
 
     try {
-      EvaluationSuccessful(rec(mapping, expression))
+      val (cval,sval) = rec(mapping, expression)
+      
+      //create a trace
+      val freshResID = FreshIdentifier("result").setType(expression.getType)
+      val resvar = Variable(freshResID)
+      val trace = sval.guard :+ Equals(resvar,sval.value)
+      
+      //print the trace 
+      println(trace)
+      
+      EvaluationSuccessful(cval)
     } catch {
       case so: StackOverflowError => EvaluationError("Stack overflow")
       case EvalError(msg) => EvaluationError(msg)
