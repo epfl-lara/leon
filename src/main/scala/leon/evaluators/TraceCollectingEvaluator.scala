@@ -52,7 +52,7 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
             if(!isGround(res)) {
               throw EvalError("Substitution for identifier " + id.name + " is not ground.")
             } else {              
-              (res,SymVal(List(tru),Variable(id)))              
+              (res,SymVal(List[Expr](),Variable(id)))              
             }
           } else {
             throw EvalError("No value for identifier " + id.name + " in mapping.")
@@ -79,7 +79,7 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
           (rs(i-1),SymVal(sval.guard,bs(i-1)))
         }
         
-        case Let(i,e,b) => {
+        case Let(i,e,b) => {          
           val (cval,sval) = rec(ctx, e)
           val (cval2,sval2) = rec(ctx + ((i -> cval)), b)
           val guard = (sval.guard :+ Equals(Variable(i),sval.value)) ++ sval2.guard          
@@ -87,7 +87,7 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
         }
         
         case Error(desc) => throw RuntimeError("Error reached in evaluation: " + desc)
-        case IfExpr(cond, then, elze) => {
+        case IfExpr(cond, then, elze) => {          
           val (cval,sval) = rec(ctx, cond)
           cval match {
             case BooleanLiteral(true) => {
@@ -96,14 +96,14 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
             }
             case BooleanLiteral(false) => {
              val (cval2,sval2) = rec(ctx, elze)
-             (cval2,SymVal(sval.guard ++ sval2.guard :+ sval.value, sval2.value))
+             (cval2,SymVal(sval.guard ++ sval2.guard :+ Not(sval.value), sval2.value))
             }
             case _ => throw EvalError(typeErrorMsg(cval, BooleanType))
           }
         }
         case Waypoint(_, arg) => throw EvalError("Waypoint not handled")
         case FunctionInvocation(fd, args) => {
-          
+         
           var guard = List[Expr]()
           var svalList = Seq[Expr]() 
           
@@ -122,7 +122,8 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
           val newparams = fd.args.map(x => Variable(FreshIdentifier(x.id.name, true).setType(x.id.getType)))
           val argmap = Map[Identifier,Expr]() ++ (fd.args.map(_.id) zip newparams) 
           							        
-          val replacefun  = (e: Expr) => e match { case Variable(id) => argmap.get(id) }
+          val replacefun  = (e: Expr) => e match { case Variable(id) => argmap.get(id) 
+            										case _ => None }
           val funbody = freshenLocals(searchAndReplaceDFS(replacefun)(fd.body.get))
                     
           //rename pre and post conditions
@@ -136,7 +137,7 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
           var callerguard = guard ++ paramguard
                     
           // build a concrete mapping for the function...
-          val frame = Map[Identifier,Expr]((fd.args.map(_.id) zip evArgs) : _*)                   
+          val frame = Map[Identifier,Expr]((newparams.map(_.id) zip evArgs) : _*)                   
           
           //handle precondition here
           if(precond.isDefined) {
@@ -175,7 +176,7 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
         
         //because of the recursuve 
         case And(args) if args.isEmpty => {           
-          (tru,SymVal(List(tru),tru))
+          (tru,SymVal(List[Expr](),tru))
         }
         
         case And(args) => {          
@@ -192,7 +193,7 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
             case other => throw EvalError(typeErrorMsg(other, BooleanType))
           }
         }
-        case Or(args) if args.isEmpty => (fal,SymVal(List(tru),fal))
+        case Or(args) if args.isEmpty => (fal,SymVal(List[Expr](),fal))
         case Or(args) => {
           val (cval,sval) = rec(ctx, args.head)
            cval match {
@@ -209,7 +210,7 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
           }          
         }
         
-        case Not(arg) =>  {
+        case Not(arg) =>  {          
           val (cval,sval) = rec(ctx, arg)
            cval match {
             case BooleanLiteral(v) => (BooleanLiteral(!v),SymVal(sval.guard,Not(sval.value)))            
@@ -238,8 +239,10 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
           val symval = SymVal(guard,value)
             
           (lc,rc) match {
-            case (FiniteSet(el1),FiniteSet(el2)) => (BooleanLiteral(el1.toSet == el2.toSet),symval)
-            case (FiniteMap(el1),FiniteMap(el2)) => (BooleanLiteral(el1.toSet == el2.toSet),symval)
+            case (FiniteSet(el1),FiniteSet(el2)) => throw EvalError("Ecountered finite set case in equals")
+                     //(BooleanLiteral(el1.toSet == el2.toSet),symval)
+            case (FiniteMap(el1),FiniteMap(el2)) => throw EvalError("Ecountered finite map case in equals") 
+              //(BooleanLiteral(el1.toSet == el2.toSet),symval)
             case _ => (BooleanLiteral(lc == rc), symval)
           }
         }
@@ -271,14 +274,14 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
             case CaseClass(cd2, args) if cd == cd2 => {              
               val index = cd.selectorID2Index(sel)
               val cres = args(index)
-              val CaseClass(cd3,evArgs) = sval.value
+              //val CaseClass(cd3,evArgs) = sval.value
               
-              if(!cd3.equals(cd2))
+              /*if(!cd3.equals(cd2))
                 throw EvalError("types of concrete and symbolic values did not match, contype: "
-                    +CaseClassType(cd2)+", symtype: "+CaseClassType(cd3))
+                    +CaseClassType(cd2)+", symtype: "+CaseClassType(cd3))*/
               
-              val sres = evArgs(index)
-              (cres,SymVal(sval.guard,sres))
+              //val sres = evArgs(index)
+              (cres,SymVal(sval.guard,CaseClassSelector(cd,sval.value,sel)))
             }
             case _ => throw EvalError(typeErrorMsg(cval, CaseClassType(cd)))
           }
@@ -409,9 +412,9 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
         }
 */
         //case f @ FiniteSet(els) => FiniteSet(els.map(rec(ctx,_)).distinct).setType(f.getType)
-        case i @ IntLiteral(_) => (i,SymVal(List(tru),i))
-        case b @ BooleanLiteral(_) => (b,SymVal(List(tru),b))
-        case u @ UnitLiteral => (u,SymVal(List(tru),u))
+        case i @ IntLiteral(_) => (i,SymVal(List[Expr](),i))
+        case b @ BooleanLiteral(_) => (b,SymVal(List[Expr](),b))
+        case u @ UnitLiteral => (u,SymVal(List[Expr](),u))
 
         /*case f @ ArrayFill(length, default) => {
           val rDefault = rec(ctx, default)
@@ -496,7 +499,7 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
       EvaluationSuccessful(cval)
     } catch {
       case so: StackOverflowError => EvaluationError("Stack overflow")
-      case EvalError(msg) => EvaluationError(msg)
+      case EvalError(msg) => EvaluationError(msg)              
       case RuntimeError(msg) => EvaluationFailure(msg)
     }
   }
