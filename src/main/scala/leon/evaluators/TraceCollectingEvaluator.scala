@@ -152,9 +152,9 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
           }
 
           val (cres,sres) = rec(frame, matchToIfThenElse(funbody))
-          
+         
           //create a new variable to store the return value (this is necessary to handle post-condition)
-          val freshResID = FreshIdentifier("result").setType(fd.returnType)
+          val freshResID = FreshIdentifier("r",true).setType(fd.returnType)
           val resvar = Variable(freshResID)
           var calleeguard = sres.guard :+ Equals(resvar,sres.value)
 
@@ -489,14 +489,13 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
       val (cval,sval) = rec(mapping, expression)
       
       //create a trace
-      val freshResID = FreshIdentifier("result").setType(expression.getType)
+      val freshResID = FreshIdentifier("r",true).setType(expression.getType)
       val resvar = Variable(freshResID)
       val trace = sval.guard :+ Equals(resvar,sval.value)
       
       //print the trace 
-      println(trace)
-      
-      EvaluationSuccessful(cval)
+      //println(trace)      
+      EvaluationSuccessful(And(trace))
     } catch {
       case so: StackOverflowError => EvaluationError("Stack overflow")
       case EvalError(msg) => EvaluationError(msg)              

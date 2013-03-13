@@ -9,7 +9,7 @@ object Size
 	  	case Leaf() => 0
 	  	case Node(l,x,r) => size(l) + size(r) + 1
 	  }
-	} ensuring(res => res == 0) 
-	//ensuring(res => res != -1)     
+	}ensuring(res => res != -1) 
+	//ensuring(res => res == 0) 	    
 	//inductive generalization res >= 0
 } 

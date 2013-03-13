@@ -101,7 +101,13 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
         } else Seq()
       }).toMap
 
-      val asMap = modelToMap(model, variables) ++ functionsAsMap ++ constantFunctionsAsMap
+      modelToMap(model, variables) ++ functionsAsMap ++ constantFunctionsAsMap      
+  }
+
+  private def validateModel(model: Z3Model, formula: Expr, variables: Set[Identifier]) : (Boolean, Map[Identifier,Expr]) = {
+    if(!forceStop) {
+
+      val asMap = ConvertModelToInput(model,variables)
       lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
       val evalResult = evaluator.eval(formula, asMap)
 
@@ -488,6 +494,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
               unrollingBank.promoteBlocker(z3ast)
             }
+                        
 
           }
 
