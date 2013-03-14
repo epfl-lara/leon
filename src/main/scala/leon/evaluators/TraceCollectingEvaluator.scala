@@ -24,12 +24,10 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
 
   def eval(expression: Expr, mapping : Map[Identifier,Expr]) : EvaluationResult = {
     var left: Int = maxSteps
+    var parts = List[(FunDef,List[Expr])]()
     
     //debugging 
-    ctx.reporter.info("collecting execution traces...");
-    
-    //a symbolic evaluation of an expression 
-    case class SymVal(guard :List[Expr], value: Expr)
+    ctx.reporter.info("collecting execution traces...");      
 
     /**   
      * The result of rec is a pair of expression and SymVal, the expression is the result of evaluation 
@@ -169,6 +167,10 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
               case other => throw EvalError(typeErrorMsg(other, BooleanType))
             }
           }
+          
+          //assign the list of calleeguards created until this point to the parts variable
+          parts = parts :+ (fd,calleeguard)
+          
           //construct a final guard
           val composedguard = callerguard ++ calleeguard
           (cres,SymVal(composedguard,resvar))
@@ -485,17 +487,15 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
       }
     }
 
-    try {
+    try {           
       val (cval,sval) = rec(mapping, expression)
       
       //create a trace
       val freshResID = FreshIdentifier("r",true).setType(expression.getType)
       val resvar = Variable(freshResID)
-      val trace = sval.guard :+ Equals(resvar,sval.value)
-      
-      //print the trace 
-      //println(trace)      
-      EvaluationSuccessful(And(trace))
+      val guard = sval.guard :+ Equals(resvar,sval.value)
+                 
+      EvaluationWithPartitions(cval,SymVal(guard,resvar),parts)
     } catch {
       case so: StackOverflowError => EvaluationError("Stack overflow")
       case EvalError(msg) => EvaluationError(msg)              

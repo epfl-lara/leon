@@ -43,11 +43,23 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
       case _ =>
     }
     
+    /**
+     * This function will be called back by the Leon verifier.
+     */
     val ProcessNewInput = (input : Map[Identifier,Expr], formula: Expr)  => {
-    //compute the symbolic trace induced by the input
+    //compute the symbolic trace induced by the input    
 	 val evalRes = new TraceCollectingEvaluator(ctx,program).eval(formula,input)
 	 evalRes match {
-	   case EvaluationSuccessful(t@And(trace)) => println(t)
+	   case EvaluationWithPartitions(cval,SymVal(guard,value),parts) => {
+		   println("Concrete Value: "+ cval)
+		   //print guards for each method
+		   parts.foreach((x) => { println("Method: "+x._1.id+" Guard: "+x._2) })
+		   println("Final Guard: " + guard) 
+//		   println("Value: "+value)		   
+		   		   
+		   //convert the guards to princess input
+		   ConvertToPrincessFormat(parts,guard)
+	   }
 	   case _ => reporter.warning("No solver could prove or disprove the verification condition.") 
 	 }	 
     }
@@ -60,8 +72,9 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
     report   
   }
   
-  
-  
-  
+  def ConvertToPrincessFormat(parts: List[(FunDef,List[Expr])], formula: Expr)
+  {
+	  
+  }
 
 }
