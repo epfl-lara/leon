@@ -72,9 +72,91 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
     report   
   }
   
-  def ConvertToPrincessFormat(parts: List[(FunDef,List[Expr])], formula: Expr)
+  def ConvertToPrincessFormat(parts: List[(FunDef,List[Expr])], guard: List[Expr])
   {
+	  //declare the list of free variables (consider only integers for now)
+	  val freevars = variablesOf(And(guard))
+	  println("\\function{")
+	  freevars.foreach((id) => id.getType match {
+	    case Int32Type => println("int "+id.toString)
+	    case _ => ;
+	  })
+	  println("}")
 	  
+	  //create a function to convert leon expressions into princess formulas (not all operations are supported)
+	  def PrinForm(formula: Expr) : String = formula match {
+	    case And(args) => args.foldLeft(new String())((str,x) => {
+	    	val r = PrinForm(x)	    	
+	    	str + (if(r.isEmpty()) "" 
+	    	  else if(str.isEmpty()) r
+	    	  else " & "+r)
+	    })
+	    case Or(args) => args.foldLeft(new String())((str,x) => str + " | " + PrinForm(x))
+	    case Variable(id) => id.getType match {
+	    							case Int32Type => id.toString
+	    							case _ => ""
+	    						}
+	    case IntLiteral(v) => v.toString
+	    case BooleanLiteral(v) => v.toString	    
+	    case Not(t) => "!("+PrinForm(t)+")"
+	    case UMinus(t) => "-("+PrinForm(t)+")"
+	    case Equals(t1,t2) => PrinForm(t1) + "=" + PrinForm(t2)
+	    case Iff(t1,t2) => PrinForm(Implies(t1,t2)) + PrinForm(Implies(t2,t1))  
+	    case Implies(t1,t2) => PrinForm(Or(Not(t1),t2))
+	    case t@Plus(t1,t2) => t.toString
+	    case t@Minus(t1,t2) => t.toString
+	    case t@Times(t1,t2) => t.toString
+	    case t@Division(t1,t2) => t.toString
+	    case t@Modulo(t1,t2) => t.toString
+	    case t@LessThan(t1,t2) => t.toString
+	    case t@GreaterThan(t1,t2) => t.toString
+	    case t@LessEquals(t1,t2) => t.toString
+	    case t@GreaterEquals(t1,t2) => t.toString	    
+	    case _ => "" //empty string in other cases
+	  }
+	  
+	  //create formula parts
+	  println("\\problem{")
+	  var processedFormulas = List[Expr]()
+	  var partnames = List[String]()
+	  
+	  parts.foreach((elem) => {
+	    val (func,list) = elem	    
+	    val formulas = list -- processedFormulas
+	    print("\\part["+func.id+"]"+"\t")
+	    println("(" + PrinForm(And(formulas)) +") &")
+	    processedFormulas = processedFormulas ++ formulas
+	    partnames = partnames :+ func.id.toString
+	  })
+	  
+	  //add the implies block
+	  println("->")
+	  
+	  //add the final part
+	   val leftFormula = guard -- processedFormulas	   
+	   print("\\part[assert]"+"\t")
+	   println("(" + PrinForm(And(leftFormula)) +")")
+	   
+	   //add interpolant blocks	   
+	   for( i <- 0 to parts.length )  {
+	     val str2 = partnames.foldLeft((new String(),0))((g,x) => if(g._2 == i + 1 && g._2 > 1) (g._1 + ";" + x,g._2+1) 
+	    		 													else (g._1 + "," + x,g._2 + 1))._1
+	    println("\\interpolant {"+str2+"}")
+	   }
+	    
+/*	  \problem {
+   Problem to be proven and interpolated 
+
+  \part[cond]          (a-2*x = 0 & -a <= 0) &
+  \part[par1]	    	(2*b - a <=0 & -2*b + a -1 <=0) & 
+  \part[par2] 		(c-3*b-1=0)
+  \part[par5]		par1 | par2 
+                       ->
+  \part[assert]        c > a
+}
+
+ Interpolation specification 
+\interpolant {cond, par1, par2; assert}*/
   }
 
 }
