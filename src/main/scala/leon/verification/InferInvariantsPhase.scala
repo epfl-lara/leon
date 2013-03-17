@@ -20,7 +20,7 @@ import leon.evaluators._
 object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
   val name = "InferInv"
   val description = "Invariant Inference"    
-  //private var 
+  private var reporter : Reporter = _ 
 
   override val definedOptions : Set[LeonOptionDef] = Set(
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
@@ -29,7 +29,7 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
 
   def run(ctx: LeonContext)(program: Program) : VerificationReport = {       
     
-    val reporter = ctx.reporter
+    reporter = ctx.reporter
     val functionsToAnalyse : MutableSet[String] = MutableSet.empty
     var timeout: Option[Int] = None    
 
@@ -51,14 +51,16 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
 	 val evalRes = new TraceCollectingEvaluator(ctx,program).eval(formula,input)
 	 evalRes match {
 	   case EvaluationWithPartitions(cval,SymVal(guard,value),parts) => {
-		   println("Concrete Value: "+ cval)
+		   println("Concrete Value: "+ cval)		   
 		   //print guards for each method
 		   parts.foreach((x) => { println("Method: "+x._1.id+" Guard: "+x._2) })
-		   println("Final Guard: " + guard) 
-//		   println("Value: "+value)		   
+		   
+		   //construct the path condition
+		   val pathcond = (guard :+ value)
+		   println("Final Guard: " + pathcond) 
 		   		   
 		   //convert the guards to princess input
-		   ConvertToPrincessFormat(parts,guard)
+		   ConvertToPrincessFormat(parts,pathcond)
 	   }
 	   case _ => reporter.warning("No solver could prove or disprove the verification condition.") 
 	 }	 
@@ -79,54 +81,88 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
 	  println("\\function{")
 	  freevars.foreach((id) => id.getType match {
 	    case Int32Type => println("int "+id.toString)
+	    case BooleanType => ;//reporter.warning("Boolean types present not handling them for now ")
 	    case _ => ;
 	  })
 	  println("}")
 	  
+	  //considering only binary operators
+	  def appendInfix(lhs: String,rhs: String,op: String) : String = {
+	    lhs  + (if(rhs.isEmpty()) "" 
+	    	  else if(lhs.isEmpty()) rhs
+	    	  else (op +rhs))
+	  }
+	  
+	  //considering only unary operators
+	  def appendPrefix(opd: String,op: String) : String = {
+	    if(opd.isEmpty()) opd
+	    else op + "("+opd+")"
+	  }
+	  
 	  //create a function to convert leon expressions into princess formulas (not all operations are supported)
+	  //note: princess does not support boolean type. Hence, we need to replace boolean variables by a predicate
+	  // which may introduce disjunctions
 	  def PrinForm(formula: Expr) : String = formula match {
 	    case And(args) => args.foldLeft(new String())((str,x) => {
-	    	val r = PrinForm(x)	    	
-	    	str + (if(r.isEmpty()) "" 
-	    	  else if(str.isEmpty()) r
-	    	  else " & "+r)
+	    	appendInfix(str,PrinForm(x)," & ")	    		    	
 	    })
-	    case Or(args) => args.foldLeft(new String())((str,x) => str + " | " + PrinForm(x))
+	    case Or(args) => args.foldLeft(new String())((str,x) => appendInfix(str,PrinForm(x)," | "))
+	    
 	    case Variable(id) => id.getType match {
-	    							case Int32Type => id.toString
+	    							case Int32Type => id.toString	    							
 	    							case _ => ""
 	    						}
 	    case IntLiteral(v) => v.toString
 	    case BooleanLiteral(v) => v.toString	    
-	    case Not(t) => "!("+PrinForm(t)+")"
-	    case UMinus(t) => "-("+PrinForm(t)+")"
-	    case Equals(t1,t2) => PrinForm(t1) + "=" + PrinForm(t2)
-	    case Iff(t1,t2) => PrinForm(Implies(t1,t2)) + PrinForm(Implies(t2,t1))  
+	    
+	    case t@Not(Variable(id)) => reporter.warning("Encountered negation of a variable: " + t); ""
+	    case Not(t) => appendPrefix(PrinForm(t),"!")	    
+	    case UMinus(t) => appendPrefix(PrinForm(t),"-")
+	    	    	   
+	    case t@Iff(t1,t2) => {
+	     //appendInfix(PrinForm(Implies(t1,t2)),PrinForm(Implies(t2,t1))," & ")
+	     //this is a temporary hack to handle the post-condition
+	      val (lhs,rhs) = (PrinForm(t1),PrinForm(t2))
+	      if(lhs.isEmpty() && rhs.isEmpty()) ""
+	      else if(lhs.isEmpty()) PrinForm(t2)
+	      else if(rhs.isEmpty()) PrinForm(t1)
+	      else {
+	       reporter.warning("Both LHS and RHS are bool expressions: "+t);
+	       "" 
+	      }
+	    }
+	      					
 	    case Implies(t1,t2) => PrinForm(Or(Not(t1),t2))
-	    case t@Plus(t1,t2) => t.toString
-	    case t@Minus(t1,t2) => t.toString
-	    case t@Times(t1,t2) => t.toString
-	    case t@Division(t1,t2) => t.toString
-	    case t@Modulo(t1,t2) => t.toString
-	    case t@LessThan(t1,t2) => t.toString
-	    case t@GreaterThan(t1,t2) => t.toString
-	    case t@LessEquals(t1,t2) => t.toString
-	    case t@GreaterEquals(t1,t2) => t.toString	    
+	    
+	    case Equals(t1,t2) => appendInfix(PrinForm(t1),PrinForm(t2),"=")
+	    case Plus(t1,t2) => appendInfix(PrinForm(t1),PrinForm(t2),"+")
+	    case Minus(t1,t2) => appendInfix(PrinForm(t1),PrinForm(t2),"-")
+	    case Times(t1,t2) => appendInfix(PrinForm(t1),PrinForm(t2),"*")
+	    case LessThan(t1,t2) => appendInfix(PrinForm(t1),PrinForm(t2),"<")
+	    case GreaterThan(t1,t2) => appendInfix(PrinForm(t1),PrinForm(t2),">")
+	    case LessEquals(t1,t2) => appendInfix(PrinForm(t1),PrinForm(t2),"<=")
+	    case GreaterEquals(t1,t2) => appendInfix(PrinForm(t1),PrinForm(t2),">=")	    
 	    case _ => "" //empty string in other cases
 	  }
 	  
 	  //create formula parts
 	  println("\\problem{")
+	  var partcount = 0
 	  var processedFormulas = List[Expr]()
 	  var partnames = List[String]()
 	  
 	  parts.foreach((elem) => {
 	    val (func,list) = elem	    
+	    
 	    val formulas = list -- processedFormulas
-	    print("\\part["+func.id+"]"+"\t")
+	    val partstr = func.id.toString() + partcount
+	    print("\\part["+ partstr  +"]"+"\t")
 	    println("(" + PrinForm(And(formulas)) +") &")
+	    
+	    //update mutable state variables
 	    processedFormulas = processedFormulas ++ formulas
-	    partnames = partnames :+ func.id.toString
+	    partnames = partnames :+ partstr
+	    partcount = partcount + 1
 	  })
 	  
 	  //add the implies block
@@ -137,11 +173,19 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
 	   print("\\part[assert]"+"\t")
 	   println("(" + PrinForm(And(leftFormula)) +")")
 	   
+	   //add assert to partnames
+	   partnames = partnames :+ "assert"
+	   
 	   //add interpolant blocks	   
-	   for( i <- 0 to parts.length )  {
-	     val str2 = partnames.foldLeft((new String(),0))((g,x) => if(g._2 == i + 1 && g._2 > 1) (g._1 + ";" + x,g._2+1) 
-	    		 													else (g._1 + "," + x,g._2 + 1))._1
-	    println("\\interpolant {"+str2+"}")
+	   for( i <- 1 to partnames.length - 1 )  {
+	      val (phrase,index) = partnames.foldLeft((new String(),1))(
+	      (g,x) => {	      
+	    	  	val (ipstr,index) = g
+	    	  	if(index == i + 1 && index > 1) (ipstr + ";" + x, index + 1)
+	    	  	else if(index > 1) (ipstr + "," + x, index + 1)
+	    	  	else (x, index + 1)
+	      	})
+	      println("\\interpolant {"+phrase+"}")	     
 	   }
 	    
 /*	  \problem {
