@@ -11,6 +11,8 @@ import solvers.{Solver,TrivialSolver,TimeoutSolver}
 import solvers.z3.FairZ3Solver
 import scala.collection.mutable.{Set => MutableSet}
 import leon.evaluators._
+import java.io._
+import scala.tools.nsc.io.File
 
 /**
  * @author ravi
@@ -27,11 +29,10 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
     LeonValueOptionDef("timeout",   "--timeout=T",       "Timeout after T seconds when trying to prove a verification condition.")
   )
 
-  def run(ctx: LeonContext)(program: Program) : VerificationReport = {       
+  def run(ctx: LeonContext)(program: Program) : VerificationReport = {
     
-    reporter = ctx.reporter
     val functionsToAnalyse : MutableSet[String] = MutableSet.empty
-    var timeout: Option[Int] = None    
+    var timeout: Option[Int] = None
 
     for(opt <- ctx.options) opt match {
       case LeonValueOption("functions", ListValue(fs)) =>
@@ -42,49 +43,221 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
 
       case _ =>
     }
-    
-    /**
-     * This function will be called back by the Leon verifier.
-     */
-    val ProcessNewInput = (input : Map[Identifier,Expr], formula: Expr)  => {
-    //compute the symbolic trace induced by the input    
-	 val evalRes = new TraceCollectingEvaluator(ctx,program).eval(formula,input)
-	 evalRes match {
-	   case EvaluationWithPartitions(cval,SymVal(guard,value),parts) => {
-		   println("Concrete Value: "+ cval)		   
-		   //print guards for each method
-		   parts.foreach((x) => { println("Method: "+x._1.id+" Guard: "+x._2) })
-		   
-		   //construct the path condition
-		   val pathcond = (guard :+ value)
-		   println("Final Guard: " + pathcond) 
-		   		   
-		   //convert the guards to princess input
-		   ConvertToPrincessFormat(parts,pathcond)
-	   }
-	   case _ => reporter.warning("No solver could prove or disprove the verification condition.") 
-	 }	 
+
+    val reporter = ctx.reporter
+    val trivialSolver = new TrivialSolver(ctx)    
+    val fairZ3 = new FairZ3Solver(ctx)
+
+    val solvers0 : Seq[Solver] = trivialSolver :: fairZ3 :: Nil
+    val solvers: Seq[Solver] = timeout match {
+      case Some(t) => solvers0.map(s => new TimeoutSolver(s, 1000L * t))
+      case None => solvers0
+    }
+
+    solvers.foreach(_.setProgram(program))
+
+
+    val defaultTactic = new DefaultTactic(reporter)
+    defaultTactic.setProgram(program)
+    /*val inductionTactic = new InductionTactic(reporter)
+    inductionTactic.setProgram(program)
+*/
+    def generateVerificationConditions : List[VerificationCondition] = {
+      var allVCs: Seq[VerificationCondition] = Seq.empty
+      val analysedFunctions: MutableSet[String] = MutableSet.empty
+
+      for(funDef <- program.definedFunctions.toList.sortWith((fd1, fd2) => fd1 < fd2) if (functionsToAnalyse.isEmpty || functionsToAnalyse.contains(funDef.id.name))) {
+        analysedFunctions += funDef.id.name
+
+        val tactic: Tactic = defaultTactic          
+
+          /*allVCs ++= tactic.generatePreconditions(funDef)
+          allVCs ++= tactic.generatePatternMatchingExhaustivenessChecks(funDef)*/
+          allVCs ++= tactic.generatePostconditions(funDef)
+          /*allVCs ++= tactic.generateMiscCorrectnessConditions(funDef)
+          allVCs ++= tactic.generateArrayAccessChecks(funDef)*/
+        
+        allVCs = allVCs.sortWith((vc1, vc2) => {
+          val id1 = vc1.funDef.id.name
+          val id2 = vc2.funDef.id.name
+          if(id1 != id2) id1 < id2 else vc1 < vc2
+        })
+      }
+
+      val notFound = functionsToAnalyse -- analysedFunctions
+      notFound.foreach(fn => reporter.error("Did not find function \"" + fn + "\" though it was marked for analysis."))
+
+      allVCs.toList
     }
     
-    reporter.info("Running Invariant Inference Phase...")       
+    def getModelListener(funDef: FunDef) : (Map[Identifier, Expr]) => Unit = {
+
+      val pre = if (funDef.precondition.isEmpty) BooleanLiteral(true) else matchToIfThenElse(funDef.precondition.get)
+      val body = matchToIfThenElse(funDef.body.get)
+      val resFresh = FreshIdentifier("result", true).setType(body.getType)
+      val post = replace(Map(ResultVariable() -> Variable(resFresh)), matchToIfThenElse(funDef.postcondition.get))
+
+      /**
+       * This function will be called back by the solver on discovering an input
+       */
+      val processNewInput = (input: Map[Identifier, Expr]) => {
+        //create a symbolic trace for pre and body
+        var symtraceBody = input.foldLeft(List[Expr]())((g, x) => { g :+ Equals(Variable(x._1), x._2) })
+        var parts = List[(FunDef, List[Expr])]()
+
+        //compute the symbolic trace induced by the input
+        val (tracePre, partsPre) =
+          if (funDef.precondition.isDefined) {
+            val resPre = new TraceCollectingEvaluator(ctx, program).eval(pre, input)
+            resPre match {
+              case EvaluationWithPartitions(BooleanLiteral(true), SymVal(guardPre, valuePre), partsPre) => {
+                ((guardPre :+ valuePre), partsPre)
+              }
+              case _ =>
+                reporter.warning("Error in colleting traces for Precondition: " + resPre + " For input: " + input)
+                (List[Expr](), List[(FunDef, List[Expr])]())
+            }
+          } else (List[Expr](), List[(FunDef, List[Expr])]())
+        symtraceBody ++= tracePre
+        parts ++= partsPre
+
+        //collect traces for body
+        val resBody = new TraceCollectingEvaluator(ctx, program).eval(body, input)
+        resBody match {
+          case EvaluationWithPartitions(cval, SymVal(guardBody, valueBody), partsBody) => {
+            //collect traces for the post-condition
+            val postInput = input ++ Map(resFresh -> cval)
+            val resPost = new TraceCollectingEvaluator(ctx, program).eval(post, postInput)
+            resPost match {
+              case EvaluationWithPartitions(BooleanLiteral(true), SymVal(guardPost, valuePost), partsPost) => {
+                //create a symbolic trace for pre and body
+                symtraceBody ++= (guardBody :+ Equals(Variable(resFresh), valueBody))
+
+                //create a set of parts for interpolating
+                parts ++= partsBody ++ partsPost :+ (funDef, symtraceBody)
+
+                //print each part for debugging
+                //parts.foreach((x) => { println("Method: " + x._1.id + " Trace: " + x._2) })
+
+                //create a symbolic trace including the post condition
+                val pathcond = symtraceBody ++ (guardPost :+ valuePost)
+                println("Final Trace: " + pathcond)
+
+                //convert the guards to princess input
+                ConvertToPrincessFormat(parts, pathcond)
+              }
+              case EvaluationWithPartitions(BooleanLiteral(true), symval, parts) => {
+                reporter.warning("Found counter example for the post-condition: " + postInput)
+              }
+              case _ => reporter.warning("Error in colleting traces for post: " + resPost + " For input: " + postInput)
+            }
+          }
+          case _ => reporter.warning("Error in colleting traces for body: " + resBody + " For input: " + input)
+        }
+      }
+      
+      processNewInput
+    }
+
+    def checkVerificationConditions(vcs: Seq[VerificationCondition]) : VerificationReport = {
+
+      for(vcInfo <- vcs) {
+        val funDef = vcInfo.funDef
+        val vc = vcInfo.condition
+
+        reporter.info("Now considering '" + vcInfo.kind + "' VC for " + funDef.id + "...")
+        reporter.info("Verification condition (" + vcInfo.kind + ") for ==== " + funDef.id + " ====")
+        reporter.info(simplifyLets(vc))
+
+        // try all solvers until one returns a meaningful answer
+        var superseeded : Set[String] = Set.empty[String]
+        solvers.find(se => {
+          reporter.info("Trying with solver: " + se.name)
+          if(superseeded(se.name) || superseeded(se.description)) {
+            reporter.info("Solver was superseeded. Skipping.")
+            false
+          } else {
+        	  superseeded = superseeded ++ Set(se.superseeds: _*)
+        	         		            
+        	  //set the model listener
+            se.SetModelListener(getModelListener(funDef))
+
+            val t1 = System.nanoTime
+            se.init()
+            val (satResult, counterexample) = se.solveSAT(Not(vc))
+            val solverResult = satResult.map(!_)
+
+            val t2 = System.nanoTime
+            val dt = ((t2 - t1) / 1000000) / 1000.0
+
+            solverResult match {
+              case None => false
+              case Some(true) => {
+                reporter.info("==== VALID ====")
+
+                vcInfo.value = Some(true)
+                vcInfo.solvedWith = Some(se)
+                vcInfo.time = Some(dt)
+
+                true
+              }
+              case Some(false) => {
+                reporter.error("Found counter-example : ")
+                reporter.error(counterexample.toSeq.sortBy(_._1.name).map(p => p._1 + " -> " + p._2).mkString("\n"))
+                reporter.error("==== INVALID ====")
+                vcInfo.value = Some(false)
+                vcInfo.solvedWith = Some(se)
+                vcInfo.time = Some(dt)
+
+                true
+              }
+            }
+          }
+        }) match {
+          case None => {
+            reporter.warning("No solver could prove or disprove the verification condition.")
+          }
+          case _ => 
+        } 
+      
+      } 
+
+      val report = new VerificationReport(vcs)
+      report
+    }      
     
-    //invoking leon verifier 
-    var report = AnalysisPhase.runner(ctx)(program,Some(ProcessNewInput))
+    reporter.info("Running Invariant Inference Phase...")           
     
-    report   
+    val report = if(solvers.size > 1) {
+      reporter.info("Running verification condition generation...")
+      checkVerificationConditions(generateVerificationConditions)
+    } else {
+      reporter.warning("No solver specified. Cannot test verification conditions.")
+      VerificationReport.emptyReport
+    }
+
+    report
   }
   
+  var filecount :Int = 0
+  
   def ConvertToPrincessFormat(parts: List[(FunDef,List[Expr])], guard: List[Expr])
-  {
+  {   
+	 val file = new java.io.File("princess-output"+filecount+".txt")
+	 filecount += 1
+	 file.createNewFile()	 
+	 val writer = new java.io.BufferedWriter(new java.io.FileWriter(file))
+	 
 	  //declare the list of free variables (consider only integers for now)
 	  val freevars = variablesOf(And(guard))
-	  println("\\function{")
+	  writer.write("\\functions {\n")
 	  freevars.foreach((id) => id.getType match {
-	    case Int32Type => println("int "+id.toString)
+	    case Int32Type => writer.write("int "+id.toString+";") 
 	    case BooleanType => ;//reporter.warning("Boolean types present not handling them for now ")
 	    case _ => ;
 	  })
-	  println("}")
+	  writer.write("\n}")
+	  writer.newLine()
 	  
 	  //considering only binary operators
 	  def appendInfix(lhs: String,rhs: String,op: String) : String = {
@@ -146,18 +319,23 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
 	  }
 	  
 	  //create formula parts
-	  println("\\problem{")
+	  writer.write("\\problem{\n")	  
+	  
 	  var partcount = 0
 	  var processedFormulas = List[Expr]()
 	  var partnames = List[String]()
-	  
+	  	  
 	  parts.foreach((elem) => {
 	    val (func,list) = elem	    
 	    
 	    val formulas = list -- processedFormulas
 	    val partstr = func.id.toString() + partcount
-	    print("\\part["+ partstr  +"]"+"\t")
-	    println("(" + PrinForm(And(formulas)) +") &")
+	    writer.write("\\part["+ partstr  +"]"+"\t")
+	    writer.write("(" + PrinForm(And(formulas)) +")")
+	    
+	    if(partcount < parts.length - 1)
+	      writer.write(" &\n")
+	    else writer.write("\n")
 	    
 	    //update mutable state variables
 	    processedFormulas = processedFormulas ++ formulas
@@ -166,12 +344,13 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
 	  })
 	  
 	  //add the implies block
-	  println("->")
+	  writer.write("->\n") 	  
 	  
 	  //add the final part
 	   val leftFormula = guard -- processedFormulas	   
-	   print("\\part[assert]"+"\t")
-	   println("(" + PrinForm(And(leftFormula)) +")")
+	   writer.write("\\part[assert]"+"\t")
+	   writer.write("(" + PrinForm(And(leftFormula)) +")")
+	   writer.write("}\n")
 	   
 	   //add assert to partnames
 	   partnames = partnames :+ "assert"
@@ -185,22 +364,10 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
 	    	  	else if(index > 1) (ipstr + "," + x, index + 1)
 	    	  	else (x, index + 1)
 	      	})
-	      println("\\interpolant {"+phrase+"}")	     
+	      writer.write("\\interpolant {"+phrase+"}\n")	     
 	   }
-	    
-/*	  \problem {
-   Problem to be proven and interpolated 
-
-  \part[cond]          (a-2*x = 0 & -a <= 0) &
-  \part[par1]	    	(2*b - a <=0 & -2*b + a -1 <=0) & 
-  \part[par2] 		(c-3*b-1=0)
-  \part[par5]		par1 | par2 
-                       ->
-  \part[assert]        c > a
-}
-
- Interpolation specification 
-\interpolant {cond, par1, par2; assert}*/
+	  writer.flush()
+	  writer.close()	  
   }
 
 }
