@@ -8,5 +8,6 @@
 	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_COMPILER_CONTAINER"/>
 	<classpathentry kind="lib" path="/home/kandhada/leon/leon/unmanaged/64/akka-actor-2.0-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="/home/kandhada/leon/leon/unmanaged/common/cafebabe_2.9.2-1.2.jar"/>
+	<classpathentry kind="lib" path="/home/kandhada/leon/leon/unmanaged/common/princess.jar" sourcepath="/home/kandhada/princess-2012-11-02/src/"/>
 	<classpathentry kind="output" path="target/scala-2.9.2/classes"/>
 </classpath>
