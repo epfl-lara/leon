@@ -1,0 +1,2 @@
+List((l == Cons(1, Nil())), (l11 == l), (l21 == Nil()), (l12 == l11.tail), (l22 == Cons(l11.head, l21)), l12.isInstanceOf[Nil], (r == l22), ¬(l11.isInstanceOf[Nil]), (r1 == r), (r2 == r1), (result2 == r2), (l2 == result2), (l3 == l2.tail), l3.isInstanceOf[Nil], (r3 == 0), ¬(l2.isInstanceOf[Nil]), (r4 == (1 + r3)), (l4 == l), (l5 == l4.tail), l5.isInstanceOf[Nil], (r5 == 0), ¬(l4.isInstanceOf[Nil]), (r6 == (1 + r5)), (r7 <=> (r4 == r6)), r7)
+
