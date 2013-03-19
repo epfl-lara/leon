@@ -112,6 +112,7 @@ class PrincessSolver(context : LeonContext)
 	  println(p???)  // Unsat
 	  println(p.getInterpolants(partseq))
 	  //println(p.getInterpolants(partseq))
+	  List[Expr]()
 	}
   }
   
