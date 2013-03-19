@@ -117,24 +117,24 @@ class RandomSolver(context: LeonContext, val nbTrial: Option[Int] = None) extend
 
       val evalResult = evaluator.eval(expression, var2val)
       evalResult match {
-        case EvaluationSuccessful(BooleanLiteral(true)) => {
+        case EvaluationResults.Successful(BooleanLiteral(true)) => {
           //continue trying
         }
 
-        case EvaluationSuccessful(BooleanLiteral(false)) => {
+        case EvaluationResults.Successful(BooleanLiteral(false)) => {
           reporter.info("Found counter example to formula: " + var2val)
           result = Some(false)
           stop = true
         }
 
-        case EvaluationFailure(_) => {
+        case EvaluationResults.RuntimeError(_) => {
           reporter.info("Input leads to runtime error: " + var2val)
           result = Some(false)
           stop = true
         }
 
         // otherwise, simply continue with another assignement 
-        case EvaluationError(_) => ;
+        case EvaluationResults.EvaluatorError(_) => ;
       }
 
       iteration += 1

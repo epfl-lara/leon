@@ -32,9 +32,9 @@ object LikelyEq {
             compare: (Expr, Expr) => Boolean = (e1, e2) => e1 == e2, 
             defaultMap: Map[Identifier, Expr] = Map()): Boolean = {
     if(vs.isEmpty) {
-      val ndm = defaultMap.map { case (id, expr) => (id, evaluator.eval(expr).asInstanceOf[EvaluationSuccessful].value) } //TODO: not quite sure why I need to do this...
+      val ndm = defaultMap.map { case (id, expr) => (id, evaluator.eval(expr).asInstanceOf[EvaluationResults.Successful].value) } //TODO: not quite sure why I need to do this...
       (evaluator.eval(e1, ndm), evaluator.eval(e2, defaultMap)) match {
-        case (EvaluationSuccessful(v1), EvaluationSuccessful(v2)) => compare(v1, v2)
+        case (EvaluationResults.Successful(v1), EvaluationResults.Successful(v2)) => compare(v1, v2)
         case (err1, err2) => sys.error("evaluation could not complete, got: (" + err1 + ", " + err2 + ")")
       }
     } else {
@@ -49,14 +49,14 @@ object LikelyEq {
         val ne1 = replace(m, e1)
         val ne2 = replace(m, e2)
         val npre = replace(m, pre)
-        val ndm = defaultMap.map{ case (id, expr) => (id, evaluator.eval(expr, m.map{case (Variable(id), t) => (id, t)}).asInstanceOf[EvaluationSuccessful].value) }
+        val ndm = defaultMap.map{ case (id, expr) => (id, evaluator.eval(expr, m.map{case (Variable(id), t) => (id, t)}).asInstanceOf[EvaluationResults.Successful].value) }
         evaluator.eval(npre, ndm) match {
-          case EvaluationSuccessful(BooleanLiteral(false)) =>
-          case EvaluationSuccessful(BooleanLiteral(true)) =>
+          case EvaluationResults.Successful(BooleanLiteral(false)) =>
+          case EvaluationResults.Successful(BooleanLiteral(true)) =>
             val ev1 = evaluator.eval(ne1, ndm)
             val ev2 = evaluator.eval(ne2, ndm)
             (ev1, ev2) match {
-              case (EvaluationSuccessful(v1), EvaluationSuccessful(v2)) => if(!compare(v1, v2)) isEq = false
+              case (EvaluationResults.Successful(v1), EvaluationResults.Successful(v2)) => if(!compare(v1, v2)) isEq = false
               case (err1, err2) => sys.error("evaluation could not complete, got: (" + err1 + ", " + err2 + ")")
             }
           case err => sys.error("evaluation of precondition could not complete, got: " + err)

@@ -172,19 +172,19 @@ class FairZ3Solver(context : LeonContext)
       val evalResult = evaluator.eval(formula, asMap)
 
       evalResult match {
-        case EvaluationSuccessful(BooleanLiteral(true)) =>
+        case EvaluationResults.Successful(BooleanLiteral(true)) =>
           reporter.info("- Model validated.")
           (true, asMap)
 
-        case EvaluationSuccessful(BooleanLiteral(false)) =>
+        case EvaluationResults.Successful(BooleanLiteral(false)) =>
           reporter.info("- Invalid model.")
           (false, asMap)
 
-        case EvaluationFailure(msg) =>
+        case EvaluationResults.RuntimeError(msg) =>
           reporter.info("- Model leads to runtime error.")
           (false, asMap)
 
-        case EvaluationError(msg) => 
+        case EvaluationResults.EvaluatorError(msg) => 
           reporter.warning("Something went wrong. While evaluating the model, we got this : " + msg)
           (false, asMap)
 

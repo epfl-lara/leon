@@ -7,6 +7,8 @@ import purescala.Trees._
 
 abstract class Evaluator(val context : LeonContext, val program : Program) extends LeonComponent {
 
+  type EvaluationResult = EvaluationResults.Result
+
   /** Evaluates an expression, using `mapping` as a valuation function for the free variables. */
   def eval(expr : Expr, mapping : Map[Identifier,Expr]) : EvaluationResult
 
@@ -19,7 +21,7 @@ abstract class Evaluator(val context : LeonContext, val program : Program) exten
     * to (and encouraged to) apply any specialization. */
   def compile(expr : Expr, argorder : Seq[Identifier]) : Option[Seq[Expr]=>EvaluationResult] = Some(
     (args : Seq[Expr]) => if(args.size != argorder.size) {
-        EvaluationError("Wrong number of arguments for evaluation.")
+        EvaluationResults.EvaluatorError("Wrong number of arguments for evaluation.")
     } else {
       val mapping = argorder.zip(args).toMap
       eval(expr, mapping)
@@ -27,14 +29,3 @@ abstract class Evaluator(val context : LeonContext, val program : Program) exten
   )
 }
 
-/** Possible results of expression evaluation. */
-sealed abstract class EvaluationResult(val result : Option[Expr])
-
-/** Represents an evaluation that successfully derived the result `value`. */
-case class EvaluationSuccessful(value : Expr) extends EvaluationResult(Some(value))
-
-/** Represents an evaluation that led to an error (in the program). */
-case class EvaluationFailure(message : String) extends EvaluationResult(None)
-
-/** Represents an evaluation that failed (in the evaluator). */
-case class EvaluationError(message : String) extends EvaluationResult(None)

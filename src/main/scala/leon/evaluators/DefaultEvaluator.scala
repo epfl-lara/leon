@@ -19,7 +19,7 @@ class DefaultEvaluator(ctx : LeonContext, prog : Program) extends Evaluator(ctx,
 
   private val maxSteps = 50000
 
-  def eval(expression: Expr, mapping : Map[Identifier,Expr]) : EvaluationResult = {
+  def eval(expression: Expr, mapping : Map[Identifier,Expr]) : EvaluationResults.Result = {
     var left: Int = maxSteps
 
     def rec(ctx: Map[Identifier,Expr], expr: Expr) : Expr = if(left <= 0) {
@@ -299,11 +299,14 @@ class DefaultEvaluator(ctx : LeonContext, prog : Program) extends Evaluator(ctx,
     }
 
     try {
-      EvaluationSuccessful(rec(mapping, expression))
+      EvaluationResults.Successful(rec(mapping, expression))
     } catch {
-      case so: StackOverflowError => EvaluationError("Stack overflow")
-      case EvalError(msg) => EvaluationError(msg)
-      case RuntimeError(msg) => EvaluationFailure(msg)
+      case so: StackOverflowError =>
+        EvaluationResults.EvaluatorError("Stack overflow")
+      case EvalError(msg) =>
+        EvaluationResults.EvaluatorError(msg)
+      case RuntimeError(msg) =>
+        EvaluationResults.RuntimeError(msg)
     }
   }
 

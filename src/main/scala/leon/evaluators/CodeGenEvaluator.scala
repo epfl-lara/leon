@@ -18,12 +18,11 @@ class CodeGenEvaluator(ctx : LeonContext, val unit : CompilationUnit) extends Ev
     this(ctx, CompilationUnit.compileProgram(prog).get) // this .get is dubious...
   }
 
-
   def eval(expression : Expr, mapping : Map[Identifier,Expr]) : EvaluationResult = {
     // ctx.reporter.warning("Using `eval` in CodeGenEvaluator is discouraged. Use `compile` whenever applicable.")
 
     val toPairs = mapping.toSeq
-    compile(expression, toPairs.map(_._1)).map(e => e(toPairs.map(_._2))).getOrElse(EvaluationError("Couldn't compile expression."))
+    compile(expression, toPairs.map(_._1)).map(e => e(toPairs.map(_._2))).getOrElse(EvaluationResults.EvaluatorError("Couldn't compile expression."))
   }
 
   override def compile(expression : Expr, argorder : Seq[Identifier]) : Option[Seq[Expr]=>EvaluationResult] = {
@@ -35,19 +34,19 @@ class CodeGenEvaluator(ctx : LeonContext, val unit : CompilationUnit) extends Ev
 
       Some((args : Seq[Expr]) => {
         try {
-          EvaluationSuccessful(ce.eval(args))
+          EvaluationResults.Successful(ce.eval(args))
         } catch {
           case e : ArithmeticException =>
-            EvaluationFailure(e.getMessage)
+            EvaluationResults.RuntimeError(e.getMessage)
 
           case e : ArrayIndexOutOfBoundsException =>
-            EvaluationFailure(e.getMessage)
+            EvaluationResults.RuntimeError(e.getMessage)
 
           case e : LeonCodeGenRuntimeException =>
-            EvaluationFailure(e.getMessage)
+            EvaluationResults.RuntimeError(e.getMessage)
 
           case e : LeonCodeGenEvaluationException =>
-            EvaluationError(e.getMessage)
+            EvaluationResults.EvaluatorError(e.getMessage)
         }
       })
     } catch {

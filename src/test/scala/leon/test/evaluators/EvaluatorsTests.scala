@@ -60,14 +60,16 @@ class EvaluatorsTests extends FunSuite {
   }
 
   private def checkCompSuccess(evaluator : Evaluator, in : Expr) : Expr = {
+    import EvaluationResults._
+
     evaluator.eval(in) match {
-      case EvaluationFailure(msg) =>
+      case RuntimeError(msg) =>
         throw new AssertionError("Evaluation of '%s' with evaluator '%s' should have succeeded, but it failed (%s).".format(in, evaluator.name, msg))
 
-      case EvaluationError(msg) =>
+      case EvaluatorError(msg) =>
         throw new AssertionError("Evaluation of '%s' with evaluator '%s' should have succeeded, but the evaluator had an internal error (%s).".format(in, evaluator.name, msg))
 
-      case EvaluationSuccessful(result) =>
+      case Successful(result) =>
         result
     }
   }
@@ -129,27 +131,31 @@ class EvaluatorsTests extends FunSuite {
   }
 
   private def checkError(evaluator : Evaluator, in : Expr) {
+    import EvaluationResults._
+
     evaluator.eval(in) match {
-      case EvaluationError(msg) =>
+      case EvaluatorError(msg) =>
         throw new AssertionError("Evaluation of '%s' with evaluator '%s' should have failed, but it produced an internal error (%s).".format(in, evaluator.name, msg))
 
-      case EvaluationSuccessful(result) =>
+      case Successful(result) =>
         throw new AssertionError("Evaluation of '%s' with evaluator '%s' should have failed, but it produced the result '%s' instead.".format(in, evaluator.name, result))
 
-      case EvaluationFailure(_) =>
+      case RuntimeError(_) =>
         // that's the desired outcome
     }
   }
 
   private def checkEvaluatorError(evaluator : Evaluator, in : Expr) {
+    import EvaluationResults._
+
     evaluator.eval(in) match {
-      case EvaluationFailure(msg) =>
+      case RuntimeError(msg) =>
         throw new AssertionError("Evaluation of '%s' with evaluator '%s' should have produced an internal error, but it failed instead (%s).".format(in, evaluator.name, msg))
 
-      case EvaluationSuccessful(result) =>
+      case Successful(result) =>
         throw new AssertionError("Evaluation of '%s' with evaluator '%s' should have produced an internal error, but it produced the result '%s' instead.".format(in, evaluator.name, result))
 
-      case EvaluationError(_) =>
+      case EvaluatorError(_) =>
         // that's the desired outcome
     }
   }
