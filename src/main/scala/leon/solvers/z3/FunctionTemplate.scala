@@ -272,7 +272,18 @@ object FunctionTemplate {
           }
         }
 
-        case c @ Choose(_, _) => Variable(FreshIdentifier("choose", true).setType(c.getType))
+        case c @ Choose(ids, cond) =>
+          val cid = FreshIdentifier("choose", true).setType(c.getType)
+          exprVars += cid
+
+          val m: Map[Expr, Expr] = if (ids.size == 1) {
+            Map(Variable(ids.head) -> Variable(cid))
+          } else {
+            ids.zipWithIndex.map{ case (id, i) => Variable(id) -> TupleSelect(Variable(cid), i+1) }.toMap
+          }
+
+          storeGuarded(pathVar, replace(m, cond))
+          Variable(cid)
 
         case n @ NAryOperator(as, r) => r(as.map(a => rec(pathVar, a))).setType(n.getType)
         case b @ BinaryOperator(a1, a2, r) => r(rec(pathVar, a1), rec(pathVar, a2)).setType(b.getType)

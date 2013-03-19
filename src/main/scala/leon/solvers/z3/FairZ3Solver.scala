@@ -139,7 +139,7 @@ class FairZ3Solver(context : LeonContext)
     (solver.checkAssumptions(assumptions), solver.getModel, solver.getUnsatCore)
   }
 
-  private def validateModel(model: Z3Model, formula: Expr, variables: Set[Identifier]) : (Boolean, Map[Identifier,Expr]) = {
+  private def validateModel(model: Z3Model, formula: Expr, variables: Set[Identifier], silenceErrors: Boolean) : (Boolean, Map[Identifier,Expr]) = {
     if(!forceStop) {
 
       val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
@@ -185,7 +185,11 @@ class FairZ3Solver(context : LeonContext)
           (false, asMap)
 
         case EvaluationResults.EvaluatorError(msg) => 
-          reporter.warning("Something went wrong. While evaluating the model, we got this : " + msg)
+          if (silenceErrors) {
+            reporter.info("- Model leads to evaluator error: " + msg)
+          } else {
+            reporter.warning("Something went wrong. While evaluating the model, we got this : " + msg)
+          }
           (false, asMap)
 
       }
@@ -502,7 +506,7 @@ class FairZ3Solver(context : LeonContext)
             val z3model = solver.getModel
 
             if (this.checkModels) {
-              val (isValid, model) = validateModel(z3model, entireFormula, varsInVC)
+              val (isValid, model) = validateModel(z3model, entireFormula, varsInVC, silenceErrors = false)
 
               if (isValid) {
                 foundAnswer(Some(true), model)
@@ -588,7 +592,7 @@ class FairZ3Solver(context : LeonContext)
                   if (this.feelingLucky && !forceStop) {
                     // we might have been lucky :D
                     luckyTime.start
-                    val (wereWeLucky, cleanModel) = validateModel(solver.getModel, entireFormula, varsInVC)
+                    val (wereWeLucky, cleanModel) = validateModel(solver.getModel, entireFormula, varsInVC, silenceErrors = true)
                     luckyTime.stop
 
                     if(wereWeLucky) {
