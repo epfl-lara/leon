@@ -161,6 +161,8 @@ case object CEGIS extends Rule("CEGIS") {
       private var cChildren: Map[Identifier, Set[Identifier]] = Map().withDefaultValue(Set())
 
 
+      type EvaluationResult = EvaluationResults.Result
+
       private var triedCompilation = false
       private var progEvaluator: Option[(Seq[Expr], Seq[Expr]) => EvaluationResult] = None
 
@@ -181,14 +183,14 @@ case object CEGIS extends Rule("CEGIS") {
           val evalResult = progEvaluator.get.apply(bssValues,  ins)
 
           evalResult match {
-            case EvaluationSuccessful(res) =>
+            case EvaluationResults.Successful(res) =>
               res == BooleanLiteral(true)
 
-            case EvaluationError(err) =>
+            case EvaluationResults.RuntimeError(err) =>
               sctx.reporter.error("Error testing CE: "+err)
               true
 
-            case EvaluationFailure(err) =>
+            case EvaluationResults.EvaluatorError(err) =>
               sctx.reporter.error("Error testing CE: "+err)
               true
           }

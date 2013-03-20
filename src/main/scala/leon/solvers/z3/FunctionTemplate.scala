@@ -94,7 +94,7 @@ class FunctionTemplate private(
         val leonArgs = ga.map(_.get).force
         val invocation = FunctionInvocation(funDef, leonArgs)
         solver.getEvaluator.eval(invocation) match {
-          case EvaluationSuccessful(result) =>
+          case EvaluationResults.Successful(result) =>
             val z3Invocation = z3.mkApp(solver.functionDefToDecl(funDef), args: _*)
             val z3Value      = solver.toZ3Formula(result).get
             val asZ3         = z3.mkEq(z3Invocation, z3Value)
