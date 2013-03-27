@@ -9,6 +9,7 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import solvers.{Solver,TrivialSolver,TimeoutSolver}
 import solvers.z3.FairZ3Solver
+import solvers.princess.PrincessSolver
 import scala.collection.mutable.{Set => MutableSet}
 import leon.evaluators._
 import java.io._
@@ -28,6 +29,8 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
     LeonValueOptionDef("timeout",   "--timeout=T",       "Timeout after T seconds when trying to prove a verification condition.")
   )
+  
+  //def getPostConditionTemplate()
 
   def run(ctx: LeonContext)(program: Program) : VerificationReport = {
     
@@ -45,6 +48,7 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
     }
 
     val reporter = ctx.reporter
+    
     val trivialSolver = new TrivialSolver(ctx)    
     val fairZ3 = new FairZ3Solver(ctx)
 
@@ -54,8 +58,7 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
       case None => solvers0
     }
 
-    solvers.foreach(_.setProgram(program))
-
+    solvers.foreach(_.setProgram(program))      
 
     val defaultTactic = new DefaultTactic(reporter)
     defaultTactic.setProgram(program)
@@ -70,6 +73,9 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
         analysedFunctions += funDef.id.name
 
         val tactic: Tactic = defaultTactic          
+        
+        //add the template as a post-condition to all the methods
+        
 
           /*allVCs ++= tactic.generatePreconditions(funDef)
           allVCs ++= tactic.generatePatternMatchingExhaustivenessChecks(funDef)*/
@@ -90,16 +96,18 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
       allVCs.toList
     }
     
-    def getModelListener(funDef: FunDef) : (Map[Identifier, Expr]) => Unit = {
-
+    /*def getModelListener(funDef: FunDef) : (Map[Identifier, Expr]) => Unit = {
+      
+      //create an interpolation solver
+      val interpolationSolver = new PrincessSolver(ctx)
       val pre = if (funDef.precondition.isEmpty) BooleanLiteral(true) else matchToIfThenElse(funDef.precondition.get)
       val body = matchToIfThenElse(funDef.body.get)
       val resFresh = FreshIdentifier("result", true).setType(body.getType)
       val post = replace(Map(ResultVariable() -> Variable(resFresh)), matchToIfThenElse(funDef.postcondition.get))
 
-      /**
+      *//**
        * This function will be called back by the solver on discovering an input
-       */
+       *//*
       val processNewInput = (input: Map[Identifier, Expr]) => {
         //create a symbolic trace for pre and body
         var symtraceBody = input.foldLeft(List[Expr]())((g, x) => { g :+ Equals(Variable(x._1), x._2) })
@@ -141,10 +149,11 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
 
                 //create a symbolic trace including the post condition
                 val pathcond = symtraceBody ++ (guardPost :+ valuePost)
-                println("Final Trace: " + pathcond)
+                //println("Final Trace: " + pathcond)
 
                 //convert the guards to princess input
-                ConvertToPrincessFormat(parts, pathcond)
+                //DumpInPrincessFormat(parts, pathcond)         
+                val interpolants = interpolationSolver.getInterpolants(parts,pathcond)
               }
               case EvaluationWithPartitions(BooleanLiteral(true), symval, parts) => {
                 reporter.warning("Found counter example for the post-condition: " + postInput)
@@ -158,7 +167,7 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
       
       processNewInput
     }
-
+*/
     def checkVerificationConditions(vcs: Seq[VerificationCondition]) : VerificationReport = {
 
       for(vcInfo <- vcs) {
@@ -179,8 +188,8 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
           } else {
         	  superseeded = superseeded ++ Set(se.superseeds: _*)
         	         		            
-        	  //set the model listener
-            se.SetModelListener(getModelListener(funDef))
+        	 //set the model listener
+            //se.SetModelListener(getModelListener(funDef))
 
             val t1 = System.nanoTime
             se.init()
@@ -239,9 +248,12 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
     report
   }
   
-  var filecount :Int = 0
   
-  def ConvertToPrincessFormat(parts: List[(FunDef,List[Expr])], guard: List[Expr])
+  /**
+   * Dumps an input formula in princess format
+   */
+  /*var filecount :Int = 0  
+  def DumpInPrincessFormat(parts: List[(FunDef,List[Expr])], guard: List[Expr])
   {   
 	 val file = new java.io.File("princess-output"+filecount+".txt")
 	 filecount += 1
@@ -370,4 +382,4 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
 	  writer.close()	  
   }
 
-}
+*/}

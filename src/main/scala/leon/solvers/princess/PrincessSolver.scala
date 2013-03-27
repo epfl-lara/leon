@@ -24,8 +24,8 @@ import scala.collection.mutable.{Map => MutableMap}
 import scala.collection.mutable.{Set => MutableSet}
 
 class PrincessSolver(context : LeonContext)
-  extends Solver(context)     
-     with LeonComponent {
+  /*extends Solver(context)     
+     with LeonComponent */ {
 
   enclosing =>
 
@@ -39,6 +39,10 @@ class PrincessSolver(context : LeonContext)
     LeonFlagOptionDef("codegen",            "--codegen",            "Use compiled evaluator instead of interpreter"),
     LeonFlagOptionDef("fairz3:unrollcores", "--fairz3:unrollcores", "Use unsat-cores to drive unrolling while remaining fair")
   )*/
+    
+  /*override def getNewSolver{
+    new 
+  }
  
   override def setProgram(prog : Program) {
     super.setProgram(prog)
@@ -55,13 +59,14 @@ class PrincessSolver(context : LeonContext)
   }
   
   
-  def solveSATWithCores(expression: Expr, assumptions: Set[Expr]) = {
+  override def solveSATWithCores(expression: Expr, assumptions: Set[Expr]) = {
     context.reporter.warning("Calling solveSATWithCores method on princess solver")
     (None,Map[Identifier,Expr](),Set[Expr]())
   }
-  
+*/  
   def getInterpolants(parts : List[(FunDef,List[Expr])], leonExprs :List[Expr]) : List[Expr] ={
-    val p = SimpleAPI.spawnWithAssertions
+    val p = SimpleAPI(true, true)
+    
     p.scope {
       p.setConstructProofs(true)
 
@@ -84,7 +89,13 @@ class PrincessSolver(context : LeonContext)
 	    val formulas = list -- processedFormulas
 	    
 	    p.setPartitionNumber(partcount) 
-	    p !! getPrincessFormula(And(formulas),freevarMap).asInstanceOf[IFormula]
+	    getPrincessFormula(And(formulas),freevarMap) match {
+	      case Some(v) => { 
+	        (p !! v.asInstanceOf[IFormula]) 
+	        println("Adding assertion: "+v) 
+	      }
+	      case _ => context.reporter.warning("cannot convert to princess formula: "+formulas)
+	    }
 	   	    
 	    //update mutable state variables
 	    processedFormulas ++= formulas	    
@@ -94,7 +105,13 @@ class PrincessSolver(context : LeonContext)
 	  //add the final part
 	  val leftFormula = leonExprs -- processedFormulas
 	  p.setPartitionNumber(partcount)
-	  p !! getPrincessFormula(Not(And(leftFormula)),freevarMap).asInstanceOf[IFormula]
+	  getPrincessFormula(Not(And(leftFormula)),freevarMap) match {
+	      case Some(v) => { 
+	        p !! v.asInstanceOf[IFormula]
+	        println("Adding assertion: "+v)
+	      }
+	      case _ => context.reporter.warning("cannot convert to princess formula: "+leftFormula)
+	   }	  
 	   
 	   /*//add interpolant blocks	   
 	   for( i <- 1 to partnames.length - 1 )  {
@@ -109,6 +126,8 @@ class PrincessSolver(context : LeonContext)
       //construct a seq (of sets) from 0 to partcount
       var partseq = Seq[Set[Int]]()
       for( i <- 0 to partcount ) { partseq :+= Set(i) }
+            
+      
 	  println(p???)  // Unsat
 	  println(p.getInterpolants(partseq))
 	  //println(p.getInterpolants(partseq))
@@ -130,7 +149,7 @@ class PrincessSolver(context : LeonContext)
 
 	    case Variable(id) => id.getType match {
 	    							case Int32Type => Some(freevarMap.get(id).get)
-	    							case BooleanType => Some(freevarMap.get(id).get)
+	    							//case BooleanType => Some(freevarMap.get(id).get)
 	    							case _ => None
 	    						}
 	    case IntLiteral(v) => Some(i(v))
@@ -138,7 +157,7 @@ class PrincessSolver(context : LeonContext)
 	    
 	    case t@Not(Variable(id)) => context.reporter.warning("Encountered negation of a variable: " + t); None
 	    case Not(t) => getPrincessFormula(t,freevarMap) match { 
-	      case Some(v) => Some(INot(v.asInstanceOf[IFormula]))
+	      case Some(v) => Some(!(v.asInstanceOf[IFormula]))
 	      case _ => None
 	    }
 	    
@@ -147,23 +166,30 @@ class PrincessSolver(context : LeonContext)
 	      case _ => None
 	    }
 	    	    	   
-	    case t@Iff(t1,t2) => (getPrincessFormula(t1,freevarMap),getPrincessFormula(t2,freevarMap)) match { 
-	      case (Some(v1),Some(v2)) => Some(v1.asInstanceOf[IFormula] <=> v2.asInstanceOf[IFormula])
+	    case t@Iff(t1,t2) => (t1,t2) match {
+	      case (Variable(id),Variable(id2)) => None
+	      case (Variable(id),t2) => getPrincessFormula(t2,freevarMap) 	      
+	      case (t1,Variable(id)) => getPrincessFormula(t1,freevarMap)
 	      case _ => None
-	    }
-	      	     				
-	    case t@Iff(t1,t2) => (getPrincessFormula(t1,freevarMap),getPrincessFormula(t2,freevarMap)) match { 
+	    } 
+	    
+	    /*(getPrincessFormula(t1,freevarMap),getPrincessFormula(t2,freevarMap)) match {	      
+	      	case (Some(v1),Some(v2)) => Some(v1.asInstanceOf[IFormula] <=> v2.asInstanceOf[IFormula])
+	      	case _ => None
+	      }*/
+	    
+	    case Implies(t1,t2) => (getPrincessFormula(t1,freevarMap),getPrincessFormula(t2,freevarMap)) match { 
 	      case (Some(v1),Some(v2)) => Some(v1.asInstanceOf[IFormula] ==> v2.asInstanceOf[IFormula])
 	      case _ => None
 	    }
 	    
 	    case Equals(t1,t2) => //replace equalities by inequalities 
-	      getPrincessFormula(And(LessEquals(t1,t2),GreaterEquals(t1,t2)),freevarMap)
-	      
-	      /*(getPrincessFormula(t1,freevarMap),getPrincessFormula(t2,freevarMap)) match { 
-	      		case (Some(v1),Some(v2)) => Some(v1.asInstanceOf[ITerm] == v2.asInstanceOf[ITerm])
+	      //getPrincessFormula(And(LessEquals(t1,t2),GreaterEquals(t1,t2)),freevarMap)	      
+	      (getPrincessFormula(t1,freevarMap),getPrincessFormula(t2,freevarMap)) match { 
+	      		case (Some(v1),Some(v2)) => Some(v1.asInstanceOf[ITerm] === v2.asInstanceOf[ITerm])
 	      		case _ => None
-	    	}*/
+	    	}
+	      
 	    case Plus(t1,t2) => (getPrincessFormula(t1,freevarMap),getPrincessFormula(t2,freevarMap)) match { 
 	      case (Some(v1),Some(v2)) => Some(v1.asInstanceOf[ITerm] + v2.asInstanceOf[ITerm])
 	      case _ => None
@@ -196,7 +222,7 @@ class PrincessSolver(context : LeonContext)
 	  }
   }
 
-  override def halt() {
+  /*override def halt() {
     super.halt    
-  }
+  }*/
 }
