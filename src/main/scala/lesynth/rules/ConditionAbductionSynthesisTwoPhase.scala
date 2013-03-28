@@ -7,11 +7,12 @@ import leon.purescala.TypeTrees._
 import leon.purescala.TreeOps._
 import leon.purescala.Extractors._
 import leon.purescala.Definitions._
+import leon.purescala.DataGen.findModels
 import leon.synthesis._
 import leon.solvers.{ Solver, TimeoutSolver }
+import leon.evaluators.CodeGenEvaluator
 
 import InputExamples._
-import lesynth.SynthesizerForRuleExamples
 
 case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abduction synthesis (two phase).") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
@@ -21,7 +22,7 @@ case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abductio
         List(new RuleInstantiation(p, this, SolutionBuilder.none, "Condition abduction") {
           def apply(sctx: SynthesisContext): RuleApplicationResult = {
             try {
-              val solver = new TimeoutSolver(sctx.solver, 2000L)
+              val solver = new TimeoutSolver(sctx.solver, 1000L)
               val program = sctx.program
               val reporter = sctx.reporter
 
@@ -36,15 +37,24 @@ case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abductio
                 val freshResID = FreshIdentifier("result").setType(holeFunDef.returnType)
                 val freshResVar = Variable(freshResID)
                 
+                val codeGenEval = new CodeGenEvaluator(sctx.context, sctx.program)
+                def getInputExamples = 
+                  getDataGenInputExamples(codeGenEval, p, 
+                		40, 2000, Some(holeFunDef.args.map(_.id))
+                	) _
+                
                 holeFunDef.postcondition = Some(replace(
                   Map(givenVariable.toVariable -> ResultVariable().setType(holeFunDef.returnType)), p.phi))
                 holeFunDef.precondition = Some(p.pc)
 
                 val synthesizer = new SynthesizerForRuleExamples(
-                  solver, program, desiredType, holeFunDef, p, freshResVar,
+                  solver, program, desiredType, holeFunDef, p, sctx, freshResVar,
                   20, 2, 1,
                   reporter = reporter,
-                  introduceExamples = getInputExamples)
+                  introduceExamples = getInputExamples,  
+								  numberOfTestsInIteration = 50,
+								  numberOfCheckInIteration = 5
+							  )
 
                 synthesizer.synthesize match {
                   case EmptyReport => RuleApplicationImpossible
