@@ -6,6 +6,7 @@ import scala.collection.mutable.{ LinkedList => MutableList }
 
 import leon.{ Main => LeonMain, DefaultReporter, Settings, LeonContext }
 import leon.evaluators._
+import leon.evaluators.EvaluationResults._
 import leon.solvers.Solver
 import leon.solvers.z3.{ FairZ3Solver }
 import leon.verification.AnalysisPhase
@@ -16,6 +17,8 @@ import leon.purescala.Common.{ Identifier, FreshIdentifier }
 import leon.purescala.TreeOps
 
 import insynth.util.logging.HasLogger
+
+import EvaluationResults._
 
 class ExampleRunner(program: Program, maxSteps: Int = 2000) extends HasLogger {
 
@@ -35,7 +38,7 @@ class ExampleRunner(program: Program, maxSteps: Int = 2000) extends HasLogger {
   def evaluate(expr: Expr, mapping: Map[Identifier, Expr]) = {
     fine("to evaluate: " + expr + " for mapping: " + mapping)
     defaultEvaluator.eval(expr, mapping) match {
-      case EvaluationSuccessful(BooleanLiteral(true)) =>
+      case Successful(BooleanLiteral(true)) =>
         fine("Eval succeded: EvaluationSuccessful(true)")
         true
       case m =>

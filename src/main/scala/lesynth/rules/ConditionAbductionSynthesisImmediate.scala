@@ -34,7 +34,7 @@ case object ConditionAbductionSynthesisImmediate extends Rule("Condition abducti
 	        holeFunDef.precondition = Some(p.pc)
 	        
 	        val synthesizer = new SynthesizerForRuleExamples(
-	          solver, program, desiredType, holeFunDef, p, freshResVar,
+	          solver, program, desiredType, holeFunDef, p, sctx, freshResVar,
 	          reporter = reporter,
 	          introduceExamples = introduceTwoListArgumentsExamples
 	        )

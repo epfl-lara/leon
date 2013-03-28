@@ -25,7 +25,7 @@ import insynth.interfaces.Declaration
 import insynth.engine.InitialEnvironmentBuilder
 import insynth.leon.TypeTransformer
 import insynth.reconstruction.Output
-import leon.synthesis.Problem
+import leon.synthesis.{ Problem, SynthesisContext }
 import leon.Main.processOptions
 import leon.purescala.TypeTrees._
 
@@ -41,6 +41,7 @@ class SynthesizerForRuleExamples(
   val desiredType: LeonType,
   val holeFunDef: FunDef,
   val problem: Problem,
+  val synthesisContext: SynthesisContext,
   val freshResVar: LeonVariable,
   // number of condition expressions to try before giving up on that branch expression
   numberOfBooleanSnippets: Int = 5,
@@ -99,6 +100,9 @@ class SynthesizerForRuleExamples(
   private var accumulatingExpression: Expr => Expr = _
   //private var accumulatingExpressionMatch: Expr => Expr = _
 
+  var flag1 = false
+  var flag2 = false
+
   // time
   var startTime: Long = _
   var verTime: Long = 0
@@ -131,6 +135,18 @@ class SynthesizerForRuleExamples(
 
       withPrec
     }
+        
+    val reporter = //new DefaultReporter
+      new SilentReporter
+    val args =
+      if (analyzeSynthesizedFunctionOnly)
+        Array(fileName, "--timeout=" + leonTimeout, "--functions=" + holeFunDef.id.name)
+      else
+        Array(fileName, "--timeout=" + leonTimeout)
+    info("Leon context array: " + args.mkString(","))
+    ctx = processOptions(reporter, args.toList)
+    val solver = new TimeoutSolver(new FairZ3Solver(ctx), 1000L)
+    solver.setProgram(program)
     
     Globals.allSolved = solver.solve(theExpr)
     fine("solver said " + Globals.allSolved + " for " + theExpr)
@@ -187,7 +203,8 @@ class SynthesizerForRuleExamples(
     // return found counterexamples and the formed precondition
     (maps, precondition)
   }
-
+  
+  
   def getCurrentBuilder = new InitialEnvironmentBuilder(allDeclarations)
 
   def synthesizeBranchExpressions =
@@ -338,6 +355,13 @@ class SynthesizerForRuleExamples(
       case Some(true) => false
       case _ => true
     }
+	  // update flag in case of time limit overdue
+	  def checkTimeout =
+	    if (synthesisContext.shouldStop.get) {
+	      keepGoing = false
+    		true
+	    } else
+	      false
 
     // initial snippets (will update in the loop)
     var snippets = synthesizeBranchExpressions
@@ -349,10 +373,13 @@ class SynthesizerForRuleExamples(
     // iterate while the program is not valid
     import scala.util.control.Breaks._
     var iteration = 0
+    var noBranchFoundIteration = 0
     breakable {
       while (keepGoing) {
+        if (checkTimeout) break
         // next iteration
         iteration += 1
+        noBranchFoundIteration += 1
         reporter.info("####################################")
         reporter.info("######Iteration #" + iteration + " ###############")
         reporter.info("####################################")
@@ -390,6 +417,7 @@ class SynthesizerForRuleExamples(
           ) {
             finest("snippetTree is: " + snippetTree)
             // note that we do not add snippets to the set of seen if enqueued 
+            if (checkTimeout) break
 
             // skip avoidable calls
             if (!refiner.isAvoidable(snippetTree, problem.as)) {
@@ -402,6 +430,7 @@ class SynthesizerForRuleExamples(
                 
                 if (tryToSynthesizeBranch(snippetTree)) {
                   // will set found if correct body is found
+                  noBranchFoundIteration = 0
                   break
                 }
               } else {
@@ -423,7 +452,7 @@ class SynthesizerForRuleExamples(
             } // if (!refiner.isAvoidable(snippetTree)) {
 
             // check if we this makes one test iteration            
-            if (numberOfTested >= numberOfTestsInIteration) {
+            if (numberOfTested >= numberOfTestsInIteration * noBranchFoundIteration) {
             	reporter.info("Finalizing enumeration/testing phase.")
               fine("Queue contents: " + pq.toList.take(10).mkString("\n"))
               fine({ if (pq.isEmpty) "queue is empty" else "head of queue is: " + pq.head })
@@ -436,12 +465,14 @@ class SynthesizerForRuleExamples(
                 //interactivePause
 
                 if (tryToSynthesizeBranch(nextSnippet)) {
+                  noBranchFoundIteration = 0
                   break
                 }
                 
                 // dont drop snippets that were on top of queue (they may be good for else ... part)
                 //seenBranchExpressions += nextSnippet.toString
               }
+
 
               numberOfTested = 0
             } else
@@ -497,6 +528,7 @@ class SynthesizerForRuleExamples(
     // TODO spare one analyzing step
     // analyze the program
     fine("analyzing program for funDef:" + holeFunDef)
+    solver.setProgram(program)
     analyzeProgram
 
     // check if solver could solved this instance
@@ -549,10 +581,12 @@ class SynthesizerForRuleExamples(
     //    }
 
       //if(maps.isEmpty) throw new RuntimeException("asdasdasd")
+
+
       
     // will modify funDef body and precondition, restore it later
     try {
-      if (!maps.isEmpty) {
+      { //if (!maps.isEmpty) {
         // proceed with synthesizing boolean expressions
         //solver.setProgram(program)
 
@@ -607,6 +641,23 @@ class SynthesizerForRuleExamples(
   }
 
   def tryToSynthesizeBooleanCondition(snippetTree: Expr, innerSnippetTree: Expr, precondition: Expr): (Boolean, Option[Expr]) = {
+		
+		// trying some examples that cannot be verified
+    if (snippetTree.toString == "Cons(l.head, insert(e, l.tail))" //&&
+      //innerSnippetTree.toString.contains("aList.head < bList.head")
+) {
+          val endTime = System.currentTimeMillis
+          reporter.info("We are done, in time: " + (endTime - startTime))
+      interactivePause
+}
+
+    if (snippetTree.toString == "Cons(aList.head, merge(aList.tail, bList))" //&&
+      //innerSnippetTree.toString.contains("aList.head < bList.head")
+) {
+          val endTime = System.currentTimeMillis
+          reporter.info("We are done, in time: " + (endTime - startTime))
+      interactivePause
+}
 
     // new condition together with existing precondition
     val newCondition = And(Seq(accumulatingPrecondition, innerSnippetTree))
@@ -637,6 +688,7 @@ class SynthesizerForRuleExamples(
             // if expression implies counterexamples add it to the precondition and try to validate program
             holeFunDef.precondition = Some(newCondition)
             // do analysis
+            solver.setProgram(program)
             analyzeProgram
             // program is valid, we have a branch
             if (Globals.allSolved == Some(true)) {
