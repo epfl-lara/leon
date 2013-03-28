@@ -1,0 +1,4 @@
+This folder contains some code that demonstrates how to use the JNI wrapper
+from Java. This is not maintained and is kept here only as an encouragement for
+volunteers to pick it up and develop a full-fledged version of a Z3 wrapper for
+Java. 

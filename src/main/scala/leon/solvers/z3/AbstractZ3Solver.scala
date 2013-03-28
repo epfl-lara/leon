@@ -772,6 +772,137 @@ trait AbstractZ3Solver
     rec(tree)
   }
 
+  /**
+   * Converts an arbitrary Z3 formula to a Leon expression
+   */
+  protected[leon] def fromZ3Formula2(tree : Z3AST, expectedType: Option[TypeTree] = None) : Expr = {
+    
+    def rec(t: Z3AST, expType: Option[TypeTree] = None) : Expr = {    
+        if(t == unitValue) 
+          UnitLiteral
+        else z3.getASTKind(t) match {
+          case Z3AppAST(decl, args) => {
+            val argsSize = args.size
+            if(argsSize == 0 && z3IdToExpr.isDefinedAt(t)) {
+              val toRet = z3IdToExpr(t)
+              // println("Map says I should replace " + t + " by " + toRet)
+              toRet
+            } else if(isKnownDecl(decl)) {
+              val fd = functionDeclToDef(decl)
+              assert(fd.args.size == argsSize)
+              FunctionInvocation(fd, (args zip fd.args).map(p => rec(p._1,Some(p._2.tpe))))
+            } else if(argsSize == 1 && reverseADTTesters.isDefinedAt(decl)) {
+              CaseClassInstanceOf(reverseADTTesters(decl), rec(args(0)))
+            } else if(argsSize == 1 && reverseADTFieldSelectors.isDefinedAt(decl)) {
+              val (ccd, fid) = reverseADTFieldSelectors(decl)
+              CaseClassSelector(ccd, rec(args(0)), fid)
+            } else if(reverseADTConstructors.isDefinedAt(decl)) {
+              val ccd = reverseADTConstructors(decl)
+              assert(argsSize == ccd.fields.size)
+              CaseClass(ccd, (args zip ccd.fields).map(p => rec(p._1, Some(p._2.tpe))))
+            } else if(reverseTupleConstructors.isDefinedAt(decl)) {
+              val TupleType(subTypes) = reverseTupleConstructors(decl)
+              val rargs = args.zip(subTypes).map(p => rec(p._1, Some(p._2)))
+              Tuple(rargs)
+            } else {
+              import Z3DeclKind._
+              val rargs = args.map(rec(_))
+              z3.getDeclKind(decl) match {
+                case OpTrue => BooleanLiteral(true)
+                case OpFalse => BooleanLiteral(false)
+                case OpEq => Equals(rargs(0), rargs(1))
+                case OpITE => {
+                  assert(argsSize == 3)
+                  val r0 = rargs(0)
+                  val r1 = rargs(1)
+                  val r2 = rargs(2)
+                  try {
+                    IfExpr(r0, r1, r2).setType(leastUpperBound(r1.getType, r2.getType).get)
+                  } catch {
+                    case e => {
+                      println("I was asking for lub because of this.")
+                      println(t)
+                      println("which was translated as")
+                      println(IfExpr(r0,r1,r2))
+                      throw e
+                    }
+                  }
+                }
+                case OpAnd => And(rargs)
+                case OpOr => Or(rargs)
+                case OpIff => Iff(rargs(0), rargs(1))
+                case OpXor => Not(Iff(rargs(0), rargs(1)))
+                case OpNot => Not(rargs(0))
+                case OpImplies => Implies(rargs(0), rargs(1))
+                case OpLE => LessEquals(rargs(0), rargs(1))
+                case OpGE => GreaterEquals(rargs(0), rargs(1))
+                case OpLT => LessThan(rargs(0), rargs(1))
+                case OpGT => GreaterThan(rargs(0), rargs(1))
+                case OpAdd => {
+                  assert(argsSize == 2)
+                  Plus(rargs(0), rargs(1))
+                }
+                case OpSub => {
+                  assert(argsSize == 2)
+                  Minus(rargs(0), rargs(1))
+                }
+                case OpUMinus => UMinus(rargs(0))
+                case OpMul => {
+                  assert(argsSize == 2)
+                  Times(rargs(0), rargs(1))
+                }
+                case OpDiv => {
+                  assert(argsSize == 2)
+                  Division(rargs(0), rargs(1))
+                }
+                case OpIDiv => {
+                  assert(argsSize == 2)
+                  Division(rargs(0), rargs(1))
+                }
+                case OpMod => {
+                  assert(argsSize == 2)
+                  Modulo(rargs(0), rargs(1))
+                }
+                case OpAsArray => {
+                  assert(argsSize == 0)
+                  throw new Exception("encountered OpAsArray")
+                }
+                case OpUninterpreted => {                  
+                  //this might be a variable
+                  //System.err.println("Treating this as a variable : "+ decl)
+                  //get the type
+                  val treeType = if(decl.getRange.isBoolSort) BooleanType 
+                  			else if(decl.getRange.isIntSort) Int32Type
+                  			else {
+                  				System.err.println("Unknown type: "+decl.getRange)
+                  				throw new CantTranslateException(t)
+                  			}                    
+                   Variable(FreshIdentifier(decl.getName.toString,false).setType(treeType))                                    
+                }
+                case other => {
+                  System.err.println("Don't know what to do with this declKind : " + other)
+                  System.err.println("The arguments are : " + args)
+                  throw new CantTranslateException(t)
+                }
+              }
+            }
+          }
+
+          case Z3NumeralAST(Some(v)) => IntLiteral(v)
+          case Z3NumeralAST(None) => {
+            reporter.info("Cannot read exact model from Z3: Integer does not fit in machine word")
+            reporter.info("Exiting procedure now")
+            sys.exit(0)
+          }
+          case other @ _ => {
+            System.err.println("Don't know what this is " + other) 
+            throw new CantTranslateException(t)
+          }
+        }
+    }
+    rec(tree, expectedType)
+  }
+  
   // Tries to convert a Z3AST into a *ground* Expr. Doesn't try very hard, because
   //   1) we assume Z3 simplifies ground terms, so why match for +, etc, and
   //   2) we use this precisely in one context, where we know function invocations won't show up, etc.
