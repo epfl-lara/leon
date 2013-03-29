@@ -1,4 +1,4 @@
-package leon
+/*package leon
 package solvers.princess
 
 //princess imports
@@ -225,4 +225,4 @@ class PrincessSolver(context : LeonContext)
   /*override def halt() {
     super.halt    
   }*/
-}
+}*/

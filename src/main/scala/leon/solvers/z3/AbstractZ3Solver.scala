@@ -775,7 +775,7 @@ trait AbstractZ3Solver
   /**
    * Converts an arbitrary Z3 formula to a Leon expression
    */
-  protected[leon] def fromZ3Formula2(tree : Z3AST, expectedType: Option[TypeTree] = None) : Expr = {
+  protected[leon] def fromZ3Formula2(tree : Z3AST) : Expr = {
     
     def rec(t: Z3AST, expType: Option[TypeTree] = None) : Expr = {    
         if(t == unitValue) 
@@ -900,7 +900,7 @@ trait AbstractZ3Solver
           }
         }
     }
-    rec(tree, expectedType)
+    rec(tree, None)
   }
   
   // Tries to convert a Z3AST into a *ground* Expr. Doesn't try very hard, because

@@ -9,7 +9,7 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import solvers.{Solver,TrivialSolver,TimeoutSolver}
 import solvers.z3.FairZ3Solver
-import solvers.princess.PrincessSolver
+//import solvers.princess.PrincessSolver
 import scala.collection.mutable.{Set => MutableSet}
 import leon.evaluators._
 import java.io._
@@ -168,6 +168,19 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
       processNewInput
     }
 */
+    def getClauseListener(): (Seq[Expr] => Unit) = {
+      var counter = 0;      
+      val listener = (newClauses : Seq[Expr]) => {        
+                  //println("Printing newly added assertions: ")
+        //reconstruct the linear constraints corresponding to each path in the program
+        //a tree like data structure is used for efficiently representing the set of constraints
+                  for(ncl <- newClauses) { 
+                	  println(ncl)
+                  }                                    
+      }
+      listener
+     }
+    
     def checkVerificationConditions(vcs: Seq[VerificationCondition]) : VerificationReport = {
 
       for(vcInfo <- vcs) {
@@ -190,6 +203,7 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
         	         		            
         	 //set the model listener
             //se.SetModelListener(getModelListener(funDef))
+       	     se.SetClauseListener(getClauseListener())
 
             val t1 = System.nanoTime
             se.init()
@@ -247,6 +261,7 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
 
     report
   }
+  
   
   
   /**
