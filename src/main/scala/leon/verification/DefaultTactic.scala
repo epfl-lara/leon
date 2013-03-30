@@ -25,7 +25,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
       _prog = Some(program)
     }
 
-    def generatePostconditions(functionDefinition: FunDef) : Seq[VerificationCondition] = {
+   def generatePostconditions(functionDefinition: FunDef) : Seq[VerificationCondition] = {
       assert(functionDefinition.body.isDefined)
       val prec = functionDefinition.precondition
       val optPost = functionDefinition.postcondition
@@ -51,6 +51,30 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
           Seq(new VerificationCondition(theExpr, functionDefinition, VCKind.Postcondition, this).setPos(post))
       }
     }
+
+  override def generateExtendedVCs(functionDefinition: FunDef): Seq[ExtendedVC] = {
+    assert(functionDefinition.body.isDefined)
+    val prec = functionDefinition.precondition
+    val post = functionDefinition.postcondition
+    val body = matchToIfThenElse(functionDefinition.body.get)
+
+    if (post.isEmpty) {
+      Seq.empty
+    } else {
+
+      val resFresh = Variable(FreshIdentifier("result", true).setType(body.getType))
+      val bodyExpr = Equals(resFresh, body)
+      val postExpr = replace(Map(ResultVariable() -> resFresh), matchToIfThenElse(post.get))
+
+      val withPrec = if (prec.isEmpty) {
+        bodyExpr
+      } else {
+        //Implies(matchToIfThenElse(prec.get), bodyAndPost)
+        And(matchToIfThenElse(prec.get), bodyExpr)
+      }
+      Seq(new ExtendedVC(withPrec, postExpr, functionDefinition, VCKind.Postcondition, this.asInstanceOf[DefaultTactic]))
+    }
+  }
   
     def generatePreconditions(function: FunDef) : Seq[VerificationCondition] = {
       val toRet = if(function.hasBody) {

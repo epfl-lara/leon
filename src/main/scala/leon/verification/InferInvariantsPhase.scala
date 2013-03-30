@@ -6,38 +6,178 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
 import purescala.TreeOps._
+import purescala.Extractors._
 import purescala.TypeTrees._
-import solvers.{Solver,TrivialSolver,TimeoutSolver}
+import solvers.{ Solver, TrivialSolver, TimeoutSolver }
 import solvers.z3.FairZ3Solver
 //import solvers.princess.PrincessSolver
-import scala.collection.mutable.{Set => MutableSet}
+import scala.collection.mutable.{ Set => MutableSet }
 import leon.evaluators._
 import java.io._
 import scala.tools.nsc.io.File
 
 /**
  * @author ravi
- * This phase performs automatic invariant inference. For now this simply invokes the leon verifier and 
- * collects symbolic traces using the generated models and computes interpolants
+ * This phase performs automatic invariant inference. 
  */
-object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
+object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   val name = "InferInv"
-  val description = "Invariant Inference"    
-  private var reporter : Reporter = _ 
+  val description = "Invariant Inference"
+  private var reporter: Reporter = _
 
-  override val definedOptions : Set[LeonOptionDef] = Set(
+  override val definedOptions: Set[LeonOptionDef] = Set(
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
-    LeonValueOptionDef("timeout",   "--timeout=T",       "Timeout after T seconds when trying to prove a verification condition.")
-  )
-  
-  //def getPostConditionTemplate()
+    LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."))
 
-  def run(ctx: LeonContext)(program: Program) : VerificationReport = {
-    
-    val functionsToAnalyse : MutableSet[String] = MutableSet.empty
+  //each constraint is a mapping from constraint variable to its coefficient (integers)
+  //a constraint variable can be leon variables or function invocations or case classes etc.
+  case class Constraint(val expr: Expr, val coeffMap: Map[Expr, Int], val constant: Set[Int])
+  private var goalclauses = Set[Constraint]()
+
+  object ConstraintTreeObject {
+
+    abstract class CtrTree
+    case class CtrNode(val blockingId: Identifier, var constraints: Set[Constraint], var children: Set[CtrTree]) extends CtrTree
+    case class CtrLeaf() extends CtrTree
+
+    private var ctrTree: CtrTree = CtrLeaf()
+    private var treeNodeMap = Map[Identifier, CtrNode]()
+
+    def addConstraint(e: Expr) = {
+      e match {
+        //get the blocking literal
+        case Or(Not(Variable(id)) :: tail) => {
+
+          if (!treeNodeMap.contains(id) && ctrTree.isInstanceOf[CtrNode])
+            throw IllegalStateException("CtrTree is already populated, cannot create a new one: " + ctrTree)
+
+          //get the node corresponding to the id
+          val ctrnode = treeNodeMap.getOrElse(id, {
+            val node = CtrNode(id, Set(), Set())
+            treeNodeMap += (id -> node)
+            ctrTree = node
+            node
+          })
+
+          tail match {
+            case expr :: Nil => {
+              val ctr = exprToConstraint(expr)
+              ctrnode.constraints += ctr
+            }
+            case Variable(id2) :: tail2 => {
+              //this corresponds to a disjunction
+              createChildren(ctrnode, id2)
+            }
+            case _ => throw IllegalStateException("Not disjunction of variables: " + tail)
+          }
+        }
+        case _ => throw IllegalStateException("expr not in correct format: " + e)
+      }
+
+    }
+
+    def createChildren(node: CtrNode, id: Identifier) = {
+      var idnode = treeNodeMap.getOrElse(id, {
+        val node = CtrNode(id, Set(), Set())
+        treeNodeMap += (id -> node)
+        node
+      })
+      node.children += idnode
+    }
+
+  }
+
+  //the expr is required to be linear. If not an exception would be thrown
+  //for now some of the constructs are not handled
+  def exprToConstraint(expr: Expr): Constraint = {
+    var coeffMap = Map[Expr, Int]()
+    var constant = Set[Int]()
+
+    def recur(e: Expr): Option[Expr] = {
+      e match {
+        /*case IntLiteral(v) => {
+              constants += v
+              None
+            }*/
+        case Plus(e1, e2) => {
+          val r1 = recur(e1)
+          if (r1.isDefined) {
+            //here the coefficient is 1
+            coeffMap += (r1.get -> 1)
+          }
+          val r2 = recur(e2)
+          if (r2.isDefined)
+            coeffMap += (r2.get -> 1)
+
+          None
+        }
+        case Times(e1, e2) => {
+          if (e1.isInstanceOf[IntLiteral] && e2.isInstanceOf[IntLiteral])
+            throw NotImplementedException("product of two integers, not in canonical form: " + e)
+
+          else if (!e1.isInstanceOf[IntLiteral] && !e2.isInstanceOf[IntLiteral])
+            throw NotImplementedException("nonlinear expression: " + e)
+
+          else {
+            val (coeff, cvar) = e1 match {
+              case IntLiteral(v) => (v, e2)
+              case _ => {
+                val IntLiteral(v) = e2
+                (v, e1)
+              }
+            }
+            val r = recur(cvar)
+            if (!r.isDefined)
+              throw NotImplementedException("Multiplicand not a constraint variable: " + cvar)
+            else {
+              //add to mapping
+              coeffMap += (r.get -> coeff)
+            }
+            None
+          }
+        }
+        case Variable(id) => Some(e)
+        case FunctionInvocation(fdef, args) => Some(e)
+        case BinaryOperator(e1, e2, op) => {
+          if (!e.isInstanceOf[Equals] && !e.isInstanceOf[LessThan] && !e.isInstanceOf[LessEquals]
+            && !e.isInstanceOf[GreaterThan] && !e.isInstanceOf[GreaterEquals])
+            throw NotImplementedException("Relation is not linear: " + e)
+          else {
+            if (e1.isInstanceOf[IntLiteral] && e2.isInstanceOf[IntLiteral])
+              throw NotImplementedException("relation on two integers, not in canonical form: " + e)
+            else if (!e2.isInstanceOf[IntLiteral])
+              throw NotImplementedException("Not in canonical form: " + e)
+
+            else {
+              val IntLiteral(v) = e2
+              val r = recur(e1)
+              if (r.isDefined) {
+                //here the coefficient is 1
+                coeffMap += (r.get -> 1)
+              }
+              constant += v
+              None
+            }
+          }
+        }
+        case _ => {
+          throw NotImplementedException("Ecountered unhandled term in the expression: " + e)
+        }
+      } //end of match e
+    } //end of recur      
+
+    if (!recur(expr).isDefined) {
+      Constraint(expr, coeffMap, constant)
+    } else
+      throw NotImplementedException("Expression not a linear relation: " + expr)
+  }
+
+  def run(ctx: LeonContext)(program: Program): VerificationReport = {
+
+    val functionsToAnalyse: MutableSet[String] = MutableSet.empty
     var timeout: Option[Int] = None
 
-    for(opt <- ctx.options) opt match {
+    for (opt <- ctx.options) opt match {
       case LeonValueOption("functions", ListValue(fs)) =>
         functionsToAnalyse ++= fs
 
@@ -48,45 +188,44 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
     }
 
     val reporter = ctx.reporter
-    
-    val trivialSolver = new TrivialSolver(ctx)    
+
+    val trivialSolver = new TrivialSolver(ctx)
     val fairZ3 = new FairZ3Solver(ctx)
 
-    val solvers0 : Seq[Solver] = trivialSolver :: fairZ3 :: Nil
+    val solvers0: Seq[Solver] = trivialSolver :: fairZ3 :: Nil
     val solvers: Seq[Solver] = timeout match {
       case Some(t) => solvers0.map(s => new TimeoutSolver(s, 1000L * t))
       case None => solvers0
     }
 
-    solvers.foreach(_.setProgram(program))      
+    solvers.foreach(_.setProgram(program))
 
     val defaultTactic = new DefaultTactic(reporter)
     defaultTactic.setProgram(program)
     /*val inductionTactic = new InductionTactic(reporter)
-    inductionTactic.setProgram(program)
-*/
-    def generateVerificationConditions : List[VerificationCondition] = {
-      var allVCs: Seq[VerificationCondition] = Seq.empty
+    inductionTactic.setProgram(program)*/
+
+    def generateVerificationConditions: List[ExtendedVC] = {
+      var allVCs: Seq[ExtendedVC] = Seq.empty
       val analysedFunctions: MutableSet[String] = MutableSet.empty
 
-      for(funDef <- program.definedFunctions.toList.sortWith((fd1, fd2) => fd1 < fd2) if (functionsToAnalyse.isEmpty || functionsToAnalyse.contains(funDef.id.name))) {
+      for (funDef <- program.definedFunctions.toList.sortWith((fd1, fd2) => fd1 < fd2) if (functionsToAnalyse.isEmpty || functionsToAnalyse.contains(funDef.id.name))) {
         analysedFunctions += funDef.id.name
 
-        val tactic: Tactic = defaultTactic          
-        
-        //add the template as a post-condition to all the methods
-        
+        val tactic: Tactic = defaultTactic
 
-          /*allVCs ++= tactic.generatePreconditions(funDef)
+        //add the template as a post-condition to all the methods
+
+        /*allVCs ++= tactic.generatePreconditions(funDef)
           allVCs ++= tactic.generatePatternMatchingExhaustivenessChecks(funDef)*/
-          allVCs ++= tactic.generatePostconditions(funDef)
-          /*allVCs ++= tactic.generateMiscCorrectnessConditions(funDef)
+        allVCs ++= tactic.generateExtendedVCs(funDef)
+        /*allVCs ++= tactic.generateMiscCorrectnessConditions(funDef)
           allVCs ++= tactic.generateArrayAccessChecks(funDef)*/
-        
+
         allVCs = allVCs.sortWith((vc1, vc2) => {
           val id1 = vc1.funDef.id.name
           val id2 = vc2.funDef.id.name
-          if(id1 != id2) id1 < id2 else vc1 < vc2
+          if (id1 != id2) id1 < id2 else vc1 < vc2
         })
       }
 
@@ -95,119 +234,61 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
 
       allVCs.toList
     }
-    
-    /*def getModelListener(funDef: FunDef) : (Map[Identifier, Expr]) => Unit = {
-      
-      //create an interpolation solver
-      val interpolationSolver = new PrincessSolver(ctx)
-      val pre = if (funDef.precondition.isEmpty) BooleanLiteral(true) else matchToIfThenElse(funDef.precondition.get)
-      val body = matchToIfThenElse(funDef.body.get)
-      val resFresh = FreshIdentifier("result", true).setType(body.getType)
-      val post = replace(Map(ResultVariable() -> Variable(resFresh)), matchToIfThenElse(funDef.postcondition.get))
 
-      *//**
-       * This function will be called back by the solver on discovering an input
-       *//*
-      val processNewInput = (input: Map[Identifier, Expr]) => {
-        //create a symbolic trace for pre and body
-        var symtraceBody = input.foldLeft(List[Expr]())((g, x) => { g :+ Equals(Variable(x._1), x._2) })
-        var parts = List[(FunDef, List[Expr])]()
+    def getClauseListener(fundef: FunDef): ((Seq[Expr], Seq[Expr], Seq[Expr]) => Unit) = {
+      var counter = 0;
+      val listener = (body: Seq[Expr], post: Seq[Expr], newClauses: Seq[Expr]) => {
+        //reconstructs the linear constraints corresponding to each path in the programs
+        //A tree is used for efficiently representing the set of constraints corresponding to each path
 
-        //compute the symbolic trace induced by the input
-        val (tracePre, partsPre) =
-          if (funDef.precondition.isDefined) {
-            val resPre = new TraceCollectingEvaluator(ctx, program).eval(pre, input)
-            resPre match {
-              case EvaluationWithPartitions(BooleanLiteral(true), SymVal(guardPre, valuePre), partsPre) => {
-                ((guardPre :+ valuePre), partsPre)
-              }
-              case _ =>
-                reporter.warning("Error in colleting traces for Precondition: " + resPre + " For input: " + input)
-                (List[Expr](), List[(FunDef, List[Expr])]())
-            }
-          } else (List[Expr](), List[(FunDef, List[Expr])]())
-        symtraceBody ++= tracePre
-        parts ++= partsPre
+        //initialize the goal clauses
+        if (!post.isEmpty) {
+          println("Goal clauses: " + post)
 
-        //collect traces for body
-        val resBody = new TraceCollectingEvaluator(ctx, program).eval(body, input)
-        resBody match {
-          case EvaluationWithPartitions(cval, SymVal(guardBody, valueBody), partsBody) => {
-            //collect traces for the post-condition
-            val postInput = input ++ Map(resFresh -> cval)
-            val resPost = new TraceCollectingEvaluator(ctx, program).eval(post, postInput)
-            resPost match {
-              case EvaluationWithPartitions(BooleanLiteral(true), SymVal(guardPost, valuePost), partsPost) => {
-                //create a symbolic trace for pre and body
-                symtraceBody ++= (guardBody :+ Equals(Variable(resFresh), valueBody))
-
-                //create a set of parts for interpolating
-                parts ++= partsBody ++ partsPost :+ (funDef, symtraceBody)
-
-                //print each part for debugging
-                //parts.foreach((x) => { println("Method: " + x._1.id + " Trace: " + x._2) })
-
-                //create a symbolic trace including the post condition
-                val pathcond = symtraceBody ++ (guardPost :+ valuePost)
-                //println("Final Trace: " + pathcond)
-
-                //convert the guards to princess input
-                //DumpInPrincessFormat(parts, pathcond)         
-                val interpolants = interpolationSolver.getInterpolants(parts,pathcond)
-              }
-              case EvaluationWithPartitions(BooleanLiteral(true), symval, parts) => {
-                reporter.warning("Found counter example for the post-condition: " + postInput)
-              }
-              case _ => reporter.warning("Error in colleting traces for post: " + resPost + " For input: " + postInput)
-            }
-          }
-          case _ => reporter.warning("Error in colleting traces for body: " + resBody + " For input: " + input)
         }
-      }
-      
-      processNewInput
-    }
-*/
-    def getClauseListener(): (Seq[Expr] => Unit) = {
-      var counter = 0;      
-      val listener = (newClauses : Seq[Expr]) => {        
-                  //println("Printing newly added assertions: ")
-        //reconstruct the linear constraints corresponding to each path in the program
-        //a tree like data structure is used for efficiently representing the set of constraints
-                  for(ncl <- newClauses) { 
+
+        //initialize the root clauses (corresponds to clauses guarded by the boolean start)
+
+        //add new children to the tree. Each child corresponds to a branch
+
+        /*           for(ncl <- newClauses) { 
                 	  println(ncl)
-                  }                                    
+                  }*/
       }
       listener
-     }
-    
-    def checkVerificationConditions(vcs: Seq[VerificationCondition]) : VerificationReport = {
+    }
 
-      for(vcInfo <- vcs) {
+    def checkVerificationConditions(vcs: Seq[ExtendedVC]): VerificationReport = {
+
+      for (vcInfo <- vcs) {
         val funDef = vcInfo.funDef
-        val vc = vcInfo.condition
+        val body = vcInfo.body
+        val post = vcInfo.post
 
         reporter.info("Now considering '" + vcInfo.kind + "' VC for " + funDef.id + "...")
         reporter.info("Verification condition (" + vcInfo.kind + ") for ==== " + funDef.id + " ====")
-        reporter.info(simplifyLets(vc))
+        reporter.info("Body: " + simplifyLets(body))
+        reporter.info("Post: " + simplifyLets(post))
 
         // try all solvers until one returns a meaningful answer
-        var superseeded : Set[String] = Set.empty[String]
+        var superseeded: Set[String] = Set.empty[String]
         solvers.find(se => {
           reporter.info("Trying with solver: " + se.name)
-          if(superseeded(se.name) || superseeded(se.description)) {
+          if (superseeded(se.name) || superseeded(se.description)) {
             reporter.info("Solver was superseeded. Skipping.")
             false
           } else {
-        	  superseeded = superseeded ++ Set(se.superseeds: _*)
-        	         		            
-        	 //set the model listener
+            superseeded = superseeded ++ Set(se.superseeds: _*)
+
+            //set listeners        	  
             //se.SetModelListener(getModelListener(funDef))
-       	     se.SetClauseListener(getClauseListener())
+            se.SetClauseListener(getClauseListener(funDef))
 
             val t1 = System.nanoTime
             se.init()
-            val (satResult, counterexample) = se.solveSAT(Not(vc))
+            //invoke the solver with separate body and post-condition
+            //val (satResult, counterexample) = se.solveSAT(Not(vc))
+            val (satResult, counterexample) = se.solve(body, post)
             val solverResult = satResult.map(!_)
 
             val t2 = System.nanoTime
@@ -240,18 +321,18 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
           case None => {
             reporter.warning("No solver could prove or disprove the verification condition.")
           }
-          case _ => 
-        } 
-      
-      } 
+          case _ =>
+        }
+
+      }
 
       val report = new VerificationReport(vcs)
       report
-    }      
-    
-    reporter.info("Running Invariant Inference Phase...")           
-    
-    val report = if(solvers.size > 1) {
+    }
+
+    reporter.info("Running Invariant Inference Phase...")
+
+    val report = if (solvers.size > 1) {
       reporter.info("Running verification condition generation...")
       checkVerificationConditions(generateVerificationConditions)
     } else {
@@ -261,9 +342,7 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
 
     report
   }
-  
-  
-  
+
   /**
    * Dumps an input formula in princess format
    */
@@ -397,4 +476,80 @@ object InferInvariantsPhase extends LeonPhase[Program,VerificationReport] {
 	  writer.close()	  
   }
 
-*/}
+*/
+
+  /*def getModelListener(funDef: FunDef) : (Map[Identifier, Expr]) => Unit = {
+      
+      //create an interpolation solver
+      val interpolationSolver = new PrincessSolver(ctx)
+      val pre = if (funDef.precondition.isEmpty) BooleanLiteral(true) else matchToIfThenElse(funDef.precondition.get)
+      val body = matchToIfThenElse(funDef.body.get)
+      val resFresh = FreshIdentifier("result", true).setType(body.getType)
+      val post = replace(Map(ResultVariable() -> Variable(resFresh)), matchToIfThenElse(funDef.postcondition.get))
+
+      */
+  /**
+   * This function will be called back by the solver on discovering an input
+   */ /*
+      val processNewInput = (input: Map[Identifier, Expr]) => {
+        //create a symbolic trace for pre and body
+        var symtraceBody = input.foldLeft(List[Expr]())((g, x) => { g :+ Equals(Variable(x._1), x._2) })
+        var parts = List[(FunDef, List[Expr])]()
+
+        //compute the symbolic trace induced by the input
+        val (tracePre, partsPre) =
+          if (funDef.precondition.isDefined) {
+            val resPre = new TraceCollectingEvaluator(ctx, program).eval(pre, input)
+            resPre match {
+              case EvaluationWithPartitions(BooleanLiteral(true), SymVal(guardPre, valuePre), partsPre) => {
+                ((guardPre :+ valuePre), partsPre)
+              }
+              case _ =>
+                reporter.warning("Error in colleting traces for Precondition: " + resPre + " For input: " + input)
+                (List[Expr](), List[(FunDef, List[Expr])]())
+            }
+          } else (List[Expr](), List[(FunDef, List[Expr])]())
+        symtraceBody ++= tracePre
+        parts ++= partsPre
+
+        //collect traces for body
+        val resBody = new TraceCollectingEvaluator(ctx, program).eval(body, input)
+        resBody match {
+          case EvaluationWithPartitions(cval, SymVal(guardBody, valueBody), partsBody) => {
+            //collect traces for the post-condition
+            val postInput = input ++ Map(resFresh -> cval)
+            val resPost = new TraceCollectingEvaluator(ctx, program).eval(post, postInput)
+            resPost match {
+              case EvaluationWithPartitions(BooleanLiteral(true), SymVal(guardPost, valuePost), partsPost) => {
+                //create a symbolic trace for pre and body
+                symtraceBody ++= (guardBody :+ Equals(Variable(resFresh), valueBody))
+
+                //create a set of parts for interpolating
+                parts ++= partsBody ++ partsPost :+ (funDef, symtraceBody)
+
+                //print each part for debugging
+                //parts.foreach((x) => { println("Method: " + x._1.id + " Trace: " + x._2) })
+
+                //create a symbolic trace including the post condition
+                val pathcond = symtraceBody ++ (guardPost :+ valuePost)
+                //println("Final Trace: " + pathcond)
+
+                //convert the guards to princess input
+                //DumpInPrincessFormat(parts, pathcond)         
+                val interpolants = interpolationSolver.getInterpolants(parts,pathcond)
+              }
+              case EvaluationWithPartitions(BooleanLiteral(true), symval, parts) => {
+                reporter.warning("Found counter example for the post-condition: " + postInput)
+              }
+              case _ => reporter.warning("Error in colleting traces for post: " + resPost + " For input: " + postInput)
+            }
+          }
+          case _ => reporter.warning("Error in colleting traces for body: " + resBody + " For input: " + input)
+        }
+      }
+      
+      processNewInput
+    }
+*/
+
+}

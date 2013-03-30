@@ -220,11 +220,12 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
           blockersInfo(id) = ((gen, gen, z3ast, fis))
       }
     }
-
-    def scanForNewTemplates(expr: Expr): Seq[Z3AST] = {
+    
+    def genTemplateForExpr(expr: Expr) : (FunctionTemplate,Seq[Z3AST]) = {
       // OK, now this is subtle. This `getTemplate` will return
       // a template for a "fake" function. Now, this template will
       // define an activating boolean...
+
       val template = getTemplate(expr)
 
 
@@ -238,16 +239,25 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
             ast
         }
       }
+      (template,z3args)
+    }
+    
+    def registerBlocks(blocks: Map[Z3AST,Set[Z3FunctionInvocation]])  = {
+      for((i, fis) <- blocks) {
+        registerBlocker(nextGeneration(0), i, fis)
+      }
+    }
 
+    def scanForNewTemplates(expr: Expr): Seq[Z3AST] = {
+      val (template,z3args) = genTemplateForExpr(expr)
+      
       // ...now this template defines clauses that are all guarded
       // by that activating boolean. If that activating boolean is 
       // undefined (or false) these clauses have no effect...
       val (newClauses, newBlocks) =
         template.instantiate(template.z3ActivatingBool, z3args)
 
-      for((i, fis) <- newBlocks) {
-        registerBlocker(nextGeneration(0), i, fis)
-      }
+      registerBlocks(newBlocks)
       
       // ...so we must force it to true!
       template.z3ActivatingBool +: newClauses
