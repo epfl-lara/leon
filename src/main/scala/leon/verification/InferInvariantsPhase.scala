@@ -32,48 +32,57 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   //each constraint is a mapping from constraint variable to its coefficient (integers)
   //a constraint variable can be leon variables or function invocations or case classes etc.
   case class Constraint(val expr: Expr, val coeffMap: Map[Expr, Int], val constant: Set[Int])
-  private var goalclauses = Set[Constraint]()
+  {
+    override def toString() : String = {
+      "Coeff Map: "+coeffMap+ " Constants: "+constant
+    }
+  }
+  private var goalClauses = Set[Constraint]()
 
   object ConstraintTreeObject {
 
     abstract class CtrTree
     case class CtrNode(val blockingId: Identifier, var constraints: Set[Constraint], var children: Set[CtrTree]) extends CtrTree
-    case class CtrLeaf() extends CtrTree
+    {
+      override def toString() : String = {
+        var str = "Id: "+ blockingId +" Constriants: " + constraints +" children: \n"
+        str = children.foldLeft(str)((g: String,node: CtrTree) => { g + node.toString })
+        str
+      }
+    }
+    case class CtrLeaf() extends CtrTree    
 
     private var ctrTree: CtrTree = CtrLeaf()
     private var treeNodeMap = Map[Identifier, CtrNode]()
 
     def addConstraint(e: Expr) = {
-      e match {
-        //get the blocking literal
-        case Or(Not(Variable(id)) :: tail) => {
+      val (id, innerExpr) = parseGuardedExpr(e)
+      if (!treeNodeMap.contains(id) && ctrTree.isInstanceOf[CtrNode])
+        throw IllegalStateException("CtrTree is already populated, cannot create a new one: " + ctrTree)
 
-          if (!treeNodeMap.contains(id) && ctrTree.isInstanceOf[CtrNode])
-            throw IllegalStateException("CtrTree is already populated, cannot create a new one: " + ctrTree)
+      //get the node corresponding to the id
+      val ctrnode = treeNodeMap.getOrElse(id, {
+        val node = CtrNode(id, Set(), Set())
+        treeNodeMap += (id -> node)
+        ctrTree = node
+        node
+      })
 
-          //get the node corresponding to the id
-          val ctrnode = treeNodeMap.getOrElse(id, {
-            val node = CtrNode(id, Set(), Set())
-            treeNodeMap += (id -> node)
-            ctrTree = node
-            node
+      innerExpr match {
+        case Or(subexprs) => {
+          //this should corresponds to a disjunction of literals
+          val childIds = subexprs.map((sube) => sube match {
+            case Variable(childId) => childId
+            case _ => throw IllegalStateException("Disjunction has non-variables: " + subexprs)
           })
-
-          tail match {
-            case expr :: Nil => {
-              val ctr = exprToConstraint(expr)
-              ctrnode.constraints += ctr
-            }
-            case Variable(id2) :: tail2 => {
-              //this corresponds to a disjunction
-              createChildren(ctrnode, id2)
-            }
-            case _ => throw IllegalStateException("Not disjunction of variables: " + tail)
-          }
+          for (childId <- childIds)
+            createChildren(ctrnode, childId)
         }
-        case _ => throw IllegalStateException("expr not in correct format: " + e)
+        case _ => {
+          val ctr = exprToConstraint(innerExpr)
+          ctrnode.constraints += ctr
+        }
       }
-
     }
 
     def createChildren(node: CtrNode, id: Identifier) = {
@@ -84,7 +93,27 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       })
       node.children += idnode
     }
+    
+    override def toString() : String = {
+      "Constraint Tree: " + ctrTree.toString      
+    }
 
+  }
+
+  def parseGuardedExpr(e: Expr): (Identifier, Expr) = {
+    e match {
+      case Or(Not(Variable(id)) :: tail) => {
+        tail match {
+          case expr :: Nil => (id, expr)
+          case expr :: tail2 => {
+            //this corresponds to a disjunction
+            (id, Or(tail))
+          }
+          case _ => throw IllegalStateException("Not in expected format: " + tail)
+        }
+      }
+      case _ => throw IllegalStateException("Not a guarded expression: " + e)
+    }
   }
 
   //the expr is required to be linear. If not an exception would be thrown
@@ -113,10 +142,10 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         }
         case Times(e1, e2) => {
           if (e1.isInstanceOf[IntLiteral] && e2.isInstanceOf[IntLiteral])
-            throw NotImplementedException("product of two integers, not in canonical form: " + e)
+            throw IllegalStateException("product of two integers, not in canonical form: " + e)
 
           else if (!e1.isInstanceOf[IntLiteral] && !e2.isInstanceOf[IntLiteral])
-            throw NotImplementedException("nonlinear expression: " + e)
+            throw IllegalStateException("nonlinear expression: " + e)
 
           else {
             val (coeff, cvar) = e1 match {
@@ -128,7 +157,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
             }
             val r = recur(cvar)
             if (!r.isDefined)
-              throw NotImplementedException("Multiplicand not a constraint variable: " + cvar)
+              throw IllegalStateException("Multiplicand not a constraint variable: " + cvar)
             else {
               //add to mapping
               coeffMap += (r.get -> coeff)
@@ -141,12 +170,12 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         case BinaryOperator(e1, e2, op) => {
           if (!e.isInstanceOf[Equals] && !e.isInstanceOf[LessThan] && !e.isInstanceOf[LessEquals]
             && !e.isInstanceOf[GreaterThan] && !e.isInstanceOf[GreaterEquals])
-            throw NotImplementedException("Relation is not linear: " + e)
+            throw IllegalStateException("Relation is not linear: " + e)
           else {
             if (e1.isInstanceOf[IntLiteral] && e2.isInstanceOf[IntLiteral])
-              throw NotImplementedException("relation on two integers, not in canonical form: " + e)
+              throw IllegalStateException("relation on two integers, not in canonical form: " + e)
             else if (!e2.isInstanceOf[IntLiteral])
-              throw NotImplementedException("Not in canonical form: " + e)
+              throw IllegalStateException("Not in canonical form: " + e)
 
             else {
               val IntLiteral(v) = e2
@@ -161,7 +190,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           }
         }
         case _ => {
-          throw NotImplementedException("Ecountered unhandled term in the expression: " + e)
+          throw IllegalStateException("Ecountered unhandled term in the expression: " + e)
         }
       } //end of match e
     } //end of recur      
@@ -169,7 +198,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     if (!recur(expr).isDefined) {
       Constraint(expr, coeffMap, constant)
     } else
-      throw NotImplementedException("Expression not a linear relation: " + expr)
+      throw IllegalStateException("Expression not a linear relation: " + expr)
   }
 
   def run(ctx: LeonContext)(program: Program): VerificationReport = {
@@ -243,10 +272,17 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
         //initialize the goal clauses
         if (!post.isEmpty) {
-          println("Goal clauses: " + post)
-
+          //println("Goal clauses: " + post)          
+		  goalClauses ++= post.map((e) => exprToConstraint(parseGuardedExpr(e)._2))
+		  println("Goal clauses: "+goalClauses)
+        }        
+        
+        if(!body.isEmpty){          
+          body.map(ConstraintTreeObject.addConstraint(_))
+          println(ConstraintTreeObject.toString)          
         }
-
+		System.exit(0)
+        
         //initialize the root clauses (corresponds to clauses guarded by the boolean start)
 
         //add new children to the tree. Each child corresponds to a branch

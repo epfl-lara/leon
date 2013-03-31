@@ -6,6 +6,6 @@ object SimpleLoop
 	  else 
 	    s(x-1) + 1
 	    
-	} ensuring(res => res != -1)	
+	} ensuring(res => res >= -1)	
 	//inductive generalization res >= 0
 } 
