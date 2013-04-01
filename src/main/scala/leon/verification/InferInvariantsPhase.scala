@@ -37,7 +37,6 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       "Coeff Map: "+coeffMap+ " Constants: "+constant
     }
   }
-  private var goalClauses = Set[Constraint]()
 
   object ConstraintTreeObject {
 
@@ -49,69 +48,101 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         children.foldLeft(str)((g: String,node: CtrTree) => { g + node.toString })        
       }
     }
-    case class CtrLeaf() extends CtrTree
-    //here we use the name of the id instead of the id itself
-    private var treeNodeMap = Map[String, CtrNode]()
+    case class CtrLeaf() extends CtrTree    
+    private var treeNodeMap = Map[Identifier, CtrNode]()
 
     //root of the tree. This would be set while constraints are added
-    private var root: CtrTree = CtrLeaf()    
+    var bodyRoot: CtrTree = CtrLeaf()
+    var postRoot: CtrTree = CtrLeaf()
 
-    def addConstraint(e: Expr) = {
+    def isBlockingId(id: Identifier): Boolean = {
+      if (id.name.startsWith("b")) true else false
+    }
+
+    def isStartId(id: Identifier): Boolean = {
+      if (id.name.contains("start")) true else false
+    }
+
+    ///cleanup this code and do not use flags
+    def addConstraint(e: Expr, isBody : Boolean) = {
       val (id, innerExpr) = parseGuardedExpr(e)
             
       //get the node corresponding to the id
-      val ctrnode = treeNodeMap.getOrElse(id.name, {
+      val ctrnode = treeNodeMap.getOrElse(id, {
         val node = CtrNode(id, Set(), Set())
-        treeNodeMap += (id.name -> node)        
+        treeNodeMap += (id -> node)
+        if (isStartId(id)) {
+          val root = if (isBody) bodyRoot else postRoot
+          if (root.isInstanceOf[CtrNode])
+            throw IllegalStateException("Different start symbol: " + id)
+          else {
+            if (isBody) bodyRoot = node else postRoot = node
+          }
+        }
+        //set the root of the tree (this code is ugly and does string matching)
+      	//TODO: fix this
         node
       })
 
-      innerExpr match {
-        case Or(subexprs) => {
-          //this should corresponds to a disjunction of literals
-          val childIds = subexprs.collect((sube) => sube match {
-            case Variable(childId) => childId                                   
-            case _ if(sube match{
-              //cases to be ignored              
-              case Not(Variable(childId)) => false  //need not take this into consideration now
-              case _ => true
-            }) => throw IllegalStateException("Disjunction has non-variables: " + subexprs)
-          })
-          for (childId <- childIds)
-            createOrAddChildren(ctrnode, childId)
-        }
-        case Iff(lhs,rhs) =>  {
-          val ctr = exprToConstraint(rhs)
-          ctrnode.constraints += ctr
-        }
-        case _ => {
-          val ctr = exprToConstraint(innerExpr)
-          ctrnode.constraints += ctr
-        }
-      }
-      
-      //set the root of the tree (this code is ugly and does string matching)
-      //TODO: fix this
-      if(id.name.contains("start") && root.isInstanceOf[CtrLeaf]){
-         root = ctrnode        
-      }
-    }
+      def addCtrOrBlkLiteral(ie: Expr, newChild : Boolean): Unit = {        
+        ie match {
+          case Or(subexprs) => {
 
-    def createOrAddChildren(parentNode: CtrNode, childId: Identifier) = {
-      var childNode = treeNodeMap.getOrElse(childId.name, {
+            val validSubExprs = subexprs.collect((sube) => sube match {
+              case _ if (sube match {
+                //cases to be ignored              
+                case Not(Variable(childId)) => false //need not take this into consideration now
+                case _ => true
+              }) => sube
+            })
+            if (!validSubExprs.isEmpty) {              
+              val createChild = if (validSubExprs.size > 1) true else false
+              for (sube <- validSubExprs) {
+                addCtrOrBlkLiteral(sube, createChild)
+              }
+            }
+          }
+          case Variable(childId) => {
+            //checking for blocking literal
+            if(isBlockingId(childId))
+              createOrAddChildren(ctrnode, childId)
+              else 
+            throw IllegalStateException("Encountered a variable that is not a blocking id: " + childId)
+          }             
+          case Iff(lhs, rhs) => {
+            //lhs corresponds to a blocking id in this case
+            val ctr = exprToConstraint(rhs)
+            ctrnode.constraints += ctr
+          }
+          case _ => {
+            val node = if (newChild) createOrAddChildren(ctrnode, FreshIdentifier("dummy", true))
+            else ctrnode
+            val ctr = exprToConstraint(ie)
+            node.constraints += ctr
+          }
+        }
+      }      
+      addCtrOrBlkLiteral(innerExpr, false)
+    }    
+
+    def createOrAddChildren(parentNode: CtrNode, childId: Identifier) : CtrNode = {
+      var childNode = treeNodeMap.getOrElse(childId, {
         val node = CtrNode(childId, Set(), Set())
-        treeNodeMap += (childId.name -> node)
+        treeNodeMap += (childId -> node)
         node
       })
       parentNode.children += childNode
-    }
+      childNode
+    }  
     
-    override def toString() : String = {
-      "Constraint Tree: " + root.toString + "\nTreeNodeMapping: "+ treeNodeMap
-    }
+	/*override def toString() : String = {
+      "Constraint Tree: " + root.toString
+      //+ "\nTreeNodeMapping: "+ treeNodeMap
+    }*/
 
   }
 
+    
   def parseGuardedExpr(e: Expr): (Identifier, Expr) = {
     e match {
       case Or(Not(Variable(id)) :: tail) => {
@@ -272,7 +303,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   }
   
   
-  //TODO: change instance of to match
+  //TODO: change instanceOf to match
   def TransformNot(expr: Expr): Expr = {
     def recur(inExpr: Expr): Expr = {
       inExpr match {        
@@ -296,7 +327,37 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     }
     recur(expr)
   }
-  
+
+  def getClauseListener(fundef: FunDef): ((Seq[Expr], Seq[Expr], Seq[Expr]) => Unit) = {
+    var counter = 0;
+    val listener = (body: Seq[Expr], post: Seq[Expr], newClauses: Seq[Expr]) => {
+      //reconstructs the linear constraints corresponding to each path in the programs
+      //A tree is used for efficiently representing the set of constraints corresponding to each path
+
+      //initialize the goal clauses
+      if (!post.isEmpty) {
+        println("Goal clauses: " + post)
+        post.map(ConstraintTreeObject.addConstraint(_, false))
+        println("Goal Tree: " + ConstraintTreeObject.postRoot.toString)
+      }
+
+      if (!body.isEmpty) {
+        println("Body clauses: " + body)
+        body.map(ConstraintTreeObject.addConstraint(_, true))
+        println("Body Tree: " + ConstraintTreeObject.bodyRoot.toString)
+      }
+      System.exit(0)
+
+      //initialize the root clauses (corresponds to clauses guarded by the boolean start)
+
+      //add new children to the tree. Each child corresponds to a branch
+
+      /*           for(ncl <- newClauses) { 
+                	  println(ncl)
+                  }*/
+    }
+    listener
+  }
   
   def run(ctx: LeonContext)(program: Program): VerificationReport = {
 
@@ -359,37 +420,6 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       notFound.foreach(fn => reporter.error("Did not find function \"" + fn + "\" though it was marked for analysis."))
 
       allVCs.toList
-    }
-
-    def getClauseListener(fundef: FunDef): ((Seq[Expr], Seq[Expr], Seq[Expr]) => Unit) = {
-      var counter = 0;
-      val listener = (body: Seq[Expr], post: Seq[Expr], newClauses: Seq[Expr]) => {
-        //reconstructs the linear constraints corresponding to each path in the programs
-        //A tree is used for efficiently representing the set of constraints corresponding to each path
-
-        //initialize the goal clauses
-        if (!post.isEmpty) {
-          //println("Goal clauses: " + post)          
-		  goalClauses ++= post.map((e) => exprToConstraint(parseGuardedExpr(e)._2))
-		  println("Goal clauses: "+goalClauses)
-        }        
-        
-        if(!body.isEmpty){
-          println("Body clauses: " + body)
-          body.map(ConstraintTreeObject.addConstraint(_))
-          println(ConstraintTreeObject.toString)          
-        }
-		System.exit(0)
-        
-        //initialize the root clauses (corresponds to clauses guarded by the boolean start)
-
-        //add new children to the tree. Each child corresponds to a branch
-
-        /*           for(ncl <- newClauses) { 
-                	  println(ncl)
-                  }*/
-      }
-      listener
     }
 
     def checkVerificationConditions(vcs: Seq[ExtendedVC]): VerificationReport = {
