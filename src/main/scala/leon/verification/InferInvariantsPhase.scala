@@ -46,56 +46,67 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     {
       override def toString() : String = {
         var str = "Id: "+ blockingId +" Constriants: " + constraints +" children: \n"
-        str = children.foldLeft(str)((g: String,node: CtrTree) => { g + node.toString })
-        str
+        children.foldLeft(str)((g: String,node: CtrTree) => { g + node.toString })        
       }
     }
-    case class CtrLeaf() extends CtrTree    
-
-    private var ctrTree: CtrTree = CtrLeaf()
+    case class CtrLeaf() extends CtrTree
     private var treeNodeMap = Map[Identifier, CtrNode]()
+
+    //root of the tree. This would be set while constraints are added
+    private var root: CtrTree = CtrLeaf()    
 
     def addConstraint(e: Expr) = {
       val (id, innerExpr) = parseGuardedExpr(e)
-      if (!treeNodeMap.contains(id) && ctrTree.isInstanceOf[CtrNode])
-        throw IllegalStateException("CtrTree is already populated, cannot create a new one: " + ctrTree)
-
+            
       //get the node corresponding to the id
       val ctrnode = treeNodeMap.getOrElse(id, {
         val node = CtrNode(id, Set(), Set())
-        treeNodeMap += (id -> node)
-        ctrTree = node
+        treeNodeMap += (id -> node)        
         node
       })
 
       innerExpr match {
         case Or(subexprs) => {
           //this should corresponds to a disjunction of literals
-          val childIds = subexprs.map((sube) => sube match {
-            case Variable(childId) => childId
-            case _ => throw IllegalStateException("Disjunction has non-variables: " + subexprs)
+          val childIds = subexprs.collect((sube) => sube match {
+            case Variable(childId) => childId                                   
+            case _ if(sube match{
+              //cases to be ignored              
+              case Not(Variable(childId)) => false  //need not take this into consideration now
+              case _ => true
+            }) => throw IllegalStateException("Disjunction has non-variables: " + subexprs)
           })
           for (childId <- childIds)
-            createChildren(ctrnode, childId)
+            createOrAddChildren(ctrnode, childId)
+        }
+        case Iff(lhs,rhs) =>  {
+          val ctr = exprToConstraint(rhs)
+          ctrnode.constraints += ctr
         }
         case _ => {
           val ctr = exprToConstraint(innerExpr)
           ctrnode.constraints += ctr
         }
       }
+      
+      //set the root of the tree (this code is ugly and does string matching)
+      //TODO: fix this
+      if(id.name.contains("start") && root.isInstanceOf[CtrLeaf]){
+         root = ctrnode        
+      }
     }
 
-    def createChildren(node: CtrNode, id: Identifier) = {
-      var idnode = treeNodeMap.getOrElse(id, {
-        val node = CtrNode(id, Set(), Set())
-        treeNodeMap += (id -> node)
+    def createOrAddChildren(parentNode: CtrNode, childId: Identifier) = {
+      var childNode = treeNodeMap.getOrElse(childId, {
+        val node = CtrNode(childId, Set(), Set())
+        treeNodeMap += (childId -> node)
         node
       })
-      node.children += idnode
+      parentNode.children += childNode
     }
     
     override def toString() : String = {
-      "Constraint Tree: " + ctrTree.toString      
+      "Constraint Tree: " + root.toString + "\nTreeNodeMapping: "+ treeNodeMap
     }
 
   }
@@ -124,11 +135,14 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
     def recur(e: Expr): Option[Expr] = {
       e match {
-        /*case IntLiteral(v) => {
-              constants += v
+        case IntLiteral(v) => {
+              constant += v
               None
-            }*/
+        }
         case Plus(e1, e2) => {
+          if (e1.isInstanceOf[IntLiteral] && e2.isInstanceOf[IntLiteral])
+            throw IllegalStateException("sum of two constants, not in canonical form: " + e)
+
           val r1 = recur(e1)
           if (r1.isDefined) {
             //here the coefficient is 1
@@ -142,7 +156,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         }
         case Times(e1, e2) => {
           if (e1.isInstanceOf[IntLiteral] && e2.isInstanceOf[IntLiteral])
-            throw IllegalStateException("product of two integers, not in canonical form: " + e)
+            throw IllegalStateException("product of two constants, not in canonical form: " + e)
 
           else if (!e1.isInstanceOf[IntLiteral] && !e2.isInstanceOf[IntLiteral])
             throw IllegalStateException("nonlinear expression: " + e)
@@ -174,18 +188,17 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           else {
             if (e1.isInstanceOf[IntLiteral] && e2.isInstanceOf[IntLiteral])
               throw IllegalStateException("relation on two integers, not in canonical form: " + e)
-            else if (!e2.isInstanceOf[IntLiteral])
-              throw IllegalStateException("Not in canonical form: " + e)
 
-            else {
-              val IntLiteral(v) = e2
-              val r = recur(e1)
-              if (r.isDefined) {
-                //here the coefficient is 1
-                coeffMap += (r.get -> 1)
+            e2 match {
+              case IntLiteral(0) => {
+                val r = recur(e1)
+                if (r.isDefined) {
+                  //here the coefficient is 1
+                  coeffMap += (r.get -> 1)
+                }
+                None
               }
-              constant += v
-              None
+              case _ => throw IllegalStateException("Not in canonical form: " + e)
             }
           }
         }
@@ -195,12 +208,95 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       } //end of match e
     } //end of recur      
 
-    if (!recur(expr).isDefined) {
-      Constraint(expr, coeffMap, constant)
+    val nexpr = MakeLinear(expr)
+    if (!recur(nexpr).isDefined) {
+      Constraint(nexpr, coeffMap, constant)
     } else
-      throw IllegalStateException("Expression not a linear relation: " + expr)
+      throw IllegalStateException("Expression not a linear relation: " + nexpr)
   }
 
+  
+  /**
+   * This method may have to do all sorts of transformation to make the expressions linear constraints
+   * This is subjected to constant modification
+   */
+  def MakeLinear(expr: Expr): Expr = {
+    
+    //pushes the minus inside the arithmetic terms
+    def PushMinus(inExpr : Expr) : Expr = {
+      require(inExpr.getType == Int32Type)
+      
+      inExpr match {
+        case IntLiteral(v) => IntLiteral(-v)
+        case t : Terminal => Times(IntLiteral(-1),t)
+        case fi@FunctionInvocation(fdef,args) => Times(IntLiteral(-1),fi)        
+        case UMinus(e1) => e1
+        case Minus(e1,e2) => Plus(PushMinus(e1),e2)
+        case Plus(e1,e2) => Plus(PushMinus(e1),PushMinus(e2))
+        case Times(e1,e2) => {
+          //here push the minus in to the coefficient if possible
+			e1 match {
+              case IntLiteral(v) => Times(PushMinus(e1),e2)
+              case _ => Times(e1,PushMinus(e2))
+            }          
+        }                
+        case _ => throw NotImplementedException("PushMinus -- Operators not yet handled: "+inExpr)         
+      }
+    }
+    
+    def recur(inExpr: Expr): Expr = {
+      inExpr match {        
+        case e @ BinaryOperator(e1, e2, op) if (e1.getType == Int32Type &&
+            (e.isInstanceOf[Equals] || e.isInstanceOf[LessThan] 
+        	|| e.isInstanceOf[LessEquals]|| e.isInstanceOf[GreaterThan] 
+        	|| e.isInstanceOf[GreaterEquals])) => {
+
+          e2 match {
+            case IntLiteral(0) => e
+            case _ => {
+              op(recur(Minus(e1, e2)), IntLiteral(0))
+            }
+          }
+        }
+        case Minus(e1,e2) => Plus(recur(e1),PushMinus(recur(e2)))
+        case UMinus(e1) => PushMinus(recur(e1)) 
+        case t : Terminal => t 
+        case UnaryOperator(e,op) => op(recur(e))
+        case BinaryOperator(e1,e2,op) => op(recur(e1),recur(e2))
+        case NAryOperator(args,op) => op(args.map(recur(_))) 
+      }
+    }
+	val nexpr = TransformNot(expr) 
+   	recur(nexpr)
+  }
+  
+  
+  //TODO: change instance of to match
+  def TransformNot(expr: Expr): Expr = {
+    def recur(inExpr: Expr): Expr = {
+      inExpr match {        
+        case Not(e @ BinaryOperator(e1, e2, op)) if (e1.getType == Int32Type)=> {
+        	 
+			if(e.isInstanceOf[Equals]) {
+			  Or(recur(LessEquals(e1,Minus(e2,IntLiteral(1)))),
+			      recur(GreaterEquals(e1,Plus(e2,IntLiteral(1)))))
+			}              
+			else if(e.isInstanceOf[LessThan]) GreaterEquals(recur(e1),recur(e2))			
+			else if(e.isInstanceOf[LessEquals]) GreaterThan(recur(e1),recur(e2))
+			else if(e.isInstanceOf[GreaterThan]) LessEquals(recur(e1),recur(e2))
+			else if(e.isInstanceOf[GreaterEquals]) LessThan(recur(e1),recur(e2))
+			else throw IllegalStateException("Unknown integer predicate: "+e)
+        }
+        case t : Terminal => t 
+        case UnaryOperator(e,op) => op(recur(e))
+        case BinaryOperator(e1,e2,op) => op(recur(e1),recur(e2))
+        case NAryOperator(args,op) => op(args.map(recur(_))) 
+      }
+    }
+    recur(expr)
+  }
+  
+  
   def run(ctx: LeonContext)(program: Program): VerificationReport = {
 
     val functionsToAnalyse: MutableSet[String] = MutableSet.empty
@@ -277,7 +373,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 		  println("Goal clauses: "+goalClauses)
         }        
         
-        if(!body.isEmpty){          
+        if(!body.isEmpty){
+          println("Body clauses: " + body)
           body.map(ConstraintTreeObject.addConstraint(_))
           println(ConstraintTreeObject.toString)          
         }
@@ -298,8 +395,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
       for (vcInfo <- vcs) {
         val funDef = vcInfo.funDef
-        val body = vcInfo.body
-        val post = vcInfo.post
+        val body = TransformNot(vcInfo.body)
+        val post = TransformNot(vcInfo.post)
 
         reporter.info("Now considering '" + vcInfo.kind + "' VC for " + funDef.id + "...")
         reporter.info("Verification condition (" + vcInfo.kind + ") for ==== " + funDef.id + " ====")
