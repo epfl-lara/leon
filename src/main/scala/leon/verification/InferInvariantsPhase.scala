@@ -50,7 +50,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       }
     }
     case class CtrLeaf() extends CtrTree
-    private var treeNodeMap = Map[Identifier, CtrNode]()
+    //here we use the name of the id instead of the id itself
+    private var treeNodeMap = Map[String, CtrNode]()
 
     //root of the tree. This would be set while constraints are added
     private var root: CtrTree = CtrLeaf()    
@@ -59,9 +60,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       val (id, innerExpr) = parseGuardedExpr(e)
             
       //get the node corresponding to the id
-      val ctrnode = treeNodeMap.getOrElse(id, {
+      val ctrnode = treeNodeMap.getOrElse(id.name, {
         val node = CtrNode(id, Set(), Set())
-        treeNodeMap += (id -> node)        
+        treeNodeMap += (id.name -> node)        
         node
       })
 
@@ -97,9 +98,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     }
 
     def createOrAddChildren(parentNode: CtrNode, childId: Identifier) = {
-      var childNode = treeNodeMap.getOrElse(childId, {
+      var childNode = treeNodeMap.getOrElse(childId.name, {
         val node = CtrNode(childId, Set(), Set())
-        treeNodeMap += (childId -> node)
+        treeNodeMap += (childId.name -> node)
         node
       })
       parentNode.children += childNode
