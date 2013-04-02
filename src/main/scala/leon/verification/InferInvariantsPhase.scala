@@ -54,115 +54,112 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     }
   }
 
-  object ConstraintTreeObject {
-
-    abstract class CtrTree
-    case class CtrNode(val blockingId: Identifier, var constraints: Set[Constraint], var children: Set[CtrTree]) extends CtrTree
-    {
-      override def toString() : String = {
-        var str = "Id: "+ blockingId +" Constriants: " + constraints +" children: \n"
-        children.foldLeft(str)((g: String,node: CtrTree) => { g + node.toString })        
-      }
+  abstract class CtrTree
+  case class CtrNode(val blockingId: Identifier, var constraints: Set[Constraint], var children: Set[CtrTree]) extends CtrTree {
+    override def toString(): String = {
+      var str = "Id: " + blockingId + " Constriants: " + constraints + " children: \n"
+      children.foldLeft(str)((g: String, node: CtrTree) => { g + node.toString })
     }
-    case class CtrLeaf() extends CtrTree    
-    private var treeNodeMap = Map[Identifier, CtrNode]()
+  }
+  case class CtrLeaf() extends CtrTree
+  private var treeNodeMap = Map[Identifier, CtrNode]()
 
-    //root of the tree. This would be set while constraints are added
-    var bodyRoot: CtrTree = CtrLeaf()
-    var postRoot: CtrTree = CtrLeaf()
+  //root of the tree. This would be set while constraints are added
+  var bodyRoot: CtrTree = CtrLeaf()
+  var postRoot: CtrTree = CtrLeaf()
 
-    def isBlockingId(id: Identifier): Boolean = {
-      if (id.name.startsWith("b")) true else false
-    }
+  def isBlockingId(id: Identifier): Boolean = {
+    if (id.name.startsWith("b")) true else false
+  }
 
-    def isStartId(id: Identifier): Boolean = {
-      if (id.name.contains("start")) true else false
-    }
+  def isStartId(id: Identifier): Boolean = {
+    if (id.name.contains("start")) true else false
+  }
 
-    ///cleanup this code and do not use flags
-    def addConstraint(e: Expr, isBody : Boolean) = {
-      val (id, innerExpr) = parseGuardedExpr(e)
-            
-      //get the node corresponding to the id
-      val ctrnode = treeNodeMap.getOrElse(id, {
-        val node = CtrNode(id, Set(), Set())
-        treeNodeMap += (id -> node)
-        
-        //set the root of the tree (this code is ugly and does string matching)
-      	//TODO: fix this
-        if (isStartId(id)) {
-          val root = if (isBody) bodyRoot else postRoot
-          if (root.isInstanceOf[CtrNode])
-            throw IllegalStateException("Different start symbol: " + id)
-          else {
-            if (isBody) bodyRoot = node else postRoot = node
-          }
+  //TODO: cleanup this code and do not use flags
+  def addConstraint(e: Expr, isBody: Boolean) = {
+    val (id, innerExpr) = parseGuardedExpr(e)
+
+    //get the node corresponding to the id
+    val ctrnode = treeNodeMap.getOrElse(id, {
+      val node = CtrNode(id, Set(), Set())
+      treeNodeMap += (id -> node)
+
+      //set the root of the tree (this code is ugly and does string matching)
+      //TODO: fix this
+      if (isStartId(id)) {
+        val root = if (isBody) bodyRoot else postRoot
+        if (root.isInstanceOf[CtrNode])
+          throw IllegalStateException("Different start symbol: " + id)
+        else {
+          if (isBody) bodyRoot = node else postRoot = node
         }
-        
-        node
-      })
+      }
 
-      def addCtrOrBlkLiteral(ie: Expr, newChild : Boolean): Unit = {        
-        ie match {
-          case Or(subexprs) => {
+      node
+    })
 
-            val validSubExprs = subexprs.collect((sube) => sube match {
-              case _ if (sube match {
-                //cases to be ignored              
-                case Not(Variable(childId)) => false //need not take this into consideration now
-                case _ => true
-              }) => sube
-            })
-            if (!validSubExprs.isEmpty) {              
-              val createChild = if (validSubExprs.size > 1) true else false
-              for (sube <- validSubExprs) {
-                addCtrOrBlkLiteral(sube, createChild)
-              }
+    def addCtrOrBlkLiteral(ie: Expr, newChild: Boolean): Unit = {
+      ie match {
+        case Or(subexprs) => {
+
+          val validSubExprs = subexprs.collect((sube) => sube match {
+            case _ if (sube match {
+              //cases to be ignored              
+              case Not(Variable(childId)) => false //need not take this into consideration now
+              case _ => true
+            }) => sube
+          })
+          if (!validSubExprs.isEmpty) {
+            val createChild = if (validSubExprs.size > 1) true else false
+            for (sube <- validSubExprs) {
+              addCtrOrBlkLiteral(sube, createChild)
             }
           }
-          //TODO: handle conjunctions as well
-          case Variable(childId) => {
-            //checking for blocking literal
-            if(isBlockingId(childId))
-              createOrAddChildren(ctrnode, childId)
-              else 
-            throw IllegalStateException("Encountered a variable that is not a blocking id: " + childId)
-          }             
-          case Iff(lhs, rhs) => {
-            //lhs corresponds to a blocking id in this case
-        	lhs match {
-        	  case Variable(childId) if(isBlockingId(childId)) => {
-        	     val childNode = createOrAddChildren(ctrnode, childId)
-        		 val ctr = exprToConstraint(rhs)
-        		 childNode.constraints += ctr
-        	  }
-        	  case _ => throw IllegalStateException("Iff block --- encountered something that is not a blocking id: " + lhs) 
-        	}
-            
-          }
-          case _ => {
-            val node = if (newChild) createOrAddChildren(ctrnode, FreshIdentifier("dummy", true))
-            			else ctrnode
-            val ctr = exprToConstraint(ie)
-            node.constraints += ctr
-          }                    
         }
-      }      
-      //important: calling makelinear may result in disjunctions and also potentially conjunctions      
-      val nnfExpr = TransformNot(innerExpr)
-      addCtrOrBlkLiteral(nnfExpr, false)
-    }    
+        //TODO: handle conjunctions as well
+        case Variable(childId) => {
+          //checking for blocking literal
+          if (isBlockingId(childId))
+            createOrAddChildren(ctrnode, childId)
+          else
+            throw IllegalStateException("Encountered a variable that is not a blocking id: " + childId)
+        }
+        case Iff(lhs, rhs) => {
+          //lhs corresponds to a blocking id in this case
+          lhs match {
+            case Variable(childId) if (isBlockingId(childId)) => {
+              val childNode = createOrAddChildren(ctrnode, childId)
+              val ctr = exprToConstraint(rhs)
+              childNode.constraints += ctr
+            }
+            case _ => throw IllegalStateException("Iff block --- encountered something that is not a blocking id: " + lhs)
+          }
 
-    def createOrAddChildren(parentNode: CtrNode, childId: Identifier) : CtrNode = {
-      var childNode = treeNodeMap.getOrElse(childId, {
-        val node = CtrNode(childId, Set(), Set())
-        treeNodeMap += (childId -> node)
-        node
-      })
-      parentNode.children += childNode
-      childNode
-    }  
+        }
+        case _ => {
+          val node = if (newChild) createOrAddChildren(ctrnode, FreshIdentifier("dummy", true))
+          else ctrnode
+          val ctr = exprToConstraint(ie)
+          node.constraints += ctr
+        }
+      }
+    }
+    //important: calling makelinear may result in disjunctions and also potentially conjunctions      
+    val nnfExpr = TransformNot(innerExpr)
+    addCtrOrBlkLiteral(nnfExpr, false)
   }
+
+  def createOrAddChildren(parentNode: CtrNode, childId: Identifier): CtrNode = {
+    var childNode = treeNodeMap.getOrElse(childId, {
+      val node = CtrNode(childId, Set(), Set())
+      treeNodeMap += (childId -> node)
+      node
+    })
+    parentNode.children += childNode
+    childNode
+  }  
+  
 
     
   def parseGuardedExpr(e: Expr): (Identifier, Expr) = {
@@ -300,7 +297,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       }
     }
     
-    //we assume that PushMinus has already been invoked
+    //we assume that PushMinus has already been invoke on the expression
     def PushTimes(c : Int, ine : Expr) : Expr = {
       require(ine.getType == Int32Type)
       
@@ -318,7 +315,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     }
 
     //collect all the constants and simplify them
-    //we assume that mkLinearRecur has been invoked
+    //we assume that PushTimes and PushMinus have been invoked on the expression
     def simplifyConsts(ine: Expr): (Option[Expr], Int) = {
       require(ine.getType == Int32Type)
 
@@ -405,7 +402,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
             case _ => throw IllegalStateException("Unknown integer predicate: " + e)
           }
         }                
-        //TODO: I don't know why "Not" is not recognized as an unary operator
+        //TODO: "Not" is not recognized as an unary operator, need to find out why
         case e@Not(t: Terminal) => e
         case Not(And(args)) => Or(args.map(arg => nnf(Not(arg))))
         case Not(Or(args)) => And(args.map(arg => nnf(Not(arg))))
@@ -423,6 +420,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     }
     nnf(expr)
   }
+  
+  
 
   def getClauseListener(fundef: FunDef): ((Seq[Expr], Seq[Expr], Seq[Expr]) => Unit) = {
     var counter = 0;
@@ -432,26 +431,108 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
       //initialize the goal clauses
       if (!post.isEmpty) {
-        println("Goal clauses: " + post)
-        post.map(ConstraintTreeObject.addConstraint(_, false))
-        println("Goal Tree: " + ConstraintTreeObject.postRoot.toString)
+        //println("Goal clauses: " + post)
+        post.map(addConstraint(_, false))
+        println("Goal Tree: " + postRoot.toString)
       }
 
       if (!body.isEmpty) {
-        println("Body clauses: " + body)
-        body.map(ConstraintTreeObject.addConstraint(_, true))
-        println("Body Tree: " + ConstraintTreeObject.bodyRoot.toString)
+        //println("Body clauses: " + body)
+        body.map(addConstraint(_, true))
+        println("Body Tree: " + bodyRoot.toString)
       }      
       
       //new clauses are considered as a part of the body
       if(!newClauses.isEmpty) {      
-    	println("new clauses: " + newClauses)
-        newClauses.map(ConstraintTreeObject.addConstraint(_, true))
-        println("Body Tree: " + ConstraintTreeObject.bodyRoot.toString)
-        System.exit(0)
+    	//println("new clauses: " + newClauses)
+        newClauses.map(addConstraint(_, true))
+        println("Body Tree: " + bodyRoot.toString)        
       }
     }
     listener
+  }
+  
+  //some utility methods
+  def getFIs(ctr: Constraint) : Set[FunctionInvocation] = {
+    val fis = ctr.coeffMap.keys.collect((e) => e match {
+        case fi : FunctionInvocation => fi        
+    })
+    fis.toSet
+  }
+  
+  /**
+   * This function computes invariants belonging to the template.
+   * The result is a mapping from function definitions to the corresponding invariants.
+   * Note that the invariants are context specific and may not be context independent invariants for the functions (except for startFun)   
+   */  
+  def SolveForTemplates(bodyTree : CtrTree, postTree: CtrTree, invTemplate: FunctionInvocation => Set[Constraint]) : Option[Map[FunDef,Expr]] = {
+    //this is a mapping from node ids of the trees to the templates induced by the constraints of the node  
+    //val templateMap = Map[Identifier,Set[Constraint]]()
+
+    //these are the non-linear constraints that are to be solved 
+    var ctrNonLinear = Set[Expr]() 
+    
+    //traverse each path in the body tree and then the ones in the post-tree, accumulating all the constraints along the path
+    def traverse(bodyPart: CtrTree, postPart: CtrTree, antecedents : Set[Constraint], consequents : Set[Constraint]): Unit = {
+      (bodyPart, postPart) match {
+        
+        case (CtrNode(blkid, ctrs, children), _) => {
+          //accumulate antecedents
+          var newants = antecedents ++ ctrs
+          var newconseqs = consequents          
+          //find function invocations in ctrs
+          val fis = ctrs.foldLeft(Set[FunctionInvocation]())((set,ctr) =>  set ++ getFIs(ctr))          
+          //generate a template for each function invocation and add it to the antecedents and consequents
+          for(fi <- fis)
+          {
+              val invt = invTemplate(fi)
+        	  newants ++= invt 
+        	  newconseqs ++= invt
+          }                                        
+          //recurse into children
+          for(child <- children)
+            traverse(child,postPart,newants,newconseqs)
+        }
+        
+        case (CtrLeaf(),CtrNode(blkid, ctrs, children)) => {
+          //accumulate consequents
+          var newants = antecedents 
+          var newconseqs = consequents ++ ctrs          
+          //find function invocations in ctrs
+          val fis = ctrs.foldLeft(Set[FunctionInvocation]())((set,ctr) =>  set ++ getFIs(ctr))          
+          //generate a template for each function invocation and add it to the antecedents and consequents
+          for(fi <- fis)
+          {
+              val invt = invTemplate(fi)
+        	  newants ++= invt 
+        	  newconseqs ++= invt
+          }                                        
+          //recurse into children          
+          for(child <- children)
+            traverse(CtrLeaf(),child,newants,newconseqs)
+        }
+        
+        case (CtrLeaf(),CtrLeaf()) => {
+          //end of a path. generate a set of (non-linear) constraints for this implication
+          ctrNonLinear ++= genNonLinearCtrsFromImplications(antecedents,consequents)
+        }
+      }
+    }
+    
+    //traverse the bodyTree and postTree 
+    traverse(bodyTree,postTree,Set[Constraint](),Set[Constraint]())
+        
+    //solve the generated constraints using z3
+    println("Non-linear constraints: "+ctrNonLinear)
+    None
+  } 
+  
+  /**
+   * This procedure uses Farka's lemma to generate a set of non-linear constraints for the input implication 
+   */
+  def genNonLinearCtrsFromImplications(ants : Set[Constraint], conseqs: Set[Constraint]) : Set[Expr] = {
+    
+    
   }
   
   
