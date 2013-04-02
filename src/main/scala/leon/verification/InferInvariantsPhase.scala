@@ -29,20 +29,20 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
     LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."))
 
-  //each constraint is a mapping from constraint variable to its coefficient (integers)
-  //a constraint variable can be leon variables or function invocations or case classes etc.
-  case class Constraint(val expr: Expr, val coeffMap: Map[Expr, Int], val constant: Option[Int])
+  
+  //this is a template for linear constraints
+  case class LinearTemplate(val template: Expr, val coeffTemplate: Map[Expr, Terminal], val constTemplate: Option[Terminal])
   {
     override def toString() : String = {      
-      val constStr = coeffMap.foldLeft("")((str,pair) => { 
+      val constStr = coeffTemplate.foldLeft("")((str,pair) => { 
         val (e,i) = pair
-        val termStr = if(i != 1) i + "*" + e.toString 
+        val termStr = if(i != IntLiteral(1)) i + "*" + e.toString 
         			  else e.toString 
         (str + termStr + " + ")        
         }) + 
-        (if(constant.isDefined) constant.get.toString
+        (if(constTemplate.isDefined) constTemplate.get.toString
         else "0") +
-        (expr match {
+        (template match {
           case t : Equals => " = "
           case t : LessThan => " < "
           case t: GreaterThan => " > "
@@ -53,9 +53,16 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
        constStr //+ " ActualExpr: "+ expr
     }
   }
+  
+  //each constraint is a mapping from constraint variable to its coefficient (integers)
+  //a constraint variable can be leon variables or function invocations or case classes etc.
+  case class LinearConstraint(val expr: Expr, val coeffMap: Map[Expr,IntLiteral], val constant: Option[IntLiteral]) extends
+  	LinearTemplate(expr,coeffMap,constant)
+  {
+  }
 
   abstract class CtrTree
-  case class CtrNode(val blockingId: Identifier, var constraints: Set[Constraint], var children: Set[CtrTree]) extends CtrTree {
+  case class CtrNode(val blockingId: Identifier, var constraints: Set[LinearConstraint], var children: Set[CtrTree]) extends CtrTree {
     override def toString(): String = {
       var str = "Id: " + blockingId + " Constriants: " + constraints + " children: \n"
       children.foldLeft(str)((g: String, node: CtrTree) => { g + node.toString })
@@ -180,14 +187,15 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
   //the expr is required to be linear, if not, an exception would be thrown
   //for now some of the constructs are not handled
-  def exprToConstraint(expr: Expr): Constraint = {
-    var coeffMap = Map[Expr, Int]()
-    var constant: Option[Int] = None
+  def exprToConstraint(expr: Expr): LinearConstraint = {
+    var coeffMap = Map[Expr, IntLiteral]()
+    var constant: Option[IntLiteral] = None
 
+    val oneLit = IntLiteral(1)
     def genConstraint(e: Expr): Option[Expr] = {
       e match {
         case IntLiteral(v) => {
-              constant = Some(v)
+              constant = Some(IntLiteral(v))
               None
         }
         case Plus(e1, e2) => {
@@ -197,11 +205,11 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           val r1 = genConstraint(e1)
           if (r1.isDefined) {
             //here the coefficient is 1
-            coeffMap += (r1.get -> 1)
+            coeffMap += (r1.get -> oneLit)
           }
           val r2 = genConstraint(e2)
           if (r2.isDefined)
-            coeffMap += (r2.get -> 1)
+            coeffMap += (r2.get -> oneLit)
 
           None
         }
@@ -227,7 +235,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
             throw IllegalStateException("Multiplicand not a constraint variable: " + cvar)
           else {
             //add to mapping
-            coeffMap += (r.get -> coeff)
+            coeffMap += (r.get -> IntLiteral(coeff))
           }
           None          
         }
@@ -247,7 +255,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
               val r = genConstraint(e1)
               if (r.isDefined) {
                 //here the coefficient is 1
-                coeffMap += (r.get -> 1)
+                coeffMap += (r.get -> oneLit)
               }
               None
             }
@@ -262,7 +270,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     
     val linearExpr = MakeLinear(expr)
     if (!genConstraint(linearExpr).isDefined) {
-      Constraint(linearExpr, coeffMap, constant)
+      LinearConstraint(linearExpr, coeffMap, constant)
     } else
       throw IllegalStateException("Expression not a linear relation: " + expr)
   }
@@ -453,7 +461,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   }
   
   //some utility methods
-  def getFIs(ctr: Constraint) : Set[FunctionInvocation] = {
+  def getFIs(ctr: LinearConstraint) : Set[FunctionInvocation] = {
     val fis = ctr.coeffMap.keys.collect((e) => e match {
         case fi : FunctionInvocation => fi        
     })
@@ -465,15 +473,15 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
    * The result is a mapping from function definitions to the corresponding invariants.
    * Note that the invariants are context specific and may not be context independent invariants for the functions (except for startFun)   
    */  
-  def SolveForTemplates(bodyTree : CtrTree, postTree: CtrTree, invTemplate: FunctionInvocation => Set[Constraint]) : Option[Map[FunDef,Expr]] = {
+  def SolveForTemplates(bodyTree : CtrTree, postTree: CtrTree, invTemplate: FunctionInvocation => Set[LinearTemplate]) : Option[Map[FunDef,Expr]] = {
     //this is a mapping from node ids of the trees to the templates induced by the constraints of the node  
-    //val templateMap = Map[Identifier,Set[Constraint]]()
+    //val templateMap = Map[Identifier,Set[LinearConstraint]]()
 
     //these are the non-linear constraints that are to be solved 
     var ctrNonLinear = Set[Expr]() 
     
     //traverse each path in the body tree and then the ones in the post-tree, accumulating all the constraints along the path
-    def traverse(bodyPart: CtrTree, postPart: CtrTree, antecedents : Set[Constraint], consequents : Set[Constraint]): Unit = {
+    def traverse(bodyPart: CtrTree, postPart: CtrTree, antecedents : Set[LinearTemplate], consequents : Set[LinearTemplate]): Unit = {
       (bodyPart, postPart) match {
         
         case (CtrNode(blkid, ctrs, children), _) => {
@@ -514,13 +522,17 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         
         case (CtrLeaf(),CtrLeaf()) => {
           //end of a path. generate a set of (non-linear) constraints for this implication
+          
+          //for debugging
+          println("Antecedents : "+antecedents+" Consequents: "+consequents)
+          
           ctrNonLinear ++= genNonLinearCtrsFromImplications(antecedents,consequents)
         }
       }
     }
     
     //traverse the bodyTree and postTree 
-    traverse(bodyTree,postTree,Set[Constraint](),Set[Constraint]())
+    traverse(bodyTree,postTree,Set[LinearTemplate](),Set[LinearTemplate]())
         
     //solve the generated constraints using z3
     println("Non-linear constraints: "+ctrNonLinear)
@@ -528,11 +540,35 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   } 
   
   /**
-   * This procedure uses Farka's lemma to generate a set of non-linear constraints for the input implication 
+   * This procedure uses Farka's lemma to generate a set of non-linear constraints for the input implication.
    */
-  def genNonLinearCtrsFromImplications(ants : Set[Constraint], conseqs: Set[Constraint]) : Set[Expr] = {
+  def genNonLinearCtrsFromImplications(ants : Set[LinearTemplate], conseqs: Set[LinearTemplate]) : Set[Expr] = {
     
-    
+    var nonLinearCtrs = Set[Expr]()
+    for(conseq <- conseqs)
+    {
+      //create a set of identifiers one for each ants      
+      //TODO: may need to alter the type 
+    	val lambdas = ants.map((ant) => (ant -> Variable(FreshIdentifier("l",true).setType(Int32Type)))).toMap    	
+    	var sum : Expr = null
+    	for((cvar,terminal) <- conseq.coeffTemplate)
+    	{
+    	  for(ant <- ants) {
+    	    if(ant.coeffTemplate.contains(cvar))
+    	    {
+    	      //TODO: remove the ugly type cast and find a better way around
+    	      val addend = Times(lambdas(ant),ant.coeffTemplate.get(cvar).get.asInstanceOf[Expr])
+    	      if(sum == null)
+    	        sum = addend 
+    	      else
+    	        sum = Plus(sum,addend)    	      
+    	    }
+    	  }
+    	  //make the terminal equal to the sum of the addends
+    	  nonLinearCtrs += Equals(terminal.asInstanceOf[Expr],sum)
+    	}
+    }
+    nonLinearCtrs
   }
   
   
