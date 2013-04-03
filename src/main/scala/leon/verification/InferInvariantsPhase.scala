@@ -31,7 +31,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
   
   //this is a template for linear constraints
-  case class LinearTemplate(val template: Expr, val coeffTemplate: Map[Expr, Terminal], val constTemplate: Option[Terminal])
+  case class LinearTemplate(val template: Expr, val coeffTemplate: Map[Expr, Expr with Terminal], val constTemplate: Option[Expr with Terminal])
   {
     override def toString() : String = {      
       val constStr = coeffTemplate.foldLeft("")((str,pair) => { 
@@ -429,37 +429,35 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     nnf(expr)
   }
   
+  private var paramCoeff = Map[FunDef,List[Variable]]()
   
-
-  def getClauseListener(fundef: FunDef): ((Seq[Expr], Seq[Expr], Seq[Expr]) => Unit) = {
-    var counter = 0;
-    val listener = (body: Seq[Expr], post: Seq[Expr], newClauses: Seq[Expr]) => {
-      //reconstructs the linear constraints corresponding to each path in the programs
-      //A tree is used for efficiently representing the set of constraints corresponding to each path
-
-      //initialize the goal clauses
-      if (!post.isEmpty) {
-        //println("Goal clauses: " + post)
-        post.map(addConstraint(_, false))
-        println("Goal Tree: " + postRoot.toString)
-      }
-
-      if (!body.isEmpty) {
-        //println("Body clauses: " + body)
-        body.map(addConstraint(_, true))
-        println("Body Tree: " + bodyRoot.toString)
-      }      
+  def getInvariantTemplate() : (FunctionInvocation => LinearTemplate) ={
+        
+    //the ordering of the identifiers in the List[Expr] is very important
+    def getWellTypedTerms(args : Seq[Expr], fd : FunDef) : List[Expr] = {
       
-      //new clauses are considered as a part of the body
-      if(!newClauses.isEmpty) {      
-    	//println("new clauses: " + newClauses)
-        newClauses.map(addConstraint(_, true))
-        println("Body Tree: " + bodyRoot.toString)        
-      }
+      //just consider all the arguments and the main function invocation (which is res) that are
+      //integer valued as only possible terms
+    	val terms = (args :+ FunctionInvocation(fd,args)).collect((e : Expr) => if(e.getType == Int32Type) e)
+    	
     }
-    listener
+    
+    (fi: FunctionInvocation) =>  {
+      val fd = fi.funDef
+      val terms = getWellTypedTerms(fd.args.map(_.toVariable), fd)      
+      
+      if(!paramCoeff.contains(fd))
+      {
+        //bind terms to (unknown) coefficients
+        var newCoeffs = List.range(0, terms.size+1).map((i)=> Variable(FreshIdentifier("a"+i+"a",true).setType(Int32Type)))        
+        paramCoeff += (fd -> newCoeffs)
+      }
+      
+      val (const :: coeffs) = paramCoeff(fd) 
+      val coeffmap = terms.zip(paramCoeff(fd))      				
+    }
   }
-  
+    
   //some utility methods
   def getFIs(ctr: LinearConstraint) : Set[FunctionInvocation] = {
     val fis = ctr.coeffMap.keys.collect((e) => e match {
@@ -537,7 +535,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     //solve the generated constraints using z3
     println("Non-linear constraints: "+ctrNonLinear)
     None
-  } 
+  }     
   
   /**
    * This procedure uses Farka's lemma to generate a set of non-linear constraints for the input implication.
@@ -557,7 +555,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     	    if(ant.coeffTemplate.contains(cvar))
     	    {
     	      //TODO: remove the ugly type cast and find a better way around
-    	      val addend = Times(lambdas(ant),ant.coeffTemplate.get(cvar).get.asInstanceOf[Expr])
+    	      val addend = Times(lambdas(ant),ant.coeffTemplate.get(cvar).get)
     	      if(sum == null)
     	        sum = addend 
     	      else
@@ -565,10 +563,42 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     	    }
     	  }
     	  //make the terminal equal to the sum of the addends
-    	  nonLinearCtrs += Equals(terminal.asInstanceOf[Expr],sum)
+    	  nonLinearCtrs += Equals(terminal,sum)
     	}
     }
     nonLinearCtrs
+  }
+  
+  def getClauseListener(fundef: FunDef): ((Seq[Expr], Seq[Expr], Seq[Expr]) => Unit) = {
+    var counter = 0;
+    val listener = (body: Seq[Expr], post: Seq[Expr], newClauses: Seq[Expr]) => {
+      //reconstructs the linear constraints corresponding to each path in the programs
+      //A tree is used for efficiently representing the set of constraints corresponding to each path
+
+      //initialize the goal clauses
+      if (!post.isEmpty) {
+        //println("Goal clauses: " + post)
+        post.map(addConstraint(_, false))
+        println("Goal Tree: " + postRoot.toString)
+      }
+
+      if (!body.isEmpty) {
+        //println("Body clauses: " + body)
+        body.map(addConstraint(_, true))
+        println("Body Tree: " + bodyRoot.toString)
+      }      
+      
+      //new clauses are considered as a part of the body
+      if(!newClauses.isEmpty) {      
+    	//println("new clauses: " + newClauses)
+        newClauses.map(addConstraint(_, true))
+        println("Body Tree: " + bodyRoot.toString)
+        
+        //solve for the templates at this unroll step
+        SolveForTemplates(bodyRoot,postRoot,getInvariantTemplate)
+      }            
+    }
+    listener
   }
   
   
@@ -609,7 +639,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       var allVCs: Seq[ExtendedVC] = Seq.empty
       val analysedFunctions: MutableSet[String] = MutableSet.empty
 
-      for (funDef <- program.definedFunctions.toList.sortWith((fd1, fd2) => fd1 < fd2) if (functionsToAnalyse.isEmpty || functionsToAnalyse.contains(funDef.id.name))) {
+      for (funDef <- program.definedFunctions.toList.sortWith((fd1, fd2) => fd1 < fd2) 
+          if (functionsToAnalyse.isEmpty || functionsToAnalyse.contains(funDef.id.name))) {
         analysedFunctions += funDef.id.name
 
         val tactic: Tactic = defaultTactic
