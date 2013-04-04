@@ -57,20 +57,21 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
 
   abstract class ExpandResult[T <: AOTask[S]]
   case class Expanded[T <: AOTask[S]](sub: List[T]) extends ExpandResult[T]
-  case class ExpandSuccess[T <: AOTask[S]](sol: S) extends ExpandResult[T]
+  case class ExpandSuccess[T <: AOTask[S]](sol: S, isTrustworthy: Boolean) extends ExpandResult[T]
   case class ExpandFailure[T <: AOTask[S]]() extends ExpandResult[T]
 
   def stop() {
 
   }
 
-  def search(): Option[S]
+  def search(): Option[(S, Boolean)]
 
   def onExpansion(al: g.AndLeaf, res: ExpandResult[OT]) {
     res match {
       case Expanded(ls) =>
         al.expandWith(ls)
-      case r @ ExpandSuccess(sol) =>
+      case r @ ExpandSuccess(sol, isTrustworthy) =>
+        al.isTrustworthy = isTrustworthy
         al.solution = Some(sol)
         al.parent.notifySolution(al, sol)
       case _ =>
@@ -89,7 +90,8 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
     res match {
       case Expanded(ls) =>
         ol.expandWith(ls)
-      case r @ ExpandSuccess(sol) =>
+      case r @ ExpandSuccess(sol, isTrustworthy) =>
+        ol.isTrustworthy = isTrustworthy
         ol.solution = Some(sol)
         ol.parent.notifySolution(ol, sol)
       case _ =>

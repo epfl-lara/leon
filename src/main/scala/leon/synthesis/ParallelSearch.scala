@@ -49,13 +49,13 @@ class ParallelSearch(synth: Synthesizer,
     val prefix = "[%-20s] ".format(Option(t.rule).getOrElse("?"))
 
     t.app.apply(sctx) match {
-      case RuleSuccess(sol) =>
+      case RuleSuccess(sol, isTrusted) =>
         synth.synchronized {
           info(prefix+"Got: "+t.problem)
-          info(prefix+"Solved with: "+sol)
+          info(prefix+"Solved"+(if(isTrusted) "" else " (untrusted)")+" with: "+sol)
         }
 
-        ExpandSuccess(sol)
+        ExpandSuccess(sol, isTrusted)
       case RuleDecomposed(sub) =>
         synth.synchronized {
           info(prefix+"Got: "+t.problem)

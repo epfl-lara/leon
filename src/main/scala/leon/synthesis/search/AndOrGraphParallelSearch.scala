@@ -18,7 +18,7 @@ abstract class AndOrGraphParallelSearch[WC,
 
   var system: ActorSystem = _
 
-  def search(): Option[S] = {
+  def search(): Option[(S, Boolean)] = {
     system = ActorSystem("ParallelSearch")
 
     val master = system.actorOf(Props(new Master), name = "Master")
@@ -38,7 +38,7 @@ abstract class AndOrGraphParallelSearch[WC,
       system = null
     }
 
-    g.tree.solution
+    g.tree.solution.map(s => (s, g.tree.isTrustworthy))
   }
 
   override def stop() {

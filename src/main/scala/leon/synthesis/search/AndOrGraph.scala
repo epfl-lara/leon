@@ -24,6 +24,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S](val root: OT, val cos
 
     def minCost: Cost
 
+    var isTrustworthy: Boolean = true
     var solution: Option[S] = None
     var isUnsolvable: Boolean = false
 
@@ -86,6 +87,7 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S](val root: OT, val cos
       if (subSolutions.size == subProblems.size) {
         task.composeSolution(subTasks.map(subSolutions)) match {
           case Some(sol) =>
+            isTrustworthy = subProblems.forall(_._2.isTrustworthy)
             solution = Some(sol)
             updateMin()
 
@@ -174,12 +176,14 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S](val root: OT, val cos
     def notifySolution(sub: AndTree, sol: S) {
       solution match {
         case Some(preSol) if (costModel.solutionCost(preSol) < costModel.solutionCost(sol)) =>
+          isTrustworthy  = sub.isTrustworthy
           solution       = Some(sol)
           minAlternative = sub
 
           notifyParent(solution.get)
 
         case None =>
+          isTrustworthy  = sub.isTrustworthy
           solution       = Some(sol)
           minAlternative = sub
 
