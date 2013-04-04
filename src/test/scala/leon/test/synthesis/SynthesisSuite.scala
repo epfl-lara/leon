@@ -61,6 +61,51 @@ class SynthesisSuite extends FunSuite {
     }
   }
 
+  case class Apply(desc: String, andThen: List[Apply] = Nil)
+
+  def synthesizeWith(sctx: SynthesisContext, p: Problem, ss: Apply): Solution = {
+    val (normRules, otherRules) = sctx.options.rules.partition(_.isInstanceOf[NormalizingRule])
+    val normApplications = normRules.flatMap(_.instantiateOn(sctx, p))
+
+    val apps = if (!normApplications.isEmpty) {
+      normApplications
+    } else {
+      otherRules.flatMap { r => r.instantiateOn(sctx, p) }
+    }
+
+    apps.find(_.toString == ss.desc) match {
+      case Some(app) =>
+        app.apply(sctx) match {
+          case RuleSuccess(sol) =>
+            assert(ss.andThen.isEmpty)
+            sol
+
+          case RuleDecomposed(sub) =>
+            app.onSuccess((sub zip ss.andThen) map { case (p, ss) => synthesizeWith(sctx, p, ss) }).get
+
+          case _ =>
+            throw new AssertionError("Failed to apply "+app+" on "+p)
+        }
+
+      case None =>
+        throw new AssertionError("Failed to find "+ss.desc+". Available: "+apps.mkString(", "))
+    }
+  }
+
+  def synthesize(title: String)(program: String)(strategies: PartialFunction[String, Apply]) {
+    forProgram(title)(program) {
+      case (sctx, fd, p) =>
+        strategies.lift.apply(fd.id.toString) match {
+          case Some(ss) =>
+            synthesizeWith(sctx, p, ss)
+
+          case None =>
+            assert(false, "Function "+fd.id.toString+" not found")
+        }
+    }
+  }
+
+
   def assertAllAlternativesSucceed(sctx: SynthesisContext, rr: Traversable[RuleInstantiation]) {
     assert(!rr.isEmpty)
 
@@ -155,5 +200,71 @@ object Injection {
         case _ =>
           assert(false, "Woot?")
       }
+  }
+
+
+  synthesize("Lists")("""
+import leon.Utils._
+
+object SortedList {
+  sealed abstract class List
+  case class Cons(head: Int, tail: List) extends List
+  case class Nil() extends List
+
+  def size(l: List) : Int = (l match {
+      case Nil() => 0
+      case Cons(_, t) => 1 + size(t)
+  }) ensuring(res => res >= 0)
+
+  def content(l: List): Set[Int] = l match {
+    case Nil() => Set.empty[Int]
+    case Cons(i, t) => Set(i) ++ content(t)
+  }
+
+  def isSorted(l: List): Boolean = l match {
+    case Nil() => true
+    case Cons(x, Nil()) => true
+    case Cons(x, Cons(y, ys)) => x <= y && isSorted(Cons(y, ys))
+  }
+
+  def concat(in1: List, in2: List) = choose {
+    (out : List) =>
+      content(out) == content(in1) ++ content(in2)
+  }
+
+  def insert(in1: List, v: Int) = choose {
+    (out : List) =>
+      content(out) == content(in1) ++ Set(v)
+  }
+
+  def insertSorted(in1: List, v: Int) = choose {
+    (out : List) =>
+      isSorted(in1) && content(out) == content(in1) ++ Set(v) && isSorted(out)
+  }
+}
+    """) {
+    case "concat" =>
+      Apply("ADT Induction on 'in1'", List(
+        Apply("CEGIS"),
+        Apply("CEGIS")
+      ))
+
+    case "insert" =>
+      Apply("ADT Induction on 'in1'", List(
+        Apply("CEGIS"),
+        Apply("CEGIS")
+      ))
+
+    case "insertSorted" =>
+      Apply("Assert isSorted(in1)", List(
+        Apply("ADT Induction on 'in1'", List(
+          Apply("Ineq. Split on 'head16' and 'v4'", List(
+            Apply("CEGIS"),
+            Apply("CEGIS"),
+            Apply("CEGIS")
+          )),
+          Apply("CEGIS")
+        ))
+      ))
   }
 }
