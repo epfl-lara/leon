@@ -42,7 +42,7 @@ class SynthesisSuite extends FunSuite {
     val solver = new FairZ3Solver(ctx)
     solver.setProgram(program)
 
-    val simpleSolver = new FairZ3Solver(ctx)
+    val simpleSolver = new UninterpretedZ3Solver(ctx)
     simpleSolver.setProgram(program)
 
     for ((f, ps) <- results; p <- ps) {
@@ -73,22 +73,32 @@ class SynthesisSuite extends FunSuite {
       otherRules.flatMap { r => r.instantiateOn(sctx, p) }
     }
 
-    apps.find(_.toString == ss.desc) match {
-      case Some(app) =>
+    def matchingDesc(app: RuleInstantiation, ss: Apply): Boolean = {
+      import java.util.regex.Pattern;
+      val pattern = Pattern.quote(ss.desc).replace("*", "\\E.*\\Q")
+      app.toString.matches(pattern)
+    }
+
+    apps.filter(matchingDesc(_, ss)) match {
+      case app :: Nil =>
         app.apply(sctx) match {
-          case RuleSuccess(sol) =>
+          case RuleSuccess(sol, trusted) =>
             assert(ss.andThen.isEmpty)
             sol
 
           case RuleDecomposed(sub) =>
-            app.onSuccess((sub zip ss.andThen) map { case (p, ss) => synthesizeWith(sctx, p, ss) }).get
+            val subSols = (sub zip ss.andThen) map { case (p, ss) => synthesizeWith(sctx, p, ss) }
+            app.onSuccess(subSols).get
 
           case _ =>
             throw new AssertionError("Failed to apply "+app+" on "+p)
         }
 
-      case None =>
+      case Nil =>
         throw new AssertionError("Failed to find "+ss.desc+". Available: "+apps.mkString(", "))
+
+      case xs =>
+        throw new AssertionError("Ambiguous "+ss.desc+". Found: "+xs.mkString(", "))
     }
   }
 
@@ -116,7 +126,7 @@ class SynthesisSuite extends FunSuite {
 
   def assertRuleSuccess(sctx: SynthesisContext, rr: RuleInstantiation): Option[Solution] = {
     rr.apply(sctx) match {
-      case RuleSuccess(sol) =>
+      case RuleSuccess(sol, trusted) =>
         Some(sol)
       case _ =>
         assert(false, "Rule did not succeed")
@@ -187,7 +197,7 @@ object Injection {
   ) {
     case (sctx, fd, p) =>
       rules.CEGIS.instantiateOn(sctx, p).head.apply(sctx) match {
-        case RuleSuccess(sol) =>
+        case RuleSuccess(sol, trusted) =>
           assert(false, "CEGIS should have failed, but found : %s".format(sol))
         case _ =>
       }
@@ -258,7 +268,7 @@ object SortedList {
     case "insertSorted" =>
       Apply("Assert isSorted(in1)", List(
         Apply("ADT Induction on 'in1'", List(
-          Apply("Ineq. Split on 'head16' and 'v4'", List(
+          Apply("Ineq. Split on 'head*' and 'v*'", List(
             Apply("CEGIS"),
             Apply("CEGIS"),
             Apply("CEGIS")
