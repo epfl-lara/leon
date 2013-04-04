@@ -24,6 +24,7 @@ object Rules {
     CEGIS,
     Assert,
     DetupleOutput,
+    DetupleInput,
     ADTSplit,
     IntegerEquation,
     IntegerInequalities
