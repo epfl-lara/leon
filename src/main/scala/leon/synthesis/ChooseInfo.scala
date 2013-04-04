@@ -12,8 +12,8 @@ case class ChooseInfo(ctx: LeonContext,
                       ch: Choose,
                       options: SynthesisOptions) {
 
-  val synthesizer = new Synthesizer(ctx, Some(fd), prog, Problem.fromChoose(ch), options)
   val problem     = Problem.fromChoose(ch, pc)
+  val synthesizer = new Synthesizer(ctx, Some(fd), prog, problem, options)
 }
 
 object ChooseInfo {
