@@ -60,16 +60,40 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   	LinearTemplate(expr,coeffMap,constant)
   {
   }
-
+  
+  //this is in reality a DAG
+  //TODO: Fix this entire portion of code that manipulates a tree
   abstract class CtrTree
-  case class CtrNode(val blockingId: Identifier, var constraints: Set[LinearConstraint], var children: Set[CtrTree]) extends CtrTree {
+  case class CtrNode(val blockingId: Identifier) extends CtrTree {
+
+    var constraints = Set[LinearConstraint]()    
+    private var children = Set[CtrTree](CtrLeaf())
+    
+    def Children : Set[CtrTree] = children  
+    
+    def copyChildren(newnode : CtrNode) = {
+      newnode.children = this.children      
+    }
+    
+    def removeAllChildren() = {
+      this.children = Set(CtrLeaf())
+    }
+    
+    def addChildren(child : CtrNode) = {
+      if(children.size == 1 && children.first == CtrLeaf())
+        children = Set[CtrTree](child)
+      else 
+        children += child
+    }
+    
     override def toString(): String = {
       var str = "Id: " + blockingId + " Constriants: " + constraints + " children: \n"
       children.foldLeft(str)((g: String, node: CtrTree) => { g + node.toString })
     }
   }
   case class CtrLeaf() extends CtrTree
-  private var treeNodeMap = Map[Identifier, CtrNode]()
+  //this is a mutable map (a little nasty)
+  private var treeNodeMap = collection.mutable.Map[Identifier, CtrNode]()
 
   //root of the tree. This would be set while constraints are added
   var bodyRoot: CtrTree = CtrLeaf()
@@ -89,7 +113,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
     //get the node corresponding to the id
     val ctrnode = treeNodeMap.getOrElse(id, {
-      val node = CtrNode(id, Set(), Set())
+      val node = CtrNode(id)
       treeNodeMap += (id -> node)
 
       //set the root of the tree (this code is ugly and does string matching)
@@ -106,10 +130,10 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       node
     })
 
-    def addCtrOrBlkLiteral(ie: Expr, newChild: Boolean): Unit = {
+    //returns the children nodes classified into real and dummy children. The first set is the real set and the second is the dummy set
+    def addCtrOrBlkLiteral(ie: Expr, newChild: Boolean): (Set[CtrNode],Set[CtrNode]) = {
       ie match {
         case Or(subexprs) => {
-
           val validSubExprs = subexprs.collect((sube) => sube match {
             case _ if (sube match {
               //cases to be ignored              
@@ -117,18 +141,29 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
               case _ => true
             }) => sube
           })
-          if (!validSubExprs.isEmpty) {
-            val createChild = if (validSubExprs.size > 1) true else false
-            for (sube <- validSubExprs) {
-              addCtrOrBlkLiteral(sube, createChild)
-            }
+          if (!validSubExprs.isEmpty) {           
+            val createChild = if (validSubExprs.size > 1) true else false            
+            validSubExprs.foldLeft((Set[CtrNode](),Set[CtrNode]()))((acc,sube) => {
+              val (real,dummy) = acc
+              val (real2,dummy2) = addCtrOrBlkLiteral(sube, createChild)
+              (real ++ real2, dummy ++ dummy2)             
+            })
           }
+          else (Set(),Set())
         }
-        //TODO: handle conjunctions as well
+        case And(subexprs) => {          
+          subexprs.foldLeft((Set[CtrNode](),Set[CtrNode]()))((acc,sube) => {
+              val (real,dummy) = acc
+              val (real2,dummy2) = addCtrOrBlkLiteral(sube, false)
+              (real ++ real2, dummy ++ dummy2)             
+            })          
+        }           
+        
         case Variable(childId) => {
           //checking for blocking literal
-          if (isBlockingId(childId))
-            createOrAddChildren(ctrnode, childId)
+          if (isBlockingId(childId)) {
+            (Set(createOrLookupId(ctrnode, childId)),Set())
+          }
           else
             throw IllegalStateException("Encountered a variable that is not a blocking id: " + childId)
         }
@@ -136,39 +171,52 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           //lhs corresponds to a blocking id in this case
           lhs match {
             case Variable(childId) if (isBlockingId(childId)) => {
-              val childNode = createOrAddChildren(ctrnode, childId)
+              val childNode = createOrLookupId(ctrnode, childId)
               val ctr = exprToConstraint(rhs)
-              childNode.constraints += ctr
+              childNode.constraints += ctr    
+              (Set(childNode),Set())
             }
             case _ => throw IllegalStateException("Iff block --- encountered something that is not a blocking id: " + lhs)
           }
 
         }
-        case _ => {
-          val node = if (newChild) createOrAddChildren(ctrnode, FreshIdentifier("dummy", true))
-          else ctrnode
+        case _ => {          
+          val node = if (newChild) createOrLookupId(ctrnode, FreshIdentifier("dummy", true))
+        		  	 else ctrnode
           val ctr = exprToConstraint(ie)
-          node.constraints += ctr
+          node.constraints += ctr       
+          if(newChild) (Set(),Set(node)) else (Set(),Set())             
         }
       }
     }
-    //important: calling makelinear may result in disjunctions and also potentially conjunctions      
-    val nnfExpr = TransformNot(innerExpr)
-    addCtrOrBlkLiteral(nnfExpr, false)
+    //important: calling makelinear may result in disjunctions and also potentially conjunctions
+    val flatExpr = FlattenFunction(innerExpr)
+    val nnfExpr = TransformNot(flatExpr)    
+    val (realChildren,dummyChildren) = addCtrOrBlkLiteral(nnfExpr, false)
+    
+    //now merge dummy children with the ctrnode itself.
+    //the following code is slightly nasty and with side effects
+    val parentNode = if(!dummyChildren.isEmpty) {
+      val newnode = CtrNode(ctrnode.blockingId)
+      ctrnode.copyChildren(newnode)
+      ctrnode.removeAllChildren()
+      dummyChildren.foreach((child) => {child.addChildren(newnode); ctrnode.addChildren(child)})
+      treeNodeMap.update(ctrnode.blockingId, newnode)
+      newnode
+    }  else ctrnode
+    
+    realChildren.foreach(parentNode.addChildren(_))    
   }
 
-  def createOrAddChildren(parentNode: CtrNode, childId: Identifier): CtrNode = {
+  def createOrLookupId(parentNode: CtrNode, childId: Identifier): CtrNode = {
     var childNode = treeNodeMap.getOrElse(childId, {
-      val node = CtrNode(childId, Set(), Set())
+      val node = CtrNode(childId)
       treeNodeMap += (childId -> node)
       node
-    })
-    parentNode.children += childNode
+    })    
     childNode
   }  
-  
-
-    
+      
   def parseGuardedExpr(e: Expr): (Identifier, Expr) = {
     e match {
       case Or(Not(Variable(id)) :: tail) => {
@@ -185,6 +233,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     }
   }
 
+  
   //the expr is required to be linear, if not, an exception would be thrown
   //for now some of the constructs are not handled
   def exprToConstraint(expr: Expr): LinearConstraint = {
@@ -429,32 +478,78 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     nnf(expr)
   }
   
+  def FlattenFunction(inExpr : Expr) : Expr = {
+    
+    var conjuncts = Set[Expr]()    
+    def flattenFunc(e : Expr) : Expr = {
+      e match {
+        case fi@FunctionInvocation(fd,args) => {
+          //flatten the  arguments
+          val newargs = args.foldLeft(List[Expr with Terminal]())((acc,arg) => 
+            arg match {
+              case t: Terminal => (acc :+ t)
+              case arge@_ => {
+                val freshvar = Variable(FreshIdentifier("arg",true).setType(arge.getType))
+                conjuncts += Equals(freshvar,arge) 
+                (acc :+ freshvar)
+              } 
+            }
+          )
+          FunctionInvocation(fd,newargs)
+        }
+        case _ => e
+      }
+    }
+    var newExpr = simplePostTransform(flattenFunc)(inExpr)
+    And((conjuncts + newExpr).toSeq)
+  } 
+  
   private var paramCoeff = Map[FunDef,List[Variable]]()
   
-  def getInvariantTemplate() : (FunctionInvocation => LinearTemplate) ={
+  def getInvariantTemplate() : (FunctionInvocation => Set[LinearTemplate]) ={
         
-    //the ordering of the identifiers in the List[Expr] is very important
+    /**
+     * The ordering of the expessions in the List[Expr] is very important.
+     * TODO: in the future use more sophisticated ways of constructing terms
+     */  
     def getWellTypedTerms(args : Seq[Expr], fd : FunDef) : List[Expr] = {
       
-      //just consider all the arguments and the main function invocation (which is res) that are
+      //just consider all the arguments and res (which is the function itself) that are
       //integer valued as only possible terms
-    	val terms = (args :+ FunctionInvocation(fd,args)).collect((e : Expr) => if(e.getType == Int32Type) e)
-    	
+     val terms= (args :+ FunctionInvocation(fd,args)).collect((e : Expr) => e match { case _ if(e.getType == Int32Type) => e })
+     terms.toList    	
     }
     
     (fi: FunctionInvocation) =>  {
-      val fd = fi.funDef
-      val terms = getWellTypedTerms(fd.args.map(_.toVariable), fd)      
+      val fd = fi.funDef            
       
       if(!paramCoeff.contains(fd))
       {
-        //bind terms to (unknown) coefficients
-        var newCoeffs = List.range(0, terms.size+1).map((i)=> Variable(FreshIdentifier("a"+i+"a",true).setType(Int32Type)))        
+        //bind function to (unknown) coefficients
+        val paramTerms = getWellTypedTerms(fd.args.map(_.toVariable), fd)
+        val newCoeffs = List.range(0, paramTerms.size+1).map((i)=> Variable(FreshIdentifier("a"+i+"a",true).setType(Int32Type)))        
         paramCoeff += (fd -> newCoeffs)
       }
       
-      val (const :: coeffs) = paramCoeff(fd) 
-      val coeffmap = terms.zip(paramCoeff(fd))      				
+      //get the arguments of the function invocation
+      val args = fi.args
+      //here check if the args are all Terminals
+      args.foreach((arg) => if(!arg.isInstanceOf[Terminal]) throw IllegalStateException("Argument is not a variable"))
+      
+      //get all teh terms constructible using args
+      val argTerms = getWellTypedTerms(args,fd)
+            
+      //parse the existing coefficient map
+      val (constPart :: coeffsPart) = paramCoeff(fd) 
+      val coeffmap = argTerms.zip(coeffsPart)
+      
+      //create a linear expression
+      val linearExpr = LessEquals(coeffmap.foldLeft(constPart : Expr)((acc,param)=>{
+        val (term,coeff) = param
+        Plus(acc,Times(coeff,term))
+      }),IntLiteral(0))
+      
+      Set(LinearTemplate(linearExpr, coeffmap.toMap, Some(constPart)))
     }
   }
     
@@ -471,7 +566,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
    * The result is a mapping from function definitions to the corresponding invariants.
    * Note that the invariants are context specific and may not be context independent invariants for the functions (except for startFun)   
    */  
-  def SolveForTemplates(bodyTree : CtrTree, postTree: CtrTree, invTemplate: FunctionInvocation => Set[LinearTemplate]) : Option[Map[FunDef,Expr]] = {
+  def SolveForTemplates(inFun : FunDef, bodyTree : CtrTree, postTree: CtrTree, invTemplate: FunctionInvocation => Set[LinearTemplate]) : Option[Map[FunDef,Expr]] = {
     //this is a mapping from node ids of the trees to the templates induced by the constraints of the node  
     //val templateMap = Map[Identifier,Set[LinearConstraint]]()
 
@@ -482,39 +577,42 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     def traverse(bodyPart: CtrTree, postPart: CtrTree, antecedents : Set[LinearTemplate], consequents : Set[LinearTemplate]): Unit = {
       (bodyPart, postPart) match {
         
-        case (CtrNode(blkid, ctrs, children), _) => {
+        case (n@CtrNode(blkid), _) => {
+          val ctrs = n.constraints
           //accumulate antecedents
-          var newants = antecedents ++ ctrs
+          var newants = antecedents ++ ctrs 
           var newconseqs = consequents          
           //find function invocations in ctrs
-          val fis = ctrs.foldLeft(Set[FunctionInvocation]())((set,ctr) =>  set ++ getFIs(ctr))          
-          //generate a template for each function invocation and add it to the antecedents and consequents
-          for(fi <- fis)
-          {
-              val invt = invTemplate(fi)
-        	  newants ++= invt 
-        	  newconseqs ++= invt
+          val fis = ctrs.foldLeft(Set[FunctionInvocation]())((set,ctr) =>  set ++ getFIs(ctr))
+          //generate a template for each function invocation and add it to the antecedents or consequent.
+          //For now we consider on the function invocations of the input procedure only
+          //TODO: Extend this to function invocations of other procedures
+          for (fi <- fis.filter(_.funDef.equals(inFun))) {           
+            val invt = invTemplate(fi)
+            newants ++= invt
+            //newconseqs ++= invt
           }                                        
           //recurse into children
-          for(child <- children)
+          for(child <- n.Children)
             traverse(child,postPart,newants,newconseqs)
         }
         
-        case (CtrLeaf(),CtrNode(blkid, ctrs, children)) => {
+        case (CtrLeaf(),n@CtrNode(blkid)) => {
+          var ctrs = n.constraints
+          
           //accumulate consequents
           var newants = antecedents 
           var newconseqs = consequents ++ ctrs          
           //find function invocations in ctrs
           val fis = ctrs.foldLeft(Set[FunctionInvocation]())((set,ctr) =>  set ++ getFIs(ctr))          
           //generate a template for each function invocation and add it to the antecedents and consequents
-          for(fi <- fis)
-          {
+          for (fi <- fis.filter(_.funDef.equals(inFun))) {          
               val invt = invTemplate(fi)
         	  newants ++= invt 
-        	  newconseqs ++= invt
+        	  //newconseqs ++= invt
           }                                        
           //recurse into children          
-          for(child <- children)
+          for(child <- n.Children)
             traverse(CtrLeaf(),child,newants,newconseqs)
         }
         
@@ -569,6 +667,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     nonLinearCtrs
   }
   
+  
   def getClauseListener(fundef: FunDef): ((Seq[Expr], Seq[Expr], Seq[Expr]) => Unit) = {
     var counter = 0;
     val listener = (body: Seq[Expr], post: Seq[Expr], newClauses: Seq[Expr]) => {
@@ -595,7 +694,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         println("Body Tree: " + bodyRoot.toString)
         
         //solve for the templates at this unroll step
-        SolveForTemplates(bodyRoot,postRoot,getInvariantTemplate)
+        val res = SolveForTemplates(fundef,bodyRoot,postRoot,getInvariantTemplate())
+        System.exit(0)
       }            
     }
     listener
