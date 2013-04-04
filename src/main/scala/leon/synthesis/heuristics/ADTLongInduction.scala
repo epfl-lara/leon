@@ -85,8 +85,8 @@ case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
                   List()
                 }
 
-                println(ccd)
-                println(subIds)
+                //println(ccd)
+                //println(subIds)
                 val newPattern = unrollPattern(id, ccd, subIds)(pat)
 
                 val newMap = trMap.mapValues(v => substAll(Map(id -> CaseClass(ccd, subIds.map(Variable(_)))), v))
@@ -127,8 +127,8 @@ case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
           }
 
           val subProblem = Problem(c.ids ::: postXss, And(subPC :: postFs), subPhi, p.xs)
-          println(subProblem)
-          println(recCalls)
+          //println(subProblem)
+          //println(recCalls)
           (subProblem, pat, recCalls, pc)
         }
 
