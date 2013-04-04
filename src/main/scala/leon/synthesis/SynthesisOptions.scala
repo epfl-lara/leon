@@ -10,6 +10,7 @@ case class SynthesisOptions(
   timeoutMs: Option[Long]             = None,
   costModel: CostModel                = CostModel.default,
   rules: Seq[Rule]                    = Rules.all ++ Heuristics.all,
+  manualSearch: Boolean               = false,
 
   // Cegis related options
   cegisGenerateFunCalls: Boolean      = false,
