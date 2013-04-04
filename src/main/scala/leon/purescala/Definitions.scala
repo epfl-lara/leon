@@ -51,8 +51,8 @@ object Definitions {
     def callees(f1: FunDef) = mainObject.callees(f1)
     def transitiveCallGraph = mainObject.transitiveCallGraph
     def transitivelyCalls(f1: FunDef, f2: FunDef) = mainObject.transitivelyCalls(f1, f2)
-    def transitiveCallers(f1: FunDef) = mainObject.transitiveCallers(f1)
-    def transitiveCallees(f1: FunDef) = mainObject.transitiveCallees(f1)
+    def transitiveCallers(f1: FunDef) = mainObject.transitiveCallers.getOrElse(f1, Set())
+    def transitiveCallees(f1: FunDef) = mainObject.transitiveCallees.getOrElse(f1, Set())
     def isRecursive(f1: FunDef) = mainObject.isRecursive(f1)
     def isCatamorphism(f1: FunDef) = mainObject.isCatamorphism(f1)
     def caseClassDef(name: String) = mainObject.caseClassDef(name)
