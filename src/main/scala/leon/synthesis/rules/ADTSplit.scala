@@ -51,7 +51,8 @@ case object ADTSplit extends Rule("ADT Split.") {
            val args   = ccd.fieldsIds.map(id => FreshIdentifier(id.name, true).setType(id.getType)).toList
 
            val subPhi = subst(id -> CaseClass(ccd, args.map(Variable(_))), p.phi)
-           val subProblem = Problem(args ::: oas, p.pc, subPhi, p.xs)
+           val subPC  = subst(id -> CaseClass(ccd, args.map(Variable(_))), p.pc)
+           val subProblem = Problem(args ::: oas, subPC, subPhi, p.xs)
            val subPattern = CaseClassPattern(None, ccd, args.map(id => WildcardPattern(Some(id))))
 
            (ccd, subProblem, subPattern)
