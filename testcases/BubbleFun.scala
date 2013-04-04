@@ -19,7 +19,7 @@ object BubbleFun {
         val t = sortNestedWhile(sortedArray, 0, i, size)
         sortWhile(t._2, t._1, i - 1, size)
       } else (j, sortedArray, i)
-    }) ensuring(res => isArray(res._2, size) && 
+    }) ensuring(res => isArray(res._2, size) &&
                        sorted(res._2, size, res._3, size - 1) &&
                        partitioned(res._2, size, 0, res._3, res._3+1, size-1) &&
                        res._3 >= 0 && res._3 <= 0 /*&& content(res._2, size) == content(sortedArray, size)*/
@@ -32,7 +32,7 @@ object BubbleFun {
               partitioned(sortedArray, size, 0, i, i+1, size-1) &&
               partitioned(sortedArray, size, 0, j-1, j, j))
       if(j < i) {
-        val newSortedArray = 
+        val newSortedArray =
           if(sortedArray(j) > sortedArray(j + 1))
             sortedArray.updated(j, sortedArray(j + 1)).updated(j+1, sortedArray(j))
           else
@@ -91,7 +91,7 @@ object BubbleFun {
     // ------------- partitioned ------------------
     def partitioned(a: Map[Int,Int], size: Int, l1: Int, u1: Int, l2: Int, u2: Int) : Boolean = {
       require(isArray(a, size) && size < 5 && l1 >= 0 && u1 < l2 && u2 < size)
-      if(l2 > u2 || l1 > u1) 
+      if(l2 > u2 || l1 > u1)
         true
       else {
         val t = partitionedWhile(l2, true, l1, l1, size, u2, l2, u1, a)
@@ -114,20 +114,20 @@ object BubbleFun {
           (if (a(i) > a(j))
             false
           else
-            isPartitionned), 
+            isPartitionned),
           j + 1, i, l1, u1, size, u2, a, l2)
       } else (isPartitionned, j)
     }
 
 
     //------------ isArray -------------------
-    def isArray(a: Map[Int,Int], size: Int): Boolean = 
+    def isArray(a: Map[Int,Int], size: Int): Boolean =
       if(size <= 0)
         false
       else
         isArrayRec(0, size, a)
 
-    def isArrayRec(i: Int, size: Int, a: Map[Int,Int]): Boolean = 
+    def isArrayRec(i: Int, size: Int, a: Map[Int,Int]): Boolean =
       if (i >= size)
         true
       else {
@@ -141,13 +141,15 @@ object BubbleFun {
     // ----------------- content ------------------
     def content(a: Map[Int, Int], size: Int): Set[Int] = {
       require(isArray(a, size) && size < 5)
-      var i = 0
-      var s = Set.empty[Int]
-      while(i < size) {
-        s = s ++ Set(a(i))
-        i = i + 1
-      }
-      s
+      contentRec(a, size, 0)
+    }
+
+    def contentRec(a: Map[Int, Int], size: Int, i: Int): Set[Int] = {
+      require(isArray(a, size) && i >= 0)
+      if(i < size)
+        Set(a(i)) ++ contentRec(a, size, i+1)
+      else
+        Set.empty[Int]
     }
 
 }
