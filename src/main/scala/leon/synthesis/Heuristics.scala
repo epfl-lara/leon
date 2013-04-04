@@ -12,6 +12,7 @@ object Heuristics {
     InnerCaseSplit,
     //new OptimisticInjection(_),
     //new SelectiveInlining(_),
+    ADTLongInduction,
     ADTInduction
   )
 }
