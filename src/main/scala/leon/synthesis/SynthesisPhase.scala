@@ -16,6 +16,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
   override val definedOptions : Set[LeonOptionDef] = Set(
     LeonFlagOptionDef(    "inplace",         "--inplace",         "Debug level"),
     LeonOptValueOptionDef("parallel",        "--parallel[=N]",    "Parallel synthesis search using N workers"),
+    LeonFlagOptionDef(    "manual",          "--manual",          "Manual search"),
     LeonFlagOptionDef(    "derivtrees",      "--derivtrees",      "Generate derivation trees"),
     LeonFlagOptionDef(    "firstonly",       "--firstonly",       "Stop as soon as one synthesis solution is found"),
     LeonValueOptionDef(   "timeout",         "--timeout=T",       "Timeout after T seconds when searching for synthesis solutions .."),
@@ -28,6 +29,9 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     var options = SynthesisOptions()
 
     for(opt <- ctx.options) opt match {
+      case LeonFlagOption("manual") =>
+        options = options.copy(manualSearch = true)
+
       case LeonFlagOption("inplace") =>
         options = options.copy(inPlace = true)
 
