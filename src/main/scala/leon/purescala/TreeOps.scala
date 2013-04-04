@@ -681,22 +681,36 @@ object TreeOps {
     toRet
   }
 
-  def conditionForPattern(in: Expr, pattern: Pattern) : Expr = pattern match {
-    case WildcardPattern(_) => BooleanLiteral(true)
-    case InstanceOfPattern(_,_) => scala.sys.error("InstanceOfPattern not yet supported.")
-    case CaseClassPattern(_, ccd, subps) => {
-      assert(ccd.fields.size == subps.size)
-      val pairs = ccd.fields.map(_.id).toList zip subps.toList
-      val subTests = pairs.map(p => conditionForPattern(CaseClassSelector(ccd, in, p._1), p._2))
-      val together = And(subTests)
-      And(CaseClassInstanceOf(ccd, in), together)
+  def conditionForPattern(in: Expr, pattern: Pattern, includeBinders: Boolean = false) : Expr = {
+    def bind(ob: Option[Identifier], to: Expr): Expr = {
+      if (!includeBinders) {
+        BooleanLiteral(true)
+      } else {
+        ob.map(id => Equals(Variable(id), to)).getOrElse(BooleanLiteral(true))
+      }
     }
-    case TuplePattern(_, subps) => {
-      val TupleType(tpes) = in.getType
-      assert(tpes.size == subps.size)
-      val subTests = subps.zipWithIndex.map{case (p, i) => conditionForPattern(TupleSelect(in, i+1).setType(tpes(i)), p)}
-      And(subTests)
+
+    def rec(in: Expr, pattern: Pattern): Expr = {
+      pattern match {
+        case WildcardPattern(ob) => bind(ob, in)
+        case InstanceOfPattern(_,_) => scala.sys.error("InstanceOfPattern not yet supported.")
+        case CaseClassPattern(ob, ccd, subps) => {
+          assert(ccd.fields.size == subps.size)
+          val pairs = ccd.fields.map(_.id).toList zip subps.toList
+          val subTests = pairs.map(p => rec(CaseClassSelector(ccd, in, p._1), p._2))
+          val together = And(bind(ob, in) +: subTests)
+          And(CaseClassInstanceOf(ccd, in), together)
+        }
+        case TuplePattern(ob, subps) => {
+          val TupleType(tpes) = in.getType
+          assert(tpes.size == subps.size)
+          val subTests = subps.zipWithIndex.map{case (p, i) => rec(TupleSelect(in, i+1).setType(tpes(i)), p)}
+          And(bind(ob, in) +: subTests)
+        }
+      }
     }
+
+    rec(in, pattern)
   }
 
   private def convertMatchToIfThenElse(expr: Expr) : Expr = {
@@ -734,7 +748,7 @@ object TreeOps {
 
         val condsAndRhs = for(cse <- cases) yield {
           val map = mapForPattern(scrut, cse.pattern)
-          val patCond = conditionForPattern(scrut, cse.pattern)
+          val patCond = conditionForPattern(scrut, cse.pattern, includeBinders = false)
           val realCond = cse.theGuard match {
             case Some(g) => And(patCond, replaceFromIDs(map, g))
             case None => patCond
@@ -1204,7 +1218,7 @@ object TreeOps {
         var soFar = path
 
         MatchExpr(rs, cases.map { c =>
-          val patternExpr = conditionForPattern(rs, c.pattern)
+          val patternExpr = conditionForPattern(rs, c.pattern, includeBinders = true)
 
           val subPath = register(patternExpr, soFar)
           soFar = register(Not(patternExpr), soFar)
@@ -1326,7 +1340,7 @@ object TreeOps {
           e
         } else {
           MatchExpr(rs, cases.flatMap { c =>
-            val patternExpr = conditionForPattern(rs, c.pattern)
+            val patternExpr = conditionForPattern(rs, c.pattern, includeBinders = true)
 
             if (stillPossible && !contradictedBy(patternExpr, path)) {
 
@@ -1743,6 +1757,38 @@ object TreeOps {
       (r, And(nes.reverse))
 
     case e => (None, e)
+  }
+
+  def isInductiveOn(solver: Solver)(expr: Expr, on: Identifier): Boolean = on match {
+    case IsTyped(origId, AbstractClassType(cd)) =>
+      def isAlternativeRecursive(cd: CaseClassDef): Boolean = {
+        cd.fieldsIds.exists(_.getType == origId.getType)
+      }
+
+      val toCheck = cd.knownDescendents.collect {
+        case ccd: CaseClassDef =>
+          val isType = CaseClassInstanceOf(ccd, Variable(on))
+
+            val recSelectors = ccd.fieldsIds.filter(_.getType == on.getType)
+
+            if (recSelectors.isEmpty) {
+              None
+            } else {
+              val v = Variable(on)
+              Some(And(And(isType, expr), Not(replace(recSelectors.map(s => v -> CaseClassSelector(ccd, v, s)).toMap, expr))))
+            }
+      }.flatten
+
+      toCheck.forall { cond =>
+        solver.solveSAT(cond) match {
+            case (Some(false), _)  =>
+              true
+            case (_, model)  =>
+              false
+        }
+      }
+    case _ =>
+      false
   }
 
 }

@@ -466,7 +466,10 @@ object Trees {
   }
 
   /* Set expressions */
-  case class FiniteSet(elements: Seq[Expr]) extends Expr 
+  case class FiniteSet(elements: Seq[Expr]) extends Expr {
+    val tpe = if (elements.isEmpty) None else leastUpperBound(elements.map(_.getType))
+    tpe.foreach(t => setType(SetType(t)))
+  }
   // TODO : Figure out what evaluation order is, for this.
   // Perhaps then rewrite as "contains".
   case class ElementOfSet(element: Expr, set: Expr) extends Expr with FixedType {
