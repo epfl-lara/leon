@@ -566,7 +566,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
    * The result is a mapping from function definitions to the corresponding invariants.
    * Note that the invariants are context specific and may not be context independent invariants for the functions (except for startFun)   
    */  
-  def SolveForTemplates(inFun : FunDef, bodyTree : CtrTree, postTree: CtrTree, invTemplate: FunctionInvocation => Set[LinearTemplate]) : Option[Map[FunDef,Expr]] = {
+  def SolveForTemplates(inFun : FunDef, bodyTree : CtrTree, postTree: CtrTree, invTemplate: FunctionInvocation => Set[LinearTemplate]) 
+  	: Option[Map[FunDef,Expr]] = {
     //this is a mapping from node ids of the trees to the templates induced by the constraints of the node  
     //val templateMap = Map[Identifier,Set[LinearConstraint]]()
 
@@ -620,7 +621,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           //end of a path. generate a set of (non-linear) constraints for this implication
           
           //for debugging
-          println("Antecedents : "+antecedents+" Consequents: "+consequents)
+          //println("Antecedents : "+antecedents+" Consequents: "+consequents)
           
           ctrNonLinear ++= genNonLinearCtrsFromImplications(antecedents,consequents)
         }
@@ -631,38 +632,45 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     traverse(bodyTree,postTree,Set[LinearTemplate](),Set[LinearTemplate]())
         
     //solve the generated constraints using z3
-    println("Non-linear constraints: "+ctrNonLinear)
+    //println("Non-linear constraints: "+ctrNonLinear)
     None
-  }     
-  
+  }
+
   /**
    * This procedure uses Farka's lemma to generate a set of non-linear constraints for the input implication.
    */
-  def genNonLinearCtrsFromImplications(ants : Set[LinearTemplate], conseqs: Set[LinearTemplate]) : Set[Expr] = {
-    
+  def genNonLinearCtrsFromImplications(ants: Set[LinearTemplate], conseqs: Set[LinearTemplate]): Set[Expr] = {
+
+    //compute the set of all constraint variables in ants
+    val antCVars = ants.foldLeft(Set[Expr]())((acc, ant) => acc ++ ant.coeffTemplate.keySet)
     var nonLinearCtrs = Set[Expr]()
-    for(conseq <- conseqs)
-    {
+        
+    for (conseq <- conseqs) {
       //create a set of identifiers one for each ants      
       //TODO: may need to alter the type 
-    	val lambdas = ants.map((ant) => (ant -> Variable(FreshIdentifier("l",true).setType(Int32Type)))).toMap    	
-    	var sum : Expr = null
-    	for((cvar,terminal) <- conseq.coeffTemplate)
-    	{
-    	  for(ant <- ants) {
-    	    if(ant.coeffTemplate.contains(cvar))
-    	    {
-    	      //TODO: remove the ugly type cast and find a better way around
-    	      val addend = Times(lambdas(ant),ant.coeffTemplate.get(cvar).get)
-    	      if(sum == null)
-    	        sum = addend 
-    	      else
-    	        sum = Plus(sum,addend)    	      
-    	    }
-    	  }
-    	  //make the terminal equal to the sum of the addends
-    	  nonLinearCtrs += Equals(terminal,sum)
-    	}
+      val lambdas = ants.map((ant) => (ant -> Variable(FreshIdentifier("l", true).setType(Int32Type)))).toMap
+      val cvars = conseq.coeffTemplate.keys ++ antCVars
+      println("CVars: "+cvars.size)
+      
+      //compute the linear combination of all the coeffs of antCVars
+      var sum: Expr = null
+      //total number of constraint vars
+      for (cvar <- cvars) {
+        for (ant <- ants) {
+          if (ant.coeffTemplate.contains(cvar)) {
+            val addend = Times(lambdas(ant), ant.coeffTemplate.get(cvar).get)
+            if (sum == null)
+              sum = addend
+            else
+              sum = Plus(sum, addend)
+          }
+        }
+        //make the sum equal to the coeff. of cvar in conseq
+        if (conseq.coeffTemplate.contains(cvar))
+          nonLinearCtrs += Equals(conseq.coeffTemplate.get(cvar).get, sum)
+        else
+          nonLinearCtrs += Equals(IntLiteral(0), sum)
+      }
     }
     nonLinearCtrs
   }
