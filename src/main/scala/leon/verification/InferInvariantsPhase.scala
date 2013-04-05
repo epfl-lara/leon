@@ -10,11 +10,11 @@ import purescala.Extractors._
 import purescala.TypeTrees._
 import solvers.{ Solver, TrivialSolver, TimeoutSolver }
 import solvers.z3.FairZ3Solver
-//import solvers.princess.PrincessSolver
 import scala.collection.mutable.{ Set => MutableSet }
 import leon.evaluators._
 import java.io._
 import scala.tools.nsc.io.File
+import leon.solvers.z3.UninterpretedZ3Solver
 
 /**
  * @author ravi
@@ -24,6 +24,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   val name = "InferInv"
   val description = "Invariant Inference"
   private var reporter: Reporter = _
+  private var context : LeonContext = _
+  private var program : Program = _
+  private var uiSolver : UninterpretedZ3Solver = _
 
   override val definedOptions: Set[LeonOptionDef] = Set(
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
@@ -31,6 +34,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
   
   //this is a template for linear constraints
+  //A linear constraint is something a expression of the form a1*v1 + a2*v2 + .. + an*vn + b <= 0 or = 0
   case class LinearTemplate(val template: Expr, val coeffTemplate: Map[Expr, Expr with Terminal], val constTemplate: Option[Expr with Terminal])
   {
     override def toString() : String = {      
@@ -62,7 +66,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   }
   
   //this is in reality a DAG
-  //TODO: Fix this entire portion of code that manipulates a tree
+  //TODO: Fix this entire portion of code that manipulates the tree
   abstract class CtrTree
   case class CtrNode(val blockingId: Identifier) extends CtrTree {
 
@@ -326,7 +330,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
   
   /**
-   * This method may have to do all sorts of transformation to make the expressions linear constraints.
+   * This method may have to do all sorts of transformation to make the expressions linear constraints.   
    * This assumes that the input expression is an atomic predicate (i.e, without and, or and nots)
    * This is subjected to constant modification.
    */
@@ -410,12 +414,19 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           e2 match {
             case IntLiteral(0) => e
             case _ => {
-              val r = mkLinearRecur(Minus(e1, e2))
+               val (newe,newop) = e match {
+                 case t : Equals => (Minus(e1, e2),op)
+                 case t : LessEquals => (Minus(e1, e2),LessEquals)
+                 case t: LessThan => (Plus(Minus(e1,e2),IntLiteral(1)), LessEquals)
+                 case t: GreaterEquals => (Minus(e2,e1), LessEquals)
+                 case t : GreaterThan => (Plus(Minus(e2,e1),IntLiteral(1)), LessEquals) 
+              }
+              val r = mkLinearRecur(newe)
               //simplify the resulting constants
               val (Some(r2),const) = simplifyConsts(r)
               val finale = if(const != 0) Plus(r2,IntLiteral(const)) else r2
               //println(r + " simplifies to "+finale)
-              op(finale, IntLiteral(0))
+              newop(finale, IntLiteral(0))
             }
           }
         }
@@ -570,66 +581,112 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   	: Option[Map[FunDef,Expr]] = {
     //this is a mapping from node ids of the trees to the templates induced by the constraints of the node  
     //val templateMap = Map[Identifier,Set[LinearConstraint]]()
-
-    //these are the non-linear constraints that are to be solved 
-    var ctrNonLinear = Set[Expr]() 
+    //get the template for the inFun 
+    val inTemplates = invTemplate(FunctionInvocation(inFun,inFun.args.map(_.toVariable)))
     
-    //traverse each path in the body tree and then the ones in the post-tree, accumulating all the constraints along the path
-    def traverse(bodyPart: CtrTree, postPart: CtrTree, antecedents : Set[LinearTemplate], consequents : Set[LinearTemplate]): Unit = {
-      (bodyPart, postPart) match {
-        
-        case (n@CtrNode(blkid), _) => {
-          val ctrs = n.constraints
-          //accumulate antecedents
-          var newants = antecedents ++ ctrs 
-          var newconseqs = consequents          
+    //first traverse the body and collect all the antecedents
+    var antSet = List[(List[LinearConstraint],List[LinearTemplate])]()        
+    
+    def traverseBodyTree(tree: CtrTree, currentCtrs : List[LinearConstraint], currentTemps : List[LinearTemplate]): Unit = {
+      tree match{
+        case n@CtrNode(blkid) => {
+          val ctrs = n.constraints          
+          val newCtrs = currentCtrs ++ ctrs 
           //find function invocations in ctrs
           val fis = ctrs.foldLeft(Set[FunctionInvocation]())((set,ctr) =>  set ++ getFIs(ctr))
           //generate a template for each function invocation and add it to the antecedents or consequent.
           //For now we consider on the function invocations of the input procedure only
           //TODO: Extend this to function invocations of other procedures
-          for (fi <- fis.filter(_.funDef.equals(inFun))) {           
-            val invt = invTemplate(fi)
-            newants ++= invt
-            //newconseqs ++= invt
-          }                                        
+          val newTemps = fis.filter(_.funDef.equals(inFun)).foldLeft(currentTemps)((acc,fi) => {
+             val invt = invTemplate(fi)
+             acc ++ invt
+          })                                             
           //recurse into children
           for(child <- n.Children)
-            traverse(child,postPart,newants,newconseqs)
+            traverseBodyTree(child,newCtrs,newTemps)
         }
-        
-        case (CtrLeaf(),n@CtrNode(blkid)) => {
-          var ctrs = n.constraints
+        case CtrLeaf() => {
+          //add the currnetCtrs only if it is not unsat
+          val pathExpr = And(currentCtrs.foldLeft(Seq[Expr]())((acc,ctr)=> (acc :+ ctr.expr)))
+          val (res,model) = this.uiSolver.solveSATWithFunctionCalls(pathExpr)
           
-          //accumulate consequents
-          var newants = antecedents 
-          var newconseqs = consequents ++ ctrs          
-          //find function invocations in ctrs
-          val fis = ctrs.foldLeft(Set[FunctionInvocation]())((set,ctr) =>  set ++ getFIs(ctr))          
-          //generate a template for each function invocation and add it to the antecedents and consequents
-          for (fi <- fis.filter(_.funDef.equals(inFun))) {          
-              val invt = invTemplate(fi)
-        	  newants ++= invt 
-        	  //newconseqs ++= invt
-          }                                        
-          //recurse into children          
-          for(child <- n.Children)
-            traverse(CtrLeaf(),child,newants,newconseqs)
-        }
-        
-        case (CtrLeaf(),CtrLeaf()) => {
-          //end of a path. generate a set of (non-linear) constraints for this implication
-          
-          //for debugging
-          //println("Antecedents : "+antecedents+" Consequents: "+consequents)
-          
-          ctrNonLinear ++= genNonLinearCtrsFromImplications(antecedents,consequents)
+          if(!res.isDefined || res.get == true) antSet +:= (currentCtrs,currentTemps)
+          else{
+            println("Found uninterpreted path: "+pathExpr)
+            antSet
+          } 
         }
       }
     }
     
+    def traversePostTree(tree: CtrTree, postAnts : List[LinearTemplate], conseqs : List[LinearTemplate]): Unit = {
+      tree match{
+        case n@CtrNode(blkid) => {
+          val ctrs = n.constraints          
+          var newcons = conseqs ++ ctrs
+          var newants = postAnts
+          //find function invocations in ctrs
+          val fis = ctrs.foldLeft(Set[FunctionInvocation]())((set,ctr) =>  set ++ getFIs(ctr))
+          //generate a template for each function invocation and add it to the antecedents.          
+          for (fi <- fis.filter(_.funDef.equals(inFun))) {           
+            val invt = invTemplate(fi)
+            newants ++= invt            
+          }                                        
+          //recurse into children
+          for(child <- n.Children)
+          {
+            traversePostTree(child,newants,newcons)
+          }
+        }
+        case CtrLeaf() => {
+          //here we need to check if the every antecedent in antSet implies the conseqs of this path 
+          val nonLinearCtrs = antSet.foldLeft(Set[Expr]())((acc,ants)=> {
+            val allAnts = (ants._1 ++ ants._2 ++ postAnts)
+            val allConseqs = (conseqs ++ inTemplates)
+            //for debugging
+        	//println("Antecedents : "+allAnts+" Consequents: "+allConseqs)
+        	
+        	//here we know that the antecedents are satisfiable 
+            acc ++ genNonLinearCtrsFromImplications(allAnts,allConseqs)
+          })          
+          //look for a solution of non-linear constraints
+          //println("Non linear constraints for this branch: " +nonLinearCtrs)
+          val nlictr = And(nonLinearCtrs.toSeq)
+          val (res,model) = this.uiSolver.solveSATWithFunctionCalls(nlictr)
+          if(res.isDefined && res.get == true)
+          {
+            //construct an invariant (and print the model)
+            val invs = inTemplates.map((inTemp) => {
+              val coeff = inTemp.coeffTemplate.map((entry) => {
+                val (k,v) = entry 
+                v match {
+                  case Variable(id) => (k,model(id))
+                  case _ => (k,v)
+                }                
+              })
+              val const = inTemp.constTemplate match {
+                case Some(Variable(id)) => model(id)
+                case Some(t) => t
+                case None => IntLiteral(0)                  
+              } 
+              val expr = coeff.foldLeft(const)((acc,entry)=> Plus(acc,Times(entry._1,entry._2)))
+              expr
+            })
+            println("Invariants: "+invs) 
+          }
+          else
+          {
+            println("Constriaint was not satisfiable")
+          }
+          
+          //if found a solution return true and break
+        }
+      }
+    }    
+
     //traverse the bodyTree and postTree 
-    traverse(bodyTree,postTree,Set[LinearTemplate](),Set[LinearTemplate]())
+    traverseBodyTree(bodyTree,List[LinearConstraint](),List[LinearTemplate]())
+    traversePostTree(postTree,List[LinearTemplate](),List[LinearTemplate]())
         
     //solve the generated constraints using z3
     //println("Non-linear constraints: "+ctrNonLinear)
@@ -639,7 +696,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   /**
    * This procedure uses Farka's lemma to generate a set of non-linear constraints for the input implication.
    */
-  def genNonLinearCtrsFromImplications(ants: Set[LinearTemplate], conseqs: Set[LinearTemplate]): Set[Expr] = {
+  def genNonLinearCtrsFromImplications(ants: Seq[LinearTemplate], conseqs: Seq[LinearTemplate]): Set[Expr] = {
 
     //compute the set of all constraint variables in ants
     val antCVars = ants.foldLeft(Set[Expr]())((acc, ant) => acc ++ ant.coeffTemplate.keySet)
@@ -649,8 +706,14 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       //create a set of identifiers one for each ants      
       //TODO: may need to alter the type 
       val lambdas = ants.map((ant) => (ant -> Variable(FreshIdentifier("l", true).setType(Int32Type)))).toMap
+
+      //add a bunch of constraints on lambdas
+      nonLinearCtrs ++= ants.collect((ant) => ant.template match {
+        case t: LessEquals => GreaterEquals(lambdas(ant), IntLiteral(0))
+      })
+      
       val cvars = conseq.coeffTemplate.keys ++ antCVars
-      println("CVars: "+cvars.size)
+      //println("CVars: "+cvars.size)
       
       //compute the linear combination of all the coeffs of antCVars
       var sum: Expr = null
@@ -725,6 +788,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       case _ =>
     }
 
+    this.uiSolver = new UninterpretedZ3Solver(ctx)
+    this.uiSolver.setProgram(program)
     val reporter = ctx.reporter
 
     val trivialSolver = new TrivialSolver(ctx)
