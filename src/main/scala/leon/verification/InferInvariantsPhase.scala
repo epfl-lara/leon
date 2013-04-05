@@ -37,15 +37,26 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   //A linear constraint is something a expression of the form a1*v1 + a2*v2 + .. + an*vn + b <= 0 or = 0
   case class LinearTemplate(val template: Expr, val coeffTemplate: Map[Expr, Expr with Terminal], val constTemplate: Option[Expr with Terminal])
   {
-    override def toString() : String = {      
-      val constStr = coeffTemplate.foldLeft("")((str,pair) => { 
-        val (e,i) = pair
-        val termStr = if(i != IntLiteral(1)) i + "*" + e.toString 
-        			  else e.toString 
-        (str + termStr + " + ")        
+    def coeffEntryToString(coeffEntry : (Expr, Expr with Terminal)) : String = {
+      val (e,i) = coeffEntry
+      i match {
+        case IntLiteral(1) => e.toString
+        case IntLiteral(-1) => "-"+e.toString
+        case IntLiteral(v) => v+e.toString
+        case _ => i + " * " + e.toString
+      }
+    }
+    
+    override def toString() : String = {     
+      val (head :: tail) = coeffTemplate.toList
+      
+      val constStr = tail.foldLeft(coeffEntryToString(head))((str,pair) => { 
+        
+        val termStr =  coeffEntryToString(pair)
+        (str + " + " + termStr)        
         }) + 
-        (if(constTemplate.isDefined) constTemplate.get.toString
-        else "0") +
+        (if(constTemplate.isDefined) " + " + constTemplate.get.toString
+        else "") +
         (template match {
           case t : Equals => " = "
           case t : LessThan => " < "
@@ -488,25 +499,68 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     }
     nnf(expr)
   }
+
+  /**
+   * This performs deep equality check of expressions. Use with caution
+   */
+  def ExprEquals(e1: Expr, e2: Expr): Boolean = {
+    if (e1 == e2) true
+    else {
+      (e1, e2) match {
+        case (BinaryOperator(lhs1, rhs1, op1), BinaryOperator(lhs2, rhs2, op2)) => (op1 == op2) && ExprEquals(lhs1, lhs2) && ExprEquals(rhs1, rhs2)
+        case (UnaryOperator(lhs1, op1), UnaryOperator(lhs2, op2)) => (op1 == op2) && ExprEquals(lhs1, lhs2)
+        case (NAryOperator(args1, op1), NAryOperator(args2, op2)) => {
+          val res = (e1, e2) match {
+            case (FunctionInvocation(fd1, _), FunctionInvocation(fd2, _)) => fd1.equals(fd2)
+            case _ => op1.equals(op2)
+          }
+          if (res) (args1 zip args2).foldLeft(true)((acc, elem) => { val (a1, a2) = elem; acc && ExprEquals(a1, a2) })
+          else false
+        }
+        case (IntLiteral(v1), IntLiteral(v2)) => v1 == v2
+        case (Variable(id1), Variable(id2)) => {
+          if(id1.name.equals(id2.name))
+            println("Names equal: "+id1)
+          id1 == id2
+        }
+        case (t1,t2)=> t1 == t2
+      }
+    }
+  }
   
-  def FlattenFunction(inExpr : Expr) : Expr = {
-    
+  /**
+   * This is a little tricky. Here we need keep identify function calls that are equivalent
+   * and call them by the same name. Ideally this requires congruence closure algorithm.
+   * TODO: handle uninterpreted functions in a better way
+   */    
+  var processedFIs = Set[FunctionInvocation]()
+  def FlattenFunction(inExpr: Expr): Expr = {
     var conjuncts = Set[Expr]()    
-    def flattenFunc(e : Expr) : Expr = {
+    println("Flatten Func processing: "+inExpr)
+    
+    def flattenFunc(e: Expr): Expr = {
       e match {
-        case fi@FunctionInvocation(fd,args) => {
-          //flatten the  arguments
-          val newargs = args.foldLeft(List[Expr with Terminal]())((acc,arg) => 
-            arg match {
-              case t: Terminal => (acc :+ t)
-              case arge@_ => {
-                val freshvar = Variable(FreshIdentifier("arg",true).setType(arge.getType))
-                conjuncts += Equals(freshvar,arge) 
-                (acc :+ freshvar)
-              } 
-            }
-          )
-          FunctionInvocation(fd,newargs)
+        case fi @ FunctionInvocation(fd, args) => {
+          //check if the function invocation already exists
+          val findres = processedFIs.find(ExprEquals(fi, _))
+          if (findres.isDefined)          
+            findres.get
+          else {
+            //flatten the  arguments
+            println("falttenFunc: Not found: "+fi)
+            val newargs = args.foldLeft(List[Expr with Terminal]())((acc, arg) =>
+              arg match {
+                case t: Terminal => (acc :+ t)
+                case arge @ _ => {
+                  val freshvar = Variable(FreshIdentifier("arg", true).setType(arge.getType))
+                  conjuncts += Equals(freshvar, arge)
+                  (acc :+ freshvar)
+                }
+              })
+            val newfi = FunctionInvocation(fd, newargs)
+            processedFIs += newfi
+            newfi
+          }
         }
         case _ => e
       }
@@ -612,7 +666,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           
           if(!res.isDefined || res.get == true) antSet +:= (currentCtrs,currentTemps)
           else{
-            println("Found uninterpreted path: "+pathExpr)
+            println("Found unsat path: "+pathExpr)
             antSet
           } 
         }
@@ -644,7 +698,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
             val allAnts = (ants._1 ++ ants._2 ++ postAnts)
             val allConseqs = (conseqs ++ inTemplates)
             //for debugging
-        	//println("Antecedents : "+allAnts+" Consequents: "+allConseqs)
+            println("#"*20)
+        	println(allAnts+" => "+allConseqs)
+        	println("#"*20)
         	
         	//here we know that the antecedents are satisfiable 
             acc ++ genNonLinearCtrsFromImplications(allAnts,allConseqs)
@@ -749,20 +805,20 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       if (!post.isEmpty) {
         //println("Goal clauses: " + post)
         post.map(addConstraint(_, false))
-        println("Goal Tree: " + postRoot.toString)
+        //println("Goal Tree: " + postRoot.toString)
       }
 
       if (!body.isEmpty) {
         //println("Body clauses: " + body)
         body.map(addConstraint(_, true))
-        println("Body Tree: " + bodyRoot.toString)
+        //println("Body Tree: " + bodyRoot.toString)
       }      
       
       //new clauses are considered as a part of the body
       if(!newClauses.isEmpty) {      
     	//println("new clauses: " + newClauses)
         newClauses.map(addConstraint(_, true))
-        println("Body Tree: " + bodyRoot.toString)
+        //println("Body Tree: " + bodyRoot.toString)
         
         //solve for the templates at this unroll step
         val res = SolveForTemplates(fundef,bodyRoot,postRoot,getInvariantTemplate())
