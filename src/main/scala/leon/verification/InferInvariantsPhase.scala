@@ -67,6 +67,21 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         
        constStr //+ " ActualExpr: "+ expr
     }
+    
+    override def hashCode() : Int = {
+      template.hashCode()
+    }
+    
+    override def equals(obj : Any) : Boolean = obj match {
+      case lit : LinearTemplate => {
+        if(!lit.template.equals(this.template)){
+          //println(lit.template + " and " + this.template+ " are not equal ")
+          false
+        }
+        else true
+      }
+      case _ => false                   
+    }
   }
   
   //each constraint is a mapping from constraint variable to its coefficient (integers)
@@ -415,30 +430,25 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     }
    	    
     def mkLinearRecur(inExpr: Expr): Expr = {
-      inExpr match {        
+      inExpr match {
         case e @ BinaryOperator(e1, e2, op) if (e1.getType == Int32Type &&
-            (e.isInstanceOf[Equals] || e.isInstanceOf[LessThan] 
-        	|| e.isInstanceOf[LessEquals]|| e.isInstanceOf[GreaterThan] 
-        	|| e.isInstanceOf[GreaterEquals])) => {
+          (e.isInstanceOf[Equals] || e.isInstanceOf[LessThan]
+            || e.isInstanceOf[LessEquals] || e.isInstanceOf[GreaterThan]
+            || e.isInstanceOf[GreaterEquals])) => {
 
-          e2 match {
-            case IntLiteral(0) => e
-            case _ => {
-               val (newe,newop) = e match {
-                 case t : Equals => (Minus(e1, e2),op)
-                 case t : LessEquals => (Minus(e1, e2),LessEquals)
-                 case t: LessThan => (Plus(Minus(e1,e2),IntLiteral(1)), LessEquals)
-                 case t: GreaterEquals => (Minus(e2,e1), LessEquals)
-                 case t : GreaterThan => (Plus(Minus(e2,e1),IntLiteral(1)), LessEquals) 
-              }
-              val r = mkLinearRecur(newe)
-              //simplify the resulting constants
-              val (Some(r2),const) = simplifyConsts(r)
-              val finale = if(const != 0) Plus(r2,IntLiteral(const)) else r2
-              //println(r + " simplifies to "+finale)
-              newop(finale, IntLiteral(0))
-            }
+          val (newe, newop) = e match {
+            case t: Equals => (Minus(e1, e2), op)
+            case t: LessEquals => (Minus(e1, e2), LessEquals)
+            case t: LessThan => (Plus(Minus(e1, e2), IntLiteral(1)), LessEquals)
+            case t: GreaterEquals => (Minus(e2, e1), LessEquals)
+            case t: GreaterThan => (Plus(Minus(e2, e1), IntLiteral(1)), LessEquals)
           }
+          val r = mkLinearRecur(newe)
+          //simplify the resulting constants
+          val (Some(r2), const) = simplifyConsts(r)
+          val finale = if (const != 0) Plus(r2, IntLiteral(const)) else r2
+          //println(r + " simplifies to "+finale)
+          newop(finale, IntLiteral(0))
         }
         case Minus(e1,e2) => Plus(mkLinearRecur(e1),PushMinus(mkLinearRecur(e2)))
         case UMinus(e1) => PushMinus(mkLinearRecur(e1))
@@ -635,14 +645,14 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
    * Note that the invariants are context specific and may not be context independent invariants for the functions (except for startFun)   
    */  
   def SolveForTemplates(inFun : FunDef, bodyTree : CtrTree, postTree: CtrTree, 
-      invTemplate: FunctionInvocation => Set[LinearTemplate], inTemplates : Set[LinearTemplate]) : Option[Map[FunDef,Expr]] = {
-    //this is a mapping from node ids of the trees to the templates induced by the constraints of the node  
+      invTemplate: FunctionInvocation => Set[LinearTemplate], inTemplates : Set[LinearTemplate]) : Option[Map[FunDef,Expr]] = {    
     //val templateMap = Map[Identifier,Set[LinearConstraint]]()     
     
     //first traverse the body and collect all the antecedents
-    var antSet = List[(List[LinearConstraint],List[LinearTemplate])]()        
+    var antCtrSet = List[Set[LinearConstraint]]()
+    var antTempSet = List[Set[LinearTemplate]]()              
     
-    def traverseBodyTree(tree: CtrTree, currentCtrs : List[LinearConstraint], currentTemps : List[LinearTemplate]): Unit = {
+    def traverseBodyTree(tree: CtrTree, currentCtrs : Seq[LinearConstraint], currentTemps : Seq[LinearTemplate]): Unit = {
       tree match{
         case n@CtrNode(blkid) => {
           val ctrs = n.constraints          
@@ -665,16 +675,18 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           val pathExpr = And(currentCtrs.foldLeft(Seq[Expr]())((acc,ctr)=> (acc :+ ctr.expr)))
           val (res,model) = this.uiSolver.solveSATWithFunctionCalls(pathExpr)
           
-          if(!res.isDefined || res.get == true) antSet +:= (currentCtrs,currentTemps)
+          if(!res.isDefined || res.get == true) {
+           antCtrSet +:= currentCtrs.toSet
+           antTempSet +:= currentTemps.toSet 
+          }
           else{
-            println("Found unsat path: "+pathExpr)
-            antSet
+            println("Found unsat path: "+pathExpr)            
           } 
         }
       }
     }
     
-    def traversePostTree(tree: CtrTree, postAnts : List[LinearTemplate], conseqs : List[LinearTemplate]): Unit = {
+    def traversePostTree(tree: CtrTree, postAnts : Seq[LinearTemplate], conseqs : Seq[LinearTemplate]): Unit = {
       tree match{
         case n@CtrNode(blkid) => {
           val ctrs = n.constraints          
@@ -696,8 +708,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         case CtrLeaf() => {
           //here we need to check if the every antecedent in antSet implies the conseqs of this path 
           val nonLinearCtrs = antSet.foldLeft(Set[Expr]())((acc,ants)=> {
-            val allAnts = (ants._1 ++ ants._2 ++ postAnts)
-            val allConseqs = (conseqs ++ inTemplates)
+            val allAnts = (ants._1 ++ ants._2 ++ postAnts).toSet
+            val allConseqs = (conseqs ++ inTemplates).toSet
             //for debugging
             println("#"*20)
         	println(allAnts+" => "+allConseqs)
@@ -705,7 +717,12 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         	
         	//here we know that the antecedents are satisfiable 
             acc ++ genNonLinearCtrsFromImplications(allAnts,allConseqs)
-          })          
+          })
+          //for debugging
+          //print all the cvars
+    	  println("Cvars: "+cvarsSet)
+    	  cvarsSet = Set()
+    	  
           //look for a solution of non-linear constraints
           //println("Non linear constraints for this branch: " +nonLinearCtrs)
           val nlictr = And(nonLinearCtrs.toSeq)
@@ -742,24 +759,27 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     }    
 
     //traverse the bodyTree and postTree 
-    traverseBodyTree(bodyTree,List[LinearConstraint](),List[LinearTemplate]())
-    traversePostTree(postTree,List[LinearTemplate](),List[LinearTemplate]())
+    traverseBodyTree(bodyTree,Seq[LinearConstraint](),Seq[LinearTemplate]())
+    traversePostTree(postTree,Seq[LinearTemplate](),Seq[LinearTemplate]())
         
     //solve the generated constraints using z3
     //println("Non-linear constraints: "+ctrNonLinear)
     None
   }
+  
+  //for debugging 
+  var cvarsSet = Set[Expr]()
 
   /**
    * This procedure uses Farka's lemma to generate a set of non-linear constraints for the input implication.
    */
   val zero = IntLiteral(0)
-  def genNonLinearCtrsFromImplications(ants: Seq[LinearTemplate], conseqs: Seq[LinearTemplate]): Set[Expr] = {
+  def genNonLinearCtrsFromImplications(ants: Set[LinearTemplate], conseqs: Set[LinearTemplate]): Set[Expr] = {
 
     //compute the set of all constraint variables in ants
     val antCVars = ants.foldLeft(Set[Expr]())((acc, ant) => acc ++ ant.coeffTemplate.keySet)
-    var nonLinearCtrs = Set[Expr]()
-        
+    var nonLinearCtrs = Set[Expr]()            
+    
     for (conseq <- conseqs) {
       //create a set of identifiers one for each ants      
       //TODO: may need to alter the type 
@@ -783,6 +803,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       })      
       
       val cvars = conseq.coeffTemplate.keys ++ antCVars
+      
+      //for debugging
+      cvarsSet ++= cvars
       //println("CVars: "+cvars.size)
       
       //compute the linear combination of all the coeffs of antCVars
@@ -1005,6 +1028,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     report
   }
 
+  
   /**
    * Dumps an input formula in princess format
    */
