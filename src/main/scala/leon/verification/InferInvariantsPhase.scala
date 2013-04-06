@@ -121,9 +121,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   def isStartId(id: Identifier): Boolean = {
     if (id.name.contains("start")) true else false
   }
-
-  //TODO: cleanup this code and do not use flags
-  def addConstraint(e: Expr, isBody: Boolean) = {
+  
+  def addConstraint(e: Expr, setRoot: (CtrTree => Unit)) = {
     val (id, innerExpr) = parseGuardedExpr(e)
 
     //get the node corresponding to the id
@@ -133,15 +132,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
       //set the root of the tree (this code is ugly and does string matching)
       //TODO: fix this
-      if (isStartId(id)) {
-        val root = if (isBody) bodyRoot else postRoot
-        if (root.isInstanceOf[CtrNode])
-          throw IllegalStateException("Different start symbol: " + id)
-        else {
-          if (isBody) bodyRoot = node else postRoot = node
-        }
-      }
-
+      if (isStartId(id)) setRoot(node)        
       node
     })
 
@@ -248,6 +239,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     }
   }
 
+  //result var stores the result variable
+  var resultVar : Option[Variable] = None
   
   //the expr is required to be linear, if not, an exception would be thrown
   //for now some of the constructs are not handled
@@ -303,7 +296,13 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           }
           None          
         }
-        case Variable(id) => Some(e)
+        case v@Variable(id) => {
+          //this is a hack (store the result variable)
+          if(id.name.equals("result") && !resultVar.isDefined)
+          	resultVar = Some(v)
+          	
+          Some(v)
+        }
         case FunctionInvocation(fdef, args) => Some(e)
         case BinaryOperator(e1, e2, op) => {
 
@@ -503,13 +502,20 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   /**
    * This performs deep equality check of expressions. Use with caution
    */
-  def ExprEquals(e1: Expr, e2: Expr): Boolean = {
+  /*def ExprEquals(e1: Expr, e2: Expr): Boolean = {
     if (e1 == e2) true
     else {
       (e1, e2) match {
-        case (BinaryOperator(lhs1, rhs1, op1), BinaryOperator(lhs2, rhs2, op2)) => (op1 == op2) && ExprEquals(lhs1, lhs2) && ExprEquals(rhs1, rhs2)
-        case (UnaryOperator(lhs1, op1), UnaryOperator(lhs2, op2)) => (op1 == op2) && ExprEquals(lhs1, lhs2)
+        case (BinaryOperator(lhs1, rhs1, op1), BinaryOperator(lhs2, rhs2, op2)) => {
+          println("matching ops: "+e1+" , "+e2)
+          (op1 == op2) && ExprEquals(lhs1, lhs2) && ExprEquals(rhs1, rhs2)
+        }
+        case (UnaryOperator(lhs1, op1), UnaryOperator(lhs2, op2)) => {
+          println("matching ops: "+e1+" , "+e2)
+          (op1 == op2) && ExprEquals(lhs1, lhs2)
+        }
         case (NAryOperator(args1, op1), NAryOperator(args2, op2)) => {
+          println("matching ops: "+e1+" , "+e2)
           val res = (e1, e2) match {
             case (FunctionInvocation(fd1, _), FunctionInvocation(fd2, _)) => fd1.equals(fd2)
             case _ => op1.equals(op2)
@@ -519,21 +525,20 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         }
         case (IntLiteral(v1), IntLiteral(v2)) => v1 == v2
         case (Variable(id1), Variable(id2)) => {
-          if(id1.name.equals(id2.name))
-            println("Names equal: "+id1)
+          println("matching ids: "+id1+" , "+id2)
           id1 == id2
         }
         case (t1,t2)=> t1 == t2
       }
     }
-  }
+  }*/
   
   /**
    * This is a little tricky. Here we need keep identify function calls that are equivalent
    * and call them by the same name. Ideally this requires congruence closure algorithm.
    * TODO: handle uninterpreted functions in a better way
    */    
-  var processedFIs = Set[FunctionInvocation]()
+  var processedFIs = Map[FunctionInvocation,FunctionInvocation]()
   def FlattenFunction(inExpr: Expr): Expr = {
     var conjuncts = Set[Expr]()    
     println("Flatten Func processing: "+inExpr)
@@ -542,12 +547,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       e match {
         case fi @ FunctionInvocation(fd, args) => {
           //check if the function invocation already exists
-          val findres = processedFIs.find(ExprEquals(fi, _))
-          if (findres.isDefined)          
-            findres.get
-          else {
-            //flatten the  arguments
-            println("falttenFunc: Not found: "+fi)
+          val res = processedFIs.getOrElse(fi, {
+            //flatten the  arguments            
             val newargs = args.foldLeft(List[Expr with Terminal]())((acc, arg) =>
               arg match {
                 case t: Terminal => (acc :+ t)
@@ -558,9 +559,10 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
                 }
               })
             val newfi = FunctionInvocation(fd, newargs)
-            processedFIs += newfi
+            processedFIs += (fi -> newfi)
             newfi
-          }
+          })
+          res
         }
         case _ => e
       }
@@ -571,7 +573,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   
   private var paramCoeff = Map[FunDef,List[Variable]]()
   
-  def getInvariantTemplate() : (FunctionInvocation => Set[LinearTemplate]) ={
+  def getInvariantTemplate(useResVar : Boolean) : (FunctionInvocation => Set[LinearTemplate]) ={
         
     /**
      * The ordering of the expessions in the List[Expr] is very important.
@@ -581,7 +583,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       
       //just consider all the arguments and res (which is the function itself) that are
       //integer valued as only possible terms
-     val terms= (args :+ FunctionInvocation(fd,args)).collect((e : Expr) => e match { case _ if(e.getType == Int32Type) => e })
+     val resVar = if(useResVar)  resultVar.get else FunctionInvocation(fd,args)     
+     val terms= (args :+ resVar).collect((e : Expr) => e match { case _ if(e.getType == Int32Type) => e })
      terms.toList    	
     }
     
@@ -631,12 +634,10 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
    * The result is a mapping from function definitions to the corresponding invariants.
    * Note that the invariants are context specific and may not be context independent invariants for the functions (except for startFun)   
    */  
-  def SolveForTemplates(inFun : FunDef, bodyTree : CtrTree, postTree: CtrTree, invTemplate: FunctionInvocation => Set[LinearTemplate]) 
-  	: Option[Map[FunDef,Expr]] = {
+  def SolveForTemplates(inFun : FunDef, bodyTree : CtrTree, postTree: CtrTree, 
+      invTemplate: FunctionInvocation => Set[LinearTemplate], inTemplates : Set[LinearTemplate]) : Option[Map[FunDef,Expr]] = {
     //this is a mapping from node ids of the trees to the templates induced by the constraints of the node  
-    //val templateMap = Map[Identifier,Set[LinearConstraint]]()
-    //get the template for the inFun 
-    val inTemplates = invTemplate(FunctionInvocation(inFun,inFun.args.map(_.toVariable)))
+    //val templateMap = Map[Identifier,Set[LinearConstraint]]()     
     
     //first traverse the body and collect all the antecedents
     var antSet = List[(List[LinearConstraint],List[LinearTemplate])]()        
@@ -752,6 +753,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   /**
    * This procedure uses Farka's lemma to generate a set of non-linear constraints for the input implication.
    */
+  val zero = IntLiteral(0)
   def genNonLinearCtrsFromImplications(ants: Seq[LinearTemplate], conseqs: Seq[LinearTemplate]): Set[Expr] = {
 
     //compute the set of all constraint variables in ants
@@ -762,33 +764,44 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       //create a set of identifiers one for each ants      
       //TODO: may need to alter the type 
       val lambdas = ants.map((ant) => (ant -> Variable(FreshIdentifier("l", true).setType(Int32Type)))).toMap
+      val lambda0 = Variable(FreshIdentifier("l", true).setType(Int32Type))
 
       //add a bunch of constraints on lambdas
+      nonLinearCtrs += GreaterEquals(lambda0, zero)
       nonLinearCtrs ++= ants.collect((ant) => ant.template match {
-        case t: LessEquals => GreaterEquals(lambdas(ant), IntLiteral(0))
+        case t: LessEquals => GreaterEquals(lambdas(ant), zero)
       })
+      
+      //add the constraints on constant terms      
+      val sumConst = ants.foldLeft(UMinus(lambda0) : Expr)((acc,ant) => ant.constTemplate match {
+        case Some(d) => Plus(acc,Times(lambdas(ant),d))
+        case None => acc
+      })
+      nonLinearCtrs += (conseq.constTemplate match {
+        case Some(d) => Equals(d, sumConst)
+        case None => Equals(zero, sumConst)
+      })      
       
       val cvars = conseq.coeffTemplate.keys ++ antCVars
       //println("CVars: "+cvars.size)
       
       //compute the linear combination of all the coeffs of antCVars
-      var sum: Expr = null
+      var sumCoeff: Expr = null      
       //total number of constraint vars
       for (cvar <- cvars) {
         for (ant <- ants) {
+          //handle coefficients here
           if (ant.coeffTemplate.contains(cvar)) {
             val addend = Times(lambdas(ant), ant.coeffTemplate.get(cvar).get)
-            if (sum == null)
-              sum = addend
+            if (sumCoeff == null)
+              sumCoeff = addend
             else
-              sum = Plus(sum, addend)
+              sumCoeff = Plus(sumCoeff, addend)
           }
         }
         //make the sum equal to the coeff. of cvar in conseq
-        if (conseq.coeffTemplate.contains(cvar))
-          nonLinearCtrs += Equals(conseq.coeffTemplate.get(cvar).get, sum)
-        else
-          nonLinearCtrs += Equals(IntLiteral(0), sum)
+         nonLinearCtrs += (if (conseq.coeffTemplate.contains(cvar)) Equals(conseq.coeffTemplate.get(cvar).get, sumCoeff)
+        				  else Equals(zero, sumCoeff))         
       }
     }
     nonLinearCtrs
@@ -804,24 +817,36 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       //initialize the goal clauses
       if (!post.isEmpty) {
         //println("Goal clauses: " + post)
-        post.map(addConstraint(_, false))
+        val setPostRoot = (node: CtrTree) => { 
+          if (postRoot == CtrLeaf()) postRoot = node
+        }
+        post.map(addConstraint(_, setPostRoot))
+        //clear the treeNodeMap here so that we reuse for the body 
+        //TODO: fix this and make treeNodeMap a parameter
+        treeNodeMap.clear()
         //println("Goal Tree: " + postRoot.toString)
-      }
+      }      
 
       if (!body.isEmpty) {
         //println("Body clauses: " + body)
-        body.map(addConstraint(_, true))
+        val setBodyRoot = (node: CtrTree) => { 
+          if (bodyRoot == CtrLeaf()) bodyRoot = node
+      	}
+        body.map(addConstraint(_, setBodyRoot))
         //println("Body Tree: " + bodyRoot.toString)
       }      
       
       //new clauses are considered as a part of the body
       if(!newClauses.isEmpty) {      
     	//println("new clauses: " + newClauses)
-        newClauses.map(addConstraint(_, true))
+        newClauses.map(addConstraint(_, (n : CtrTree) => {}))
         //println("Body Tree: " + bodyRoot.toString)
         
         //solve for the templates at this unroll step
-        val res = SolveForTemplates(fundef,bodyRoot,postRoot,getInvariantTemplate())
+        //get the template for the inFun
+    	val fi = FunctionInvocation(fundef,fundef.args.map(_.toVariable))    
+        val inTemplates = getInvariantTemplate(true)(fi)
+        val res = SolveForTemplates(fundef,bodyRoot,postRoot,getInvariantTemplate(false),inTemplates)
         System.exit(0)
       }            
     }
