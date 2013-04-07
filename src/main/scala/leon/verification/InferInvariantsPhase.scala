@@ -648,9 +648,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       invTemplate: FunctionInvocation => Set[LinearTemplate], inTemplates : Set[LinearTemplate]) : Option[Map[FunDef,Expr]] = {    
     //val templateMap = Map[Identifier,Set[LinearConstraint]]()     
     
-    //first traverse the body and collect all the antecedents
-    var antCtrSet = List[Set[LinearConstraint]]()
-    var antTempSet = List[Set[LinearTemplate]]()              
+    //first traverse the body and collect all the antecedents               
+    var antSet = List[(Set[LinearConstraint],Set[LinearTemplate])]()   
     
     def traverseBodyTree(tree: CtrTree, currentCtrs : Seq[LinearConstraint], currentTemps : Seq[LinearTemplate]): Unit = {
       tree match{
@@ -676,8 +675,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           val (res,model) = this.uiSolver.solveSATWithFunctionCalls(pathExpr)
           
           if(!res.isDefined || res.get == true) {
-           antCtrSet +:= currentCtrs.toSet
-           antTempSet +:= currentTemps.toSet 
+           //antCtrSet +:= currentCtrs.toSet
+           //antTempSet +:= currentTemps.toSet
+            antSet +:= (currentCtrs.toSet, currentTemps.toSet)
           }
           else{
             println("Found unsat path: "+pathExpr)            
@@ -707,7 +707,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         }
         case CtrLeaf() => {
           //here we need to check if the every antecedent in antSet implies the conseqs of this path 
-          val nonLinearCtrs = antSet.foldLeft(Set[Expr]())((acc,ants)=> {
+          val nonLinearCtrs = antSet.foldLeft(null : Expr)((acc,ants)=> {
             val allAnts = (ants._1 ++ ants._2 ++ postAnts).toSet
             val allConseqs = (conseqs ++ inTemplates).toSet
             //for debugging
@@ -715,8 +715,10 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         	println(allAnts+" => "+allConseqs)
         	println("#"*20)
         	
-        	//here we know that the antecedents are satisfiable 
-            acc ++ genNonLinearCtrsFromImplications(allAnts,allConseqs)
+        	//here we know that the antecedents are satisfiable
+        	val newCtrs = genNonLinearCtrsFromImplications(allAnts,allConseqs)
+        	if(acc == null) newCtrs 
+        	else And(acc,newCtrs) 
           })
           //for debugging
           //print all the cvars
@@ -724,11 +726,12 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     	  cvarsSet = Set()
     	  
           //look for a solution of non-linear constraints
-          //println("Non linear constraints for this branch: " +nonLinearCtrs)
-          val nlictr = And(nonLinearCtrs.toSeq)
-          val (res,model) = this.uiSolver.solveSATWithFunctionCalls(nlictr)
+          //println("Non linear constraints for this branch: " +nonLinearCtrs)          
+          val (res,model) = this.uiSolver.solveSATWithFunctionCalls(nonLinearCtrs)
           if(res.isDefined && res.get == true)
           {
+            //printing the model here for debugging
+            println("Model: "+model)
             //construct an invariant (and print the model)
             val invs = inTemplates.map((inTemp) => {
               val coeff = inTemp.coeffTemplate.map((entry) => {
@@ -774,11 +777,11 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
    * This procedure uses Farka's lemma to generate a set of non-linear constraints for the input implication.
    */
   val zero = IntLiteral(0)
-  def genNonLinearCtrsFromImplications(ants: Set[LinearTemplate], conseqs: Set[LinearTemplate]): Set[Expr] = {
+  def genNonLinearCtrsFromImplications(ants: Set[LinearTemplate], conseqs: Set[LinearTemplate]): Expr = {
 
     //compute the set of all constraint variables in ants
     val antCVars = ants.foldLeft(Set[Expr]())((acc, ant) => acc ++ ant.coeffTemplate.keySet)
-    var nonLinearCtrs = Set[Expr]()            
+    var nonLinearCtrs : Expr = null   
     
     for (conseq <- conseqs) {
       //create a set of identifiers one for each ants      
@@ -787,20 +790,18 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       val lambda0 = Variable(FreshIdentifier("l", true).setType(Int32Type))
 
       //add a bunch of constraints on lambdas
-      nonLinearCtrs += GreaterEquals(lambda0, zero)
-      nonLinearCtrs ++= ants.collect((ant) => ant.template match {
+      val lambdaCtrs = (ants.collect((ant) => ant.template match {
         case t: LessEquals => GreaterEquals(lambdas(ant), zero)
-      })
+      }).toSeq :+ GreaterEquals(lambda0, zero))
+      
+      //update nonLinearConstraints
+      nonLinearCtrs = if(nonLinearCtrs == null) And(lambdaCtrs) else And(lambdaCtrs :+ nonLinearCtrs)        
       
       //add the constraints on constant terms      
       val sumConst = ants.foldLeft(UMinus(lambda0) : Expr)((acc,ant) => ant.constTemplate match {
         case Some(d) => Plus(acc,Times(lambdas(ant),d))
         case None => acc
-      })
-      nonLinearCtrs += (conseq.constTemplate match {
-        case Some(d) => Equals(d, sumConst)
-        case None => Equals(zero, sumConst)
-      })      
+      })            
       
       val cvars = conseq.coeffTemplate.keys ++ antCVars
       
@@ -823,8 +824,19 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           }
         }
         //make the sum equal to the coeff. of cvar in conseq
-         nonLinearCtrs += (if (conseq.coeffTemplate.contains(cvar)) Equals(conseq.coeffTemplate.get(cvar).get, sumCoeff)
-        				  else Equals(zero, sumCoeff))         
+        val enabledPart1 = (if (conseq.coeffTemplate.contains(cvar)) Equals(conseq.coeffTemplate.get(cvar).get, sumCoeff)
+        					else Equals(zero, sumCoeff))
+        val enabledPart2 = (conseq.constTemplate match {
+          case Some(d) => Equals(d, sumConst)
+          case None => Equals(zero, sumConst)
+        })        
+        
+        //or the sum of the constants can be -1 and the sum of coeffs 0 (this is the disabled case)
+        //Fortunately the disbaled case are linear constraints
+        val disabledPart1 = Equals(zero, sumCoeff)
+        val disabledPart2 = Equals(IntLiteral(1), sumConst)
+        
+        nonLinearCtrs = And(nonLinearCtrs,Or(And(enabledPart1,enabledPart2),And(disabledPart1,disabledPart2)))
       }
     }
     nonLinearCtrs
