@@ -550,8 +550,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
    */    
   var processedFIs = Map[FunctionInvocation,FunctionInvocation]()
   def FlattenFunction(inExpr: Expr): Expr = {
-    var conjuncts = Set[Expr]()    
-    println("Flatten Func processing: "+inExpr)
+    var conjuncts = Set[Expr]()        
     
     def flattenFunc(e: Expr): Expr = {
       e match {
@@ -786,7 +785,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
   /**
    * This procedure uses Farka's lemma to generate a set of non-linear constraints for the input implication.
-   * TODO: make the coefficients real (it now required to be integers which is too strong)
+   * TODO: make the coefficients real (it now required to be integers which is too strong. Integer non-linear constraint solving
+   * is undecidable, peano arithmetic!)
    */
   val zero = IntLiteral(0)
   def genNonLinearCtrsFromImplications(ants: Seq[LinearTemplate], conseqs: Seq[LinearTemplate], disableAnts : Boolean): Expr = {
@@ -874,7 +874,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
       //initialize the goal clauses
       if (!post.isEmpty) {
-        //println("Goal clauses: " + post)
+        println("Post clauses: ")
+        post.foreach(println(_))
         val setPostRoot = (node: CtrTree) => { 
           if (postRoot == CtrLeaf()) postRoot = node
         }
@@ -886,7 +887,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       }      
 
       if (!body.isEmpty) {
-        //println("Body clauses: " + body)
+        println("Body clauses: ")
+        body.foreach(println(_))
         val setBodyRoot = (node: CtrTree) => { 
           if (bodyRoot == CtrLeaf()) bodyRoot = node
       	}
@@ -895,8 +897,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       }      
       
       //new clauses are considered as a part of the body
-      if(!newClauses.isEmpty) {      
-    	//println("new clauses: " + newClauses)
+      if(!newClauses.isEmpty) { 
+        println("Unrolled clauses: ")
+        newClauses.foreach(println(_))    	
         newClauses.map(addConstraint(_, (n : CtrTree) => {}))
         //println("Body Tree: " + bodyRoot.toString)
         

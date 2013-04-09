@@ -838,18 +838,21 @@ trait AbstractZ3Solver
               case OpGE => GreaterEquals(rargs(0), rargs(1))
               case OpLT => LessThan(rargs(0), rargs(1))
               case OpGT => GreaterThan(rargs(0), rargs(1))
-              case OpAdd => {
-                assert(argsSize == 2)
-                Plus(rargs(0), rargs(1))
+              case OpAdd => {                
+                val head :: tail = rargs
+                tail.foldLeft(head)((acc,rarg) => Plus(acc,rarg))                
+                //Plus(rargs(0), rargs(1))
               }
               case OpSub => {
                 assert(argsSize == 2)
                 Minus(rargs(0), rargs(1))
               }
               case OpUMinus => UMinus(rargs(0))
-              case OpMul => {
-                assert(argsSize == 2)
-                Times(rargs(0), rargs(1))
+              case OpMul => {                
+                /*assert(argsSize == 2)
+                Times(rargs(0), rargs(1))*/
+                val head :: tail = rargs
+                tail.foldLeft(head)((acc,rarg) => Times(acc,rarg))
               }
               case OpDiv => {
                 assert(argsSize == 2)

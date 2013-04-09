@@ -278,10 +278,11 @@ object FunctionTemplate {
             val erec = rec(newBool2, elze)
 
             storeGuarded(pathVar, Or(Variable(newBool1), Variable(newBool2)))
-            storeGuarded(pathVar, Or(Not(Variable(newBool1)), Not(Variable(newBool2))))
+            storeGuarded(pathVar, Or(Not(Variable(newBool1)), Not(Variable(newBool2))))            
             // TODO can we improve this? i.e. make it more symmetrical?
             // Probably it's symmetrical enough to Z3.
             storeGuarded(pathVar, Iff(Variable(newBool1), crec)) 
+            storeGuarded(pathVar, Iff(Variable(newBool2), Not(crec)))
             storeGuarded(newBool1, Equals(Variable(newExpr), trec))
             storeGuarded(newBool2, Equals(Variable(newExpr), erec))
             Variable(newExpr)
