@@ -19,7 +19,7 @@ class PureScalaVerificationRegression extends FunSuite {
   private case class Output(report : VerificationReport, reporter : Reporter)
 
   private def mkPipeline : Pipeline[List[String],VerificationReport] =
-    leon.plugin.ExtractionPhase andThen leon.verification.AnalysisPhase
+    leon.plugin.ExtractionPhase andThen leon.SubtypingPhase andThen leon.verification.AnalysisPhase
 
   private def mkTest(file : File, leonOptions : Seq[LeonOption], forError: Boolean)(block: Output=>Unit) = {
     val fullName = file.getPath()
