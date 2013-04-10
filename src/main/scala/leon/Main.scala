@@ -5,6 +5,7 @@ object Main {
   lazy val allPhases: List[LeonPhase[_, _]] = {
     List(
       plugin.ExtractionPhase,
+      SubtypingPhase,
       xlang.ArrayTransformation,
       xlang.EpsilonElimination,
       xlang.ImperativeCodeElimination,
@@ -121,9 +122,9 @@ object Main {
   def computePipeline(settings: Settings): Pipeline[List[String], Any] = {
     import purescala.Definitions.Program
 
-    val pipeBegin : Pipeline[List[String],Program] = plugin.ExtractionPhase
+    val pipeBegin : Pipeline[List[String],Program] = plugin.ExtractionPhase andThen SubtypingPhase
 
-    val pipeSynthesis: Pipeline[Program, Program]=
+    val pipeSynthesis: Pipeline[Program, Program] =
       if (settings.synthesis) {
         synthesis.SynthesisPhase
       } else {
