@@ -1,0 +1,36 @@
+\documentclass[a4paper,10pt]{article}
+\begin{document}
+\title{SAV project proposal \\ Templates in Function Postconditions}
+\author{Ravichandhran Kandhadai Madhavan}
+\maketitle
+
+\newcommand{\dash}[1]{\overline{#1}}
+
+\section{Problem Definition}
+
+The goal of the project is to (a) allow specification of partial post-conditions in Leon in the form of (quantifier-free) linear templates with unknown coefficients and (b) to develop an inference engine that would find an instantiation of the linear template such that it is inductive. In this project, I only focus on Leon programs that can be expressed as linear transition systems. In such programs, every primitive expression is a linear combination of program variables and function invocations. HoIver, the programs may have \textit{if-then-else} constructs and \textit{let} constructs. Also, every expression in the program is of type \textit{Int}.
+%The freedom to specify such templates post-conditions will greatly reduce the annotation burden of the programmer.
+The templates that I plan to support can use all the program variables visible in the postconditions (viz. parameters and result variable) and also user-defined functions.
+ Formally, a template is an expression of the form $a_0 + a_1x_1 + a_2x_2 + \cdots + a_nx_n \le 0$ where each $x_i$ is a program variable or function symbol and each $a_i$ is the unknown coefficient (referred to as a \textit{template variable}) or a constant.
+
+\section{The Approach}
+
+I propose to use the approach discussed in \cite{ssriram:CAV03} that uses non-linear constraint solving for finding the instantiations of the templates which is briefly discussed below. Say we are given a function (belonging to the above restricted language) whose post-condition uses templates. The verification condition computed by Leon for the function would be of the form:
+$\varphi: \bigwedge_i \varphi_i$, where,
+$\mathit{\varphi_i: } \forall \dash{x}. \phi[\dash{x},\dash{a}] \Rightarrow \psi[\dash{x},\dash{a}]$, $\dash{x}$ is a vector of program variables, $\dash{a}$ is a vector of template variables and $\phi, \psi$ are linear predicates over the program and template variables. Moreover, $\phi$ is a conjunction of atomic predicates. Assume, for now, that $\psi$ is a single atomic predicate.
+The goal is to find an assignment to $\dash{a}$ such that $\varphi$ holds.
+As described in \cite{ssriram:CAV03}, by \textit{Farka's Lemma}, the values of $\dash{a}$ that satisfy $\varphi$ can be obtained by solving a system of non-linear real valued inequalities generated from $\varphi$. 
+In this project, I plan to use the Z3 SMT solver to solve the generated inequalities. 
+
+Allowing conjunctions in the post-condition $\psi$ is straight-forward. It could translated to the above form by introducing more conjuncts to $\varphi$. However, supporting disjuncts in $\psi$ is more involved.
+In the presence of disjunctions, the proposed plan is to construct a $\varphi$ belonging to the above form that is a stronger formulae than the one required.
+
+In addition to implementing the above approach, I plan to extend it to handle templates with user-defined functions using the ideas presented in \cite{dirk:VMCAI07}. Also, I would like to combine this approach with the unrolling phase of Leon to discover invariants that requires reasoning about multiple procedures.
+ 
+\section{On Soundness and Completeness}
+
+
+
+\section{Deliverables}
+
+\end{document}
