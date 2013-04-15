@@ -79,7 +79,7 @@ case class LinearConstraint(val expr: Expr, val coeffMap: Map[Expr, IntLiteral],
 }
 
 //A DAG that represents a DNF formula. Every path in the DAG corresponds to a disjunct
-//TODO: Fix this entire portion of code that manipulates the tree
+//TODO: Maintenance Issue: Fix this entire portion of code that manipulates the tree
 abstract class CtrTree
 case class CtrLeaf() extends CtrTree
 case class CtrNode(val blockingId: Identifier) extends CtrTree {
@@ -118,6 +118,9 @@ class ConstraintTracker(fundef : FunDef) {
   //root of the tree. This would be set while constraints are added
   private var bodyRoot: CtrTree = CtrLeaf()
   private var postRoot: CtrTree = CtrLeaf()
+  private val zero = IntLiteral(0)
+  private val one = IntLiteral(1)
+  private val mone =IntLiteral(-1)
 
   //some utility methods
   def isBlockingId(id: Identifier): Boolean = {
@@ -141,7 +144,7 @@ class ConstraintTracker(fundef : FunDef) {
     }
     post.map(addConstraint(_, setPostRoot))
     //clear the treeNodeMap here so that we reuse for the body 
-    //TODO: fix this and make treeNodeMap a parameter
+    //TODO: Maintenance Issue: fix this and make treeNodeMap a parameter
     treeNodeMap.clear()
   }  
 
@@ -154,7 +157,7 @@ class ConstraintTracker(fundef : FunDef) {
       treeNodeMap += (id -> node)
 
       //set the root of the tree (this code is ugly and does string matching)
-      //TODO: fix this
+      //TODO: Maintenance Issue:  fix this
       if (isStartId(id)) setRoot(node)
       node
     })
@@ -265,8 +268,7 @@ class ConstraintTracker(fundef : FunDef) {
   def exprToConstraint(expr: Expr): LinearConstraint = {
     var coeffMap = Map[Expr, IntLiteral]()
     var constant: Option[IntLiteral] = None
-
-    val oneLit = IntLiteral(1)
+   
     def genConstraint(e: Expr): Option[Expr] = {
       e match {
         case IntLiteral(v) => {
@@ -280,11 +282,11 @@ class ConstraintTracker(fundef : FunDef) {
           val r1 = genConstraint(e1)
           if (r1.isDefined) {
             //here the coefficient is 1
-            coeffMap += (r1.get -> oneLit)
+            coeffMap += (r1.get -> one)
           }
           val r2 = genConstraint(e2)
           if (r2.isDefined)
-            coeffMap += (r2.get -> oneLit)
+            coeffMap += (r2.get -> one)
 
           None
         }
@@ -336,7 +338,7 @@ class ConstraintTracker(fundef : FunDef) {
               val r = genConstraint(e1)
               if (r.isDefined) {
                 //here the coefficient is 1
-                coeffMap += (r.get -> oneLit)
+                coeffMap += (r.get -> one)
               }
               None
             }
@@ -369,8 +371,8 @@ class ConstraintTracker(fundef : FunDef) {
 
       inExpr match {
         case IntLiteral(v) => IntLiteral(-v)
-        case t: Terminal => Times(IntLiteral(-1), t)
-        case fi @ FunctionInvocation(fdef, args) => Times(IntLiteral(-1), fi)
+        case t: Terminal => Times(mone, t)
+        case fi @ FunctionInvocation(fdef, args) => Times(mone, fi)
         case UMinus(e1) => e1
         case Minus(e1, e2) => Plus(PushMinus(e1), e2)
         case Plus(e1, e2) => Plus(PushMinus(e1), PushMinus(e2))
@@ -441,16 +443,16 @@ class ConstraintTracker(fundef : FunDef) {
           val (newe, newop) = e match {
             case t: Equals => (Minus(e1, e2), op)
             case t: LessEquals => (Minus(e1, e2), LessEquals)
-            case t: LessThan => (Plus(Minus(e1, e2), IntLiteral(1)), LessEquals)
+            case t: LessThan => (Plus(Minus(e1, e2), one), LessEquals)
             case t: GreaterEquals => (Minus(e2, e1), LessEquals)
-            case t: GreaterThan => (Plus(Minus(e2, e1), IntLiteral(1)), LessEquals)
+            case t: GreaterThan => (Plus(Minus(e2, e1), one), LessEquals)
           }
           val r = mkLinearRecur(newe)
           //simplify the resulting constants
           val (Some(r2), const) = simplifyConsts(r)
           val finale = if (const != 0) Plus(r2, IntLiteral(const)) else r2
           //println(r + " simplifies to "+finale)
-          newop(finale, IntLiteral(0))
+          newop(finale, zero)
         }
         case Minus(e1, e2) => Plus(mkLinearRecur(e1), PushMinus(mkLinearRecur(e2)))
         case UMinus(e1) => PushMinus(mkLinearRecur(e1))
@@ -486,7 +488,7 @@ class ConstraintTracker(fundef : FunDef) {
         //matches integer binary relation
         case Not(e @ BinaryOperator(e1, e2, op)) if (e1.getType == Int32Type) => {
           e match {
-            case e: Equals => Or(nnf(LessEquals(e1, Minus(e2, IntLiteral(1)))), nnf(GreaterEquals(e1, Plus(e2, IntLiteral(1)))))
+            case e: Equals => Or(nnf(LessEquals(e1, Minus(e2, one))), nnf(GreaterEquals(e1, Plus(e2, one))))
             case e: LessThan => GreaterEquals(nnf(e1), nnf(e2))
             case e: LessEquals => GreaterThan(nnf(e1), nnf(e2))
             case e: GreaterThan => LessEquals(nnf(e1), nnf(e2))
@@ -494,7 +496,7 @@ class ConstraintTracker(fundef : FunDef) {
             case _ => throw IllegalStateException("Unknown integer predicate: " + e)
           }
         }
-        //TODO: "Not" is not recognized as an unary operator, need to find out why
+        //TODO: Puzzling: "Not" is not recognized as an unary operator, need to find out why
         case e @ Not(t: Terminal) => e
         case Not(And(args)) => Or(args.map(arg => nnf(Not(arg))))
         case Not(Or(args)) => And(args.map(arg => nnf(Not(arg))))
@@ -516,7 +518,7 @@ class ConstraintTracker(fundef : FunDef) {
   /**
    * This is a little tricky. Here we need keep identify function calls that are equivalent
    * and call them by the same name. Ideally this requires congruence closure algorithm.
-   * TODO: handle uninterpreted functions in a better way
+   * TODO: Feature: handle uninterpreted functions
    */
   var processedFIs = Map[FunctionInvocation, FunctionInvocation]()
   def FlattenFunction(inExpr: Expr): Expr = {
@@ -565,7 +567,7 @@ class ConstraintTracker(fundef : FunDef) {
   /**
    * This function computes invariants belonging to the template.
    * The result is a mapping from function definitions to the corresponding invariants.
-   * Note that the invariants are context specific and may not be context independent invariants for the functions (except for startFun)
+   * Note that the invariants are context specific and may not be context independent invariants for the functions (except for inFun)
    */
   def solveForTemplates(inFun: FunDef, tempSynth: FunctionInvocation => Set[LinearTemplate], 
       inTemplates: Set[LinearTemplate], uiSolver : UninterpretedZ3Solver): Option[Map[FunDef, Expr]] = {
@@ -583,7 +585,7 @@ class ConstraintTracker(fundef : FunDef) {
           val fis = ctrs.foldLeft(Set[FunctionInvocation]())((set, ctr) => set ++ getFIs(ctr))
           //generate a template for each function invocation and add it to the antecedents or consequent.
           //For now we consider on the function invocations of the input procedure only
-          //TODO: Extend this to function invocations of other procedures
+          //TODO: Feature: Extend this to function invocations of other procedures
           val newTemps = fis.filter(_.funDef.equals(inFun)).foldLeft(currentTemps)((acc, fi) => {
             val invt = tempSynth(fi)
             acc ++ invt
@@ -608,7 +610,7 @@ class ConstraintTracker(fundef : FunDef) {
       }
     }
 
-    def traversePostTree(tree: CtrTree, postAnts: Seq[LinearTemplate], conseqs: Seq[LinearConstraint]): Unit = {
+    def traversePostTree(tree: CtrTree, postAnts: Seq[LinearTemplate], conseqs: Seq[LinearConstraint]): Option[Expr] = {
       tree match {
         case n @ CtrNode(blkid) => {
           val ctrs = n.constraints
@@ -622,9 +624,9 @@ class ConstraintTracker(fundef : FunDef) {
             newants ++= invt
           }
           //recurse into children
-          for (child <- n.Children) {
-            traversePostTree(child, newants, newcons)
-          }
+          var aInvariant : Option[Expr] = None
+          n.Children.takeWhile(_ => aInvariant == None).foreach((child) => { aInvariant = traversePostTree(child, newants, newcons) })
+          aInvariant
         }
         case CtrLeaf() => {
           //here we need to check if the every antecedent in antSet implies the conseqs of this path 
@@ -644,12 +646,12 @@ class ConstraintTracker(fundef : FunDef) {
             println("#" * 20)
 
             //here we know that the antecedents are satisfiable
-            val newCtrs = implicationSolver.applyFarkasLemma(allAnts.toSeq, allConseqs, disableAnts)
+            val newCtrs = implicationSolver.applyFarkasLemma(allAnts.toSeq, allConseqs, disableAnts)            
             if (acc == null) newCtrs
             else And(acc, newCtrs)
-          })
+          })                    
           
-          //look for a solution of non-linear constraints
+          //look for a solution of non-linear constraints by interpreting all integers as Reals
           //println("Non linear constraints for this branch: " +nonLinearCtrs)          
           val (res, model) = uiSolver.solveSATWithFunctionCalls(nonLinearCtrs)
           if (res.isDefined && res.get == true) {
@@ -667,28 +669,27 @@ class ConstraintTracker(fundef : FunDef) {
               val const = inTemp.constTemplate match {
                 case Some(Variable(id)) => model(id)
                 case Some(t) => t
-                case None => IntLiteral(0)
+                case None => zero
               }
               val expr = coeff.foldLeft(const)((acc, entry) => Plus(acc, Times(entry._1, entry._2)))
-              expr
+              LessEquals(expr,zero)
             })
-            println("Invariants: " + invs)
+            val invariant = And(invs.toSeq)
+            Some(invariant)
           } else {
-            println("Constriaint was not satisfiable")
+            None
           }
-
-          //if found a solution return true and break
         }
       }
     }
 
     //traverse the bodyTree and postTree 
     traverseBodyTree(bodyRoot, Seq[LinearConstraint](), Seq[LinearTemplate]())
-    traversePostTree(postRoot, Seq[LinearTemplate](), Seq[LinearConstraint]())
+    val inv = traversePostTree(postRoot, Seq[LinearTemplate](), Seq[LinearConstraint]())
 
-    //solve the generated constraints using z3
-    //println("Non-linear constraints: "+ctrNonLinear)
-    None
+    if(inv.isDefined)
+      Some(Map(inFun -> inv.get))
+    else None 
   }
 
 }

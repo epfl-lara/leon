@@ -33,8 +33,7 @@ class LinearImplicationSolver {
 
   /**
    * This procedure uses Farka's lemma to generate a set of non-linear constraints for the input implication.
-   * TODO: make the coefficients real (it now required to be integers which is too strong. Integer non-linear constraint solving
-   * is undecidable, peano arithmetic!)
+   * Note that these are non-linear constraints in real arithmetic.
    */    
   def applyFarkasLemma(ants: Seq[LinearTemplate], conseqs: Seq[LinearTemplate], disableAnts: Boolean): Expr = {
 
@@ -43,8 +42,7 @@ class LinearImplicationSolver {
 
     //the creates constraints for a single consequent
     def createCtrs(conseq: LinearTemplate): Expr = {
-      //create a set of identifiers one for each ants      
-      //TODO: may need to alter the type 
+      //create a set of identifiers one for each ants            
       val lambdas = ants.map((ant) => (ant -> Variable(FreshIdentifier("l", true).setType(Int32Type)))).toMap
       val lambda0 = Variable(FreshIdentifier("l", true).setType(Int32Type))
 
@@ -105,10 +103,32 @@ class LinearImplicationSolver {
 
     //this is an optimization
     if (disableAnts) {
+      //convertIntToReal(createCtrs(head))
       createCtrs(head)
     } else {
       val nonLinearCtrs = tail.foldLeft(createCtrs(head))((acc, conseq) => And(acc, createCtrs(conseq)))
+      //convertIntToReal(nonLinearCtrs)
       nonLinearCtrs
     }
+  }
+
+  /**
+   * converts all integer valued variables and literals to RealType
+   */
+  def convertIntToReal(inexpr: Expr): Expr = {
+    //var intIdToRealId = Map[Identifier, Identifier]()
+    val transformer = (e: Expr) => e match {
+      case IntLiteral(v) => RealLiteral(v, 1)
+      /*case v @ Variable(intId) if (v.getType == Int32Type) => {
+        val realId = intIdToRealId.getOrElse(intId, {
+          val freshId = FreshIdentifier(intId.name, true).setType(RealType)
+          intIdToRealId += (intId -> freshId)
+          freshId
+        })
+        Variable(realId)
+      }*/
+      case _ => e
+    }
+    simplePostTransform(transformer)(inexpr)
   }
 }

@@ -33,7 +33,7 @@ class TemplateFactory {
 
   /**
    * The ordering of the expessions in the List[Expr] is very important.
-   * TODO: in the future use more sophisticated ways of constructing terms
+   * TODO: Feature: in the future use more sophisticated ways of constructing terms
    */
   def getTypedCompositeTerms(baseTerms: Seq[Expr]): List[Expr] = {
 
@@ -49,6 +49,7 @@ class TemplateFactory {
       val params = fd.args.map(_.toVariable)
       val dummycall = FunctionInvocation(fd, params)
       val paramTerms = getTypedCompositeTerms(params :+ dummycall)
+      //note that the template variables may have real types
       val newCoeffs = List.range(0, paramTerms.size + 1).map((i) => Variable(FreshIdentifier("a" + i + "a", true).setType(Int32Type)))
       paramCoeff += (fd -> newCoeffs)
     }
