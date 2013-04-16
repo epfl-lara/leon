@@ -7,6 +7,7 @@ import purescala.Trees._
 import purescala.Extractors._
 import purescala.TreeOps._
 import purescala.TreeNormalizations.linearArithmeticForm
+import purescala.TreeNormalizations.NonLinearExpressionException
 import purescala.TypeTrees._
 import purescala.Definitions._
 import LinearEquations.elimVariable
@@ -32,16 +33,23 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
     val nonIneqVars = exprNotUsed.foldLeft(Set[Identifier]())((acc, x) => acc ++ variablesOf(x))
     val candidateVars = ineqVars.intersect(problem.xs.toSet).filterNot(nonIneqVars.contains(_))
 
-    if (candidateVars.isEmpty) {
-      Nil
-    } else {
-      val processedVar: Identifier = candidateVars.map(v => {
+    val processedVars: Set[(Identifier, Int)] = candidateVars.flatMap(v => {
+      try {
         val normalizedLhs: List[List[Expr]] = lhsSides.map(linearArithmeticForm(_, Array(v)).toList)
         if(normalizedLhs.isEmpty)
-          (v, 0)
+          Some((v, 0))
         else
-          (v, lcm(normalizedLhs.map{ case List(t, IntLiteral(i)) => if(i == 0) 1 else i.abs case _ => sys.error("shouldn't happen") }))
-      }).toList.sortWith((t1, t2) => t1._2 <= t2._2).head._1
+          Some((v, lcm(normalizedLhs.map{ case List(t, IntLiteral(i)) => if(i == 0) 1 else i.abs case _ => sys.error("shouldn't happen") })))
+      } catch {
+        case NonLinearExpressionException(_) =>
+          None
+      }
+    })
+
+    if (processedVars.isEmpty) {
+      Nil
+    } else {
+      val processedVar = processedVars.toList.sortWith((t1, t2) => t1._2 <= t2._2).head._1
 
       val otherVars: List[Identifier] = problem.xs.filterNot(_ == processedVar)
 
