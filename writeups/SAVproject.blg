@@ -1,0 +1,45 @@
+This is BibTeX, Version 0.99c (TeX Live 2009/Debian)
+The top-level auxiliary file: SAVproject.aux
+The style file: acm.bst
+Database file #1: SAVproject.bib
+You've used 3 entries,
+            2253 wiz_defined-function locations,
+            548 strings with 4519 characters,
+and the built_in function-call counts, 1142 in all, are:
+= -- 100
+> -- 56
+< -- 0
++ -- 23
+- -- 20
+* -- 83
+:= -- 180
+add.period$ -- 9
+call.type$ -- 3
+change.case$ -- 19
+chr.to.int$ -- 0
+cite$ -- 3
+duplicate$ -- 56
+empty$ -- 101
+format.name$ -- 20
+if$ -- 243
+int.to.chr$ -- 0
+int.to.str$ -- 3
+missing$ -- 3
+newline$ -- 18
+num.names$ -- 6
+pop$ -- 30
+preamble$ -- 1
+purify$ -- 16
+quote$ -- 0
+skip$ -- 31
+stack$ -- 0
+substring$ -- 47
+swap$ -- 14
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 12
+warning$ -- 0
+while$ -- 9
+width$ -- 4
+write$ -- 32

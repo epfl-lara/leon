@@ -96,43 +96,67 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           val res = constTracker.solveForTemplates(fundef, templateSynthesizer, inTemplates, uisolver)
           if (res.isDefined) {                       
             val inv = res.get(fundef)            
-            reporter.info("Property holds, found inductive invariant: " + inv)
+            reporter.info("- Found inductive invariant: " + inv)
             //check if this is an invariant 
-            reporter.info("Verifying Invariant " + res.get(fundef))
+            reporter.info("- Verifying Invariant " + res.get(fundef))
 
-            //create a program with the current function replaced by a new function with enhanced postcondition
-            val oldPost = fundef.postcondition.get
+            //create a new post-condition            
             val newPost = if (resultVar.isDefined) replace(Map(Variable(resultVar.get) -> ResultVariable()), inv)
-            			   else inv
-            val postExpr = And(oldPost, newPost)
-            val newfundef = new FunDef(fundef.id,fundef.returnType, fundef.args)
-            newfundef.body = fundef.body
-            newfundef.precondition = fundef.precondition
-            newfundef.postcondition = Some(postExpr)            
-            val newfuncs = program.mainObject.definedFunctions.filter(_ != fundef) :+ newfundef           
-            val newObjDef = ObjectDef(program.mainObject.id.freshen, newfuncs ++ program.mainObject.definedClasses,program.mainObject.invariants)
-            val newprog = Program(program.id.freshen,newObjDef) 
-                        
-            val defaultTactic = new DefaultTactic(reporter)
-            defaultTactic.setProgram(newprog)            
-            val vc = defaultTactic.generatePostconditions(newfundef).first
-            
-            val fairZ3 = new FairZ3Solver(context)
-            fairZ3.setProgram(newprog)            
-            println("new vc : "+vc.condition)
-            //System.exit(0)
-            val sat = fairZ3.solve(vc.condition)
-            sat match {
-              case Some(false) => reporter.info("Invariant Verified")
-              case Some(true) => reporter.error("Invalid Invariant, see Model")
-              case _ => reporter.error("Cannot prove or disprove invariant: "+inv)
-            }
+            			  else inv
+            val postExpr = And(fundef.postcondition.get, newPost)
+            verifyInvariant(fundef,context,program,postExpr,reporter)            
+            System.exit(0)
           }
         }
       }
       listener
     }
-  }    
+  }
+  
+  /**
+   * create a program with the input function replaced by a new function that has the new postcondition
+   */
+  def verifyInvariant(fundef: FunDef, ctx: LeonContext, program: Program, newpost: Expr, reporter: Reporter): Boolean = {
+    
+    val newfundef = new FunDef(FreshIdentifier(fundef.id.name, true), fundef.returnType, fundef.args)
+    //replace the recursive invocations by invocations of the new function  
+    val newbody = searchAndReplaceDFS((e: Expr) => (e match {
+      case fi @ FunctionInvocation(fd, args) if (fd == fundef) => Some(FunctionInvocation(newfundef, args))
+      case _ => None
+    }))(fundef.body.get)
+    newfundef.body = Some(newbody)
+    //assuming pre and postconditions do not have recursive calls
+    //TODO: fix this                    
+    newfundef.precondition = fundef.precondition
+    newfundef.postcondition = Some(newpost)
+    val newfuncs = program.mainObject.definedFunctions.filter(_ != fundef) :+ newfundef
+    val newObjDef = ObjectDef(program.mainObject.id.freshen, newfuncs ++ program.mainObject.definedClasses, program.mainObject.invariants)
+    val newprog = Program(program.id.freshen, newObjDef)
+    //println("Program: "+newprog)
+
+    val defaultTactic = new DefaultTactic(reporter)
+    defaultTactic.setProgram(newprog)
+    val vc = defaultTactic.generatePostconditions(newfundef).first
+
+    val fairZ3 = new FairZ3Solver(ctx)
+    fairZ3.setProgram(newprog)
+    //println("Func : "+ vc.funDef + " new vc: "+vc.condition)            
+    val sat = fairZ3.solveSAT(Not(vc.condition))
+    sat._1 match {
+      case Some(false) => {
+        reporter.info("- Invariant verified")
+        true
+      }
+      case Some(true) => {
+        reporter.error("- Invalid invariant, model: " + sat._2)
+        false
+      }
+      case _ => {
+        reporter.error("- Unable to prove or disprove invariant")
+        false
+      }
+    }
+  }  
       
   def run(ctx: LeonContext)(program: Program): VerificationReport = {
 

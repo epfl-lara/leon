@@ -147,21 +147,8 @@ class ConstraintTracker(fundef : FunDef) {
     //TODO: Maintenance Issue: fix this and make treeNodeMap a parameter
     treeNodeMap.clear()
   }  
-
-  def addConstraint(e: Expr, setRoot: (CtrTree => Unit)) = {
-    val (id, innerExpr) = parseGuardedExpr(e)
-
-    //get the node corresponding to the id
-    val ctrnode = treeNodeMap.getOrElse(id, {
-      val node = CtrNode(id)
-      treeNodeMap += (id -> node)
-
-      //set the root of the tree (this code is ugly and does string matching)
-      //TODO: Maintenance Issue:  fix this
-      if (isStartId(id)) setRoot(node)
-      node
-    })
-
+  
+  def addConstraintRecur(inexpr: Expr, parentNode : CtrNode) : Unit = {
     //returns the children nodes classified into real and dummy children. The first set is the real set and the second is the dummy set
     def addCtrOrBlkLiteral(ie: Expr, newChild: Boolean): (Set[CtrNode], Set[CtrNode]) = {
       ie match {
@@ -193,7 +180,7 @@ class ConstraintTracker(fundef : FunDef) {
         case Variable(childId) => {
           //checking for blocking literal
           if (isBlockingId(childId)) {
-            (Set(createOrLookupId(ctrnode, childId)), Set())
+            (Set(createOrLookupId(parentNode, childId)), Set())
           } else
             throw IllegalStateException("Encountered a variable that is not a blocking id: " + childId)
         }
@@ -201,9 +188,12 @@ class ConstraintTracker(fundef : FunDef) {
           //lhs corresponds to a blocking id in this case
           lhs match {
             case Variable(childId) if (isBlockingId(childId)) => {
-              val childNode = createOrLookupId(ctrnode, childId)
-              val ctr = exprToConstraint(rhs)
-              childNode.constraints += ctr
+              val childNode = createOrLookupId(parentNode, childId)
+              
+              //recursively add the rhs to the childNode
+              addConstraintRecur(rhs,childNode)
+              /*val ctr = exprToConstraint(rhs)
+              childNode.constraints += ctr*/
               (Set(childNode), Set())
             }
             case _ => throw IllegalStateException("Iff block --- encountered something that is not a blocking id: " + lhs)
@@ -211,31 +201,51 @@ class ConstraintTracker(fundef : FunDef) {
 
         }
         case _ => {
-          val node = if (newChild) createOrLookupId(ctrnode, FreshIdentifier("dummy", true))
-          else ctrnode
+          val node = if (newChild) createOrLookupId(parentNode, FreshIdentifier("dummy", true))
+        		  	 else parentNode
           val ctr = exprToConstraint(ie)
           node.constraints += ctr
           if (newChild) (Set(), Set(node)) else (Set(), Set())
         }
       }
     }
-    //important: calling makelinear may result in disjunctions and also potentially conjunctions
-    val flatExpr = FlattenFunction(innerExpr)
-    val nnfExpr = TransformNot(flatExpr)
-    val (realChildren, dummyChildren) = addCtrOrBlkLiteral(nnfExpr, false)
+    val (realChildren, dummyChildren) = addCtrOrBlkLiteral(inexpr, false)
 
     //now merge dummy children with the ctrnode itself.
     //the following code is slightly nasty and with side effects
-    val parentNode = if (!dummyChildren.isEmpty) {
-      val newnode = CtrNode(ctrnode.blockingId)
-      ctrnode.copyChildren(newnode)
-      ctrnode.removeAllChildren()
-      dummyChildren.foreach((child) => { child.addChildren(newnode); ctrnode.addChildren(child) })
-      treeNodeMap.update(ctrnode.blockingId, newnode)
+    val newParentNode = if (!dummyChildren.isEmpty) {
+      val newnode = CtrNode(parentNode.blockingId)
+      parentNode.copyChildren(newnode)
+      parentNode.removeAllChildren()
+      dummyChildren.foreach((child) => { child.addChildren(newnode); parentNode.addChildren(child) })
+      treeNodeMap.update(parentNode.blockingId, newnode)
       newnode
-    } else ctrnode
+    } else parentNode
 
-    realChildren.foreach(parentNode.addChildren(_))
+    realChildren.foreach(newParentNode.addChildren(_))
+  }
+
+  def addConstraint(e: Expr, setRoot: (CtrTree => Unit)) = {
+    //apply negated normal form here
+    val nnfExpr = TransformNot(e)
+    //println("Expression after Not transformation: "+nnfExpr)
+    val (id, innerExpr) = parseGuardedExpr(nnfExpr)
+
+    //get the node corresponding to the id
+    val ctrnode = treeNodeMap.getOrElse(id, {
+      val node = CtrNode(id)
+      treeNodeMap += (id -> node)
+
+      //set the root of the tree (this code is ugly and does string matching)
+      //TODO: Maintenance Issue:  fix this
+      if (isStartId(id)) setRoot(node)
+      node
+    })
+
+    //important: calling makelinear may result in disjunctions and also potentially conjunctions
+    val flatExpr = FlattenFunction(innerExpr)
+    //val nnfExpr = TransformNot(flatExpr)    
+    addConstraintRecur(flatExpr, ctrnode)
   }
 
   def createOrLookupId(parentNode: CtrNode, childId: Identifier): CtrNode = {
