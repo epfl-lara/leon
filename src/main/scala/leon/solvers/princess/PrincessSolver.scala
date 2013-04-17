@@ -226,3 +226,213 @@ class PrincessSolver(context : LeonContext)
     super.halt    
   }*/
 }*/
+
+//some code dealing with princess
+ /**
+   * Dumps an input formula in princess format
+   */
+  /*var filecount :Int = 0  
+  def DumpInPrincessFormat(parts: List[(FunDef,List[Expr])], guard: List[Expr])
+  {   
+	 val file = new java.io.File("princess-output"+filecount+".txt")
+	 filecount += 1
+	 file.createNewFile()	 
+	 val writer = new java.io.BufferedWriter(new java.io.FileWriter(file))
+	 
+	  //declare the list of free variables (consider only integers for now)
+	  val freevars = variablesOf(And(guard))
+	  writer.write("\\functions {\n")
+	  freevars.foreach((id) => id.getType match {
+	    case Int32Type => writer.write("int "+id.toString+";") 
+	    case BooleanType => ;//reporter.warning("Boolean types present not handling them for now ")
+	    case _ => ;
+	  })
+	  writer.write("\n}")
+	  writer.newLine()
+	  
+	  //considering only binary operators
+	  def appendInfix(lhs: String,rhs: String,op: String) : String = {
+	    lhs  + (if(rhs.isEmpty()) "" 
+	    	  else if(lhs.isEmpty()) rhs
+	    	  else (op +rhs))
+	  }
+	  
+	  //considering only unary operators
+	  def appendPrefix(opd: String,op: String) : String = {
+	    if(opd.isEmpty()) opd
+	    else op + "("+opd+")"
+	  }
+	  
+	  //create a function to convert leon expressions into princess formulas (not all operations are supported)
+	  //note: princess does not support boolean type. Hence, we need to replace boolean variables by a predicate
+	  // which may introduce disjunctions
+	  def PrinForm(formula: Expr) : String = formula match {
+	    case And(args) => args.foldLeft(new String())((str,x) => {
+	    	appendInfix(str,PrinForm(x)," & ")	    		    	
+	    })
+	    case Or(args) => args.foldLeft(new String())((str,x) => appendInfix(str,PrinForm(x)," | "))
+	    
+	    case Variable(id) => id.getType match {
+	    							case Int32Type => id.toString	    							
+	    							case _ => ""
+	    						}
+	    case IntLiteral(v) => v.toString
+	    case BooleanLiteral(v) => v.toString	    
+	    
+	    case t@Not(Variable(id)) => reporter.warning("Encountered negation of a variable: " + t); ""
+	    case Not(t) => appendPrefix(PrinForm(t),"!")	    
+	    case UMinus(t) => appendPrefix(PrinForm(t),"-")
+	    	    	   
+	    case t@Iff(t1,t2) => {
+	     //appendInfix(PrinForm(Implies(t1,t2)),PrinForm(Implies(t2,t1))," & ")
+	     //this is a temporary hack to handle the post-condition
+	      val (lhs,rhs) = (PrinForm(t1),PrinForm(t2))
+	      if(lhs.isEmpty() && rhs.isEmpty()) ""
+	      else if(lhs.isEmpty()) PrinForm(t2)
+	      else if(rhs.isEmpty()) PrinForm(t1)
+	      else {
+	       reporter.warning("Both LHS and RHS are bool expressions: "+t);
+	       "" 
+	      }
+	    }
+	      					
+	    case Implies(t1,t2) => PrinForm(Or(Not(t1),t2))
+	    
+	    case Equals(t1,t2) => appendInfix(PrinForm(t1),PrinForm(t2),"=")
+	    case Plus(t1,t2) => appendInfix(PrinForm(t1),PrinForm(t2),"+")
+	    case Minus(t1,t2) => appendInfix(PrinForm(t1),PrinForm(t2),"-")
+	    case Times(t1,t2) => appendInfix(PrinForm(t1),PrinForm(t2),"*")
+	    case LessThan(t1,t2) => appendInfix(PrinForm(t1),PrinForm(t2),"<")
+	    case GreaterThan(t1,t2) => appendInfix(PrinForm(t1),PrinForm(t2),">")
+	    case LessEquals(t1,t2) => appendInfix(PrinForm(t1),PrinForm(t2),"<=")
+	    case GreaterEquals(t1,t2) => appendInfix(PrinForm(t1),PrinForm(t2),">=")	    
+	    case _ => "" //empty string in other cases
+	  }
+	  
+	  //create formula parts
+	  writer.write("\\problem{\n")	  
+	  
+	  var partcount = 0
+	  var processedFormulas = List[Expr]()
+	  var partnames = List[String]()
+	  	  
+	  parts.foreach((elem) => {
+	    val (func,list) = elem	    
+	    
+	    val formulas = list -- processedFormulas
+	    val partstr = func.id.toString() + partcount
+	    writer.write("\\part["+ partstr  +"]"+"\t")
+	    writer.write("(" + PrinForm(And(formulas)) +")")
+	    
+	    if(partcount < parts.length - 1)
+	      writer.write(" &\n")
+	    else writer.write("\n")
+	    
+	    //update mutable state variables
+	    processedFormulas = processedFormulas ++ formulas
+	    partnames = partnames :+ partstr
+	    partcount = partcount + 1
+	  })
+	  
+	  //add the implies block
+	  writer.write("->\n") 	  
+	  
+	  //add the final part
+	   val leftFormula = guard -- processedFormulas	   
+	   writer.write("\\part[assert]"+"\t")
+	   writer.write("(" + PrinForm(And(leftFormula)) +")")
+	   writer.write("}\n")
+	   
+	   //add assert to partnames
+	   partnames = partnames :+ "assert"
+	   
+	   //add interpolant blocks	   
+	   for( i <- 1 to partnames.length - 1 )  {
+	      val (phrase,index) = partnames.foldLeft((new String(),1))(
+	      (g,x) => {	      
+	    	  	val (ipstr,index) = g
+	    	  	if(index == i + 1 && index > 1) (ipstr + ";" + x, index + 1)
+	    	  	else if(index > 1) (ipstr + "," + x, index + 1)
+	    	  	else (x, index + 1)
+	      	})
+	      writer.write("\\interpolant {"+phrase+"}\n")	     
+	   }
+	  writer.flush()
+	  writer.close()	  
+  }
+
+*/
+
+  /*def getModelListener(funDef: FunDef) : (Map[Identifier, Expr]) => Unit = {
+      
+      //create an interpolation solver
+      val interpolationSolver = new PrincessSolver(ctx)
+      val pre = if (funDef.precondition.isEmpty) BooleanLiteral(true) else matchToIfThenElse(funDef.precondition.get)
+      val body = matchToIfThenElse(funDef.body.get)
+      val resFresh = FreshIdentifier("result", true).setType(body.getType)
+      val post = replace(Map(ResultVariable() -> Variable(resFresh)), matchToIfThenElse(funDef.postcondition.get))
+
+      */
+  /**
+   * This function will be called back by the solver on discovering an input
+   */ /*
+      val processNewInput = (input: Map[Identifier, Expr]) => {
+        //create a symbolic trace for pre and body
+        var symtraceBody = input.foldLeft(List[Expr]())((g, x) => { g :+ Equals(Variable(x._1), x._2) })
+        var parts = List[(FunDef, List[Expr])]()
+
+        //compute the symbolic trace induced by the input
+        val (tracePre, partsPre) =
+          if (funDef.precondition.isDefined) {
+            val resPre = new TraceCollectingEvaluator(ctx, program).eval(pre, input)
+            resPre match {
+              case EvaluationWithPartitions(BooleanLiteral(true), SymVal(guardPre, valuePre), partsPre) => {
+                ((guardPre :+ valuePre), partsPre)
+              }
+              case _ =>
+                reporter.warning("Error in colleting traces for Precondition: " + resPre + " For input: " + input)
+                (List[Expr](), List[(FunDef, List[Expr])]())
+            }
+          } else (List[Expr](), List[(FunDef, List[Expr])]())
+        symtraceBody ++= tracePre
+        parts ++= partsPre
+
+        //collect traces for body
+        val resBody = new TraceCollectingEvaluator(ctx, program).eval(body, input)
+        resBody match {
+          case EvaluationWithPartitions(cval, SymVal(guardBody, valueBody), partsBody) => {
+            //collect traces for the post-condition
+            val postInput = input ++ Map(resFresh -> cval)
+            val resPost = new TraceCollectingEvaluator(ctx, program).eval(post, postInput)
+            resPost match {
+              case EvaluationWithPartitions(BooleanLiteral(true), SymVal(guardPost, valuePost), partsPost) => {
+                //create a symbolic trace for pre and body
+                symtraceBody ++= (guardBody :+ Equals(Variable(resFresh), valueBody))
+
+                //create a set of parts for interpolating
+                parts ++= partsBody ++ partsPost :+ (funDef, symtraceBody)
+
+                //print each part for debugging
+                //parts.foreach((x) => { println("Method: " + x._1.id + " Trace: " + x._2) })
+
+                //create a symbolic trace including the post condition
+                val pathcond = symtraceBody ++ (guardPost :+ valuePost)
+                //println("Final Trace: " + pathcond)
+
+                //convert the guards to princess input
+                //DumpInPrincessFormat(parts, pathcond)         
+                val interpolants = interpolationSolver.getInterpolants(parts,pathcond)
+              }
+              case EvaluationWithPartitions(BooleanLiteral(true), symval, parts) => {
+                reporter.warning("Found counter example for the post-condition: " + postInput)
+              }
+              case _ => reporter.warning("Error in colleting traces for post: " + resPost + " For input: " + postInput)
+            }
+          }
+          case _ => reporter.warning("Error in colleting traces for body: " + resBody + " For input: " + input)
+        }
+      }
+      
+      processNewInput
+    }
+*/

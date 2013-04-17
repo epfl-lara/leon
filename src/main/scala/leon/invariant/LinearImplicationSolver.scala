@@ -32,8 +32,52 @@ class LinearImplicationSolver {
   private var cvarsSet = Set[Expr]()
 
   /**
+   * This procedure produces a set of constraints that need to be satisfiable for the implication to hold
+   * antsSimple - antecedents without template variables
+   * antsTemp - antecedents with template variables
+   * Similarly for conseqsSimple and conseqsTemp
+   * 
+   * Let A,A' and C,C' denote the simple and templated portions of the antecedent and the consequent respectively.
+   * We need to check \exists a, \forall x, A[x] ^ A'[x,a] => C[x] ^ C'[x,a]
+   * 
+   */
+  def constraintsForImplication(antsSimple: Seq[LinearConstraint], antsTemp: Seq[LinearTemplate],
+    conseqsSimple: Seq[LinearConstraint], conseqsTemp: Seq[LinearTemplate],
+    uisolver: UninterpretedZ3Solver): Expr = {
+    
+    val allAnts = (antsSimple ++ antsTemp)
+    val allConseqs = conseqsSimple ++ conseqsTemp
+    //for debugging
+    println("#" * 20)
+    println(allAnts + " => " + allConseqs)
+    println("#" * 20)
+
+    //Optimization 1: Check if ants are unsat (already handled)    
+    val pathVC = Implies(And(antsSimple.map(_.expr).toSeq), And(conseqsSimple.map(_.expr).toSeq))
+    val (satVC, _) = uisolver.solveSATWithFunctionCalls(pathVC)
+    val (satNVC,_) = uisolver.solveSATWithFunctionCalls(Not(pathVC))
+    
+    //Optimization 2: use the unsatisfiability of VC and not VC to simplify the constraint generation
+    //(a) if A => C is false and A' is true then the entire formula is unsat
+    //(b) if A => C is false and A' is not true then we need to ensure A^A' is unsat (i.e, disable Ant)
+    //(c) if A => C is true (i.e, valid) then it suffices to ensure A^A' => C' is valid
+    //(d) if A => C is neither true nor false then we cannot do any simplification 
+    //TODO: Food for thought:  
+    //(a) can we do any simplification for case (d) with the model
+    //(b) could the linearity in the disabled case be exploited 
+    (satVC,satNVC) match {
+      case (Some(false),_) if(antsTemp.isEmpty) => BooleanLiteral(false)   
+      case (Some(false),_) => this.applyFarkasLemma(allAnts, Seq(), true) //here disable the antecedents      
+      case (_,Some(false)) =>  this.applyFarkasLemma(allAnts, conseqsTemp, false)  //here we need to only check the inductiveness of the templates
+      case _ => this.applyFarkasLemma(allAnts, allConseqs, false)               
+    }    
+  }
+
+  /**
    * This procedure uses Farka's lemma to generate a set of non-linear constraints for the input implication.
-   * Note that these are non-linear constraints in real arithmetic.
+   * Note that these non-linear constraints are in real arithmetic.
+   * TODO: Correctness critical issue: Unfortunately, because of issues in scalaZ3 for now the constraints are treated as integer constraints.
+   * To be fixed soon.
    */    
   def applyFarkasLemma(ants: Seq[LinearTemplate], conseqs: Seq[LinearTemplate], disableAnts: Boolean): Expr = {
 
@@ -41,7 +85,7 @@ class LinearImplicationSolver {
     val antCVars = ants.foldLeft(Set[Expr]())((acc, ant) => acc ++ ant.coeffTemplate.keySet)
 
     //the creates constraints for a single consequent
-    def createCtrs(conseq: LinearTemplate): Expr = {
+    def createCtrs(conseq: Option[LinearTemplate]): Expr = {
       //create a set of identifiers one for each ants            
       val lambdas = ants.map((ant) => (ant -> Variable(FreshIdentifier("l", true).setType(Int32Type)))).toMap
       val lambda0 = Variable(FreshIdentifier("l", true).setType(Int32Type))
@@ -57,21 +101,20 @@ class LinearImplicationSolver {
         case None => acc
       })
 
-      val cvars = conseq.coeffTemplate.keys ++ antCVars
-
+      val cvars = antCVars ++ (if(conseq.isDefined) conseq.get.coeffTemplate.keys else Seq()) 
       //for debugging
       cvarsSet ++= cvars
       //println("CVars: "+cvars.size)
 
       //initialize enabled and disabled parts
-      var enabledPart: Expr = (conseq.constTemplate match {
-        case Some(d) => Equals(d, sumConst)
-        case None => Equals(zero, sumConst)
-      })
-      //Fortunately the disbaled case are linear constraints
+      var enabledPart: Expr = if (conseq.isDefined) {
+        conseq.get.constTemplate match {
+          case Some(d) => Equals(d, sumConst)
+          case None => Equals(zero, sumConst)
+        }
+      } else null      
       var disabledPart: Expr = Equals(one, sumConst)
-
-      //total number of constraint vars
+      
       for (cvar <- cvars) {
         //compute the linear combination of all the coeffs of antCVars
         var sumCoeff: Expr = null
@@ -86,9 +129,11 @@ class LinearImplicationSolver {
           }
         }
         //make the sum equal to the coeff. of cvar in conseq
-        enabledPart = And(enabledPart,
-          (if (conseq.coeffTemplate.contains(cvar)) Equals(conseq.coeffTemplate.get(cvar).get, sumCoeff)
-          else Equals(zero, sumCoeff)))
+        if (conseq.isDefined) {
+          enabledPart = And(enabledPart,
+            (if (conseq.get.coeffTemplate.contains(cvar)) Equals(conseq.get.coeffTemplate.get(cvar).get, sumCoeff)
+            else Equals(zero, sumCoeff)))
+        }
 
         disabledPart = And(disabledPart, Equals(zero, sumCoeff))
       } //end of cvars loop
@@ -98,15 +143,14 @@ class LinearImplicationSolver {
       else
         And(And(lambdaCtrs), Or(enabledPart, disabledPart))
     }
-
-    val (head :: tail) = conseqs
-
-    //this is an optimization
+      
     if (disableAnts) {
-      //convertIntToReal(createCtrs(head))
-      createCtrs(head)
+      //here conseqs are empty
+      //convertIntToReal(createCtrs(head))      
+      createCtrs(None)
     } else {
-      val nonLinearCtrs = tail.foldLeft(createCtrs(head))((acc, conseq) => And(acc, createCtrs(conseq)))
+      val Seq(head, tail@_*) = conseqs
+      val nonLinearCtrs = tail.foldLeft(createCtrs(Some(head)))((acc, conseq) => And(acc, createCtrs(Some(conseq))))
       //convertIntToReal(nonLinearCtrs)
       nonLinearCtrs
     }
@@ -115,7 +159,7 @@ class LinearImplicationSolver {
   /**
    * converts all integer valued variables and literals to RealType
    */
-  def convertIntToReal(inexpr: Expr): Expr = {
+  def convertIntLiteralToReal(inexpr: Expr): Expr = {
     //var intIdToRealId = Map[Identifier, Identifier]()
     val transformer = (e: Expr) => e match {
       case IntLiteral(v) => RealLiteral(v, 1)

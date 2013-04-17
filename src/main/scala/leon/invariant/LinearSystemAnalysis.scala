@@ -188,12 +188,9 @@ class ConstraintTracker(fundef : FunDef) {
           //lhs corresponds to a blocking id in this case
           lhs match {
             case Variable(childId) if (isBlockingId(childId)) => {
-              val childNode = createOrLookupId(parentNode, childId)
-              
+              val childNode = createOrLookupId(parentNode, childId)              
               //recursively add the rhs to the childNode
-              addConstraintRecur(rhs,childNode)
-              /*val ctr = exprToConstraint(rhs)
-              childNode.constraints += ctr*/
+              addConstraintRecur(rhs,childNode)              
               (Set(childNode), Set())
             }
             case _ => throw IllegalStateException("Iff block --- encountered something that is not a blocking id: " + lhs)
@@ -614,7 +611,7 @@ class ConstraintTracker(fundef : FunDef) {
             //antTempSet +:= currentTemps.toSet
             antSet +:= (currentCtrs.toSet, currentTemps.toSet)
           } else {
-            println("Found unsat path: " + pathExpr)
+            //println("Found unsat path: " + pathExpr)
           }
         }
       }
@@ -633,62 +630,63 @@ class ConstraintTracker(fundef : FunDef) {
             val invt = tempSynth(fi)
             newants ++= invt
           }
-          //recurse into children
+          //recurse into children as along as we haven't found an invariant
           var aInvariant : Option[Expr] = None
           n.Children.takeWhile(_ => aInvariant == None).foreach((child) => { aInvariant = traversePostTree(child, newants, newcons) })
           aInvariant
         }
         case CtrLeaf() => {
           //here we need to check if the every antecedent in antSet implies the conseqs of this path 
-          val nonLinearCtrs = antSet.foldLeft(null: Expr)((acc, ants) => {
+          val nonLinearCtr = antSet.foldLeft(BooleanLiteral(true): Expr)((acc, ants) => {
 
-            //this is an optimization (check if ants._1 => conseqs._1) is unsat if yes 
-            //pass this information on to the NonLinear ctr generator
-            val pathVC = Implies(And(ants._1.map(_.expr).toSeq), And(conseqs.map(_.expr).toSeq))
-            val (satRes, _) = uiSolver.solveSATWithFunctionCalls(pathVC)
-            val disableAnts = if (satRes.isDefined && satRes.get == false) true else false
+            if (acc == BooleanLiteral(false))
+              acc
+            else {
 
-            val allAnts = (ants._1 ++ ants._2 ++ postAnts)
-            val allConseqs = conseqs ++ inTemplates
-            //for debugging
-            println("#" * 20)
-            println(allAnts + " => " + allConseqs)
-            println("#" * 20)
-
-            //here we know that the antecedents are satisfiable
-            val newCtrs = implicationSolver.applyFarkasLemma(allAnts.toSeq, allConseqs, disableAnts)            
-            if (acc == null) newCtrs
-            else And(acc, newCtrs)
-          })                    
-          
-          //look for a solution of non-linear constraints by interpreting all integers as Reals
-          //println("Non linear constraints for this branch: " +nonLinearCtrs)          
-          val (res, model) = uiSolver.solveSATWithFunctionCalls(nonLinearCtrs)
-          if (res.isDefined && res.get == true) {
-            //printing the model here for debugging
-            //println("Model: "+model)
-            //construct an invariant (and print the model)
-            val invs = inTemplates.map((inTemp) => {
-              val coeff = inTemp.coeffTemplate.map((entry) => {
-                val (k, v) = entry
-                v match {
-                  case Variable(id) => (k, model(id))
-                  case _ => (k, v)
-                }
-              })
-              val const = inTemp.constTemplate match {
-                case Some(Variable(id)) => model(id)
-                case Some(t) => t
-                case None => zero
+              val newCtr = implicationSolver.constraintsForImplication(ants._1.toSeq, ants._2.toSeq ++ postAnts, conseqs, inTemplates.toSeq, uiSolver)
+              newCtr match {
+                case BooleanLiteral(true) => acc //nothing to add as no new constraints are generated              
+                case fls @ BooleanLiteral(false) => fls //entire set of constrains are unsat
+                case _ => if (acc == BooleanLiteral(true)) newCtr
+                else And(acc, newCtr)
               }
-              val expr = coeff.foldLeft(const)((acc, entry) => Plus(acc, Times(entry._1, entry._2)))
-              LessEquals(expr,zero)
-            })
-            val invariant = And(invs.toSeq)
-            Some(invariant)
-          } else {
-            None
-          }
+            }
+          })   
+          
+          nonLinearCtr match { 
+            case BooleanLiteral(true) => throw IllegalStateException("The original postcondition is inductive, nothing to infer")
+            case BooleanLiteral(false) => None //skip to the next leaf
+            case _ => {
+              //look for a solution of non-linear constraints. The constraint variables are all reals
+              //println("Non linear constraints for this branch: " +nonLinearCtrs)          
+              val (res, model) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)
+              if (res.isDefined && res.get == true) {
+                //printing the model here for debugging
+                //println("Model: "+model)
+                //construct an invariant (and print the model)
+                val invs = inTemplates.map((inTemp) => {
+                  val coeff = inTemp.coeffTemplate.map((entry) => {
+                    val (k, v) = entry
+                    v match {
+                      case Variable(id) => (k, model(id))
+                      case _ => (k, v)
+                    }
+                  })
+                  val const = inTemp.constTemplate match {
+                    case Some(Variable(id)) => model(id)
+                    case Some(t) => t
+                    case None => zero
+                  }
+                  val expr = coeff.foldLeft(const)((acc, entry) => Plus(acc, Times(entry._1, entry._2)))
+                  LessEquals(expr, zero)
+                })
+                val invariant = And(invs.toSeq)
+                Some(invariant)
+              } else {
+                None
+              }              
+            }            
+          }          
         }
       }
     }

@@ -33,7 +33,10 @@ class TemplateFactory {
 
   /**
    * The ordering of the expessions in the List[Expr] is very important.
-   * TODO: Feature: in the future use more sophisticated ways of constructing terms
+   * TODO: Feature: 
+   * (a) allow template functions and functions with template variables
+   * (b) allow template ADTs
+   * (c) do we need to consider sophisticated ways of constructing terms ?  
    */
   def getTypedCompositeTerms(baseTerms: Seq[Expr]): List[Expr] = {
 
