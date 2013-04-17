@@ -1,7 +1,9 @@
 package lesynth
+package refinement
 
 import leon.purescala.Trees._
-import leon.purescala.Definitions.{ Program, VarDecl, FunDef, VarDecls }
+import leon.purescala.TypeTrees._
+import leon.purescala.Definitions._
 import leon.purescala.Common.{ Identifier, FreshIdentifier }
 import leon.purescala.TreeOps
 import leon.plugin.ExtractionPhase
@@ -10,42 +12,47 @@ import insynth.leon.loader.LeonLoader
 
 import insynth.util.logging.HasLogger
 
-class Refiner(program: Program, hole: Hole, holeFunDef: FunDef) extends HasLogger {      
+class Filter(program: Program, holeFunDef: FunDef, refiner: VariableRefiner) extends HasLogger {      
   import Globals._
   
   def isAvoidable(expr: Expr, funDefArgs: List[Identifier]) = {
     fine(
       "Results for refining " + expr + ", are: " +
-      " ,recurentExpression == expr " + (recurentExpression == expr) +
       " ,isCallAvoidableBySize(expr) " + isCallAvoidableBySize(expr, funDefArgs) +
       " ,hasDoubleRecursion(expr) " + hasDoubleRecursion(expr) +
-      " ,isOperatorAvoidable(expr) " + isOperatorAvoidable(expr)
+      " ,isOperatorAvoidable(expr) " + isOperatorAvoidable(expr) +
+      " ,isUnecessaryInstanceOf(expr) " + isUnecessaryInstanceOf(expr)
     )
-    recurentExpression == expr || isCallAvoidableBySize(expr, funDefArgs) || hasDoubleRecursion(expr) || isOperatorAvoidable(expr)
+    isCallAvoidableBySize(expr, funDefArgs) || hasDoubleRecursion(expr) ||
+    isOperatorAvoidable(expr) || isUnecessaryInstanceOf(expr)
   }
   
   //val holeFunDef = Globals.holeFunDef
     
-  val recurentExpression: Expr = 
+  val pureRecurentExpression: Expr = 
 	  if (holeFunDef.hasBody) {
-	    FunctionInvocation(holeFunDef, holeFunDef.args map { varDecl => Variable(varDecl.id) })
+	    FunctionInvocation(holeFunDef, holeFunDef.args map { _.toVariable })
 	  } else
 	    Error("Hole FunDef should have a body")
+  fine("Refiner initialized. Recursive call: " + pureRecurentExpression)
     
+  def isBadInvocation(expr2: Expr) = expr2 match {
+    case `pureRecurentExpression` =>
+      fine("pure recurrent expression detected")
+      true
+    case FunctionInvocation(`holeFunDef`, args) =>
+      (0 /: (args zip holeFunDef.args.map(_.id))) {
+        case (res, (arg, par)) if res == 0 => isLess(arg, par)
+        case (res, _) => res
+      } >= 0
+    case _ => false
+  }
+  
   // check according to size
   // true - YES, false - NO or don't know
   // basically a lexicographic (well-founded) ordering
   def isCallAvoidableBySize(expr: Expr, funDefArgs: List[Identifier]) = {
-	    	
-    def isBadInvocation(expr2: Expr) = expr2 match {
-	    case FunctionInvocation(`holeFunDef`, args) =>
-	      (0 /: (args zip holeFunDef.args.map(_.id))) {
-	        case (res, (arg, par)) if res == 0 => isLess(arg, par)
-	        case (res, _) => res
-	      } >= 0
-	    case _ => false
-	  }
-	    
+	    		    
   	import TreeOps.treeCatamorphism
   	
   	treeCatamorphism(
@@ -73,7 +80,7 @@ class Refiner(program: Program, hole: Hole, holeFunDef: FunDef) extends HasLogge
 	  
 	  getSize(arg, 0)
   }
-  
+    
   def hasDoubleRecursion(expr: Expr) = {      
     var found = false
     
@@ -105,6 +112,27 @@ class Refiner(program: Program, hole: Hole, holeFunDef: FunDef) extends HasLogge
     case GreaterEquals(expr1, expr2) if expr1 == expr2 => true 
     case Equals(expr1, expr2) if expr1 == expr2 => true 
     case _ => false
+  }
+  
+  def isUnecessaryInstanceOf(expr: Expr) = {
+    def isOfClassType(exp: Expr, classDef: ClassTypeDef) =
+      expr.getType match {
+        case tpe: ClassType => tpe.classDef == classDef
+        case _ => false
+      }
+    expr match {
+	    case CaseClassInstanceOf(classDef, innerExpr)
+	    	if isOfClassType(innerExpr, classDef) =>
+	      true
+	    case CaseClassInstanceOf(classDef, v@Variable(id)) => {
+	      val possibleTypes = refiner.getPossibleTypes(id)
+	      if (possibleTypes.size == 1)
+	        possibleTypes.head.classDef == classDef
+	      else
+	        false
+	    }
+	    case _ => false
+    }
   }
   
 }

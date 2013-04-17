@@ -1,4 +1,5 @@
 package lesynth
+package examples
 
 import leon.{ Main => LeonMain, Reporter, DefaultReporter, SilentReporter, Settings, LeonContext }
 import leon.solvers.{ Solver, TimeoutSolver }
@@ -18,14 +19,11 @@ import insynth.leon.loader.{ HoleExtractor, LeonLoader }
 object InputExamples {
 
   def getDataGenInputExamples(evaluator: Evaluator, p: Problem,
-  numOfModels: Int, numOfTries: Int, _forcedFreeVars: Option[Seq[Identifier]])
-  (argumentIds: Seq[Identifier], loader: LeonLoader) = {
-    
+    numOfModels: Int, numOfTries: Int, _forcedFreeVars: Option[Seq[Identifier]]) = {
     val models = findModels(p.pc, evaluator, numOfModels, numOfTries,
       forcedFreeVars = _forcedFreeVars)
 
     models.toList
-    
   }
 
   def getFixedInputExamples(argumentIds: Seq[Identifier], loader: LeonLoader) = {

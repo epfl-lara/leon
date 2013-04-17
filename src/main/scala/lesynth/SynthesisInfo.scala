@@ -1,5 +1,7 @@
 package lesynth
 
+import leon.StopwatchCollections
+
 /**
  * Contains information about the synthesis process
  */
@@ -7,6 +9,17 @@ class SynthesisInfo {
 
   import SynthesisInfo.Action
 
+  // synthesis information
+  private var _numberOfEnumeratedExpressions: Long = 0
+  def numberOfEnumeratedExpressions = _numberOfEnumeratedExpressions
+  def numberOfEnumeratedExpressions_=(numberOfEnumeratedExpressionsIn: Long) =
+  	_numberOfEnumeratedExpressions = numberOfEnumeratedExpressionsIn
+  	
+  private var _iterations: Int = 0
+  def iterations = _iterations
+  def iterations_=(iterationsIn: Int) =
+  	_iterations = iterationsIn
+  
   // times
   private var times = new Array[Long](Action.values.size)
   private var startTimes = new Array[Long](Action.values.size)
