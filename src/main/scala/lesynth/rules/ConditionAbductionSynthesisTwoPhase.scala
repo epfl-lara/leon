@@ -7,12 +7,14 @@ import leon.purescala.TypeTrees._
 import leon.purescala.TreeOps._
 import leon.purescala.Extractors._
 import leon.purescala.Definitions._
-import leon.purescala.DataGen.findModels
 import leon.synthesis._
 import leon.solvers.{ Solver, TimeoutSolver }
 import leon.evaluators.CodeGenEvaluator
 
-import InputExamples._
+import lesynth.examples.InputExamples._
+import lesynth.evaluation._
+
+import leon.StopwatchCollections
 
 case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abduction synthesis (two phase).") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
@@ -38,21 +40,24 @@ case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abductio
                 val freshResVar = Variable(freshResID)
                 
                 val codeGenEval = new CodeGenEvaluator(sctx.context, sctx.program)
-                def getInputExamples = 
-                  getDataGenInputExamples(codeGenEval, p, 
-                		40, 2000, Some(holeFunDef.args.map(_.id))
-                	) _
+                def getInputExamples = {
+                  () => getDataGenInputExamples(codeGenEval, p, 
+                		20, 2000, Some(p.as)
+                	)
+                }
                 
+            	val evaluationStrategy = new CodeGenEvaluationStrategy(program, holeFunDef, sctx.context, 500)
+                	
                 holeFunDef.postcondition = Some(replace(
                   Map(givenVariable.toVariable -> ResultVariable().setType(holeFunDef.returnType)), p.phi))
                 holeFunDef.precondition = Some(p.pc)
 
                 val synthesizer = new SynthesizerForRuleExamples(
-                  solver, program, desiredType, holeFunDef, p, sctx, freshResVar,
-                  40, 2, 1,
+                  solver, program, desiredType, holeFunDef, p, sctx, freshResVar, evaluationStrategy,
+                  20, 1, 1,
                   reporter = reporter,
                   introduceExamples = getInputExamples,  
-								  numberOfTestsInIteration = 50,
+								  numberOfTestsInIteration = 25,
 								  numberOfCheckInIteration = 2
 							  )
 
@@ -60,6 +65,7 @@ case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abductio
                   case EmptyReport => RuleApplicationImpossible
                   case fr@FullReport(resFunDef, _) =>
                     println(fr.summaryString)
+                    println("Compilation time: " + StopwatchCollections.get("Compilation").getMillis)
                     RuleSuccess(Solution(resFunDef.getPrecondition, Set.empty, resFunDef.body.get))
                 }
               } catch {

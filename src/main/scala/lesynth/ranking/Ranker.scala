@@ -1,18 +1,21 @@
 package lesynth
+package ranking
 
 import util.control.Breaks._
 import scala.collection._
 
 import leon.purescala.Trees.{ Variable => LeonVariable, _ }
 
-class Ranker(candidates: Seq[Expr], evaluation: Evaluation, printStep: Boolean = false) {
+class Ranker(candidates: IndexedSeq[Candidate], evaluation: Evaluation, checkTimeout: (() => Boolean) = { () => false }, printStep: Boolean = false) {
   
-  var rankings: Array[Int] = (0 until candidates.size).toArray
+  val candidatesSize = candidates.size
+  
+  var rankings: Array[Int] = (0 until candidatesSize).toArray
   
   // keep track of intervals
   var tuples: Map[Int, (Int, Int)] =
-    (for (i <- 0 until candidates.size)
-      yield (i, (0, evaluation.getNumberOfExamples))) toMap
+    (for (i <- 0 until candidatesSize)
+      yield (i, (0, evaluation.numberOfExamples))) toMap
   
   def getKMax(k: Int) = {
     
@@ -43,18 +46,18 @@ class Ranker(candidates: Seq[Expr], evaluation: Evaluation, printStep: Boolean =
   def bubbleDown(ind: Int): Unit = {
     if (compare(rankings(ind), rankings(ind + 1))) {
     	swap(ind, ind + 1)
-    	if (ind < candidates.size-2)
+    	if (ind < candidatesSize-2)
     		bubbleDown(ind + 1)
     }      
   }
     
-  var numberLeft = candidates.size
+  var numberLeft = candidatesSize
   
   def getMax = {
     
-    numberLeft = candidates.size
+    numberLeft = candidatesSize
     
-    while (numberLeft > 1) {
+    while (numberLeft > 1 && !checkTimeout()) {
       
       evaluate(rankings(0))
       
@@ -81,8 +84,7 @@ class Ranker(candidates: Seq[Expr], evaluation: Evaluation, printStep: Boolean =
       println("***: " + numberLeft)
     }
     
-    candidates(rankings(0))
-    
+    candidates(rankings(0))    
   }
   
 //  def getVerifiedMax = {    
@@ -109,6 +111,9 @@ class Ranker(candidates: Seq[Expr], evaluation: Evaluation, printStep: Boolean =
     tuple1._2 <= tuple2._1
   }
   
+  // candidate x <= candidate y heuristically (compare their sizes)
+  def heurCompare(x: Int, y: Int) = candidates(x).getWeight >= candidates(y).getWeight
+  
   def compare(x: Int, y: Int) = {
     val tuple1 = tuples(x)
     val tuple2 = tuples(y)
@@ -117,7 +122,8 @@ class Ranker(candidates: Seq[Expr], evaluation: Evaluation, printStep: Boolean =
     val median2 = (tuple2._1 + tuple2._2).toFloat/2
     
     /*median1 < median2 || median1 == median2 && */
-    tuple1._2 < tuple2._2 || tuple1._2 == tuple2._2 && median1 < median2
+    tuple1._2 < tuple2._2 || tuple1._2 == tuple2._2 &&
+    	(heurCompare(x, y)  || median1 < median2)
   }
   
   def rankOf(expr: Int) =
@@ -128,7 +134,7 @@ class Ranker(candidates: Seq[Expr], evaluation: Evaluation, printStep: Boolean =
       tuples.toList.sortWith((tp1, tp2) => rankOf(tp1._1) <= rankOf(tp2._1)).zipWithIndex)
       yield (if (tuple._1 == rankings(0)) "->" else if (ind >= numberLeft) "/\\" else "  ") + tuple._1 +
       	": " +
-      	((0 until evaluation.getNumberOfExamples) map {
+      	((0 until evaluation.numberOfExamples) map {
       		x => if (x < tuple._2._1) '+' else if (x >= tuple._2._2) '-' else '_'
   		  }).mkString).mkString("\n")
 	

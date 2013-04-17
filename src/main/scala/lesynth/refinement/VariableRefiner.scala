@@ -1,4 +1,5 @@
 package lesynth
+package refinement
 
 import scala.collection.mutable.{Map => MutableMap}
 import scala.collection.mutable.{Set => MutableSet}
@@ -29,6 +30,8 @@ class VariableRefiner(directSubclassMap: Map[ClassType, Set[ClassType]], variabl
         case _ =>
       }
     }    
+  
+  def getPossibleTypes(id: Identifier) = variableRefinements(id)
   
   def checkRefinements(expr: Expr, allDeclarations: List[Declaration]) =
 	  // check for refinements
