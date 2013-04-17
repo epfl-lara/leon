@@ -45,7 +45,7 @@ class LinearImplicationSolver {
     conseqsSimple: Seq[LinearConstraint], conseqsTemp: Seq[LinearTemplate],
     uisolver: UninterpretedZ3Solver): Expr = {
     
-    val allAnts = (antsSimple ++ antsTemp)
+    val allAnts = antsSimple ++ antsTemp
     val allConseqs = conseqsSimple ++ conseqsTemp
     //for debugging
     println("#" * 20)
@@ -67,10 +67,36 @@ class LinearImplicationSolver {
     //(b) could the linearity in the disabled case be exploited 
     (satVC,satNVC) match {
       case (Some(false),_) if(antsTemp.isEmpty) => BooleanLiteral(false)   
-      case (Some(false),_) => this.applyFarkasLemma(allAnts, Seq(), true) //here disable the antecedents      
-      case (_,Some(false)) =>  this.applyFarkasLemma(allAnts, conseqsTemp, false)  //here we need to only check the inductiveness of the templates
-      case _ => this.applyFarkasLemma(allAnts, allConseqs, false)               
+      case (Some(false),_) => this.constraintsForTheoryFormula(antsSimple,antsTemp, Seq(), Seq(), uisolver, true) //here disable the antecedents      
+      case (_,Some(false)) =>  this.constraintsForTheoryFormula(antsSimple, antsTemp, Seq(), conseqsTemp, uisolver, false)  //here we need to only check the inductiveness of the templates
+      case _ => this.constraintsForTheoryFormula(antsSimple,antsTemp,conseqsSimple,conseqsTemp, uisolver, false)               
     }    
+  }
+  
+  def constraintsForTheoryFormula(antsSimple: Seq[LinearConstraint], antsTemp: Seq[LinearTemplate],
+    conseqsSimple: Seq[LinearConstraint], conseqsTemp: Seq[LinearTemplate],
+    uisolver: UninterpretedZ3Solver, disableAnts : Boolean) : Expr = {
+    
+    val allAnts = antsSimple ++ antsTemp
+    val allConseqs = conseqsSimple ++ conseqsTemp
+    //convert the theory formula into linear arithmetic formula
+    //TODO: Handle ADTs also
+    //get all the functions used in the formulas    
+    val funcs = (allAnts ++ allConseqs).map(getAllFuncTerms(_)).toSet 
+      
+    //step(b) look for all equivalence classes of functions that aren't ruled out by the ants (this is the bell number)
+    //as an optimization consider only the equivalence classes that contains the implied equalities
+      
+    //step(c) for each equivalence class generate k constraints each assumes the equivalence and generates new constraints 
+      
+    //step(d) generate constraints for each case and consider the disjunction of all of them
+    
+    //step(e) return the entire set of constraints
+  }
+  
+  def getAllFuncTerms(lt : LinearTemplate) : Iterable[FunctionInvocation] = {
+    val funcs = lt.coeffTemplate.keys.filter(_.isInstanceOf[FunctionInvocation]).map(_.asInstanceOf[FunctionInvocation])
+    funcs
   }
 
   /**
@@ -88,7 +114,7 @@ class LinearImplicationSolver {
     def createCtrs(conseq: Option[LinearTemplate]): Expr = {
       //create a set of identifiers one for each ants            
       val lambdas = ants.map((ant) => (ant -> Variable(FreshIdentifier("l", true).setType(Int32Type)))).toMap
-      val lambda0 = Variable(FreshIdentifier("l", true).setType(Int32Type))
+      val lambda0 = Variable(FreshIdentifier("l", true).setType(RealType))
 
       //add a bunch of constraints on lambdas
       val lambdaCtrs = (ants.collect((ant) => ant.template match {
@@ -146,12 +172,12 @@ class LinearImplicationSolver {
       
     if (disableAnts) {
       //here conseqs are empty
-      //convertIntToReal(createCtrs(head))      
+      //convertIntLiteralToReal(createCtrs(None))      
       createCtrs(None)
     } else {
       val Seq(head, tail@_*) = conseqs
       val nonLinearCtrs = tail.foldLeft(createCtrs(Some(head)))((acc, conseq) => And(acc, createCtrs(Some(conseq))))
-      //convertIntToReal(nonLinearCtrs)
+      //convertIntLiteralToReal(nonLinearCtrs)
       nonLinearCtrs
     }
   }
