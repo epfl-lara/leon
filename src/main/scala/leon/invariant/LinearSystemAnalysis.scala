@@ -2,6 +2,7 @@ package leon
 package invariant
 
 import z3.scala._
+import purescala.DataStructures._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
@@ -115,9 +116,15 @@ class ConstraintTracker(fundef : FunDef) {
   private val implicationSolver = new LinearImplicationSolver()
   //this is a mutable map (used for efficiency)
   private var treeNodeMap = collection.mutable.Map[Identifier, CtrNode]()
-  //root of the tree. This would be set while constraints are added
+  //root of the trees (explained below). This would be set while constraints are added
+  //body and post are DNF formulas and hence are represented using trees
   private var bodyRoot: CtrTree = CtrLeaf()
-  private var postRoot: CtrTree = CtrLeaf()
+  private var postRoot: CtrTree = CtrLeaf()  
+  //the set of uninterpreted function calls encountered during the analysis
+  //these are eventually axiomatized and added to the body root
+  private var UIFs  = Set[Expr]()
+  
+  //some constants
   private val zero = IntLiteral(0)
   private val one = IntLiteral(1)
   private val mone =IntLiteral(-1)
@@ -239,9 +246,9 @@ class ConstraintTracker(fundef : FunDef) {
       node
     })
 
-    //important: calling makelinear may result in disjunctions and also potentially conjunctions
-    val flatExpr = FlattenFunction(innerExpr)
-    //val nnfExpr = TransformNot(flatExpr)    
+    //flatten function returns a newexpresion without function symbols and a set of newly created function equalities
+    val (flatExpr,newEquivs) = FlattenFunction(innerExpr)
+    UIFs ++= newEquivs
     addConstraintRecur(flatExpr, ctrnode)
   }
 
@@ -523,13 +530,11 @@ class ConstraintTracker(fundef : FunDef) {
   }
 
   /**
-   * This is a little tricky. Here we need keep identify function calls that are equivalent
-   * and call them by the same name. Ideally this requires congruence closure algorithm.
-   * TODO: Feature: handle uninterpreted functions
-   */
+   * Replaces every function invocation by a fresh variable and records the equality.   
+   */  
   var processedFIs = Map[FunctionInvocation, FunctionInvocation]()
-  def FlattenFunction(inExpr: Expr): Expr = {
-    var conjuncts = Set[Expr]()
+  def FlattenFunction(inExpr: Expr): (Expr,Set[Expr]) = {
+    var newEquivs = Set[Expr]()
 
     def flattenFunc(e: Expr): Expr = {
       e match {
@@ -542,7 +547,7 @@ class ConstraintTracker(fundef : FunDef) {
                 case t: Terminal => (acc :+ t)
                 case arge @ _ => {
                   val freshvar = Variable(FreshIdentifier("arg", true).setType(arge.getType))
-                  conjuncts += Equals(freshvar, arge)
+                  newEquivs += Equals(freshvar, arge)
                   (acc :+ freshvar)
                 }
               })
@@ -556,7 +561,7 @@ class ConstraintTracker(fundef : FunDef) {
       }
     }
     var newExpr = simplePostTransform(flattenFunc)(inExpr)
-    And((conjuncts + newExpr).toSeq)
+    (newExpr, newEquivs)    
   }
 
   //some utility methods
@@ -569,7 +574,8 @@ class ConstraintTracker(fundef : FunDef) {
 
   /*def CtrsToExpr(ctrs : Set[Linear]) : Expr ={
     And(ctrs.map(_.template).toSeq)
-  } */
+  } */  
+  
 
   /**
    * This function computes invariants belonging to the template.
@@ -578,6 +584,7 @@ class ConstraintTracker(fundef : FunDef) {
    */
   def solveForTemplates(inFun: FunDef, tempSynth: FunctionInvocation => Set[LinearTemplate], 
       inTemplates: Set[LinearTemplate], uiSolver : UninterpretedZ3Solver): Option[Map[FunDef, Expr]] = {
+             
     //val templateMap = Map[Identifier,Set[LinearConstraint]]()     
 
     //first traverse the body and collect all the antecedents               
@@ -602,19 +609,24 @@ class ConstraintTracker(fundef : FunDef) {
             traverseBodyTree(child, newCtrs, newTemps)
         }
         case CtrLeaf() => {
+                    
           //add the currnetCtrs only if it is not unsat
           val pathExpr = And(currentCtrs.foldLeft(Seq[Expr]())((acc, ctr) => (acc :+ ctr.expr)))
           val (res, model) = uiSolver.solveSATWithFunctionCalls(pathExpr)
 
           if (!res.isDefined || res.get == true) {
-            //antCtrSet +:= currentCtrs.toSet
-            //antTempSet +:= currentTemps.toSet
+            //now create a  uif tree for this path by reducing the UIFs to the base theory.             
+        	  val uifCtrs = 
             antSet +:= (currentCtrs.toSet, currentTemps.toSet)
           } else {
             //println("Found unsat path: " + pathExpr)
           }
         }
       }
+    }
+    
+    def traverseUIFtree(tree : CtrTree, currentCtrs: Seq[LinearConstraint], currentTemps: Seq[LinearTemplate]) ={
+      
     }
 
     def traversePostTree(tree: CtrTree, postAnts: Seq[LinearTemplate], conseqs: Seq[LinearConstraint]): Option[Expr] = {
@@ -700,4 +712,88 @@ class ConstraintTracker(fundef : FunDef) {
     else None 
   }
 
+  
+  //convert the theory formula into linear arithmetic formula
+  //TODO: Handle ADTs also  
+  def constraintsForUIFs(precond: Expr, uisolver: UninterpretedZ3Solver, disableAnts : Boolean) : Expr = {
+        
+    //Part(I): Finding the set of all pairs of funcs that are implied by the precond
+    var impliedGraph = new UndirectedGraph[Expr]()
+    var nimpliedSet = Set[(Expr,Expr)]()
+    
+    //compute the cartesian product of the calls and select the pairs implied by the precond
+    val product = UIFs.foldLeft(Set[(Expr,Expr)]())((acc, fi) => acc ++ UIFs.map((_,fi)))
+    
+    val equivPairs = product.foldLeft(Set[(Expr,Expr)]())((acc,pair) => {
+      val (call1,call2) = (pair._1,pair._2)
+      if(!impliedGraph.BFSReach(call1, call2)){        
+        if(!nimpliedSet.contains((call1, call2)))
+        {          
+          val (ant,conseqs) = axiomatizeEquality(call1,call2)
+         //check if equality follows from the preconds          
+          val res = uisolver.solveSATWithFunctionCalls(Not(Implies(precond,ant)))
+          res._1 match{
+            case Some(false) => {
+             //here the equality follows from the precondition
+              impliedGraph.addEdge(call1, call2)
+              acc + pair
+            }
+            case _ => {
+              //here the equality does not follow from the precondition
+              nimpliedSet ++= Set((call1,call2),(call2,call1))              
+              acc
+            }
+          }                  
+        }
+        else acc               
+      }
+      else acc        
+    })    
+    //Part (II) return the constraints. For each implied call, the constraints are just that their return values are equal.
+    //For other calls the constraints are full implication
+    val ctrs = UIFs.foldLeft(Seq[Expr]())((acc,pair) => {
+      val (call1,call2)= pair
+      val (v1,fi1) = call1
+      val (v2,fi2) = call2
+      if(equivPairs.contains(call)) acc ++ Equals(v1,v2)  
+      else {
+        val (ant,conseq) = axiomatizeEquality(call1,call2)
+        Or(Not(ant),conseq)
+      }        
+    })
+  }
+  
+  /**
+   * This generates a constraint for the calls to be equal
+   * TODO: how can we handle functions with templates variables and functions with template names
+   */
+  def axiomatizeEquality(call1: Expr, call2: Expr): (Expr, Expr) = {
+    (call1, call2) match {
+      case (Equals(v1 @ Variable(_), fi1 @ FunctionInvocation(_, _)), Equals(v2 @ Variable(_), fi2 @ FunctionInvocation(_, _))) => {
+        val ants = (fi1.args.zip(fi2.args)).foldLeft(Seq[Expr]())((acc, pair) => {
+          val (arg1, arg2) = pair
+          acc :+ Equals(arg1, arg2)
+        })
+        val conseq = Equals(v1, v2)
+        (And(ants), conseq)
+      }
+    }
+  } 
+  
+  /**
+   * This function returns all the calls in the in the linear template
+   * Assumes that all function invocations have been flattened.
+   */
+  /*def getAllCalls(lt : LinearTemplate) : Iterable[Expr] = {
+    lt.template match {
+      case Equals(Variable(_),FunctionInvocation(_,_)) => {
+          Seq(lt.template)
+        } 
+      case _  if(lt.coeffTemplate.keys.find(_.isInstanceOf[FunctionInvocation]).isDefined) => {
+        throw IllegalStateException("FunctionInvocations not flattened in "+lt.template)  
+      }
+      case _ => Seq()
+    }    
+  }
+*/
 }
