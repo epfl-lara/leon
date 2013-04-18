@@ -33,6 +33,7 @@ class TemplateFactory {
 
   /**
    * The ordering of the expessions in the List[Expr] is very important.
+   * TODO: correctness issue: flatten the functions in the template
    * TODO: Feature: 
    * (a) allow template functions and functions with template variables
    * (b) allow template ADTs

@@ -2,6 +2,7 @@ package leon
 package invariant
 
 import z3.scala._
+import purescala.DataStructures._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
@@ -82,21 +83,97 @@ class LinearImplicationSolver {
     //convert the theory formula into linear arithmetic formula
     //TODO: Handle ADTs also
     //get all the functions used in the formulas    
-    val funcs = (allAnts ++ allConseqs).map(getAllFuncTerms(_)).toSet 
+    val calls = (allAnts ++ allConseqs).map(getAllCalls(_)).toSet 
       
-    //step(b) look for all equivalence classes of functions that aren't ruled out by the ants (this is the bell number)
-    //as an optimization consider only the equivalence classes that contains the implied equalities
+    //step(b) look for all equivalence classes of functions (the number of such classes is given by the bell number)
+    //as an optimization consider only the equivalence classes that contain the implied equalities
+    
       
-    //step(c) for each equivalence class generate k constraints each assumes the equivalence and generates new constraints 
+    //step(c) for each equivalence class generate k constraints that assumes the equivalence and generates new constraints that guarantee it 
       
-    //step(d) generate constraints for each case and consider the disjunction of all of them
+    //step(d) add the constraints generated in this step as a disjunct 
     
     //step(e) return the entire set of constraints
   }
+
+  //TODO: how can we handle functions with templates variables and functions with template names
+  /**
+   * This generates a constraint for the calls to be equal
+   */
+  def axiomatizeEquality(call1: Expr, call2: Expr): (Expr, Expr) = {
+    (call1, call2) match {
+      case (Equals(v1 @ Variable(_), fi1 @ FunctionInvocation(_, _)), Equals(v2 @ Variable(_), fi2 @ FunctionInvocation(_, _))) => {
+        val ants = (fi1.args.zip(fi2.args)).foldLeft(Seq[Expr]())((acc, pair) => {
+          val (arg1, arg2) = pair
+          acc :+ Equals(arg1, arg2)
+        })
+        val conseq = Equals(v1, v2)
+        (And(ants), conseq)
+      }
+    }
+  } 
   
-  def getAllFuncTerms(lt : LinearTemplate) : Iterable[FunctionInvocation] = {
-    val funcs = lt.coeffTemplate.keys.filter(_.isInstanceOf[FunctionInvocation]).map(_.asInstanceOf[FunctionInvocation])
-    funcs
+  /**
+   * This procedure generates all the equivalence classes of the set of functions given as input
+   * that are consistent with the given precondition.
+   * Caution: very high worst case running time, O(bell-number(funcs.size))    
+   */
+  def getEquivalenceClasses(calls : Set[Expr], precond : Expr, 
+      uisolver : UninterpretedZ3Solver) : Seq[Set[Expr]] ={
+  
+    //Part(I): Finding the set of all pairs of funcs that are implied by the precond
+    var impliedGraph = new UndirectedGraph[Expr]()
+    var nimpliedSet = Set[(Expr,Expr)]()
+    
+    //compute the cartesian product of the calls and select the pairs implied by the precond
+    val product = calls.foldLeft(Set[(Expr,Expr)]())((acc, fi) => acc ++ calls.map((_,fi)))
+    
+    val equivPairs = product.foldLeft(Seq[(Expr,Expr)]())((acc,pair) => {
+      val (call1,call2) = (pair._1,pair._2)
+      if(!impliedGraph.BFSReach(call1, call2)){        
+        if(!nimpliedSet.contains((call1, call2)))
+        {          
+          val (ant,conseqs) = axiomatizeEquality(call1,call2)
+         //check if equality follows from the preconds          
+          val res = uisolver.solveSATWithFunctionCalls(Not(Implies(precond,ant)))
+          res._1 match{
+            case Some(false) => {
+             //here the equality follows from the precondition
+              impliedGraph.addEdge(call1, call2)
+              acc :+ pair
+            }
+            case _ => {
+              //here the equality does not follow from the precondition
+              nimpliedSet += pair
+              acc
+            }
+          }                  
+        }
+        else acc               
+      }
+      else acc        
+    })
+    
+    //Part (II) computing equivalence classes that contain the equivPairs
+    
+    
+        
+  }
+  
+  /**
+   * This function returns all the calls in the in the linear template
+   * Assumes that all function invocations have been flattened.
+   */
+  def getAllCalls(lt : LinearTemplate) : Iterable[Expr] = {
+    lt.template match {
+      case Equals(Variable(_),FunctionInvocation(_,_)) => {
+          Seq(lt.template)
+        } 
+      case _  if(lt.coeffTemplate.keys.find(_.isInstanceOf[FunctionInvocation]).isDefined) => {
+        throw IllegalStateException("FunctionInvocations not flattened in "+lt.template)  
+      }
+      case _ => Seq()
+    }    
   }
 
   /**
