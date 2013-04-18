@@ -609,15 +609,17 @@ class ConstraintTracker(fundef : FunDef) {
             traverseBodyTree(child, newCtrs, newTemps)
         }
         case CtrLeaf() => {
-                    
-          //add the currnetCtrs only if it is not unsat
+          //compute the path expression corrsponding to the paths
+          //note: add the UIFs in to the path condition
           val pathExpr = And(currentCtrs.foldLeft(Seq[Expr]())((acc, ctr) => (acc :+ ctr.expr)))
-          val (res, model) = uiSolver.solveSATWithFunctionCalls(pathExpr)
-
+          val pathExprWithUIFs = And(pathExpr,And(UIFs.toSeq))
+          val (res, model) = uiSolver.solveSATWithFunctionCalls(pathExprWithUIFs)
           if (!res.isDefined || res.get == true) {
-            //now create a  uif tree for this path by reducing the UIFs to the base theory.             
-        	  val uifCtrs = 
-            antSet +:= (currentCtrs.toSet, currentTemps.toSet)
+        	  //now create a  uif tree for this path by reducing the UIFs to the base theory.             
+        	  val uifCtr = constraintsForUIFs(pathExpr,uiSolver)
+        	  //push not inside
+        	  TransformNot(uifCtr)
+        	  
           } else {
             //println("Found unsat path: " + pathExpr)
           }
@@ -626,6 +628,10 @@ class ConstraintTracker(fundef : FunDef) {
     }
     
     def traverseUIFtree(tree : CtrTree, currentCtrs: Seq[LinearConstraint], currentTemps: Seq[LinearTemplate]) ={
+case CtrLeaf() => {
+                    
+                     antSet +:= (currentCtrs.toSet, currentTemps.toSet)         
+        }
       
     }
 
@@ -715,7 +721,7 @@ class ConstraintTracker(fundef : FunDef) {
   
   //convert the theory formula into linear arithmetic formula
   //TODO: Handle ADTs also  
-  def constraintsForUIFs(precond: Expr, uisolver: UninterpretedZ3Solver, disableAnts : Boolean) : Expr = {
+  def constraintsForUIFs(precond: Expr, uisolver: UninterpretedZ3Solver) : Expr = {
         
     //Part(I): Finding the set of all pairs of funcs that are implied by the precond
     var impliedGraph = new UndirectedGraph[Expr]()
@@ -727,8 +733,7 @@ class ConstraintTracker(fundef : FunDef) {
     val equivPairs = product.foldLeft(Set[(Expr,Expr)]())((acc,pair) => {
       val (call1,call2) = (pair._1,pair._2)
       if(!impliedGraph.BFSReach(call1, call2)){        
-        if(!nimpliedSet.contains((call1, call2)))
-        {          
+        if(!nimpliedSet.contains((call1, call2))){          
           val (ant,conseqs) = axiomatizeEquality(call1,call2)
          //check if equality follows from the preconds          
           val res = uisolver.solveSATWithFunctionCalls(Not(Implies(precond,ant)))
@@ -747,20 +752,27 @@ class ConstraintTracker(fundef : FunDef) {
         }
         else acc               
       }
-      else acc        
+      else acc + pair        
     })    
+    
     //Part (II) return the constraints. For each implied call, the constraints are just that their return values are equal.
-    //For other calls the constraints are full implication
-    val ctrs = UIFs.foldLeft(Seq[Expr]())((acc,pair) => {
+    //For other calls the constraints are full implication    
+    val edges = impliedGraph.Edges.toSet         
+    val newctrs = product.foldLeft(Seq[Expr]())((acc,pair) => {
       val (call1,call2)= pair
-      val (v1,fi1) = call1
-      val (v2,fi2) = call2
-      if(equivPairs.contains(call)) acc ++ Equals(v1,v2)  
-      else {
+      val Equals(v1,fi1) = call1
+      val Equals(v2,fi2) = call2
+      if(edges.contains(pair)) {
+        acc :+ Equals(v1,v2)
+      }
+      else if(!equivPairs.contains(pair)) {
         val (ant,conseq) = axiomatizeEquality(call1,call2)
-        Or(Not(ant),conseq)
+        acc :+ Or(Not(ant),conseq)
       }        
+      else acc
     })
+    
+    And(newctrs)
   }
   
   /**
