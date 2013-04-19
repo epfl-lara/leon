@@ -73,8 +73,10 @@ class TemplateFactory {
 
     Set(LinearTemplate(linearExpr, coeffmap.toMap, Some(constPart)))
   }
+  
+  def getTemplateSynthesizer(): ((Seq[Expr],FunDef) => Set[LinearTemplate]) =  constructTemplate  
 
-  def getTemplateSynthesizer(): (FunctionInvocation => Set[LinearTemplate]) = {
+/*  def getTemplateSynthesizer(): (FunctionInvocation => Set[LinearTemplate]) = {
 
     (fi: FunctionInvocation) =>
       {               
@@ -84,5 +86,5 @@ class TemplateFactory {
         args.foreach((arg) => if (!arg.isInstanceOf[Terminal]) throw IllegalStateException("Argument is not a variable"))
         constructTemplate(args :+ fi, fi.funDef)
       }
-  }
+  }*/
 }

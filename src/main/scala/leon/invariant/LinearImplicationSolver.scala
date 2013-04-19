@@ -68,9 +68,9 @@ class LinearImplicationSolver {
     //(b) could the linearity in the disabled case be exploited 
     (satVC,satNVC) match {
       case (Some(false),_) if(antsTemp.isEmpty) => BooleanLiteral(false)   
-      case (Some(false),_) => this.constraintsForTheoryFormula(antsSimple,antsTemp, Seq(), Seq(), uisolver, true) //here disable the antecedents      
-      case (_,Some(false)) =>  this.constraintsForTheoryFormula(antsSimple, antsTemp, Seq(), conseqsTemp, uisolver, false)  //here we need to only check the inductiveness of the templates
-      case _ => this.constraintsForTheoryFormula(antsSimple,antsTemp,conseqsSimple,conseqsTemp, uisolver, false)               
+      case (Some(false),_) => this.applyFarkasLemma(allAnts, Seq(), true) //here disable the antecedents      
+      case (_,Some(false)) =>  this.applyFarkasLemma(allAnts, conseqsTemp, false)  //here we need to only check the inductiveness of the templates
+      case _ => this.applyFarkasLemma(allAnts,allConseqs, false)               
     }    
   }
 
