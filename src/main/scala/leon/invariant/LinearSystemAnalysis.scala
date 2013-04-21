@@ -657,7 +657,7 @@ class ConstraintTracker(fundef : FunDef) {
           for (child <- n.Children)
             traverseBodyTree(child, newCtrs)
         }
-    	 case CtrLeaf() => {
+    	 case CtrLeaf() => {    	   
             antSet +:= currentCtrs.toSet         
         }
       }      
