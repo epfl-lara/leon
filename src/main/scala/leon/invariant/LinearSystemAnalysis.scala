@@ -627,19 +627,25 @@ class ConstraintTracker(fundef : FunDef) {
           //compute the path expression corresponding to the paths
           //note: add the UIFs in to the path condition
           val pathExpr = And(currentCtrs.foldLeft(Seq[Expr]())((acc, ctr) => (acc :+ ctr.expr)))
-          val pathExprWithUIFs = And(pathExpr,And(UIFs.toSeq))
+          val pathExprWithUIFs = And(pathExpr,And(UIFs.toSeq))          
           val (res, model) = uiSolver.solveSATWithFunctionCalls(pathExprWithUIFs)
           if (!res.isDefined || res.get == true) {
-        	  //now create a  uif tree for this path by reducing the UIFs to the base theory.             
-        	  val uifCtr = constraintsForUIFs(pathExpr,uiSolver)
-        	  //push not inside
-        	  val nnfExpr = TransformNot(uifCtr)
-        	  //create the root of the UIF tree
-        	  //TODO: create a UIF tree once and for all and prune the paths while traversing
-        	  val uifroot = CtrNode(FreshIdentifier("uifroot",true)) 
-        	  //add the nnfExpr as a DNF formulae
-        	  addConstraintRecur(nnfExpr,uifroot)
-        	  traverseUIFtree(uifroot,currentCtrs)        	 
+            println("Path expr: " + pathExprWithUIFs)
+            //now create a  uif tree for this path by reducing the UIFs to the base theory.             
+            val uifCtrs = constraintsForUIFs(pathExprWithUIFs, uiSolver)
+            val uifroot = if (!uifCtrs.isEmpty) {
+              val uifCtr = And(uifCtrs)
+              println("UIF constraints: " + uifCtr)
+              //push not inside
+              val nnfExpr = TransformNot(uifCtr)
+              //create the root of the UIF tree
+              //TODO: create a UIF tree once and for all and prune the paths while traversing
+              val newnode = CtrNode(FreshIdentifier("uifroot", true))
+              //add the nnfExpr as a DNF formulae
+              addConstraintRecur(nnfExpr, newnode)
+              newnode
+            } else CtrLeaf()
+            traverseUIFtree(uifroot, currentCtrs)
           } else {
             //println("Found unsat path: " + pathExpr)
           }
@@ -648,14 +654,14 @@ class ConstraintTracker(fundef : FunDef) {
     }
     
     //this tree could have 2^(n^2) paths
-    def traverseUIFtree(tree : CtrTree, currentCtrs: Seq[LinearConstraint]) ={
+    def traverseUIFtree(tree : CtrTree, currentCtrs: Seq[LinearConstraint]) : Unit ={
       tree match {
         case n@CtrNode(_) => {
           val ctrs = n.constraints
           val newCtrs = currentCtrs ++ ctrs
           //recurse into children
           for (child <- n.Children)
-            traverseBodyTree(child, newCtrs)
+            traverseUIFtree(child, newCtrs)
         }
     	 case CtrLeaf() => {    	   
             antSet +:= currentCtrs.toSet         
@@ -741,7 +747,7 @@ class ConstraintTracker(fundef : FunDef) {
   
   //convert the theory formula into linear arithmetic formula
   //TODO: Handle ADTs also  
-  def constraintsForUIFs(precond: Expr, uisolver: UninterpretedZ3Solver) : Expr = {
+  def constraintsForUIFs(precond: Expr, uisolver: UninterpretedZ3Solver) : Seq[Expr] = {
         
     //Part(I): Finding the set of all pairs of funcs that are implied by the precond
     var impliedGraph = new UndirectedGraph[Expr]()
@@ -761,22 +767,21 @@ class ConstraintTracker(fundef : FunDef) {
       if(!impliedGraph.BFSReach(call1, call2)){        
         if(!nimpliedSet.contains((call1, call2))){          
           val (ant,conseqs) = axiomatizeEquality(call1,call2)
-         //check if equality follows from the preconds         
-          val cond = Implies(precond,ant)
-          val (nImpRes,_) = uisolver.solveSATWithFunctionCalls(Not(cond))
-          val (impRes,_) = uisolver.solveSATWithFunctionCalls(cond)
+         //check if equality follows from the preconds                   
+          val (nImpRes,_) = uisolver.solveSATWithFunctionCalls(Not(Implies(precond,ant)))
+          val (impRes,_) = uisolver.solveSATWithFunctionCalls(And(precond,ant))
           (nImpRes,impRes) match{
             case (Some(false),_) => {
-             //here the equality follows from the precondition
+             //here the argument equality follows from the precondition
               impliedGraph.addEdge(call1, call2)              
             }
             case (_,Some(false)) => {
-              //here the equality will never be implied by the precond (unless the precond becomes false). 
-              //Therefore we can drop this constraint
-              ;
+              //here the arg. equality will never be implied by the precond (unless the precond becomes false). 
+              //Therefore we can drop this constraint           
+              ;              
             }
             case _ => {
-              //here the equality does not follow from the precondition but may be implied by instantiation of the templates              
+              //here the arg. equality does not follow from the precondition but may be implied by instantiation of the templates              
               nimpliedSet ++= Set((call1,call2),(call2,call1))                       
               //TODO: consider the following optimization :
               //take the model found in this case. If the instantiation of the template does not satisfy the model
@@ -804,7 +809,7 @@ class ConstraintTracker(fundef : FunDef) {
       else acc
     })
     
-    And(newctrs)
+    newctrs
   }
   
   /**
