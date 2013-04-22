@@ -6,7 +6,7 @@ import leon.purescala.TypeTrees._
 import leon.purescala.Trees._
 import leon.purescala.Definitions._
 import leon.purescala.Extractors._
-import leon.purescala.PrettyPrinter._
+import leon.purescala.{PrettyPrinter, PrettyPrintable}
 import leon.purescala.ScalaPrinter._
 
 object Trees {
@@ -26,20 +26,15 @@ object Trees {
       Some((args :+ rest, exprs => Block(exprs.init, exprs.last)))
     }
 
-    def pp(sb: StringBuffer, lvl: Int, 
-      ep: (Expr, StringBuffer, Int) => StringBuffer, 
-      tp: (TypeTree, StringBuffer, Int) => StringBuffer,
-      dp: (Definition, StringBuffer, Int) => StringBuffer
-    ): StringBuffer = {
-      sb.append("{\n")
+    def printWith(lvl: Int, printer: PrettyPrinter) {
+      printer.append("{\n")
       (exprs :+ last).foreach(e => {
-        ind(sb, lvl+1)
-        ep(e, sb, lvl+1)
-        sb.append("\n")
+        printer.ind(lvl+1)
+        printer.pp(e, lvl+1)
+        printer.append("\n")
       })
-      ind(sb, lvl)
-      sb.append("}\n")
-      sb
+      printer.ind(lvl)
+      printer.append("}\n")
     }
 
     def ppScala(sb: StringBuffer, lvl: Int, 
@@ -65,18 +60,13 @@ object Trees {
     def extract: Option[(Expr, (Expr)=>Expr)] = {
       Some((expr, Assignment(varId, _)))
     }
-    def pp(sb: StringBuffer, lvl: Int, 
-      ep: (Expr, StringBuffer, Int) => StringBuffer, 
-      tp: (TypeTree, StringBuffer, Int) => StringBuffer,
-      dp: (Definition, StringBuffer, Int) => StringBuffer
-    ): StringBuffer = {
-      var nsb: StringBuffer = sb
-      nsb.append("(")
-      nsb.append(varId.name)
-      nsb.append(" = ")
-      nsb = ep(expr, nsb, lvl)
-      nsb.append(")")
-      nsb
+
+    def printWith(lvl: Int, printer: PrettyPrinter) {
+      printer.append("(")
+      printer.append(varId.name)
+      printer.append(" = ")
+      printer.pp(expr,lvl)
+      printer.append(")")
     }
 
     def ppScala(sb: StringBuffer, lvl: Int, 
@@ -105,28 +95,24 @@ object Trees {
       Some((cond, body, (t1, t2) => While(t1, t2).setInvariant(this.invariant).setPosInfo(this)))
     }
 
-    def pp(sb: StringBuffer, lvl: Int, 
-      ep: (Expr, StringBuffer, Int) => StringBuffer, 
-      tp: (TypeTree, StringBuffer, Int) => StringBuffer,
-      dp: (Definition, StringBuffer, Int) => StringBuffer
-    ): StringBuffer = {
+    def printWith(lvl: Int, printer: PrettyPrinter) {
       invariant match {
         case Some(inv) => {
-          sb.append("\n")
-          ind(sb, lvl)
-          sb.append("@invariant: ")
-          ep(inv, sb, lvl)
-          sb.append("\n")
-          ind(sb, lvl)
+          printer.append("\n")
+          printer.ind(lvl)
+          printer.append("@invariant: ")
+          printer.pp(inv, lvl)
+          printer.append("\n")
+          printer.ind(lvl)
         }
         case None =>
       }
-      sb.append("while(")
-      ep(cond, sb, lvl)
-      sb.append(")\n")
-      ind(sb, lvl+1)
-      ep(body, sb, lvl+1)
-      sb.append("\n")
+      printer.append("while(")
+      printer.pp(cond, lvl)
+      printer.append(")\n")
+      printer.ind(lvl+1)
+      printer.pp(body, lvl+1)
+      printer.append("\n")
     }
 
     def ppScala(sb: StringBuffer, lvl: Int, 
@@ -160,16 +146,10 @@ object Trees {
       Some((pred, (expr: Expr) => Epsilon(expr).setType(this.getType).setPosInfo(this)))
     }
 
-    def pp(sb: StringBuffer, lvl: Int, 
-      ep: (Expr, StringBuffer, Int) => StringBuffer, 
-      tp: (TypeTree, StringBuffer, Int) => StringBuffer,
-      dp: (Definition, StringBuffer, Int) => StringBuffer
-    ): StringBuffer = {
-      var nsb = sb
-      nsb.append("epsilon(x" + this.posIntInfo._1 + "_" + this.posIntInfo._2 + ". ")
-      nsb = ep(pred, nsb, lvl)
-      nsb.append(")")
-      nsb
+    def printWith(lvl: Int, printer: PrettyPrinter) {
+      printer.append("epsilon(x" + this.posIntInfo._1 + "_" + this.posIntInfo._2 + ". ")
+      printer.pp(pred, lvl)
+      printer.append(")")
     }
 
     def ppScala(sb: StringBuffer, lvl: Int, 
@@ -183,13 +163,9 @@ object Trees {
   }
   case class EpsilonVariable(pos: (Int, Int)) extends Expr with Terminal with PrettyPrintable with ScalaPrintable {
 
-    def pp(sb: StringBuffer, lvl: Int, 
-      ep: (Expr, StringBuffer, Int) => StringBuffer, 
-      tp: (TypeTree, StringBuffer, Int) => StringBuffer,
-      dp: (Definition, StringBuffer, Int) => StringBuffer
-    ): StringBuffer = {
+    def printWith(lvl: Int, printer: PrettyPrinter) {
       val (row, col) = pos
-      sb.append("x" + row + "_" + col)
+      printer.append("x" + row + "_" + col)
     }
 
     def ppScala(sb: StringBuffer, lvl: Int, 
@@ -214,19 +190,14 @@ object Trees {
       Some((expr, body, (e: Expr, b: Expr) => LetVar(binders, e, b)))
     }
 
-    def pp(sb: StringBuffer, lvl: Int, 
-      ep: (Expr, StringBuffer, Int) => StringBuffer, 
-      tp: (TypeTree, StringBuffer, Int) => StringBuffer,
-      dp: (Definition, StringBuffer, Int) => StringBuffer
-    ): StringBuffer = {
+    def printWith(lvl: Int, printer: PrettyPrinter) {
       val LetVar(b,d,e) = this
-      sb.append("(letvar (" + b + " := ");
-      ep(d, sb, lvl)
-      sb.append(") in\n")
-      ind(sb, lvl+1)
-      ep(e, sb, lvl+1)
-      sb.append(")")
-      sb
+      printer.append("(letvar (" + b + " := ");
+      printer.pp(d, lvl)
+      printer.append(") in\n")
+      printer.ind(lvl+1)
+      printer.pp(e, lvl+1)
+      printer.append(")")
     }
 
     def ppScala(sb: StringBuffer, lvl: Int, 
@@ -338,18 +309,13 @@ object Trees {
       }
     }
 
-    def pp(sb: StringBuffer, lvl: Int, 
-      ep: (Expr, StringBuffer, Int) => StringBuffer, 
-      tp: (TypeTree, StringBuffer, Int) => StringBuffer,
-      dp: (Definition, StringBuffer, Int) => StringBuffer
-    ): StringBuffer = {
-      sb.append("\n")
-      dp(fd, sb, lvl+1)
-      sb.append("\n")
-      sb.append("\n")
-      ind(sb, lvl)
-      ep(body, sb, lvl)
-      sb
+    def printWith(lvl: Int, printer: PrettyPrinter) {
+      printer.append("\n")
+      printer.pp(fd, lvl+1)
+      printer.append("\n")
+      printer.append("\n")
+      printer.ind(lvl)
+      printer.pp(body, lvl)
     }
 
     def ppScala(sb: StringBuffer, lvl: Int, 
@@ -374,14 +340,10 @@ object Trees {
       Some((expr, (e: Expr) => Waypoint(i, e)))
     }
 
-    def pp(sb: StringBuffer, lvl: Int, 
-      ep: (Expr, StringBuffer, Int) => StringBuffer, 
-      tp: (TypeTree, StringBuffer, Int) => StringBuffer,
-      dp: (Definition, StringBuffer, Int) => StringBuffer
-    ): StringBuffer = {
-      sb.append("waypoint_" + i + "(")
-      ep(expr, sb, lvl)
-      sb.append(")")
+    def printWith(lvl: Int, printer: PrettyPrinter) {
+      printer.append("waypoint_" + i + "(")
+      printer.pp(expr, lvl)
+      printer.append(")")
     }
 
     def ppScala(sb: StringBuffer, lvl: Int, 
@@ -403,16 +365,12 @@ object Trees {
       Some((Seq(t1,t2,t3), (as: Seq[Expr]) => ArrayUpdate(as(0), as(1), as(2))))
     }
 
-    def pp(sb: StringBuffer, lvl: Int, 
-      ep: (Expr, StringBuffer, Int) => StringBuffer, 
-      tp: (TypeTree, StringBuffer, Int) => StringBuffer,
-      dp: (Definition, StringBuffer, Int) => StringBuffer
-    ): StringBuffer = {
-      ep(array, sb, lvl)
-      sb.append("(")
-      ep(index, sb, lvl)
-      sb.append(") = ")
-      ep(newValue, sb, lvl)
+    def printWith(lvl: Int, printer: PrettyPrinter) {
+      printer.pp(array, lvl)
+      printer.append("(")
+      printer.pp(index, lvl)
+      printer.append(") = ")
+      printer.pp(newValue, lvl)
     }
   }
 
