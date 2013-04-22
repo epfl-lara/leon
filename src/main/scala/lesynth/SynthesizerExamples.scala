@@ -294,7 +294,7 @@ class SynthesizerForRuleExamples(
     refiner = new Refiner(program, hole, holeFunDef)
     fine("Refiner initialized. Recursive call: " + refiner.recurentExpression)
 
-    exampleRunner = new ExampleRunner(program)
+    exampleRunner = new ExampleRunner(program, 4000)
     exampleRunner.counterExamples ++= //examples
       introduceExamples(holeFunDef.args.map(_.id), loader)
       
@@ -328,6 +328,43 @@ class SynthesizerForRuleExamples(
     fine("going to count passed for: " + expressionToCheck)
 
     val count = exampleRunner.countPassed(expressionToCheck)
+//    if (snippet.toString == "Cons(l1.head, concat(l1.tail, l2))")
+//      interactivePause
+
+    holeFunDef.precondition = oldPreconditionSaved
+    holeFunDef.body = oldBodySaved
+
+    count
+  }
+  
+  
+  def evaluateCandidate(snippet: Expr, mapping: Map[Identifier, Expr]) = {
+    val oldPreconditionSaved = holeFunDef.precondition
+    val oldBodySaved = holeFunDef.body
+
+    // restore initial precondition
+    holeFunDef.precondition = Some(initialPrecondition)
+
+    // get the whole body (if else...)
+    val accumulatedExpression = accumulatingExpression(snippet)
+    // set appropriate body to the function for the correct evaluation
+    holeFunDef.body = Some(accumulatedExpression)
+    
+    
+    import TreeOps._
+    val expressionToCheck =
+      //Globals.bodyAndPostPlug(exp)
+      {
+		    val resFresh = FreshIdentifier("result", true).setType(accumulatedExpression.getType)		 
+        Let(
+          resFresh, accumulatedExpression,
+          replace(Map(ResultVariable() -> LeonVariable(resFresh)), matchToIfThenElse(holeFunDef.getPostcondition)))
+      }
+    
+    fine("going to evaluate candidate for: " + holeFunDef)
+    fine("going to evaluate candidate for: " + expressionToCheck)
+
+    val count = exampleRunner.evaluate(expressionToCheck, mapping)
 //    if (snippet.toString == "Cons(l1.head, concat(l1.tail, l2))")
 //      interactivePause
 
@@ -404,82 +441,62 @@ class SynthesizerForRuleExamples(
 
         reporter.info("Going into a enumeration/testing phase.")
         fine("evaluating examples: " + exampleRunner.counterExamples.mkString("\n"))
-        
-        // found precondition?
-        found = false
-        // try to find it
+                
         breakable {
-          // go through all snippets
-          for (
-            snippet <- snippetsIterator; val snippetTree = snippet.getSnippet;
-            // filter if seen
-            if ! (seenBranchExpressions contains snippetTree.toString)
-          ) {
-            finest("snippetTree is: " + snippetTree)
-            // note that we do not add snippets to the set of seen if enqueued 
-            if (checkTimeout) break
-
-            // skip avoidable calls
-            if (!refiner.isAvoidable(snippetTree, problem.as)) {
-
-              // passed example pairs
-              val passCount = countPassedExamples(snippetTree)
-
-              if (passCount == exampleRunner.counterExamples.size) {
-                info("All examples passed. Testing snippet " + snippetTree + " right away")
-                
-                if (tryToSynthesizeBranch(snippetTree)) {
-                  // will set found if correct body is found
-                  noBranchFoundIteration = 0
-                  break
-                }
-              } else {
-                if (passCount > 0) {
-                	finest("Snippet with pass count goes into queue: " + (snippetTree, passCount))
-                	pq.enqueue((snippetTree, 100 + (passCount * iteration) - snippet.getWeight.toInt))
-                }
-              	else {
-              		fine("Snippet with pass count was dropped: " + (snippetTree, passCount) +
-            		    " while number of examples was: " + exampleRunner.counterExamples.size)
-	                // add to seen if branch was not found for it
-	                seenBranchExpressions += snippetTree.toString
-              	}
-              }
-
-            } else {
-              fine("Refiner filtered this snippet: " + snippetTree)
-              seenBranchExpressions += snippetTree.toString
-            } // if (!refiner.isAvoidable(snippetTree)) {
-
-            // check if we this makes one test iteration            
-            if (numberOfTested >= numberOfTestsInIteration * noBranchFoundIteration) {
-            	reporter.info("Finalizing enumeration/testing phase.")
-              fine("Queue contents: " + pq.toList.take(10).mkString("\n"))
-              fine({ if (pq.isEmpty) "queue is empty" else "head of queue is: " + pq.head })
-
-              //interactivePause
-              // go and check the topmost numberOfCheckInIteration
-              for (i <- 1 to math.min(numberOfCheckInIteration, pq.size)) {
-                val nextSnippet = pq.dequeue._1
-                fine("dequeued nextSnippet: " + nextSnippet)
-                //interactivePause
-
-                if (tryToSynthesizeBranch(nextSnippet)) {
-                  noBranchFoundIteration = 0
-                  break
-                }
-                
-                // dont drop snippets that were on top of queue (they may be good for else ... part)
-                //seenBranchExpressions += nextSnippet.toString
-              }
-
-
-              numberOfTested = 0
-            } else
-              numberOfTested += 1
-
-          } // for (snippet <- snippets
-        } // breakable { for (snippet <- snippets
+          while(true) {
+            val batchSize = numberOfTestsInIteration * (1 << noBranchFoundIteration)
+            
+          	reporter.info("numberOfTested: " + numberOfTested)
+		        // ranking of candidates        
+		        val candidates = {
+		          val (it1, it2) = snippetsIterator.duplicate
+		          snippetsIterator = it2.drop(batchSize)
+		          it1.take(batchSize).        
+		        	map(_.getSnippet).filterNot(
+		            snip => {
+		              if (snip.toString == "merge(sort(split(list).fst), sort(split(list).snd))") println("AAA")
+		              
+		              (seenBranchExpressions contains snip.toString) || refiner.isAvoidable(snip, problem.as)
+		            }
+		          ).toSeq
+		        }
+		        info("got candidates of size: " + candidates.size)
+		        //interactivePause
+		          
+		        if (candidates.size > 0) {
+			        val ranker = new Ranker(candidates, 
+			          Evaluation(exampleRunner.counterExamples, this.evaluateCandidate _, candidates, exampleRunner),
+			          false)
+			        
+			        val maxCandidate = ranker.getMax
+			        info("maxCandidate is: " + maxCandidate)
+			        numberOfTested += batchSize
+			        
+//			        if (candidates.exists(_.toString == "merge(sort(split(list).fst), sort(split(list).snd))")) {
+//			          println(ranker.printTuples)
+//			          println("AAA2")
+//			          println("Candidates: " + candidates.zipWithIndex.map({
+//		              case (cand, ind) => "[" + ind + "]" + cand.toString
+//			          }).mkString(", "))
+//			          println("Examples: " + exampleRunner.counterExamples.zipWithIndex.map({
+//		              case (example, ind) => "[" + ind + "]" + example.toString
+//			          }).mkString(", "))
+//			          interactivePause
+//			        }
+			        
+			        //interactivePause
+			        if (tryToSynthesizeBranch(maxCandidate)) {
+			          noBranchFoundIteration = 0
+			          break
+			        }
+			        
+			        noBranchFoundIteration += 1
+		        }
+          }
+        }
+        
+	      // add to seen if branch was not found for it
+	      //seenBranchExpressions += snippetTree.toString
 
         // if did not found for any of the branch expressions
         if (found) {
