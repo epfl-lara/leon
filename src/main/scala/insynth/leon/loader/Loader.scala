@@ -63,6 +63,21 @@ case class LeonLoader(program: Program, hole: Hole,
     
     list ++= variableDeclarations
     
+    for (variable <- variables; variableType = variable.getType) variableType match {
+      case variableClassType: CaseClassType => variableClassType.classDef match {
+	    case cas@CaseClassDef(id, parent, fields) =>
+	      fine("adding fields of variable " + variable)
+            for (field <- fields)
+	          list += makeDeclaration(
+		        ImmediateExpression( "Field(" + cas + "." + field.id + ")",
+	            CaseClassSelector(cas, variable.toVariable, field.id) ),
+	            field.id.getType
+    		  )
+	    case _ =>
+  		}
+      case _ =>
+    }
+    
     list.toList
     
     // no need for doing this (we will have everything from the synthesis problem context)
@@ -128,21 +143,20 @@ case class LeonLoader(program: Program, hole: Hole,
     			inheritance <- extractInheritancesRec(classHierarchyRoot))
     	yield inheritance
   }
+
+  def extractFields(classDef: ClassTypeDef) = classDef match {
+    case abs: AbstractClassDef =>
+      // this case does not seem to work
+      //abs.fields
+      Seq.empty
+    case cas: CaseClassDef =>
+      for (field <- cas.fields)
+        yield makeDeclaration(
+        UnaryReconstructionExpression("Field(" + cas + "." + field.id + ")", { CaseClassSelector(cas, _: Expr, field.id) }),
+        FunctionType(List(classMap(cas.id)), field.id.getType))
+  }
   
   def extractFields: Seq[Declaration] = {
-    def extractFields(classDef: ClassTypeDef) = classDef match {
-      case abs: AbstractClassDef =>
-        // this case does not seem to work
-        //abs.fields
-        Seq.empty
-      case cas: CaseClassDef => 
-        for (field <- cas.fields)
-          yield makeDeclaration(
-		        UnaryReconstructionExpression( "Field(" + cas + "." + field.id + ")", { CaseClassSelector(cas, _: Expr, field.id) } ), 
-		        FunctionType(List(classMap(cas.id)), field.id.getType)
-		      )
-    }
-    
     for (classDef <- program.definedClasses;
     		decl <- extractFields(classDef))
     	yield decl

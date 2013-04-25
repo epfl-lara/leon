@@ -18,9 +18,10 @@ class Refiner(program: Program, hole: Hole, holeFunDef: FunDef) extends HasLogge
       "Results for refining " + expr + ", are: " +
       " ,recurentExpression == expr " + (recurentExpression == expr) +
       " ,isCallAvoidableBySize(expr) " + isCallAvoidableBySize(expr, funDefArgs) +
-      " ,hasDoubleRecursion(expr) " + hasDoubleRecursion(expr)
+      " ,hasDoubleRecursion(expr) " + hasDoubleRecursion(expr) +
+      " ,isOperatorAvoidable(expr) " + isOperatorAvoidable(expr)
     )
-    recurentExpression == expr || isCallAvoidableBySize(expr, funDefArgs) || hasDoubleRecursion(expr)
+    recurentExpression == expr || isCallAvoidableBySize(expr, funDefArgs) || hasDoubleRecursion(expr) || isOperatorAvoidable(expr)
   }
   
   //val holeFunDef = Globals.holeFunDef
@@ -93,6 +94,17 @@ class Refiner(program: Program, hole: Hole, holeFunDef: FunDef) extends HasLogge
   	treeCatamorphism(findRecursion, (b1: Boolean, b2: Boolean) => b1 || b2, findRecursionInCall, expr)
   	
   	found
+  }
+  
+  def isOperatorAvoidable(expr: Expr) = expr match {
+    case And(expr1 :: expr2) if expr1 == expr2 => true 
+    case Or(expr1 :: expr2) if expr1 == expr2 => true 
+    case LessThan(expr1, expr2) if expr1 == expr2 => true 
+    case LessEquals(expr1, expr2) if expr1 == expr2 => true 
+    case GreaterThan(expr1, expr2) if expr1 == expr2 => true 
+    case GreaterEquals(expr1, expr2) if expr1 == expr2 => true 
+    case Equals(expr1, expr2) if expr1 == expr2 => true 
+    case _ => false
   }
   
 }
