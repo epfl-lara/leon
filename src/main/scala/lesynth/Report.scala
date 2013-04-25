@@ -21,9 +21,12 @@ case object EmptyReport extends Report {
   override def isSuccess = false
 }
 
-case class FullReport(val function: FunDef, val totalTime: Long/*, innerVerificationReport */) extends Report {
+case class FullReport(val function: FunDef, val synthInfo: SynthesisInfo) extends Report {
 
+  import SynthesisInfo.Action._
   import Report._
+  
+  val totalTime = synthInfo.getTime(Synthesis)
   
   implicit val width = 70
   
@@ -33,6 +36,9 @@ case class FullReport(val function: FunDef, val totalTime: Long/*, innerVerifica
     	("║ %-" + (width - 2) + "s ║\n").format(_)
     }.mkString +
     infoSep +
+    ("║ Generation: %" + (width - 15) + ".2fs ║\n").format(synthInfo.getTime(Generation).toDouble/1000) +
+    ("║ Evaluation: %" + (width - 15) + ".2fs ║\n").format(synthInfo.getTime(Evaluation).toDouble/1000) +
+    ("║ Verification: %" + (width - 15) + ".2fs ║\n").format(synthInfo.getTime(Verification).toDouble/1000) +
     ("║ Total time: %" + (width - 15) + ".2fs ║\n").format(totalTime.toDouble/1000) +
     infoFooter
   }

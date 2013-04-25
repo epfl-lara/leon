@@ -74,6 +74,7 @@ class ExampleRunner(program: Program, maxSteps: Int = 2000) extends HasLogger {
 //          replace(Map(ResultVariable() -> Variable(resFresh)), matchToIfThenElse(holeFunDef.getPostcondition)))
 //      }
     fine("expressionToCheck: " + expressionToCheck)
+    finest("program: " + program)
 
     (0 /: counterExamples) {
       (res, ce) =>
