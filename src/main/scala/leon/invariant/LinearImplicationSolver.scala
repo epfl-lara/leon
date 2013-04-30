@@ -50,14 +50,16 @@ class LinearImplicationSolver {
     val allConseqs = conseqsSimple ++ conseqsTemp
     //for debugging
     println("#" * 20)
-    println(allAnts + " => " + allConseqs)
+    println(allAnts + " => " + allConseqs)    
     println("#" * 20)
+    
 
     //Optimization 1: Check if ants are unsat (already handled)    
-    val pathVC = Implies(And(antsSimple.map(_.expr).toSeq), And(conseqsSimple.map(_.expr).toSeq))
-    val (satVC, _) = uisolver.solveSATWithFunctionCalls(pathVC)
-    val (satNVC,_) = uisolver.solveSATWithFunctionCalls(Not(pathVC))
-    
+    val pathVC = And(antsSimple.map(_.expr).toSeq ++ conseqsSimple.map(_.expr).toSeq)
+    val notPathVC = And(And(antsSimple.map(_.expr).toSeq),Not(And(conseqsSimple.map(_.expr).toSeq)))
+    val (satVC, _,_) = uisolver.solveSATWithFunctionCalls(pathVC)
+    val (satNVC,_,_) = uisolver.solveSATWithFunctionCalls(notPathVC)
+
     //Optimization 2: use the unsatisfiability of VC and not VC to simplify the constraint generation
     //(a) if A => C is false and A' is true then the entire formula is unsat
     //(b) if A => C is false and A' is not true then we need to ensure A^A' is unsat (i.e, disable Ant)
@@ -66,12 +68,19 @@ class LinearImplicationSolver {
     //TODO: Food for thought:  
     //(a) can we do any simplification for case (d) with the model
     //(b) could the linearity in the disabled case be exploited 
-    (satVC,satNVC) match {
-      case (Some(false),_) if(antsTemp.isEmpty) => BooleanLiteral(false)   
-      case (Some(false),_) => this.applyFarkasLemma(allAnts, Seq(), true) //here disable the antecedents      
-      case (_,Some(false)) =>  this.applyFarkasLemma(allAnts, conseqsTemp, false)  //here we need to only check the inductiveness of the templates
-      case _ => this.applyFarkasLemma(allAnts,allConseqs, false)               
-    }    
+    val (ants, conseqs, disableFlag) = (satVC, satNVC) match {
+      case (Some(false), _) if (antsTemp.isEmpty) => (Seq(), Seq(), false)
+      case (Some(false), _) => (allAnts, Seq(), true) //here disable the antecedents      
+      case (_, Some(false)) => (allAnts, conseqsTemp, false) //here we need to only check the inductiveness of the templates
+      case _ => (allAnts, allConseqs, false)      
+    }
+    if (ants.isEmpty) {      
+      BooleanLiteral(false)
+    }
+    else{      
+      this.applyFarkasLemma(ants, conseqs, disableFlag)
+    }
+    
   }
 
 
@@ -90,7 +99,7 @@ class LinearImplicationSolver {
     def createCtrs(conseq: Option[LinearTemplate]): Expr = {
       //create a set of identifiers one for each ants            
       val lambdas = ants.map((ant) => (ant -> Variable(FreshIdentifier("l", true).setType(Int32Type)))).toMap
-      val lambda0 = Variable(FreshIdentifier("l", true).setType(RealType))
+      val lambda0 = Variable(FreshIdentifier("l", true).setType(Int32Type))
 
       //add a bunch of constraints on lambdas
       val lambdaCtrs = (ants.collect((ant) => ant.template match {
