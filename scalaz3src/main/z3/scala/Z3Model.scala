@@ -8,7 +8,7 @@ object Z3Model {
     if (res.isEmpty)
       None
     else
-      model.context.getNumeralInt(res.get)
+      model.context.getNumeralInt(res.get).value
   }
 
   implicit def ast2bool(model: Z3Model, ast: Z3AST): Option[Boolean] = {
@@ -47,12 +47,12 @@ sealed class Z3Model private[z3](val ptr: Long, val context: Z3Context) extends 
     Z3Wrapper.modelDecRef(context.ptr, this.ptr)
   }
 
-  def eval(ast: Z3AST) : Option[Z3AST] = {
+  def eval(ast: Z3AST, completion: Boolean = false) : Option[Z3AST] = {
     if(this.ptr == 0L) {
       throw new IllegalStateException("The model is not initialized.")
     }
     val out = new Pointer(0L)
-    val result = Z3Wrapper.eval(context.ptr, this.ptr, ast.ptr, out)
+    val result = Z3Wrapper.modelEval(context.ptr, this.ptr, ast.ptr, out, completion)
     if (result) {
       Some(new Z3AST(out.ptr, context))
     } else {

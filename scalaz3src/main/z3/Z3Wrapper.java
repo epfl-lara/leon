@@ -1,6 +1,7 @@
 package z3;
 
 import z3.Pointer;
+import z3.scala.Z3Context;
 
 import java.io.File;
 import java.io.InputStream;
@@ -9,6 +10,7 @@ import java.io.FileOutputStream;
 import java.util.Calendar;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
+import java.lang.ref.WeakReference;
 
 /** This class contains all the native functions. It should be accessed
  * mostly through the other classes, though. */
@@ -118,6 +120,21 @@ public final class Z3Wrapper {
         return result;
     }
 
+    private static HashMap<Long, WeakReference<Z3Context>> ptrToCtx = new HashMap<Long, WeakReference<Z3Context>>();
+
+    public static void onZ3Error(long contextPtr, long code) {
+        Z3Context ctx = ptrToCtx.get(Long.valueOf(contextPtr)).get();
+        ctx.onError(code);
+    }
+
+    public static void registerContext(long contextPtr, Z3Context ctx) {
+        ptrToCtx.put(Long.valueOf(contextPtr), new WeakReference<Z3Context>(ctx));
+    }
+
+    public static void unregisterContext(long contextPtr) {
+        ptrToCtx.remove(Long.valueOf(contextPtr));
+    }
+
     public static native long mkConfig();
     public static native void delConfig(long configPtr);
     public static native void setParamValue(long configPtr, String paramID, String paramValue);
@@ -208,6 +225,7 @@ public final class Z3Wrapper {
     // ...
     public static native long mkInt(long contextPtr, int v, long sortPtr);
     public static native long mkReal(long contextPtr, int num, int den);
+    public static native long mkNumeral(long contextPtr, String numeral, long sortPtr);
     // ...
     public static native long mkPattern(long contextPtr, int numPatterns, long[] terms);
     public static native long mkBound(long contextPtr, int index, long sortPtr);
@@ -342,6 +360,11 @@ public final class Z3Wrapper {
     public static native long getRange(long contextPtr, long funcDeclPtr);
     // ...
     public static native boolean getNumeralInt(long contextPtr, long astPtr, IntPtr i);
+    public static native String getNumeralString(long contextPtr, long astPtr);
+    public static native long getNumerator(long contextPtr, long astPtr);
+    public static native long getDenominator(long contextPtr, long astPtr);
+    public static native boolean isAlgebraicNumber(long contextPtr, long astPtr);
+
     // ...
     public static native int getBoolValue(long contextPtr, long astPtr);
 
@@ -361,7 +384,9 @@ public final class Z3Wrapper {
     public static native void delModel(long contextPtr, long modelPtr);
     public static native void modelIncRef(long contextPtr, long modelPtr);
     public static native void modelDecRef(long contextPtr, long modelPtr);
+    // decprecated
     public static native boolean eval(long contextPtr, long modelPtr, long astPtr, Pointer ast);
+    public static native boolean modelEval(long contextPtr, long modelPtr, long astPtr, Pointer ast, boolean completion);
     public static native int getModelNumConstants(long contextPtr, long modelPtr);
     public static native long getModelConstant(long contextPtr, long modelPtr, int i);
     public static native boolean isArrayValue(long contextPtr, long modelPtr, long astPtr, IntPtr numEntries);
@@ -469,6 +494,8 @@ public final class Z3Wrapper {
     public static native long solverGetUnsatCore(long contextPtr, long solverPtr);
     public static native int solverGetNumScopes(long contextPtr, long solverPtr);
     public static native int solverCheckAssumptions(long contextPtr, long solverPtr, int numAssumptions, long[] assumptions);
+    public static native String solverGetReasonUnknown(long contextPtr, long solverPtr);
+    public static native String solverToString(long contextPtr, long solverPtr);
 
     // AST Vector
     public static native void astvectorIncRef(long contextPtr, long vectorPtr);

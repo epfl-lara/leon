@@ -12,6 +12,7 @@ sealed class Z3Sort private[z3](val ptr: Long, val context: Z3Context) extends Z
   lazy val isBoolSort : Boolean = context.isEqSort(this, context.mkBoolSort)
   lazy val isIntSort : Boolean = context.isEqSort(this, context.mkIntSort)
   lazy val isIntSetSort : Boolean = context.isEqSort(this, context.mkSetSort(context.mkIntSort))
+  lazy val isRealSort : Boolean = context.isEqSort(this, context.mkRealSort)
 
   locally {
     context.astQueue.incRef(this)

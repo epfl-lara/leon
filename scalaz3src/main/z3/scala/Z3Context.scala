@@ -3,6 +3,7 @@ package z3.scala
 import dsl.Z3ASTWrapper
 import z3.{Z3Wrapper,Pointer}
 import scala.collection.mutable.{Set=>MutableSet}
+import java.math.BigInteger
 
 object Z3Context {
   sealed abstract class ADTSortReference
@@ -18,6 +19,8 @@ object Z3Context {
 
 sealed class Z3Context(val config: Z3Config) {
   val ptr : Long = Z3Wrapper.mkContextRC(config.ptr)
+
+  Z3Wrapper.registerContext(ptr, this)
 
   val astQueue       = new Z3RefCountQueue[Z3ASTLike]()
   val astvectorQueue = new Z3RefCountQueue[Z3ASTVector]()
@@ -40,9 +43,15 @@ sealed class Z3Context(val config: Z3Config) {
       astvectorQueue.clearQueue()
       tacticQueue.clearQueue()
 
+      Z3Wrapper.unregisterContext(this.ptr)
+
       Z3Wrapper.delContext(this.ptr)
       deleted = true
     }
+  }
+
+  def onError(code: Long): Nothing = {
+    throw new Exception("Unexpected Z3 error (code="+code+")")
   }
 
   @deprecated("Use interrupt instead", "")
@@ -566,6 +575,10 @@ sealed class Z3Context(val config: Z3Config) {
     new Z3AST(Z3Wrapper.mkReal(this.ptr, numerator, denominator), this)
   }
 
+  def mkNumeral(value: String, sort: Z3Sort) : Z3AST = {
+    new Z3AST(Z3Wrapper.mkNumeral(this.ptr, value, sort.ptr), this)
+  }
+
   def mkPattern(args: Z3AST*) : Z3Pattern = {
     new Z3Pattern(Z3Wrapper.mkPattern(this.ptr, args.size, toPtrArray(args)), this)
   }
@@ -761,7 +774,10 @@ sealed class Z3Context(val config: Z3Config) {
 
   def getASTKind(ast: Z3AST) : Z3ASTKind = {
     Z3Wrapper.getASTKind(this.ptr, ast.ptr) match {
-      case 0 => Z3NumeralAST(getNumeralInt(ast))
+      case 0 =>
+        if (getSort(ast).isRealSort) getNumeralReal(ast)
+        else getNumeralInt(ast)
+
       case 1 => {
         val numArgs = getAppNumArgs(ast)
         val args = (Seq.tabulate(numArgs)){ i => getAppArg(ast, i) }
@@ -891,13 +907,21 @@ sealed class Z3Context(val config: Z3Config) {
     new Z3Sort(Z3Wrapper.getRange(this.ptr, funcDecl.ptr), this)
   }
 
-  def getNumeralInt(ast: Z3AST) : Option[Int] = {
+  def getNumeralInt(ast: Z3AST) : Z3NumeralIntAST = {
     val ip = new Z3Wrapper.IntPtr
     val res = Z3Wrapper.getNumeralInt(this.ptr, ast.ptr, ip)
     if(res)
-      Some(ip.value)
+      Z3NumeralIntAST(Some(ip.value))
     else
-      None
+      Z3NumeralIntAST(None)
+  }
+
+  def getNumeralReal(ast: Z3AST) : Z3NumeralRealAST = {
+    val numZ3AST = new Z3AST(Z3Wrapper.getNumerator(this.ptr, ast.ptr), this)
+    val denZ3AST = new Z3AST(Z3Wrapper.getDenominator(this.ptr, ast.ptr), this)
+    val num = new BigInt(new BigInteger(Z3Wrapper.getNumeralString(this.ptr, numZ3AST.ptr)))
+    val den = new BigInt(new BigInteger(Z3Wrapper.getNumeralString(this.ptr, denZ3AST.ptr)))
+    Z3NumeralRealAST(num, den)
   }
 
   def getBoolValue(ast: Z3AST) : Option[Boolean] = {

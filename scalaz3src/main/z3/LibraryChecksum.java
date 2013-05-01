@@ -2,5 +2,5 @@
 package z3;
 
 public final class LibraryChecksum {
-  public static final String value = "ea7ae55b64fe958f92cb17499861f5c9";
+  public static final String value = "f99a5af1f38e0d65b24592b9166f7a";
 }

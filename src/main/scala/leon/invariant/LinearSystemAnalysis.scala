@@ -748,8 +748,8 @@ class ConstraintTracker(fundef : FunDef) {
             case BooleanLiteral(false) => None //skip to the next leaf
             case _ => {
               //look for a solution of non-linear constraints. The constraint variables are all reals
-              //println("Non linear constraints for this branch: " +nonLinearCtrs)          
-              val (res, model, unsatCore) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)
+              //println("Non linear constraints for this branch: " +nonLinearCtr)          
+              val (res, model, unsatCore) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)              
               if (res.isDefined && res.get == true) {
                 //printing the model here for debugging
                 //println("Model: "+model)
@@ -767,7 +767,28 @@ class ConstraintTracker(fundef : FunDef) {
                     case Some(t) => t
                     case None => zero
                   }
-                  val expr = coeff.foldLeft(const)((acc, entry) => Plus(acc, Times(entry._1, entry._2)))
+                  //the coefficients could be fractions ,so collect all the denominators
+                  val getDenom = (t: Expr) => t match {
+                    case RealLiteral(num, denum) => denum
+                    case _ => 1
+                  }
+
+                  val denoms = coeff.foldLeft(Set(getDenom(const)))((acc, entry) => acc + getDenom(entry._2))
+                  //compute the LCM of the denominators (approx. LCM)
+                  val lcm = denoms.foldLeft(1)((acc, d) => if (acc % d == 0) acc else acc * d)
+
+                  //scale the numerator by lcm
+                  val scaleNum = (t: Expr) => t match {
+                    case RealLiteral(num, denum) => IntLiteral(num * lcm)
+                    case IntLiteral(n) => IntLiteral(n * lcm)
+                    case _ => throw IllegalStateException("Coefficient not assigned to any value")
+                  }
+
+                  val expr = coeff.foldLeft(scaleNum(const): Expr)((acc, entry) => {
+                    val (k, v) = entry
+                    Plus(acc, Times(k, scaleNum(v)))
+                  })
+
                   LessEquals(expr, zero)
                 })
                 val invariant = And(invs.toSeq)

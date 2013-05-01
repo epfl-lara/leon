@@ -98,8 +98,8 @@ class LinearImplicationSolver {
     //the creates constraints for a single consequent
     def createCtrs(conseq: Option[LinearTemplate]): Expr = {
       //create a set of identifiers one for each ants            
-      val lambdas = ants.map((ant) => (ant -> Variable(FreshIdentifier("l", true).setType(Int32Type)))).toMap
-      val lambda0 = Variable(FreshIdentifier("l", true).setType(Int32Type))
+      val lambdas = ants.map((ant) => (ant -> Variable(FreshIdentifier("l", true).setType(RealType)))).toMap
+      val lambda0 = Variable(FreshIdentifier("l", true).setType(RealType))
 
       //add a bunch of constraints on lambdas
       val lambdaCtrs = (ants.collect((ant) => ant.template match {
@@ -154,17 +154,16 @@ class LinearImplicationSolver {
       else
         And(And(lambdaCtrs), Or(enabledPart, disabledPart))
     }
-      
-    if (disableAnts) {
-      //here conseqs are empty
-      //convertIntLiteralToReal(createCtrs(None))      
+
+    val ctrs = if (disableAnts) {
+      //here conseqs are empty      
       createCtrs(None)
     } else {
-      val Seq(head, tail@_*) = conseqs
+      val Seq(head, tail @ _*) = conseqs
       val nonLinearCtrs = tail.foldLeft(createCtrs(Some(head)))((acc, conseq) => And(acc, createCtrs(Some(conseq))))
-      //convertIntLiteralToReal(nonLinearCtrs)
       nonLinearCtrs
     }
+    convertIntLiteralToReal(ctrs)
   }
 
   /**

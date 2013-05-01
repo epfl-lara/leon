@@ -203,6 +203,14 @@ class Z3Solver private[z3](val ptr : Long, val context : Z3Context) extends Z3Ob
     }
   }
 
+  def getReasonUnknown() : String = {
+    Z3Wrapper.solverGetReasonUnknown(context.ptr, this.ptr)
+  }
+
+  override def toString() : String = {
+    Z3Wrapper.solverToString(context.ptr, this.ptr)
+  }
+
   locally {
     context.solverQueue.incRef(this)
   }

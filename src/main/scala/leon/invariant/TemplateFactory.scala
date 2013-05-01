@@ -54,7 +54,7 @@ class TemplateFactory {
       val dummycall = FunctionInvocation(fd, params)
       val paramTerms = getTypedCompositeTerms(params :+ dummycall)
       //note that the template variables may have real types
-      val newCoeffs = List.range(0, paramTerms.size + 1).map((i) => Variable(FreshIdentifier("a" + i + "a", true).setType(Int32Type)))
+      val newCoeffs = List.range(0, paramTerms.size + 1).map((i) => Variable(FreshIdentifier("a" + i + "a", true).setType(RealType)))
       paramCoeff += (fd -> newCoeffs)
     }
 
