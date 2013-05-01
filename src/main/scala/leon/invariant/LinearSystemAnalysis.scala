@@ -779,7 +779,7 @@ class ConstraintTracker(fundef : FunDef) {
 
                   //scale the numerator by lcm
                   val scaleNum = (t: Expr) => t match {
-                    case RealLiteral(num, denum) => IntLiteral(num * lcm)
+                    case RealLiteral(num, denum) => IntLiteral(num * (lcm/denum))
                     case IntLiteral(n) => IntLiteral(n * lcm)
                     case _ => throw IllegalStateException("Coefficient not assigned to any value")
                   }

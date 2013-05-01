@@ -148,11 +148,13 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         true
       }
       case Some(true) => {
-        reporter.error("- Invalid invariant, model: " + sat._2)
+        reporter.error("- Invalid invariant, model: " + sat._2)        
+        System.exit(-1)
         false
       }
       case _ => {
         reporter.error("- Unable to prove or disprove invariant")
+        System.exit(-1)
         false
       }
     }
