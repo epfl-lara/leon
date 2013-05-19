@@ -1,3 +1,46 @@
+\newcommand{\real}{\mathcal{R}}
+
 \section{Survey of the Selected Papers}
 
-\subsection{Paper1}
+\subsection{Program invariance and termination using Lagrangian Relaxation and Semidefinite Programming}
+
+\cite{cousot:VMCAI05} proposes an approach for inferring polynomial invariants that 
+are of the form given by a user-defined \emph{template} which is a polynomial with unknown coefficients.
+The technique is proposed for semi-algebraic programs which are numerical programs with real valued variable 
+and iterative constructs of the form \texttt{while B do C} where B is a boolean condition 
+and C is an imperative command. Figure~\ref{fig:SAprogram} shows a semialgebraic program that computes the greatest
+factorial less than or equal to a given N.
+%
+\begin{figure}
+\begin{myprogram}
+\\
+\pnl \>  n = 0 \\
+\pnl \> f = 1 \\
+\pnl \> while(f <= N) \{ \\
+\pnl \> \> n = n+1 \\
+\pnl \> \> f = n* f \\
+\pnl \> \}
+\end{myprogram}
+\caption{A program computing the greatest factorial less than or equal to a given N.} \label{fig:SAprogram}
+\end{figure}
+%
+Assume that the (relational) semantics of an iteration is given by a formula of the form
+$\bigwedge \limits_{k=1}^{k=n} (\sigma_k(x,x') \ge 0)$ where, $x$ and $x'$ are the vectors of
+variables representing the values of the program variables before and after an iteration, respectively 
+and $\sigma_k : \real^n \times \real^n \mapsto \real$ is a polynomial over $x$ and $x'$. 
+In other words, it is assumed that the relational semantics of each
+iteration can be expressed as a conjunction of polynomial positivity constraints.
+An inductive invariant of a loop is another polynomial inequality $I(x) \ge 0$ that satisfies the
+the following inductiveness constraints:
+%
+\begin{align}
+\forall x. P(x) \ge 0 \implies I(x) \ge 0 \\
+\forall x,x'. I(x) \ge 0 \wedge \bigwedge_k (\sigma_k(x,x') \ge 0) \Rightarrow  I(x') \ge 0
+\end{align}
+%
+To prove a property $S(x) \ge 0$ is an invariant of the loop we need to find an $I(x)$ such that
+$\forall x'. I(x') \ge 0 \Rightarrow S(x') \ge 0$.
+Assume that we are interested only in solutions of $I(x)$ having the form $f_a(x)$ which is a polynomial with 
+unknown coefficients given by the vector $a$. 
+For example, $f_a(x) = a.(x \; 1)^T$ represents all linear (or affine) invariants, 
+$f_a(x) = (x \; 1).a.(x \; 1)^T$ represents all quadratic invariants  and so on. 

@@ -25,9 +25,11 @@ parameters and the return variables of the program, that is satisfied by all exe
 A property holds for a program if and only if it is an invariant. 
 For recursive programs, an invariant is inductive iff it is sufficiently strong to be 
 proven by mathematical induction. 
-If a program consists of multiple procedures then each procedure can be proven by assuming the
-invariants of the called procedures \footnote{mutually recursive procedures can be verified by
-\emph{assume guarantee} reasoning or by converting them to a single recursive procedure}.
+If a program consists of multiple procedures then each procedure can be proven by inferring invariants
+for the called procedure and assuming that the invariants hold for the call 
+\footnote{Mutually recursive procedures can be 
+verified by means of \emph{assume guarantee} reasoning or by converting them 
+to a single recursive procedure}.
 Typically, proving functional correctness properties requires inference of inductive invariants
 that involve arithmetics, data structures and recursive functions. 
 For an example, consider the simple Scala program shown in Figure~\ref{fig:eg} that reverses a list. 
@@ -44,7 +46,7 @@ object List \{ \\
 \pnl \> \>      case Cons(\_, t) => 1 + s(t) \\
 \pnl \>    \}) \\
 \\
-\pnl \>    def rev(l: L) : L = \{ \\
+\pnl \>    def rev(l: L) : L =candidacy \{ \\
 \pnl \> \>      rev0(l, Nil())  \\
 \pnl \>    \} \\
 \pnl \>    ensuring(res => s(res) == s(l))\\
@@ -59,11 +61,11 @@ object List \{ \\
 \caption{A simple list reveral procedure in Scala} \label{fig:eg}
 \end{figure}
 %
-In Figure~\ref{fig:eg}, $L$ is a algebraic data type representing a list. $s: L \mapsto Int$ is a function 
+In Figure~\ref{fig:eg}, $L$ is an algebraic data type representing a list. $s: L \mapsto Int$ is a function 
 that computes the size of a list. The procedure $rev$ reverses the input list by calling a recursive procedure 
-$rev0$. The property to be proven is given by the \emph{ensuring} block. In this case, we need to prove 
-that the size of the input and the reversed list are equal. Since, $rev$ invokes $rev0$ we need to 
-infer an invariant for $rev0$ that would let us prove the specification of $rev$. 
+$rev0$. The property to be proven is given by the \emph{ensuring} block. In this case, it needs to be proven
+that the size of the input list and the reversed list are equal. Since, $rev$ invokes $rev0$ it is necessary to 
+infer an invariant for $rev0$ that would enable proving the specification of $rev$. 
 The commented line in Figure~\ref{fig:eg} shows one such invariant for $rev0$ which states that
 the size of the list returned by $rev0$ is equal to the sum of the sizes of the input lists.
 Notice that the invariant uses a recursive function $s$, algebraic data types $res$, $l1$ and $l2$
@@ -73,7 +75,7 @@ In the rest of article, we discuss three related works each of which addresses s
 automated program verification. The first paper proposes a technique for inferring inductive invariants
 for semialgebraic program which are iterative programs with only real valued variables. The other two 
 papers propose techniques for proving properties of higher-order functional programs using \emph{dependent types}.
-In each case, we discuss the shortcoming of the proposed techniques. 
-We will also illustrate the behavior of each of these techniques on the simple example shown 
-in Figure~\ref{fig:eg} which will bring to light some of the issues that the techniques would face 
-while verifying deep correctness properties of even simple programs.
+In each case, we discuss the shortcoming of the proposed technique. 
+We also illustrate the behavior of each of these techniques on the simple example shown 
+in Figure~\ref{fig:eg} which will bring to light some of the difficulties in applying these approaches for
+proving functional correctness of even simple programs.
