@@ -35,9 +35,13 @@
 %\markboth{EDIC Research Proposal}%
 \IEEEcompsoctitleabstractindextext{%
 \begin{abstract}
-We consider the problem of automatically verifying that a program satisfies a given specification. Our focus is on purely functional programs that manipulate complex data structures. A key step in automated verification is inferring inductive invariants that imply the given specification. Our research focus is on inferring
-complex inductive invariants involving arithmetics, (functional) data structures  and  user defined functions. In this report, we discuss three research papers in this direction. The first paper addresses the problem of inferring polynomial invariants for numerical programs. The other two papers focus on (semi) automatic ways of proving safety properties of higher-order functional programs using dependent types. 
-We propose to explore ways of extending the existing works for inferring more complicated invariants efficiently with more automation.
+We consider the problem of automatically verifying that a program satisfies a given specification. 
+We are interested in verifying purely functional programs that manipulate complex data structures. 
+A key step in automated verification is inferring inductive invariants that imply the given specification. 
+Our research focus is on inferring complex inductive invariants involving arithmetics, (functional) data structures 
+and  recursive functions. 
+In this report, we discuss three research papers in this direction. The first paper addresses the problem of inferring polynomial invariants for numerical programs. The other two papers focus on techniques for proving safety properties of higher-order functional programs using dependent types. 
+We propose to explore automatic and efficient ways of extending the existing works for inferring more complicated invariants.
 \end{abstract}
 \begin{IEEEkeywords}
 thesis proposal, candidacy exam write-up, EDIC, EPFL
@@ -49,6 +53,7 @@ thesis proposal, candidacy exam write-up, EDIC, EPFL
 \IEEEdisplaynotcompsoctitleabstractindextext
 \IEEEpeerreviewmaketitle
 
+\input{genericmacros}
 \input{intro}
 \input{paper1}
 \input{paper2}
