@@ -80,10 +80,10 @@ can be reduced to the following:
 Lagrangian relaxation is in general incomplete i.e, it is not a necessary condition.
 However, when the relational semantics is linear i.e, for all $k$, 
 $\sigma_k(v)$ is linear then it is complete by \emph{Farkas' lemma}.
-In fact, as discussed in some the other related works \cite{ssriram:CAV03,ssriram:SAS04}, for the linear case the constraint~\ref{eq:lagrange} 
+In fact, as discussed in some of the other related works \cite{ssriram:CAV03,ssriram:SAS04}, in the linear case, the constraint~\ref{eq:lagrange} 
 can be further reduced to a set of quadratic constraints on the 
 coefficients of $\sigma_k$ using \emph{Farkas' Lemma}. 
-By solving for the unknown coefficients (obtained due to the template $I_a$) in the
+By solving for the unknown coefficients (obtained from the template $I_a$) in the
 quadratic constraints one can infer an inductive invariant.
 However, this is valid only for the linear case. We will shortly discuss
 the solution proposed in the paper for solving constraints~\ref{eq:inv1} and \ref{eq:inv2}.
@@ -94,7 +94,7 @@ similar to \ref{eq:inv1} and \ref{eq:inv2}. A standard way of proving that
 a loop always terminates is to discover a function (called \emph{ranking function}) whose value strictly decreases at every loop iteration and remains positive across all iterations.
 Furthermore, the decrease of the ranking function has to be bounded from below to avoid zeno phenomenon.
 Formally, a function $r: \real^m \mapsto \real$ is a ranking function 
-iff it satisfies the following constraints:
+if it satisfies the following constraints:
 %
 \begin{align*}
 & \exists \delta \in \real:  \qquad \delta > 0 \\
@@ -106,7 +106,7 @@ iff it satisfies the following constraints:
 where $I(x)$ is a loop invariant which is assumed to be already inferred 
 or given by the user. 
 In plain words, the constraints enforce that $r(x) \ge 0$ is a loop invariant 
-(note that it is implied by a known invariant) and that it strictly decreases by atleast $\delta$ in each loop iteration.
+(note that it is implied by a known invariant) and that it strictly decreases by atleast $\delta$ in each iteration.
 
 As in the case of invariants assume that the ranking function is also given by
 a polynomial template $r_a(x)$ with unknown coefficients $a$. By the lagrangian
@@ -120,11 +120,11 @@ relaxation the ranking function constraints can be reduced to the following form
 \end{align}
 
 If $r_a(x)$, $I(x)$ and $\sigma(x,x')$ are conjunctions of quadratic polynomials 
-of the form $\bigwedge_k (x \; x' \; 1) M_k (x \; x' \; 1)^T$ then constraints~\ref{eq:rank1}--\ref{eq:rank3} become \emph{Linear Matrix Inequalities} (LMIs). A LMI is of the form  $M(u) \lmige 0$, where $u \in \real^l$ and 
+of the form $\bigwedge_k (x \; x' \; 1) M_k (x \; x' \; 1)^T$ then constraints~\ref{eq:rank1}--\ref{eq:rank3} become \emph{Linear Matrix Inequalities} (LMIs). A LMI is of the form  $M(u) \lmige 0$, where $u \in \real^l$. 
 $M(u) \lmige 0$ is defined as \emph{positive semidefiniteness} which is 
 given by $\forall X \in \real^n: X M(u) X^T \ge 0$, where 
-$M(u)$ is of the form $M(u) = M_0 + \sum \limits_{k=1}^{l} u_k. M_k$ 
-and $M_k$'s are symmetric matrices i.e, $M_k = M_k^T$.
+$M(u)$ is of the form $M_0 + \sum \limits_{k=1}^{l} u_k. M_k$ with
+symmetric matrices $M_k = M_k^T$.
 Finding a solution to the constraints \ref{eq:rank1}--\ref{eq:rank3}
 reduces to a \emph{Semidefinite programming feasibility problem} which 
 is to find a solution to a set of linear
@@ -158,7 +158,7 @@ $M_0 + a M_1 + b M_2 + c M_3 + d M_4 + \mu_1 M_5 + \mu_2 M_6$.
 Similarly, the constraints~\ref{eq:rank3} can also be converted to a LMI.
 Hence, for this example, the coefficients of the ranking function $a,b,c,d$
 can be determined by semidefinite programming solvers.
-One possible solution for the coefficients is $(-1 \; 1 \; 1 \; 0)$. Nevertheless,
+One possible solution for the coefficients is $(-1 \; 1 \; 1 \; 0)$. However,
 the actual solvers may produce less intuitive solution involving arbitrary real numbers.
 
 Now lets refocus on the problem of inferring invariants by solving constraints~\ref{eq:inv1}--\ref{eq:inv2}. As before lets assume that
@@ -169,10 +169,45 @@ expressed as LMIs. This is because of the term $\lambda_0.I_a(x)$ occurring
 in the constraint~\ref{eq:inv2}. In this case, both $\lambda_0$ and the 
 coefficients in $I_a(x)$ are unknowns and hence $\lambda_0.I_a(x)$ would contain
 multiplication of two unknowns. However, these can be expressed as \emph{bilinear matrix inequalities} (BMIs). A BMI has the form $M(u,u') \lmige 0$ where $M(u,u')$
-is bilinear matrix of the form: 
+is a bilinear matrix of the form: 
 $M_0 + \sum \limits_{i=1}^{p} u_i.M_i + \sum \limits_{j=1}^{q} u'_j.M'_j + \sum \limits_{i=1}^{p} \sum \limits_{j=1}^{q} u_i.u'_j.M''_{ij}$,
-where, $u \in \real^p$, $u' \in \real^q$ and $M'_j$,$M''_{ij}$ are symmetric matrices. BMI solvers can be used to solve a set of BMIs of the form $\exists u,u'. M(u.u') \lmige 0$. Thus, quadratic invariants can be solved using BMI solvers.
-However, BMU solving is NP-hard.
+where, $u \in \real^p$, $u' \in \real^q$ and $M'_j$,$M''_{ij}$ are symmetric matrices. BMI solvers can be used to solve a set of BMIs constraints  of the form $\exists u,u'. M(u.u') \lmige 0$. Thus, quadratic invariants can be solved using BMI solvers. It is to be noted that BMI solving is NP-hard. The paper proposes
+to use BMI solvers for finding quadratic inductive invariants belonging to a given template.
 
-The papers also discusses an extension that could be used to solve constraints obtained by lagrangian relaxation of higher-degree polynomials (with degree more than 2). Consider the constraints \ref{eq:rank1}--\ref{eq:rank3}. Let the highest degree of all the polynomials in the constraints be $m$. Let $x \in \real^n$ i.e, let there be $n$ variables. The approach works by converting the constraints to a set of LMIs of dimension ${ n+ d \choose d}$, where $d = m/2$, which is the number of monomials of degree $d$ with $n$ variables. The conversion is lossy i.e, incomplete.
+The paper also discusses an extension that could be used to solve constraints obtained by lagrangian relaxation of higher-degree polynomials (with degree more than 2). Consider the constraints \ref{eq:rank1}--\ref{eq:rank3}. Let the highest degree of all the polynomials in the constraints be $m$. Let $(x \; x') \in \real^n$ i.e, let there be $n$ variables. The approach works by converting the constraints to a set of LMIs of dimension ${ n+ d \choose d}$, where $d = m/2$, which is the number of monomials in $n$ variables with degree atmost $d$. The conversion is lossy i.e, incomplete. We elide the details of the extension for conciseness.
+
+Consider the list reversal program shown in Figure~\ref{fig:eg}. Clearly, the approach discussed here cannot be directly applied to the program as it not a semialgebraic program. Nevertheless, the technique can be applied to the abstraction of the program shown in Figure~\ref{fig:absRev}. The abstract program is generated
+by abstracting the lists by their sizes. 
+%
+\begin{figure}
+\begin{myprogram}
+object List \{ \\
+\pnl \>    def rev(x: Int) : Int = \{ \\
+\pnl \> \>      rev0(x, 0)  \\
+\pnl \>    \} \\
+\pnl \>    ensuring(res => res == x)\\
+\\    
+\pnl \>    def rev0(x: Int, y: Int) : Int = \{ \\
+\pnl \> \>      if(x == 0) y  \\
+\pnl \> \>      else rev0(x-1 , y+1) \\
+\pnl \>    \} \\ 
+\}
+\end{myprogram}
+\caption{An abstraction of the procedure $rev0$ shown in Figure~\ref{fig:eg}} \label{fig:absRev}
+\end{figure}
+%
+In Figure~\ref{fig:eg}, the variables $x$, $y$ and $res$ represents the 
+sizes of the lists $l1$, $l2$ and $res$ respectively.
+Invariants of recursive procedures can also be represented as solutions 
+of a set of constraints like in the case of loops.
+For this example any (useful) invariant should satisfy the following constraints:
+%
+\begin{align}
+& \forall x,res. \; I(x,0,res) \Rightarrow res = x \\
+& \forall x,y,res. \; x = 0 \Rightarrow I(x,y,res) \\
+& \forall x,y,res. \; x \ne 0 \wedge I(x-1,y+1,res) \Rightarrow I(x,y,res)
+\end{align}
+%
+Finding a solution for the above constraints is well within the realm of the approach discussed here (the invariant will be discovered by the approach if a linear template of the form $a.x+b.y+c.res = 0$ is used to model $I(x,y,res)$). The key part here was coming up with the abstract program which requires manual effort.
+
 

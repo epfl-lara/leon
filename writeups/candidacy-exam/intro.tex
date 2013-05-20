@@ -46,7 +46,7 @@ object List \{ \\
 \pnl \> \>      case Cons(\_, t) => 1 + s(t) \\
 \pnl \>    \}) \\
 \\
-\pnl \>    def rev(l: L) : L =candidacy \{ \\
+\pnl \>    def rev(l: L) : L = \{ \\
 \pnl \> \>      rev0(l, Nil())  \\
 \pnl \>    \} \\
 \pnl \>    ensuring(res => s(res) == s(l))\\
