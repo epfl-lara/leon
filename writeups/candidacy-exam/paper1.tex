@@ -1,4 +1,4 @@
-\newcommand{\real}{\mathcal{R}}
+\newcommand{\real}{\mathbb{R}}
 
 \section{Survey of the Selected Papers}
 
@@ -6,10 +6,9 @@
 
 \cite{cousot:VMCAI05} proposes an approach for inferring polynomial invariants that 
 are of the form given by a user-defined \emph{template} which is a polynomial with unknown coefficients.
-The technique is proposed for semi-algebraic programs which are numerical programs with real valued variable 
+The technique is proposed for semi-algebraic programs which are numerical programs with real valued variables 
 and iterative constructs of the form \texttt{while B do C} where B is a boolean condition 
-and C is an imperative command. Figure~\ref{fig:SAprogram} shows a semialgebraic program that computes the greatest
-factorial less than or equal to a given N.
+and C is an imperative command. Figure~\ref{fig:SAprogram} shows a semialgebraic program that computes the least factorial greater than or equal to a given N.
 %
 \begin{figure}
 \begin{myprogram}
@@ -21,26 +20,103 @@ factorial less than or equal to a given N.
 \pnl \> \> f = n* f \\
 \pnl \> \}
 \end{myprogram}
-\caption{A program computing the greatest factorial less than or equal to a given N.} \label{fig:SAprogram}
+\caption{A program computing the least factorial greater than or equal to a given N.} \label{fig:SAprogram}
 \end{figure}
 %
 Assume that the (relational) semantics of an iteration is given by a formula of the form
-$\bigwedge \limits_{k=1}^{k=n} (\sigma_k(x,x') \ge 0)$ where, $x$ and $x'$ are the vectors of
+$\bigwedge \limits_{k=1}^{n} (\sigma_k(x,x') \ge 0)$ where, $x$ and $x'$ are the vectors of
 variables representing the values of the program variables before and after an iteration, respectively 
 and $\sigma_k : \real^n \times \real^n \mapsto \real$ is a polynomial over $x$ and $x'$. 
 In other words, it is assumed that the relational semantics of each
 iteration can be expressed as a conjunction of polynomial positivity constraints.
-An inductive invariant of a loop is another polynomial inequality $I(x) \ge 0$ that satisfies the
-the following inductiveness constraints:
+For the program shown in Figure~\ref{fig:SAprogram} the relational semantics of the 
+loop is given by $N-f \ge 0 \wedge n' -n -1 = 0 \wedge f' - n'.f = 0$ (where 
+$A = 0$ is a short hand for $A \ge 0 \wedge A \le 0$).
+
+An inductive invariant of a loop is another polynomial inequality $I(x) \ge 0$ 
+that satisfies the following inductiveness constraints:
 %
 \begin{align}
-\forall x. P(x) \ge 0 \implies I(x) \ge 0 \\
-\forall x,x'. I(x) \ge 0 \wedge \bigwedge_k (\sigma_k(x,x') \ge 0) \Rightarrow  I(x') \ge 0
+& \forall x. P(x) \ge 0 \Rightarrow I(x) \ge 0 \\
+& \forall x,x'. I(x) \ge 0 \wedge \bigwedge_k (\sigma_k(x,x') \ge 0) \Rightarrow  I(x') \ge 0
 \end{align}
 %
-To prove a property $S(x) \ge 0$ is an invariant of the loop we need to find an $I(x)$ such that
+where $P(x) \ge 0$ is the precondition.
+To prove that a property $S(x) \ge 0$ is an invariant of the loop we need to find an $I(x)$ such that
 $\forall x'. I(x') \ge 0 \Rightarrow S(x') \ge 0$.
-Assume that we are interested only in solutions of $I(x)$ having the form $f_a(x)$ which is a polynomial with 
-unknown coefficients given by the vector $a$. 
-For example, $f_a(x) = a.(x \; 1)^T$ represents all linear (or affine) invariants, 
-$f_a(x) = (x \; 1).a.(x \; 1)^T$ represents all quadratic invariants  and so on. 
+Assume that we are interested only in solutions of $I(x)$ having the form $I_a(x)$ which is a polynomial with 
+unknown coefficients given by a vector $a$. 
+For example, $I_a(x) = a.(x \; 1)^T$ represents all linear (or affine) invariants, 
+$I_a(x) = (x \; 1).a.(x \; 1)^T$ represents all quadratic invariants  and so on. 
+Using this assumption we can rewrite the above constraints as follows:
+%
+\begin{align}
+& \nonumber \exists a \in \real^p:  \\
+& \forall x. P(x) \ge 0 \Rightarrow I_a(x) \ge 0  \label{eq:template1}\\
+& \forall x,x'. I_a(x) \ge 0  \wedge \bigwedge_k (\sigma_k(x,x') \ge 0) \Rightarrow  I_a(x') \ge 0 \label{eq:template2}
+\end{align}
+%
+Hence,  the problem essentially reduces to finding a vector $a$ that satisfies
+the above constraints.
+
+The paper proposes to use \emph{Langrangian Relaxation} method to solve for $a$ in the above constraints. The method states that to prove 
+$\forall v. \bigwedge \limits_{k=1}^{n} \sigma_k(v) \ge 0 \Rightarrow \sigma_0(v) \ge 0$ it suffices to prove that 
+%
+\begin{align}
+\exists (\lambda_1 \cdots \lambda_n) \in (\real^+)^n. \; \forall v. \; \left( \sigma_0(v) -
+\sum \limits_{k=1}^{n} \lambda_k \sigma_k(v) \right) \ge 0 \label{eq:lagrange}
+\end{align}
+%
+By Lagrangian relaxation, the constraints~\ref{eq:template1} and \ref{eq:template2}
+can be reduced to the following:
+%
+\begin{align}
+& \nonumber \exists a \in \real^p, \exists \mu \in \real^+, \exists (\lambda_0 \cdots \lambda_n) \in (\real^+)^{n+1}  : \\
+&\forall x. I_a(x) - \mu.P(x)  \ge 0  \label{eq:inv1}\\
+&\forall x,x'. \left( I_a(x') - \lambda_0.I_a(x) - \sum \limits_{k=1}^{n} \lambda_k. \sigma_k(x,x') \right)  \ge 0 \label{eq:inv2}
+\end{align}
+%
+Lagrangian relaxation is in general incomplete i.e, it is not a necessary condition.
+However, when the relational semantics is linear i.e, for all $k$, 
+$\sigma_k(v)$ is linear then it is complete by \emph{Farkas' lemma}.
+In fact, as discussed in some the other related works \cite{ssriram:CAV03,ssriram:SAS04}, for the linear case the constraint~\ref{eq:lagrange} 
+can be further reduced to a set of quadratic constraints on the 
+coefficients of $\sigma_k$ using \emph{Farkas' Lemma}. 
+By solving for the unknown coefficients (obtained due to the template $I_a$) in the
+quadratic constraints one can infer an inductive invariant.
+However, this is valid only for the linear case. We will shortly discuss
+the solution proposed in the paper for solving constraints~\ref{eq:inv1} and \ref{eq:inv2}.
+
+The paper also considers a related problem of proving termination of a program
+and shows that it can also be reduced to finding a solution to constraints 
+similar to \ref{eq:inv1} and \ref{eq:inv2}. A standard way of proving that 
+a loop always terminates is to discover a function (called \emph{ranking function}) whose value strictly decreases at every loop iteration and remains positive across all iterations.
+Furthermore, the decrease of the ranking function has to be bounded from below to avoid zeno phenomenon.
+Formally, a function $r: \real^p \mapsto \real$ is a ranking function 
+iff it satisfies the following constraints:
+%
+\begin{align*}
+& \exists \delta \in \real:  \qquad \delta > 0 \\
+& \forall x. \; I(x) \ge 0 \Rightarrow r(x) \ge 0 \\
+& \forall x,x'. I(x) \ge 0  \wedge \bigwedge_k \sigma_k(x,x') \ge 0 \Rightarrow  
+(r(x) - r(x') - \delta) \ge 0
+\end{align*}
+%
+where $I(x)$ is a loop invariant which is assumed to be already inferred 
+or given by the user. 
+In plain words, the constraints enforce that $r(x) \ge 0$ is a loop invariant 
+(note that it is implied by a known invariant) and that it strictly decreases by atleast $\delta$ in each loop iteration.
+
+As in the case of invariants assume that the ranking function is also given by
+a polynomial template $r_a(x)$ with unknown coefficients $a$. By the lagrangian
+relaxation the ranking function constraints can be reduced to the following form:
+%
+\begin{align}
+& \nonumber \exists \delta \in R, \exists a \in \real^p, \exists \mu \in \real^+, \exists (\lambda_0 \cdots \lambda_n) \in (\real^+)^{n+1} : \\
+& \delta > 0 \label{eq:rank1}\\
+& \forall x. \; r_a(x) - \mu.I(x)  \ge 0 \label{eq:rank2}\\
+& \forall x,x'. \left( r_a(x) - r_a(x') - \delta - \lambda_0.I_a(x) - \sum \limits_{k=1}^{n} \lambda_k. \sigma_k(x,x') \right) \ge 0 \label{eq:rank3}
+\end{align}
+%
+
+
