@@ -1,4 +1,5 @@
 \newcommand{\real}{\mathbb{R}}
+\newcommand{\lmige}{\succcurlyeq}
 
 \section{Survey of the Selected Papers}
 
@@ -25,8 +26,8 @@ and C is an imperative command. Figure~\ref{fig:SAprogram} shows a semialgebraic
 %
 Assume that the (relational) semantics of an iteration is given by a formula of the form
 $\bigwedge \limits_{k=1}^{n} (\sigma_k(x,x') \ge 0)$ where, $x$ and $x'$ are the vectors of
-variables representing the values of the program variables before and after an iteration, respectively 
-and $\sigma_k : \real^n \times \real^n \mapsto \real$ is a polynomial over $x$ and $x'$. 
+variables representing the values of $m$ program variables before and after an iteration, respectively 
+and $\sigma_k : \real^m \times \real^m \mapsto \real$ is a polynomial over $x$ and $x'$. 
 In other words, it is assumed that the relational semantics of each
 iteration can be expressed as a conjunction of polynomial positivity constraints.
 For the program shown in Figure~\ref{fig:SAprogram} the relational semantics of the 
@@ -44,10 +45,10 @@ that satisfies the following inductiveness constraints:
 where $P(x) \ge 0$ is the precondition.
 To prove that a property $S(x) \ge 0$ is an invariant of the loop we need to find an $I(x)$ such that
 $\forall x'. I(x') \ge 0 \Rightarrow S(x') \ge 0$.
-Assume that we are interested only in solutions of $I(x)$ having the form $I_a(x)$ which is a polynomial with 
-unknown coefficients given by a vector $a$. 
-For example, $I_a(x) = a.(x \; 1)^T$ represents all linear (or affine) invariants, 
-$I_a(x) = (x \; 1).a.(x \; 1)^T$ represents all quadratic invariants  and so on. 
+Assume that we are interested only in solutions of $I(x)$ having the form $I_a(x)$ which is a polynomial with unknown coefficients given by a vector $a$. 
+For example, $I_a(x) = a (x \; 1)^T$ represents all linear (or affine) invariants, 
+$I_a(x) = (x \; 1) a (x \; 1)^T$, where $a$ is a symmetric matrix of unknown 
+coefficients, represents all quadratic invariants  and so on. 
 Using this assumption we can rewrite the above constraints as follows:
 %
 \begin{align}
@@ -64,7 +65,7 @@ $\forall v. \bigwedge \limits_{k=1}^{n} \sigma_k(v) \ge 0 \Rightarrow \sigma_0(v
 %
 \begin{align}
 \exists (\lambda_1 \cdots \lambda_n) \in (\real^+)^n. \; \forall v. \; \left( \sigma_0(v) -
-\sum \limits_{k=1}^{n} \lambda_k \sigma_k(v) \right) \ge 0 \label{eq:lagrange}
+\sum \limits_{k=1}^{n} \lambda_k. \sigma_k(v) \right) \ge 0 \label{eq:lagrange}
 \end{align}
 %
 By Lagrangian relaxation, the constraints~\ref{eq:template1} and \ref{eq:template2}
@@ -92,7 +93,7 @@ and shows that it can also be reduced to finding a solution to constraints
 similar to \ref{eq:inv1} and \ref{eq:inv2}. A standard way of proving that 
 a loop always terminates is to discover a function (called \emph{ranking function}) whose value strictly decreases at every loop iteration and remains positive across all iterations.
 Furthermore, the decrease of the ranking function has to be bounded from below to avoid zeno phenomenon.
-Formally, a function $r: \real^p \mapsto \real$ is a ranking function 
+Formally, a function $r: \real^m \mapsto \real$ is a ranking function 
 iff it satisfies the following constraints:
 %
 \begin{align*}
@@ -115,8 +116,63 @@ relaxation the ranking function constraints can be reduced to the following form
 & \nonumber \exists \delta \in R, \exists a \in \real^p, \exists \mu \in \real^+, \exists (\lambda_0 \cdots \lambda_n) \in (\real^+)^{n+1} : \\
 & \delta > 0 \label{eq:rank1}\\
 & \forall x. \; r_a(x) - \mu.I(x)  \ge 0 \label{eq:rank2}\\
-& \forall x,x'. \left( r_a(x) - r_a(x') - \delta - \lambda_0.I_a(x) - \sum \limits_{k=1}^{n} \lambda_k. \sigma_k(x,x') \right) \ge 0 \label{eq:rank3}
+& \forall x,x'. \left( r_a(x) - r_a(x') - \delta - \lambda_0.I(x) - \sum \limits_{k=1}^{n} \lambda_k. \sigma_k(x,x') \right) \ge 0 \label{eq:rank3}
 \end{align}
-%
 
+If $r_a(x)$, $I(x)$ and $\sigma(x,x')$ are conjunctions of quadratic polynomials 
+of the form $\bigwedge_k (x \; x' \; 1) M_k (x \; x' \; 1)^T$ then constraints~\ref{eq:rank1}--\ref{eq:rank3} become \emph{Linear Matrix Inequalities} (LMIs). A LMI is of the form  $M(u) \lmige 0$, where $u \in \real^l$ and 
+$M(u) \lmige 0$ is defined as \emph{positive semidefiniteness} which is 
+given by $\forall X \in \real^n: X M(u) X^T \ge 0$, where 
+$M(u)$ is of the form $M(u) = M_0 + \sum \limits_{k=1}^{l} u_k. M_k$ 
+and $M_k$'s are symmetric matrices i.e, $M_k = M_k^T$.
+Finding a solution to the constraints \ref{eq:rank1}--\ref{eq:rank3}
+reduces to a \emph{Semidefinite programming feasibility problem} which 
+is to find a solution to a set of linear
+matrix inequalities: $\exists u \in \real^l. \; M(x) \lmige 0$.
+The paper proposes to use semidefinite programming solvers 
+to find a solution to the ranking function constraints.
+
+For example, consider the program shown in Figure~\ref{fig:SAprogram}.
+Say we are given a loop invariant $n \ge 0 \wedge (f-1) \ge 0$.
+Say $r_a$ is given by the template $(a \; b \; c \; d)(n \; f \; N \; 1)^T$. 
+Consider the constraint~\ref{eq:rank2}. Since, the given invariant 
+is a conjunction of two formulas Constraint~\ref{eq:rank2} should be modified as $r_a(x) - \mu_1.I_1(x)- \mu_2.I_2(x) \ge 0$. 
+Substituting for $r_a$, $I_1$ and $I_2$ we get,
+$((a- \mu_1) \; (b - \mu_2) \; c \; (d-\mu_2))(n \; f \; N \; 1)^T \ge 0$.
+This could be expressed in the form $X M(u) X^T \ge 0$, where 
+$X=(n \; f \; N \; 1)$, $u = (a \; b \; c \; d \; \mu_1 \; \mu_2)$, 
+as shown below:
+%
+\begin{align*}
+M(u) = 
+\left( \begin{array}{cccc} 
+0 & 0 & 0 & (a- \mu_1)/2 \\
+0 & 0 & 0 & (b- \mu_2)/2 \\
+0 & 0 & 0 & c/2 \\
+(a- \mu_1)/2 & (b- \mu_2)/2 & c/2 & (d-\mu_2) 
+\end{array} \right)
+\end{align*}
+%
+The above matrix can be converted to the form: 
+$M_0 + a M_1 + b M_2 + c M_3 + d M_4 + \mu_1 M_5 + \mu_2 M_6$.
+Similarly, the constraints~\ref{eq:rank3} can also be converted to a LMI.
+Hence, for this example, the coefficients of the ranking function $a,b,c,d$
+can be determined by semidefinite programming solvers.
+One possible solution for the coefficients is $(-1 \; 1 \; 1 \; 0)$. Nevertheless,
+the actual solvers may produce less intuitive solution involving arbitrary real numbers.
+
+Now lets refocus on the problem of inferring invariants by solving constraints~\ref{eq:inv1}--\ref{eq:inv2}. As before lets assume that
+$I_a(x)$ and $\sigma(x,x')$ are conjunctions of quadratic polynomials 
+of the form $\bigwedge_k (x \; x' \; 1) M_k (x \; x' \; 1)^T$.
+Unlike the ranking function constraints, invariant constrains cannot be 
+expressed as LMIs. This is because of the term $\lambda_0.I_a(x)$ occurring
+in the constraint~\ref{eq:inv2}. In this case, both $\lambda_0$ and the 
+coefficients in $I_a(x)$ are unknowns and hence $\lambda_0.I_a(x)$ would contain
+multiplication of two unknowns. However, these can be expressed as \emph{bilinear matrix inequalities} (BMIs). A BMI has the form $M(u,u') \lmige 0$ where $M(u,u')$
+is bilinear matrix of the form: 
+$M_0 + \sum \limits_{i=1}^{p} u_i.M_i + \sum \limits_{j=1}^{q} u'_j.M'_j + \sum \limits_{i=1}^{p} \sum \limits_{j=1}^{q} u_i.u'_j.M''_{ij}$,
+where, $u \in \real^p$, $u' \in \real^q$ and $M'_j$,$M''_{ij}$ are symmetric matrices. BMI solvers can be used to solve a set of BMIs of the form $\exists u,u'. M(u.u') \lmige 0$. Thus, quadratic invariants can be solved using BMI solvers.
+However, BMU solving is NP-hard.
+
+The papers also discusses an extension that could be used to solve constraints obtained by lagrangian relaxation of higher-degree polynomials (with degree more than 2). Consider the constraints \ref{eq:rank1}--\ref{eq:rank3}. Let the highest degree of all the polynomials in the constraints be $m$. Let $x \in \real^n$ i.e, let there be $n$ variables. The approach works by converting the constraints to a set of LMIs of dimension ${ n+ d \choose d}$, where $d = m/2$, which is the number of monomials of degree $d$ with $n$ variables. The conversion is lossy i.e, incomplete.
 
