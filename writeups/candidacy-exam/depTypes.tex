@@ -103,7 +103,6 @@ As shown in the figure, the function contracts (pre and postconditions) are expr
 The safety property that the sizes of the input and the reversed list of $rev$ are equal is expressed as a refinement predicate of the return type of $rev$. If the 
 program type checks then the safety property is bound to hold.
 Type checking essentially reduces to proving a set of implications on the refinement predicates. In this example, the implication that needs to be proven to type check the recursive case of $rev0$ is $l1 = Cons(x,xs) \wedge s(\nu) = s(xs) + s(Cons(x,l2)) \Rightarrow s(\nu) = s(l1) + s(l2)$.
-Proving this requires reasoning about algebraic data structures and recursive functions (or equivalently \emph{universal quantification}). If the decision
-procedures are powerful enough to handle these features then the program will type check.
+Proving this requires reasoning about algebraic data structures and recursive functions. If the decision procedures are powerful enough to handle these features then the program will type check.
 
 Dependent types is only a mechanism for specifying contracts and safety properties of higher-order program. They as such do not address the problem of automatically inferring inductive invariants (or equivalently inductive refinement predicates). Dependent type checking succeeds only when the refinement predicates of types of recursive procedures are inductive invariants. The papers discussed in the next sections target automatic inference of refinement predicates.
