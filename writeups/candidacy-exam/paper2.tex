@@ -1,1 +1,11 @@
-\subsection{Paper2}
+\newcommand{\pr}[1]{\mathit{\left< #1 \right>}}
+
+\subsection{Abstract Refinement Types}
+
+Abstract refinement types proposed by \cite{rjhala:ESOP13} are polymorphic dependent types analogous to polymorphic base types that enable quantification over the refinement predicates of dependent types. 
+Polymorphism in dependent types is desirable for reasons similar to those of the base types. Consider the lambda term $\lambda x. x$. Clearly, it has the polymorphic 
+type $a \mapsto a$. However, intuitively, the lambda term not only preserves the base types but also the dependent types regardless of the refinement predicate.
+The type system proposed in the paper allows us to assign the lambda term an abstract refinement type of the form $\forall \pr{p::a \mapsto bool}. a\pr{p} \mapsto a\pr{p}$ where, $p$ is a predicate (boolean valued function) and $a\pr{p}$ denotes the dependent type $\dt{a}{p}$. $p$ is called an abstract refinement which can, in general, be a boolean valued function with any number of arguments.
+
+The paper discusses three specific uses of abstract refinements namely, specifying and verifying key-value maps, recursive data structures refinements and higher-order traversal routines. Here, we illustrate the use of such abstract refinements for verifying key value maps.
+
