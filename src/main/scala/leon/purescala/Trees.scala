@@ -280,7 +280,7 @@ object Trees {
     val fixedType = BooleanType
 
     override def equals(that: Any): Boolean = (that != null) && (that match {
-      case t: Iff => t.left == left
+      case t: Iff => t.left == left && t.right == right
       case _ => false
     })
 
