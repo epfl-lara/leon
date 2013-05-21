@@ -21,11 +21,11 @@ for a language similar to simple lambda calculus (the rules shown are not comple
 \begin{tabular}{ll}
 \inferrule
 	{\Gamma;\nu:B \vdash e:bool}	
-	{\Gamma \vdash \dt{\nu:B}{e}} \textsc{[WT-Base]}
+	{\Gamma \vdash \dt{\nu:B}{e}} \textsc{[WF-Base]}
 &
 \inferrule
 	{\Gamma;x:T_1 \vdash T_2}	
-	{\Gamma \vdash x:T_1 \mapsto T_2} \textsc{[WT-Fun]} \\ 
+	{\Gamma \vdash x:T_1 \mapsto T_2} \textsc{[WF-Fun]} \\ 
 & 	
 \end{tabular} 
 \begin{tabular}{l}
@@ -45,7 +45,7 @@ for a language similar to simple lambda calculus (the rules shown are not comple
 	{\Gamma \vdash e_1: T_1 \\ \Gamma;x:T_1 \vdash e_2: T_2 \\ \Gamma \vdash T_2}	
 	{\Gamma \vdash \text{let } x = e_1 \text{ in } e_2 : T_2} \textsc{[Let]} 	 \\ \\
 \inferrule
-	{\Gamma \vdash x: T_1 \\ \Gamma;x:T_1 \vdash e_1: T_1 \\ \Gamma;x:T_1 \vdash e_2: T_2 \\ \Gamma \vdash T_2}	
+	{\Gamma \vdash T_1 \\ \Gamma;x:T_1 \vdash e_1: T_1 \\ \Gamma;x:T_1 \vdash e_2: T_2 \\ \Gamma \vdash T_2}	
 	{\Gamma \vdash \text{let rec } x = e_1 \text{ in } e_2 : T_2} \textsc{[Let-Rec]} 	 \\ \\
 \inferrule
 	{\text{Valid}(\sem{\Gamma} \wedge \sem{e_1} \Rightarrow \sem{e2})}	
@@ -54,3 +54,12 @@ for a language similar to simple lambda calculus (the rules shown are not comple
 \caption{Rules for dependent type checking} \label{fig:typerules}
 \end{figure}
 %
+In the figure, $\Gamma$ is the type environment which is a sequence of
+type bindings of the form $x:T$ (where $x$ is a variable) and predicates $e$. 
+The rules \textsc{[WT-Base]} and \textsc{[WT-Fun]} define well formedness of dependent types. Informally, a base dependent is well formed iff the refinement predicate is a bool expression whose free variables are bound in the environment. A function refinement type is well formed iff its domain and range types are well formed dependent types. The rules \textsc{[Sub]}, \textsc{[Fun]}, \textsc{[Let]} and \textsc{[Let-Rec]} are straight-forward and similar to normal typing rules.
+Note that in rule \textsc{[App]} the type of expression $e_1 \; e_2$ is $T_2$ but
+with $x$ replaced by $e_2$ this is necessary as $x$ could be used in the refinement
+predicate of $T_2$. In rule \textsc{[If]} the guard expression $e_1$ (or its negation) is included in the environment while type checking branches. This
+allows the type system to be path-sensitive. 
+
+The most interesting rule is \textsc{[Dec-Sub]} (abbreviation for decidable subtyping) which defines what it means for one dependent base type to be a subtype of another dependent base type. $\sem{\Gamma}$ is the formula corresponding to 
