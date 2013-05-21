@@ -1,11 +1,70 @@
-\newcommand{\pr}[1]{\mathit{\left< #1 \right>}}
+\newcommand{\pr}[1]{\left< #1 \right>}
+\newcommand{\lp}{\langle}
+\newcommand{\rp}{\rangle}
+%\newcommand{\b}{\text{ Bool }}
+%\newcommand{\a}{\text{ a }}
 
 \subsection{Abstract Refinement Types}
 
 Abstract refinement types proposed by \cite{rjhala:ESOP13} are polymorphic dependent types analogous to polymorphic base types that enable quantification over the refinement predicates of dependent types. 
 Polymorphism in dependent types is desirable for reasons similar to those of the base types. Consider the lambda term $\lambda x. x$. Clearly, it has the polymorphic 
 type $a \mapsto a$. However, intuitively, the lambda term not only preserves the base types but also the dependent types regardless of the refinement predicate.
-The type system proposed in the paper allows us to assign the lambda term an abstract refinement type of the form $\forall \pr{p::a \mapsto bool}. a\pr{p} \mapsto a\pr{p}$ where, $p$ is a predicate (boolean valued function) and $a\pr{p}$ denotes the dependent type $\dt{a}{p}$. $p$ is called an abstract refinement which can, in general, be a boolean valued function with any number of arguments.
+The type system proposed in the paper allows us to assign the lambda term an abstract refinement type of the form $\forall \pr{p::a \mapsto bool}. a\pr{p} \mapsto a\pr{p}$
+%\footnote{Normally we omit the universal quantifier as for the polymorphic types} 
+where, $p$ is a predicate (boolean valued function) and $a\pr{p}$ denotes the dependent type $\dt{a}{p}$. $p$ is called an abstract refinement which can, in general, be a boolean valued function with any number of arguments. 
 
-The paper discusses three specific uses of abstract refinements namely, specifying and verifying key-value maps, recursive data structures refinements and higher-order traversal routines. Here, we illustrate the use of such abstract refinements for verifying key value maps.
-
+The paper discusses several scenarios in which the abstract refinements can be used to succinctly state and verify rich specifications. For example, consider a vector that maps integers to values (which can be of any type).
+Say we want to state that the types and refinement predicates of values stored in
+the vector are preserved. The paper proposes to assign the following abstract refinement type for a vector data structure:
+%
+\begin{myprogram}
+data Vec::$\forall \lp$dom::Int$\mapsto$Bool, rng::Int$\mapsto$a$\mapsto$Bool$\rp$. \\
+\> (i:Int$\lp$dom$\rp$ $\mapsto$ a$\lp$rng i$\rp$)
+\end{myprogram}
+%
+The type vector is defined as a function mapping integers to values. 
+The vector is parametrized by three type parameters $a$,$dom$ and $rng$.
+$a$ is a polymorphic type representing the type of the values.
+$dom$ and $rng$ are abstract refinements for the types of the domain and range of the vector respectively.
+The function \texttt{get} that returns an element of the vector at a given index is typed as follows:
+%
+\begin{myprogram}
+get :: $\forall \lp$d::Int$\mapsto$Bool, r::Int$\mapsto$a$\mapsto$Bool$\rp$. \\
+\> \> i:Int$\pr{d} \mapsto$ Vec$\pr{a,d,r} \mapsto$ $a\pr{r \; i}$ \\
+\> get(i,V) = V(i)
+\end{myprogram}
+%
+The type of the \texttt{set} function that updates the vector at a given index is typed as follows:
+%
+\begin{myprogram}
+set :: $\forall \lp$d::Int$\mapsto$Bool, r::Int$\mapsto$a$\mapsto$Bool$\rp$. \\
+\> \> i:Int$\pr{d} \mapsto a\pr{r \; i}$ $\mapsto$ 
+Vec$\pr{a,\lambda x. d(x) \wedge k \ne i,r}$ \\
+\> \> $\mapsto$ Vec$\pr{a,d,r}$ \\
+\> set(i,x,V) = $\lambda$k. if(k==i)  then x else V(k)
+\end{myprogram}
+%
+The type of \texttt{set} enforces that (a) the input vector satisfies the
+domain and range refinements everywhere except at $i$ (b) $x$ satisfies the range refinement at the index $i$.
+A \texttt{create} function that creates a vector with all indices mapped 
+to a given value can be specified as follows:
+%
+\begin{myprogram}
+create :: x:a $\mapsto$ Vec$\pr{a,\lambda i.true,\lambda x. v = x}$  \\
+\> create(x) = $\lambda$i. x
+\end{myprogram}
+%
+Using this specifications for the vector data structure it is possible 
+to type check the following caching example:
+%
+\begin{myprogram}
+\\
+\pnl type cache = Vec$\pr{\lambda i. true, \lambda i,v. v \ne 0 \Rightarrow v = fib(i)}$ \\
+\pnl mfib :: i:Int $\mapsto$ cache $\mapsto$ $\{ \nu: Int \vbar \nu = fib(i) \}$ \\
+\pnl mfib(i,n) = \{  \\
+\pnl \> x = get(i,n) \\
+\pnl \> if(x != 0) x else fib(i) \\
+\pnl \} 
+\end{myprogram}
+%
+In the above procedure,
