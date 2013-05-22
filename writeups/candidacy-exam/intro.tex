@@ -5,6 +5,7 @@ The existing approaches for program verification can be classified into two broa
 consists of (almost) completely automated techniques that can operate with little or no manual
 intervention. Typically, these techniques are aimed at proving simple (yet non-trivial) properties
 and are also engineered to scale to large code bases. 
+
 The other category consists of semi-automatic approaches that are aimed at proving deep properties 
 (also called functional correctness properties) of programs. 
 Typically, these techniques make use of sophisticated interactive theorem proving machinery
@@ -12,6 +13,7 @@ and rely on users to guide the proof search by providing intermediate lemmas (al
 Over the recent years, researchers have made great progress in pushing the reach of the 
 automated verifiers to more complex programs and properties, as well as in minimizing the manual effort 
 involved in interactive theorem proving. 
+
 Our goal is to further extend the state-of-the-art in the automated verification of functional programs.
 Our motivation for focusing on functional programs stems from the fact that the high-level (mathematical) abstractions 
 such as algebraic data types, immutable types etc. supported by the functional languages relieve the verifiers 
@@ -30,6 +32,7 @@ for the called procedure and assuming that the invariants hold for the call
 \footnote{Mutually recursive procedures can be 
 verified by means of \emph{assume guarantee} reasoning or by converting them 
 to a single recursive procedure}.
+
 Typically, proving functional correctness properties requires inference of inductive invariants
 that involve arithmetics, data structures and recursive functions. 
 For an example, consider the simple Scala program shown in Figure~\ref{fig:eg} that reverses a list. 
@@ -63,7 +66,9 @@ object List \{ \\
 %
 In Figure~\ref{fig:eg}, $L$ is an algebraic data type representing a list. $s: L \mapsto Int$ is a function 
 that computes the size of a list. The procedure $rev$ reverses the input list by calling a recursive procedure 
-$rev0$. The property to be proven is given by the \emph{ensuring} block. In this case, it needs to be proven
+$rev0$. 
+
+The property to be proven is given by the \emph{ensuring} block. In this case, it needs to be proven
 that the size of the input list and the reversed list are equal. Since, $rev$ invokes $rev0$ it is necessary to 
 infer an invariant for $rev0$ that would enable proving the specification of $rev$. 
 The commented line in Figure~\ref{fig:eg} shows one such invariant for $rev0$ which states that

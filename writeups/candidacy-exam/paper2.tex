@@ -54,7 +54,7 @@ Vec$[a,\lambda x. d(x) \wedge k \ne i,r]$ \\
 The type of \texttt{set} enforces that (a) the input vector satisfies the
 domain and range refinements everywhere except at the index $i$ 
 (b) $x$ satisfies the range refinement predicate at the index $i$.
-A \texttt{create} function that creates a vector with all indices mapped 
+A \texttt{create} function that creates a new vector with all indices mapped 
 to a given value can be specified as follows:
 %
 \begin{figure}[h]
@@ -102,13 +102,14 @@ In this approach, it is assumed that the user has given a template which are pre
 with holes that can be substituted by any variable. 
 Say $x$ is a variable whose type is to be inferred. Assume that its base type 
 is known and is $Int$ (this can be inferred using a normal type system).
-The inference engine assumes the type of $x$ as $\dt{\nu: Int}{k_x}$ where $k_x$ is a unknown refinement predicate. 
+The inference engine assumes the type of $x$ as $\dt{\nu: Int}{k_x}$ where $k_x$ 
+is an unknown refinement predicate. 
 Applying the type checking rules produces a set of implications involving $k_x$.
 It is necessary to find a value of $k_x$ that satisfies these implications.
 For each such $k_x$, the template (given by the user) defines a set of candidate predicates which are obtained 
 by substituting the holes in the template with the variables that are allowed to be used in $k_x$.
 The inference engine uses \emph{predicate abstraction} over these set of candidate predicates to infer the refinements.
-Similarly, it also possible to infer instantiations of abstract refinements by 
+Similarly, it is also possible to infer instantiations of abstract refinements by 
 using an unknown predicate (like $k_x$) to represent the instantiation and applying predicate abstraction.
 
 %%TODO state the drawbacks of the approach and also the problems in using this to in our example.

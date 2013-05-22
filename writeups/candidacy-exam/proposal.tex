@@ -1,52 +1,98 @@
 \section{Research Proposal}
 
-Automated verification of functional correctness properties is hard but there
-exists great scope for extending the current state-of-the-art.
-This is exemplified by the techniques discussed above whose behavior on the 
-simple list reversal program is not very satisfactory.
-We plan to start attacking this problem by extending the template based invariant generation 
-techniques  proposed for numerical programs such as the one discussed in the 
-section~\ref{sec:paper1} and also in \cite{ssriram:SAS04,ssriram:CAV03}. 
+\emph{The Leon Verification Framework.}
 
-Our initial (short-term) objective is to support inference of inductive invariants belonging to a predefined
-template which may involve polynomials, user-defined (recursive) functions 
-and data structures. For example, we would like to support templates of the form 
-$a.f_1(t_1) + b.f_2(t_2) + c.f_3(t_3) = 0$ where, $a$,$b$ and $c$ are unknown coefficients (integers or reals),
-$f_1$,$f_2$ and $f_3$ are unknown functions and $t_1$,$t_2$ and $t_3$ are unknown data types.
-The inference engine has to bind the unknown entities to suitable values so that the verification 
-succeeds. 
-As in the previous works, we plan to solve the extended templates by efficiently encoding them as
-solutions of logical constraints and solve them using dedicated constraint solvers 
-(such as SMT solvers, BMI, LMI solvers etc.)
-We plan to investigate constraint solving based techniques instead of iterative procedures such
-as predicate abstraction for the following reasons:
-(a) to exploit the ever growing advances in the constraint solving technology.
-(b) to increase the applicability of the technique to problems beyond invariant inference. 
-As discussed in section~\ref{sec:paper1} termination problem can also be modeled as constraint solving. 
-Interestingly, it is also possible to cast \emph{synthesis problem} as constraint solving.
-Developing efficient techniques for solving a set of constraints involving sophisticated
-templates such as the one described above enables us to simultaneously target several interesting
-related problems.
+Our interest is in the \emph{Leon verification framework} \cite{psuter:SAS11} which 
+is a verifier for proving specifications of pure Scala programs. 
+Leon can handle specifications involving recursive functions, arithmetics and data structures. The example shown in Figure~\ref{fig:eg} is a valid Leon program.  
 
-However, there several challenges to constraint solving techniques the most important of
-which is the exponential blow-up in the sizes of the constraints to be solved when 
-functions and data-structures are involved.
-For example, In \cite{dirk:VMCAI07} that discusses a technique for handling linear templates 
-extended with only uninterpreted functions the sizes of the constraints are in the order of $n!$
+Given a program annotated with specifications, Leon simultaneously searches for a proof that shows that the specification is valid as well as for a counterexample that falsifies the specification.
+Leon handles user defined functions in the verification condition by progressively unrolling the functions until the specification is proved or a counterexample is discovered. 
+At each unroll step Leon uses \emph{Z3} \cite{moura:ACM11}, a powerful SMT solver, for checking the validity of the verification condition. 
+\cite{psuter:SAS11} provides more information on the Leon algorithm.
+
+However, Leon in its current form  does not have any mechanism for automatically strengthening the specifications or inferring inductive invariants wherever 
+required. The programmer has to make sure that not only his specifications are correct but also are sufficiently detailed to be proven by induction.
+%In fact, Leon in its current form is similar to interactive theorem provers like \emph{Isabelle} \cite{isabelle:}.
+
+Typically, Leon programs specify complex properties that involve recursive functions, data structures and arithmetics. For instance, one can describe a red black tree as a Leon program and prove, by providing sufficient specifications, its functional correctness which involves proving that the red black tree constraints hold and that the tree operations such as insertion, deletion, find etc. take logarithmic time in the size of the tree.
+Unfortunately, proving such properties demand great deal of manual effort which makes proving large programs virtually impossible.
+
+\emph{The Long Term Goal - Automating the Leon Verifier.}
+
+Our long term research objective is to investigate techniques that can automate the process of verification in Leon. Such techniques should be capable of reasoning about combinations of data structures, recursive functions over data structures and integers, and non linear arithmetic. The ability to reason about just one of these features in isolation will not be very useful. 
+
+Automatically inferring the inductive invariants manually specified in the Leon programs is far beyond the reach of the state-of-the-art verification techniques. 
+In fact, as illustrated earlier, the approaches discussed in the previous sections have several obstacles in verifying the simple list reversal procedure.
+
+\emph{A Short Term Goal.}
+
+As a first step in automating Leon, we propose to integrate it with an inference engine that can infer expressive invariants that belong to template.
+The plan is to extend the template based verification of numerical programs to user-defined (recursive) functions and data structures. For example, we would like to support templates of the form 
+$af_1(t_1) + bf_2(t_2) + cf_3(t_3) = 0$ where, $a$,$b$ and $c$ are unknown coefficients (integers or reals), $f_1$,$f_2$ and $f_3$ are unknown functions and $t_1$,$t_2$ and $t_3$ are unknown data types.
+The inference engine has to bind the unknown entities to suitable values so that the verification succeeds. 
+For the list reversal program, we would like $a,b,c$  to be bounded to $1,1,-1$ respectively, $f_1,f_2,f_3$ to the function $s$ and $t_1,t_2,t_3$
+to $l1,l2$ and $res$ respectively.
+
+There are several approaches to infer such templates. One common approach
+is to use predicate abstraction (as in the case of Liquid Types \cite{rjhala:PLDI08}).
+However, we propose to infer these expressive templates by efficiently encoding them as solutions of logical constraints and solving the constraints using dedicated solvers like SMT, LMI, BMI solvers.
+
+Such constraint solving techniques are attractive for the following reasons:
+(a) it enables the inference mechanism to benefit from the ever growing advances in the constraint solving technology
+(b) it makes the technique applicable to problems beyond invariant inference. 
+As discussed in section~\ref{sec:paper1}, termination problem can also be 
+modelled as constraint solving. 
+Interestingly, it is also possible to cast \emph{synthesis problems} 
+(such as those discussed in \cite{vkuncak:PLDI10}) as constraint solving.
+%the section~\ref{sec:paper1} and also in \cite{ssriram:SAS04,ssriram:CAV03}. 
+
+\emph{Challenges in solving templates using constraint solvers.}
+
+However, there are several challenges to constraint solving techniques the most important of which is the exponential blow up in the sizes of the constraints to be solved when functions and data structures are involved.
+For example, In \cite{dirk:VMCAI07} which discusses a technique 
+for handling linear templates extended with uninterpreted functions, 
+the size of the constraints is in the order of $n!$ 
 (where $n$ is the size of the verification condition). 
-Their approach has a cosomological complexity of $O(n!2^n)$.
-Furthermore, the disjunctions in the program code, specifications and templates further increase 
-the sizes of the constraints.
-Hence, a huge practical challenge is to control the sizes of the constraints while supporting
-rich templates.
-We plan to explore abstraction  and incrementalization (see \cite{dirk:PLDI07}) to address this problem.
+Their approach has a complexity of $O(n!2^n)$.
 
-We plan to implement and integrate our approach with the \emph{Leon verification framework} 
-\cite{psuter:SAS11}.
-\emph{Leon} is verifier for proving specifications of functional programs involving 
-recursive functions, arithmetics and data structures. 
-Leon already incorporates a powerful interprocedural verification technique for handling 
-programs with multiple procedures.
-However, in its current form it cannot automatically  strengthen the specifications (by inferring inductive
-invariants) if necessary. We plan to integrate our approach with Leon so that it can handle such scenarios. 
-We have started implementing parts of our approach and find the initial results very encouraging.
+In addition to that, disjunctions in the function body, specifications and templates further increase the size of the constraints.
+For example, an implication of the form $(A \vee B) \Rightarrow C$
+need to be reduced to $A \Rightarrow C$ and $B \Rightarrow C$.
+Disjunctions in the consequences of the implication (which may arise if the
+specifications or templates have disjunctions) may result in incompleteness.
+It is a huge practical challenge to control the size of the constraints while supporting rich templates.
+
+\emph{A Proposed Solution.}
+
+We plan to explore abstraction and incrementalization to address the problem of increase in constraint sizes.
+Abstraction refers to the process of abstracting a given set of constraints into a smaller set of constraints and solving the smaller constraints. 
+In cases where the abstraction is non-lossy the solution for the 
+smaller constraints would also be a valid  solution for the original constraints.
+We would also like to explore refinement of abstractions using counter-examples
+like in a CEGAR based approach.
+
+Incrementalization refers to an iterative approach that computes a solution to a set of constraints progressively by first solving a subset of the constraints 
+and incrementally strengthening the solution by including more constraints.
+\cite{dirk:PLDI07} proposes an approach that incrementally infers an invariant for a program by solving the constraints generated from the individual static paths in the program.
+We plan to further extend the approach to handle functions and data structures 
+in the constraints incrementally.
+
+We have started implementing parts of our approach in Leon and find the initial results encouraging. 
+
+To address our long term goal of automated verification of Leon programs we plan to explore the following avenues. As an extension to the template based invariant inference proposed earlier, we would like to explore ways of 
+automatically inferring the most suitable templates instead of relying on a predefined template. We also plan to investigate ways of constructively combining abstract interpretation based techniques and constraint solving based techniques for invariant inference which remains largely unexplored.
+
+%\emph{Long term goals.}
+%
+%As mentioned earlier our long term objective is to increase the automation in Leon %and make it easier to prove deep functional correctness properties.
+%To this accord we propose to progress in the following research directions apart %from developing automated techniques for invariant inference: 
+%
+%(a) enriching the language features to allow more direct specification of desirable properties.  
+%For instance, by providing language level support for operations such as universal %quantification, transitive closures etc. we can use dedicated algorithms to verify %these specific cases instead of resorting to a more general approach.
+%%
+%Typically, parallel programs are verified by expressing them as non-deterministic %sequential programs
+%%However, one can envisage a direct language level support for expressing and %verifying parallel programs. 
+%
+%(b) Supporting better mechanisms for the user to interact the tool.
+%Typically, automated verifier either proves a property or fails. There do not exist %efficient 

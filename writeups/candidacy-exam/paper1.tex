@@ -3,10 +3,9 @@
 
 \section{Survey of the Selected Papers}
 
-\subsection{Program invariance and termination using Lagrangian Relaxation and Semidefinite Programming} \label{sec:paper1}
+\subsection{Program Invariance and Termination using Lagrangian Relaxation and Semidefinite Programming} \label{sec:paper1}
 
-\cite{cousot:VMCAI05} proposes an approach for inferring polynomial invariants that 
-to a user-defined \emph{template} which is a polynomial with unknown coefficients.
+\cite{cousot:VMCAI05} proposes an approach for inferring polynomial invariants that belong to a user-defined \emph{template} which is a polynomial with unknown coefficients.
 The technique is proposed for semi-algebraic programs which are numerical programs with real valued variables 
 and iterative constructs of the form \texttt{while B do C} where B is a boolean condition 
 and C is an imperative command. Figure~\ref{fig:SAprogram} shows a semialgebraic program that computes the least factorial greater than or equal to a given N.
@@ -18,7 +17,7 @@ and C is an imperative command. Figure~\ref{fig:SAprogram} shows a semialgebraic
 \pnl \> f = 1 \\
 \pnl \> while(f <= N) \{ \\
 \pnl \> \> n = n+1 \\
-\pnl \> \> f = n* f \\
+\pnl \> \> f = n*f \\
 \pnl \> \}
 \end{myprogram}
 \caption{A program computing the least factorial greater than or equal to a given N.} \label{fig:SAprogram}
@@ -38,8 +37,8 @@ An inductive invariant of a loop is another polynomial inequality $I(x) \ge 0$
 that satisfies the following inductiveness constraints:
 %
 \begin{align}
-& \forall x. P(x) \ge 0 \Rightarrow I(x) \ge 0 \\
-& \forall x,x'. I(x) \ge 0 \wedge \bigwedge_k (\sigma_k(x,x') \ge 0) \Rightarrow  I(x') \ge 0
+& \forall x. \; P(x) \ge 0 \Rightarrow I(x) \ge 0 \\
+& \forall x,x'.\; I(x) \ge 0 \wedge \bigwedge_k (\sigma_k(x,x') \ge 0) \Rightarrow  I(x') \ge 0
 \end{align}
 %
 where $P(x) \ge 0$ is the precondition.
@@ -53,8 +52,8 @@ Using this assumption we can rewrite the above constraints as follows:
 %
 \begin{align}
 & \nonumber \exists a \in \real^p:  \\
-& \forall x. P(x) \ge 0 \Rightarrow I_a(x) \ge 0  \label{eq:template1}\\
-& \forall x,x'. I_a(x) \ge 0  \wedge \bigwedge_k (\sigma_k(x,x') \ge 0) \Rightarrow  I_a(x') \ge 0 \label{eq:template2}
+& \forall x. \; P(x) \ge 0 \Rightarrow I_a(x) \ge 0  \label{eq:template1}\\
+& \forall x,x'. \; I_a(x) \ge 0  \wedge \bigwedge_k (\sigma_k(x,x') \ge 0) \Rightarrow  I_a(x') \ge 0 \label{eq:template2}
 \end{align}
 %
 Hence,  the problem essentially reduces to finding a vector $a$ that satisfies
@@ -73,13 +72,14 @@ can be reduced to the following:
 %
 \begin{align}
 & \nonumber \exists a \in \real^p, \exists \mu \in \real^+, \exists (\lambda_0 \cdots \lambda_n) \in (\real^+)^{n+1}  : \\
-&\forall x. I_a(x) - \mu.P(x)  \ge 0  \label{eq:inv1}\\
+&\forall x. \; I_a(x) - \mu.P(x)  \ge 0  \label{eq:inv1}\\
 &\forall x,x'. \left( I_a(x') - \lambda_0.I_a(x) - \sum \limits_{k=1}^{n} \lambda_k. \sigma_k(x,x') \right)  \ge 0 \label{eq:inv2}
 \end{align}
 %
 Lagrangian relaxation is in general incomplete i.e, it is not a necessary condition.
 However, when the relational semantics is linear i.e, for all $k$, 
 $\sigma_k(v)$ is linear then it is complete by \emph{Farkas' lemma}.
+
 In fact, as discussed in some of the other related works \cite{ssriram:CAV03,ssriram:SAS04}, in the linear case, the constraint~\ref{eq:lagrange} 
 can be further reduced to a set of quadratic constraints on the 
 coefficients of $\sigma_k$ using \emph{Farkas' Lemma}. 
@@ -93,6 +93,7 @@ and shows that it can also be reduced to finding a solution to constraints
 similar to \ref{eq:inv1} and \ref{eq:inv2}. A standard way of proving that 
 a loop always terminates is to discover a function (called \emph{ranking function}) whose value strictly decreases at every loop iteration and remains positive across all iterations.
 Furthermore, the decrease of the ranking function has to be bounded from below to avoid zeno phenomenon.
+
 Formally, a function $r: \real^m \mapsto \real$ is a ranking function 
 if it satisfies the following constraints:
 %
@@ -113,14 +114,18 @@ a polynomial template $r_a(x)$ with unknown coefficients $a$. By lagrangian
 relaxation, the ranking function constraints can be reduced to the following form:
 %
 \begin{align}
-& \nonumber \exists \delta \in R, \exists a \in \real^p, \exists \mu \in \real^+, \exists (\lambda_0 \cdots \lambda_n) \in (\real^+)^{n+1} : \\
+& \nonumber \exists \delta \in R, \exists a \in \real^p, \exists \mu \in \real^+, \exists (\lambda_0 \cdots \lambda_n) \in (\real^+)^{n+1} :  \\
 & \delta > 0 \label{eq:rank1}\\
 & \forall x. \; r_a(x) - \mu.I(x)  \ge 0 \label{eq:rank2}\\
-& \forall x,x'. \left( r_a(x) - r_a(x') - \delta - \lambda_0.I(x) - \sum \limits_{k=1}^{n} \lambda_k. \sigma_k(x,x') \right) \ge 0 \label{eq:rank3}
+\nonumber
+& \forall x,x'. \left( r_a(x) - r_a(x') - \delta - \lambda_0.I(x) - \sum \limits_{k=1}^{n} \lambda_k. \sigma_k(x,x') \right) \\ 
+& \hspace{200pt} \ge 0  \label{eq:rank3}
 \end{align}
 
 If $r_a(x)$, $I(x)$ and $\sigma(x,x')$ are conjunctions of quadratic polynomials 
-of the form $\bigwedge_k (x \; x' \; 1) M_k (x \; x' \; 1)^T$ then constraints~\ref{eq:rank1}--\ref{eq:rank3} become \emph{Linear Matrix Inequalities} (LMIs). A LMI is of the form  $M(u) \lmige 0$, where $u \in \real^l$. 
+of the form $\bigwedge_k (x \; x' \; 1) M_k (x \; x' \; 1)^T$ then constraints~\ref{eq:rank1}--\ref{eq:rank3} become \emph{Linear Matrix Inequalities} (LMIs). 
+
+A LMI is of the form  $M(u) \lmige 0$, where $u \in \real^l$. 
 $M(u) \lmige 0$ is defined as \emph{positive semidefiniteness} which is 
 given by $\forall X \in \real^n: X M(u) X^T \ge 0$, where 
 $M(u)$ is of the form $M_0 + \sum \limits_{k=1}^{l} u_k. M_k$ with
@@ -152,14 +157,14 @@ M(u) =
 (a- \mu_1)/2 & (b- \mu_2)/2 & c/2 & (d-\mu_2) 
 \end{array} \right)
 \end{align*}
-%
+
 The above matrix can be converted to the LMI form: 
 $M_0 + a M_1 + b M_2 + c M_3 + d M_4 + \mu_1 M_5 + \mu_2 M_6$.
 Similarly, the constraints~\ref{eq:rank3} can also be converted to a LMI.
 Hence, for this example, the coefficients of the ranking function $a,b,c,d$
 can be determined by semidefinite programming solvers.
 One possible solution for the coefficients is $(-1 \; 1 \; 1 \; 0)$. However,
-the actual solvers may produce less intuitive solution involving arbitrary real numbers.
+the actual solvers may produce less intuitive solutions involving arbitrary real numbers.
 
 Now lets refocus on the problem of inferring invariants by solving constraints~\ref{eq:inv1}--\ref{eq:inv2}. As before lets assume that
 $I_a(x)$ and $\sigma(x,x')$ are conjunctions of quadratic polynomials 
@@ -168,7 +173,9 @@ Unlike the ranking function constraints, invariant constrains cannot be
 expressed as LMIs. This is because of the term $\lambda_0.I_a(x)$ occurring
 in the constraint~\ref{eq:inv2}. In this case, both $\lambda_0$ and the 
 coefficients in $I_a(x)$ are unknowns and hence $\lambda_0.I_a(x)$ would contain
-multiplication of two unknowns. However, these can be expressed as \emph{bilinear matrix inequalities} (BMIs). A BMI has the form $M(u,u') \lmige 0$ where $M(u,u')$
+multiplication of two unknowns. 
+
+However, these can be expressed as \emph{bilinear matrix inequalities} (BMIs). A BMI has the form $M(u,u') \lmige 0$ where $M(u,u')$
 is a bilinear matrix of the form: 
 $M_0 + \sum \limits_{i=1}^{p} u_i.M_i + \sum \limits_{j=1}^{q} u'_j.M'_j + \sum \limits_{i=1}^{p} \sum \limits_{j=1}^{q} u_i.u'_j.M''_{ij}$,
 where, $u \in \real^p$, $u' \in \real^q$ and $M'_j$,$M''_{ij}$ are symmetric matrices. BMI solvers can be used to solve a set of BMIs constraints  of the form $\exists u,u'. M(u.u') \lmige 0$. Thus, quadratic invariants can be solved using BMI solvers. It is to be noted that BMI solving is NP-hard. The paper proposes
@@ -194,7 +201,7 @@ object List \{ \\
 \pnl \>    \} \\ 
 \}
 \end{myprogram}
-\caption{An abstraction of the procedure $rev0$ shown in Figure~\ref{fig:eg}} \label{fig:absRev}
+\caption{An abstraction of the list reversal program shown in Figure~\ref{fig:eg}} \label{fig:absRev}
 \end{figure}
 %
 In Figure~\ref{fig:eg}, the variables $x$, $y$ and $res$ represents the 

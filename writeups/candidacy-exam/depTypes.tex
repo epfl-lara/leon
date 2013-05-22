@@ -11,7 +11,7 @@ The papers use \emph{dependent types} which is a mechanism for specifying and ch
 Dependent types enhance the expressivity of ordinary types by augmenting them with a \emph{refinement} predicate. For example, $x:\dt{\nu: Int}{1 \le \nu \wedge \nu \le 99}$ denotes that $i$ is an integer between 1 and 99. The predicates can be defined over a variable $\nu$, which represents the value of the expression that is being typed, and other program variables that in scope at that program point.
 Dependent types are of two classes: (a) dependent base types that are of the form $\dt{\nu:B}{\phi}$ where, $B$ is a base type one of Int, Bool, algebraic data types etc., and $\phi$ is a refinement predicate (a boolean valued expression)
 (b) dependent function types that are of the form $\{ x:T_1 \mapsto T_2\}$ 
-where $T_1,T_2$ are dependent types.
+with dependent types $T_1$ and $T_2$.
 The papers extend dependent types defined here in various ways which are discussed later in the appropriate sections.
  
 Figure~\ref{fig:typerules} shows some of the interesting type checking rules 
@@ -54,9 +54,7 @@ for a language similar to simple lambda calculus (the rules shown are not comple
 \caption{Rules for dependent type checking} \label{fig:typerules}
 \end{figure}
 %
-In Figure~\ref{fig:typerules}, $\Gamma$ is the type environment which is a sequence of
-predicates $e$ and type bindings of the form $x:T$ (where $x$ is a variable). 
-The rules \textsc{[WT-Base]} and \textsc{[WT-Fun]} define well formedness of dependent types. Informally, a base dependent type is well formed iff the refinement predicate is a boolean expression whose free variables are bound in the environment. A function refinement type is well formed iff its domain and range types are well formed dependent types. The rules \textsc{[Sub]}, \textsc{[Fun]}, \textsc{[Let]} and \textsc{[Let-Rec]} are straight-forward and similar to normal typing rules.
+In Figure~\ref{fig:typerules}, $\Gamma$ is the type environment which is a sequence of predicates $e$ and type bindings of the form $\mathit{x:T}$ (where $x$ is a variable). The rules \textsc{[WT-Base]} and \textsc{[WT-Fun]} define well formedness of dependent types. Informally, a base dependent type is well formed iff the refinement predicate is a boolean expression whose free variables are bound in the environment. A function refinement type is well formed iff its domain and range types are well formed dependent types. The rules \textsc{[Sub]}, \textsc{[Fun]}, \textsc{[Let]} and \textsc{[Let-Rec]} are straight-forward and similar to normal typing rules.
 Note that in rule \textsc{[App]} the type of expression $e_1 \; e_2$ is the result 
 of replacing $e_2$ by $x$ in $T_2$. This is necessary as $x$ could be used in the refinement predicate of $T_2$. As shown 
 by the \textsc{[If]} rule, the guard expression $e_1$ (or its negation) is included in the environment while type checking branches. This allows the type system to be path-sensitive. 
@@ -105,4 +103,4 @@ program type checks then the safety property is bound to hold.
 Type checking essentially reduces to proving a set of implications on the refinement predicates. In this example, the implication that needs to be proven to type check the recursive case of $rev0$ is $l1 = Cons(x,xs) \wedge s(\nu) = s(xs) + s(Cons(x,l2)) \Rightarrow s(\nu) = s(l1) + s(l2)$.
 Proving this requires reasoning about algebraic data structures and recursive functions. If the decision procedures are powerful enough to handle these features then the program will type check.
 
-Dependent types is only a mechanism for specifying contracts and safety properties of higher-order program. They as such do not address the problem of automatically inferring inductive invariants (or equivalently inductive refinement predicates). Dependent type checking succeeds only when the refinement predicates of types of recursive procedures are inductive invariants. The papers discussed in the following sections target automatic inference of refinement predicates.
+Dependent types is only a mechanism for specifying contracts and safety properties of higher-order program. They as such do not address the problem of automatically inferring inductive invariants (or equivalently inductive refinement predicates). Dependent type checking succeeds only when the refinement predicates of types of recursive procedures are inductive invariants. The papers discussed in the following sections target automatic inference of refinement predicates. We  would like to highlight that these papers are some of the most recent works in this area and provide a fairly accurate picture of the state-of-the-art.
