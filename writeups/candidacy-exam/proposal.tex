@@ -2,24 +2,24 @@
 
 Automated verification of functional correctness properties is hard but there
 exists great scope for extending the current state-of-the-art.
-which is exemplified by the techniques discussed above whose behavior on the 
+This is exemplified by the techniques discussed above whose behavior on the 
 simple list reversal program is not very satisfactory.
 We plan to start attacking this problem by extending the template based invariant generation 
 techniques  proposed for numerical programs such as the one discussed in the 
 section~\ref{sec:paper1} and also in \cite{ssriram:SAS04,ssriram:CAV03}. 
 
-Our initial (short-term) objective is to support inference of invariant that belong to a predefined
+Our initial (short-term) objective is to support inference of inductive invariants belonging to a predefined
 template which may involve polynomials, user-defined (recursive) functions 
 and data structures. For example, we would like to support templates of the form 
 $a.f_1(t_1) + b.f_2(t_2) + c.f_3(t_3) = 0$ where, $a$,$b$ and $c$ are unknown coefficients (integers or reals),
 $f_1$,$f_2$ and $f_3$ are unknown functions and $t_1$,$t_2$ and $t_3$ are unknown data types.
-The inference engine has to bind the unknown coefficients to suitable values so that the verification 
+The inference engine has to bind the unknown entities to suitable values so that the verification 
 succeeds. 
 As in the previous works, we plan to solve the extended templates by efficiently encoding them as
 solutions of logical constraints and solve them using dedicated constraint solvers 
 (such as SMT solvers, BMI, LMI solvers etc.)
 We plan to investigate constraint solving based techniques instead of iterative procedures such
-as predicate abstraction for the following reasons 
+as predicate abstraction for the following reasons:
 (a) to exploit the ever growing advances in the constraint solving technology.
 (b) to increase the applicability of the technique to problems beyond invariant inference. 
 As discussed in section~\ref{sec:paper1} termination problem can also be modeled as constraint solving. 
@@ -27,16 +27,19 @@ Interestingly, it is also possible to cast \emph{synthesis problem} as constrain
 Developing efficient techniques for solving a set of constraints involving sophisticated
 templates such as the one described above enables us to simultaneously target several interesting
 related problems.
+
 However, there several challenges to constraint solving techniques the most important of
 which is the exponential blow-up in the sizes of the constraints to be solved when 
 functions and data-structures are involved.
-For example, \cite{dirk:VMCAI07} discusses a technique for handling linear templates extended with
-just uninterpreted functions. Unfortunately, the sizes of the constraints are in the order of $n!$
+For example, In \cite{dirk:VMCAI07} that discusses a technique for handling linear templates 
+extended with only uninterpreted functions the sizes of the constraints are in the order of $n!$
 (where $n$ is the size of the verification condition). 
-Furthermore, the use of disjunctions in the program code or specification further increases 
+Their approach has a cosomological complexity of $O(n!2^n)$.
+Furthermore, the disjunctions in the program code, specifications and templates further increase 
 the sizes of the constraints.
-A huge practical challenge is to control the sizes of the constraints.
-We plan to explore abstraction  and incrementalization (for instance, see \cite{}) to address this problem.
+Hence, a huge practical challenge is to control the sizes of the constraints while supporting
+rich templates.
+We plan to explore abstraction  and incrementalization (see \cite{dirk:PLDI07}) to address this problem.
 
 We plan to implement and integrate our approach with the \emph{Leon verification framework} 
 \cite{psuter:SAS11}.
@@ -46,3 +49,4 @@ Leon already incorporates a powerful interprocedural verification technique for 
 programs with multiple procedures.
 However, in its current form it cannot automatically  strengthen the specifications (by inferring inductive
 invariants) if necessary. We plan to integrate our approach with Leon so that it can handle such scenarios. 
+We have started implementing parts of our approach and find the initial results very encouraging.
