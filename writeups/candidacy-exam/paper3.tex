@@ -1,1 +1,18 @@
-\subsection{Paper3}
+\newcommand{\ctx}{\oplus}
+\subsection{Compositional Dependent Type Inference}
+
+\cite{sujag:VMCAI13} propose a technique for automatic inference of refinement predicates 
+using counterexample guided abstraction refinement. For open programs (that have
+callers outside the analysis scope) their approach infers sufficiently strong types for the inputs 
+that would guarantee type safety. 
+
+The paper proposes an extension to the dependent types that
+explicitly stores the calling context information in the types of the functions.
+This lets their approach infer context sensitive dependent types.
+(In principle, it is possible to distinguish between different calling contexts in dependent types 
+using implication in the refinement predicates, however their extension makes this explicit.)
+Under this extension, a function type is of the form $\{ x:P_1 \ctx P_2 \mapsto P_{r_1} \ctx P_{r_2}\}$ 
+which means that the function has two contexts, in one context it has the type $\{x:P_1 \mapsto  P_{r_1} \}$ 
+and in the other context it has the type $\{x:P_2 \mapsto  P_{r_2} \}$. Components in the function types
+are indexed by an implicit label (e.g., a call-string).
+
