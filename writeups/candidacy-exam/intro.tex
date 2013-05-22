@@ -37,7 +37,7 @@ For an example, consider the simple Scala program shown in Figure~\ref{fig:eg} t
 \begin{figure}
 \begin{myprogram}
 object List \{ \\
-\pnl \>    sealed abstract class L \\
+\pnl \>    abstract class L \\
 \pnl \>    case class Cons(hd: Int, tl: L) extends L \\
 \pnl \>    case class Nil() extends L \\
 \\
@@ -52,10 +52,10 @@ object List \{ \\
 \pnl \>    ensuring(res => s(res) == s(l))\\
 \\    
 \pnl \>    def rev0(l1: L, l2: L) : L = (l1 match \{ \\
-\pnl \> \>      case Nil() => l2 \\
-\pnl \> \>     case Cons(x, xs) => rev0(xs, Cons(x, l2)) \\
+\pnl \> \>    case Nil() => l2 \\
+\pnl \> \>    case Cons(x,xs) => rev0(xs,Cons(x,l2)) \\
 \pnl \>    \}) \\ 
-\pnl \>    //ensuring(res => s(res) == s(l1) + s(l2)) \\
+\pnl \>    //ensuring(res => s(res)== s(l1) + s(l2)) \\
 \}
 \end{myprogram}
 \caption{A simple list reveral procedure in Scala} \label{fig:eg}

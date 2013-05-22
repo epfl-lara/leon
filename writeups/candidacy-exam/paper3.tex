@@ -33,19 +33,21 @@ higher-order program.
 \end{figure}
 %
 The goal here is to infer types for the expression so that the assertion in the program holds.
-Notice that the program is passed (higher-order) variables $h$ and $n$ parameters. Hence, they
-need to be bound to appropriate types as well. 
-Initially, it is assumed that the refinements of all expressions whose refinements are not specified as $true$.
-For a function $f$ with n-arguments, its return type is assumed to be $R_f(arg_0(f),\ldots,arg_n(f))$ where 
+Notice that the program is passed (higher-order) variables $h$ and $n$ as parameters whose
+types need to inferred as well.
+Initially, it is assumed that the refinements of all expressions whose types are not specified as $true$.
+For an unknown function $f$ with n-arguments (which is passed as a parameter), 
+its return type is assumed to be $R_f(arg_0(f),\ldots,arg_n(f))$ where 
 $R_f$ and $arg_i$'s are uninterpreted functions.
 The approach applies the type checking rules under these assumptions.
 For the function $f$ in the above example, 
 type checking rules produce the following implication which needs to hold.
 $(x \ge 0 \wedge r = R_g(x) \wedge \nu = r) \Rightarrow \nu \ge 0$
 (the \texttt{assert(r>=0)} is propagated to the return value of the procedure $f$).
+Note that the unknown parameter function $g$ is bound to an uninterpreted function $R_g$.
 
-The above implication does not hold e.g., $r = -1, x =1$ is a counter example.
-This counter-example corresponds to the path \texttt{if (x >= 0) then let r = g x in r}.
+The above implication does not hold e.g., $r = -1, x =1$ is a counterexample.
+This counterexample corresponds to the path \texttt{if (x >= 0) then let r = g x in r}.
 This is the path that would be exercised when the input $x$ is assigned the value 1.
 Now the approach computes the \emph{weakest precondition} of $\nu \ge 0$ (where $\nu$ represents 
 the value of $r$) for the counter example path as illustrated below.
@@ -58,18 +60,18 @@ the value of $r$) for the counter example path as illustrated below.
 \end{align*}
 %
 Using the precondition, $g$'s type is strengthened to $g: (\nu \ge 0) \mapsto (\nu \ge 0)$ and 
-type $x$'s type is strengthened  to $x: \nu \ge 0$. The types of $g$ and $x$ are then propagated to $h$ and $n$.
-In this case, this suffices to prove the property.
+$x$'s type is strengthened  to $x: \nu \ge 0$. The types of $g$ and $x$ are then propagated to $h$ and $n$.
+In this case, the inferred types suffices to prove the property.
 
-However, counter-example guided abstraction refinement need not terminate. For an example, consider the 
-abstraction of the list reversal program shown in Figure~\ref{fig:absRev}.
+However, counter-example guided abstraction refinement may not terminate. For example, 
+consider the abstraction of the list reversal program shown in Figure~\ref{fig:absRev}.
 Consider the recursive case of $rev0$. The implication that needs to hold in this case is,
-$x \ne 0 \wedge y = \nu \Rightarrow \nu = x$, where $y$ represents the return 
-value of the recursive call.
+$x \ne 0 \Rightarrow \nu = x$ (note that we initially assume that refinement predicates of
+domain and range of $rev0$ is $true$, hence its return value is unconstrained).
 This implication does not hold, $x = 1,\nu = 0$ is a counter-example.
-The input $x = 1$ corresponds to the path that goes invokes the recursive call once. 
+The input $x = 1$ corresponds to the path that invokes the recursive call once. 
 Computing the weakest precondition of $\nu = x$ for the counterexample path will result in the 
-precondition $x - 1 = 0 \wedge y + 1 = x \Rightarrow \nu = x$. From this one can strengthen
+precondition $x - 1 = 0 \wedge y + 1 = x \Rightarrow \nu = x$. From this, one can strengthen
 the type of $rev0$ as $x:\{ \nu = 1 \} \mapsto y:\{ \nu = x - 1 \} \mapsto \{\nu = x \}$.
 But this wouldn't enable type checking to succeed as the precondition is too strong, 
 $x = 1$ is not implied by $x \ge 0$. 
@@ -83,14 +85,7 @@ In essence, the procedure keeps repeating for ever.
 
 The paper proposes to use \emph{interpolation} and \emph{liquid types} \cite{rjhala:PLDI08} 
 discussed earlier as other alternatives for ensuring convergence when such divergence happens. 
-In practice, the current state of the art in \emph{interpolation} guarantee convergence for
+In practice, the current state of the art in \emph{interpolation} does not guarantee convergence for
 infinite state systems. In particular, it would be difficult for an interpolation technique 
-to infer the necessary invariant (or refinement predicate) for the example shown in Figure~\ref{fig:absRev}
+to infer the required invariant (or refinement predicate) for the example shown in Figure~\ref{fig:absRev}
 by generalizing from the counterexamples.
-
-
-
-
-
-
-

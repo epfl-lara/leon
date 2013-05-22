@@ -206,7 +206,7 @@ For this example any (useful) invariant should satisfy the following constraints
 \begin{align}
 & \forall x,res. \; x \ge 0 \wedge I(x,0,res) \Rightarrow res = x \\
 & \forall x,y,res. \; x = 0 \Rightarrow I(x,y,res) \\
-& \forall x,y,res. \; x \ge 0 \wedge x \ne 0 \wedge I(x-1,y+1,res) \Rightarrow I(x,y,res)
+& \forall x,y,res. \; x \ne 0 \wedge I(x-1,y+1,res) \Rightarrow I(x,y,res)
 \end{align}
 %
 Finding a solution for the above constraints is well within the realm of the approach discussed here (the invariant will be discovered by the approach if a linear template of the form $a.x+b.y+c.res = 0$ is used to model $I(x,y,res)$). The key part here was coming up with the abstract program which requires manual effort.
