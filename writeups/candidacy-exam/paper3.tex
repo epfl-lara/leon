@@ -1,11 +1,11 @@
 \newcommand{\ctx}{\oplus}
 \subsection{Compositional Dependent Type Inference}
 
-\cite{sujag:VMCAI13} propose a technique for automatic inference of refinement predicates 
-using counterexample guided abstraction refinement. For open programs (that have
-callers outside the analysis scope) their approach infers sufficiently strong types for the inputs 
-that would guarantee type safety. 
-
+\cite{sujag:VMCAI13} proposes a technique for automatic inference of refinement predicates 
+using counterexample guided abstraction refinement. 
+%For open programs (that have
+%callers outside the analysis scope) their approach infers sufficiently strong types for the inputs 
+%that would guarantee type safety. 
 The paper proposes an extension to the dependent types that
 explicitly stores the calling context information in the types of the functions.
 This lets their approach infer context sensitive dependent types.
@@ -15,4 +15,82 @@ Under this extension, a function type is of the form $\{ x:P_1 \ctx P_2 \mapsto 
 which means that the function has two contexts, in one context it has the type $\{x:P_1 \mapsto  P_{r_1} \}$ 
 and in the other context it has the type $\{x:P_2 \mapsto  P_{r_2} \}$. Components in the function types
 are indexed by an implicit label (e.g., a call-string).
+The type rules are appropriately modified so that it takes the function contexts into account.
+
+To illustrate the type inference technique proposed by \cite{sujag:VMCAI12} consider the following
+higher-order program.
+%
+\begin{figure}
+\begin{myprogram}
+\\
+\pnl \> fun f g x = \\
+\pnl \>  \> if (x >= 0) then \\
+\pnl \>  \> \>  let r = g x in r \\
+\pnl \> main h n =  \\
+\pnl \> \> let r = f h n in \\
+\pnl \> \> assert(r >= 0)
+\end{myprogram}
+\end{figure}
+%
+The goal here is to infer types for the expression so that the assertion in the program holds.
+Notice that the program is passed (higher-order) variables $h$ and $n$ parameters. Hence, they
+need to be bound to appropriate types as well. 
+Initially, it is assumed that the refinements of all expressions whose refinements are not specified as $true$.
+For a function $f$ with n-arguments, its return type is assumed to be $R_f(arg_0(f),\ldots,arg_n(f))$ where 
+$R_f$ and $arg_i$'s are uninterpreted functions.
+The approach applies the type checking rules under these assumptions.
+For the function $f$ in the above example, 
+type checking rules produce the following implication which needs to hold.
+$(x \ge 0 \wedge r = R_g(x) \wedge \nu = r) \Rightarrow \nu \ge 0$
+(the \texttt{assert(r>=0)} is propagated to the return value of the procedure $f$).
+
+The above implication does not hold e.g., $r = -1, x =1$ is a counter example.
+This counter-example corresponds to the path \texttt{if (x >= 0) then let r = g x in r}.
+This is the path that would be exercised when the input $x$ is assigned the value 1.
+Now the approach computes the \emph{weakest precondition} of $\nu \ge 0$ (where $\nu$ represents 
+the value of $r$) for the counter example path as illustrated below.
+%
+\begin{align*}
+& wp(\text{if (x $>=$ 0) then let r = g x in r}, \nu \ge 0) \\
+& = wp(\text{if (x $>=$ 0) then r = g x}, r \ge 0)\\
+& = wp(\text{if (x $>=$ 0)}, R_g(x) \ge 0) \\
+& = (x \ge 0) \Rightarrow R_g(x) \ge 0
+\end{align*}
+%
+Using the precondition, $g$'s type is strengthened to $g: (\nu \ge 0) \mapsto (\nu \ge 0)$ and 
+type $x$'s type is strengthened  to $x: \nu \ge 0$. The types of $g$ and $x$ are then propagated to $h$ and $n$.
+In this case, this suffices to prove the property.
+
+However, counter-example guided abstraction refinement need not terminate. For an example, consider the 
+abstraction of the list reversal program shown in Figure~\ref{fig:absRev}.
+Consider the recursive case of $rev0$. The implication that needs to hold in this case is,
+$x \ne 0 \wedge y = \nu \Rightarrow \nu = x$, where $y$ represents the return 
+value of the recursive call.
+This implication does not hold, $x = 1,\nu = 0$ is a counter-example.
+The input $x = 1$ corresponds to the path that goes invokes the recursive call once. 
+Computing the weakest precondition of $\nu = x$ for the counterexample path will result in the 
+precondition $x - 1 = 0 \wedge y + 1 = x \Rightarrow \nu = x$. From this one can strengthen
+the type of $rev0$ as $x:\{ \nu = 1 \} \mapsto y:\{ \nu = x - 1 \} \mapsto \{\nu = x \}$.
+But this wouldn't enable type checking to succeed as the precondition is too strong, 
+$x = 1$ is not implied by $x \ge 0$. 
+Therefore, the process is again repeated with the  new strengthened types. This time
+the found counterexample would assign $x$ to a value other than $1$ which corresponds 
+to a path with more than one invocation of $rev0$. Computing weakest precondition on the path
+would result in a type for $rev0$ of the form  
+$x:\{ \nu = k \} \mapsto y:\{ \nu = x - k \} \mapsto \{\nu = x \}$  for some constant $k$.
+This again will not enable type checking as $x \ge 0$ does not imply $x = k$.
+In essence, the procedure keeps repeating for ever.
+
+The paper proposes to use \emph{interpolation} and \emph{liquid types} \cite{rjhala:PLDI08} 
+discussed earlier as other alternatives for ensuring convergence when such divergence happens. 
+In practice, the current state of the art in \emph{interpolation} guarantee convergence for
+infinite state systems. In particular, it would be difficult for an interpolation technique 
+to infer the necessary invariant (or refinement predicate) for the example shown in Figure~\ref{fig:absRev}
+by generalizing from the counterexamples.
+
+
+
+
+
+
 
