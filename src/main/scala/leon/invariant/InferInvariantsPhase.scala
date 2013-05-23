@@ -39,58 +39,40 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
     LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."))
 
-  class ClauseListenerFactory(reporter: Reporter, program: Program, context: LeonContext, uisolver: UninterpretedZ3Solver) {    
-
-    def getClauseListener(fundef: FunDef): ((Seq[Expr], Seq[Expr], Seq[Expr]) => Unit) = {
+  class InferenceEngine(reporter: Reporter, program: Program, context: LeonContext,
+      vc: ExtendedVC,
+      uisolver: UninterpretedZ3Solver) {        
+    
+    def getInferenceEngine(fundef: FunDef): (() => Boolean) = {
+      
+      val vcRefiner = new RefinementEngine(vc.condition,vc.funDef)      
       val constTracker = new ConstraintTracker(fundef)
       val templateFactory = new TemplateFactory()
-
-      //this is set by the listener
-      var resultVar: Option[Identifier] = None
-
-      val listener = (body: Seq[Expr], post: Seq[Expr], newClauses: Seq[Expr]) => {
-        //reconstructs the linear constraints corresponding to each path in the programs
-        //A tree is used for efficiently representing the set of constraints corresponding to each path
-
-        //initialize the goal clauses
-        if (!post.isEmpty) {
-          println("Post clauses: ")
-          post.foreach(println(_))
-
-          //set the result variable
-          val resvars = post.foldLeft(Set[Identifier]())((acc, e) => acc ++ variablesOf(e).find(_.name.equals("result")))
-          if (resvars.size > 0) {
-            if (resvars.size > 1)
-              throw IllegalStateException("More than one result identifier: " + resvars)
-            else resultVar = Some(resvars.first)
-          }
-
-          constTracker.addPostConstraints(post)
-          //println("Goal Tree: " + postRoot.toString)
-        }
-
-        if (!body.isEmpty) {
-          println("Body clauses: ")
-          body.foreach(println(_))
-          constTracker.addBodyConstraints(body)
-          //println("Body Tree: " + bodyRoot.toString)
-        }
-
-        //new clauses are considered as a part of the body
-        if (!newClauses.isEmpty) {
-          println("Unrolled clauses: ")
-          newClauses.foreach(println(_))
+      var refinementStep : Int = 0
+      
+      //find the result variable used in the post-condition
+      //TODO: make the result variable unique so as to avoid conflicts
+      var resultVar = variablesOf(vc.post ).find(_.name.equals("result")).first
+          
+      val inferenceEngine = () => {
+        
+        if(refinementStep == 0) {          
+          //set up constraint tracker
+          constTracker.addPostConstraints(fundef,post)
+          constTracker.addBodyConstraints(fundef, body)
+          
+        } else {
+          val unrollSet = vcRefiner.refineAbstraction()
+          
+          //process the unroll set
+          
           constTracker.addBodyConstraints(newClauses)
-          //println("Body Tree: " + bodyRoot.toString)
+        }
 
           //solve for the templates at this unroll step
           //get the template for the inFun
           //val fi = FunctionInvocation(fundef,fundef.args.map(_.toVariable))
-          val baseTerms = fundef.args.map(_.toVariable) ++ (resultVar match {
-            case Some(v) => Seq(Variable(v))
-            case _ => Seq()
-          })
-
+          val baseTerms = fundef.args.map(_.toVariable) :+ Variable(resultVar)          
           val inTemplates = templateFactory.constructTemplate(baseTerms, fundef)
           val templateSynthesizer = templateFactory.getTemplateSynthesizer()
           val res = constTracker.solveForTemplates(fundef, templateSynthesizer, inTemplates, uisolver)
@@ -101,15 +83,15 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
             reporter.info("- Verifying Invariant " + res.get(fundef))
 
             //create a new post-condition            
-            val newPost = if (resultVar.isDefined) replace(Map(Variable(resultVar.get) -> ResultVariable()), inv)
-            			  else inv
+            val newPost = replace(Map(Variable(resultVar) -> ResultVariable()), inv)            			  
             val postExpr = And(fundef.postcondition.get, newPost)
-            verifyInvariant(fundef,context,program,postExpr,reporter)            
+            verifyInvariant(fundef,context,program,postExpr,reporter)
             System.exit(0)
+            true
           }
-        }
+          else false                           
       }
-      listener
+      inferenceEngine     
     }
   }
   
