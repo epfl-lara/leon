@@ -58,13 +58,20 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         
         if(refinementStep == 0) {          
           //set up constraint tracker
-          constTracker.addPostConstraints(fundef,post)
-          constTracker.addBodyConstraints(fundef, body)
+          constTracker.addPostConstraints(vc.funDef,vc.post)
+          constTracker.addBodyConstraints(vc.funDef,vc.body)
           
         } else {
           val unrollSet = vcRefiner.refineAbstraction()
           
-          //process the unroll set
+          /**
+           * process the unroll set
+           * (a) check if the calls are recursive. 
+           * (b) If not just inline their body and add it to the containing tree
+           * (c) If yes create a new tree with the function definitions            
+           */
+          
+          
           
           constTracker.addBodyConstraints(newClauses)
         }
