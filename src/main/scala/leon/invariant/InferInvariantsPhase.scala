@@ -45,14 +45,17 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     
     def getInferenceEngine(fundef: FunDef): (() => Boolean) = {
       
-      val vcRefiner = new RefinementEngine(vc.condition,vc.funDef)      
+      val vcRefiner = new RefinementEngine(vc.condition,vc.funDef,program)      
       val constTracker = new ConstraintTracker(fundef)
       val templateFactory = new TemplateFactory()
       var refinementStep : Int = 0
-      
+
+      /**
+      * Initialize refinement engine
+      **/
       //find the result variable used in the post-condition
-      //TODO: make the result variable unique so as to avoid conflicts
-      var resultVar = variablesOf(vc.post ).find(_.name.equals("result")).first
+      //TODO: make the result variable unique so as to avoid conflicts      
+      val resultVar = variablesOf(vc.post ).find(_.name.equals("result")).first
           
       val inferenceEngine = () => {
         
@@ -63,17 +66,44 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           
         } else {
           val unrollSet = vcRefiner.refineAbstraction()
-          
+          val (call, recCaller, body, post) = unrollSet
+
+					//compute the formal to the actual argument mapping   
+					val funRes = variablesOf(body.get).find(_.name.equals("result")).first       
+					val argmap = Map(funRes -> call.retexpr) ++ call.fi.fd.args.zip(call.fi.args)
+					
           /**
            * process the unroll set
            * (a) check if the calls are recursive. 
-           * (b) If not just inline their body and add it to the containing tree
-           * (c) If yes create a new tree with the function definitions            
-           */
-          
-          
-          
-          constTracker.addBodyConstraints(newClauses)
+           * (b) If not just inline their body and add it to the tree of the caller
+           * (c) If yes create a new tree with the function definitions if one does not exists
+           			 and update the caller constraits using template of the new tree            
+           */          					
+          if(program.isRecursive(call)) {
+
+						val targetFun = call.fi.funDef
+          	//check if a constraint tree does not exist for the call's target          	
+          	if(!constTracker.hasTree(targetFun)){          		
+          		
+							consTracker.addPostConstraints(targetFun, body.get)
+							if(post.isDefined)
+          			consTracker.addPostConstraints(targetFun, post.get)          		
+          	}
+
+          	//get the template for the targetFun and replace formal arguments by
+          	//actual arguments in the template and add it to the caller body constraints         
+          	val argterms = fi.args.map(_.toVariable) :+ call.resexpr          
+          	val temps = templateFactory.constructTemplate(argterms, targetFun)	
+          	constTracker.addTemplatedBodyConstraints(recCaller,temps) 
+          }
+          else {          
+						//replace formal parameters by actual arguments in the body and the post					
+						val calleeCond = if(post.isDefined) And(body.get,post.get) else body.get          						
+						val newcond = replace(argmap,calleeCond)						
+
+						//add to caller constraints
+						constTracker.addBodyConstraints(recCaller, newcond)						          	      
+          }                             
         }
 
           //solve for the templates at this unroll step

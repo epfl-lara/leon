@@ -23,29 +23,32 @@ import leon.verification.VerificationReport
 import leon.invariant._
 import scala.collection.mutable.{Set => MutableSet}
 
-class RefinementEngine {
+//the caller field represents the last recursive caller that invoked this call or the main function.
+case class CallNode(recCaller: FunDef, call: Call)
+
+class RefinementEngine(prog: Program) {
      
   private var currentAbs : Expr = _
-  private var headCalls = Set[(Expr,FunctionInvocation)]()
+  private var headCalls = Set[CallNode]()
   //private var unrolledFuncs = Set[FunDef]()
   
-  def this(vc: Expr, fd: FunDef) = {
-    this()
+  def this(vc: Expr, fd: FunDef, prog: Program) = {
+    this(prog)    
     currentAbs = vc    
     //unrolledFuncs += fd
-    headCalls = findHeads(vc)
+    headCalls = findHeads(vc, fd)
   }
   
   /**
    * Heads are procedure calls whose target definitions have not been unrolled
    */
-  private def findHeads(abs: Expr) : Set[(Expr,FunctionInvocation)] ={
+  private def findHeads(abs: Expr, caller: FunDef) : Set[CallNode] ={
     //initialize head functions
-    var heads = Set[(Expr,FunctionInvocation)]()
+    var heads = Set[CallNode]()
     simplePostTransform((e: Expr) => e match {
       case eq@Equals(rexp,fi@FunctionInvocation(fd,args)) => {
       //  if(!unrolledFuncs.contains(fi.funDef))
-        heads ++= Set((rexp,fi))
+        heads += CallNode(caller,Call(rexp,fi),List())
         eq 
        }
       case _ => e
@@ -59,20 +62,23 @@ class RefinementEngine {
    * This procedure may refine an existing abstraction.
    * Currently, the refinement happens by unrolling.
    */
-  def refineAbstraction(): Seq[((Expr,FunctionInvocation), Option[Expr], Option[Expr])] = {
+  def refineAbstraction(): Seq[(Call, FunDef, Option[Expr], Option[Expr])] = {
     //here we unroll the methods in the current abstraction by one step
     
     //update unrolled funcs
     //unrolledFuncs ++= headFuncs.map(_.funDef)
     
-    var newheads = Set[(Expr,FunctionInvocation)]()
-    val unrolls = headCalls.foldLeft(Seq[((Expr,FunctionInvocation), Option[Expr], Option[Expr])]())((acc, call) => {      
+    var newheads = Set[CallNode]()
+    val unrolls = headCalls.foldLeft(Seq[(Call, FunDef, Option[Expr], Option[Expr])]())((acc, callnode) => {      
       
-      val fi = call._2
+      val fi = callnode.call.fi
       if (fi.funDef.body.isDefined) {
         val body = fi.funDef.getBody
         val resFresh = Variable(FreshIdentifier("result", true).setType(body.getType))
         val bexpr = Equals(resFresh, body)
+
+        //get the last recursive caller which would be fi.funDef or callnode.recCaller
+        recCaller = if(prog.isRecursive(fi.funDef)) fi.funDef else callnode.recCaller
 
         val prec = fi.funDef.precondition
         val bodyExpr = if (prec.isEmpty) {
@@ -81,17 +87,22 @@ class RefinementEngine {
           And(matchToIfThenElse(prec.get), bexpr)
         }
 
-        if (!fi.funDef.postcondition.isEmpty) {
+        val (mayBody,mayPost) = if (!fi.funDef.postcondition.isEmpty) {
 
           val post = fi.funDef.postcondition
           val postExpr = replace(Map(ResultVariable() -> resFresh), matchToIfThenElse(post.get))
+          
           //update newheads 
-          newheads ++= findHeads(And(bodyExpr, postExpr))
-          acc :+ (call, Some(bodyExpr), Some(postExpr))
+          newheads ++= findHeads(And(bodyExpr, postExpr),recCaller)
+          (Some(bodyExpr), Some(postExpr))
+          
         } else {
-          newheads ++= findHeads(bodyExpr)
-          acc :+ (call, Some(bodyExpr), None)
+          
+          newheads ++= findHeads(bodyExpr, recCaller)
+          (Some(bodyExpr), None)
         }
+
+        acc :+ (call, recCaller, mayBody, mayPost)
 
       } else acc
     })
