@@ -96,7 +96,7 @@ case class CtrNode() extends CtrTree {
   //templates that aren't constraints
   var templates = Set[LinearTemplate]()
   //UI function calls
-  var uifs = Set[Expr]()
+  var uifs = Set[Call]()
   //children in the DNF tree
   private var children = Set[CtrTree](CtrLeaf())
 
@@ -174,7 +174,12 @@ class ConstraintTracker(fundef : FunDef) {
 								             Some(currentNode)             
 								          })
 					rootnode
-        }                
+        }
+        //may need to handle let
+        case IfExpr(cond, then, elze) => {
+        	//converting if then else into a logical formula
+        	addCtr(Or(And(cond,then),And(Not(cond),elze)))
+        }
         case _ => {
         	val ctr = exprToConstraint(ie)
           val node = CtrNode()          
@@ -535,7 +540,7 @@ class ConstraintTracker(fundef : FunDef) {
   
   def FlattenFunction(inExpr: Expr): (Expr,Set[Expr],Set[Expr]) = {    
     var newConjuncts = Set[Expr]()
-    var newUIFs = Set[Expr]()
+    var newUIFs = Set[Call]()
 
     def flattenFunc(e: Expr): Expr = {
       e match {        
@@ -570,8 +575,8 @@ class ConstraintTracker(fundef : FunDef) {
                 }
               })
              //create a new equality in UIFs
-             val newfi = FunctionInvocation(fd,newargs)                          
-            newUIFs += Equals(freshResVar,newfi)
+            val newfi = FunctionInvocation(fd,newargs)                          
+            newUIFs += Call(freshResVar,newfi)
             freshResVar
           }                                
         }
@@ -597,25 +602,19 @@ class ConstraintTracker(fundef : FunDef) {
 
   /**
    * This function computes invariants belonging to the template.
-   * The result is a mapping from function definitions to the corresponding invariants.
-   * Note that the invariants are context specific and may not be context independent invariants for the functions (except for inFun)
+   * The result is a mapping from function definitions to the corresponding invariants.   
    */
-  def solveForTemplates(tempSynth: (Seq[Expr],FunDef) => Set[LinearTemplate], 
+  def solveForTemplates(tempSynth: TemplateFactory, 
       uiSolver : UninterpretedZ3Solver): Option[Map[FunDef, Expr]] = {
     
     //generate templates for the calls in UIFs
-    var templateMap = Map[Expr,Set[LinearTemplate]]()
-    def uifTemplatesGen(call: Expr) = {      
-      call match {
-        case Equals(v@Variable(_),fi@FunctionInvocation(fd,args)) => {
-          templateMap.getOrElse(call, {
-        	  val temp = tempSynth(args :+ v,fd)
-        	  templateMap += (call -> temp)
-        	  temp
-          })          
-        }
-        case _ => Set[LinearTemplate]()
-      }      
+    var templateMap = Map[Call,Set[LinearTemplate]]()
+    def uifTemplatesGen(call: Call) = {      
+      templateMap.getOrElse(call, {
+    	  val temp = tempSynth.constructTemplate(args :+ call.resexpr,fd)
+    	  templateMap += (call -> temp)
+    	  temp
+      })                     
     }
 
     //this could take 2^(n^2) time
@@ -629,7 +628,7 @@ class ConstraintTracker(fundef : FunDef) {
         val nnfExpr = TransformNot(uifCtr)
         //create the root of the UIF tree
         //TODO: create a UIF tree once and for all and prune the paths while traversing
-        val newnode = CtrNode(FreshIdentifier("uifroot", true))
+        val newnode = CtrNode()
         //add the nnfExpr as a DNF formulae
         addConstraintRecur(nnfExpr, newnode)
         newnode
@@ -667,7 +666,7 @@ class ConstraintTracker(fundef : FunDef) {
     //this tree could have 2^n paths 
     def traverseBodyTree(tree: CtrTree, currentCtrs: Seq[LinearConstraint], currentUIFs: Set[Expr]): Unit = {
       tree match {
-        case n @ CtrNode(blkid) => {
+        case n @ CtrNode() => {
           val newCtrs = currentCtrs ++ n.constraints
           val newUIFs = currentUIFs ++ n.uifs
           //recurse into children
@@ -681,14 +680,8 @@ class ConstraintTracker(fundef : FunDef) {
           if (!res.isDefined || res.get == true) {
 
             println("Path expr: " + pathexpr)
-
-            //TODO: assuming templates only for the input function
-            val uifTemps = currentUIFs.filter((call) => call match {
-              
-              case Equals(_,FunctionInvocation(fd,args)) => fd == inFun
-              case _ => false
-              
-            }).flatten(uifTemplatesGen(_))
+            
+            val uifTemps = currentUIFs.filter((call) => hasCtrTree(call)).flatten(uifTemplatesGen(_))
             
             antSet ++= uifsConstraintsGen(currentUIFs, currentCtrs, pathexpr).map((ctrs) => (ctrs.toSet, uifTemps))
           } else {
@@ -698,14 +691,18 @@ class ConstraintTracker(fundef : FunDef) {
       }
     }
         
-    def traversePostTree(tree: CtrTree,conseqs: Seq[LinearConstraint], currUIFs: Set[Expr]): Option[Expr] = {
+    def traversePostTree(tree: CtrTree,conseqs: Seq[LinearConstraint], currUIFs: Set[Expr], 
+    					currTemps: Set[LinearTemplate]): Option[Expr] = {
+    						
       tree match {
-        case n @ CtrNode(blkid) => {          
+        case n @ CtrNode() => {          
           val newcons = conseqs ++ n.constraints
           val newuifs = currUIFs ++ n.uifs 
+          val newtemps = currTemps ++ n.templates
           //recurse into children as along as we haven't found an invariant
           var aInvariant : Option[Expr] = None
-          n.Children.takeWhile(_ => aInvariant == None).foreach((child) => { aInvariant = traversePostTree(child, newcons, newuifs) })
+          n.Children.takeWhile(_ => aInvariant == None).foreach((child) => { 
+          	aInvariant = traversePostTree(child, newcons, newuifs. newtemps) })
           aInvariant
         }
         case CtrLeaf() => {
@@ -726,7 +723,7 @@ class ConstraintTracker(fundef : FunDef) {
                 if (acc2 == BooleanLiteral(false))
                   acc2
                 else {
-                  val newCtr = implicationSolver.constraintsForImplication(newant, antTemps, conseqs, inTemplates.toSeq, uiSolver)
+                  val newCtr = implicationSolver.constraintsForImplication(newant, antTemps, conseqs, currTemps, uiSolver)
                   newCtr match {
                     case BooleanLiteral(true) => acc2 //nothing to add as no new constraints are generated              
                     case fls @ BooleanLiteral(false) => fls //entire set of constrains are unsat
@@ -749,26 +746,20 @@ class ConstraintTracker(fundef : FunDef) {
                 //printing the model here for debugging
                 //println("Model: "+model)
                 //construct an invariant (and print the model)
-                val invs = inTemplates.map((inTemp) => {
-                  val coeff = inTemp.coeffTemplate.map((entry) => {
-                    val (k, v) = entry
-                    v match {
-                      case Variable(id) => (k, model(id))
-                      case _ => (k, v)
-                    }
-                  })
-                  val const = inTemp.constTemplate match {
+                val invs = tempSynth.getFunctions.map((fd) => {
+                  val coeff = tempSynth.getCoeff(fd).map(model(_.Id)))
+                  /*val const = inTemp.constTemplate match {
                     case Some(Variable(id)) => model(id)
                     case Some(t) => t
                     case None => zero
-                  }
+                  }*/
                   //the coefficients could be fractions ,so collect all the denominators
                   val getDenom = (t: Expr) => t match {
                     case RealLiteral(num, denum) => denum
                     case _ => 1
                   }
 
-                  val denoms = coeff.foldLeft(Set(getDenom(const)))((acc, entry) => acc + getDenom(entry._2))
+                  val denoms = coeff.foldLeft(Set())((acc, entry) => acc + getDenom(entry))
                   //compute the LCM of the denominators (approx. LCM)
                   val lcm = denoms.foldLeft(1)((acc, d) => if (acc % d == 0) acc else acc * d)
 
@@ -778,16 +769,18 @@ class ConstraintTracker(fundef : FunDef) {
                     case IntLiteral(n) => IntLiteral(n * lcm)
                     case _ => throw IllegalStateException("Coefficient not assigned to any value")
                   }
-
-                  val expr = coeff.foldLeft(scaleNum(const): Expr)((acc, entry) => {
+                  val intCoeffs = coeff.map(scaleNum(_))
+                  val constPart :: coeffPart = intCoeffs
+                  val argsCoeff = (fd.args :+ ResultVariable()).zip(coeffPart)
+										
+                  val expr = argsCoeff.foldLeft(constPart: Expr)((acc, entry) => {
                     val (k, v) = entry
-                    Plus(acc, Times(k, scaleNum(v)))
-                  })
-
-                  LessEquals(expr, zero)
-                })
-                val invariant = And(invs.toSeq)
-                Some(invariant)
+                    Plus(acc, Times(k.toVariable, v))                   
+                  })                                 
+                  val ctr = LessEquals(expr, zero)   
+                  (fd -> ctr)
+                })                
+                Some(invs)
               } else {
                 println("Constraint Unsat: "+unsatCore)
                 None
@@ -800,11 +793,8 @@ class ConstraintTracker(fundef : FunDef) {
 
     //traverse the bodyTree and postTree 
     traverseBodyTree(bodyRoot, Seq[LinearConstraint](), Set[Expr]())
-    val inv = traversePostTree(postRoot,Seq[LinearConstraint](),Set[Expr]())
-
-    if(inv.isDefined)
-      Some(Map(inFun -> inv.get))
-    else None 
+    val invs = traversePostTree(postRoot,Seq[LinearConstraint](),Set[Expr](),Set[LinearTemplate]())
+    invs    
   }
 
   

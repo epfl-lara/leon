@@ -119,19 +119,19 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         }
 
         //solve for the templates at this unroll step          
-        val templateSynthesizer = templateFactory.getTemplateSynthesizer()
-        val res = constTracker.solveForTemplates(templateSynthesizer, uisolver)
+        //val templateSynthesizer = templateFactory.getTemplateSynthesizer()
+        val res = constTracker.solveForTemplates(templateFactory, uisolver)
         
         if (res.isDefined) {                       
-        	//TODO to be changed current left unthouched for testing.
+        	//TODO: to be changed current left unthouched for testing.
           val inv = res.get(vc.funDef)            
           reporter.info("- Found inductive invariant: " + inv)
           //check if this is an invariant 
           reporter.info("- Verifying Invariant " + res.get(fundef))
 
           //create a new post-condition            
-          val newPost = replace(Map(Variable(resultVar) -> ResultVariable()), inv)            			  
-          val postExpr = And(fundef.postcondition.get, newPost)
+          //val newPost = replace(Map(Variable(resultVar) -> ResultVariable()), inv)            			  
+          val postExpr = And(fundef.postcondition.get, inv)
           verifyInvariant(fundef,context,program,postExpr,reporter)
           System.exit(0)
           true

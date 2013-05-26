@@ -74,17 +74,12 @@ class TemplateFactory {
     Set(LinearTemplate(linearExpr, coeffmap.toMap, Some(constPart)))
   }
   
-  def getTemplateSynthesizer(): ((Seq[Expr],FunDef) => Set[LinearTemplate]) =  constructTemplate  
+  //def getTemplateSynthesizer(): ((Seq[Expr],FunDef) => Set[LinearTemplate]) =  constructTemplate  
 
-/*  def getTemplateSynthesizer(): (FunctionInvocation => Set[LinearTemplate]) = {
+  def getCoeff(fd: FunDef) : List[Variable] = {
+  	paramCoeff(fd)
+  }
 
-    (fi: FunctionInvocation) =>
-      {               
-        //get the arguments of the function invocation
-        val args = fi.args
-        //here check if the args are all Terminals
-        args.foreach((arg) => if (!arg.isInstanceOf[Terminal]) throw IllegalStateException("Argument is not a variable"))
-        constructTemplate(args :+ fi, fi.funDef)
-      }
-  }*/
+  def getFunctions : Seq[FunDef] = paramCoeff.keys
+
 }
