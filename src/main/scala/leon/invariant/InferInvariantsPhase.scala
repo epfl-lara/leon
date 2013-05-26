@@ -54,17 +54,25 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       * Initialize refinement engine
       **/
       //find the result variable used in the post-condition
-      //TODO: make the result variable unique so as to avoid conflicts      
-      val resultVar = variablesOf(vc.post ).find(_.name.equals("result")).first
+      //TODO: make the result variable unique so as to avoid conflicts           
+
+      //add given post conditions
+      constTracker.addPostConstraints(vc.funDef,vc.post)          
+
+      //add post condition template if the function is recursive
+      if(program.isRecursive(vc.funDef)) {
+      	val resultVar = variablesOf(vc.post).find(_.name.equals("result")).first
+      	val baseTerms = vc.funDef.args.map(_.toVariable) :+ Variable(resultVar)          
+      	val funcTemps = templateFactory.constructTemplate(baseTerms, vc.funDef)      
+      	funcTemps.foreach(constTracker.addTemplatedPostConstraint(vc.funDef,_))
+      }
+
+			//add body constraints (body condition templates will be added during solving)
+      constTracker.addBodyConstraints(vc.funDef,vc.body)
           
       val inferenceEngine = () => {
         
-        if(refinementStep == 0) {          
-          //set up constraint tracker
-          constTracker.addPostConstraints(vc.funDef,vc.post)
-          constTracker.addBodyConstraints(vc.funDef,vc.body)
-          
-        } else {
+        if(refinementStep >=0) {
           val unrollSet = vcRefiner.refineAbstraction()
           val (call, recCaller, body, post) = unrollSet
 
@@ -76,8 +84,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
            * process the unroll set
            * (a) check if the calls are recursive. 
            * (b) If not just inline their body and add it to the tree of the caller
-           * (c) If yes create a new tree with the function definitions if one does not exists
-           			 and update the caller constraits using template of the new tree            
+           * (c) If yes create a new tree with the function definitions if one does not exists           			 
            */          					
           if(program.isRecursive(call)) {
 
@@ -86,15 +93,20 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           	if(!constTracker.hasTree(targetFun)){          		
           		
 							consTracker.addPostConstraints(targetFun, body.get)
-							if(post.isDefined)
+							if(post.isDefined) 
           			consTracker.addPostConstraints(targetFun, post.get)          		
+
+							//add post condition template for the function
+							val bts = targetFun.args.map(_.toVariable) :+ funRes
+          		val posttemps = templateFactory.constructTemplate(bts, targetFun)	
+          		posttemps.foreach(constTracker.addTemplatedBodyConstraints(recCaller,_)) 
           	}
 
           	//get the template for the targetFun and replace formal arguments by
           	//actual arguments in the template and add it to the caller body constraints         
-          	val argterms = fi.args.map(_.toVariable) :+ call.resexpr          
-          	val temps = templateFactory.constructTemplate(argterms, targetFun)	
-          	constTracker.addTemplatedBodyConstraints(recCaller,temps) 
+          	//val argterms = fi.args.map(_.toVariable) :+ call.resexpr          
+          	//val temps = templateFactory.constructTemplate(argterms, targetFun)	
+          	//temps.foreach(constTracker.addTemplatedBodyConstraints(recCaller,_)) 
           }
           else {          
 						//replace formal parameters by actual arguments in the body and the post					
@@ -106,27 +118,27 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           }                             
         }
 
-          //solve for the templates at this unroll step
-          //get the template for the inFun
-          //val fi = FunctionInvocation(fundef,fundef.args.map(_.toVariable))
-          val baseTerms = fundef.args.map(_.toVariable) :+ Variable(resultVar)          
-          val inTemplates = templateFactory.constructTemplate(baseTerms, fundef)
-          val templateSynthesizer = templateFactory.getTemplateSynthesizer()
-          val res = constTracker.solveForTemplates(fundef, templateSynthesizer, inTemplates, uisolver)
-          if (res.isDefined) {                       
-            val inv = res.get(fundef)            
-            reporter.info("- Found inductive invariant: " + inv)
-            //check if this is an invariant 
-            reporter.info("- Verifying Invariant " + res.get(fundef))
+        //solve for the templates at this unroll step          
+        val templateSynthesizer = templateFactory.getTemplateSynthesizer()
+        val res = constTracker.solveForTemplates(templateSynthesizer, uisolver)
+        
+        if (res.isDefined) {                       
+        	//TODO to be changed current left unthouched for testing.
+          val inv = res.get(vc.funDef)            
+          reporter.info("- Found inductive invariant: " + inv)
+          //check if this is an invariant 
+          reporter.info("- Verifying Invariant " + res.get(fundef))
 
-            //create a new post-condition            
-            val newPost = replace(Map(Variable(resultVar) -> ResultVariable()), inv)            			  
-            val postExpr = And(fundef.postcondition.get, newPost)
-            verifyInvariant(fundef,context,program,postExpr,reporter)
-            System.exit(0)
-            true
-          }
-          else false                           
+          //create a new post-condition            
+          val newPost = replace(Map(Variable(resultVar) -> ResultVariable()), inv)            			  
+          val postExpr = And(fundef.postcondition.get, newPost)
+          verifyInvariant(fundef,context,program,postExpr,reporter)
+          System.exit(0)
+          true
+        }
+        else false           
+
+       refinementStep += 1
       }
       inferenceEngine     
     }
@@ -200,7 +212,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     val reporter = ctx.reporter
     
     //create a clause listener factory
-    val listenerFactory = new ClauseListenerFactory(reporter,program,ctx,uisolver)
+    val infEngine = new InferenceEngine(reporter,program,ctx,uisolver)
 
     val trivialSolver = new TrivialSolver(ctx)
     val fairZ3 = new FairZ3Solver(ctx)
@@ -275,7 +287,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
             //set listeners        	  
             //se.SetModelListener(getModelListener(funDef))
-            se.SetClauseListener(listenerFactory.getClauseListener(funDef))
+            se.SetInferenceEngine(infEngine.getInferenceEngine(funDef))
 
             val t1 = System.nanoTime
             se.init()

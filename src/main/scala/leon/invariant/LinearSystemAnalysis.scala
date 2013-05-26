@@ -12,6 +12,7 @@ import purescala.TypeTrees._
 import solvers.{ Solver, TrivialSolver, TimeoutSolver }
 import solvers.z3.FairZ3Solver
 import scala.collection.mutable.{ Set => MutableSet }
+import scala.collection.mutable.{ Map => MutableMap }
 import leon.evaluators._
 import java.io._
 import leon.solvers.z3.UninterpretedZ3Solver
@@ -27,7 +28,9 @@ import leon.verification.Tactic
 import leon.verification.VerificationReport
 
 //Class representing linear templates which is a constraint of the form a1*v1 + a2*v2 + .. + an*vn + a0 <= 0 or = 0 where a_i's can be free vars
-case class LinearTemplate(val template: Expr, val coeffTemplate: Map[Expr, Expr with Terminal], val constTemplate: Option[Expr with Terminal]) {
+case class LinearTemplate(val template: Expr, val coeffTemplate: Map[Expr, Expr with Terminal], 
+	val constTemplate: Option[Expr with Terminal]) {
+		
   def coeffEntryToString(coeffEntry: (Expr, Expr with Terminal)): String = {
     val (e, i) = coeffEntry
     i match {
@@ -83,7 +86,10 @@ case class LinearConstraint(val expr: Expr, val coeffMap: Map[Expr, IntLiteral],
 //TODO: Maintenance Issue: Fix this entire portion of code that manipulates the tree
 abstract class CtrTree
 case class CtrLeaf() extends CtrTree
-case class CtrNode(val blockingId: Identifier) extends CtrTree {
+object GlobalNodeCounter {
+	var id = 0	
+}
+case class CtrNode() extends CtrTree {
 
   var constraints = Set[LinearConstraint]()
   //UI function calls
@@ -107,8 +113,13 @@ case class CtrNode(val blockingId: Identifier) extends CtrTree {
       children += child
   }
 
+  def getEndNode() = {
+  	if(children.first == CtrLeaf()) this
+  	else children.first.getEndNode()
+  }
+
   override def toString(): String = {
-    var str = "Id: " + blockingId + " Constriants: " + constraints + " children: \n"
+    var str = "Id: " + id + " Constriants: " + constraints + " children: \n"
     children.foldLeft(str)((g: String, node: CtrTree) => { g + node.toString })
   }
 }
@@ -121,11 +132,11 @@ class ConstraintTracker(fundef : FunDef) {
   
   //verification conditions for each procedure that may have templates.
   //Each verification condition is an implication where the antecedent and the consequent are represented as DNF trees.
-  private var templatedVCs = Map[FunDef,(CtrNode,CtrNode,collection.mutable.Map[Identifier, CtrNode])]()
+  private var templatedVCs = Map[FunDef,(CtrNode,CtrNode)]()
   
   //some identifiers representing body start and post start
-  val bstart = FreshIdentifier("bstart")
-  val pstart = FreshIdentifier("pstart")
+  //val bstart = FreshIdentifier("bstart")
+  //val pstart = FreshIdentifier("pstart")
   
   /*//This would be set while constraints are added
   //body and post are DNF formulas and hence are represented using trees
@@ -136,99 +147,81 @@ class ConstraintTracker(fundef : FunDef) {
   private val zero = IntLiteral(0)
   private val one = IntLiteral(1)
   private val mone =IntLiteral(-1)   
-  
-  def addConstraintRecur(inexpr: Expr, parentNode : CtrNode, nodeMap: collection.mutable.Map[Identifier, CtrNode]) : Unit = {
-    //returns the children nodes classified into real and dummy children. The first set is the real set and the second is the dummy set
-    def addCtrOrBlkLiteral(ie: Expr, newChild: Boolean): (Set[CtrNode], Set[CtrNode]) = {
+
+  //adds a constraint in conjunction with  the constraint represented by parentNode
+  def addConstraintRecur(inexpr: Expr, parentNode : CtrNode) : Unit = {
+  	
+    //returns a node that represents the root of the constraint
+    //this is passed an end node: the node that represents the last  children of the sub-tree
+    def addCtr(ie: Expr, endnode: CtrNode): CtrNode = {
       ie match {
-        case Or(subexprs) => {
-          val validSubExprs = subexprs.collect((sube) => sube match {
-            case _ if (sube match {
-              //cases to be ignored              
-              case Not(Variable(childId)) => false //need not take this into consideration now
-              case _ => true
-            }) => sube
-          })
-          if (!validSubExprs.isEmpty) {
-            val createChild = if (validSubExprs.size > 1) true else false
-            validSubExprs.foldLeft((Set[CtrNode](), Set[CtrNode]()))((acc, sube) => {
-              val (real, dummy) = acc
-              val (real2, dummy2) = addCtrOrBlkLiteral(sube, createChild)
-              (real ++ real2, dummy ++ dummy2)
+        case Or(subexprs) => {                    
+            val children = subexprs.foldLeft(Set[CtrNode]())((acc, sube) => {              
+               acc ++ addCtr(sube,endnode)
             })
-          } else (Set(), Set())
+         		val rootnode = CtrNode()
+            children.foreach((child) => { rootnode.addChildren(child) })
+      			rootnode
         }
         case And(subexprs) => {
-          subexprs.foldLeft((Set[CtrNode](), Set[CtrNode]()))((acc, sube) => {
-            val (real, dummy) = acc
-            val (real2, dummy2) = addCtrOrBlkLiteral(sube, false)
-            (real ++ real2, dummy ++ dummy2)
-          })
-        }
-
-        case Variable(childId) => {
-          //checking for blocking literal
-          if (isBlockingId(childId)) {
-            (Set(createOrLookupId(parentNode, childId, nodeMap)), Set())
-          } else
-            throw IllegalStateException("Encountered a variable that is not a blocking id: " + childId)
-        }
-        case Iff(lhs, rhs) => {
-          //lhs corresponds to a blocking id in this case
-          lhs match {
-            case Variable(childId) if (isBlockingId(childId)) => {
-              val childNode = createOrLookupId(parentNode, childId, nodeMap)              
-              //recursively add the rhs to the childNode
-              addConstraintRecur(rhs,childNode, nodeMap)              
-              (Set(childNode), Set())
-            }
-            case _ => throw IllegalStateException("Iff block --- encountered something that is not a blocking id: " + lhs)
-          }
-
-        }
+        	val rootnode = subexprs.foldRight(None : Option[CtrNode])((acc, sube) => {          		          	 
+								             val currentNode = if(acc == None) addCtr(sube, endnode)
+								             									 else  addCtr(sube, acc.get)
+								             Some(currentNode)             
+								          })
+					rootnode
+        }                
         case _ => {
-          val node = if (newChild) createOrLookupId(parentNode, FreshIdentifier("dummy", true), nodeMap)
-        		  	 else parentNode
-          val ctr = exprToConstraint(ie)
+        	val ctr = exprToConstraint(ie)
+          val node = CtrNode()          
           node.constraints += ctr
-          if (newChild) (Set(), Set(node)) else (Set(), Set())
+          node.addChildren(endnode)
         }
       }
     }
-    val (realChildren, dummyChildren) = addCtrOrBlkLiteral(inexpr, false)
-
-    //now merge dummy children with the ctrnode itself.
-    //the following code is slightly nasty and with side effects
-    val newParentNode = if (!dummyChildren.isEmpty) {
-      val newnode = CtrNode(parentNode.blockingId)
-      parentNode.copyChildren(newnode)
-      parentNode.removeAllChildren()
-      dummyChildren.foreach((child) => { child.addChildren(newnode); parentNode.addChildren(child) })
-      nodeMap.update(parentNode.blockingId, newnode)
-      newnode
-    } else parentNode
-
-    realChildren.foreach(newParentNode.addChildren(_))
-  }
-  
-  def createOrLookupId(parentNode: CtrNode, childId: Identifier, nodeMap: collection.mutable.Map[Identifier, CtrNode]): CtrNode = {
-    var childNode = nodeMap.getOrElse(childId, {
-      val node = CtrNode(childId)
-      nodeMap += (childId -> node)
-      node
-    })
-    childNode
+    val exprRoot = addCtr(inexpr, CtrNode())
+    val parentEnd = parentNode.getEndNode()
+    parentEnd.addChildren(exprRoot)    
   }
   
   //some utility methods
-  def isBlockingId(id: Identifier): Boolean = {
+  /*def isBlockingId(id: Identifier): Boolean = {
     if (id.name.startsWith("b")) true else false
   }
 
   def isStartId(id: Identifier): Boolean = {
     if (id.name.contains("start")) true else false
+  }*/  
+
+  def addConstraint(e: Expr, bodyRoot: CtrNode, postRoot: CtrNode, isBody: Boolean) = {
+    //apply negated normal form here
+    val nnfExpr = TransformNot(e)
+    //println("Expression after Not transformation: "+nnfExpr)
+    //val (id, innerExpr) = parseGuardedExpr(nnfExpr)
+    //get the node corresponding to the id
+    /*val ctrnode = nodeMap.getOrElse(id, {
+      val node = if(isStartId(id)){
+        if(isBody) bodyRoot
+        else postRoot
+      }
+      else CtrNode(id)
+      nodeMap += (id -> node)
+      node
+    })*/
+    //flatten function returns a newexpresion without function symbols and a set of newly created equalities
+    val (flatExpr,calls,newConjuncts) = FlattenFunction(nnfExpr)
+
+    //add the new conjuncts and calls to the bodyRoot (in all cases)
+    if (!calls.isEmpty) {
+      bodyRoot.uifs ++= calls
+    }
+    if (!newConjuncts.isEmpty) {
+      addConstraintRecur(And(newConjuncts.toSeq), bodyRoot)
+    }      
+    val root = if(isBody) bodyRoot else postRoot    
+		addConstraintRecur(flatExpr, root)       
   }
-  
+
   def getTemplatedVC(fdef: FunDef) : (CtrNode,CtrNode,collection.mutable.Map[Identifier, CtrNode]) ={
     templatedVCs.getOrElse(fdef, {
       //initialize body and post roots
@@ -246,44 +239,6 @@ class ConstraintTracker(fundef : FunDef) {
   def addPostConstraints(fdef: FunDef, post: Seq[Expr]) = {
     val (bodyRoot,postRoot,nodeMap) = getTemplatedVC(fdef)
     post.map(addConstraint(_, bodyRoot, postRoot, nodeMap, false))    
-  }
-
-  def addConstraint(e: Expr, bodyRoot: CtrNode, postRoot: CtrNode, nodeMap: collection.mutable.Map[Identifier, CtrNode], isBody: Boolean) = {
-    //apply negated normal form here
-    val nnfExpr = TransformNot(e)
-    //println("Expression after Not transformation: "+nnfExpr)
-    val (id, innerExpr) = parseGuardedExpr(nnfExpr)
-
-    //get the node corresponding to the id
-    val ctrnode = nodeMap.getOrElse(id, {
-      val node = if(isStartId(id)){
-        if(isBody) bodyRoot
-        else postRoot
-      }
-      else CtrNode(id)
-      nodeMap += (id -> node)
-      node
-    })
-
-    //flatten function returns a newexpresion without function symbols and a set of newly created equalities
-    val (flatExpr,calls,newConjuncts) = FlattenFunction(innerExpr)
-
-    //add the new conjuncts to the bodyRoot if we are in post
-    if (!isBody) {
-      if (!calls.isEmpty) {
-        bodyRoot.uifs ++= calls
-      }
-      if (!newConjuncts.isEmpty) {
-        addConstraintRecur(And(newConjuncts.toSeq), bodyRoot, nodeMap)
-      }      
-      //add the current expression to node given by the id
-      addConstraintRecur(flatExpr, ctrnode, nodeMap)
-    } else {
-      ctrnode.uifs ++= calls
-      val augExpr = And(flatExpr, And(newConjuncts.toSeq))
-      //add the current expression to node given by the id
-      addConstraintRecur(augExpr, ctrnode, nodeMap)
-    }    
   }
   
   def parseGuardedExpr(e: Expr): (Identifier, Expr) = {
