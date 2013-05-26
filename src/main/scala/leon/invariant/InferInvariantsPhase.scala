@@ -64,7 +64,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       	val resultVar = variablesOf(vc.post).find(_.name.equals("result")).first
       	val baseTerms = vc.funDef.args.map(_.toVariable) :+ Variable(resultVar)          
       	val funcTemps = templateFactory.constructTemplate(baseTerms, vc.funDef)      
-      	funcTemps.foreach(constTracker.addTemplatedPostConstraint(vc.funDef,_))
+      	funcTemps.foreach(constTracker.addTemplatedPostConstraints(vc.funDef,_))
       }
 
 			//add body constraints (body condition templates will be added during solving)
@@ -99,7 +99,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 							//add post condition template for the function
 							val bts = targetFun.args.map(_.toVariable) :+ funRes
           		val posttemps = templateFactory.constructTemplate(bts, targetFun)	
-          		posttemps.foreach(constTracker.addTemplatedBodyConstraints(recCaller,_)) 
+          		posttemps.foreach(constTracker.addTemplatedPostConstraints(recCaller,_)) 
           	}
 
           	//get the template for the targetFun and replace formal arguments by

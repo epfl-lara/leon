@@ -91,9 +91,13 @@ object GlobalNodeCounter {
 }
 case class CtrNode() extends CtrTree {
 
+	//constraints
   var constraints = Set[LinearConstraint]()
+  //templates that aren't constraints
+  var templates = Set[LinearTemplate]()
   //UI function calls
   var uifs = Set[Expr]()
+  //children in the DNF tree
   private var children = Set[CtrTree](CtrLeaf())
 
   def Children: Set[CtrTree] = children
@@ -222,26 +226,38 @@ class ConstraintTracker(fundef : FunDef) {
 		addConstraintRecur(flatExpr, root)       
   }
 
-  def getTemplatedVC(fdef: FunDef) : (CtrNode,CtrNode,collection.mutable.Map[Identifier, CtrNode]) ={
+  //checks if a constraint tree exists for a function 
+  def hasCtrTree(fdef: FunDef) = {
+  	templatedVCs.contains(fdef)
+  }
+
+	//returns the constraint tree corresponding to a function
+  def getCtrTree(fdef: FunDef) : (CtrNode,CtrNode) ={
     templatedVCs.getOrElse(fdef, {
       //initialize body and post roots
-      val newentry = (CtrNode(bstart),CtrNode(pstart),collection.mutable.Map[Identifier, CtrNode]())
+      val newentry = (CtrNode(),CtrNode())
       templatedVCs += (fdef -> newentry)
       newentry
     })    
   }
 
-  def addBodyConstraints(fdef: FunDef, body: Seq[Expr]) = {
-    val (bodyRoot,postRoot,nodeMap) = getTemplatedVC(fdef)    
-    body.map(addConstraint(_, bodyRoot, postRoot, nodeMap, true))       
+  def addBodyConstraints(fdef: FunDef, body: Expr) = {
+    val (bodyRoot,postRoot,nodeMap) = getCtrTree(fdef)    
+    addConstraint(body, bodyRoot, postRoot, true)
   }
 
-  def addPostConstraints(fdef: FunDef, post: Seq[Expr]) = {
-    val (bodyRoot,postRoot,nodeMap) = getTemplatedVC(fdef)
-    post.map(addConstraint(_, bodyRoot, postRoot, nodeMap, false))    
+  def addPostConstraints(fdef: FunDef, post: Expr) = {
+    val (bodyRoot,postRoot,nodeMap) = getCtrTree(fdef)
+    addConstraint(post, bodyRoot, postRoot, false)
+  }
+
+ 	//this method adds a template to  the post. The templates in the body are assumed during 
+ 	// the constraint generation
+  def addTemplatedPostConstraints(fdef: FunDef, body: Expr) = {
+  	
   }
   
-  def parseGuardedExpr(e: Expr): (Identifier, Expr) = {
+  /*def parseGuardedExpr(e: Expr): (Identifier, Expr) = {
     e match {
       case Or(Not(Variable(id)) :: tail) => {
         tail match {
@@ -255,7 +271,7 @@ class ConstraintTracker(fundef : FunDef) {
       }
       case _ => throw IllegalStateException("Not a guarded expression: " + e)
     }
-  }
+  }*/
 
   //the expr is required to be linear, if not, an exception would be thrown
   //for now some of the constructs are not handled
@@ -584,8 +600,8 @@ class ConstraintTracker(fundef : FunDef) {
    * The result is a mapping from function definitions to the corresponding invariants.
    * Note that the invariants are context specific and may not be context independent invariants for the functions (except for inFun)
    */
-  def solveForTemplates(inFun: FunDef, tempSynth: (Seq[Expr],FunDef) => Set[LinearTemplate], 
-      inTemplates: Set[LinearTemplate], uiSolver : UninterpretedZ3Solver): Option[Map[FunDef, Expr]] = {
+  def solveForTemplates(tempSynth: (Seq[Expr],FunDef) => Set[LinearTemplate], 
+      uiSolver : UninterpretedZ3Solver): Option[Map[FunDef, Expr]] = {
     
     //generate templates for the calls in UIFs
     var templateMap = Map[Expr,Set[LinearTemplate]]()
