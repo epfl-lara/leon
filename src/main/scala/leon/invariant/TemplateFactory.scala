@@ -32,8 +32,7 @@ class TemplateFactory {
   private var paramCoeff = Map[FunDef, List[Variable]]()
 
   /**
-   * The ordering of the expessions in the List[Expr] is very important.
-   * TODO: correctness issue: flatten the functions in the template
+   * The ordering of the expessions in the List[Expr] is very important.   
    * TODO: Feature: 
    * (a) allow template functions and functions with template variables
    * (b) allow template ADTs
@@ -80,6 +79,6 @@ class TemplateFactory {
   	paramCoeff(fd)
   }
 
-  def getFunctions : Seq[FunDef] = paramCoeff.keys
+  def getFunctions : Seq[FunDef] = paramCoeff.keys.toSeq
 
 }

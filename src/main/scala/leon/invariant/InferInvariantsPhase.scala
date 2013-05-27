@@ -65,8 +65,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       	val funcTemps = templateFactory.constructTemplate(baseTerms, vc.funDef)      
       	funcTemps.foreach(constTracker.addTemplatedPostConstraints(vc.funDef,_))
       }
-
-			//add body constraints (body condition templates will be added during solving)
+      //add body constraints (body condition templates will be added during solving)
       constTracker.addBodyConstraints(vc.funDef,vc.body)
           
       val inferenceEngine = () => {
@@ -285,7 +284,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
             //set listeners        	  
             //se.SetModelListener(getModelListener(funDef))
-            se.SetInferenceEngine(infEngine.getInferenceEngine(funDef))
+            se.setInferenceEngine(infEngine.getInferenceEngine(vcInfo))
 
             val t1 = System.nanoTime
             se.init()

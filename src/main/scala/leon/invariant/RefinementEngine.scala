@@ -48,7 +48,7 @@ class RefinementEngine(prog: Program) {
     simplePostTransform((e: Expr) => e match {
       case eq@Equals(rexp,fi@FunctionInvocation(fd,args)) => {
       //  if(!unrolledFuncs.contains(fi.funDef))
-        heads += CallNode(caller,Call(rexp,fi),List())
+        heads += CallNode(caller,Call(rexp,fi))
         eq 
        }
       case _ => e
@@ -78,7 +78,7 @@ class RefinementEngine(prog: Program) {
         val bexpr = Equals(resFresh, body)
 
         //get the last recursive caller which would be fi.funDef or callnode.recCaller
-        recCaller = if(prog.isRecursive(fi.funDef)) fi.funDef else callnode.recCaller
+        val recCaller = if(prog.isRecursive(fi.funDef)) fi.funDef else callnode.recCaller
 
         val prec = fi.funDef.precondition
         val bodyExpr = if (prec.isEmpty) {
@@ -102,7 +102,7 @@ class RefinementEngine(prog: Program) {
           (Some(bodyExpr), None)
         }
 
-        acc :+ (call, recCaller, mayBody, mayPost)
+        acc :+ (callnode.call, recCaller, mayBody, mayPost)
 
       } else acc
     })

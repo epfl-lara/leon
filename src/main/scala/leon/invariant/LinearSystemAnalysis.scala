@@ -688,6 +688,14 @@ class ConstraintTracker(fundef : FunDef) {
     	  temp
       })                     
     }
+    
+    def constraintsToExpr(ctrs: Seq[LinearConstraint], calls: Set[Call]): Expr = {
+      //compute the path expression corresponding to the paths
+      //note: add the UIFs in to the path condition
+      val pathExpr = And(ctrs.foldLeft(Seq[Expr]())((acc, ctr) => (acc :+ ctr.expr)))
+      val uifExpr = And(calls.map((call) => Equals(call.retexpr,call.fi)).toSeq)
+      And(pathExpr, uifExpr)
+    }
 
     //this could take 2^(n^2) time
     def uifsConstraintsGen(calls: Set[Call], ctrs: Seq[LinearConstraint], pathexpr: Expr): Seq[Seq[LinearConstraint]] = {
@@ -724,15 +732,7 @@ class ConstraintTracker(fundef : FunDef) {
       traverseUIFtree(uifroot, ctrs)
       outputCtrs
     }
-
-    def constraintsToExpr(ctrs: Seq[LinearConstraint], calls: Set[Call]): Expr = {
-      //compute the path expression corresponding to the paths
-      //note: add the UIFs in to the path condition
-      val pathExpr = And(ctrs.foldLeft(Seq[Expr]())((acc, ctr) => (acc :+ ctr.expr)))
-      val uifExpr = And(calls.map((call) => Equals(call.retexpr,call.fi)).toSeq)
-      And(pathExpr, uifExpr)
-    }
-
+    
     //first traverse the body and collect all the antecedents               
     var antSet = List[(Set[LinearConstraint],Set[LinearTemplate])]()
 
@@ -764,6 +764,7 @@ class ConstraintTracker(fundef : FunDef) {
       }
     }
         
+    //TODO: not clear why there are uifs in the post-condition
     def traversePostTree(tree: CtrTree,conseqs: Seq[LinearConstraint], currUIFs: Set[Call], 
     					currTemps: Seq[LinearTemplate]): Seq[Expr] = {
     						
@@ -787,8 +788,7 @@ class ConstraintTracker(fundef : FunDef) {
             if (acc1 == BooleanLiteral(false))
               acc1
             else {
-              //TODO assuming that the post-condition wouldn't call the input function
-              
+              //TODO assuming that the post-condition wouldn't call the input function              
               val (antCtrs,antTemps) = (ants._1.toSeq, ants._2.toSeq)                           
               val pathexpr = constraintsToExpr(antCtrs,currUIFs)                            
               val antlists = uifsConstraintsGen(currUIFs, antCtrs, pathexpr)
@@ -799,8 +799,7 @@ class ConstraintTracker(fundef : FunDef) {
                   acc2
                 else {
                   val newCtr = implicationSolver.constraintsForImplication(newant, antTemps, conseqs, currTemps, uiSolver)
-                  newCtr match {
-                    case BooleanLiteral(true) => acc2 //nothing to add as no new constraints are generated              
+                  newCtr match {                                 
                     case fls @ BooleanLiteral(false) => fls //entire set of constrains are unsat
                     case _ => if (acc2 == BooleanLiteral(true)) newCtr
                     else And(acc2, newCtr)
@@ -810,9 +809,8 @@ class ConstraintTracker(fundef : FunDef) {
             }
           })   
           
-          nonLinearCtr match { 
-           //TODO: address this issue 
-            case BooleanLiteral(true) => throw IllegalStateException("The original postcondition is inductive, nothing to infer")
+          nonLinearCtr match {            
+            case BooleanLiteral(true) => throw IllegalStateException("Found no constraints")
             case BooleanLiteral(false) => Seq() //skip to the next leaf
             case _ => Seq(nonLinearCtr)            
           }          
