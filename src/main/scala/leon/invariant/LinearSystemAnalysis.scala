@@ -725,7 +725,10 @@ class ConstraintTracker(fundef : FunDef) {
       //println("Model: "+model)
       //construct an invariant (and print the model)
       val invs = tempSynth.getFunctions.map((fd) => {
-        val coeff = tempSynth.getCoeff(fd).map((v) => model(v.id))
+        val coeff = tempSynth.getCoeff(fd).map((v) => {
+          //println(v.id +" mapsto " + model(v.id))
+          model(v.id)
+        })
         /*val const = inTemp.constTemplate match {
                     case Some(Variable(id)) => model(id)
                     case Some(t) => t

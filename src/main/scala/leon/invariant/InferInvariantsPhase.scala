@@ -131,7 +131,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
           //create a new post-condition            
           //val newPost = replace(Map(Variable(resultVar) -> ResultVariable()), inv)            			  
-          val postExpr = And(vc.post, inv)
+          val postExpr = And(vc.funDef.postcondition.get, inv)
           verifyInvariant(vc.funDef,context,program,postExpr,reporter)
           System.exit(0)
           true
