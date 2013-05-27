@@ -39,14 +39,13 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
     LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."))
 
-  class InferenceEngine(reporter: Reporter, program: Program, context: LeonContext,
-      vc: ExtendedVC,
+  class InferenceEngine(reporter: Reporter, program: Program, context: LeonContext,      
       uisolver: UninterpretedZ3Solver) {        
     
-    def getInferenceEngine(fundef: FunDef): (() => Boolean) = {
+    def getInferenceEngine(vc: ExtendedVC): (() => Boolean) = {
       
       val vcRefiner = new RefinementEngine(vc.condition,vc.funDef,program)      
-      val constTracker = new ConstraintTracker(fundef)
+      val constTracker = new ConstraintTracker(vc.funDef)
       val templateFactory = new TemplateFactory()
       var refinementStep : Int = 0
 
@@ -73,50 +72,51 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       val inferenceEngine = () => {
         
         if(refinementStep >=0) {
+          
           val unrollSet = vcRefiner.refineAbstraction()
-          val (call, recCaller, body, post) = unrollSet
+          unrollSet.foreach((entry) => {
+            val (call, recCaller, body, post) = entry
+            val targetFun = call.fi.funDef
 
-					//compute the formal to the actual argument mapping   
-					val funRes = variablesOf(body.get).find(_.name.equals("result")).first       
-					val argmap = Map(funRes -> call.retexpr) ++ call.fi.fd.args.zip(call.fi.args)
-					
-          /**
-           * process the unroll set
-           * (a) check if the calls are recursive. 
-           * (b) If not just inline their body and add it to the tree of the caller
-           * (c) If yes create a new tree with the function definitions if one does not exists           			 
-           */          					
-          if(program.isRecursive(call)) {
+            //compute the formal to the actual argument mapping   
+            val funRes = variablesOf(body.get).find(_.name.equals("result")).first
+            val argmap : Map[Expr,Expr] = Map(funRes.toVariable -> call.retexpr) ++ targetFun.args.map(_.id.toVariable).zip(call.fi.args)
 
-						val targetFun = call.fi.funDef
-          	//check if a constraint tree does not exist for the call's target          	
-          	if(!constTracker.hasTree(targetFun)){          		
-          		
-							consTracker.addPostConstraints(targetFun, body.get)
-							if(post.isDefined) 
-          			consTracker.addPostConstraints(targetFun, post.get)          		
+            /**
+             * process the unroll set
+             * (a) check if the calls are recursive.
+             * (b) If not just inline their body and add it to the tree of the caller
+             * (c) If yes create a new tree with the function definitions if one does not exists
+             */            
+            if (program.isRecursive(targetFun)) {              
+              //check if a constraint tree does not exist for the call's target          	
+              if (!constTracker.hasCtrTree(targetFun)) {
 
-							//add post condition template for the function
-							val bts = targetFun.args.map(_.toVariable) :+ funRes
-          		val posttemps = templateFactory.constructTemplate(bts, targetFun)	
-          		posttemps.foreach(constTracker.addTemplatedPostConstraints(recCaller,_)) 
-          	}
+                //add body constraints
+                constTracker.addBodyConstraints(targetFun, body.get)
+                
+                //add post condition template for the function
+                val bts = targetFun.args.map(_.id.toVariable) :+ funRes.toVariable
+                val posttemps = templateFactory.constructTemplate(bts, targetFun)
+                posttemps.foreach(constTracker.addTemplatedPostConstraints(recCaller, _))
+              }
 
-          	//get the template for the targetFun and replace formal arguments by
-          	//actual arguments in the template and add it to the caller body constraints         
-          	//val argterms = fi.args.map(_.toVariable) :+ call.resexpr          
-          	//val temps = templateFactory.constructTemplate(argterms, targetFun)	
-          	//temps.foreach(constTracker.addTemplatedBodyConstraints(recCaller,_)) 
-          }
-          else {          
-						//replace formal parameters by actual arguments in the body and the post					
-						val calleeCond = if(post.isDefined) And(body.get,post.get) else body.get          						
-						val newcond = replace(argmap,calleeCond)						
+              //get the template for the targetFun and replace formal arguments by
+              //actual arguments in the template and add it to the caller body constraints         
+              //val argterms = fi.args.map(_.toVariable) :+ call.resexpr          
+              //val temps = templateFactory.constructTemplate(argterms, targetFun)	
+              //temps.foreach(constTracker.addTemplatedBodyConstraints(recCaller,_)) 
+            } else {
+              //replace formal parameters by actual arguments in the body and the post					
+              val calleeCond = if (post.isDefined) And(body.get, post.get) else body.get
+              val newcond = replace(argmap, calleeCond)
 
-						//add to caller constraints
-						constTracker.addBodyConstraints(recCaller, newcond)						          	      
-          }                             
+              //add to caller constraints
+              constTracker.addBodyConstraints(recCaller, newcond)
+            }
+          })
         }
+        refinementStep += 1
 
         //solve for the templates at this unroll step          
         //val templateSynthesizer = templateFactory.getTemplateSynthesizer()
@@ -127,18 +127,16 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           val inv = res.get(vc.funDef)            
           reporter.info("- Found inductive invariant: " + inv)
           //check if this is an invariant 
-          reporter.info("- Verifying Invariant " + res.get(fundef))
+          reporter.info("- Verifying Invariant " + res.get(vc.funDef))
 
           //create a new post-condition            
           //val newPost = replace(Map(Variable(resultVar) -> ResultVariable()), inv)            			  
-          val postExpr = And(fundef.postcondition.get, inv)
-          verifyInvariant(fundef,context,program,postExpr,reporter)
+          val postExpr = And(vc.post, inv)
+          verifyInvariant(vc.funDef,context,program,postExpr,reporter)
           System.exit(0)
           true
         }
-        else false           
-
-       refinementStep += 1
+        else false                  
       }
       inferenceEngine     
     }
