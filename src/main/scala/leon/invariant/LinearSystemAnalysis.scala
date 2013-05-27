@@ -88,10 +88,14 @@ abstract class CtrTree
 case class CtrLeaf() extends CtrTree
 object GlobalNodeCounter {
 	var id = 0	
+	def getUID : Int = {
+	  id += 1
+	  id
+	} 
 }
 
 //TODO: create a new id for each CtrNode
-case class CtrNode() extends CtrTree {
+case class CtrNode(id : Int = GlobalNodeCounter.getUID) extends CtrTree {
 
 	//constraints
   var constraints = Set[LinearConstraint]()
@@ -122,7 +126,7 @@ case class CtrNode() extends CtrTree {
   def getEndNode : CtrNode = {    
   	if(children.first == CtrLeaf()) this
   	else {
-  	 val n@CtrNode() = children.first
+  	 val n@CtrNode(_) = children.first
   	 n.getEndNode
   	}
   }
@@ -165,11 +169,11 @@ class ConstraintTracker(fundef : FunDef) {
     def addCtr(ie: Expr, endnode: CtrNode): CtrNode = {
       ie match {
         case Or(subexprs) => {
-          val children = subexprs.foldLeft(Set[CtrNode]())((acc, sube) => {
+          val children = subexprs.foldLeft(Set[CtrNode]())((acc, sube) => {                   
             acc + addCtr(sube, endnode)
           })
-          val rootnode = CtrNode()
-          children.foreach((child) => { rootnode.addChildren(child) })
+          val rootnode = CtrNode()          
+          children.foreach((child) => { rootnode.addChildren(child); })
           rootnode
         }
         case And(subexprs) => {
@@ -179,7 +183,7 @@ class ConstraintTracker(fundef : FunDef) {
             Some(currentNode)
           })
           rootnode.get
-        }
+        }        	    
         case _ => {
           val ctr = exprToConstraint(ie)
           val node = CtrNode()
@@ -229,7 +233,7 @@ class ConstraintTracker(fundef : FunDef) {
       addConstraintRecur(And(newConjuncts.toSeq), bodyRoot)
     }      
     val root = if(isBody) bodyRoot else postRoot    
-		addConstraintRecur(flatExpr, root)       
+    addConstraintRecur(flatExpr, root)       
   }
 
   //checks if a constraint tree exists for a function 
@@ -255,6 +259,7 @@ class ConstraintTracker(fundef : FunDef) {
   def addPostConstraints(fdef: FunDef, post: Expr) = {
     val (bodyRoot,postRoot) = getCtrTree(fdef)
     addConstraint(post, bodyRoot, postRoot, false)
+    //println("PostCtrTree\n"+postRoot.toString)    
   }
 
  	//this method adds a template to  the post. The templates in the body are assumed during 
@@ -494,6 +499,35 @@ class ConstraintTracker(fundef : FunDef) {
     //println("Unnormalized Linearized expression: "+unnormLinear)
     rese
   }
+  
+  //TODO: should have a way to add conjuncts to the least enclosing atomic predicate
+  def reduceLangBlocks(inexpr: Expr) : Expr = {
+
+    //converting if-then-else and let into a logical formula
+    var conjuncts = Seq[Expr]()
+    val transformer = (e: Expr) => {
+      e match {
+        //this is an optimization
+        case Equals(lhs,IfExpr(cond, then, elze)) => {
+        	Or(And(cond,Equals(lhs,then)),And(Not(cond),Equals(lhs,elze)))
+         }
+        case IfExpr(cond, then, elze) => {
+          val freshvar = FreshIdentifier("ifres",true).setType(e.getType).toVariable          
+          conjuncts :+= Or(And(cond,Equals(freshvar,then)),And(Not(cond),Equals(freshvar,elze)))
+          freshvar
+        }
+        case Let(binder,value,body) => {
+          val freshvar = FreshIdentifier(binder.name,true).setType(e.getType).toVariable
+          
+          conjuncts :+= Equals(freshvar,value)
+          replace(Map(binder.toVariable -> freshvar),body)          
+        }
+        case _ => e
+      }
+    }
+    val newe = simplePreTransform(transformer)(inexpr)
+    And(newe,And(conjuncts))
+  }
  
   /**
    * The following procedure converts the formula into negated normal form by pushing all not's inside.
@@ -525,14 +559,7 @@ class ConstraintTracker(fundef : FunDef) {
         }
         case Iff(lhs,rhs) => {
           nnf(And(Implies(lhs,rhs),Implies(rhs,lhs)))
-        }
-        case IfExpr(cond, then, elze) => {
-        	//converting if then else into a logical formula
-        	nnf(Or(And(cond,then),And(Not(cond),elze)))
-        }        
-        case ((Let(_,_,_)) | LetTuple(_,_,_)) => {
-        	throw IllegalStateException("Enocuntered Let " + inExpr)
-        }        
+        }                
 
         case t: Terminal => t
         case u @ UnaryOperator(e1, op) => op(nnf(e1))
@@ -542,7 +569,10 @@ class ConstraintTracker(fundef : FunDef) {
         case _ => throw IllegalStateException("Impossible event: expr did not match any case: " + inExpr)
       }
     }
-    nnf(expr)
+    //convert if then else to formulas (also handle lets here)     
+    val nnfvc = nnf(reduceLangBlocks(expr))
+    println("NNF VC: "+ nnfvc)
+    nnfvc
   }
 
   /**   
@@ -622,8 +652,12 @@ class ConstraintTracker(fundef : FunDef) {
     uiSolver: UninterpretedZ3Solver): Option[Map[FunDef, Expr]] = {
 
     //traverse each of the functions and collect the constraints
-    val nonLinearCtrs = templatedVCs.foldLeft(Seq[Expr]())((acc, elem) => generateCtrsForTree(elem._2._1, elem._2._1, tempSynth, uiSolver))
-    val nonLinearCtr = And(nonLinearCtrs)
+    val nonLinearCtrs  = templatedVCs.foldLeft(Seq[Expr]())((acc, elem) => {
+      val ctr = generateCtrsForTree(elem._2._1, elem._2._2, tempSynth, uiSolver)      
+      (acc :+ ctr)
+    })
+    val nonLinearCtr = if(nonLinearCtrs.size == 1) nonLinearCtrs.first 
+						else And(nonLinearCtrs)
 
     //look for a solution of non-linear constraints. The constraint variables are all reals
     //println("Non linear constraints for this branch: " +nonLinearCtr)          
@@ -677,7 +711,7 @@ class ConstraintTracker(fundef : FunDef) {
    * Returns a set of non linear constraints for the given constraint tree
    */
   def generateCtrsForTree(bodyRoot: CtrNode, postRoot : CtrNode, tempSynth: TemplateFactory, 
-      uiSolver : UninterpretedZ3Solver) : Seq[Expr] = {
+      uiSolver : UninterpretedZ3Solver) : Expr = {
     
     //generate templates for the calls in UIFs
     var templateMap = Map[Call,Set[LinearTemplate]]()
@@ -717,7 +751,7 @@ class ConstraintTracker(fundef : FunDef) {
       var outputCtrs = Seq[Seq[LinearConstraint]]()
       def traverseUIFtree(tree: CtrTree, currentCtrs: Seq[LinearConstraint]): Unit = {
         tree match {
-          case n @ CtrNode() => {
+          case n @ CtrNode(_) => {
             val newCtrs = currentCtrs ++ n.constraints
             //recurse into children
             for (child <- n.Children)
@@ -739,7 +773,7 @@ class ConstraintTracker(fundef : FunDef) {
     //this tree could have 2^n paths 
     def traverseBodyTree(tree: CtrTree, currentCtrs: Seq[LinearConstraint], currentUIFs: Set[Call]): Unit = {
       tree match {
-        case n @ CtrNode() => {
+        case n @ CtrNode(_) => {
           val newCtrs = currentCtrs ++ n.constraints
           val newUIFs = currentUIFs ++ n.uifs
           //recurse into children
@@ -766,23 +800,27 @@ class ConstraintTracker(fundef : FunDef) {
         
     //TODO: not clear why there are uifs in the post-condition
     def traversePostTree(tree: CtrTree,conseqs: Seq[LinearConstraint], currUIFs: Set[Call], 
-    					currTemps: Seq[LinearTemplate]): Seq[Expr] = {
+    					currTemps: Seq[LinearTemplate]): Expr = {
     						
       tree match {
-        case n @ CtrNode() => {          
+        case n @ CtrNode(_) => {          
           val newcons = conseqs ++ n.constraints
           val newuifs = currUIFs ++ n.uifs 
           val newtemps = currTemps ++ n.templates
           
           //recurse into children and collect all the constraints
           var exprs = Seq[Expr]()
-          n.Children.foreach((child) => { 
-          	exprs ++ traversePostTree(child, newcons, newuifs, newtemps) 
+          n.Children.foreach((child) => {
+            val ctr = traversePostTree(child, newcons, newuifs, newtemps)            
+            exprs :+= ctr
           })
-          exprs
+          //any one of the branches must hold
+          if(exprs.isEmpty) BooleanLiteral(true)         
+          else if(exprs.size == 1) exprs.first
+          else Or(exprs)
         }
         case CtrLeaf() => {
-          //here we need to check if the every antecedent in antSet implies the conseqs of this path 
+          //here we need to check if the every antecedent in antSet implies the conseqs of this path           
           val nonLinearCtr = antSet.foldLeft(BooleanLiteral(true): Expr)((acc1, ants) => {
 
             if (acc1 == BooleanLiteral(false))
@@ -811,8 +849,14 @@ class ConstraintTracker(fundef : FunDef) {
           
           nonLinearCtr match {            
             case BooleanLiteral(true) => throw IllegalStateException("Found no constraints")
-            case BooleanLiteral(false) => Seq() //skip to the next leaf
-            case _ => Seq(nonLinearCtr)            
+            case _ => {
+              //for debugging
+              /*val (res, model, unsatCore) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)
+              if(res.isDefined && res.get == true){
+                println("Found solution for constraints")
+              }*/              
+              nonLinearCtr                        
+            }
           }          
         }
       }
