@@ -107,11 +107,12 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
               //temps.foreach(constTracker.addTemplatedBodyConstraints(recCaller,_)) 
             } else {
               //replace formal parameters by actual arguments in the body and the post					
-              val calleeCond = if (post.isDefined) And(body.get, post.get) else body.get
-              val newcond = replace(argmap, calleeCond)
-
+              val calleeSummary = if (post.isDefined) And(body.get, post.get) else body.get
+              val callSummary = replace(argmap, calleeSummary)
+              val callcond = Equals(call.fi,callSummary)   
+              
               //add to caller constraints
-              constTracker.addBodyConstraints(recCaller, newcond)
+              constTracker.addBodyConstraints(recCaller, callcond)
             }
           })
         }
