@@ -44,7 +44,12 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     
     def getInferenceEngine(vc: ExtendedVC): (() => Boolean) = {
       
-      val vcRefiner = new RefinementEngine(vc.condition,vc.funDef,program)      
+      //flatten the functions in the vc
+      val vcbody = InvariantUtil.FlattenFunction(vc.body)
+      val vcpost = InvariantUtil.FlattenFunction(vc.post)
+      val vccond = Implies(vcbody,vcpost)
+      
+      val vcRefiner = new RefinementEngine(vccond,vc.funDef,program)      
       val constTracker = new ConstraintTracker(vc.funDef)
       val templateFactory = new TemplateFactory()
       var refinementStep : Int = 0
@@ -56,25 +61,27 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       //TODO: make the result variable unique so as to avoid conflicts           
 
       //add given post conditions
-      constTracker.addPostConstraints(vc.funDef,vc.post)          
+      constTracker.addPostConstraints(vc.funDef,vcpost)          
 
       //add post condition template if the function is recursive
       if(program.isRecursive(vc.funDef)) {
-      	val resultVar = variablesOf(vc.post).find(_.name.equals("result")).first
+      	val resultVar = variablesOf(vcpost).find(_.name.equals("result")).first
       	val baseTerms = vc.funDef.args.map(_.toVariable) :+ Variable(resultVar)          
       	val funcTemps = templateFactory.constructTemplate(baseTerms, vc.funDef)      
       	funcTemps.foreach(constTracker.addTemplatedPostConstraints(vc.funDef,_))
       }
       //add body constraints (body condition templates will be added during solving)
-      constTracker.addBodyConstraints(vc.funDef,vc.body)
+      constTracker.addBodyConstraints(vc.funDef,vcbody)
           
       val inferenceEngine = () => {
         
         if(refinementStep >=0) {
           
-          val unrollSet = vcRefiner.refineAbstraction()
+          println("Entered unroll step ...")
+          //System.exit(0)
+          val unrollSet = vcRefiner.refineAbstraction()          
           unrollSet.foreach((entry) => {
-            val (call, recCaller, body, post) = entry
+            val (call, recCaller, body, post) = entry            
             val targetFun = call.fi.funDef
 
             //compute the formal to the actual argument mapping   
@@ -109,10 +116,11 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
               //replace formal parameters by actual arguments in the body and the post					
               val calleeSummary = if (post.isDefined) And(body.get, post.get) else body.get
               val callSummary = replace(argmap, calleeSummary)
-              val callcond = Equals(call.fi,callSummary)   
+              println("calleeSummary: "+callSummary)            
+              //val callcond = Equals(call.fi,callSummary)   
               
               //add to caller constraints
-              constTracker.addBodyConstraints(recCaller, callcond)
+              constTracker.addBodyConstraints(recCaller, callSummary)
             }
           })
         }

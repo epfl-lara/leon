@@ -70,7 +70,7 @@ class RefinementEngine(prog: Program) {
     
     var newheads = Set[CallNode]()
     val unrolls = headCalls.foldLeft(Seq[(Call, FunDef, Option[Expr], Option[Expr])]())((acc, callnode) => {      
-      
+            
       val fi = callnode.call.fi
       if (fi.funDef.body.isDefined) {
         val body = fi.funDef.getBody
@@ -81,23 +81,23 @@ class RefinementEngine(prog: Program) {
         val recCaller = if(prog.isRecursive(fi.funDef)) fi.funDef else callnode.recCaller
 
         val prec = fi.funDef.precondition
-        val bodyExpr = if (prec.isEmpty) {
+        val bodyExpr = InvariantUtil.FlattenFunction(if (prec.isEmpty) {
           bexpr
         } else {
           And(matchToIfThenElse(prec.get), bexpr)
-        }
+        })
 
         val (mayBody,mayPost) = if (!fi.funDef.postcondition.isEmpty) {
 
           val post = fi.funDef.postcondition
-          val postExpr = replace(Map(ResultVariable() -> resFresh), matchToIfThenElse(post.get))
+          val postExpr = InvariantUtil.FlattenFunction(replace(Map(ResultVariable() -> resFresh), matchToIfThenElse(post.get)))          
           
           //update newheads 
-          newheads ++= findHeads(And(bodyExpr, postExpr),recCaller)
+          newheads ++= findHeads(postExpr,recCaller)
           (Some(bodyExpr), Some(postExpr))
           
         } else {
-          
+                    
           newheads ++= findHeads(bodyExpr, recCaller)
           (Some(bodyExpr), None)
         }

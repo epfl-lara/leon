@@ -230,9 +230,9 @@ class ConstraintTracker(fundef : FunDef) {
       node
     })*/
     //flatten function returns a new expresion without function symbols and a set of newly created equalities
-    val flatExpr = FlattenFunction(nnfExpr)         
+    //val flatExpr = InvariantUtil.FlattenFunction(nnfExpr)         
     val root = if(isBody) bodyRoot else postRoot    
-    addConstraintRecur(flatExpr, root)           
+    addConstraintRecur(nnfExpr, root)           
   }
 
   //checks if a constraint tree exists for a function 
@@ -497,38 +497,7 @@ class ConstraintTracker(fundef : FunDef) {
     val rese = mkLinearRecur(atom)
     //println("Unnormalized Linearized expression: "+unnormLinear)
     rese
-  }
-  
-  //TODO: should have a way to add conjuncts to the least enclosing atomic predicate
-  /**
-   * converting if-then-else and let into a logical formula
-   */
-  def reduceLangBlocks(inexpr: Expr) : Expr = {
-    
-    var conjuncts = Seq[Expr]()
-    val transformer = (e: Expr) => {
-      e match {
-        //this is an optimization
-        case Equals(lhs,IfExpr(cond, then, elze)) => {
-        	Or(And(cond,Equals(lhs,then)),And(Not(cond),Equals(lhs,elze)))
-         }
-        case IfExpr(cond, then, elze) => {
-          val freshvar = FreshIdentifier("ifres",true).setType(e.getType).toVariable          
-          conjuncts :+= Or(And(cond,Equals(freshvar,then)),And(Not(cond),Equals(freshvar,elze)))
-          freshvar
-        }
-        case Let(binder,value,body) => {
-          val freshvar = FreshIdentifier(binder.name,true).setType(e.getType).toVariable
-          
-          conjuncts :+= Equals(freshvar,value)
-          replace(Map(binder.toVariable -> freshvar),body)          
-        }
-        case _ => e
-      }
-    }
-    val newe = simplePreTransform(transformer)(inexpr)
-    And(newe,And(conjuncts))
-  }
+  }   
  
   /**
    * The following procedure converts the formula into negated normal form by pushing all not's inside.
@@ -571,125 +540,11 @@ class ConstraintTracker(fundef : FunDef) {
       }
     }
     //convert if then else to formulas (also handle lets here)     
-    val nnfvc = nnf(reduceLangBlocks(expr))
+    val nnfvc = nnf(expr)
     println("NNF VC: "+ nnfvc)
     nnfvc
   }
-
-  /**   
-   * Assumed that that given expression has boolean type  
-   * The following code is tricky. It implements multiple functionalities together
-   * (a) it replaces every function call by a variable and creates a new equality
-   * (b) it also replaces arguments that are not variables by fresh variables and creates 
-   * a new equality mapping the fresh variable to the argument expression   
-   */   
-  var fiToVarMap = Map[FunctionInvocation, (Expr,Set[Call],Set[Expr])]()  
-  def FlattenFunction(inExpr: Expr): Expr = {        
-    /**
-     * First return value is the new expression. The second return value is the 
-     * set of new calls and the third return value is the new conjuncts
-     */
-    def flattenFunc(e: Expr): (Expr,Set[Call],Set[Expr]) = {
-      e match {        
-        case fi @ FunctionInvocation(fd, args) => {
-          if(fiToVarMap.contains(fi)){
-            fiToVarMap(fi)
-          }            
-          else {                                                                     
-            //now also flatten the args. The following is slightly tricky            
-            var newctrs = Seq[Expr]()
-            var newConjuncts = Set[Expr]()
-            var newUIFs = Set[Call]()
-            
-            val newargs = args.map((arg) =>              
-              arg match {                
-                case t : Terminal => t                                     
-                case _ => {                  
-                  val (nexpr,nuifs,ncjs) = flattenFunc(arg)
-                  
-                  newConjuncts ++= ncjs
-                  newUIFs ++= nuifs 
-                  
-                  nexpr match {
-                    case t : Terminal => t
-                    case _ => {
-                    	val freshArgVar = Variable(FreshIdentifier("arg", true).setType(arg.getType))                    	                    	
-                        newConjuncts += Equals(freshArgVar, nexpr) 
-                        freshArgVar
-                    }
-                  }                                    
-                }
-              })              
-            //create a new equality in UIFs
-            val newfi = FunctionInvocation(fd,newargs)
-            //create a new variable to represent the function
-            val freshResVar = Variable(FreshIdentifier("r", true).setType(fi.getType))
-            newUIFs += Call(freshResVar,newfi)
-            
-            val res = (freshResVar, newUIFs, newConjuncts)            
-            fiToVarMap += (fi -> res)
-            res
-          }                                
-        }
-        case And(args) => {
-          val newargs = args.map((arg) => {
-            val (nexp,nuifs,ncjs) = flattenFunc(arg)
-            val uifExprs = nuifs.map((uif) => {
-              Equals(uif.retexpr,uif.fi)
-            })
-            
-            And(nexp,And((ncjs ++ uifExprs).toSeq))            
-          })
-          (And(newargs),Set(),Set())
-        }
-        case Or(args) => {
-          val newargs = args.map((arg) => {
-            val (nexp,nuifs,ncjs) = flattenFunc(arg)
-            val uifExprs = nuifs.map((uif) => {
-              Equals(uif.retexpr,uif.fi)
-            })
-            
-            And(nexp,And((ncjs ++ uifExprs).toSeq))            
-          })
-          (Or(newargs),Set(),Set())
-        }
-        case t: Terminal => (t,Set(),Set())
-        case u @ UnaryOperator(e1, op) => {
-          val (nexp,ncalls,ncjs) = flattenFunc(e1)
-          (op(nexp),ncalls,ncjs)
-        }
-        case b @ BinaryOperator(e1, e2, op) => {
-          val (nexp1,ncalls1,ncjs1) = flattenFunc(e1)
-          val (nexp2,ncalls2,ncjs2) = flattenFunc(e2)
-          (op(nexp1,nexp2),ncalls1 ++ ncalls2,ncjs1 ++ ncjs2)          
-        }
-        case n @ NAryOperator(args, op) => {
-          
-          var ncjs = Set[Expr]()
-          var ncalls = Set[Call]()
-          val newargs = args.map((arg) =>{
-            val (nexp,cs,js) = flattenFunc(arg)
-            ncjs ++= js
-            ncalls ++= cs            
-            nexp
-          })          
-          (op(newargs),ncalls,ncjs)
-        }
-        case _ => throw IllegalStateException("Impossible event: expr did not match any case: " + inExpr)        
-      }
-    }
-    /*var newExpr = simplePostTransform(flattenFunc)(inExpr)
-    (newExpr,newUIFs,newConjuncts)*/        
-    val (nexp,nuifs,ncjs) = flattenFunc(inExpr)
-    if(!nuifs.isEmpty || !ncjs.isEmpty) {
-      val uifExprs = nuifs.map((uif) => {
-        Equals(uif.retexpr, uif.fi)
-      })
-      And(nexp, And((ncjs ++ uifExprs).toSeq))
-    }
-    else nexp            
-  }
-
+  
   //some utility methods
   def getFIs(ctr: LinearConstraint): Set[FunctionInvocation] = {
     val fis = ctr.coeffMap.keys.collect((e) => e match {

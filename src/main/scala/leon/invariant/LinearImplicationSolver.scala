@@ -128,12 +128,12 @@ class LinearImplicationSolver {
       
       for (cvar <- cvars) {
         //compute the linear combination of all the coeffs of antCVars
-        var sumCoeff: Expr = null
+        var sumCoeff: Expr = zero
         for (ant <- ants) {
           //handle coefficients here
           if (ant.coeffTemplate.contains(cvar)) {
             val addend = Times(lambdas(ant), ant.coeffTemplate.get(cvar).get)
-            if (sumCoeff == null)
+            if (sumCoeff == zero)
               sumCoeff = addend
             else
               sumCoeff = Plus(sumCoeff, addend)
@@ -142,7 +142,8 @@ class LinearImplicationSolver {
         //make the sum equal to the coeff. of cvar in conseq
         if (conseq.isDefined) {
           enabledPart = And(enabledPart,
-            (if (conseq.get.coeffTemplate.contains(cvar)) Equals(conseq.get.coeffTemplate.get(cvar).get, sumCoeff)
+            (if (conseq.get.coeffTemplate.contains(cvar)) 
+              Equals(conseq.get.coeffTemplate.get(cvar).get, sumCoeff)
             else Equals(zero, sumCoeff)))
         }
 
