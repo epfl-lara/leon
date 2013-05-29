@@ -8,17 +8,18 @@ import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.Definitions._
+import solvers.TimeoutSolver
 
 case object ADTSplit extends Rule("ADT Split.") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation]= {
-    val solver = sctx.simpleSolver
+    val solver = new TimeoutSolver(sctx.solver, 200L)
 
     val candidates = p.as.collect {
       case IsTyped(id, AbstractClassType(cd)) =>
 
         val optCases = for (dcd <- cd.knownDescendents.sortBy(_.id.name)) yield dcd match {
           case ccd : CaseClassDef =>
-            val toSat = And(p.pc, Not(CaseClassInstanceOf(ccd, Variable(id))))
+            val toSat = And(p.pc, CaseClassInstanceOf(ccd, Variable(id)))
 
             val isImplied = solver.solveSAT(toSat) match {
               case (Some(false), _) => true
