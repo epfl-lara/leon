@@ -728,13 +728,16 @@ class ConstraintTracker(fundef : FunDef) {
                     fls
                   else And(newCtr1, newCtr2)
                   
+                  //println("Constraints: "+newCtr)                                    
                   newCtr match {                                 
                     case BooleanLiteral(false) => fls //entire set of constraints are sat 
                     case _ => if (acc2 == BooleanLiteral(true)) newCtr
                     else And(acc2, newCtr)
-                  }
+                  }                  
                 }
-              })              
+              })
+              
+              
             }
           })   
           

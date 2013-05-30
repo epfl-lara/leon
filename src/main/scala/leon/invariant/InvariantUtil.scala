@@ -273,10 +273,14 @@ object InvariantUtil {
 
         case _ => throw IllegalStateException("Impossible event: expr did not match any case: " + inExpr)
       }
-    }
-    //convert if then else to formulas (also handle lets here)     
-    val nnfvc = nnf(expr)
-    println("NNF VC: "+ nnfvc)
+    }    
+    val nnfvc = nnf(expr)    
     nnfvc
+  }
+
+  def formalToAcutal(call : Call, fundef : FunDef, resvar : Variable) : Map[Expr, Expr] = {
+    //compute the formal to the actual argument mapping   
+    val argmap: Map[Expr, Expr] = Map(resvar -> call.retexpr) ++ fundef.args.map(_.id.toVariable).zip(call.fi.args)
+    argmap
   }
 }

@@ -66,17 +66,13 @@ class LinearImplicationSolver {
     //(b) if A^C is not false and A' is true and C' is true then we cannot make it unsat so return false
     //(c) otherwise, if A^C is satisfiable we cannot do any simplification 
     //TODO: Food for thought: can we do any more simplification      
-    val (ants, conseqs, res) = satVC match {
-      case Some(false)  => (Seq(), Seq(), Some(BooleanLiteral(true)))
-      case _  if (antsTemp.isEmpty && conseqsTemp.isEmpty) => (Seq(), Seq(), Some(BooleanLiteral(false)))             
-      case _ => (allAnts, allConseqs, None)      
-    }
-    if (res.isDefined) {      
-      res.get
-    }
-    else{      
-      //here we are solving for unsatisfiablility
-      this.applyFarkasLemma(ants ++ conseqs, Seq(), true)
+    satVC match {
+      case Some(false) => BooleanLiteral(true)
+      case _ if (antsTemp.isEmpty && conseqsTemp.isEmpty) => BooleanLiteral(false)
+      case _ => {
+        //here we are solving for unsatisfiablility
+        this.applyFarkasLemma(allAnts ++ allConseqs, Seq(), true)
+      }
     }
     
   }
@@ -120,7 +116,7 @@ class LinearImplicationSolver {
     //(b) could the linearity in the disabled case be exploited 
     val (ants, conseqs, disableFlag) = (satVC, satNVC) match {
       case (Some(false), _) if (antsTemp.isEmpty) => (Seq(), Seq(), false)
-      case (Some(false), _) => (allAnts, Seq(), true) //here disable the antecedents      
+      case (Some(false), _) => (allAnts, Seq(), true) //here only disable the antecedents      
       case (_, Some(false)) => (allAnts, conseqsTemp, false) //here we need to only check the inductiveness of the templates
       case _ => (allAnts, allConseqs, false)      
     }
@@ -178,6 +174,7 @@ class LinearImplicationSolver {
       
       for (cvar <- cvars) {
         //compute the linear combination of all the coeffs of antCVars
+        //println("Processing cvar: "+cvar)
         var sumCoeff: Expr = zero
         for (ant <- ants) {
           //handle coefficients here
@@ -189,6 +186,7 @@ class LinearImplicationSolver {
               sumCoeff = Plus(sumCoeff, addend)
           }
         }
+        //println("sum coeff: "+sumCoeff)
         //make the sum equal to the coeff. of cvar in conseq
         if (conseq.isDefined) {
           enabledPart = And(enabledPart,
@@ -202,8 +200,10 @@ class LinearImplicationSolver {
 
       //the final constraint is a conjunction of lambda constraints and disjunctioin of enabled and disabled parts
       if (disableAnts) And(And(lambdaCtrs), disabledPart)
-      else
+      else {
+        //And(And(lambdaCtrs), enabledPart)
         And(And(lambdaCtrs), Or(enabledPart, disabledPart))
+       }
     }
 
     val ctrs = if (disableAnts) {

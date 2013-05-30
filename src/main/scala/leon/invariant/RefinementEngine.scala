@@ -75,23 +75,31 @@ class RefinementEngine(prog: Program) {
       if (fi.funDef.body.isDefined) {
         val body = fi.funDef.getBody
         val resFresh = Variable(FreshIdentifier("result", true).setType(body.getType))
-        val bexpr = Equals(resFresh, body)
+        val bexpr1 = Equals(resFresh, body)
 
+        val isRecursive = prog.isRecursive(fi.funDef)
+        
         //get the last recursive caller which would be fi.funDef or callnode.recCaller
-        val recCaller = if(prog.isRecursive(fi.funDef)) fi.funDef else callnode.recCaller
+        val recCaller = if(isRecursive) fi.funDef else callnode.recCaller
 
         val prec = fi.funDef.precondition
-        val bodyExpr = InvariantUtil.FlattenFunction(if (prec.isEmpty) {
-          bexpr
+        val bexpr2 = InvariantUtil.FlattenFunction(if (prec.isEmpty) {
+          bexpr1
         } else {
-          And(matchToIfThenElse(prec.get), bexpr)
+          And(matchToIfThenElse(prec.get), bexpr1)
         })
+
+        //if the function is not recursive: inline the function i.e,
+        //replace the formal parameters in the function by the actual arguments
+        val argmap = InvariantUtil.formalToAcutal(callnode.call, fi.funDef, resFresh)
+        val bodyExpr = if(!isRecursive) replace(argmap, bexpr2) else bexpr2 
 
         val (mayBody,mayPost) = if (!fi.funDef.postcondition.isEmpty) {
 
           val post = fi.funDef.postcondition
-          val postExpr = InvariantUtil.FlattenFunction(replace(Map(ResultVariable() -> resFresh), matchToIfThenElse(post.get)))          
-          
+          val post2 = InvariantUtil.FlattenFunction(replace(Map(ResultVariable() -> resFresh), matchToIfThenElse(post.get)))
+          val postExpr = if(!isRecursive) replace(argmap, post2) else post2
+                    
           //update newheads 
           newheads ++= findHeads(postExpr,recCaller)
           (Some(bodyExpr), Some(postExpr))

@@ -9,8 +9,8 @@ object SimpleInterProc
 	} ensuring(res => res != -1)	
 	//inductive generalization res >= 0
 	
-	def makePositive(x : Int) : Int = {
-	  2*negate(x)
+	def makePositive(y : Int) : Int = {
+	  2*negate(y)
 	}
 	def negate(c : Int) : Int={
 	  -c

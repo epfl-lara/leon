@@ -74,18 +74,16 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           
       val inferenceEngine = () => {
         
-        if(refinementStep >=0) {
+        if(refinementStep >=1) {
           
-          println("Entered unroll step ...")
+          reporter.info("More unrollings for invariant inference")
           //System.exit(0)
           val unrollSet = vcRefiner.refineAbstraction()          
           unrollSet.foreach((entry) => {
             val (call, recCaller, body, post) = entry            
             val targetFun = call.fi.funDef
-
-            //compute the formal to the actual argument mapping   
-            val funRes = variablesOf(body.get).find(_.name.equals("result")).first
-            val argmap : Map[Expr,Expr] = Map(funRes.toVariable -> call.retexpr) ++ targetFun.args.map(_.id.toVariable).zip(call.fi.args)
+            
+            //val argmap : Map[Expr,Expr] = Map(funRes.toVariable -> call.retexpr) ++ targetFun.args.map(_.id.toVariable).zip(call.fi.args)
 
             /**
              * process the unroll set
@@ -100,7 +98,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
                 //add body constraints
                 constTracker.addBodyConstraints(targetFun, body.get)
                 
-                //add (negated) post condition template for the function
+                //add (negated) post condition template for the function                  
+                val funRes = variablesOf(body.get).find(_.name.equals("result")).first
                 val bts = targetFun.args.map(_.id.toVariable) :+ funRes.toVariable
                 val posttemps = templateFactory.constructTemplate(bts, targetFun)
                 posttemps.foreach(constTracker.addTemplatedPostConstraints(recCaller, _))
@@ -114,12 +113,12 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
             } else {
               //replace formal parameters by actual arguments in the body and the post					
               val calleeSummary = if (post.isDefined) And(body.get, post.get) else body.get
-              val callSummary = replace(argmap, calleeSummary)
-              println("calleeSummary: "+callSummary)            
+              //val callSummary = replace(argmap, calleeSummary)
+              println("calleeSummary: "+calleeSummary)            
               //val callcond = Equals(call.fi,callSummary)   
               
               //add to caller constraints
-              constTracker.addBodyConstraints(recCaller, callSummary)
+              constTracker.addBodyConstraints(recCaller, calleeSummary)
             }
           })
         }
