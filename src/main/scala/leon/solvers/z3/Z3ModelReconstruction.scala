@@ -45,7 +45,10 @@ trait Z3ModelReconstruction {
         case None if (AUTOCOMPLETEMODELS) => completeID(id)
         case None => ;
         case Some(v @ Variable(exprId)) if (AUTOCOMPLETEMODELS && exprId == id) => completeID(id)
-        case Some(ex) => asMap = asMap + ((id -> ex))
+        case Some(ex) =>{
+          
+          asMap = asMap + ((id -> ex))
+        }
       }
     }
     asMap

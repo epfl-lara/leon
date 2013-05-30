@@ -160,6 +160,8 @@ class ConstraintTracker(fundef : FunDef) {
   private val zero = IntLiteral(0)
   private val one = IntLiteral(1)
   private val mone =IntLiteral(-1)   
+  private val fls = BooleanLiteral(false)
+  private val tru = BooleanLiteral(true)
 
   //adds a constraint in conjunction with  the constraint represented by parentNode
   def addConstraintRecur(inexpr: Expr, parentNode : CtrNode) : Unit = {
@@ -215,8 +217,7 @@ class ConstraintTracker(fundef : FunDef) {
   }*/  
 
   def addConstraint(e: Expr, bodyRoot: CtrNode, postRoot: CtrNode, isBody: Boolean) = {
-    //apply negated normal form here. This also reduces all if-then-else, let construct, implies, Iff etc.
-    val nnfExpr = TransformNot(e)
+
     //println("Expression after Not transformation: "+nnfExpr)
     //val (id, innerExpr) = parseGuardedExpr(nnfExpr)
     //get the node corresponding to the id
@@ -232,7 +233,7 @@ class ConstraintTracker(fundef : FunDef) {
     //flatten function returns a new expresion without function symbols and a set of newly created equalities
     //val flatExpr = InvariantUtil.FlattenFunction(nnfExpr)         
     val root = if(isBody) bodyRoot else postRoot    
-    addConstraintRecur(nnfExpr, root)           
+    addConstraintRecur(e, root)           
   }
 
   //checks if a constraint tree exists for a function 
@@ -255,34 +256,27 @@ class ConstraintTracker(fundef : FunDef) {
     addConstraint(body, bodyRoot, postRoot, true)
   }
 
-  def addPostConstraints(fdef: FunDef, post: Expr) = {
+  /**
+   * This is a little tricky the post tree contains negation of the post condition.
+   * This is used for optimization.  
+   */
+  def addPostConstraints(fdef: FunDef, npost: Expr) = {
     val (bodyRoot,postRoot) = getCtrTree(fdef)
-    addConstraint(post, bodyRoot, postRoot, false)
+    addConstraint(npost, bodyRoot, postRoot, false)
     //println("PostCtrTree\n"+postRoot.toString)    
   }
 
- 	//this method adds a template to  the post. The templates in the body are assumed during 
- 	// the constraint generation
+  /**
+   * This is a little tricky. The postRoot is used to store all the templates
+   * TODO: assumption the templates are assume to not have disjunctions
+   */
   def addTemplatedPostConstraints(fdef: FunDef, temp: LinearTemplate) = {
-  	val (_,postRoot) = getCtrTree(fdef)
-  	postRoot.templates += temp
+    val (_, postRoot) = getCtrTree(fdef)
+    postRoot.templates += temp
+    /*val child = CtrNode()
+    child.templates += temp
+    postRoot.addChildren(child)*/
   }
-  
-  /*def parseGuardedExpr(e: Expr): (Identifier, Expr) = {
-    e match {
-      case Or(Not(Variable(id)) :: tail) => {
-        tail match {
-          case expr :: Nil => (id, expr)
-          case expr :: tail2 => {
-            //this corresponds to a disjunction
-            (id, Or(tail))
-          }
-          case _ => throw IllegalStateException("Not in expected format: " + tail)
-        }
-      }
-      case _ => throw IllegalStateException("Not a guarded expression: " + e)
-    }
-  }*/
 
   //the expr is required to be linear, if not, an exception would be thrown
   //for now some of the constructs are not handled
@@ -498,53 +492,7 @@ class ConstraintTracker(fundef : FunDef) {
     //println("Unnormalized Linearized expression: "+unnormLinear)
     rese
   }   
- 
-  /**
-   * The following procedure converts the formula into negated normal form by pushing all not's inside.
-   * It also handles Not equal to operators
-   */
-  def TransformNot(expr: Expr): Expr = {
-    def nnf(inExpr: Expr): Expr = {
-      inExpr match {
-        //matches integer binary relation
-        case Not(e @ BinaryOperator(e1, e2, op)) if (e1.getType == Int32Type) => {
-          e match {
-            case e: Equals => Or(nnf(LessEquals(e1, Minus(e2, one))), nnf(GreaterEquals(e1, Plus(e2, one))))
-            case e: LessThan => GreaterEquals(nnf(e1), nnf(e2))
-            case e: LessEquals => GreaterThan(nnf(e1), nnf(e2))
-            case e: GreaterThan => LessEquals(nnf(e1), nnf(e2))
-            case e: GreaterEquals => LessThan(nnf(e1), nnf(e2))
-            case _ => throw IllegalStateException("Unknown integer predicate: " + e)
-          }
-        }
-        //TODO: Puzzling: "Not" is not recognized as an unary operator, need to find out why
-        case e @ Not(t: Terminal) => e
-        case Not(And(args)) => Or(args.map(arg => nnf(Not(arg))))
-        case Not(Or(args)) => And(args.map(arg => nnf(Not(arg))))
-        case Not(Not(e1)) => nnf(e1)
-        case Not(Implies(e1, e2)) => And(nnf(e1), nnf(Not(e2)))
-        case Not(Iff(e1, e2)) => Or(nnf(Implies(e1, e2)), nnf(Implies(e2, e1)))
-        case Implies(lhs,rhs) => {
-          nnf(Or(Not(lhs),rhs))
-        }
-        case Iff(lhs,rhs) => {
-          nnf(And(Implies(lhs,rhs),Implies(rhs,lhs)))
-        }                
-
-        case t: Terminal => t
-        case u @ UnaryOperator(e1, op) => op(nnf(e1))
-        case b @ BinaryOperator(e1, e2, op) => op(nnf(e1), nnf(e2))
-        case n @ NAryOperator(args, op) => op(args.map(nnf(_)))
-
-        case _ => throw IllegalStateException("Impossible event: expr did not match any case: " + inExpr)
-      }
-    }
-    //convert if then else to formulas (also handle lets here)     
-    val nnfvc = nnf(expr)
-    println("NNF VC: "+ nnfvc)
-    nnfvc
-  }
-  
+    
   //some utility methods
   def getFIs(ctr: LinearConstraint): Set[FunctionInvocation] = {
     val fis = ctr.coeffMap.keys.collect((e) => e match {
@@ -614,6 +562,9 @@ class ConstraintTracker(fundef : FunDef) {
           Plus(acc, Times(k, v))
         })
         val ctr = LessEquals(expr, zero)
+        
+        /*//here negate the template as the invariant is the negation of the template
+        val inv = InvariantUtil.TransformNot(Not(ctr))*/
         (fd -> ctr)
       })
       Some(invs.toMap)
@@ -648,14 +599,15 @@ class ConstraintTracker(fundef : FunDef) {
     }
 
     //this could take 2^(n^2) time
-    def uifsConstraintsGen(calls: Set[Call], ctrs: Seq[LinearConstraint], pathexpr: Expr): Seq[Seq[LinearConstraint]] = {
+    def uifsConstraintsGen(calls: Set[Call], ctrs: Seq[LinearConstraint], pathexpr: Expr)
+    : Seq[Seq[LinearConstraint]] = {
       //now create a  uif tree for this path by reducing the UIFs to the base theory.             
-      val uifCtrs = constraintsForUIFs(calls, pathexpr, uiSolver)
+      val uifCtrs = constraintsForUIFs(calls.toSeq, pathexpr, uiSolver)
       val uifroot = if (!uifCtrs.isEmpty) {
         val uifCtr = And(uifCtrs)
         println("UIF constraints: " + uifCtr)
         //push not inside
-        val nnfExpr = TransformNot(uifCtr)
+        val nnfExpr = InvariantUtil.TransformNot(uifCtr)
         //create the root of the UIF tree
         //TODO: create a UIF tree once and for all and prune the paths while traversing
         val newnode = CtrNode()
@@ -673,18 +625,20 @@ class ConstraintTracker(fundef : FunDef) {
             for (child <- n.Children)
               traverseUIFtree(child, newCtrs)
           }
-          case CtrLeaf() => {
-            outputCtrs +:= currentCtrs
+          case CtrLeaf() => {            
+            outputCtrs +:= currentCtrs            
           }
         }
       }
-
-      traverseUIFtree(uifroot, ctrs)
+      
+      traverseUIFtree(uifroot, ctrs)  
+      //println("outputCtrs: "+outputCtrs)
       outputCtrs
     }
     
     //first traverse the body and collect all the antecedents               
-    var antSet = List[(Set[LinearConstraint],Set[LinearTemplate])]()
+    //var antSet = List[(Set[LinearConstraint],Set[LinearTemplate])]()
+    var antSet = List[(Set[LinearConstraint],Set[Call])]()
 
     //this tree could have 2^n paths 
     def traverseBodyTree(tree: CtrTree, currentCtrs: Seq[LinearConstraint], currentUIFs: Set[Call]): Unit = {
@@ -703,10 +657,11 @@ class ConstraintTracker(fundef : FunDef) {
           if (!res.isDefined || res.get == true) {
 
             println("Path expr: " + pathexpr)
+            antSet :+= (currentCtrs.toSet,currentUIFs)
             
-            val uifTemps = currentUIFs.filter((call) => hasCtrTree(call.fi.funDef)).flatten(uifTemplatesGen(_))
+            //val uifTemps = currentUIFs.filter((call) => hasCtrTree(call.fi.funDef)).flatten(uifTemplatesGen(_))            
+            //antSet ++= uifsConstraintsGen(currentUIFs, currentCtrs, pathexpr).map((ctrs) => (ctrs.toSet, uifTemps))
             
-            antSet ++= uifsConstraintsGen(currentUIFs, currentCtrs, pathexpr).map((ctrs) => (ctrs.toSet, uifTemps))
           } else {
             //println("Found unsat path: " + pathExpr)
           }
@@ -733,28 +688,48 @@ class ConstraintTracker(fundef : FunDef) {
           //any one of the branches must hold
           if(exprs.isEmpty) BooleanLiteral(true)         
           else if(exprs.size == 1) exprs.first
-          else Or(exprs)
+          else And(exprs)
         }
-        case CtrLeaf() => {
-          //here we need to check if the every antecedent in antSet implies the conseqs of this path           
+        case CtrLeaf() => {         
+          //here we need to check if the every antecedent in antSet and the conseqs of the path is unsat i.e, false           
           val nonLinearCtr = antSet.foldLeft(BooleanLiteral(true): Expr)((acc1, ants) => {
 
             if (acc1 == BooleanLiteral(false))
               acc1
             else {
-              //TODO assuming that the post-condition wouldn't call the input function              
-              val (antCtrs,antTemps) = (ants._1.toSeq, ants._2.toSeq)                           
+              //TODO assuming that the post-condition wouldn't call the input function
+              val (antCtrs,antCalls) = (ants._1.toSeq, ants._2)     
+              val calls = antCalls ++ currUIFs
+              
+              val pathexpr = constraintsToExpr(antCtrs, calls)                            
+              val antlists = uifsConstraintsGen(calls, antCtrs, pathexpr)
+              val antTemps = calls.filter((call) => hasCtrTree(call.fi.funDef)).flatten(uifTemplatesGen(_))            
+                            
+              /*val (antCtrs,antTemps) = (ants._1.toSeq, ants._2.toSeq)                           
               val pathexpr = constraintsToExpr(antCtrs,currUIFs)                            
-              val antlists = uifsConstraintsGen(currUIFs, antCtrs, pathexpr)
-
+              val antlists = uifsConstraintsGen(currUIFs, antCtrs, pathexpr)*/
+              //println("Ant Lists: "+antlists)
               antlists.foldLeft(acc1)((acc2, newant) => {
 
                 if (acc2 == BooleanLiteral(false))
                   acc2
                 else {
-                  val newCtr = implicationSolver.constraintsForImplication(newant, antTemps, conseqs, currTemps, uiSolver)
+                  //here we are solving A^~(B)
+                  val newCtr1 = implicationSolver.constraintsForUnsat(newant, antTemps.toSeq, conseqs, Seq(), uiSolver)
+                  //here we are solving for A => T
+                  val newCtr2 = implicationSolver.constraintsForImplication(newant, antTemps.toSeq, Seq(), currTemps, uiSolver)
+                  
+                  //doing some simplifications 
+                  val newCtr = if (newCtr1 == tru)
+                    newCtr2
+                  else if (newCtr2 == tru)
+                    newCtr1
+                  else if (newCtr1 == fls || newCtr2 == fls)
+                    fls
+                  else And(newCtr1, newCtr2)
+                  
                   newCtr match {                                 
-                    case fls @ BooleanLiteral(false) => fls //entire set of constrains are unsat
+                    case BooleanLiteral(false) => fls //entire set of constraints are sat 
                     case _ => if (acc2 == BooleanLiteral(true)) newCtr
                     else And(acc2, newCtr)
                   }
@@ -785,18 +760,25 @@ class ConstraintTracker(fundef : FunDef) {
   
   //convert the theory formula into linear arithmetic formula
   //TODO: Handle ADTs also  
-  def constraintsForUIFs(calls: Set[Call], precond: Expr, uisolver: UninterpretedZ3Solver) : Seq[Expr] = {
+  def constraintsForUIFs(calls: Seq[Call], precond: Expr, uisolver: UninterpretedZ3Solver) : Seq[Expr] = {
         
     //Part(I): Finding the set of all pairs of funcs that are implied by the precond
     var impliedGraph = new UndirectedGraph[Call]()
     var nimpliedSet = Set[(Call,Call)]()
     
     //compute the cartesian product of the calls and select the pairs having the same function symbol and also implied by the precond
-    val product = calls.foldLeft(Set[(Call,Call)]())((acc, call) => {
-      
-      val pairs = calls.collect((call2) => call2 match {
-        case _ if (call != call2 && call.fi.funDef == call2.fi.funDef) => (call,call2) 
-      })
+    val vec = calls.toArray
+    val size = calls.size
+    var j = 0
+    val product = vec.foldLeft(Set[(Call, Call)]())((acc, call) => {
+
+      var pairs = Set[(Call, Call)]()
+      for (i <- j + 1 until size) {
+        val call2 = vec(i)
+        if (call.fi.funDef == call2.fi.funDef)
+          pairs ++= Set((call, call2))
+      }
+      j += 1
       acc ++ pairs
     })
     
@@ -835,10 +817,8 @@ class ConstraintTracker(fundef : FunDef) {
     val edges = impliedGraph.Edges.toSet         
     val newctrs = product.foldLeft(Seq[Expr]())((acc,pair) => {
       val (call1,call2)= pair
-      val Equals(v1,fi1) = call1
-      val Equals(v2,fi2) = call2
       if(edges.contains(pair)) {
-        acc :+ Equals(v1,v2)
+        acc :+ Equals(call1.retexpr,call2.retexpr)
       }
       else if(nimpliedSet.contains(pair)) {
         val (ant,conseq) = axiomatizeEquality(call1,call2)
@@ -868,20 +848,4 @@ class ConstraintTracker(fundef : FunDef) {
     (And(ants), conseq)
   } 
   
-  /**
-   * This function returns all the calls in the in the linear template
-   * Assumes that all function invocations have been flattened.
-   */
-  /*def getAllCalls(lt : LinearTemplate) : Iterable[Expr] = {
-    lt.template match {
-      case Equals(Variable(_),FunctionInvocation(_,_)) => {
-          Seq(lt.template)
-        } 
-      case _  if(lt.coeffTemplate.keys.find(_.isInstanceOf[FunctionInvocation]).isDefined) => {
-        throw IllegalStateException("FunctionInvocations not flattened in "+lt.template)  
-      }
-      case _ => Seq()
-    }    
-  }
-*/
 }

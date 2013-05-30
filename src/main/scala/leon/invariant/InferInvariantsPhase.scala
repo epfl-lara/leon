@@ -46,26 +46,25 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       
       //flatten the functions in the vc
       val vcbody = InvariantUtil.FlattenFunction(vc.body)
-      val vcpost = InvariantUtil.FlattenFunction(vc.post)
-      val vccond = Implies(vcbody,vcpost)
+      val vcnpost = InvariantUtil.FlattenFunction(Not(vc.post))
+      val cond = And(vcbody,vcnpost)
       
-      val vcRefiner = new RefinementEngine(vccond,vc.funDef,program)      
+      val vcRefiner = new RefinementEngine(cond,vc.funDef,program)      
       val constTracker = new ConstraintTracker(vc.funDef)
       val templateFactory = new TemplateFactory()
       var refinementStep : Int = 0
 
       /**
       * Initialize refinement engine
-      **/
-      //find the result variable used in the post-condition
-      //TODO: make the result variable unique so as to avoid conflicts           
-
-      //add given post conditions
-      constTracker.addPostConstraints(vc.funDef,vcpost)          
+      **/                    
+      //add the negation of the post-condition
+      constTracker.addPostConstraints(vc.funDef,vcnpost)          
 
       //add post condition template if the function is recursive
       if(program.isRecursive(vc.funDef)) {
-      	val resultVar = variablesOf(vcpost).find(_.name.equals("result")).first
+        //find the result variable used in the post-condition
+    	//TODO: make the result variable unique so as to avoid conflicts
+      	val resultVar = variablesOf(vcnpost).find(_.name.equals("result")).first
       	val baseTerms = vc.funDef.args.map(_.toVariable) :+ Variable(resultVar)          
       	val funcTemps = templateFactory.constructTemplate(baseTerms, vc.funDef)      
       	funcTemps.foreach(constTracker.addTemplatedPostConstraints(vc.funDef,_))
@@ -101,7 +100,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
                 //add body constraints
                 constTracker.addBodyConstraints(targetFun, body.get)
                 
-                //add post condition template for the function
+                //add (negated) post condition template for the function
                 val bts = targetFun.args.map(_.id.toVariable) :+ funRes.toVariable
                 val posttemps = templateFactory.constructTemplate(bts, targetFun)
                 posttemps.foreach(constTracker.addTemplatedPostConstraints(recCaller, _))

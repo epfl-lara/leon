@@ -26,6 +26,9 @@ import scala.collection.mutable.{Set => MutableSet}
 case class Call(retexpr: Expr, fi: FunctionInvocation)
 
 object InvariantUtil {
+  
+  val zero = IntLiteral(0)
+  val one = IntLiteral(1)
     
   /**
    * converting if-then-else and let into a logical formula
@@ -214,8 +217,12 @@ object InvariantUtil {
         case _ => throw IllegalStateException("Impossible event: expr did not match any case: " + inExpr)        
       }
     }
+    
+    //convert to negated normal form         
+    val nnfExpr = TransformNot(inExpr)
+    
     //reduce the language before applying flatten function
-    val newe = reduceLangBlocks(inExpr)
+    val newe = TransformNot(reduceLangBlocks(nnfExpr))
     
     val (nexp,nuifs,ncjs) = flattenFunc(newe)
     if(!nuifs.isEmpty || !ncjs.isEmpty) {
@@ -225,5 +232,51 @@ object InvariantUtil {
       And(nexp, And((ncjs ++ uifExprs).toSeq))
     }
     else nexp            
+  }
+  
+  /**
+   * The following procedure converts the formula into negated normal form by pushing all not's inside.
+   * It also handles Not equal to operators
+   */
+  def TransformNot(expr: Expr): Expr = {
+    def nnf(inExpr: Expr): Expr = {
+      inExpr match {
+        //matches integer binary relation
+        case Not(e @ BinaryOperator(e1, e2, op)) if (e1.getType == Int32Type) => {
+          e match {
+            case e: Equals => Or(nnf(LessEquals(e1, Minus(e2, one))), nnf(GreaterEquals(e1, Plus(e2, one))))
+            case e: LessThan => GreaterEquals(nnf(e1), nnf(e2))
+            case e: LessEquals => GreaterThan(nnf(e1), nnf(e2))
+            case e: GreaterThan => LessEquals(nnf(e1), nnf(e2))
+            case e: GreaterEquals => LessThan(nnf(e1), nnf(e2))
+            case _ => throw IllegalStateException("Unknown integer predicate: " + e)
+          }
+        }
+        //TODO: Puzzling: "Not" is not recognized as an unary operator, need to find out why
+        case e @ Not(t: Terminal) => e
+        case Not(And(args)) => Or(args.map(arg => nnf(Not(arg))))
+        case Not(Or(args)) => And(args.map(arg => nnf(Not(arg))))
+        case Not(Not(e1)) => nnf(e1)
+        case Not(Implies(e1, e2)) => And(nnf(e1), nnf(Not(e2)))
+        case Not(Iff(e1, e2)) => Or(nnf(Implies(e1, e2)), nnf(Implies(e2, e1)))
+        case Implies(lhs,rhs) => {
+          nnf(Or(Not(lhs),rhs))
+        }
+        case Iff(lhs,rhs) => {
+          nnf(And(Implies(lhs,rhs),Implies(rhs,lhs)))
+        }                
+
+        case t: Terminal => t
+        case u @ UnaryOperator(e1, op) => op(nnf(e1))
+        case b @ BinaryOperator(e1, e2, op) => op(nnf(e1), nnf(e2))
+        case n @ NAryOperator(args, op) => op(args.map(nnf(_)))
+
+        case _ => throw IllegalStateException("Impossible event: expr did not match any case: " + inExpr)
+      }
+    }
+    //convert if then else to formulas (also handle lets here)     
+    val nnfvc = nnf(expr)
+    println("NNF VC: "+ nnfvc)
+    nnfvc
   }
 }
