@@ -519,6 +519,7 @@ class ConstraintTracker(fundef : FunDef) {
     })
     val nonLinearCtr = if(nonLinearCtrs.size == 1) nonLinearCtrs.first 
 						else And(nonLinearCtrs)
+	//println("nonLinear Ctr: "+nonLinearCtr)
 
     //look for a solution of non-linear constraints. The constraint variables are all reals
     //println("Non linear constraints for this branch: " +nonLinearCtr)          
@@ -690,7 +691,8 @@ class ConstraintTracker(fundef : FunDef) {
           else if(exprs.size == 1) exprs.first
           else And(exprs)
         }
-        case CtrLeaf() => {         
+        case CtrLeaf() => {
+
           //here we need to check if the every antecedent in antSet and the conseqs of the path is unsat i.e, false           
           val nonLinearCtr = antSet.foldLeft(BooleanLiteral(true): Expr)((acc1, ants) => {
 
@@ -698,13 +700,13 @@ class ConstraintTracker(fundef : FunDef) {
               acc1
             else {
               //TODO assuming that the post-condition wouldn't call the input function
-              val (antCtrs,antCalls) = (ants._1.toSeq, ants._2)     
+              val (antCtrs, antCalls) = (ants._1.toSeq, ants._2)
               val calls = antCalls ++ currUIFs
-              
-              val pathexpr = constraintsToExpr(antCtrs, calls)                            
+
+              val pathexpr = constraintsToExpr(antCtrs, calls)
               val antlists = uifsConstraintsGen(calls, antCtrs, pathexpr)
-              val antTemps = calls.filter((call) => hasCtrTree(call.fi.funDef)).flatten(uifTemplatesGen(_))            
-                            
+              val antTemps = calls.filter((call) => hasCtrTree(call.fi.funDef)).flatten(uifTemplatesGen(_))
+
               /*val (antCtrs,antTemps) = (ants._1.toSeq, ants._2.toSeq)                           
               val pathexpr = constraintsToExpr(antCtrs,currUIFs)                            
               val antlists = uifsConstraintsGen(currUIFs, antCtrs, pathexpr)*/
@@ -715,10 +717,12 @@ class ConstraintTracker(fundef : FunDef) {
                   acc2
                 else {
                   //here we are solving A^~(B)
-                  val newCtr1 = implicationSolver.constraintsForUnsat(newant, antTemps.toSeq, conseqs, Seq(), uiSolver)
-                  //here we are solving for A => T
-                  val newCtr2 = implicationSolver.constraintsForImplication(newant, antTemps.toSeq, Seq(), currTemps, uiSolver)
-                  
+                  val newCtr1 = if(conseqs.isEmpty) tru 
+                		  		else implicationSolver.constraintsForUnsat(newant, antTemps.toSeq, conseqs, Seq(), uiSolver)
+                  //here we are solving for A => T                  
+                  val newCtr2 = if(currTemps.isEmpty) tru
+                  				else implicationSolver.constraintsForImplication(newant, antTemps.toSeq, Seq(), currTemps, uiSolver)
+
                   //doing some simplifications 
                   val newCtr = if (newCtr1 == tru)
                     newCtr2
@@ -727,29 +731,28 @@ class ConstraintTracker(fundef : FunDef) {
                   else if (newCtr1 == fls || newCtr2 == fls)
                     fls
                   else And(newCtr1, newCtr2)
-                  
+
                   //println("Constraints: "+newCtr)                                    
-                  newCtr match {                                 
+                  newCtr match {
                     case BooleanLiteral(false) => fls //entire set of constraints are sat 
                     case _ => if (acc2 == BooleanLiteral(true)) newCtr
                     else And(acc2, newCtr)
-                  }                  
+                  }
                 }
               })
-              
-              
             }
-          })   
-          
-          nonLinearCtr match {            
+          })
+
+          nonLinearCtr match {
             case BooleanLiteral(true) => throw IllegalStateException("Found no constraints")
             case _ => {
               //for debugging
+              //println("NOn linear Ctr: "+nonLinearCtr)
               /*val (res, model, unsatCore) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)
               if(res.isDefined && res.get == true){
                 println("Found solution for constraints")
-              }*/              
-              nonLinearCtr                        
+              }*/
+              nonLinearCtr
             }
           }          
         }

@@ -125,8 +125,7 @@ class LinearImplicationSolver {
     }
     else{      
       this.applyFarkasLemma(ants, conseqs, disableFlag)
-    }
-    
+    }    
   }
 
 

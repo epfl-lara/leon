@@ -68,7 +68,7 @@ class TemplateFactory {
     val linearExpr = LessEquals(coeffmap.foldLeft(constPart: Expr)((acc, param) => {
       val (term, coeff) = param
       Plus(acc, Times(coeff, term))
-    }), IntLiteral(0))
+    }), IntLiteral(0))    
 
     Set(LinearTemplate(linearExpr, coeffmap.toMap, Some(constPart)))
   }
