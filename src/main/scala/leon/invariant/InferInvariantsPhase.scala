@@ -130,7 +130,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         
         if (res.isDefined) {
 
-          val newfuncs = res.get.map((pair) => {
+          /*val newfuncs = res.get.map((pair) => {
             val (fd, inv) = pair
             reporter.info("- Found inductive invariant: " + inv)
             //check if this is an invariant 
@@ -142,8 +142,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           })
           verifyInvariant(res.get.keys.toSet,newfuncs.toSet, vc.funDef, context, program, reporter)
           System.exit(0)
-          
-          /*val inv = res.get(vc.funDef)            
+*/          
+          val inv = res.get(vc.funDef)            
           reporter.info("- Found inductive invariant: " + inv)
           //check if this is an invariant 
           reporter.info("- Verifying Invariant " + res.get(vc.funDef))
@@ -153,7 +153,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           val postExpr = And(vc.funDef.postcondition.get, inv)
           verifyInvariant(vc.funDef,context,program,postExpr,reporter)
           System.exit(0)
-*/          true
+          true
         }
         else false                  
       }
@@ -161,7 +161,11 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     }
   }
   
-  def createNewFunc(fundef: FunDef, newpost : Expr) : FunDef = {
+  /**
+   * create a program with the input function replaced by a new function that has the new postcondition
+   */
+  def verifyInvariant(fundef: FunDef, ctx: LeonContext, program: Program, newpost : Expr, reporter: Reporter): Boolean = {
+    
     val newfundef = new FunDef(FreshIdentifier(fundef.id.name, true), fundef.returnType, fundef.args)
     //replace the recursive invocations by invocations of the new function  
     val newbody = searchAndReplaceDFS((e: Expr) => (e match {
@@ -169,27 +173,20 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       case _ => None
     }))(fundef.body.get)
     newfundef.body = Some(newbody)
+    
     //assuming pre and postconditions do not have recursive calls
     //TODO: Noncritical correctness issue: fix this                    
     newfundef.precondition = fundef.precondition
     newfundef.postcondition = Some(newpost)
-    newfundef
-  } 
-  
-  /**
-   * create a program with the input function replaced by a new function that has the new postcondition
-   */
-  def verifyInvariant(oldFuncs: Set[FunDef], newFuncs : Set[FunDef], fd: FunDef, 
-      ctx: LeonContext, program: Program, reporter: Reporter): Boolean = {
-        
-    val newfuncs = program.mainObject.definedFunctions.filter((fd) => !oldFuncs.contains(fd)) ++ newFuncs
+    
+    val newfuncs = program.mainObject.definedFunctions.filter(_ != fundef) :+ newfundef
     val newObjDef = ObjectDef(program.mainObject.id.freshen, newfuncs ++ program.mainObject.definedClasses, program.mainObject.invariants)
     val newprog = Program(program.id.freshen, newObjDef)
     //println("Program: "+newprog)
 
     val defaultTactic = new DefaultTactic(reporter)
     defaultTactic.setProgram(newprog)
-    val vc = defaultTactic.generatePostconditions(fd).first
+    val vc = defaultTactic.generatePostconditions(newfundef).first
 
     val fairZ3 = new FairZ3Solver(ctx)
     fairZ3.setProgram(newprog)
