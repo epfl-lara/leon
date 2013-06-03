@@ -10,7 +10,7 @@ To build it, you will need, for example, the following:
 
 * Java Runtime Environment, from Oracle, e.g. Version 7 Update 5 (to run xsbt and scala)
 * Scala, from Typesafe, e.g. version 2.9.3
-* sbt, e.g. version 0.12.1 (to built Leon)
+* sbt, e.g. version 0.12.1 (to build Leon)
 * a recent GLIBC3 or later, works with e.g. _apt-get_ (for Z3)
 * GNU Multiprecision library, e.g. gmp3, works with e.g. _apt-get_ (for Z3)
 
