@@ -26,10 +26,15 @@ import leon.verification.Tactic
 import leon.verification.VerificationReport
 import scala.collection.mutable.{ Set => MutableSet }
 
+/**
+ * This represents a template variable
+ */
+case class TemplateVar(override val id: Identifier) extends Variable(id)
+
 class TemplateFactory {
 
   //a mapping from function definition to the variables in its templates
-  private var paramCoeff = Map[FunDef, List[Variable]]()
+  private var paramCoeff = Map[FunDef, List[TemplateVar]]()
 
   /**
    * The ordering of the expessions in the List[Expr] is very important.   
@@ -53,7 +58,7 @@ class TemplateFactory {
       val dummycall = FunctionInvocation(fd, params)
       val paramTerms = getTypedCompositeTerms(params :+ dummycall)
       //note that the template variables may have real types
-      val newCoeffs = List.range(0, paramTerms.size + 1).map((i) => Variable(FreshIdentifier("a" + i + "a", true).setType(RealType)))
+      val newCoeffs = List.range(0, paramTerms.size + 1).map((i) => TemplateVar(FreshIdentifier("a" + i + "a", true).setType(RealType)))
       paramCoeff += (fd -> newCoeffs)
     }
 
@@ -70,12 +75,12 @@ class TemplateFactory {
       Plus(acc, Times(coeff, term))
     }), IntLiteral(0))    
 
-    Set(LinearTemplate(linearExpr, coeffmap.toMap, Some(constPart)))
+    Set(new LinearTemplate(linearExpr, coeffmap.toMap, Some(constPart), paramCoeff(fd).toSet))
   }
   
   //def getTemplateSynthesizer(): ((Seq[Expr],FunDef) => Set[LinearTemplate]) =  constructTemplate  
 
-  def getCoeff(fd: FunDef) : List[Variable] = {
+  def getCoeff(fd: FunDef) : List[TemplateVar] = {
   	paramCoeff(fd)
   }
 

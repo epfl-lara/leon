@@ -217,6 +217,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     }
   }
   
+  
   def run(ctx: LeonContext)(program: Program): VerificationReport = {
 
     val functionsToAnalyse: MutableSet[String] = MutableSet.empty

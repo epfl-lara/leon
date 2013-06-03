@@ -27,11 +27,26 @@ import leon.verification.ExtendedVC
 import leon.verification.Tactic
 import leon.verification.VerificationReport
 
-//Class representing linear templates which is a constraint of the form a1*v1 + a2*v2 + .. + an*vn + a0 <= 0 or = 0 where a_i's can be free vars
-case class LinearTemplate(val template: Expr, val coeffTemplate: Map[Expr, Expr with Terminal], 
-	val constTemplate: Option[Expr with Terminal]) {
+/**
+ * Class representing linear templates which is a constraint of the form 
+ * a1*v1 + a2*v2 + .. + an*vn + a0 <= 0 or = 0 where ai's are unknown coefficients 
+ * which could be any arbitrary expression with template variables as free variables
+ * and vi's are variables 
+ */
+class LinearTemplate(val template: Expr,
+    coeffTemp : Map[Expr, Expr],
+    val constTemplate: Option[Expr],    
+    val templateVars : Set[TemplateVar]) {
+
+  val coeffTemplate: Map[Expr, Expr] = {
+    //assert if the coefficients are templated expressions
+    assert(coeffTemp.values.foldLeft(true)((acc, e) => {
+      acc && InvariantUtil.isTemplateExpr(e)
+    }))
+    coeffTemp
+  }
 		
-  def coeffEntryToString(coeffEntry: (Expr, Expr with Terminal)): String = {
+  def coeffEntryToString(coeffEntry: (Expr, Expr)): String = {
     val (e, i) = coeffEntry
     i match {
       case IntLiteral(1) => e.toString
@@ -77,9 +92,21 @@ case class LinearTemplate(val template: Expr, val coeffTemplate: Map[Expr, Expr 
   }
 }
 
-//class representing a linear constraint. This is a linear template wherein the coefficients are constants
-case class LinearConstraint(val expr: Expr, val coeffMap: Map[Expr, IntLiteral], val constant: Option[IntLiteral])
-  extends LinearTemplate(expr, coeffMap, constant) {
+/**
+ * class representing a linear constraint. This is a linear template wherein the coefficients are constants
+ */
+class LinearConstraint(val expr: Expr, cMap: Map[Expr, Expr], val constant: Option[Expr])
+  extends LinearTemplate(expr, cMap, constant, Set()) {
+  
+  val coeffMap = {
+    //assert if the coefficients are only constant expressions
+    assert(cMap.values.foldLeft(true)((acc, e) => {
+      acc && variablesOf(e).isEmpty
+    }))
+    
+    //here we should try to simplify reduce the constant expressions    
+    cMap
+  }
 }
 
 //A DAG that represents a DNF formula. Every path in the DAG corresponds to a disjunct
@@ -193,8 +220,10 @@ class ConstraintTracker(fundef : FunDef) {
             	node.uifs += Call(v,fi)
             }
             case _ => {
-              val ctr = exprToConstraint(ie)          
-              node.constraints += ctr
+              val template = exprToTemplate(ie)
+              if(template.isInstanceOf[LinearConstraint])
+            	  node.constraints += template.asInstanceOf[LinearConstraint]
+              else node.templates += template            
             } 
           }          
           node.addChildren(endnode)
@@ -206,32 +235,9 @@ class ConstraintTracker(fundef : FunDef) {
     val parentEnd = parentNode.getEndNode
     parentEnd.addChildren(exprRoot)    
   }
-  
-  //some utility methods
-  /*def isBlockingId(id: Identifier): Boolean = {
-    if (id.name.startsWith("b")) true else false
-  }
-
-  def isStartId(id: Identifier): Boolean = {
-    if (id.name.contains("start")) true else false
-  }*/  
 
   def addConstraint(e: Expr, bodyRoot: CtrNode, postRoot: CtrNode, isBody: Boolean) = {
-
-    //println("Expression after Not transformation: "+nnfExpr)
-    //val (id, innerExpr) = parseGuardedExpr(nnfExpr)
-    //get the node corresponding to the id
-    /*val ctrnode = nodeMap.getOrElse(id, {
-      val node = if(isStartId(id)){
-        if(isBody) bodyRoot
-        else postRoot
-      }
-      else CtrNode(id)
-      nodeMap += (id -> node)
-      node
-    })*/
-    //flatten function returns a new expresion without function symbols and a set of newly created equalities
-    //val flatExpr = InvariantUtil.FlattenFunction(nnfExpr)         
+      
     val root = if(isBody) bodyRoot else postRoot    
     addConstraintRecur(e, root)           
   }
@@ -278,99 +284,88 @@ class ConstraintTracker(fundef : FunDef) {
     postRoot.addChildren(child)*/
   }
 
-  //the expr is required to be linear, if not, an exception would be thrown
-  //for now some of the constructs are not handled
-  def exprToConstraint(expr: Expr): LinearConstraint = {
-    var coeffMap = Map[Expr, IntLiteral]()
-    var constant: Option[IntLiteral] = None
+  /**
+   * the expression 'Expr' is required to be a linear atomic predicate (or a template),
+   * if not, an exception would be thrown.
+   * For now some of the constructs are not handled.
+   * The function returns a linear template or a linear constraint depending
+   * on whether the expression has template variables or not
+   */
+  def exprToTemplate(expr: Expr): LinearTemplate = {
+    
+    //these are the result values
+    var coeffMap = MutableMap[Expr, Expr]()
+    var constant: Option[Expr] = None
+    var isTemplate : Boolean = false
+
+    def addCoefficient(term: Expr, coeff: Expr) = {
+      if (coeffMap.contains(term)) {
+        val value = coeffMap(term)        
+        coeffMap.update(term, Plus(value, coeff))
+      } else coeffMap += (term -> coeff)
+
+      if (!variablesOf(coeff).isEmpty) {
+        isTemplate = true
+      }
+    }
+    
+    def addConstant(coeff: Expr) ={
+      if (constant.isDefined) {
+        val value = constant.get
+        constant = Some(Plus(value, coeff))
+      } else 
+        constant = Some(coeff)
+
+      if (!variablesOf(coeff).isEmpty) {
+        isTemplate = true
+      }
+    }
    
-    def genConstraint(e: Expr): Option[Expr] = {
-      e match {
-        case IntLiteral(v) => {
-          constant = Some(IntLiteral(v))
-          None
-        }
-        case Plus(e1, e2) => {
-          if (e1.isInstanceOf[IntLiteral] && e2.isInstanceOf[IntLiteral])
-            throw IllegalStateException("sum of two constants, not in canonical form: " + e)
-
-          val r1 = genConstraint(e1)
-          if (r1.isDefined) {
-            //here the coefficient is 1
-            coeffMap += (r1.get -> one)
-          }
-          val r2 = genConstraint(e2)
-          if (r2.isDefined)
-            coeffMap += (r2.get -> one)
-
-          None
-        }
-        case Times(e1, e2) => {
-          if (e1.isInstanceOf[IntLiteral] && e2.isInstanceOf[IntLiteral])
-            throw IllegalStateException("product of two constants, not in canonical form: " + e)
-
-          /*else if (!e1.isInstanceOf[IntLiteral] && !e2.isInstanceOf[IntLiteral])
-            throw IllegalStateException("nonlinear expression: " + e)*/
-          /*else {
-            val (coeff, cvar) = e1 match {
-              case IntLiteral(v) => (v, e2)
-              case _ => {
-                val IntLiteral(v) = e2
-                (v, e1)
-              }
-            }*/
-          val IntLiteral(v) = e1
-          val (coeff, cvar) = (v, e2)
-
-          val r = genConstraint(cvar)
-          if (!r.isDefined)
-            throw IllegalStateException("Multiplicand not a constraint variable: " + cvar)
-          else {
-            //add to mapping
-            coeffMap += (r.get -> IntLiteral(coeff))
-          }
-          None
-        }
-        case v @ Variable(id) => {
-          /*//this is a hack (store the result variable)
-          if (id.name.equals("result") && !resultVar.isDefined)
-            resultVar = Some(v)*/
-
-          Some(v)
-        }
-        case FunctionInvocation(fdef, args) => Some(e)
-        case BinaryOperator(e1, e2, op) => {
-
-          /*if (!e.isInstanceOf[Equals] && !e.isInstanceOf[LessThan] && !e.isInstanceOf[LessEquals]
-            && !e.isInstanceOf[GreaterThan] && !e.isInstanceOf[GreaterEquals])
-            throw IllegalStateException("Relation is not linear: " + e)
-          else {*/
-          if (e1.isInstanceOf[IntLiteral] && e2.isInstanceOf[IntLiteral])
-            throw IllegalStateException("relation on two integers, not in canonical form: " + e)
-
-          e2 match {
-            case IntLiteral(0) => {
-              val r = genConstraint(e1)
-              if (r.isDefined) {
-                //here the coefficient is 1
-                coeffMap += (r.get -> one)
-              }
-              None
-            }
-            case _ => throw IllegalStateException("Not in canonical form: " + e)
-          }
-        }
-        case _ => {
-          throw IllegalStateException("Ecountered unhandled term in the expression: " + e)
-        }
-      } //end of match e
-    } //end of genConstraint      
-
     val linearExpr = MakeLinear(expr)
-    if (!genConstraint(linearExpr).isDefined) {
-      LinearConstraint(linearExpr, coeffMap, constant)
-    } else
-      throw IllegalStateException("Expression not a linear relation: " + expr)
+
+    //the top most operator should be a relation
+    val BinaryOperator(lhs, IntLiteral(0), op) = linearExpr
+    if (lhs.isInstanceOf[IntLiteral])
+      throw IllegalStateException("relation on two integers, not in canonical form: " + linearExpr)
+
+    //recurse into plus and get all minterms
+    def getMinTerms(lexpr: Expr): Seq[Expr] = lexpr match {
+      case Plus(e1, e2) => getMinTerms(e1) ++ getMinTerms(e2)      
+      case _ => Seq(lexpr)
+    }
+    val minterms =  getMinTerms(lhs)
+
+    //handle each minterm
+    minterms.foreach((minterm: Expr) => minterm match {
+      case Times(e1, e2) => {
+        e2 match {
+          case Variable(_) => ;
+          case FunctionInvocation(_, _) => ;
+          case _ => throw IllegalStateException("Multiplicand not a constraint variable: " + e2)
+        }
+        e1 match {
+          //case c @ IntLiteral(_) => addCoefficient(e2, c)
+          case _ if (InvariantUtil.isTemplateExpr(e1)) => {
+            addCoefficient(e2, e1)            
+          }
+          case _ => throw IllegalStateException("Coefficient not a constant or template expression: " + e1)
+        }
+      }      
+      case _ if (InvariantUtil.isTemplateExpr(minterm)) => {
+        addConstant(minterm)
+      }
+      case Variable(_) => {
+        //here the coefficient is 1
+        addCoefficient(minterm, one)
+      }
+      case _ => throw IllegalStateException("Unhandled min term: " + minterm)
+    })
+
+    if(isTemplate) {
+      new LinearTemplate(linearExpr, coeffMap.toMap, constant, InvariantUtil.getTemplateVars(linearExpr))
+    }else{
+      new LinearConstraint(linearExpr,coeffMap.toMap,constant)      
+    }         
   }
 
   /**
@@ -381,6 +376,7 @@ class ConstraintTracker(fundef : FunDef) {
   def MakeLinear(atom: Expr): Expr = {
 
     //pushes the minus inside the arithmetic terms
+    //we assume that inExpr is in linear form
     def PushMinus(inExpr: Expr): Expr = {
       require(inExpr.getType == Int32Type)
 
@@ -392,42 +388,44 @@ class ConstraintTracker(fundef : FunDef) {
         case Minus(e1, e2) => Plus(PushMinus(e1), e2)
         case Plus(e1, e2) => Plus(PushMinus(e1), PushMinus(e2))
         case Times(e1, e2) => {
-          //here push the minus in to the coefficient if possible
-          e1 match {
-            case IntLiteral(v) => Times(PushMinus(e1), e2)
+          //here push the minus in to the coefficient which is the first argument
+          Times(PushMinus(e1), e2)
+          /*e1 match {
+            //case IntLiteral(v) => Times(PushMinus(e1), e2)
+            case _ if(InvariantUtil.isTemplateExpr(e1)) => Times(PushMinus(e1), e2)
             case _ => Times(e1, PushMinus(e2))
-          }
+          }*/
         }
         case _ => throw NotImplementedException("PushMinus -- Operators not yet handled: " + inExpr)
       }
     }
 
-    //we assume that PushMinus has already been invoke on the expression
-    def PushTimes(c: Int, ine: Expr): Expr = {
-      require(ine.getType == Int32Type)
+    //we assume that ine is in linear form
+    def PushTimes(mul: Expr, ine: Expr): Expr = {
+      require(ine.getType == Int32Type && mul.getType == Int32Type)
 
       ine match {
-        case IntLiteral(v) => IntLiteral(c * v)
-        case t: Terminal => Times(IntLiteral(c), t)
-        case fi @ FunctionInvocation(fdef, args) => Times(IntLiteral(c), fi)
-        case Plus(e1, e2) => Plus(PushTimes(c, e1), PushTimes(c, e2))
+        //case IntLiteral(v) => IntLiteral(c * v)
+        case t: Terminal => Times(mul, t)
+        case fi @ FunctionInvocation(fdef, args) => Times(mul, fi)
+        case Plus(e1, e2) => Plus(PushTimes(mul, e1), PushTimes(mul, e2))
         case Times(e1, e2) => {
-          //here push the times into the coefficient (which should be the first expression)
-          Times(PushTimes(c, e1), e2)
+          //here push the times into the coefficient which should be the first expression
+          Times(PushTimes(mul, e1), e2)
         }
         case _ => throw NotImplementedException("PushTimes -- Operators not yet handled: " + ine)
       }
     }
 
-    //collect all the constants and simplify them
-    //we assume that PushTimes and PushMinus have been invoked on the expression
+    //collect all the constants in addition and simplify them
+    //we assume that ine is in linear form
     def simplifyConsts(ine: Expr): (Option[Expr], Int) = {
       require(ine.getType == Int32Type)
 
       ine match {
         case IntLiteral(v) => (None, v)
-        case t: Terminal => (Some(t), 0)
-        case fi: FunctionInvocation => (Some(fi), 0)
+      //  case t: Terminal => (Some(t), 0)
+       // case fi: FunctionInvocation => (Some(fi), 0)
         case Plus(e1, e2) => {
           val (r1, c1) = simplifyConsts(e1)
           val (r2, c2) = simplifyConsts(e2)
@@ -440,11 +438,7 @@ class ConstraintTracker(fundef : FunDef) {
           }
           (newe, c1 + c2)
         }
-        case Times(e1, e2) => {
-          //because of the pushTimes assumption, we can simplify this case
-          (Some(ine), 0)
-        }
-        case _ => throw NotImplementedException("collectConstants -- Operators not yet handled: " + ine)
+        case _ => (Some(ine), 0)                
       }
     }
 
@@ -473,11 +467,13 @@ class ConstraintTracker(fundef : FunDef) {
         case UMinus(e1) => PushMinus(mkLinearRecur(e1))
         case Times(e1, e2) => {
           val (r1, r2) = (mkLinearRecur(e1), mkLinearRecur(e2))
-          (r1, r2) match {
-            case (IntLiteral(v), _) => PushTimes(v, r2)
-            case (_, IntLiteral(v)) => PushTimes(v, r1)
-            case _ => throw IllegalStateException("Expression not linear: " + Times(r1, r2))
-          }
+          
+          if(InvariantUtil.isTemplateExpr(r1)) {
+            PushTimes(r1, r2)
+          } else if(InvariantUtil.isTemplateExpr(r2)){
+            PushTimes(r2, r1)
+          } else 
+            throw IllegalStateException("Expression not linear: " + Times(r1, r2))                     
         }
         case Plus(e1, e2) => Plus(mkLinearRecur(e1), mkLinearRecur(e2))
         case t: Terminal => t

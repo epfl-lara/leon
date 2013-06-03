@@ -283,4 +283,28 @@ object InvariantUtil {
     val argmap: Map[Expr, Expr] = Map(resvar -> call.retexpr) ++ fundef.args.map(_.id.toVariable).zip(call.fi.args)
     argmap
   }
+  
+  /**
+   * Checks if the input expression has only template variables as free variables
+   */
+  def isTemplateExpr(expr : Expr) :Boolean ={
+    var foundVar = false    
+    simplePostTransform((e : Expr) => e match {
+      case TemplateVar(_) => e
+      case Variable(_) => { foundVar = true; e }
+      case _ => e
+    })(expr)
+    
+    !foundVar
+  }
+  
+  def getTemplateVars(expr: Expr) : Set[TemplateVar] = {
+    var tempVars = Set[TemplateVar]()    
+    simplePostTransform((e : Expr) => e match {
+      case t@TemplateVar(_) => tempVars += t; e       
+      case _ => e
+    })(expr)
+    
+    tempVars
+  }
 }
