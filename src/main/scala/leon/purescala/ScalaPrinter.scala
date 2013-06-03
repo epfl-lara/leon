@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon.purescala
 
 /** This pretty-printer only print valid scala syntax */

@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 /********************************************************************
 
    WARNING : THIS VERSION IS NOT USED (AND CERTAINLY NOT MAINTAINED).

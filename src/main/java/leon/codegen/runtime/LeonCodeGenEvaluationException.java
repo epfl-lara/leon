@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon.codegen.runtime;
 
 /** Such exceptions are thrown when the evaluator is asked to do something it

@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon.synthesis.search
 
 abstract class AndOrGraphSearch[AT <: AOAndTask[S],

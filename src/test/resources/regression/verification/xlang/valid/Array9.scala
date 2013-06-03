@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 object Array9 {
 
   def foo(i: Int): Array[Int] = {
