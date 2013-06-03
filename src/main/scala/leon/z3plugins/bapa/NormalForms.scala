@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package purescala.z3plugins.bapa
 
 import z3.scala.Z3Context

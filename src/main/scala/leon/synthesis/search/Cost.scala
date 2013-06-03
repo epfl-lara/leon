@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 package leon.synthesis.search
 
 trait Cost extends Ordered[Cost] {

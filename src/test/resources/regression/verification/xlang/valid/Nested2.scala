@@ -1,3 +1,5 @@
+/* Copyright 2009-2013 EPFL, Lausanne */
+
 object Nested2 {
 
   def foo(a: Int): Int = {
