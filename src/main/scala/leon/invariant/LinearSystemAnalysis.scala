@@ -104,7 +104,7 @@ class LinearConstraint(val expr: Expr, cMap: Map[Expr, Expr], val constant: Opti
       acc && variablesOf(e).isEmpty
     }))
     
-    //here we should try to simplify reduce the constant expressions    
+    //TODO: here we should try to simplify reduce the constant expressions    
     cMap
   }
 }
@@ -173,16 +173,7 @@ class ConstraintTracker(fundef : FunDef) {
   //verification conditions for each procedure that may have templates.
   //Each verification condition is an implication where the antecedent and the consequent are represented as DNF trees.
   private var templatedVCs = Map[FunDef,(CtrNode,CtrNode)]()
-  
-  //some identifiers representing body start and post start
-  //val bstart = FreshIdentifier("bstart")
-  //val pstart = FreshIdentifier("pstart")
-  
-  /*//This would be set while constraints are added
-  //body and post are DNF formulas and hence are represented using trees
-  private var bodyRoot = CtrNode()
-  private var postRoot = CtrNode()    
-  */
+    
   //some constants
   private val zero = IntLiteral(0)
   private val one = IntLiteral(1)
@@ -274,7 +265,7 @@ class ConstraintTracker(fundef : FunDef) {
 
   /**
    * This is a little tricky. The postRoot is used to store all the templates
-   * TODO: assumption the templates are assume to not have disjunctions
+   * TODO: assumption the templates are assumed to not have disjunctions
    */
   def addTemplatedPostConstraints(fdef: FunDef, temp: LinearTemplate) = {
     val (_, postRoot) = getCtrTree(fdef)
@@ -389,12 +380,7 @@ class ConstraintTracker(fundef : FunDef) {
         case Plus(e1, e2) => Plus(PushMinus(e1), PushMinus(e2))
         case Times(e1, e2) => {
           //here push the minus in to the coefficient which is the first argument
-          Times(PushMinus(e1), e2)
-          /*e1 match {
-            //case IntLiteral(v) => Times(PushMinus(e1), e2)
-            case _ if(InvariantUtil.isTemplateExpr(e1)) => Times(PushMinus(e1), e2)
-            case _ => Times(e1, PushMinus(e2))
-          }*/
+          Times(PushMinus(e1), e2)          
         }
         case _ => throw NotImplementedException("PushMinus -- Operators not yet handled: " + inExpr)
       }
@@ -424,8 +410,6 @@ class ConstraintTracker(fundef : FunDef) {
 
       ine match {
         case IntLiteral(v) => (None, v)
-      //  case t: Terminal => (Some(t), 0)
-       // case fi: FunctionInvocation => (Some(fi), 0)
         case Plus(e1, e2) => {
           val (r1, c1) = simplifyConsts(e1)
           val (r2, c2) = simplifyConsts(e2)
@@ -496,10 +480,6 @@ class ConstraintTracker(fundef : FunDef) {
     })
     fis.toSet
   }
-
-  /*def CtrsToExpr(ctrs : Set[Linear]) : Expr ={
-    And(ctrs.map(_.template).toSeq)
-  } */
 
   /**
    * This function computes invariants belonging to the template.
