@@ -9,8 +9,8 @@ the following sections if you wish (or need) more detailed information.
 To build it, you will need, for example, the following:
 
 * Java Runtime Environment, from Oracle, e.g. Version 7 Update 5 (to run xsbt and scala)
-* Scala, from Typesafe, e.g. version 2.9.1
-* xsbt, e.g. version 0.11.3: download sbt-launch.jar, run it with ```java -jar``` (to built Leon)
+* Scala, from Typesafe, e.g. version 2.9.3
+* sbt, e.g. version 0.12.1 (to built Leon)
 * a recent GLIBC3 or later, works with e.g. _apt-get_ (for Z3)
 * GNU Multiprecision library, e.g. gmp3, works with e.g. _apt-get_ (for Z3)
 
@@ -18,14 +18,14 @@ The following can be obtained from the web, but for convenience they are contain
 repository and are actually automatically handled by the default build configuration:
 
   * ScalaZ3 hosted on [GitHub](https://github.com/psuter/ScalaZ3/)
-  * The [libz3 library](http://research.microsoft.com/en-us/um/redmond/projects/z3/) from microsoft
-    
+  * The [libz3 library](http://z3.codeplex.com/) from microsoft
+  * The [sbt](http://www.scala-sbt.org/) build tool  
 
 To build, type this:
 
-    $ xsbt clean
-    $ xsbt package # takes a while
-    $ xsbt script
+    $ sbt clean
+    $ sbt package # takes a while
+    $ sbt script
     $ source ./setupenv
 
 Then you can try e.g.
@@ -70,10 +70,10 @@ Windows.
 First you need a Java Runtime Environment. The most recent version should work.
 Simply follow the standard installation process (e.g. _apt-get_) for your system.
 
-Next, you need the [Simple Build Tool](https://github.com/harrah/xsbt/wiki) (sbt)
+Next, you need the [Simple Build Tool](http://www.scala-sbt.org/) (sbt)
 which seems to be (as of today) the standard way to build Scala program. Again
 you should follow the installation procedure. You can also find information
-about sbt [here](http://typesafe.com/technology/sbt). Sbt is quite a complex
+about sbt [here](http://typesafe.com/platform/tools/scala/sbt). Sbt is quite a complex
 tool, so I would suggest looking at the getting started guide on the wiki page.
 However, if you just want to quickly build Leon and never look back, then the
 information provided here should be sufficient.
@@ -84,7 +84,7 @@ You should follow the instructions given in
 the ScalaZ3 project. The ScalaZ3 is a Scala wrapper on the Z3 native library
 from Microsoft. It is used in Leon to make native call to Z3. The generated
 .jar from ScalaZ3 will be dependent on your own z3 native library, which you
-can obtain from [here](http://research.microsoft.com/en-us/um/redmond/projects/z3/).
+can obtain from [here](http://z3.codeplex.com/).
 However, the ScalaZ3 repository comes with 32 and 64 bits version for Linux and
 you should probably use those ones to make sure the version is compatible. You
 can install the Z3 native library in some standard system library path such as
@@ -95,19 +95,19 @@ own set of dependencies, in particular you will need to have GMP. You will
 probably have to fight with a few errors before everything can finally work
 together.
 
-Finally you can build Leon. Start sbt from a terminal to get an interactive
+Finally you can build Leon. Start ```sbt``` from a terminal to get an interactive
 sbt session. Then type:
 
-  	clean
+  	> clean
   	
 This will make sure the build is clean, then:
 
-  	package
+  	> package
   	
 This will compile everything and create jar files. This could take a long time.
 Finally you need to generate a running script with the command:
 
-  	script
+  	> script
   	
 This will generate the leon script that can be used to run leon from command line
 with correct arguments and classpath. This script you should not need to re-generate
@@ -124,11 +124,8 @@ sub-project, is that you can use the generated jar for the library sub-project
 on its own and you should be able to compile Leon testcases with the standard
 Scala compiler.
 
-Now we can make sure that the build went fine. There is a collection of
-testcase in _'regression'_ that are used to check the correctness of the system.
-We provide a shell script ```run-tests.sh``` to run all of them and make sure Leon
-behaves as expected. You should run ```./run-tests``` now to make sure everything is in
-order. Note that running all tests can take some time.
+Now we can make sure that the build went fine. Leon comes with a test suite.
+Use ```sbt test``` to run all the tests.
 
 Using Leon
 ----------
@@ -146,9 +143,7 @@ all of them (correctly could mean either proving validity, finding counter-examp
 
 - _README(.md)_ - This README file.
 
-- _PERMISSION_ -
-You can safely ignore this file.
-It is used to handle git PERMISSION for this repository.
+- _LICENSE_ - The license under which Leon is distributed.
 
 - _build.sbt_
 
@@ -159,7 +154,7 @@ It is used to handle git PERMISSION for this repository.
 - _unmanaged_ - This is the directory used by the build system to find unmanated dependencies. You usually need to manually
 add files to this directory.
 
-- _lib-bin_ and _lib64-bin_ - Contains some binary dependencies for the system that have been build for different plattform/OS.
+- _lib-bin_  - Contains some binary dependencies for the system that have been build for different plattform/OS.
 
 ### Troubleshooting
 
