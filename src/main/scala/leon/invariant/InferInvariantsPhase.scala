@@ -43,8 +43,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       uisolver: UninterpretedZ3Solver) {        
     
     def getInferenceEngine(vc: ExtendedVC): (() => Boolean) = {
-
-      val vcRefiner = new RefinementEngine(cond,vc.funDef,program)      
+            
       val constTracker = new ConstraintTracker(vc.funDef)
       val templateFactory = new TemplateFactory()
       var refinementStep : Int = 0
@@ -52,28 +51,32 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       //flatten the functions in the vc
       val vcbody = InvariantUtil.FlattenFunction(vc.body)
       
-      //create a postcondition (this is tricky and may have to use templates)
-      val post = if(program.isRecursive(vc.funDef)) {
+      //create a postcondition (this is tricky and may have to use templates)      
+      val postTemp = if(program.isRecursive(vc.funDef)) {
         //find the result variable used in the post-condition
     	//TODO: make the result variable unique so as to avoid conflicts
       	val resultVar = variablesOf(vc.post).find(_.name.equals("result")).first
       	
       	val argmap = InvariantUtil.formalToAcutal(
       	    Call(resultVar.toVariable,FunctionInvocation(vc.funDef,vc.funDef.args.map(_.toVariable))),      	    
-      	    ResultVariable())      
-      	val template = templateFactory.constructTemplate(argmap, vc.funDef)
-      	 And(vc.post,template)
+      	    ResultVariable())
+      	    
+      	Some(templateFactory.constructTemplate(argmap, vc.funDef))      	
       } else {
-        vc.post
-      }         
-      val vcnpost = InvariantUtil.FlattenFunction(Not(post))
-      val cond = And(vcbody,vcnpost)           
+        None
+      }               
+      val vcnpost = InvariantUtil.FlattenFunction(Not(vc.post))            
+      val cond = And(vcbody,vcnpost)
+      val vcRefiner = new RefinementEngine(cond,vc.funDef,program)
 
       /**
       * Initialize refinement engine
       **/                    
-      //add the negation of the post-condition
-      constTracker.addPostConstraints(vc.funDef,vcnpost)                
+      //add the negation of the post-condition and the template
+      val fullPost = if(postTemp.isDefined) 
+    	  					And(vcnpost, InvariantUtil.FlattenFunction(Not(postTemp.get)))
+    	  			  else vcnpost
+      constTracker.addPostConstraints(vc.funDef,fullPost)                
       //add body constraints (body condition templates will be added during solving)
       constTracker.addBodyConstraints(vc.funDef,vcbody)
           

@@ -91,7 +91,7 @@ class RefinementEngine(prog: Program) {
 
         //if the function is not recursive: inline the function i.e,
         //replace the formal parameters in the function by the actual arguments
-        val argmap = InvariantUtil.formalToAcutal(callnode.call, fi.funDef, resFresh)
+        val argmap = InvariantUtil.formalToAcutal(callnode.call, resFresh)
         val bodyExpr = if(!isRecursive) replace(argmap, bexpr2) else bexpr2 
 
         val (mayBody,mayPost) = if (!fi.funDef.postcondition.isEmpty) {
