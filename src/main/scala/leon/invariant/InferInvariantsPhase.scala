@@ -43,32 +43,37 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       uisolver: UninterpretedZ3Solver) {        
     
     def getInferenceEngine(vc: ExtendedVC): (() => Boolean) = {
-      
-      //flatten the functions in the vc
-      val vcbody = InvariantUtil.FlattenFunction(vc.body)
-      val vcnpost = InvariantUtil.FlattenFunction(Not(vc.post))
-      val cond = And(vcbody,vcnpost)
-      
+
       val vcRefiner = new RefinementEngine(cond,vc.funDef,program)      
       val constTracker = new ConstraintTracker(vc.funDef)
       val templateFactory = new TemplateFactory()
       var refinementStep : Int = 0
+      
+      //flatten the functions in the vc
+      val vcbody = InvariantUtil.FlattenFunction(vc.body)
+      
+      //create a postcondition (this is tricky and may have to use templates)
+      val post = if(program.isRecursive(vc.funDef)) {
+        //find the result variable used in the post-condition
+    	//TODO: make the result variable unique so as to avoid conflicts
+      	val resultVar = variablesOf(vc.post).find(_.name.equals("result")).first
+      	
+      	val argmap = InvariantUtil.formalToAcutal(
+      	    Call(resultVar.toVariable,FunctionInvocation(vc.funDef,vc.funDef.args.map(_.toVariable))),      	    
+      	    ResultVariable())      
+      	val template = templateFactory.constructTemplate(argmap, vc.funDef)
+      	 And(vc.post,template)
+      } else {
+        vc.post
+      }         
+      val vcnpost = InvariantUtil.FlattenFunction(Not(post))
+      val cond = And(vcbody,vcnpost)           
 
       /**
       * Initialize refinement engine
       **/                    
       //add the negation of the post-condition
-      constTracker.addPostConstraints(vc.funDef,vcnpost)          
-
-      //add post condition template if the function is recursive
-      if(program.isRecursive(vc.funDef)) {
-        //find the result variable used in the post-condition
-    	//TODO: make the result variable unique so as to avoid conflicts
-      	val resultVar = variablesOf(vcnpost).find(_.name.equals("result")).first
-      	val baseTerms = vc.funDef.args.map(_.toVariable) :+ Variable(resultVar)          
-      	val funcTemps = templateFactory.constructTemplate(baseTerms, vc.funDef)      
-      	funcTemps.foreach(constTracker.addTemplatedPostConstraints(vc.funDef,_))
-      }
+      constTracker.addPostConstraints(vc.funDef,vcnpost)                
       //add body constraints (body condition templates will be added during solving)
       constTracker.addBodyConstraints(vc.funDef,vcbody)
           
@@ -95,19 +100,20 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
                 //add body constraints
                 constTracker.addBodyConstraints(targetFun, body.get)
-                
+
                 //add (negated) post condition template for the function                  
                 val funRes = variablesOf(body.get).find(_.name.equals("result")).first
-                val bts = targetFun.args.map(_.id.toVariable) :+ funRes.toVariable
-                val posttemps = templateFactory.constructTemplate(bts, targetFun)
-                posttemps.foreach(constTracker.addTemplatedPostConstraints(recCaller, _))
+
+                val argmap = InvariantUtil.formalToAcutal(
+                  Call(funRes.toVariable, FunctionInvocation(vc.funDef, vc.funDef.args.map(_.toVariable))),
+                  ResultVariable())
+
+                val postTemp = templateFactory.constructTemplate(argmap, vc.funDef)
+                
+                constTracker.addPostConstraints(vc.funDef,Not(postTemp))
               }
 
-              //get the template for the targetFun and replace formal arguments by
-              //actual arguments in the template and add it to the caller body constraints         
-              //val argterms = fi.args.map(_.toVariable) :+ call.resexpr          
-              //val temps = templateFactory.constructTemplate(argterms, targetFun)	
-              //temps.foreach(constTracker.addTemplatedBodyConstraints(recCaller,_)) 
+              //TODO: add the unrolled body to the caller constraints                       
             } else {
               				
               val calleeSummary = if (post.isDefined) And(body.get, post.get) else body.get

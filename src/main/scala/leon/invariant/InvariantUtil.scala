@@ -278,9 +278,9 @@ object InvariantUtil {
     nnfvc
   }
 
-  def formalToAcutal(call : Call, fundef : FunDef, resvar : Variable) : Map[Expr, Expr] = {
-    //compute the formal to the actual argument mapping   
-    val argmap: Map[Expr, Expr] = Map(resvar -> call.retexpr) ++ fundef.args.map(_.id.toVariable).zip(call.fi.args)
+  //compute the formal to the actual argument mapping   
+  def formalToAcutal(call : Call, resvar : Expr) : Map[Expr, Expr] = {    
+    val argmap: Map[Expr, Expr] = Map(resvar -> call.retexpr) ++ call.fi.funDef.args.map(_.id.toVariable).zip(call.fi.args)
     argmap
   }
   

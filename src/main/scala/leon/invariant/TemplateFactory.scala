@@ -31,59 +31,60 @@ import scala.collection.mutable.{ Set => MutableSet }
  */
 case class TemplateVar(override val id: Identifier) extends Variable(id)
 
+/**
+ * Templates are expressions with template variables.
+ * The program variables that can be free in the templates are only the arguments and
+ * the result variable
+ */
 class TemplateFactory {
 
-  //a mapping from function definition to the variables in its templates
-  private var paramCoeff = Map[FunDef, List[TemplateVar]]()
-
+  //a mapping from function definition to the template
+  private var templateMap = Map[FunDef, Expr]()
+  
   /**
-   * The ordering of the expessions in the List[Expr] is very important.   
+   * Template variables have real type
+   */
+  def freshTvar(i: Int) : TemplateVar = {
+    TemplateVar(FreshIdentifier("a" + i + "a", true).setType(RealType))
+  }
+
+  /**    
+   * This is the default template generator 
    * TODO: Feature: 
    * (a) allow template functions and functions with template variables
    * (b) allow template ADTs
    * (c) do we need to consider sophisticated ways of constructing terms ?  
    */
-  def getTypedCompositeTerms(baseTerms: Seq[Expr]): List[Expr] = {
+  def getDefaultTemplate(fd : FunDef): Expr = {
 
-    //just consider all the baseTerms that are integers    
-    val terms = baseTerms.collect((e: Expr) => e match { case _ if (e.getType == Int32Type) => e })
-    terms.toList
+    //just consider all the arguments, return values that are integers
+    val baseTerms = fd.args.filter((vardecl) => vardecl.tpe == Int32Type).map(_.toVariable) ++ 
+    					(if(fd.returnType == Int32Type) Seq(ResultVariable()) else Seq())        
+    var i : Int  = 0
+    val lhs = baseTerms.foldLeft(freshTvar(i) : Expr)((acc, t)=> {
+       i += 1;
+       Plus(Times(freshTvar(i),t),acc)
+    })
+    val tempExpr = LessEquals(lhs,IntLiteral(0))
+    tempExpr
   }
 
-  def constructTemplate(baseTerms: Seq[Expr], fd: FunDef): Set[LinearTemplate] = {
-    //check if a template has been instantiated for the function
-    if (!paramCoeff.contains(fd)) {
-      //bind function to (unknown) coefficients
-      val params = fd.args.map(_.toVariable)
-      val dummycall = FunctionInvocation(fd, params)
-      val paramTerms = getTypedCompositeTerms(params :+ dummycall)
-      //note that the template variables may have real types
-      val newCoeffs = List.range(0, paramTerms.size + 1).map((i) => TemplateVar(FreshIdentifier("a" + i + "a", true).setType(RealType)))
-      paramCoeff += (fd -> newCoeffs)
-    }
-
-    //get all the composite terms constructible using the base terms
-    val allTerms = getTypedCompositeTerms(baseTerms)
-
-    //parse the existing coefficient map
-    val (constPart :: coeffsPart) = paramCoeff(fd)
-    val coeffmap = allTerms.zip(coeffsPart)
-
-    //create a linear expression
-    val linearExpr = LessEquals(coeffmap.foldLeft(constPart: Expr)((acc, param) => {
-      val (term, coeff) = param
-      Plus(acc, Times(coeff, term))
-    }), IntLiteral(0))    
-
-    Set(new LinearTemplate(linearExpr, coeffmap.toMap, Some(constPart), paramCoeff(fd).toSet))
+  /**
+   * Constructs a template using a mapping from the formals to actuals
+   */
+  def constructTemplate(argmap: Map[Expr,Expr], fd: FunDef): Expr = {
+    
+    //initialize the template for the function
+    if (!templateMap.contains(fd)) {      
+      templateMap += (fd -> getDefaultTemplate(fd))
+    }        
+    replace(argmap,templateMap(fd))
   }
   
-  //def getTemplateSynthesizer(): ((Seq[Expr],FunDef) => Set[LinearTemplate]) =  constructTemplate  
+  def getTemplate(fd : FunDef) : Option[Expr] = {
+    templateMap.get(fd)
+  }   
 
-  def getCoeff(fd: FunDef) : List[TemplateVar] = {
-  	paramCoeff(fd)
-  }
-
-  def getFunctions : Seq[FunDef] = paramCoeff.keys.toSeq
+  def getFunctionsWithTemplate : Seq[FunDef] = templateMap.keys.toSeq
 
 }
