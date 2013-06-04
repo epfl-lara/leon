@@ -109,14 +109,14 @@ object FunctionClosure extends LeonPhase[Program, (Program, Map[FunDef, FunDef],
       //pathConstraints = pathConstraints.tail
       Let(i, re, rb).setType(l.getType)
     }
-    case i @ IfExpr(cond,then,elze) => {
+    case i @ IfExpr(cond,thenn,elze) => {
       /*
          when acumulating path constraints, take the condition without closing it first, so this
          might not work well with nested fundef in if then else condition
       */
       val rCond = functionClosure(cond, bindedVars, id2freshId, fd2FreshFd)
       pathConstraints ::= cond//rCond
-      val rThen = functionClosure(then, bindedVars, id2freshId, fd2FreshFd)
+      val rThen = functionClosure(thenn, bindedVars, id2freshId, fd2FreshFd)
       pathConstraints = pathConstraints.tail
       pathConstraints ::= Not(cond)//Not(rCond)
       val rElze = functionClosure(elze, bindedVars, id2freshId, fd2FreshFd)

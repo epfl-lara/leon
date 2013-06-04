@@ -5,8 +5,8 @@ package plugin
 
 import scala.tools.nsc.Settings
 import scala.tools.nsc.reporters.AbstractReporter
-import scala.tools.nsc.util._
-import scala.tools.util.StringOps
+
+import scala.reflect.internal.util.{Position, NoPosition, FakePos, StringOps}
 
 /** This implements a reporter that calls the callback with every line that a
 regular ConsoleReporter would display. */
@@ -28,40 +28,50 @@ class SimpleReporter(val settings: Settings, reporter: leon.Reporter) extends Ab
     StringOps.countElementsAsString((severity).count, label(severity))
 
   /** Prints the message. */
-  def printMessage(msg: String) { reporter.info(msg) }
+  def printMessage(msg: String, severity: Severity) {
+    severity match {
+      case ERROR =>
+        reporter.error(msg)
+      case WARNING =>
+        reporter.warning(msg)
+      case INFO =>
+        reporter.info(msg)
+    }
+  }
 
   /** Prints the message with the given position indication. */
-  def printMessage(posIn: Position, msg: String) {
+  def printMessage(posIn: Position, msg: String, severity: Severity) {
     val pos = if (posIn eq null) NoPosition
               else if (posIn.isDefined) posIn.inUltimateSource(posIn.source)
               else posIn
     pos match {
       case FakePos(fmsg) =>
-        printMessage(fmsg+" "+msg)
+        printMessage(fmsg+" "+msg, severity)
       case NoPosition =>
-        printMessage(msg)
+        printMessage(msg, severity)
       case _ =>
         val buf = new StringBuilder(msg)
         val file = pos.source.file
-        printMessage(pos.line + ": " + msg)
-        printSourceLine(pos)
+        printMessage(pos.line + ": " + msg+"\n"+getSourceLine(pos), severity)
     }
   }
   def print(pos: Position, msg: String, severity: Severity) {
-    printMessage(pos, clabel(severity) + msg)
+    printMessage(pos, clabel(severity) + msg, severity)
   }
 
-  def printSourceLine(pos: Position) {
-    printMessage(pos.lineContent.stripLineEnd)
-    printColumnMarker(pos)
+  def getSourceLine(pos: Position) = {
+    pos.lineContent.stripLineEnd+getColumnMarker(pos)
   }
 
-  def printColumnMarker(pos: Position) = 
-    if (pos.isDefined) { printMessage(" " * (pos.column - 1) + "^") }
+  def getColumnMarker(pos: Position) = if (pos.isDefined) { 
+      "\n"+(" " * (pos.column - 1) + "^")
+    } else {
+      ""
+    }
   
   def printSummary() {
-    if (WARNING.count > 0) printMessage(getCountString(WARNING) + " found")
-    if (  ERROR.count > 0) printMessage(getCountString(ERROR  ) + " found")
+    if (WARNING.count > 0) printMessage(getCountString(WARNING) + " found", INFO)
+    if (  ERROR.count > 0) printMessage(getCountString(ERROR  ) + " found", INFO)
   }
 
   def display(pos: Position, msg: String, severity: Severity) {

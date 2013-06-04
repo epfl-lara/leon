@@ -111,9 +111,9 @@ class CallGraph(val program: Program) {
         //  callGraph += (startingPoint -> (transitions + ((newPoint, newTransition))))
         //  rec(e, List(), newPoint)
         //}
-        case IfExpr(cond, then, elze) => {
+        case IfExpr(cond, thenn, elze) => {
           rec(cond, path, startingPoint)
-          rec(then, cond :: path, startingPoint) 
+          rec(thenn, cond :: path, startingPoint) 
           rec(elze, Not(cond) :: path, startingPoint)
         }
         case n@NAryOperator(args, _) => {

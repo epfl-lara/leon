@@ -2,6 +2,8 @@
 
 package leon
 
+import  scala.language.implicitConversions
+
 object Utils {
   sealed class IsValid(val property : Boolean) {
     def holds : Boolean = {

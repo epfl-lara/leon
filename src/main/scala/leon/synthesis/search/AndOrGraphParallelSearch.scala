@@ -3,11 +3,11 @@
 package leon.synthesis.search
 
 import akka.actor._
-import akka.util.duration._
+import scala.concurrent.duration._
+import scala.concurrent.Await
 import akka.util.Timeout
 import akka.pattern.ask
 import akka.pattern.AskTimeoutException
-import akka.dispatch.Await
 
 abstract class AndOrGraphParallelSearch[WC,
                                         AT <: AOAndTask[S],

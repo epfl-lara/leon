@@ -78,7 +78,7 @@ object Main {
       val leonOpt: LeonOption = opt.substring(2, opt.length).split("=", 2).toList match {
         case List(name, value) =>
           LeonValueOption(name, value)
-        case List(name) => name
+        case List(name) =>
           LeonFlagOption(name)
         case _ =>
           reporter.fatalError("Woot?")

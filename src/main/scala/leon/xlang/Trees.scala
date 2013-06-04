@@ -18,11 +18,7 @@ object Trees {
     sb
   }
 
-  case class Block(exprs: Seq[Expr], last: Expr) extends Expr with NAryExtractable with PrettyPrintable with ScalaPrintable {
-    //val t = last.getType
-    //if(t != Untyped)
-     // setType(t)
-
+  case class Block(exprs: Seq[Expr], last: Expr) extends Expr with NAryExtractable with PrettyPrintable with ScalaPrintable with FixedType {
     def extract: Option[(Seq[Expr], (Seq[Expr])=>Expr)] = {
       val Block(args, rest) = this
       Some((args :+ rest, exprs => Block(exprs.init, exprs.last)))
@@ -54,6 +50,8 @@ object Trees {
       sb.append("}\n")
       sb
     }
+
+    val fixedType = last.getType
   }
 
   case class Assignment(varId: Identifier, expr: Expr) extends Expr with FixedType with UnaryExtractable with PrettyPrintable with ScalaPrintable {
