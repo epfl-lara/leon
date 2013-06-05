@@ -1,0 +1,115 @@
+\newcommand{\pr}[1]{\left< #1 \right>}
+\newcommand{\lp}{\langle}
+\newcommand{\rp}{\rangle}
+%\newcommand{\b}{\text{ Bool }}
+%\newcommand{\a}{\text{ a }}
+
+\subsection{Abstract Refinement Types}
+
+Abstract refinement types proposed by \cite{rjhala:ESOP13} are polymorphic dependent types, analogous to polymorphic base types, that enable quantification over the refinement predicates of dependent types. 
+Consider the lambda term $\lambda x. x$. Clearly, it has the polymorphic 
+type $a \mapsto a$. However, intuitively, the lambda term not only preserves the base types but also the dependent types regardless of the refinement predicate.
+The type system proposed in the paper enables assigning the lambda term an 
+abstract refinement type of the form $\forall \pr{p::a \mapsto bool}. a\pr{p} \mapsto a\pr{p}$
+%\footnote{Normally we omit the universal quantifier as for the polymorphic types} 
+where, $p$ is a predicate (boolean valued function) and $a\pr{p}$ denotes the dependent type $\dt{\nu:a}{p(\nu)}$. $p$ is called an abstract refinement.
+% which can, in general, be a boolean valued function with any number of arguments. 
+
+The paper discusses several scenarios in which abstract refinement types can be used to succinctly state and verify rich specifications. For example, consider a vector that maps integers to values (which can be of any type).
+The paper proposes to assign the following abstract refinement type for the vector:
+%
+\begin{figure}[h]
+\begin{myprogram}
+data Vec::$\forall \lp$dom::Int$\mapsto$Bool, rng::Int$\mapsto$a$\mapsto$Bool$\rp$. \\
+\> (i:Int$\lp$dom$\rp$ $\mapsto$ a$\lp$rng i$\rp$)
+\end{myprogram} 
+\end{figure}
+%
+The vector is parametrized by three type parameters namely, $a$, $dom$ and $rng$.
+$a$ is a polymorphic type representing the base type of the values.
+$dom$ and $rng$ are abstract refinements for the domain and range of the vector respectively.
+The function \texttt{get} that returns an element of the vector at a given index is defined as follows:
+%
+\begin{figure}[h]
+\begin{myprogram}
+get :: $\forall \lp$d::Int$\mapsto$Bool, r::Int$\mapsto$a$\mapsto$Bool$\rp$. \\
+\> \> i:Int$\pr{d} \mapsto$ Vec$[a,d,r] \mapsto$ $a\pr{r \; i}$ \\
+\> get(i,V) = V(i)
+\end{myprogram}
+\end{figure}
+%
+The square brackets after the parametric type \texttt{Vec} denotes the type arguments.
+The \texttt{set} function that updates the vector at a given index is defined as shown below.
+%
+\begin{figure}[h]
+\begin{myprogram}
+set :: $\forall \lp$d::Int$\mapsto$Bool, r::Int$\mapsto$a$\mapsto$Bool$\rp$. \\
+\> \> i:Int$\pr{d} \mapsto a\pr{r \; i}$ $\mapsto$ 
+Vec$[a,\lambda x. d(x) \wedge k \ne i,r]$ \\
+\> \> $\mapsto$ Vec$[a,d,r]$ \\
+\> set(i,x,V) = $\lambda$k. if(k==i)  then x else V(k)
+\end{myprogram}
+\end{figure}
+%
+The type of \texttt{set} enforces that (a) the input vector satisfies the
+domain and range refinements everywhere except at the index $i$ 
+(b) $x$ satisfies the range refinement predicate at the index $i$.
+A \texttt{create} function that creates a new vector with all indices mapped 
+to a given value can be specified as follows:
+%
+\begin{figure}[h]
+\begin{myprogram}
+create :: x:a $\mapsto$ Vec$[a,\lambda i.true,\lambda x. v = x]$  \\
+\> create(x) = $\lambda$i. x
+\end{myprogram}
+\end{figure}
+
+Using these abstract refinement types for the vector data structure 
+it is possible to type check the following memoization example.
+%
+\begin{figure}[h]
+\begin{myprogram}
+\\
+\> type C = Vec$[Int,\lambda i. true, \lambda (i,v). v \ne 0 \Rightarrow v = fib(i)]$ \\
+\> mfib :: i:Int $\mapsto$ C $\mapsto$ $\{ \nu: Int \vbar \nu = fib(i) \}$ \\
+\> mfib(i,n) = \{  \\
+\> \> x = get(i,n) \\
+\>  \> if(x != 0) x else fib(i) \\
+\> \} 
+\end{myprogram}
+\end{figure}
+%
+\texttt{C} which is an instantiation of the vector specifies a cache. 
+\texttt{mfib} is a procedure that given an integer $i$ and a cache $n$ returns a value from the cache if it is defined for the index $i$, otherwise invokes a function $fib$ on $i$.
+Notice that the domain and range parameters for the procedure \texttt{get} is not provided while invoking the procedure. The type system proposed in \cite{rjhala:ESOP13} can infer such refinement instantiations (similar to polymorphic type systems) which is discussed shortly.
+
+The paper extends the type checking rules shown in Figure~\ref{fig:typerules} to support abstract refinement types. 
+Rules for instantiating a polymorphic type or an abstract refinement
+type is straight forward, it is equivalent to replacing the type parameters by the arguments passed to the type followed by $\beta$-reduction in the presence of type applications. The only non-trivial part is determining if an abstract refinement type is a subtype of another type. As before, this reduces to checking a logical implication as described by the rule \textsc{[AR-sub]}.
+In the following rule, $p_1$ and $p_2$ are (boolean valued) \emph{uninterpreted functions}.
+%
+\begin{align*}
+\inferrule
+	{\text{Valid}((\sem{\Gamma} \wedge p_1(\nu)) \wedge e_1) \Rightarrow p_2(\nu) \wedge e_2)}	
+	{\Gamma \vdash \dt{\nu:B\pr{p_1}}{e_1} \subtype \dt{\nu:B\pr{p_2}}{e_2}} \textsc{[AR-sub]}
+\end{align*}
+%
+
+\emph{Inferring Refinement Predicates and Refinement instantiations.}
+There are two cases where automatic inference of refinement predicates is necessary. It is needed to infer refinement types for expressions whose types were not provided by the user. It is also required in finding an appropriate refinement predicate for instantiating an abstract refinement type. In both cases, the inferred predicates should enable successful type checking. The paper proposes to use \emph{liquid types} \cite{rjhala:PLDI08} to infer such refinement predicates. 
+
+In this approach, it is assumed that the user has given a template which are predicates
+with holes that can be substituted by any variable. 
+Say $x$ is a variable whose type is to be inferred. Assume that its base type 
+is known and is $Int$ (this can be inferred using a normal type system).
+The inference engine assumes the type of $x$ as $\dt{\nu: Int}{k_x}$ where $k_x$ 
+is an unknown refinement predicate. 
+Applying the type checking rules produces a set of implications involving $k_x$.
+It is necessary to find a value of $k_x$ that satisfies these implications.
+For each such $k_x$, the template (given by the user) defines a set of candidate predicates which are obtained 
+by substituting the holes in the template with the variables that are allowed to be used in $k_x$.
+The inference engine uses \emph{predicate abstraction} over these set of candidate predicates to infer the refinements.
+Similarly, it is also possible to infer instantiations of abstract refinements by 
+using an unknown predicate (like $k_x$) to represent the instantiation and applying predicate abstraction.
+
+%%TODO state the drawbacks of the approach and also the problems in using this to in our example.

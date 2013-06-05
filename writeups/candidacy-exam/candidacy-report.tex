@@ -1,0 +1,71 @@
+\documentclass[10pt,journal,a4paper]{IEEEtran}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{mathpartir}
+
+\begin{document}
+
+\title{Automated Verification of Functional Programs with Complex Data Structures}
+
+\author{Ravichandhran Kadhadai Madhavan
+\\ ravi.kandhadai@epfl.ch 
+\\ I\&C,  EPFL \\
+\thanks{\normalsize Proposal submitted to committee: May 22nd, 2013; Candidacy exam date: May 29th, 2013; Candidacy exam committee: Prof. Friedrich Eisenbrand, Prof. Viktor Kuncak, Prof. Christoph Koch.}%
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem }
+\thanks{\large This research plan has been approved:}%
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \large}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \large}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \large Date:\hfill------------------------------------}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \large}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \large}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \large Doctoral candidate:\hfill------------------------------------}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \footnotesize \hfill                      (name and signature)\hspace{1.5cm}\hfill}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \large}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \large}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \large Thesis director:\hfill------------------------------------}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \footnotesize \hfill                      (name and signature)\hspace{1.5cm}\hfill}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \large}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \large}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \large Thesis co-director:\hfill------------------------------------}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \footnotesize (if applicable)\hfill  (name and signature)\hspace{1.5cm}\hfill}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \large}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \large}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \large Doct. prog. director:\hfill------------------------------------}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \footnotesize (R. Urbanke)  \hfill                    (signature)\hspace{1.5cm}\hfill}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \large}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \large}
+\IEEEcompsocitemizethanks{\IEEEcompsocthanksitem \tiny EDIC-ru/05.05.2009}
+}%
+% The paper headersIEEEtran.bst
+%\markboth{EDIC Research Proposal}%
+\IEEEcompsoctitleabstractindextext{%
+\begin{abstract}
+We consider the problem of automatically verifying that a program satisfies a given specification. 
+We are interested in verifying purely functional programs that manipulate complex data structures. 
+A key step in automated verification is inferring inductive invariants that imply the given specification. 
+Our research focus is on inferring complex inductive invariants involving arithmetics, (functional) data structures 
+and  recursive functions. 
+In this report, we discuss three research papers in this direction. The first paper addresses the problem of inferring polynomial invariants for numerical programs. The other two papers focus on techniques for proving safety properties of higher-order functional programs using dependent types. 
+We propose to explore automatic and efficient ways of extending the existing works for inferring more complicated invariants.
+\end{abstract}
+\begin{IEEEkeywords}
+thesis proposal, candidacy exam write-up, EDIC, EPFL
+\end{IEEEkeywords}}
+
+% make the title area
+\maketitle
+
+\IEEEdisplaynotcompsoctitleabstractindextext
+\IEEEpeerreviewmaketitle
+
+\input{genericmacros}
+\input{intro}
+\input{paper1}
+\input{depTypes}
+\input{paper2}
+\input{paper3}
+\input{proposal}
+
+\bibliographystyle{IEEEtran}
+\bibliography{candidacy}
+\end{document}

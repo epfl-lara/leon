@@ -1,0 +1,86 @@
+\section{Introduction}
+
+Program verification has been an active research subject for the past several decades.
+The existing approaches for program verification can be classified into two broad categories: one that 
+consists of (almost) completely automated techniques that can operate with little or no manual
+intervention. Typically, these techniques are aimed at proving simple (yet non-trivial) properties
+and are also engineered to scale to large code bases. 
+
+The other category consists of semi-automatic approaches that are aimed at proving deep properties 
+(also called functional correctness properties) of programs. 
+Typically, these techniques make use of sophisticated interactive theorem proving machinery
+and rely on users to guide the proof search by providing intermediate lemmas (also called tactics).
+Over the recent years, researchers have made great progress in pushing the reach of the 
+automated verifiers to more complex programs and properties, as well as in minimizing the manual effort 
+involved in interactive theorem proving. 
+
+Our goal is to further extend the state-of-the-art in the automated verification of functional programs.
+Our motivation for focusing on functional programs stems from the fact that the high-level (mathematical) abstractions 
+such as algebraic data types, immutable types etc. supported by the functional languages relieve the verifiers 
+from having to prove the safety of low-level artifacts such as array accesses, pointer dereferences,
+shape properties of data structures etc. 
+and allow them to focus only on algorithmic correctness.
+
+In general, automated verification of programs is based on the inference of inductive invariants.
+An invariant of a program (or a procedure, or an expression) is a logical formula, defined over the 
+parameters and the return variables of the program, that is satisfied by all executions of the program. 
+A property holds for a program if and only if it is an invariant. 
+For recursive programs, an invariant is inductive iff it is sufficiently strong to be 
+proven by mathematical induction. 
+If a program consists of multiple procedures then each procedure can be proven by inferring invariants
+for the called procedure and assuming that the invariants hold for the call 
+\footnote{Mutually recursive procedures can be 
+verified by means of \emph{assume guarantee} reasoning or by converting them 
+to a single recursive procedure}.
+
+Typically, proving functional correctness properties requires inference of inductive invariants
+that involve arithmetics, data structures and recursive functions. 
+For an example, consider the simple Scala program shown in Figure~\ref{fig:eg} that reverses a list. 
+%
+\begin{figure}
+\begin{myprogram}
+object List \{ \\
+\pnl \>    abstract class L \\
+\pnl \>    case class Cons(hd: Int, tl: L) extends L \\
+\pnl \>    case class Nil() extends L \\
+\\
+\pnl \>    def s(l: L) : Int = (l match \{ \\
+\pnl \> \>      case Nil() => 0 \\
+\pnl \> \>      case Cons(\_, t) => 1 + s(t) \\
+\pnl \>    \}) \\
+\\
+\pnl \>    def rev(l: L) : L = \{ \\
+\pnl \> \>      rev0(l, Nil())  \\
+\pnl \>    \} \\
+\pnl \>    ensuring(res => s(res) == s(l))\\
+\\    
+\pnl \>    def rev0(l1: L, l2: L) : L = (l1 match \{ \\
+\pnl \> \>    case Nil() => l2 \\
+\pnl \> \>    case Cons(x,xs) => rev0(xs,Cons(x,l2)) \\
+\pnl \>    \}) \\ 
+\pnl \>    //ensuring(res => s(res)== s(l1) + s(l2)) \\
+\}
+\end{myprogram}
+\caption{A simple list reveral procedure in Scala} \label{fig:eg}
+\end{figure}
+%
+In Figure~\ref{fig:eg}, $L$ is an algebraic data type representing a list. $s: L \mapsto Int$ is a function 
+that computes the size of a list. The procedure $rev$ reverses the input list by calling a recursive procedure 
+$rev0$. 
+
+The property to be proven is given by the \emph{ensuring} block. In this case, it needs to be proven
+that the size of the input list and the reversed list are equal. Since, $rev$ invokes $rev0$ it is necessary to 
+infer an invariant for $rev0$ that would enable proving the specification of $rev$. 
+The commented line in Figure~\ref{fig:eg} shows one such invariant for $rev0$ which states that
+the size of the list returned by $rev0$ is equal to the sum of the sizes of the input lists.
+Notice that the invariant uses a recursive function $s$, algebraic data types $res$, $l1$ and $l2$
+and uses the integer arithmetic operator $+$.
+
+In the rest of article, we discuss three related works each of which addresses specific issues in
+automated program verification. The first paper proposes a technique for inferring inductive invariants
+for semialgebraic program which are iterative programs with only real valued variables. The other two 
+papers propose techniques for proving properties of higher-order functional programs using \emph{dependent types}.
+In each case, we discuss the shortcoming of the proposed technique. 
+We also illustrate the behavior of each of these techniques on the simple example shown 
+in Figure~\ref{fig:eg} which will bring to light some of the obstacles 
+in applying these approaches to prove functional correctness.
