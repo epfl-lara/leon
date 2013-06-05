@@ -72,9 +72,10 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       /**
       * Initialize refinement engine
       **/                    
-      //add the negation of the post-condition and the template
+      //add the negation of the post-condition "or" the template
+      //note that we need to use Or as we are using the negation of the disjunction
       val fullPost = if(postTemp.isDefined) 
-    	  					And(vcnpost, InvariantUtil.FlattenFunction(Not(postTemp.get)))
+    	  					Or(vcnpost, InvariantUtil.FlattenFunction(Not(postTemp.get)))
     	  			  else vcnpost
       constTracker.addPostConstraints(vc.funDef,fullPost)                
       //add body constraints (body condition templates will be added during solving)
@@ -108,12 +109,14 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
                 val funRes = variablesOf(body.get).find(_.name.equals("result")).first
 
                 val argmap = InvariantUtil.formalToAcutal(
-                  Call(funRes.toVariable, FunctionInvocation(vc.funDef, vc.funDef.args.map(_.toVariable))),
+                  Call(funRes.toVariable, FunctionInvocation(targetFun, targetFun.args.map(_.toVariable))),
                   ResultVariable())
 
-                val postTemp = templateFactory.constructTemplate(argmap, vc.funDef)
-                
-                constTracker.addPostConstraints(vc.funDef,Not(postTemp))
+                val postTemp = templateFactory.constructTemplate(argmap, targetFun)
+                val npostTemp = InvariantUtil.FlattenFunction(Not(postTemp))
+                //print the negated post
+                //println("Negated Post: "+npostTemp)
+                constTracker.addPostConstraints(targetFun,npostTemp)
               }
 
               //TODO: add the unrolled body to the caller constraints                       

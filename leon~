@@ -1,0 +1,5 @@
+#!/bin/bash --posix
+SCALACLASSPATH="/home/kandhada/leon/leon/target/scala-2.9.2/classes:/home/kandhada/leon/leon/library/target/scala-2.9.2/classes:/home/kandhada/leon/leon/unmanaged/64/akka-actor-2.0-SNAPSHOT.jar:/home/kandhada/leon/leon/unmanaged/64/scalaz3_new.jar:/home/kandhada/leon/leon/unmanaged/64/cafebabe_2.9.2-1.2.jar:/home/kandhada/.sbt/boot/scala-2.9.2/lib/scala-library.jar:/home/kandhada/.sbt/boot/scala-2.9.2/lib/scala-compiler.jar:/home/kandhada/.ivy2/cache/com.typesafe.akka/akka-actor/jars/akka-actor-2.0.4.jar:/home/kandhada/.ivy2/cache/com.typesafe/config/bundles/config-0.3.1.jar"
+
+source /home/kandhada/leon/leon/./setupenv
+java -Xmx2G -Xms512M -classpath ${SCALACLASSPATH} -Dscala.home="$SCALA_HOME" -Dscala.usejavacp=true scala.tools.nsc.MainGenericRunner -classpath ${SCALACLASSPATH} leon.Main $@

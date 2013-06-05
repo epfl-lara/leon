@@ -27,143 +27,6 @@ import leon.verification.ExtendedVC
 import leon.verification.Tactic
 import leon.verification.VerificationReport
 
-/**
- * Class representing linear templates which is a constraint of the form 
- * a1*v1 + a2*v2 + .. + an*vn + a0 <= 0 or = 0 where ai's are unknown coefficients 
- * which could be any arbitrary expression with template variables as free variables
- * and vi's are variables 
- */
-class LinearTemplate(val template: Expr,
-    coeffTemp : Map[Expr, Expr],
-    val constTemplate: Option[Expr],    
-    val templateVars : Set[TemplateVar]) {
-
-  val coeffTemplate: Map[Expr, Expr] = {
-    //assert if the coefficients are templated expressions
-    assert(coeffTemp.values.foldLeft(true)((acc, e) => {
-      acc && InvariantUtil.isTemplateExpr(e)
-    }))
-    coeffTemp
-  }
-		
-  def coeffEntryToString(coeffEntry: (Expr, Expr)): String = {
-    val (e, i) = coeffEntry
-    i match {
-      case IntLiteral(1) => e.toString
-      case IntLiteral(-1) => "-" + e.toString
-      case IntLiteral(v) => v + e.toString
-      case _ => i + " * " + e.toString
-    }
-  }
-
-  override def toString(): String = {
-    val (head :: tail) = coeffTemplate.toList
-
-    val constStr = tail.foldLeft(coeffEntryToString(head))((str, pair) => {
-
-      val termStr = coeffEntryToString(pair)
-      (str + " + " + termStr)
-    }) +
-      (if (constTemplate.isDefined) " + " + constTemplate.get.toString
-      else "") +
-      (template match {
-        case t: Equals => " = "
-        case t: LessThan => " < "
-        case t: GreaterThan => " > "
-        case t: LessEquals => " <= "
-        case t: GreaterEquals => " >= "
-      }) + "0"
-
-    constStr //+ " ActualExpr: "+ expr
-  }
-
-  override def hashCode(): Int = {
-    template.hashCode()
-  }
-
-  override def equals(obj: Any): Boolean = obj match {
-    case lit: LinearTemplate => {
-      if (!lit.template.equals(this.template)) {
-        //println(lit.template + " and " + this.template+ " are not equal ")
-        false
-      } else true
-    }
-    case _ => false
-  }
-}
-
-/**
- * class representing a linear constraint. This is a linear template wherein the coefficients are constants
- */
-class LinearConstraint(val expr: Expr, cMap: Map[Expr, Expr], val constant: Option[Expr])
-  extends LinearTemplate(expr, cMap, constant, Set()) {
-  
-  val coeffMap = {
-    //assert if the coefficients are only constant expressions
-    assert(cMap.values.foldLeft(true)((acc, e) => {
-      acc && variablesOf(e).isEmpty
-    }))
-    
-    //TODO: here we should try to simplify reduce the constant expressions    
-    cMap
-  }
-}
-
-//A DAG that represents a DNF formula. Every path in the DAG corresponds to a disjunct
-//TODO: Maintenance Issue: Fix this entire portion of code that manipulates the tree
-abstract class CtrTree
-case class CtrLeaf() extends CtrTree
-object GlobalNodeCounter {
-	var id = 0	
-	def getUID : Int = {
-	  id += 1
-	  id
-	} 
-}
-
-//TODO: create a new id for each CtrNode
-case class CtrNode(id : Int = GlobalNodeCounter.getUID) extends CtrTree {
-
-	//constraints
-  var constraints = Set[LinearConstraint]()
-  //templates that aren't constraints
-  var templates = Set[LinearTemplate]()
-  //UI function calls
-  var uifs = Set[Call]()
-  //children in the DNF tree
-  private var children = Set[CtrTree](CtrLeaf())
-
-  def Children: Set[CtrTree] = children
-
-  def copyChildren(newnode: CtrNode) = {
-    newnode.children = this.children
-  }
-
-  def removeAllChildren() = {
-    this.children = Set(CtrLeaf())
-  }
-
-  def addChildren(child: CtrNode) = {
-    if (children.size == 1 && children.first == CtrLeaf())
-      children = Set[CtrTree](child)
-    else
-      children += child
-  }
-
-  def getEndNode : CtrNode = {    
-  	if(children.first == CtrLeaf()) this
-  	else {
-  	 val n@CtrNode(_) = children.first
-  	 n.getEndNode
-  	}
-  }
-
-  override def toString(): String = {
-    var str = " Constriants: " + constraints + " children: \n"
-    children.foldLeft(str)((g: String, node: CtrTree) => { g + node.toString })
-  }
-}
-
 class ConstraintTracker(fundef : FunDef) {
 
   private val implicationSolver = new LinearImplicationSolver()
@@ -329,6 +192,9 @@ class ConstraintTracker(fundef : FunDef) {
 
     //handle each minterm
     minterms.foreach((minterm: Expr) => minterm match {
+      case _ if (InvariantUtil.isTemplateExpr(minterm)) => {
+        addConstant(minterm)
+      }
       case Times(e1, e2) => {
         e2 match {
           case Variable(_) => ;
@@ -342,10 +208,7 @@ class ConstraintTracker(fundef : FunDef) {
           }
           case _ => throw IllegalStateException("Coefficient not a constant or template expression: " + e1)
         }
-      }      
-      case _ if (InvariantUtil.isTemplateExpr(minterm)) => {
-        addConstant(minterm)
-      }
+      }            
       case Variable(_) => {
         //here the coefficient is 1
         addCoefficient(minterm, one)
@@ -370,7 +233,7 @@ class ConstraintTracker(fundef : FunDef) {
     //pushes the minus inside the arithmetic terms
     //we assume that inExpr is in linear form
     def PushMinus(inExpr: Expr): Expr = {
-      require(inExpr.getType == Int32Type)
+      require(inExpr.getType == Int32Type || inExpr.getType == RealType)
 
       inExpr match {
         case IntLiteral(v) => IntLiteral(-v)
@@ -389,7 +252,8 @@ class ConstraintTracker(fundef : FunDef) {
 
     //we assume that ine is in linear form
     def PushTimes(mul: Expr, ine: Expr): Expr = {
-      require(ine.getType == Int32Type && mul.getType == Int32Type)
+      require((ine.getType == Int32Type || ine.getType == RealType)
+          && (mul.getType == Int32Type || mul.getType == RealType))
 
       ine match {
         //case IntLiteral(v) => IntLiteral(c * v)
@@ -407,7 +271,7 @@ class ConstraintTracker(fundef : FunDef) {
     //collect all the constants in addition and simplify them
     //we assume that ine is in linear form
     def simplifyConsts(ine: Expr): (Option[Expr], Int) = {
-      require(ine.getType == Int32Type)
+      require(ine.getType == Int32Type || ine.getType == RealType)
 
       ine match {
         case IntLiteral(v) => (None, v)
@@ -752,7 +616,11 @@ class ConstraintTracker(fundef : FunDef) {
       conseqs: Seq[LinearConstraint], conseqTemps: Seq[LinearTemplate]): Expr = {
       //here we are solving A^~(B)
       if (conseqs.isEmpty && conseqTemps.isEmpty) tru
-      else implicationSolver.constraintsForUnsat(ants, antTemps, conseqs, conseqTemps, uiSolver)      
+      else {
+        val implCtrs = implicationSolver.constraintsForUnsat(ants, antTemps, conseqs, conseqTemps, uiSolver)
+        //println("Implication Constraints: "+implCtrs)
+        implCtrs
+      }
     }
     
     val nonLinearCtr = traverseBodyTree(bodyRoot, Seq(), Set())
@@ -761,11 +629,11 @@ class ConstraintTracker(fundef : FunDef) {
       case BooleanLiteral(true) => throw IllegalStateException("Found no constraints")
       case _ => {
         //for debugging
-        //println("NOn linear Ctr: "+nonLinearCtr)
-        /*val (res, model, unsatCore) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)
+        println("NOn linear Ctr: "+nonLinearCtr)
+        val (res, model, unsatCore) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)
               if(res.isDefined && res.get == true){
-                println("Found solution for constraints")
-              }*/
+                println("Found solution for constraints: "+model)
+              }
         nonLinearCtr
       }
     }    
