@@ -116,7 +116,8 @@ object InvariantUtil {
     else nexp
   }
 
- /**   
+ 
+  /**   
    * Assumed that that given expression has boolean type   
    * (a) the function replaces every function call by a variable and creates a new equality
    * (b) it also replaces arguments that are not variables by fresh variables and creates 
@@ -124,6 +125,7 @@ object InvariantUtil {
    */   
   var fiToVarMap = Map[FunctionInvocation, (Expr,Set[Call],Set[Expr])]()  
   def FlattenFunction(inExpr: Expr): Expr = {        
+    
     /**
      * First return value is the new expression. The second return value is the 
      * set of new calls and the third return value is the new conjuncts
@@ -234,17 +236,24 @@ object InvariantUtil {
     else nexp            
   }
   
+  
   /**
    * The following procedure converts the formula into negated normal form by pushing all not's inside.
-   * It also handles Not equal to operators
+   * It also handles disequality constraints.
+   * Some important features.
+   * (a) For relations with real variables, the following produces a strict inequality
+   * (b) For relations with integer variables, the strict inequalities are reduced to non-strict inequalities 
    */
   def TransformNot(expr: Expr): Expr = {
     def nnf(inExpr: Expr): Expr = {
       inExpr match {
         //matches integer binary relation
-        case Not(e @ BinaryOperator(e1, e2, op)) if (e1.getType == Int32Type) => {
+        case Not(e @ BinaryOperator(e1, e2, op)) if (e1.getType == Int32Type) => {          
           e match {
-            case e: Equals => Or(nnf(LessEquals(e1, Minus(e2, one))), nnf(GreaterEquals(e1, Plus(e2, one))))
+            case e: Equals => Or(nnf(LessThan(e1, e2)), nnf(GreaterThan(e1, e2)))
+              /*else 
+            	Or(nnf(LessEquals(e1, Minus(e2, one))), nnf(GreaterEquals(e1, Plus(e2, one))))
+            }*/
             case e: LessThan => GreaterEquals(nnf(e1), nnf(e2))
             case e: LessEquals => GreaterThan(nnf(e1), nnf(e2))
             case e: GreaterThan => LessEquals(nnf(e1), nnf(e2))
@@ -306,5 +315,20 @@ object InvariantUtil {
     })(expr)
     
     tempVars
+  }
+
+  /**
+   * Checks if the expression has real valued sub-expressions.
+   */
+  def hasReals(expr : Expr) : Boolean = {
+    var foundReal = false
+    simplePostTransform((e :Expr) => e match {
+      case _ => { 
+        if(e.getType == RealType) 
+          foundReal = true;
+        e      
+      }    		  	
+    })(expr)
+    foundReal
   }
 }

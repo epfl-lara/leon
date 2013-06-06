@@ -132,8 +132,8 @@ class LinearImplicationSolver {
   /**
    * This procedure uses Farka's lemma to generate a set of non-linear constraints for the input implication.
    * Note that these non-linear constraints are in real arithmetic.
-   * TODO: Correctness critical issue: Unfortunately, because of issues in scalaZ3 for now the constraints are treated as integer constraints.
-   * To be fixed soon.
+   * TODO: Correctness issue: need to handle strict inequalities in consequent
+   * Do we really need the consequent ??
    */    
   def applyFarkasLemma(ants: Seq[LinearTemplate], conseqs: Seq[LinearTemplate], disableAnts: Boolean): Expr = {
 
@@ -147,8 +147,14 @@ class LinearImplicationSolver {
       val lambda0 = Variable(FreshIdentifier("l", true).setType(RealType))
 
       //add a bunch of constraints on lambdas
+      var strictCtrLambdas = Seq[Variable]()
       val lambdaCtrs = (ants.collect((ant) => ant.template match {
         case t: LessEquals => GreaterEquals(lambdas(ant), zero)
+        case t: LessThan => {
+          val l = lambdas(ant)
+          strictCtrLambdas :+= l
+          GreaterEquals(l, zero)
+        }
       }).toSeq :+ GreaterEquals(lambda0, zero))
 
       //add the constraints on constant terms      
@@ -169,7 +175,11 @@ class LinearImplicationSolver {
           case None => Equals(zero, sumConst)
         }
       } else null      
-      var disabledPart: Expr = Equals(one, sumConst)
+      //the disabled part handles strict inequalities as well using Motzkin's transposition
+      var disabledPart: Expr =
+        if(strictCtrLambdas.isEmpty) Equals(one, sumConst)
+        else Or(Equals(one, sumConst),
+          And(Equals(zero, sumConst),And(strictCtrLambdas.map(GreaterThan(_,zero)))))
       
       for (cvar <- cvars) {
         //compute the linear combination of all the coeffs of antCVars
@@ -197,7 +207,7 @@ class LinearImplicationSolver {
         disabledPart = And(disabledPart, Equals(zero, sumCoeff))
       } //end of cvars loop
 
-      //the final constraint is a conjunction of lambda constraints and disjunctioin of enabled and disabled parts
+      //the final constraint is a conjunction of lambda constraints and disjunction of enabled and disabled parts
       if (disableAnts) And(And(lambdaCtrs), disabledPart)
       else {
         //And(And(lambdaCtrs), enabledPart)

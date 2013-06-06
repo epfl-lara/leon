@@ -298,12 +298,24 @@ class ConstraintTracker(fundef : FunDef) {
             || e.isInstanceOf[LessEquals] || e.isInstanceOf[GreaterThan]
             || e.isInstanceOf[GreaterEquals])) => {
 
+          //check if the expression has real valued sub-expressions
+          val isReal = InvariantUtil.hasReals(e1) || InvariantUtil.hasReals(e2) 
           val (newe, newop) = e match {
             case t: Equals => (Minus(e1, e2), op)
-            case t: LessEquals => (Minus(e1, e2), LessEquals)
-            case t: LessThan => (Plus(Minus(e1, e2), one), LessEquals)
+            case t: LessEquals => (Minus(e1, e2), LessEquals)            
             case t: GreaterEquals => (Minus(e2, e1), LessEquals)
-            case t: GreaterThan => (Plus(Minus(e2, e1), one), LessEquals)
+            case t: LessThan => {
+              if (isReal)
+                (Minus(e1, e2), LessThan)
+              else
+                (Plus(Minus(e1, e2), one), LessEquals)
+            }
+            case t: GreaterThan => {
+              if(isReal)
+                 (Minus(e2,e1),LessThan)
+              else 
+            	 (Plus(Minus(e2, e1), one), LessEquals)	
+            }
           }
           val r = mkLinearRecur(newe)
           //simplify the resulting constants
@@ -629,11 +641,11 @@ class ConstraintTracker(fundef : FunDef) {
       case BooleanLiteral(true) => throw IllegalStateException("Found no constraints")
       case _ => {
         //for debugging
-        println("NOn linear Ctr: "+nonLinearCtr)
+        /*println("NOn linear Ctr: "+nonLinearCtr)
         val (res, model, unsatCore) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)
               if(res.isDefined && res.get == true){
                 println("Found solution for constraints: "+model)
-              }
+              }*/
         nonLinearCtr
       }
     }    
