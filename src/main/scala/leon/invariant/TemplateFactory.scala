@@ -28,6 +28,7 @@ import scala.collection.mutable.{ Set => MutableSet }
 
 /**
  * This represents a template variable
+ * TODO: Important change this to extend identifier. 
  */
 case class TemplateVar(override val id: Identifier) extends Variable(id)
 

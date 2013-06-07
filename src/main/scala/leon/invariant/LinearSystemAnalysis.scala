@@ -371,8 +371,7 @@ class ConstraintTracker(fundef : FunDef) {
       (acc :+ ctr)
     })
     val nonLinearCtr = if(nonLinearCtrs.size == 1) nonLinearCtrs.first 
-						else And(nonLinearCtrs)
-	//println("nonLinear Ctr: "+nonLinearCtr)
+						else And(nonLinearCtrs)	
 
     //look for a solution of non-linear constraints. The constraint variables are all reals
     //println("Non linear constraints for this branch: " +nonLinearCtr)          
