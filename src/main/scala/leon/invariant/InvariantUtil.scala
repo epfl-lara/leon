@@ -248,7 +248,8 @@ object InvariantUtil {
     def nnf(inExpr: Expr): Expr = {
       inExpr match {
         //matches integer binary relation
-        case Not(e @ BinaryOperator(e1, e2, op)) if (e1.getType == Int32Type) => {          
+        case Not(e @ BinaryOperator(e1, e2, op)) if (e1.getType == Int32Type
+            || e1.getType == RealType) => {          
           e match {
             case e: Equals => Or(nnf(LessThan(e1, e2)), nnf(GreaterThan(e1, e2)))
               /*else 

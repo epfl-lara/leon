@@ -291,22 +291,19 @@ trait CodeExtraction extends Extractors {
             import leon.invariant.TemplateFactory
             
             //create a template variable for each template symbol
-            templateSyms.foreach((tempSym) => {
-              varSubsts(tempSym) = (() => TemplateFactory.freshTemplateVar(tempSym.nameString))              
+            val symmap = templateSyms.map((sym) => (sym,TemplateFactory.freshTemplateVar(sym.nameString))).toMap 
+            templateSyms.foreach((tempSym) => {              
+              varSubsts(tempSym) = (() => symmap(tempSym))              
             })
+            //println("variables to be substituted: "+varSubsts.map((x) => (x._1,x._2())))
             
             val tempExpr = s2ps(templateBody.get)
+            //println("Template expression : "+tempExpr)
             TemplateFactory.setTemplate(funDef,tempExpr)
           }
           
           //TODO: why is this commented ?? 
-          // varSubsts.remove(resSym)
-          
-          /*varSubsts(resSym) = (() => ResultVariable().setType(funDef.returnType))
-          val c1 = s2ps(contract)
-          // varSubsts.remove(resSym)
-          realBody = body2
-          ensCont = Some(c1)*/
+          // varSubsts.remove(resSym)                    
         }
         case ExHoldsExpression(body2) => {
           //println("Inside hold expression case")

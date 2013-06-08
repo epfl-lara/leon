@@ -8,6 +8,6 @@ object SimpleLoop
 	  else 
 	    s(x-1) + 1
 	    
-	} ensuring(res => res != -1 template((a : Float, b : Float, c: Float) => a*res + a*x <= 0))	
+	} ensuring(res => res != -1 template((a : Float, b : Float, c: Float) => a*res + b*x + c <= 0))	
 	//inductive generalization res >= 0	
 } 

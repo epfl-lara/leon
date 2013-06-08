@@ -27,6 +27,8 @@ import leon.verification.ExtendedVC
 import leon.verification.Tactic
 import leon.verification.VerificationReport
 
+//TODO : Critical : Implement a Real, Integer interpreter and  correctly handle conversion from real coefficients to integer coefficients
+//in the model generation
 class ConstraintTracker(fundef : FunDef) {
 
   private val implicationSolver = new LinearImplicationSolver()
@@ -293,8 +295,8 @@ class ConstraintTracker(fundef : FunDef) {
 
     def mkLinearRecur(inExpr: Expr): Expr = {
       inExpr match {
-        case e @ BinaryOperator(e1, e2, op) if (e1.getType == Int32Type &&
-          (e.isInstanceOf[Equals] || e.isInstanceOf[LessThan]
+        case e @ BinaryOperator(e1, e2, op) 
+        if ((e.isInstanceOf[Equals] || e.isInstanceOf[LessThan]
             || e.isInstanceOf[LessEquals] || e.isInstanceOf[GreaterThan]
             || e.isInstanceOf[GreaterEquals])) => {
 

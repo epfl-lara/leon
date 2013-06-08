@@ -1,3 +1,5 @@
+import leon.Utils._
+
 object ListAppendAbs
 {
 	def app(x: Int) : Int = {
@@ -15,5 +17,5 @@ object ListAppendAbs
 	    b
 	  else
 	    1 + app0(a-1,b)	    
-	} //ensuring(res => (-1 - 4 * a  - 6 * b + res * 4) <= 0)
+	} ensuring(res => true template((p : Float, q : Float, r: Float) => (p*res + q*a + r*b <= 0 && q >= -1 && r >= -1)))
 } 

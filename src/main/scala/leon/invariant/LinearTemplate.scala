@@ -74,24 +74,26 @@ class LinearTemplate(val template: Expr,
   }
 
   override def toString(): String = {
-    val (head :: tail) = coeffTemplate.toList
 
-    val constStr = tail.foldLeft(coeffEntryToString(head))((str, pair) => {
+    val coeffStr = if (coeffTemplate.isEmpty) ""
+    else {
+      val (head :: tail) = coeffTemplate.toList
+      tail.foldLeft(coeffEntryToString(head))((str, pair) => {
 
-      val termStr = coeffEntryToString(pair)
-      (str + " + " + termStr)
-    }) +
-      (if (constTemplate.isDefined) " + " + constTemplate.get.toString
-      else "") +
-      (template match {
+        val termStr = coeffEntryToString(pair)
+        (str + " + " + termStr)
+      })
+    }
+    val constStr = if (constTemplate.isDefined) constTemplate.get.toString else ""
+    val str = if(!coeffStr.isEmpty() && !constStr.isEmpty()) coeffStr + " + "+ constStr
+    			else coeffStr + constStr
+    str + (template match {
         case t: Equals => " = "
         case t: LessThan => " < "
         case t: GreaterThan => " > "
         case t: LessEquals => " <= "
         case t: GreaterEquals => " >= "
-      }) + "0"
-
-    constStr //+ " ActualExpr: "+ expr
+      }) + "0"    
   }
 
   override def hashCode(): Int = {
