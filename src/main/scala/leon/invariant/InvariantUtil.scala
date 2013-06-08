@@ -298,19 +298,26 @@ object InvariantUtil {
    */
   def isTemplateExpr(expr : Expr) :Boolean ={
     var foundVar = false    
-    simplePostTransform((e : Expr) => e match {
-      case TemplateVar(_) => e
-      case Variable(_) => { foundVar = true; e }
+    simplePostTransform((e : Expr) => e match {    
+      case Variable(id) => { 
+        if(!TemplateIdentifier.IsTemplateIdentifier(id))
+          foundVar = true
+        e
+      }
       case _ => e
     })(expr)
     
     !foundVar
   }
   
-  def getTemplateVars(expr: Expr) : Set[TemplateVar] = {
-    var tempVars = Set[TemplateVar]()    
+  def getTemplateVars(expr: Expr) : Set[Variable] = {
+    var tempVars = Set[Variable]()    
     simplePostTransform((e : Expr) => e match {
-      case t@TemplateVar(_) => tempVars += t; e       
+      case t@Variable(id) => {
+        if(TemplateIdentifier.IsTemplateIdentifier(id))
+        	tempVars += t
+        e       
+      }
       case _ => e
     })(expr)
     

@@ -35,10 +35,10 @@ import leon.verification.VerificationReport
  */
 class LinearTemplate(val template: Expr,
     coeffTemp : Map[Expr, Expr],
-    val constTemplate: Option[Expr],    
-    val templateVars : Set[TemplateVar]) {
+    val constTemp: Option[Expr],    
+    val tempVars : Set[Variable]) {
 
-  val coeffTemplate: Map[Expr, Expr] = {
+  val coeffTemplate = {
     //assert if the coefficients are templated expressions
     assert(coeffTemp.values.foldLeft(true)((acc, e) => {
       acc && InvariantUtil.isTemplateExpr(e)
@@ -48,6 +48,19 @@ class LinearTemplate(val template: Expr,
     /*println("Coeff Mapping: "+coeffTemp)
     println("Constant: "+constTemplate)*/
     coeffTemp
+  }
+  
+  val templateVars = {
+    assert(tempVars.forall(TemplateIdentifier.IsTemplateVar(_)))
+    tempVars
+  }
+  
+  val constTemplate  = {
+    assert(constTemp match {
+      case None => true
+      case Some(e) => InvariantUtil.isTemplateExpr(e)
+    })
+    constTemp
   }
 		
   def coeffEntryToString(coeffEntry: (Expr, Expr)): String = {
