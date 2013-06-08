@@ -1,3 +1,5 @@
+import leon.Utils._
+
 object SimpleLoop
 {
 	def s(x: Int) : Int = {
@@ -8,4 +10,8 @@ object SimpleLoop
 	    
 	} ensuring(res => res != -1)	
 	//inductive generalization res >= 0
+	
+	def always(i : Int) : Boolean =  {
+	  (i >= 0)
+	} holds
 } 
