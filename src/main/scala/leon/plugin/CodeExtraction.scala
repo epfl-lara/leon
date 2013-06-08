@@ -270,11 +270,43 @@ trait CodeExtraction extends Extractors {
 
       realBody match {
         case ExEnsuredExpression(body2, resSym, contract) => {
+
+          realBody = body2
+          
+          //here we need to check if the contract body has some templates
+          val (postcond, templateSyms, templateBody) = contract match {
+            case ExTemplateExpression(pcond, tempSyms, tempBody) => {
+              (pcond, tempSyms, Some(tempBody))
+            }
+            case _ => (contract, List(), None)
+          }
+          
           varSubsts(resSym) = (() => ResultVariable().setType(funDef.returnType))
+          val c1 = s2ps(postcond)                    
+          ensCont = Some(c1)
+          
+          //if the template body exists then create a template expression          
+          if(templateBody.isDefined) {
+            
+            import leon.invariant.TemplateFactory
+            
+            //create a template variable for each template symbol
+            templateSyms.foreach((tempSym) => {
+              varSubsts(tempSym) = (() => TemplateFactory.freshTemplateVar(tempSym.nameString))              
+            })
+            
+            val tempExpr = s2ps(templateBody.get)
+            TemplateFactory.setTemplate(funDef,tempExpr)
+          }
+          
+          //TODO: why is this commented ?? 
+          // varSubsts.remove(resSym)
+          
+          /*varSubsts(resSym) = (() => ResultVariable().setType(funDef.returnType))
           val c1 = s2ps(contract)
           // varSubsts.remove(resSym)
           realBody = body2
-          ensCont = Some(c1)
+          ensCont = Some(c1)*/
         }
         case ExHoldsExpression(body2) => {
           //println("Inside hold expression case")

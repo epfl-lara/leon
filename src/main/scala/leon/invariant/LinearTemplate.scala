@@ -51,7 +51,7 @@ class LinearTemplate(val template: Expr,
   }
   
   val templateVars = {
-    assert(tempVars.forall(TemplateIdentifier.IsTemplateVar(_)))
+    assert(tempVars.forall(TemplateFactory.IsTemplateVar(_)))
     tempVars
   }
   

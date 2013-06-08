@@ -362,12 +362,11 @@ class ConstraintTracker(fundef : FunDef) {
    * This function computes invariants belonging to the template.
    * The result is a mapping from function definitions to the corresponding invariants.
    */
-  def solveForTemplates(tempSynth: TemplateFactory,
-    uiSolver: UninterpretedZ3Solver): Option[Map[FunDef, Expr]] = {
+  def solveForTemplates(uiSolver: UninterpretedZ3Solver): Option[Map[FunDef, Expr]] = {
 
     //traverse each of the functions and collect the constraints
     val nonLinearCtrs  = templatedVCs.foldLeft(Seq[Expr]())((acc, elem) => {
-      val ctr = generateCtrsForTree(elem._2._1, elem._2._2, tempSynth, uiSolver)      
+      val ctr = generateCtrsForTree(elem._2._1, elem._2._2, uiSolver)      
       (acc :+ ctr)
     })
     val nonLinearCtr = if(nonLinearCtrs.size == 1) nonLinearCtrs.first 
@@ -380,9 +379,9 @@ class ConstraintTracker(fundef : FunDef) {
       //printing the model here for debugging
       //println("Model: "+model)
       //construct an invariant (and print the model)      
-      val invs = tempSynth.getFunctionsWithTemplate.map((fd) => {
+      val invs = TemplateFactory.getFunctionsWithTemplate.map((fd) => {
         
-        val template = tempSynth.getTemplate(fd).get
+        val template = TemplateFactory.getTemplate(fd).get
         val tempvars = InvariantUtil.getTemplateVars(template)
         val coeffMap = tempvars.map((v) => {
           //println(v.id +" mapsto " + model(v.id))
@@ -421,8 +420,7 @@ class ConstraintTracker(fundef : FunDef) {
   /**
    * Returns a set of non linear constraints for the given constraint tree
    */
-  def generateCtrsForTree(bodyRoot: CtrNode, postRoot : CtrNode, tempSynth: TemplateFactory, 
-      uiSolver : UninterpretedZ3Solver) : Expr = {       
+  def generateCtrsForTree(bodyRoot: CtrNode, postRoot : CtrNode, uiSolver : UninterpretedZ3Solver) : Expr = {       
     
     /**
      * A utility function that converts a constraint + calls into a expression.
@@ -442,7 +440,7 @@ class ConstraintTracker(fundef : FunDef) {
 
       templateMap.getOrElse(call, {
         val argmap = InvariantUtil.formalToAcutal(call, ResultVariable())
-        val tempExpr = tempSynth.constructTemplate(argmap, call.fi.funDef)
+        val tempExpr = TemplateFactory.constructTemplate(argmap, call.fi.funDef)
         templateMap += (call -> tempExpr)
         tempExpr
       })

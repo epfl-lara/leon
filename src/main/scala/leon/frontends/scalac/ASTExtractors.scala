@@ -117,6 +117,22 @@ trait ASTExtractors {
 
   object StructuralExtractors {
     import ExtractorHelpers._
+    
+    /**
+     * Extracts the templates from the ensuring expression
+     */
+    object ExTemplateExpression {      
+      def unapply(tree: Apply): Option[(Tree,List[Symbol],Tree)] = tree match {
+        case Apply(Select(Apply(ExSelected("leon", "Utils", "any2Template"), postcondTree :: Nil), ExNamed("template")),
+          (Function(vardefs, templateBody)) :: Nil)
+          => {
+            //for each vardefs extract the term name
+            val varnames = vardefs.map(_.symbol)
+            Some(postcondTree, varnames, templateBody)
+          }
+        case _ => None
+      }
+    }
 
     object ExEnsuredExpression {
       /** Extracts the 'ensuring' contract from an expression. */

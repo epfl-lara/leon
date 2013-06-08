@@ -8,10 +8,6 @@ object SimpleLoop
 	  else 
 	    s(x-1) + 1
 	    
-	} ensuring(res => res != -1)	
-	//inductive generalization res >= 0
-	
-	def always(i : Int) : Boolean =  {
-	  (i >= 0)
-	} holds
+	} ensuring(res => res != -1 template((a : Float, b : Float, c: Float) => a*res + a*x <= 0))	
+	//inductive generalization res >= 0	
 } 

@@ -26,28 +26,6 @@ import leon.verification.Tactic
 import leon.verification.VerificationReport
 import scala.collection.mutable.{ Set => MutableSet }
 
-/**
- * This object creates and stores the set of all template identifiers
- */
-object TemplateIdentifier {
-  
-  private var ids = Set[Identifier]()
-  
-  def freshIdentifier : Identifier = {
-    val freshid = FreshIdentifier("a?", true).setType(RealType)
-    ids += freshid
-    freshid
-  }
-  
-  def IsTemplateIdentifier(id : Identifier) : Boolean = {
-    ids.contains(id)
-  }
-  
-  def IsTemplateVar(v : Variable) : Boolean = {
-    IsTemplateIdentifier(v.id)
-  }
-}
-
 class TemplateIdentifier(override val id: Identifier) extends Variable(id)
 
 /**
@@ -55,16 +33,39 @@ class TemplateIdentifier(override val id: Identifier) extends Variable(id)
  * The program variables that can be free in the templates are only the arguments and
  * the result variable
  */
-class TemplateFactory {
+object TemplateFactory {
 
   //a mapping from function definition to the template
   private var templateMap = Map[FunDef, Expr]()
   
-  /**
+  //a set of template ids
+  private var ids = Set[Identifier]()
+  
+  def freshIdentifier(name : String = "") : Identifier = {
+    val idname = if(name.isEmpty()) "a?"
+    			 else name + "?"
+    val freshid = FreshIdentifier(idname, true).setType(RealType)
+    ids += freshid
+    freshid
+  }
+  
+   /**
    * Template variables have real type
    */
-  def freshTvar : Variable = {
-    Variable(TemplateIdentifier.freshIdentifier)
+  def IsTemplateIdentifier(id : Identifier) : Boolean = {
+    ids.contains(id)
+  }
+  
+  def IsTemplateVar(v : Variable) : Boolean = {
+    IsTemplateIdentifier(v.id)
+  }
+   
+  def freshTemplateVar(name : String= "") : Variable = {
+    Variable(freshIdentifier(name))
+  }
+  
+  def setTemplate(fd:FunDef, tempExpr :Expr) = {
+    templateMap += (fd -> tempExpr) 
   }
 
   /**    
@@ -80,8 +81,8 @@ class TemplateFactory {
     val baseTerms = fd.args.filter((vardecl) => vardecl.tpe == Int32Type).map(_.toVariable) ++ 
     					(if(fd.returnType == Int32Type) Seq(ResultVariable()) else Seq())        
     					
-    val lhs = baseTerms.foldLeft(freshTvar : Expr)((acc, t)=> {       
-       Plus(Times(freshTvar,t),acc)
+    val lhs = baseTerms.foldLeft(freshTemplateVar() : Expr)((acc, t)=> {       
+       Plus(Times(freshTemplateVar(),t),acc)
     })
     val tempExpr = LessEquals(lhs,IntLiteral(0))
     tempExpr

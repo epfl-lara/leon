@@ -45,7 +45,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     def getInferenceEngine(vc: ExtendedVC): (() => Boolean) = {
             
       val constTracker = new ConstraintTracker(vc.funDef)
-      val templateFactory = new TemplateFactory()
+      //val templateFactory = new TemplateFactory()
       var refinementStep : Int = 0
       
       //flatten the functions in the vc
@@ -61,7 +61,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       	    Call(resultVar.toVariable,FunctionInvocation(vc.funDef,vc.funDef.args.map(_.toVariable))),      	    
       	    ResultVariable())
       	    
-      	Some(templateFactory.constructTemplate(argmap, vc.funDef))      	
+      	Some(TemplateFactory.constructTemplate(argmap, vc.funDef))      	
       } else {
         None
       }               
@@ -112,7 +112,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
                   Call(funRes.toVariable, FunctionInvocation(targetFun, targetFun.args.map(_.toVariable))),
                   ResultVariable())
 
-                val postTemp = templateFactory.constructTemplate(argmap, targetFun)
+                val postTemp = TemplateFactory.constructTemplate(argmap, targetFun)
                 val npostTemp = InvariantUtil.FlattenFunction(Not(postTemp))
                 //print the negated post
                 //println("Negated Post: "+npostTemp)
@@ -132,7 +132,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
         //solve for the templates at this unroll step          
         //val templateSynthesizer = templateFactory.getTemplateSynthesizer()
-        val res = constTracker.solveForTemplates(templateFactory, uisolver)
+        val res = constTracker.solveForTemplates(uisolver)
 
         if (res.isDefined) {
 
