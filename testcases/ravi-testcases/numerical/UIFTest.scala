@@ -1,3 +1,4 @@
+import leon.Utils._
 object UIFTest
 {  
 	def s(x: Int, y: Int) : Int = {

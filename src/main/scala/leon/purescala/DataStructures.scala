@@ -42,12 +42,19 @@ class DirectedGraph[T] {
 
     BFSReachRecur(src)
   }
+
+  def containsEdge(src: T, dest: T) : Boolean = {
+    if(adjlist.contains(src)) {
+        adjlist(src).contains(dest)
+    }
+    else false
+  }
   
-  def Edges : Iterable[(T,T)] ={
+  /*def Edges : Iterable[(T,T)] ={
     adjlist.foldLeft(Seq[(T,T)]())((acc,entry) => { 
       acc ++ entry._2.map((entry._1,_))
     })
-  }
+  }*/
 }
 
 class UndirectedGraph[T] extends DirectedGraph[T] {
@@ -62,13 +69,13 @@ class UndirectedGraph[T] extends DirectedGraph[T] {
     //this has some side-effects 
     adjlist.update(src, newset1)
     adjlist.update(dest, newset2)
-  }
+  }  
   
-  override def Edges : Iterable[(T,T)] ={   
-    //consider only on pair for each undirected edge
+  //consider only one pair for each undirected edge
+  /*override def Edges : Iterable[(T,T)] ={   
     val edgeSet = adjlist.foldLeft(Set[(T,T)]())((acc,entry) => {       
       acc ++ entry._2.map((entry._1,_)).filter((edge) => !acc.contains((edge._2,edge._1)))
     })    
     edgeSet
-  } 
+  }*/ 
 }

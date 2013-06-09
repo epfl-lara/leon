@@ -582,7 +582,8 @@ class ConstraintTracker(fundef : FunDef) {
          calls: Set[Call],
          conseqs: Seq[LinearConstraint], conseqTemps: Seq[LinearTemplate]) : Expr = {
       
-      val pathexpr = constraintsToExpr(ants ++ conseqs, calls)                         
+      val pathexpr = constraintsToExpr(ants ++ conseqs, calls)        
+      //println("All ctrs: "+ (ants ++ conseqs ++ calls ++ conseqTemps))                  
       val uifCtrs = constraintsForUIFs(calls.toSeq, pathexpr, uiSolver)
       
       val uifroot = if (!uifCtrs.isEmpty) {
@@ -608,7 +609,7 @@ class ConstraintTracker(fundef : FunDef) {
           case n @ CtrNode(_) => {
             val newants = ants ++ n.constraints
             //recurse into children            
-            foldAND(n.Children, (child : CtrTree) => traverseTree(child, ants, antTemps, conseqs, conseqTemps))
+            foldAND(n.Children, (child : CtrTree) => traverseTree(child, newants, antTemps, conseqs, conseqTemps))
           }
           case CtrLeaf() => {            
             //pipe to the end point that invokes the constraint solver
@@ -707,10 +708,9 @@ class ConstraintTracker(fundef : FunDef) {
     
     //Part (II) return the constraints. For each implied call, the constraints are just that their return values are equal.
     //For other calls the constraints are full implication    
-    val edges = impliedGraph.Edges.toSet         
     val newctrs = product.foldLeft(Seq[Expr]())((acc,pair) => {
       val (call1,call2)= pair
-      if(edges.contains(pair)) {
+      if(impliedGraph.containsEdge(call1,call2)) {
         acc :+ Equals(call1.retexpr,call2.retexpr)
       }
       else if(nimpliedSet.contains(pair)) {
@@ -719,7 +719,6 @@ class ConstraintTracker(fundef : FunDef) {
       }        
       else acc
     })
-    
     newctrs
   }
 

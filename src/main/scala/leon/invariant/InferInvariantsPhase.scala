@@ -42,6 +42,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   class InferenceEngine(reporter: Reporter, program: Program, context: LeonContext,      
       uisolver: UninterpretedZ3Solver) {        
     
+    //TODO: critical: handle unrolling of functions in templates
     def getInferenceEngine(vc: ExtendedVC): (() => Boolean) = {
             
       val constTracker = new ConstraintTracker(vc.funDef)

@@ -8,7 +8,7 @@ object ListAppendAbs
 	  val y = 1
 	  app0(x,y) 
 	    
-	} ensuring(res => res <= x + 1)
+	} ensuring(res => res == x + 1)
 	
 	def app0(a: Int, b: Int) : Int = {
 	  require(a >=0 && b >=0)
@@ -17,5 +17,5 @@ object ListAppendAbs
 	    b
 	  else
 	    1 + app0(a-1,b)	    
-	} ensuring(res => true template((p : Float, q : Float, r: Float) => (p*res + q*a + r*b <= 0 && q >= -1 && r >= -1)))
+	} ensuring(res => true template((p : Float, q : Float, r: Float) => (p*res + q*a + r*b == 0 && q >= -1 && r >= -1)))
 } 
