@@ -86,7 +86,7 @@ case class CodeGenExampleRunner(program: Program, funDef: FunDef, ctx: LeonConte
     try {
 	    evalClosure(args) match {
 	      case Successful(BooleanLiteral(true)) =>
-	        fine("Eval succeded: EvaluationSuccessful(true)")
+	        fine("EvaluationSuccessful(true) for " + args)
 	        true
 	      case m =>
 	        fine("Eval failed: " + m)
@@ -106,9 +106,14 @@ case class CodeGenExampleRunner(program: Program, funDef: FunDef, ctx: LeonConte
     
     val closure = compile(prec, funDef.args.map(_.id))
     
-    _examples = _examples filter {
-      evaluate(closure, _)
-    }        
+    val (newTransformed, newExamples) = ((_examples zip examples) filter {
+      case ((transformedExample, _)) =>
+      	evaluate(closure, transformedExample)
+    }).unzip
+     
+    _examples = newTransformed
+    examples = newExamples
+     
     fine("New counterExamples.size: " + examples.size)
   }
 
