@@ -15,6 +15,7 @@ import lesynth.examples.Example
 abstract class ExampleRunner(inputExamples: Seq[Example]) extends HasLogger {
 
   private var _examples = ArrayBuffer(inputExamples: _*)
+  protected def examples_=(newExamples: ArrayBuffer[Example]) = _examples = newExamples 
   def examples = _examples
   
   def addExamples(newExamples: Seq[Example]): Unit = {

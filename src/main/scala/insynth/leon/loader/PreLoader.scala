@@ -121,7 +121,7 @@ object PreLoader extends ( (Boolean) => List[Declaration] ) {
   def getGreaterThan =
     // case GreaterThan(l,r) => (rec(ctx,l), rec(ctx,r)) match {
     makeDeclaration(
-      makeNAE( ">", { case List(left, right) => LessThan( left, right ) } ),
+      makeNAE( ">", { case List(left, right) => GreaterThan( left, right ) } ),
       FunctionType( List(Int32Type, Int32Type), BooleanType )
     ) 
     

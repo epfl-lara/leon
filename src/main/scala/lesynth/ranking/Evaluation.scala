@@ -6,10 +6,15 @@ import lesynth.evaluation._
 case class Evaluation(exampleRunner: ExampleRunner) {
   
   // keep track of which examples to evaluate next
-  var nextExamples: Map[Int, Int] = Map() 
+  var nextExamples: Map[Int, Int] = Map().withDefaultValue(0)
+  
+  def getNumberOfEvaluations(ind: Int) = nextExamples(ind)
   
   // keep track of evaluation results
   var evaluations = Map[Int, Array[Boolean]]()
+  
+  def getEvaluationVector(ind: Int) =
+    (evaluations(ind), nextExamples(ind))
   
   def numberOfExamples = exampleRunner.examples.size
     
@@ -17,7 +22,7 @@ case class Evaluation(exampleRunner: ExampleRunner) {
     numberOfEvaluationCalls += 1
     
     // get next example index and update
-    val nextExample = nextExamples.getOrElse(exprInd, 0)
+    val nextExample = nextExamples(exprInd)//OrElse(exprInd, 0)
     if (nextExample >= numberOfExamples) throw new RuntimeException("Exhausted examples for " + exprInd)
     nextExamples += (exprInd -> (nextExample + 1))
       

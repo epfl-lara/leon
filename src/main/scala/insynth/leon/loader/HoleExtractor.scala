@@ -25,9 +25,6 @@ class HoleExtractor(program: Program, hole: Hole) {
       if foundHole;
       val argDeclarations = funDef.args map { makeArgumentDeclaration(_) }
     ) {
-      // hack
-      //Globals.holeFunDef = funDef
-      
       foundHoleCount+=1
           	
     	return Some((funDef, argDeclarations.toList ++ declarations))

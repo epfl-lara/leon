@@ -62,9 +62,15 @@ case class DefaultExampleRunner(program: Program, funDef: FunDef, ctx: LeonConte
   def filter(prec: Expr) = {
     entering("filter(" + prec + ")")
     finest("Old counterExamples.size: " + examples.size)
-    _examples = _examples filter {
-      evaluate(prec, _)
-    }
+        
+    val (newTransformed, newExamples) = ((_examples zip examples) filter {
+      case ((exMap, _)) =>
+      	evaluate(prec, exMap)
+    }).unzip
+     
+    _examples = newTransformed
+    examples = newExamples
+    
     finest("New counterExamples.size: " + examples.size)
   }
 

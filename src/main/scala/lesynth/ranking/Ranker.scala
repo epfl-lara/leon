@@ -17,10 +17,6 @@ class Ranker(candidates: IndexedSeq[Candidate], evaluation: Evaluation, checkTim
     (for (i <- 0 until candidatesSize)
       yield (i, (0, evaluation.numberOfExamples))) toMap
   
-  def getKMax(k: Int) = {
-    
-  }
-  
   def evaluate(ind: Int) {    
     val tuple = tuples(ind)
     val expr = ind
@@ -84,7 +80,7 @@ class Ranker(candidates: IndexedSeq[Candidate], evaluation: Evaluation, checkTim
       println("***: " + numberLeft)
     }
     
-    candidates(rankings(0))    
+    (candidates(rankings(0)), rankings(0))    
   }
   
 //  def getVerifiedMax = {    
