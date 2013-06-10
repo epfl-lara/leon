@@ -6,6 +6,6 @@ object Loop2
 	    0 - x
 	  else 
 	    s(x-1) + x	    
-	} ensuring(res => res != -1 template((a : Float, b : Float, c: Float) => (a*res + b*x + c <= 0 && b < 0)))	
+	} ensuring(res => res != -1 template((a, b, c) => (a*res + b*x + c <= 0 && b < 0)))	
 	//inductive generalization res >= 0
 } 

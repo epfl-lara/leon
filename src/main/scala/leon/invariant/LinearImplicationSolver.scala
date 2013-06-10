@@ -179,7 +179,7 @@ class LinearImplicationSolver {
       var disabledPart: Expr =
         if(strictCtrLambdas.isEmpty) Equals(one, sumConst)
         else Or(Equals(one, sumConst),
-          And(Equals(zero, sumConst),And(strictCtrLambdas.map(GreaterThan(_,zero)))))
+          And(Equals(zero, sumConst),Or(strictCtrLambdas.map(GreaterThan(_,zero)))))
       
       for (cvar <- cvars) {
         //compute the linear combination of all the coeffs of antCVars
