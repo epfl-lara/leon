@@ -38,7 +38,7 @@ Figure 2, shows an example that uses the above abstract postcondition.
 \pnl \> \} ensuring(res => res != -1  \\
 \pnl \> \> \> template((a,b,c) => (a*res + b*x + c <= 0 \&\& b<0)))
 \end{myprogram}
-\caption{A simple program with an abstract postcondition containing templates}
+\caption{A simple program with an abstract postcondition containing templates} \label{fig:eg}
 \end{figure}
 %
 For this example, our implementation binds the unknown coefficients $a$,$b$ and $c$ to 
@@ -83,7 +83,7 @@ Let $D$ be the $(n+1) \times (p+1)$ matrix $(D_0 \; D_1 \cdots D_k)^T$.
 By Farkas' Lemma, a solution to constraint \ref{eq:tempvc} exists if
 %
 \begin{align}
-\exists \Lambda \in \mathbb{R}^{p+1}. \; \Lambda \ge \zerovec \wedge \Lambda D =(0 \cdots 0 \; 1) \label{eq:flemma}
+\exists A. \exists \Lambda \in \mathbb{R}^{p+1}. \; \Lambda \ge \zerovec \wedge \Lambda D =(0 \cdots 0 \; 1) \label{eq:flemma}
 \end{align}
 %
 Since $D$ has only the template variables and constants, constraint~\ref{eq:flemma} is a non-linear constraint involving the template variables and lambdas. If there exists a model for constraint~\ref{eq:flemma} then the values of the template variables in the model 
@@ -98,19 +98,19 @@ also support strict inequalities using \emph{Motzkin's transposition theorem}.
 Let $\body \wedge \neg \post$ be of the form 
 $\bigwedge \limits_{k=1}^{p} \sigma_k(X,A) \wedge \bigwedge \limits_{k=p}^{p+q} \delta_k(X,A)$,
 where $\sigma_k$'s are defined as before and $\delta_k$'s are of the form 
-$D_j (x_1 \cdots x_n \; 1)^T < \zerovec$.
+$D_k (x_1 \cdots x_n \; 1)^T < \zerovec$.
 By Motzkin's transposition theorem, a solution to constraint \ref{eq:tempvc} exists if
 %
 \begin{align}
 & \nonumber
-\exists \Lambda_1 \in \mathbb{R}^{p+1}, \Lambda_2 \in \mathbb{R}^{q}, \Lambda = (\Lambda_1 \; \Lambda_2). \; \\ 
+\exists A. \exists \Lambda_1 \in \mathbb{R}^{p+1}, \Lambda_2 \in \mathbb{R}^{q}, \Lambda = (\Lambda_1 \; \Lambda_2). \; \\ 
 & \qquad \Lambda \ge \zerovec \wedge (\Lambda D =(0 \cdots 0 \; 1) \vee (\Lambda_2 > \zerovec \wedge \Lambda D = \zerovec)) \label{eq:motlemma}
 \end{align}
 %
-Notice that we have disjunctions in the constraints if there are mixed strict and non-strict inequalities in the constraint~\ref{eq:tempvc}. 
+Notice that we have disjunctions in the constraints when there are mixed strict and non-strict inequalities in the constraint~\ref{eq:tempvc}. 
 %From an efficiency perspective reducing the number of strict inequalities could be beneficial.
 
-\paragraph{Extensions for handling disjunctions in constraint~\ref{eq:tempvc}.}
+\subsection{Extensions for handling disjunctions in constraint~\ref{eq:tempvc}}
 
 Handling disjunctions in constraint~\ref{eq:tempvc} is straight forward. We first
 convert $\body \wedge \neg \post$ in to a DNF formula $\bigvee_i d_i$.
@@ -125,10 +125,51 @@ Let $L_i =  (\forall X. \; d_i \Rightarrow false)$. We use the above approach to
 If there exists a model for $C$ then the values of $A$ in the model will satisfy the 
 constraint~\ref{eq:tempvc}.
 
-\subsection{Extending the approach to handle User Defined Functions}
+\subsection{Extending the approach to handle User Defined Functions (UDFs) in the body}
 
-%Handling functions
-%- handling uninterpreted functions
+The Leon verification framework proposes an approach for generating verification conditions in the presence of calls to UDFs in the function body (like in Figure~\ref{fig:eg} which has a recursive call in the body). In the Leon approach, the calls to the UDFs are treated as logical functions and retained in the verification condition. For example, $\body$ for the program shown in Figure~\ref{fig:eg} will  be of the form 
+$(x < 0 \wedge res = -x) \vee (x \ge 0 \wedge res = s(x-1) + x \wedge a*s(x-1) + b*x + c \le 0 \wedge b < 0 \wedge s(x-1) \ne -1)$.
+
+We handle such a verification condition containing UDFs iteratively. Each iteration consists of two phases. In the first phase, we treat the UDFs as uninterpreted functions (UIFs) and solve for the template variables.
+If there exists a solution then we halt and return the solution (the correctness of the solution is evident).
+If a solution does not exist, we proceed to the \emph{unrolling} phase which refines the verification condition using the definition of the called function and passes it to the 
+first phase. We now explain the phases in detail.
+
+\paragraph{Solving constraint~\ref{eq:tempvc} with uninterpreted functions.}
+
+%TODO find the precise definition of equisatisfiability
+
+Say $\body$ and $\post$ in constraint~\ref{eq:tempvc} contain uninterpreted functions.
+Let $\psi(X,A): \body(X,A) \wedge \neg \post(X,A)$.
+Without loss of generality assume that $\psi$ is a conjunction of atomic predicates.
+As discussed in the earlier section, in the presence of disjunctions,  the problem can be reduced to sub-problems having this form.
+
+We first convert $\psi$, by introducing fresh variables say $X'$, 
+to a equvisatisfiable formula $\psi_{I}(X,X',A) \wedge \psi_{F}(X,X',A)$ in which
+$\psi_I$ is a formula without UIFs and 
+$\psi_{F}$ is of the form $\bigwedge_i (v_i = f_i(Y_i))$ where, $f_i$ is a function symbol,  
+$v_i \in X \cup X'$ is either a program variable or a newly introduced fresh variable 
+and $Y_i \in (X \cup X')^n$ is a vector of program variables and fresh variables.  
+Clearly, constraint~\ref{eq:tempvc} is equivalent to 
+%
+\begin{align}
+\exists A. \forall X,X'. \; \psi_{I}(X,X',A) \wedge \psi_{F}(X,X',A) \label{eq:c2}
+\end{align}
+
+In the above constraint the UIFs in $\psi_{F}$ can be eliminated using the axiom of uninterpreted functions which states that the result of  two functions are equal if the functions have the same name and the arguments are equal. 
+Let,
+\begin{align}
+\psi_R = \bigwedge \left\lbrace (\bigwedge \limits_{j=1}^{n} y_j = z_j) \Rightarrow v = u \vbar \exists f. v = f(y_1,\cdots,y_n), u = f(z_1,\cdots,z_n) \in \phi_F \right\rbrace
+\end{align}
+
+Note that $\psi_R$ does not have any UIFs. By the axiom of uninterpreted functions,  constraint~\ref{eq:c2} is equivalent to 
+%
+\begin{align}
+\exists A. \forall X,X'. \; \psi_{I}(X,X',A) \wedge \psi_{R}(X,X',A) \label{eq:c3}
+\end{align}
+%
+Constraint~\ref{eq:c3} can be solved using the approach discussed earlier as it is completely numerical. A model for constraint~\ref{eq:c3} is a valid model for constraint~\ref{eq:tempvc}.
+
 %- handling user defined functions by unrolling and new vc generation.
 %some experimental results/details (mention that the nonlinear constraints are solved using z3)
 
