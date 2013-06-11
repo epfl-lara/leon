@@ -14,6 +14,9 @@
 \newcommand{\post}{\mathit{\phi_{post}}}
 \newcommand{\body}{\mathit{\phi_{body}}}
 \newcommand{\zerovec}{\mathbf{0}}
+\newcommand{\Body}[1]{\mathit{Body(#1)}}
+\newcommand{\Post}[1]{\mathit{Post(#1)}}
+\newcommand{\Temp}[1]{\mathit{Temp(#1)}}
 %\newcommand{\implies}{\Rightarrow}
 
 \input{genericmacros}
@@ -135,17 +138,15 @@ If there exists a solution then we halt and return the solution (the correctness
 If a solution does not exist, we proceed to the \emph{unrolling} phase which refines the verification condition using the definition of the called function and passes it to the 
 first phase. We now explain the phases in detail.
 
-\paragraph{Solving constraint~\ref{eq:tempvc} with uninterpreted functions.}
-
-%TODO find the precise definition of equisatisfiability
+\paragraph{Solving constraint~\ref{eq:tempvc} in the presence of uninterpreted functions.}
 
 Say $\body$ and $\post$ in constraint~\ref{eq:tempvc} contain uninterpreted functions.
 Let $\psi(X,A): \body(X,A) \wedge \neg \post(X,A)$.
 Without loss of generality assume that $\psi$ is a conjunction of atomic predicates.
-As discussed in the earlier section, in the presence of disjunctions,  the problem can be reduced to sub-problems having this form.
+As discussed in the earlier section, disjunctions are handled by splitting the problem in to several sub-problems that are disjunction free.
 
 We first convert $\psi$, by introducing fresh variables say $X'$, 
-to a equvisatisfiable formula $\psi_{I}(X,X',A) \wedge \psi_{F}(X,X',A)$ in which
+to an equivalent formula $\psi_{I}(X,X',A) \wedge \psi_{F}(X,X',A)$ in which
 $\psi_I$ is a formula without UIFs and 
 $\psi_{F}$ is of the form $\bigwedge_i (v_i = f_i(Y_i))$ where, $f_i$ is a function symbol,  
 $v_i \in X \cup X'$ is either a program variable or a newly introduced fresh variable 
@@ -153,25 +154,69 @@ and $Y_i \in (X \cup X')^n$ is a vector of program variables and fresh variables
 Clearly, constraint~\ref{eq:tempvc} is equivalent to 
 %
 \begin{align}
-\exists A. \forall X,X'. \; \psi_{I}(X,X',A) \wedge \psi_{F}(X,X',A) \label{eq:c2}
+\exists A. \forall X,X'. \; \psi_{I}(X,X',A) \wedge \psi_{F}(X,X',A) \Rightarrow false \label{eq:c2}
 \end{align}
 
-In the above constraint the UIFs in $\psi_{F}$ can be eliminated using the axiom of uninterpreted functions which states that the result of  two functions are equal if the functions have the same name and the arguments are equal. 
+In the above constraint the UIFs in $\psi_{F}$ can be eliminated using the axiom of uninterpreted functions which states that the result of  two functions are equal if the functions have the same name and the arguments are equal. In the following we treat $\phi_F$ as a set of atomic predicates.
 Let,
-\begin{align}
-\psi_R = \bigwedge \left\lbrace (\bigwedge \limits_{j=1}^{n} y_j = z_j) \Rightarrow v = u \vbar \exists f. v = f(y_1,\cdots,y_n), u = f(z_1,\cdots,z_n) \in \phi_F \right\rbrace
-\end{align}
-
-Note that $\psi_R$ does not have any UIFs. By the axiom of uninterpreted functions,  constraint~\ref{eq:c2} is equivalent to 
 %
 \begin{align}
-\exists A. \forall X,X'. \; \psi_{I}(X,X',A) \wedge \psi_{R}(X,X',A) \label{eq:c3}
+\psi_R = \bigwedge \left\lbrace (\bigwedge \limits_{j=1}^{n} y_j = z_j) \Rightarrow v = u \vbar \exists f. \; v = f(y_1,\cdots,y_n), u = f(z_1,\cdots,z_n) \in \phi_F \right\rbrace  
+\end{align}
+
+Note that $\psi_R$ as defined above does not have any UIFs. By the axiom of uninterpreted functions,  constraint~\ref{eq:c2} is equivalent to 
+%
+\begin{align}
+\exists A. \forall X,X'. \; \psi_{I}(X,X',A) \wedge \psi_{R}(X,X',A)  \Rightarrow false \label{eq:c3}
 \end{align}
 %
-Constraint~\ref{eq:c3} can be solved using the approach discussed earlier as it is completely numerical. A model for constraint~\ref{eq:c3} is a valid model for constraint~\ref{eq:tempvc}.
+Constraint~\ref{eq:c3} can be solved using the approach discussed earlier. A model for constraint~\ref{eq:c3} is a valid model for constraint~\ref{eq:tempvc}.
 
-%- handling user defined functions by unrolling and new vc generation.
-%some experimental results/details (mention that the nonlinear constraints are solved using z3)
+\paragraph{Handling user defined functions in the verification condition.}
+
+Say the constraint~\ref{eq:tempvc} cannot be solved by treating the UDFs as uninterpreted functions. 
+Let $\psi: \body \wedge \neg \post$. Without loss of generality assume that the function invocations in $\psi$ are flattened.
+Let $Calls =\{ v_i = f_i(Y_i) \vbar 1 \le i \le n \}$ be the set of calls in $\psi$ and
+$F = \{ f_i \vbar 1 \le i \le m \}$ be the set of user-defined function symbols in $\psi$. 
+For each function in $f_i \in F$ let $\body_i$, $\post_i$ and $\temp_i$ denote the formulas corresponding to the body, postcondition and the template of the function $f_i$ and let $a_i$ denote the argument vector of the function.
+If $f_i$ is recursive then $\body_i$ will assume the template and postcondition for the recursive calls.
+
+The approach fundamentally differs in the way recursive and non-recursive functions are handled (recursive functions also include mutually recursive functions).
+Let $F_{rec} \subseteq F$ denote the set of recursive functions.
+Let $\psi'$ be a formula defined as follows: 
+%
+\begin{align*}
+\psi': & \quad \psi \wedge  \bigwedge \{ (\body_i \wedge \post_i)[res \mapsto v_i, a_i(1) \mapsto y_1,\cdots, a_i(n) \mapsto y_n] \\
+	   & \qquad \qquad  \vbar v_i = f_i(y_1,\cdots,y_n) \in Calls, f_i \notin F_{rec} \}
+\end{align*}
+
+In simple words, $\psi'$ is the formula got by inlining the definition (and postcondition) of the non-recursive functions in $\psi$.
+Define a formula $\psi_k$ for each recursive function $f_k \in F_{rec}$ as follows:
+%
+\begin{align*}
+\psi_k: \quad \body_k \wedge \neg \temp_k
+\end{align*}
+%
+%In simple words, $\phi_k$ is the condition that characterises that the template is inductive.
+Define $\psi''$ as follows:
+%
+\begin{align*}
+\psi'': & \quad \psi' \wedge  \bigwedge \{ \temp_k[res \mapsto v_k, a_k(1) \mapsto y_1,\cdots, a_k(n) \mapsto y_n] \\
+	   & \qquad \qquad  \vbar v_k = f_k(y_1,\cdots,y_n) \in Calls, f_k \in F_{rec} \}
+\end{align*}
+%
+That is, $\psi''$ further refines $\psi'$ by conjoining the templates of recursive calls in $\psi$.
+We create a new verification condition using $\psi''$ and $\psi_k$'s as follows:
+%
+\begin{align}
+\exists A. \forall X. \; (\psi''(X,A) \Rightarrow false) \wedge \bigwedge_{f_k \in F_{rec}} (\psi_k(X,A) \Rightarrow false)
+\end{align}
+
+We repeat above approach on the new verification condition constructed, that is, we treat  the user defined functions as uninterpreted function and try to solve for $A$ if unsuccessful we further unroll the calls in the current verification condition. Notice that the process would terminate eventually as each recursive function is unrolled only once. 
+However, the procedure is incomplete. 
+
+\section{Experimental Evaluation and Future Work}
+
 
 \bibliographystyle{acm}
 \bibliography{SAVproject}
