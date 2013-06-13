@@ -1,5 +1,37 @@
+\newcommand{\real}{\mathbb{R}}
+\newcommand{\loc}{\mathit{Loc}}
+\newcommand{\var}{\mathit{Var}}
+\newcommand{\lab}{\mathit{Lab}}
+\newcommand{\edg}{\mathit{Edg}}
+\newcommand{\act}{\mathit{Act}}
+\newcommand{\evol}{\mathit{Evol}}
+\newcommand{\invr}{\mathit{Inv}}
+\newcommand{\trans}{\mathit{(l,a,\mu,l')}}
+
 \section{Paper 1: The algorithmic analysis of hybrid systems \cite{Alur:95}} \label{sec:paper1}
 
+The article proposes and discusses general approaches for the automated analysis of \emph{linear} hybrid systems by extending the standard techniques for program analysis and model checking of simple transition systems. The paper first discusses three semi-decision procedures for reachability analysis of hybrid systems which is in general undecidable. Subsequently, the paper discusses a (semi-decidable) approach  for model checking arbitrary formulas belonging to the \emph{Timed Computation Tree Logic} (TCTL) which is an extension of CTL.
+
+\paragraph*{\textbf{Linear Hybrid Systems}} 
+
+%Linear hybrid systems are a restriction of general hybrid systems in which the transition relations and \emph{evolution} functions (also called \emph{activities}) are linear.
+%Formally, 
+A hybrid system $H$ is a tuple $(\loc,\var,\lab,\edg,\act,\invr)$ where,
+$\loc$ is a set of locations and $\var$ is a set of variables. 
+Let $V= \var \mapsto \real$ denote a set of valuations which are functions mapping variables to real values.
+$\lab$ is a set of labels (not very significant for this discussion). $\edg$ is a set of transitions of the form $\trans$ with a source location $l \in \loc$, target location $l' \in \loc$, a label $a \in \lab$ and a transition relation $\mu \subseteq V \times V$ that captures the changes in the values of the variables during the transition. 
+$\act \in \loc \mapsto \evol$ assigns each location to an evolution function $\evol = V \times \real^+ \mapsto V$ that describe the evolution of the variables with respect to the time 
+\footnote{The paper uses a more general definition for the evolution functions but since the focus is only on \emph{time deterministic systems} we use this simplified formalization in this report}. 
+Finally, each location $l$ is associated with an invariant given by $\invr(l) \subseteq V$ that characterizes the set of allowed valuations for the location $l$.
+
+The paper defines a linear hybrid system as a hybrid system in which:
+(a) for each location $l$, $\act(l)(v,t) = v'$ where for all $x \in \var$, $v'(x) = v(x) + k_x t$. That is, each variable $x$ changes with a constant rate $k_x$ with respect to time.
+(b) for each location $l$ the invariant $\invr(l)$ is a linear formula over $\var$.
+(c) For each transition $e \in \edg$, the transition relation $\mu$ is a guarded set of nondeterministic assignments of the form $\psi \Rightarrow \{ x := [\alpha_x,\beta_x] \vbar x \in \var \}$ for some real constants $\alpha_x$ and $\beta_x$.
+
+As illustrated in the paper many interesting hybrid systems are linear. For instance, the \textit{water-level monitor systems, Fischer's mutual exclusion algorithm, temperate control systems} can be modelled as linear hybrid systems. 
+
+\paragraph*{\textbf{Reachability Analysis}}
 
 
 
