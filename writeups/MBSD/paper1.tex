@@ -123,11 +123,13 @@ all the loops in the automaton) in every iteration. For any two polyhedra (or li
 $P,P'$, $P_1 \wide P_2$  is exactly those constraints of $P$ that are also satisfied by $P'$.
 
 \textbf{Minimization}
-This approach for reachability analysis computes the coarsest bisimulation of the transition system 
-represented by the hybrid system with respect to a region $R_F$ (if one exists). The approach starts 
-with the initial partition $(R_F,\Sigma - R_F)$ and checks if there exists a region that is not \emph{stable}
-(a region is stable if all of its (time/transition) successor states belong to the same region). 
-If not then $R$ is split into smaller states.
+Let $\pi$ denote a partition of the states of the hybrid system. A region $R \in \pi$ is \emph{stable} if all of its 
+(time/transition) successor states belong to a single region. $\pi$ is a bisimulation if every region of $\pi$
+is stable. This approach for reachability analysis computes the coarsest partition $\pi$ that respects
+a region $R_F$ i.e, $\forall R \in \pi. \; R \cap R_F = \emptyset \vee R \subseteq R_F$. The approach starts 
+with an initial partition $(R_F,\Sigma - R_F)$. It iterates as long as there is a reachable region $R$ that 
+is not stable and splits it into smaller sets. If in the coarsest bisimulation the partitions corresponding 
+to $R_F$ are not reachable then $\neg R_F$ is an invariant of the system. We elide details for brevity.
 
 \textbf{Model checking}
 
@@ -150,9 +152,11 @@ $\{ (l,v) \vbar \exists (l',v') \in R_i, t \in \real^+. \; (l,v) \mapsto^t (l',v
 to the \emph{possibly} operation}.
 
 For our example, we illustrate this approach for the formula $true \exists \;(p_1 + p_2 > P_{max})$ which 
-states that exists a future in which the total power consumed is more than $P_{max}$.
-Let $P_{max} = 10, P_{low} = 1, P_{high} = 2$.
+states that there exists a future in which the total power consumed is more than $P_{max}$.
+Let $P_{max}=10, P_{low}=1, P_{high}=2$.
 We use formulas to represent states in the following.
+The initial state predicate $R_0$ is constructed by computing the intersection of $\phi$ with 
+each location and its invariant.
 %
 \begin{align*}
 R_0 &= (pc = 1 \wedge p_1 + p_2 > 10 \wedge x_1 \le 10) \vee \\
