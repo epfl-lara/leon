@@ -7,6 +7,7 @@
 \newcommand{\evol}{\mathit{Evol}}
 \newcommand{\invr}{\mathit{Inv}}
 \newcommand{\trans}{\mathit{(l,a,\mu,l')}}
+\newcommand{\reach}{\mapsto^*}
 
 \section{Paper 1: The algorithmic analysis of hybrid systems \cite{Alur:95}} \label{sec:paper1}
 
@@ -24,12 +25,38 @@ $\act \in \loc \mapsto \evol$ assigns each location to an evolution function $\e
 \footnote{The paper uses a more general definition for the evolution functions but since the focus is only on \emph{time deterministic systems} we use this simplified formalization in this report}. 
 Finally, each location $l$ is associated with an invariant given by $\invr(l) \subseteq V$ that characterizes the set of allowed valuations for the location $l$.
 
+The states $\Sigma$ of a hybrid system is the set of location, valuation pairs i.e, $\Sigma = \loc \times V$.
+Define a region $R$ as a subset of states.
+A run of a hybrid system is a sequence of states $\sigma_0 \mapsto^{t_0} \sigma_1 \mapsto^{t_1} \sigma_2 \mapsto^{t_2} \cdots$ 
+where, for all $i \ge 0$, $\sigma_i = (l_i,v_i) \in \Sigma$, $t_i \in \real^+$,
+$\forall 0 \le t \le t_i. \act(l_i)(v_i,t) \in \invr(l_i)$ and
+$\sigma_{i+1}$ is the transition successor of $\sigma_i$.
+
 The paper defines a linear hybrid system as a hybrid system in which:
 (a) for each location $l$, $\act(l)(v,t) = v'$ where for all $x \in \var$, $v'(x) = v(x) + k_x t$. That is, each variable $x$ changes with a constant rate $k_x$ with respect to time.
 (b) for each location $l$ the invariant $\invr(l)$ is a linear formula over $\var$.
 (c) For each transition $e \in \edg$, the transition relation $\mu$ is a guarded set of nondeterministic assignments of the form $\psi \Rightarrow \{ x := [\alpha_x,\beta_x] \vbar x \in \var \}$ for some real constants $\alpha_x$ and $\beta_x$.
 
-As illustrated in the paper many interesting hybrid systems are linear. For instance, the \textit{water-level monitor systems, Fischer's mutual exclusion algorithm, temperate control systems} can be modelled as linear hybrid systems. 
+\begin{figure}
+
+\caption{A power controller system of a processor.  
+The locations correspond to low and high frequency modes.} \label{fig:hsys}
+\end{figure}
+
+As illustrated in the paper many interesting hybrid systems are linear. For instance, the \textit{water-level monitor systems, Fischer's mutual exclusion algorithm, temperate control systems} can be modeled as linear hybrid systems. 
+We now discuss a different example shown in  Figure~\ref{fig:hsys} that models a power controller 
+of a processor described below.
+Consider a processor that can operate in two frequency modes, namely, the high and low frequency modes.
+The power consumption $P(t)$ of the processor is a function of time that increases at a constant rate $P_{high}$ and
+$P_{low}$ in the high and low frequency modes, respectively. 
+Assume that the processor may switch from low to high frequency mode due to some external factors such as the load in the 
+system. The power controller ensures that the total power consumed by the processor in 10 time units is atmost $P_{max}$. 
+
+In Figure~\ref{fig:hsys}, $x_1, x_2$ are timers that track the time spent in low and high frequency modes, respectively, in an interval of 10 time units.
+$p_1$ and $p_2$ record the total power consumed in the low and high frequency modes during a span of 10 time units.
+We require that the safety property $p_1 + p_2 \le P_{max}$ always holds in the system .
+Assume that $P_{low} \le P_{max}/10$ i.e, if the processor is run only in the low frequency mode then the property does hold.
+The hybrid system shown in Figure~\ref{fig:hsys} is clearly linear.
 
 \paragraph*{\textbf{Reachability Analysis}}
 
