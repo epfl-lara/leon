@@ -66,11 +66,25 @@ by the proposition $\shoot$. The robot detects a duck in a grid which a sensor $
 The robot initially starts at the grid position $(1,1)$ (left bottom).
 
 We first specify the assumptions on the environment $\phi_e = {\phi_i}^e \wedge {\phi_t}^e \wedge {\phi_g}^e$.
-${\phi_i}^e = \neg \duck$, i.e, initially there is not duck. 
-A duck never stays in a grid it always moving.
-${\phi_t}^e = \always(\bigwedge_{i,j} (r_{i,j} \wedge \duck \Rightarrrow \next \neg \duck))$.
+${\phi_i}^e = \neg \duck$ i.e, initially there is not duck. 
+A duck never stays in a grid it is continuously moving.
+${\phi_t}^e = \always ( \bigwedge_{i,j} (r_{ij} \wedge \duck \Rightarrow \next \neg \duck))$.
+${\phi_g}^e = \always \eventually true$.
 
- and a sensor that can detect Nemo.
-The sensor is 
-The sensors of the robot can detect \emph{Nemo}
-and 
+We now specify the behavior of the robot $\phi_s = {\phi_i}^s \wedge {\phi_t}^s \wedge {\phi_g}^s$.
+${\phi_i}^s = r_{1,1} \wedge \neg \shoot$ initially the robot scans the grid $(1,1)$ and does not shoot.
+${\phi_t}^s$ has three components the first specifies the possible transitions, the second specifies the
+mutual exclusion property that the robot scans atmost one square at a time and the final component 
+specifies that the robot should shoot when it finds the duck in a grid.
+%
+\begin{align}
+{\phi_t}^s = 
+\begin{cases}
+\begin{cases}
+\always (\bigwedge_{i,j} (r_{ij} \wedge j < 4 \Rightarrow r_{i(j+1)}) \wedge  \\
+\qquad (r_{ij} \wedge j=4 \wedge i<4 \Rightarrow r_{(i+1)1}) \wedge  \\
+\qquad (r_{ij} \wedge i=4 \wedge j=4 \Rightarrow r_{11}) 
+\end{cases} \\
+
+\end{cases}
+\end{align}
