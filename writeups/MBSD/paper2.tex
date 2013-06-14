@@ -46,7 +46,31 @@ $\phi_e$ and $\phi_s$ should have the following structure $\phi_i \wedge \phi_t 
 $\phi_i$ is a nontemporal formula defined over $X$ for $\phi_e$ and over $Y$ for $\phi_s$. 
 $\phi_t$ is a temporal formula of the form $\square B_i$ (always $B_i$) where $B_i$ is a formula 
 defined over $X \cup Y \cup \next X$ for $\phi_e$ and over $X \cup Y \cup \next X \cup \next Y$ for
-$\phi_s$. Finally, $\phi_g$ captures the goal invariants and is of the form $\always \eventually B_i$
+$\phi_s$. Finally, $\phi_g$ captures the invariants of the environment and the goal of the robot 
+and is of the form $\always \eventually B_i$
 where $B_i$ is defined over $X \cup Y$ for both $\phi_e$ and $\phi_s$.
 
+\newcommand{\shoot}{\mathit{a^{shoot}}}
+\newcommand{\duck}{\mathit{s^{duck}}}
 
+\textit{Duck Hunting:} The paper discusses an example in which a robot's task is find \emph{Nemo}.
+In this report we consider a slight different example in which the robot is stationary but
+it has to visually scan through the in the its perspective and look for ducks that may occasionally 
+fly through the space. The task of the robot is fire a shot directed towards the duck on detecting one.
+
+Assume that the robot has a 2D vision and the space in front of the robot is divided into a $4 \times 4$ grid.
+The robot scans the grid column by column starting from the left bottom. 
+The $(i,j)^{th}$ cell of the grid corresponds to a proposition $r_{ij}$.
+The robot is fitted with a gun and can direct a shot towards a target in a grid which can be activated 
+by the proposition $\shoot$. The robot detects a duck in a grid which a sensor $\duck$.
+The robot initially starts at the grid position $(1,1)$ (left bottom).
+
+We first specify the assumptions on the environment $\phi_e = {\phi_i}^e \wedge {\phi_t}^e \wedge {\phi_g}^e$.
+${\phi_i}^e = \neg \duck$, i.e, initially there is not duck. 
+A duck never stays in a grid it always moving.
+${\phi_t}^e = \always(\bigwedge_{i,j} (r_{i,j} \wedge \duck \Rightarrrow \next \neg \duck))$.
+
+ and a sensor that can detect Nemo.
+The sensor is 
+The sensors of the robot can detect \emph{Nemo}
+and 
