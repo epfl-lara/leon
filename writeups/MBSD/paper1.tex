@@ -117,7 +117,7 @@ The fixpoint iteration described above may not always converge. Since the hybrid
 the predicate transformers and time closures are convex polyhedra (after quantifier elimination).
 The paper proposes to compute an approximation (a super set) of the fixpoint by approximating the 
 union of polyhedra  using an abstract join operation $\bigsqcup$ which is defined as their \emph{convex hull}
-(as discussed in \cite{pcousot:1975}).
+(as discussed in \cite{pcousot:78}).
 To ensure convergence the paper proposes to use a widening operation $\wide$ at selected locations (that cut
 all the loops in the automaton) in every iteration. For any two polyhedra (or linear constraints) 
 $P,P'$, $P_1 \wide P_2$  is exactly those constraints of $P$ that are also satisfied by $P'$.
