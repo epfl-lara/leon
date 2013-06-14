@@ -1,0 +1,52 @@
+\newcommand{\next}{\bigcirc}
+\newcommand{\until}{\mathcal{\; U \;}}
+\newcommand{\eventually}{\diamond}
+\renewcommand{\eventually}{\diamondsuit}
+\newcommand{\always}{\square}
+
+\section{Paper 2: Temporal-Logic-Based Reactive Mission and Monitor Planning \cite{gazit:95}} \label{sec:paper2}
+
+The paper considers the problem of synthesizing transition systems for robotic motion from the 
+high-level specifications  provided in linear time temporal logic (LTL). The paper proposes  
+(a) a specification language that is a restriction of LTL for specifying the motion of a robot
+and also the environment in which it operates.  
+(b) a technique for automatically generating a discrete automaton for the robot motion, using the 
+existing approaches, that satisfies the specification of the robot when the environment behaves as specified. 
+(c) an algorithm for converting the generated discrete automaton to a hybrid automaton that interacts 
+continuously with the environment.
+(d) a compositional method for generating multirobot tasks using \emph{assume guarantee reasoning}.
+
+\textbf{Specifying the motion of a robot and the environments using GR(1) formula:}
+
+\textit{Robot Model:} Consider a robot is operating in a polygonal space $P$ that 
+has several partitions, namely, $P_1,P_2 \cdots P_n$. $p(t)$ is the position of the robot at time $t$
+and $u(t)$ is the control input which can be used to move the robot to the desired location. 
+$p(t) \in P \subseteq \real^2$ and $u(t) \in \real^2$. 
+$\{ r_1,\cdots,r_n \}$ is a set of propositions such that $r_i$ is $true$ iff the robot is in  partition $P_i$.
+The robot can perform $k$ actions given by $A$.  For all $1 \le i \le k$, a proposition $a_i$ is true if the
+action $i$ is being executed.
+Let $Y = \{ r_1,\cdots,r_n, a_1,\cdots,a_k \}$ denote the set of robot propositions.
+
+\textit{Environment Model:}
+The robot interacts with the environment through $m$ binary sensors whose values are captured by 
+the variables $X = \{ x_i \vbar 1 \le i \le m\}$. 
+The behavior of the environment is specified using a LTL formula over sensor the variables.
+
+\textit{Specification Language:} Let $AP = X \cup Y$  denote the set of atomic propositions.
+The syntax of the LTL formulas over the set of atomic proposition is given by the following grammar:
+\[ \varphi ::= \pi \in AP \vbar \neg \phi \vbar \phi \vee \phi \vbar  \next \phi \vbar \phi \until \phi  \]
+where $\next$ represents the next operator and $\until$ the until operator.
+Define  the "Eventually" operator $\eventually \phi$ as $true \until \phi$ and the 
+always operator $\always \phi$ as $\neg \eventually \neg \phi$.
+
+The paper focus on a special class of LTL formulas called \emph{generalized reactivity formula}(GR(1)) formula
+that have the following form: $\phi_e \Rightarrow \phi_s$  where $\phi_e$ is the assumption
+about the environment and $\phi_s$ is the desired behavior of the robot.
+$\phi_e$ and $\phi_s$ should have the following structure $\phi_i \wedge \phi_t \wedge \phi_g$ where
+$\phi_i$ is a nontemporal formula defined over $X$ for $\phi_e$ and over $Y$ for $\phi_s$. 
+$\phi_t$ is a temporal formula of the form $\square B_i$ (always $B_i$) where $B_i$ is a formula 
+defined over $X \cup Y \cup \next X$ for $\phi_e$ and over $X \cup Y \cup \next X \cup \next Y$ for
+$\phi_s$. Finally, $\phi_g$ captures the goal invariants and is of the form $\always \eventually B_i$
+where $B_i$ is defined over $X \cup Y$ for both $\phi_e$ and $\phi_s$.
+
+
