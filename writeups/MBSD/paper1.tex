@@ -8,12 +8,14 @@
 \newcommand{\invr}{\mathit{Inv}}
 \newcommand{\trans}{\mathit{(l,a,\mu,l')}}
 \newcommand{\reach}{\mapsto^*}
+\newcommand{\ftclosure}[2]{\langle #1 \rangle^{\nearrow}_{#2}}
+\newcommand{\btclosure}[2]{\langle #1 \rangle^{\swarrow}_{#2}}
 
 \section{Paper 1: The algorithmic analysis of hybrid systems \cite{Alur:95}} \label{sec:paper1}
 
 The article proposes and discusses general approaches for the automated analysis of \emph{linear} hybrid systems by extending the standard techniques for program analysis and model checking of simple transition systems. The paper first discusses three semi-decision procedures for reachability analysis of hybrid systems which is in general undecidable. Subsequently, the paper discusses a (semi-decidable) approach  for model checking arbitrary formulas belonging to the \emph{Timed Computation Tree Logic} (TCTL) which is an extension of CTL.
 
-\paragraph*{\textbf{Linear Hybrid Systems}} 
+\subsection{\textbf{Linear Hybrid Systems}} 
 
 %Linear hybrid systems are a restriction of general hybrid systems in which the transition relations and \emph{evolution} functions (also called \emph{activities}) are linear.
 %Formally, 
@@ -21,19 +23,22 @@ A hybrid system $H$ is a tuple $(\loc,\var,\lab,\edg,\act,\invr)$ where,
 $\loc$ is a set of locations and $\var$ is a set of variables. 
 Let $V= \var \mapsto \real$ denote a set of valuations which are functions mapping variables to real values.
 $\lab$ is a set of labels (not very significant for this discussion). $\edg$ is a set of transitions of the form $\trans$ with a source location $l \in \loc$, target location $l' \in \loc$, a label $a \in \lab$ and a transition relation $\mu \subseteq V \times V$ that captures the changes in the values of the variables during the transition. 
-$\act \in \loc \mapsto \evol$ assigns each location to an evolution function $\evol = V \times \real^+ \mapsto V$ that describe the evolution of the variables with respect to the time 
+$\act \in \loc \mapsto \evol$ assigns each location to an evolution function $\evol = V \times \real^+ \mapsto V$ that describe the evolution of the variables with respect to the time
 \footnote{The paper uses a more general definition for the evolution functions but since the focus is only on \emph{time deterministic systems} we use this simplified formalization in this report}. 
+We use $\act_l$ to denote the activity of a location $l$.
 Finally, each location $l$ is associated with an invariant given by $\invr(l) \subseteq V$ that characterizes the set of allowed valuations for the location $l$.
 
 The states $\Sigma$ of a hybrid system is the set of location, valuation pairs i.e, $\Sigma = \loc \times V$.
 Define a region $R$ as a subset of states.
+We say that \emph{time can progress} til time $t$ from a valuation $v$ in a location $l$ denoted as 
+$tcp_l(v,t)$ iff $\forall 0 \le t' \le t. \; \act_l(v,t') \in \invr(l)$.
 A run of a hybrid system is a sequence of states $\sigma_0 \mapsto^{t_0} \sigma_1 \mapsto^{t_1} \sigma_2 \mapsto^{t_2} \cdots$ 
 where, for all $i \ge 0$, $\sigma_i = (l_i,v_i) \in \Sigma$, $t_i \in \real^+$,
-$\forall 0 \le t \le t_i. \act(l_i)(v_i,t) \in \invr(l_i)$ and
+$tcp_{l_i}(v_i,t_i)$ and
 $\sigma_{i+1}$ is the transition successor of $\sigma_i$.
 
 The paper defines a linear hybrid system as a hybrid system in which:
-(a) for each location $l$, $\act(l)(v,t) = v'$ where for all $x \in \var$, $v'(x) = v(x) + k_x t$. That is, each variable $x$ changes with a constant rate $k_x$ with respect to time.
+(a) for each location $l$, $\act_l(v,t) = v'$ where for all $x \in \var$, $v'(x) = v(x) + k_x t$. That is, each variable $x$ changes with a constant rate $k_x$ with respect to time.
 (b) for each location $l$ the invariant $\invr(l)$ is a linear formula over $\var$.
 (c) For each transition $e \in \edg$, the transition relation $\mu$ is a guarded set of nondeterministic assignments of the form $\psi \Rightarrow \{ x := [\alpha_x,\beta_x] \vbar x \in \var \}$ for some real constants $\alpha_x$ and $\beta_x$.
 
@@ -58,7 +63,52 @@ We require that the safety property $p_1 + p_2 \le P_{max}$ always holds in the 
 Assume that $P_{low} \le P_{max}/10$ i.e, if the processor is run only in the low frequency mode then the property does hold.
 The hybrid system shown in Figure~\ref{fig:hsys} is clearly linear.
 
-\paragraph*{\textbf{Reachability Analysis}}
+\subsection{\textbf{Reachability Analysis}}
 
+The reachability analysis determines if a state $\sigma'$ is reachable from a state $\sigma$ i.e, if there exists
+a run of H that starts in $\sigma$ and ends in $\sigma'$. If $R \subseteq \Sigma$ is unreachable from the initial state of the system then $\Sigma \setminus R$ is an invariant of the system.
+Reachability problem of linear hybrid systems in undecidable. The paper proposes 3 semi-decision procedures for the reachability which are discussed below.
+
+\paragraph*{\textbf{Forward and Backward analysis using Predicate Transformers}}
+
+Define the time closure $\ftclosure{P}{l}$ of a location $l$ and a predicate $P \subseteq V$ as the set
+$\{ v' \vbar \exists v \in V,t \in \real^+. v \in P \wedge tcp_l(v,t) \wedge v' = \act_l(v,t) \}$.
+Similarly, define backwards time closure $\btclosure{P}{l}$ as the dual set 
+$\{ v' \vbar \exists v \in V,t \in \real^+. v \in P \wedge tcp_l(v',t) \wedge v = \act_l(v',t) \}$.
+
+Define the post operator of a transition $e = \trans$ as 
+$post_e(P) = \{ v' \vbar \exists v \in V. v \in P \cap \invr(l) \wedge (v,v') \in \mu \wedge v' \in \invr(l') \}$.
+The pre operator is defined in a dual way.
+The operations are extended to regions $R \subseteq \Sigma$ in a point-wise manner.
+
+The set of reachable states from the initial states $I = (l,I_l)$ (where $l$ is the initial location
+and $I_l \subseteq \invr(l)$) 
+is defined as the least fix point of the set of equations 
+$X_l = \ftclosure{I_l \cup \bigcup_{e=(l',a,\mu,l) \in \edg} post_e(X_{l'})}{l}$.
+
+For the example shown in Figure~\ref{fig:hsys}, we can compute iteratively the set of reachable states from 
+the initial state $(1,x_1=x_2=p_1=p_2=0)$ as illustrated below (we denote states using logical formulas):
+%
+\begin{align*}
+X_{1,1} & = \ftclosure{x_1=x_2=p_1=p_2=0 \vee post_{(2,1)}(X_{2,0})}{l} \\
+		& = \exists x_1',x_2',p_1',p_2'. t \in \real^+. \; x_1=x_2=p_1=p_2=0 \wedge p_2' = p_2 \wedge \\
+		& \qquad x_1' = x_1 + t \wedge x_1 \le x_1' \le 10 \wedge p_1' = p_1 + t P_{low} \wedge x_2' = x_2\\
+		& = 0 \le x_1' \le 10 \wedge x_2' = p_2' = 0 \wedge p_1' = x_1' P_{low} \\
+X_{2,1} &= \ftclosure{false \vee post_{(1,2)}(X_{1,0})}{l} = false  \\
+X_{2,2} & = 0 \le x_1' \le 10 \wedge 0 \le x_2' \le 10 - x_1' \wedge p_1' = x_1'P_{low}  \\
+		& \qquad \wedge p_2' = x_2' P_{high} \wedge x_1'P_{low} + x_2'P_{high} \le P_{max} \\
+X_{1,3} & = 0 \le x_1' \le 10 \wedge 0 \le x_2' \le 10 \wedge p_1' = x_1'P_{low}  \\
+		& \qquad \wedge p_2' = 0 \wedge x_1'P_{low} \le P_{max}
+\end{align*}
+%
+The fixpoint iteration converges at the third iteration with $X_{1,3}$ and $X_{2,3} = X_{2,2}$. 
+It can be seen that the fixpoint $X = \bigvee_{l \in \loc} (pc = l \wedge X_l)$ implies the 
+safety property $p_1 + p_2 \le P_{max}$ proving that it is an invariant (the implication holds
+only under the assumption that $10P_{low} \le P_{max}$).
+
+Similarly, it is possible to perform a backward analysis starting from the negation of the safety property
+which would be $p_1 + p_2 > P_{max}$ and show that the intersection with the initial state is false.
+For this example, the backward fixpoint intersected with the initial state would yield $10 P_{low} > P_{max}$
+(details elided for brevity) which by our assumption is not satisfiable.
 
 
