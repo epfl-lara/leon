@@ -12,6 +12,7 @@
 \newcommand{\btclosure}[2]{\langle #1 \rangle^{\swarrow}_{#2}}
 \newcommand{\lfp}{\mathit{lfp}}
 \newcommand{\wide}{\nabla}
+\newcommand{\pred}{\triangleright}
 
 \section{Paper 1: The algorithmic analysis of hybrid systems \cite{Alur:95}} \label{sec:paper1}
 
@@ -122,5 +123,50 @@ all the loops in the automaton) in every iteration. For any two polyhedra (or li
 $P,P'$, $P_1 \wide P_2$  is exactly those constraints of $P$ that are also satisfied by $P'$.
 
 \textbf{Minimization}
+This approach for reachability analysis computes the coarsest bisimulation of the transition system 
+represented by the hybrid system with respect to a region $R_F$ (if one exists). The approach starts 
+with the initial partition $(R_F,\Sigma - R_F)$ and checks if there exists a region that is not \emph{stable}
+(a region is stable if all of its (time/transition) successor states belong to the same region). 
+If not then $R$ is split into smaller states.
 
+\textbf{Model checking}
 
+The paper uses timed computation tree logic \emph{TCTL} to specify real time properties of hybrid systems.
+Let $C$ be a set of clocks that are disjoint from $\var$. The TCTL formulas are given by the following grammar: 
+$\phi ::= \psi \vbar \neg \phi \vbar \phi_1 \vee \phi_2 \vbar z.\phi \vbar \phi_1 \exists \phi_2 \vbar \phi_1 \forall \phi_2$
+where, $\psi$ is a state predicate defined over $\var \cup C$, $z \in C$ is a clock variable,
+$\phi_1 \exists \phi_2$ is true if there exists a future in which $\phi_1$ holds until $\phi_2$ 
+and $\phi_1 \forall \phi_2$ is true if in all futures $\phi_1$ holds until $\phi_2$.
+
+The semantics of $\exists$ and $\forall$ can be defined using the fixpoint equations in the standard way.
+For the purpose of this report, we present the fixpoint characterization only for 
+the \emph{possibly} operator $true \exists \phi$.
+$true \exists \phi = \bigcup_{i \ge 0} R_i$ where,
+$R_0 = R_{\phi}$ the set of states satisfying $\phi$;
+for all $i \ge 0$, $R_{i+1} = R_i \cup (\pred R_i)$ where $\pred R_i$ is the
+set of predecessor states of $R_i$ defined as the set 
+$\{ (l,v) \vbar \exists (l',v') \in R_i, t \in \real^+. \; (l,v) \mapsto^t (l',v') \wedge tcp_l(v,t) \}$
+\footnote{This definition is an adaptation of the definition for $\phi_1 \exists \phi_2$ given in the paper 
+to the \emph{possibly} operation}.
+
+For our example, we illustrate this approach for the formula $true \exists \;(p_1 + p_2 > P_{max})$ which 
+states that exists a future in which the total power consumed is more than $P_{max}$.
+Let $P_{max} = 10, P_{low} = 1, P_{high} = 2$.
+We use formulas to represent states in the following.
+%
+\begin{align*}
+R_0 &= (pc = 1 \wedge p_1 + p_2 > 10 \wedge x_1 \le 10) \vee \\
+	& (pc = 2 \wedge p_1 + p_2 > 10 \wedge x_2 \le 10 - x_1 \wedge x_1+2x_2 \le 10 \\
+R_1 &= R_0 \vee false \vee \exists x_1',x_2',p_1',p_2',t. \; (pc=1 \wedge t \ge 0 \wedge \\
+	& x_2'=0 \wedge p_1'+p_2'>10 \wedge x_2' \le 10 - x_1' \wedge x_1'+2x_2' \le 10 \wedge \\
+	& x_1' = x_1 + t \wedge p_1' = p_1 + t \wedge x_2' = x_2 \wedge p_2' = p_2 \\
+	&= R_0 \vee (pc=1 \wedge p_1+p_2 >x_1 \wedge x_2 = 0) \\
+R_2 &= R_1 \vee false	= R_1
+\end{align*}
+%
+Thus, the fixpoint iteration terminates at iteration 3. The set of all states that satisfy the 
+CTL formula is given by the state predicate $R_1$. Notice that the initial state  
+$(pc=1 \wedge p_1=p_2=x_1=x_2=0)$ intersected with $R_1$ is false i.e, the CTL formula is never
+satisfiable starting from the initial state, which proves that $(p_1 + p_2 \le P_{max})$ is an invariant.
+Interestingly, other initial states that satisfy $R_1$ may lead to the violation of the invariant
+e.g. $(pc=1 \wedge p_1=p_2=10 \wedge x_1=x_2=0)$.
