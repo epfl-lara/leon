@@ -101,7 +101,9 @@ object TypeTrees {
         Some(classDefToClassType(found.get))
       }
     }
-
+    case (TupleType(args1), TupleType(args2)) =>
+      val args = (args1 zip args2).map(p => leastUpperBound(p._1, p._2))
+      if (args.forall(_.isDefined)) Some(TupleType(args.map(_.get))) else None
     case (o1, o2) if (o1 == o2) => Some(o1)
     case (o1,BottomType) => Some(o1)
     case (BottomType,o2) => Some(o2)
