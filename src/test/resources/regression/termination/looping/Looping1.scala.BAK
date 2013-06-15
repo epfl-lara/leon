@@ -1,0 +1,33 @@
+import leon.Utils._
+
+object ComplexChains {
+  
+  abstract class List
+  case class Cons(head: Int, tail: List) extends List
+  case class Nil extends List
+
+  def looping1(list: List): List = list match {
+    case Cons(head, tail) if head > 0 => looping2(tail)
+    case Cons(head, tail) if head < 0 => looping3(tail)
+    case _ => looping4(Cons(1, list))
+  }
+
+  def looping2(list: List): List = list match {
+    case Cons(head, tail) if head > 0 => looping1(tail)
+    case _ => looping4(list)
+  }
+
+  def looping3(list: List): List = list match {
+    case Cons(head, tail) if head < 0 => looping1(tail)
+    case _ => looping2(Cons(1, list))
+  }
+
+  def looping4(list: List): List = list match {
+    case Cons(head, tail) if head == 0 => looping4(tail)
+    case Cons(_, Cons(_, tail)) => looping1(Cons(1, list))
+    case Cons(_, tail) => looping3(Nil())
+    case Nil() => Nil()
+  }
+}
+
+// vim: set ts=4 sw=4 et:
