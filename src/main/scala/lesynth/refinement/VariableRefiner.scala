@@ -19,7 +19,7 @@ import insynth.util.logging.HasLogger
 // each variable of super type can actually have a subtype
 // get sine declaration maps to be able to refine them  
 class VariableRefiner(directSubclassMap: Map[ClassType, Set[ClassType]], variableDeclarations: Seq[LeonDeclaration],
-  classMap: Map[Identifier, ClassType], reporter: Reporter = new DefaultReporter) extends HasLogger {  
+  classMap: Map[Identifier, ClassType], reporter: Reporter = new SilentReporter) extends HasLogger {  
   
     // map from identifier into a set of possible subclasses
   private var variableRefinements: MutableMap[Identifier, MutableSet[ClassType]] = MutableMap.empty

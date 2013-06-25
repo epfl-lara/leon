@@ -41,8 +41,13 @@ case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abductio
                 
                 val codeGenEval = new CodeGenEvaluator(sctx.context, sctx.program)
                 def getInputExamples = {
-                  () => getDataGenInputExamples(codeGenEval, p, 
-                		50, 2000, Some(p.as)
+                  () =>
+                    getDataGenInputExamples(codeGenEval, p, 
+                		200, 6000, Some(p.as)) ++
+                    getDataGenInputExamplesRandomIntegers(codeGenEval, p, 
+                		200, 6000, Some(p.as)
+                		// bound the random geenerator
+                		,5
                 	)
                 }
                 
@@ -81,8 +86,9 @@ case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abductio
           }
         })
       case _ =>
-        throw new RuntimeException("should not")
+        throw new RuntimeException("Rule is not applicable for more than one output variable.")
         Nil
     }
+    
   }
 }

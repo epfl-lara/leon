@@ -47,7 +47,7 @@ case class CodeGenExampleRunner(program: Program, funDef: FunDef, ctx: LeonConte
   override def evaluate(candidateInd: Int, exampleInd: Int) = {
     val closure = candidateClosures(candidateInd)    
     
-    fine("Index evaluate candidate [%d]%s, for [%d]%s.".format(
+    finest("Index evaluate candidate [%d]%s, for [%d]%s.".format(
       candidateInd, candidates(candidateInd).prepareExpression, exampleInd, examples(exampleInd)
 	))
     
@@ -86,15 +86,15 @@ case class CodeGenExampleRunner(program: Program, funDef: FunDef, ctx: LeonConte
     try {
 	    evalClosure(args) match {
 	      case Successful(BooleanLiteral(true)) =>
-	        fine("EvaluationSuccessful(true) for " + args)
+	        finest("EvaluationSuccessful(true) for " + args)
 	        true
 	      case m =>
-	        fine("Eval failed: " + m)
+	        finest("Eval failed: " + m)
 	        false
 	    }
     } catch {
       case e: StackOverflowError =>
-        fine("Eval failed: " + e)
+        finest("Eval failed: " + e)
         false        
     }
   }
@@ -127,6 +127,7 @@ case class CodeGenExampleRunner(program: Program, funDef: FunDef, ctx: LeonConte
       pair => evaluate(closure, pair._1)
     )
     
+    fine("(passed.size, failed.size): " + (passed.size, failed.size))
     (passed.size, passed map (_._2))
   }
 

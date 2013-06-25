@@ -12,6 +12,8 @@ import leon.purescala.Trees._
 
 import insynth.leon._
 
+import lesynth.refinement._
+
 class VariableRefinerTest extends FunSpec with GivenWhenThen {    
   
   val listClassId = FreshIdentifier("List")

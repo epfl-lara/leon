@@ -13,25 +13,34 @@ import leon.plugin.ExtractionPhase
 import insynth.leon.loader.LeonLoader
 import insynth.util.logging.HasLogger
 
+/**
+ * Class used for filtering out unnecessary candidates during the search
+ */
 class Filter(program: Program, holeFunDef: FunDef, refiner: VariableRefiner) extends HasLogger {      
-  
+    
   // caching of previously filtered expressions
   type FilterSet = HashSet[Expr]
   private var seenBranchExpressions: FilterSet = new FilterSet()
   
+  /**
+   * expr - expression to check
+   * funDefArgs - list of identifiers according to which well ordering is checked
+   */
   def isAvoidable(expr: Expr, funDefArgs: List[Identifier]) = {
     finest(
       "Results for refining " + expr + ", are: " +
       " ,isCallAvoidableBySize(expr) " + isCallAvoidableBySize(expr, funDefArgs) +
       " ,hasDoubleRecursion(expr) " + hasDoubleRecursion(expr) +
       " ,isOperatorAvoidable(expr) " + isOperatorAvoidable(expr) +
-      " ,isUnecessaryInstanceOf(expr) " + isUnecessaryInstanceOf(expr)
+      " ,isUnecessaryInstanceOf(expr) " + isUnecessaryInstanceOf(expr) +
+  		", isUnecessaryStructuring(expr) " + isUnecessaryStructuring(expr)
     )
     if (seenBranchExpressions contains expr) {
       true
     } else {
 	    val result = isCallAvoidableBySize(expr, funDefArgs) || hasDoubleRecursion(expr) ||
-  									isOperatorAvoidable(expr) || isUnecessaryInstanceOf(expr)
+  									isOperatorAvoidable(expr) || isUnecessaryInstanceOf(expr) ||
+  									isUnecessaryStructuring(expr)
   									
 			// cache results
 			if (result) {
@@ -115,6 +124,22 @@ class Filter(program: Program, holeFunDef: FunDef, refiner: VariableRefiner) ext
   	found
   }
   
+  // removing checking instance of fields (e.g. x.field.isInstanceOf[..]) - this is deemed unecessary
+  def isUnecessaryStructuring(expr: Expr) = {
+    var found = false
+    
+    def isCaseClassSelector(expr: Expr) = expr match {    
+	    case CaseClassInstanceOf(_, _: CaseClassSelector) =>
+	    	found = true
+	    	None
+	    case _ => None
+    }
+    
+    TreeOps.searchAndReplace(isCaseClassSelector)(expr)
+    
+    found
+  }
+  
   def isOperatorAvoidable(expr: Expr) = expr match {
     case And(expr1 :: expr2) if expr1 == expr2 => true 
     case Or(expr1 :: expr2) if expr1 == expr2 => true 
@@ -133,6 +158,9 @@ class Filter(program: Program, holeFunDef: FunDef, refiner: VariableRefiner) ext
         case _ => false
       }
     expr match {
+      // if we check instance of an constructor we know that it is a constant
+//      case CaseClassInstanceOf(_, _: CaseClass) =>
+//        true
 	    case CaseClassInstanceOf(classDef, innerExpr)
 	    	if isOfClassType(innerExpr, classDef) =>
 	      true
