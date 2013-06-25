@@ -42,7 +42,7 @@ object MergeSort {
 //  } ensuring(res => contents(list) == contents(res.fst) ++ contents(res.snd))
   
   def split(list: List): Pair = {
-    splithelper(Nil(),list,size(list)/2)
+    splithelper(Nil(),list,2)
   } ensuring(res => contents(list) == contents(res.fst) ++ contents(res.snd))
 
   def merge(aList : List, bList : List) : List = {

@@ -20,18 +20,11 @@ object Addresses {
 	  case Cons(head, tail) => 1 + size(tail)
 	}
 	
-  def allPrivate(l: List): Boolean = l match {
-    case Nil => true
+  def hasPrivate(l: List): Boolean = l match {
+    case Nil => false
     case Cons(a, l1) =>
-      if (a.priv) allPrivate(l1)
-      else false
-  }
-	
-  def allBusiness(l: List): Boolean = l match {
-    case Nil => true
-    case Cons(a, l1) =>
-      if (a.priv) false
-      else allBusiness(l1)
+      if (a.priv) true
+      else hasPrivate(l1)
   }
 
   case class AddressBook(business : List, pers : List)
@@ -86,7 +79,7 @@ object Addresses {
 		choose {
     (res: AddressBook) =>
 		  size(res) == size(l) &&
-		  allPrivate(res.pers) && allBusiness(res.business)
+		  hasPrivate(res.pers) && !hasPrivate(res.business)
   }
   
 }

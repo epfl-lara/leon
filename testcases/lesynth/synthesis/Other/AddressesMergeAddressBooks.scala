@@ -3,21 +3,16 @@ import leon.Annotations._
 import leon.Utils._
 
 object Addresses {
-  case class Info(
-    address: Int,
-    zipcode: Int,
-    phoneNumber: Int
-  )
   
-  case class Address(info: Info, priv: Boolean)
+  case class Address(a: Int, b: Int, priv: Boolean)
   
   sealed abstract class List
   case class Cons(a: Address, tail:List) extends List
   case object Nil extends List
 
-  def content(l: List) : Set[Address] = l match {
+  def setA(l: List) : Set[Address] = l match {
     case Nil => Set.empty[Address]
-    case Cons(addr, l1) => Set(addr) ++ content(l1)
+    case Cons(a, l1) => Set(a) ++ setA(l1)
   }
   
 	def size(l: List) : Int = l match {
@@ -41,15 +36,13 @@ object Addresses {
 
   case class AddressBook(business : List, pers : List)
   
-  def size(ab: AddressBook): Int = size(ab.business) + size(ab.pers)
-  	  
-  	  def addToPers(ab: AddressBook, adr: Address) = AddressBook(ab.business, Cons(adr, ab.pers))
-  	  
-  	  def addToBusiness(ab: AddressBook, adr: Address) = AddressBook(Cons(adr, ab.business), ab.pers)
-  	    		 
-  def isEmpty(ab: AddressBook) = size(ab) == 0
+  def addToPers(ab: AddressBook, adr: Address) = AddressBook(ab.business, Cons(adr, ab.pers))
   
-  def content(ab: AddressBook) : Set[Address] = content(ab.pers) ++ content(ab.business)
+  def addToBusiness(ab: AddressBook, adr: Address) = AddressBook(Cons(adr, ab.business), ab.pers)
+  
+  def size(ab: AddressBook): Int = size(ab.business) + size(ab.pers)
+  
+  def isEmpty(ab: AddressBook) = size(ab) == 0
   
   def addressBookInvariant(ab: AddressBook) = allPrivate(ab.pers) && allBusiness(ab.business)
   

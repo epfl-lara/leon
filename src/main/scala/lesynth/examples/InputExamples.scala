@@ -1,22 +1,21 @@
 package lesynth
 package examples
 
-import leon.{ Main => LeonMain, Reporter, DefaultReporter, SilentReporter, Settings, LeonContext }
-import leon.solvers.{ Solver, TimeoutSolver }
-import leon.solvers.z3.{ FairZ3Solver }
-import leon.verification.AnalysisPhase
-import leon.plugin.ExtractionPhase
-import leon.purescala.TypeTrees.{ ClassType, CaseClassType, Int32Type }
-import leon.purescala.Trees.{ IntLiteral, CaseClass }
-import leon.purescala.Definitions.{ FunDef, VarDecls }
+import leon.purescala.TypeTrees._
+import leon.purescala.Trees._
+import leon.purescala.TreeOps
 import leon.purescala.Common.Identifier
 import leon.evaluators.Evaluator
-import leon.purescala.DataGen.findModels
 import leon.synthesis.Problem
+import leon.purescala.DataGen
 
 import insynth.leon.loader.{ HoleExtractor, LeonLoader }
 
 object InputExamples {
+  import DataGen._
+  
+  val rnd = new scala.util.Random(System.currentTimeMillis)
+  val MAX_INT = 1000
 
   def getDataGenInputExamples(evaluator: Evaluator, p: Problem,
     numOfModels: Int, numOfTries: Int, _forcedFreeVars: Option[Seq[Identifier]]) = {
@@ -24,6 +23,26 @@ object InputExamples {
       forcedFreeVars = _forcedFreeVars)
 
     models.toList
+  }
+  
+  def getDataGenInputExamplesRandomIntegers(evaluator: Evaluator, p: Problem,
+    numOfModels: Int, numOfTries: Int, _forcedFreeVars: Option[Seq[Identifier]],
+    bound: Int = MAX_INT) = {
+    import TreeOps._
+    
+    val models = findModels(p.pc, evaluator, numOfModels, numOfTries,
+      forcedFreeVars = _forcedFreeVars)
+
+    def foundInteger(x: Expr) = x match {
+      case _:IntLiteral => Some(IntLiteral(rnd.nextInt(bound)))
+      case _ => None
+    }
+      
+    models.toList.map( innerMap =>
+      innerMap.map( innerEl => innerEl match {
+        case (id, expr) => (id, searchAndReplace(foundInteger)(expr))
+      })
+    )
   }
 
   def getFixedInputExamples(argumentIds: Seq[Identifier], loader: LeonLoader) = {

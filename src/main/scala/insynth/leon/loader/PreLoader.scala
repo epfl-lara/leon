@@ -35,35 +35,35 @@ object PreLoader extends ( (Boolean) => List[Declaration] ) {
   def getAnd =
     // case And(args) if args.isEmpty => BooleanLiteral(true)    
     makeDeclaration(
-      makeNAE("And", { case List(arg1, arg2) => And( List(arg1, arg2) ) }),
+      makeNAE("And", (args: List[Expr]) => And( args )),
       FunctionType( List(BooleanType, BooleanType), BooleanType )
-    )    
+    )
     
   def getNot =
     // case Not(arg) => rec(ctx, arg) match {
     makeDeclaration(
-      makeNAE( "Not", { case List(arg) => Not( arg ) } ),
+      makeNAE( "Not", (args: List[Expr]) => Not( args.head ) ),
       FunctionType( List(BooleanType), BooleanType )
     )
     
   def getOr =
     // case Or(args) if args.isEmpty => BooleanLiteral(false)    
     makeDeclaration(
-      makeNAE( "Or", { case List(arg1, arg2) => Or( List(arg1, arg2) ) } ),
+      makeNAE( "Or", (args: List[Expr]) => Or( args ) ),
       FunctionType( List(BooleanType, BooleanType), BooleanType )
     )  
     
   def getImplies =
     // case Implies(l, r) => (rec(ctx, l), rec(ctx, r)) match {
     makeDeclaration(
-      makeNAE( "=>", { case List(left, right) => Implies( left, right ) } ),
+      makeNAE( "=>", (args: List[Expr]) => Implies( args(0), args(1) ) ),
       FunctionType( List(BooleanType, BooleanType), BooleanType )
     ) 
     
   def getIff =
     //case Iff(le, re) => (rec(ctx, le), rec(ctx, re)) match {
     makeDeclaration(
-      makeNAE( "<=>", { case List(left, right) => Iff( left, right ) } ),
+      makeNAE( "<=>", (args: List[Expr]) => Iff( args(0), args(1) ) ),
       FunctionType( List(BooleanType, BooleanType), BooleanType )
     ) 
     
@@ -72,7 +72,7 @@ object PreLoader extends ( (Boolean) => List[Declaration] ) {
     yieldDeclarationForTypes(listOfInstanceTypes) {
       x: LeonType =>
 	    makeDeclaration(
-	      makeNAE( "=", { case List(left, right) => Equals( left, right ) } ),
+	      makeNAE( "=", (args: List[Expr]) => Equals( args(0), args(1) ) ),
 	      FunctionType( List(x, x), BooleanType ),
 	      true
 	    ) 
@@ -81,32 +81,32 @@ object PreLoader extends ( (Boolean) => List[Declaration] ) {
   def getArithmeticOps = {
 	    // case Plus(l, r) => (rec(ctx, l), rec(ctx, r)) match {
 	    makeDeclaration(
-	      makeNAE( "+", { case List(left, right) => Plus( left, right ) } ),
+	      makeNAE( "+", (args: List[Expr]) => Plus( args(0), args(1) ) ),
 	      FunctionType( List(Int32Type, Int32Type), Int32Type )
 	    ) ::
 	    // case Minus(l, r) => (rec(ctx, l), rec(ctx, r)) match {
 	    makeDeclaration(
-	      makeNAE( "-", { case List(left, right) => Minus( left, right ) } ),
+	      makeNAE( "-", (args: List[Expr]) => Minus( args(0), args(1) ) ),
 	      FunctionType( List(Int32Type, Int32Type), Int32Type )
 	    ) ::
 	    // case UMinus(e) => rec(ctx, e) match {
 	    makeDeclaration(
-	      makeNAE( "UMinus", { case List(e) => UMinus( e ) } ),
+	      makeNAE( "UMinus", (args: List[Expr]) => UMinus( args.head ) ),
 	      FunctionType( List(Int32Type), Int32Type )
 	    ) ::
 	  	//case Times(l, r) => (rec(ctx, l), rec(ctx, r)) match {
 	    makeDeclaration(
-	      makeNAE( "*", { case List(left, right) => Times( left, right ) } ),
+	      makeNAE( "*", (args: List[Expr]) => Times( args(0), args(1) ) ),
 	      FunctionType( List(Int32Type, Int32Type), Int32Type )
 	    ) ::
 	    // case Division(l, r) => (rec(ctx, l), rec(ctx, r)) match {
 	    makeDeclaration(
-	      makeNAE( "/", { case List(left, right) => Division( left, right ) } ),
+	      makeNAE( "/", (args: List[Expr]) => Division( args(0), args(1) ) ),
 	      FunctionType( List(Int32Type, Int32Type), Int32Type )
 	    ) ::
 	    // case Modulo(l,r) => (rec(ctx,l), rec(ctx,r)) match {
 	    makeDeclaration(
-	      makeNAE( "%", { case List(left, right) => Modulo( left, right ) } ),
+	      makeNAE( "%", (args: List[Expr]) => Modulo( args(0), args(1) ) ),
 	      FunctionType( List(Int32Type, Int32Type), Int32Type )
 	    ) :: Nil
     }
@@ -114,28 +114,28 @@ object PreLoader extends ( (Boolean) => List[Declaration] ) {
   def getLessThan =
     // case LessThan(l,r) => (rec(ctx,l), rec(ctx,r)) match {
     makeDeclaration(
-      makeNAE( "<", { case List(left, right) => LessThan( left, right ) } ),
+      makeNAE( "<", (args: List[Expr]) => LessThan( args(0), args(1) ) ),
       FunctionType( List(Int32Type, Int32Type), BooleanType )
     ) 
     
   def getGreaterThan =
     // case GreaterThan(l,r) => (rec(ctx,l), rec(ctx,r)) match {
     makeDeclaration(
-      makeNAE( ">", { case List(left, right) => GreaterThan( left, right ) } ),
+      makeNAE( ">", (args: List[Expr]) => GreaterThan( args(0), args(1) ) ),
       FunctionType( List(Int32Type, Int32Type), BooleanType )
     ) 
     
   def getLessEquals =
     // case LessEquals(l,r) => (rec(ctx,l), rec(ctx,r)) match {
     makeDeclaration(
-      makeNAE( "<=", { case List(left, right) => LessEquals( left, right ) } ),
+      makeNAE( "<=", (args: List[Expr]) => LessEquals( args(0), args(1) ) ),
       FunctionType( List(Int32Type, Int32Type), BooleanType )
     ) 
     
   def getGreaterEquals =
     // case GreaterEquals(l,r) => (rec(ctx,l), rec(ctx,r)) match {
     makeDeclaration(
-      makeNAE( ">=", { case List(left, right) => GreaterEquals( left, right ) } ),
+      makeNAE( ">=", (args: List[Expr]) => GreaterEquals( args(0), args(1) ) ),
       FunctionType( List(Int32Type, Int32Type), BooleanType )
     ) 
 
@@ -146,7 +146,7 @@ object PreLoader extends ( (Boolean) => List[Declaration] ) {
     yieldDeclarationForTypes(listOfInstanceTypes) {
       x: LeonType =>
 	    makeDeclaration(
-	      makeNAE( "SetUnion", { case List(left, right) => SetUnion( left, right ) } ),
+	      makeNAE( "SetUnion", (args: List[Expr]) => SetUnion( args(0), args(1) ) ),
 	      FunctionType( List(SetType(x), SetType(x)), SetType(x) )
 	    )       
     } ++
@@ -154,7 +154,7 @@ object PreLoader extends ( (Boolean) => List[Declaration] ) {
     yieldDeclarationForTypes(listOfInstanceTypes) {
       x: LeonType =>
 	    makeDeclaration(
-	      makeNAE( "SetIntersection", { case List(left, right) => SetIntersection( left, right ) } ),
+	      makeNAE( "SetIntersection", (args: List[Expr]) => SetIntersection( args(0), args(1) ) ),
 	      FunctionType( List(SetType(x), SetType(x)), SetType(x) )
 	    )       
     } ++
@@ -162,7 +162,7 @@ object PreLoader extends ( (Boolean) => List[Declaration] ) {
     yieldDeclarationForTypes(listOfInstanceTypes) {
       x: LeonType =>
 	    makeDeclaration(
-	      makeNAE( "SetDifference", { case List(left, right) => SetDifference( left, right ) } ),
+	      makeNAE( "SetDifference", (args: List[Expr]) => SetDifference( args(0), args(1) ) ),
 	      FunctionType( List(SetType(x), SetType(x)), SetType(x) )
 	    )       
     } ++
@@ -170,7 +170,7 @@ object PreLoader extends ( (Boolean) => List[Declaration] ) {
     yieldDeclarationForTypes(listOfInstanceTypes) {
       x: LeonType =>
 	    makeDeclaration(
-	      makeNAE( "ElementOfSet", { case List(left, right) => ElementOfSet( left, right ) } ),
+	      makeNAE( "ElementOfSet", (args: List[Expr]) => ElementOfSet( args(0), args(1) ) ),
 	      FunctionType( List(x, SetType(x)), BooleanType )
 	    )       
     } ++
@@ -178,7 +178,7 @@ object PreLoader extends ( (Boolean) => List[Declaration] ) {
     yieldDeclarationForTypes(listOfInstanceTypes) {
       x: LeonType =>
 	    makeDeclaration(
-	      makeNAE( "SetCardinality", { case List(set) => SetCardinality( set ) } ),
+	      makeNAE( "SetCardinality", (args: List[Expr]) => SetCardinality( args(0) ) ),
 	      FunctionType( List(SetType(x)), Int32Type )
 	    )       
     }
@@ -196,7 +196,10 @@ object PreLoader extends ( (Boolean) => List[Declaration] ) {
     yieldDeclarationForTypes(listOfInstanceTypes) {
       x: LeonType =>
 	    makeDeclaration(
-	      makeNAE( "If", { case List(cond: Expr, then: Expr, elze: Expr) => IfExpr(cond, then, elze) } ),
+	      makeNAE( "If", (args: List[Expr]) => args match {
+	        case List(cond, then, elze) => IfExpr(cond, then, elze)
+	        case _ => throw new RuntimeException
+	      }),
 	      FunctionType( List(BooleanType, x, x), x )
 	    )       
     }
