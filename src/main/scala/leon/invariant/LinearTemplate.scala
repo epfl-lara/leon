@@ -33,11 +33,15 @@ import leon.verification.VerificationReport
  * which could be any arbitrary expression with template variables as free variables
  * and vi's are variables.
  */
-class LinearTemplate(val template: Expr,
+class LinearTemplate(val oper: (Expr,Expr) => Expr,
     coeffTemp : Map[Expr, Expr],
-    val constTemp: Option[Expr],    
-    val tempVars : Set[Variable]) {
+    val constTemp: Option[Expr]) {
 
+  val zero = IntLiteral(0)
+
+  val op = {
+     oper
+  }
   val coeffTemplate = {
     //assert if the coefficients are templated expressions
     assert(coeffTemp.values.foldLeft(true)((acc, e) => {
@@ -49,18 +53,34 @@ class LinearTemplate(val template: Expr,
     println("Constant: "+constTemplate)*/
     coeffTemp
   }
-  
-  val templateVars = {
-    assert(tempVars.forall(TemplateFactory.IsTemplateVar(_)))
-    tempVars
-  }
-  
+
   val constTemplate  = {
     assert(constTemp match {
       case None => true
       case Some(e) => InvariantUtil.isTemplateExpr(e)
     })
     constTemp
+  }
+
+  val template = {
+     //construct the expression corresponding to the template here
+     var lhs = coeffTemp.foldLeft(null: Expr)((acc, entry) => {
+	   val (term, coeff) = entry
+	   val minterm = Times(coeff,term)
+	   if(acc == null) minterm else Plus(acc,minterm)
+     })
+     lhs = if(constTemp.isDefined){
+	       if(lhs == null) constTemp.get
+	       else Plus(lhs,constTemp.get) 
+	   } else lhs		
+     val expr = oper(lhs,zero)
+     assert(expr.isInstanceOf[Equals] || expr.isInstanceOf[LessThan] || expr.isInstanceOf[GreaterThan]
+		|| expr.isInstanceOf[LessEquals]|| oper == expr.isInstanceOf[GreaterEquals])
+     expr
+  }        
+
+  def templateVars : Set[Variable]  = {
+    InvariantUtil.getTemplateVars(template)
   }
 		
   def coeffEntryToString(coeffEntry: (Expr, Expr)): String = {
@@ -109,21 +129,13 @@ class LinearTemplate(val template: Expr,
     }
     case _ => false
   }  
-
-  def Op : (Expr,Expr) => Expr = template match {
-        case t: Equals => Equals.apply
-        case t: LessThan => LessThan.apply
-        case t: GreaterThan => GreaterThan.apply
-        case t: LessEquals => LessEquals.apply
-        case t: GreaterEquals => GreaterEquals.apply
-  }
 }
 
 /**
  * class representing a linear constraint. This is a linear template wherein the coefficients are constants
  */
-class LinearConstraint(val expr: Expr, cMap: Map[Expr, Expr], val constant: Option[Expr])
-  extends LinearTemplate(expr, cMap, constant, Set()) {
+class LinearConstraint(val opr: (Expr,Expr) => Expr, cMap: Map[Expr, Expr], val constant: Option[Expr])
+  extends LinearTemplate(opr, cMap, constant) {
   
   val coeffMap = {
     //assert if the coefficients are only constant expressions
@@ -134,4 +146,6 @@ class LinearConstraint(val expr: Expr, cMap: Map[Expr, Expr], val constant: Opti
     //TODO: here we should try to simplify reduce the constant expressions    
     cMap
   }
+
+  def expr : Expr = template
 }

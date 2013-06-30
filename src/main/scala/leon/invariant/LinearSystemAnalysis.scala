@@ -222,10 +222,10 @@ class ConstraintTracker(fundef : FunDef) {
       case _ => throw IllegalStateException("Unhandled min term: " + minterm)
     })
 
-    if(isTemplate) {
-      new LinearTemplate(linearExpr, coeffMap.toMap, constant, InvariantUtil.getTemplateVars(linearExpr))
+    if(isTemplate) {  
+      new LinearTemplate(op, coeffMap.toMap, constant)
     }else{
-      new LinearConstraint(linearExpr,coeffMap.toMap,constant)      
+      new LinearConstraint(op, coeffMap.toMap,constant)      
     }         
   }
 
@@ -258,8 +258,8 @@ class ConstraintTracker(fundef : FunDef) {
 
     //we assume that ine is in linear form
     def PushTimes(mul: Expr, ine: Expr): Expr = {
-      require((ine.getType == Int32Type || ine.getType == RealType)
-          && (mul.getType == Int32Type || mul.getType == RealType))
+/*      require((ine.getType == Int32Type || ine.getType == RealType)
+          && (mul.getType == Int32Type || mul.getType == RealType))*/
 
       ine match {
         //case IntLiteral(v) => IntLiteral(c * v)
@@ -385,73 +385,67 @@ class ConstraintTracker(fundef : FunDef) {
       //printing the model here for debugging
       //println("Model: "+model)
       //construct an invariant (and print the model)      
-      val invs = templatedVCs.map((entry) => {
-        
+      val invs = templatedVCs.foldLeft(Seq[(FunDef,Expr)]())((acc, entry) => {
+                 
 	val (fd,_) = entry
-        val template = TemplateFactory.getTemplate(fd).get
+        val tempOption = TemplateFactory.getTemplate(fd)
+	if(!tempOption.isDefined)
+	    acc
+	else {
+		val template = tempOption.get
+		val tempvars = InvariantUtil.getTemplateVars(template)
+		val tempVarMap : Map[Expr,Expr] = tempvars.map((v) => {
+		  //println(v.id +" mapsto " + model(v.id))
+		  (v,model(v.id))
+		}).toMap
 
-	val tempvars = InvariantUtil.getTemplateVars(template)
-        val tempVarMap : Map[Expr,Expr] = tempvars.map((v) => {
-          //println(v.id +" mapsto " + model(v.id))
-          (v,model(v.id))
-        }).toMap
-
-	//do a simple post transform and replace the template vars by their values
-	val inv = simplePostTransform((tempExpr : Expr) => tempExpr match {
-	    case e@BinaryOperator(lhs,rhs,op) 
-		if ((e.isInstanceOf[Equals] || e.isInstanceOf[LessThan]
-            || e.isInstanceOf[LessEquals] || e.isInstanceOf[GreaterThan]
-            || e.isInstanceOf[GreaterEquals])) => { 
+		//do a simple post transform and replace the template vars by their values
+		val inv = simplePostTransform((tempExpr : Expr) => tempExpr match {
+		    case e@BinaryOperator(lhs,rhs,op) 
+			if ((e.isInstanceOf[Equals] || e.isInstanceOf[LessThan]
+		    || e.isInstanceOf[LessEquals] || e.isInstanceOf[GreaterThan]
+		    || e.isInstanceOf[GreaterEquals])) => { 
 		
-		val linearTemp = exprToTemplate(tempExpr)
-                val coeffMap = linearTemp.coeffTemplate.map((entry)=>{
-		    val (term, coeffTemp) = entry
-		    val coeffE = replace(tempVarMap,coeffTemp)
-                    val coeff = RealValuedExprInterpreter.evaluate(coeffE)
-		    (term -> coeff)
-		})
-		val const = if(linearTemp.constTemplate.isDefined) 
-				Some(RealValuedExprInterpreter.evaluate(replace(tempVarMap,linearTemp.constTemplate.get)))
-                            else None
+			val linearTemp = exprToTemplate(tempExpr)
+		        val coeffMap = linearTemp.coeffTemplate.map((entry)=>{
+			    val (term, coeffTemp) = entry
+			    val coeffE = replace(tempVarMap,coeffTemp)
+		            val coeff = RealValuedExprInterpreter.evaluate(coeffE)
+			    (term -> coeff)
+			})
+			val const = if(linearTemp.constTemplate.isDefined) 
+					Some(RealValuedExprInterpreter.evaluate(replace(tempVarMap,linearTemp.constTemplate.get)))
+		                    else None
 
-		val realValues : Seq[Expr] = coeffMap.values.toSeq ++ { if(const.isDefined) Seq(const.get) else Seq() }
-        
-		//the coefficients could be fractions ,so collect all the denominators
-		val getDenom = (t: Expr) => t match {
-		  case RealLiteral(num, denum) => denum
-		  case _ => 1
-		}
-
-		val denoms = realValues.foldLeft(Set[Int]())((acc, entry) => { acc + getDenom(entry) } )
-		//compute the LCM of the denominators (approx. LCM)
-		val lcm = denoms.foldLeft(1)((acc, d) => if (acc % d == 0) acc else acc * d)
-
-		//scale the numerator by lcm
-		val scaleNum = (t: Expr) => t match {
-		  case RealLiteral(num, denum) => IntLiteral(num * (lcm / denum))
-		  case IntLiteral(n) => IntLiteral(n * lcm)
-		  case _ => throw IllegalStateException("Coefficient not assigned to any value")
-		}
-		val intCoeffMap = coeffMap.map((entry) => (entry._1, scaleNum(entry._2)))
-		val intConst = if(const.isDefined) Some(scaleNum(const.get)) else None
-
-		//create a expression
-	        var invLHS = intCoeffMap.foldLeft(null: Expr)((acc, entry) => {
-   		   val (term, coeff) = entry
-		   val minterm = Times(coeff,term)
-		   if(acc == null) minterm else Plus(acc,minterm)
-	        })
-	        invLHS = if(intConst.isDefined){
-			   if(invLHS == null) intConst.get
-			   else Plus(invLHS,intConst.get) 
-			 } else invLHS		
+			val realValues : Seq[Expr] = coeffMap.values.toSeq ++ { if(const.isDefined) Seq(const.get) else Seq() }
 		
-		linearTemp.Op(invLHS,zero)
-  	    }
-	    case _ => tempExpr
-	})(template)	
-	                
-        (fd -> inv)
+			//the coefficients could be fractions ,so collect all the denominators
+			val getDenom = (t: Expr) => t match {
+			  case RealLiteral(num, denum) => denum
+			  case _ => 1
+			}
+
+			val denoms = realValues.foldLeft(Set[Int]())((acc, entry) => { acc + getDenom(entry) } )
+			//compute the LCM of the denominators (approx. LCM)
+			val lcm = denoms.foldLeft(1)((acc, d) => if (acc % d == 0) acc else acc * d)
+
+			//scale the numerator by lcm
+			val scaleNum = (t: Expr) => t match {
+			  case RealLiteral(num, denum) => IntLiteral(num * (lcm / denum))
+			  case IntLiteral(n) => IntLiteral(n * lcm)
+			  case _ => throw IllegalStateException("Coefficient not assigned to any value")
+			}
+			val intCoeffMap = coeffMap.map((entry) => (entry._1, scaleNum(entry._2)))
+			val intConst = if(const.isDefined) Some(scaleNum(const.get)) else None
+
+			val linearCtr = new LinearConstraint(linearTemp.op, intCoeffMap, intConst)
+			linearCtr.expr
+	  	    }
+		    case _ => tempExpr
+		})(template)	
+
+		acc :+ ((fd,inv))
+        }	                        
       })
       Some(invs.toMap)
     } else {
