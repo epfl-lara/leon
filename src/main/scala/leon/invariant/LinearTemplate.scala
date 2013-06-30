@@ -31,7 +31,7 @@ import leon.verification.VerificationReport
  * Class representing linear templates which is a constraint of the form 
  * a1*v1 + a2*v2 + .. + an*vn + a0 <= 0 or = 0 or < 0 where ai's are unknown coefficients 
  * which could be any arbitrary expression with template variables as free variables
- * and vi's are variables 
+ * and vi's are variables.
  */
 class LinearTemplate(val template: Expr,
     coeffTemp : Map[Expr, Expr],
@@ -108,7 +108,7 @@ class LinearTemplate(val template: Expr,
       } else true
     }
     case _ => false
-  }
+  }  
 }
 
 /**

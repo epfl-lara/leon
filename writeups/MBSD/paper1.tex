@@ -31,7 +31,7 @@ Finally, each location $l$ is associated with an invariant given by $\invr(l) \s
 
 The states $\Sigma$ of a hybrid system is the set of location, valuation pairs i.e, $\Sigma = \loc \times V$.
 Define a region $R$ as a subset of states.
-We say that \emph{time can progress} til time $t$ from a valuation $v$ in a location $l$ denoted as 
+We say that \emph{time can progress} till time $t$ from a valuation $v$ in a location $l$ denoted as 
 $tcp_l(v,t)$ iff $\forall 0 \le t' \le t. \; \act_l(v,t') \in \invr(l)$.
 A run of a hybrid system is a sequence of states $\sigma_0 \mapsto^{t_0} \sigma_1 \mapsto^{t_1} \sigma_2 \mapsto^{t_2} \cdots$ 
 where, for all $i \ge 0$, $\sigma_i = (l_i,v_i) \in \Sigma$, $t_i \in \real^+$,
@@ -44,7 +44,7 @@ The paper defines a linear hybrid system as a restricted hybrid system in which:
 (c) For each transition $e \in \edg$, the transition relation $\mu$ is a guarded set of nondeterministic assignments of the form $\psi \Rightarrow \{ x := [\alpha_x,\beta_x] \vbar x \in \var \}$ for some real constants $\alpha_x$ and $\beta_x$.
 
 \begin{figure}
-
+\includegraphics[scale=0.5]{hybrideg.png} 
 \caption{A power controller system of a processor.  
 The locations correspond to low and high frequency modes.} \label{fig:hsys}
 \end{figure}
@@ -71,6 +71,7 @@ Reachability problem of linear hybrid systems in undecidable. The paper proposes
 the reachability analysis which are discussed below.
 
 \textbf{Forward and Backward analysis using Predicate Transformers:}
+
 Define the forward time closure $\ftclosure{P}{l}$ of a location $l$ and a predicate $P \subseteq V$ as the set
 $\{ v' \vbar \exists v \in V,t \in \real^+. v \in P \wedge tcp_l(v,t) \wedge v' = \act_l(v,t) \}$.
 Similarly, define backwards time closure $\btclosure{P}{l}$ as the dual set 
@@ -83,9 +84,11 @@ The pre operator is defined in a dual way.
 The set of reachable states from the initial states $I = (l,I_l)$ (where $l$ is the initial location
 and $I_l \subseteq \invr(l)$) 
 is defined as the least fix point ($\lfp$) of the set of equations 
-$X_l = \ftclosure{I_l \cup \bigcup_{e=(l',a,\mu,l) \in \edg} post_e(X_{l'})}{l}$.
+\[ X_l = \ftclosure{I_l \cup \bigcup_{e=(l',a,\mu,l) \in \edg} post_e(X_{l'})}{l} \].
+
 Similarly, we define the set of states that may lead to a final state $F = (l,F_l)$ (where $F_l \subseteq \invr(l)$) 
-as the $\lfp$ of the set of equations $X_l = \btclosure{F_l \cup \bigcup_{e=(l,a,\mu,l') \in \edg} pre_e(X_{l'})}{l}$.
+as the $\lfp$ of the set of equations 
+\[X_l = \btclosure{F_l \cup \bigcup_{e=(l,a,\mu,l') \in \edg} pre_e(X_{l'})}{l} \].
 
 For the example shown in Figure~\ref{fig:hsys}, we can compute iteratively the set of reachable states from 
 the initial state $(1,x_1=x_2=p_1=p_2=0)$ as illustrated below (we denote states using logical formulas):
@@ -101,7 +104,7 @@ X_{2,2} & = 0 \le x_1' \le 10 \wedge 0 \le x_2' \le 10 - x_1' \wedge p_1' = x_1'
 		& \qquad \wedge p_2' = x_2' P_{high} \wedge x_1'P_{low} + x_2'P_{high} \le P_{max} \\
 X_{1,3} & = 0 \le x_1' \le 10 \wedge 0 \le x_2' \le 10 \wedge p_1' = x_1'P_{low} \wedge p_2' = 0 
 \end{align*}
-%
+
 The fixpoint iteration converges at the third iteration with $X_{1,3}$ and $X_{2,3} = X_{2,2}$. 
 It can be seen that the fixpoint $X = \bigvee_{l \in \loc} (pc = l \wedge X_l)$ implies the 
 safety property $p_1 + p_2 \le P_{max}$ proving that it is an invariant (the implication holds
@@ -151,7 +154,7 @@ $\{ (l,v) \vbar \exists (l',v') \in R_i, t \in \real^+. \; (l,v) \mapsto^t (l',v
 \footnote{This definition is an adaptation of the definition for $\phi_1 \exists \phi_2$ given in the paper 
 to the \emph{possibly} operation}.
 
-For our example, we illustrate this approach for the formula $true \exists \;(p_1 + p_2 > P_{max})$ which 
+We illustrate this approach for our example on the formula $true \; \exists \;(p_1 + p_2 > P_{max})$ which 
 states that there exists a future in which the total power consumed is more than $P_{max}$.
 Let $P_{max}=10, P_{low}=1, P_{high}=2$.
 We use formulas to represent states in the following.
@@ -174,3 +177,5 @@ $(pc=1 \wedge p_1=p_2=x_1=x_2=0)$ intersected with $R_1$ is false i.e, the CTL f
 satisfiable starting from the initial state, which proves that $(p_1 + p_2 \le P_{max})$ is an invariant.
 Interestingly, other initial states that satisfy $R_1$ may lead to the violation of the invariant
 e.g. $(pc=1 \wedge p_1=p_2=10 \wedge x_1=x_2=0)$.
+
+\pagebreak
