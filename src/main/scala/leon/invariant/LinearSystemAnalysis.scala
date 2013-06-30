@@ -387,29 +387,30 @@ class ConstraintTracker(fundef : FunDef) {
         val template = TemplateFactory.getTemplate(fd).get
 
 	val tempvars = InvariantUtil.getTemplateVars(template)
-        val tempVarMap = tempvars.map((v) => {
+        val tempVarMap : Map[Expr,Expr] = tempvars.map((v) => {
           //println(v.id +" mapsto " + model(v.id))
           (v,model(v.id))
         }).toMap
 
 	//do a simple post transform and replace the template vars by their values
 	val inv = simplePostTransform((tempExpr : Expr) => tempExpr match {
-	    case BinaryOperator(lhs,rhs,op) 
+	    case e@BinaryOperator(lhs,rhs,op) 
 		if ((e.isInstanceOf[Equals] || e.isInstanceOf[LessThan]
             || e.isInstanceOf[LessEquals] || e.isInstanceOf[GreaterThan]
             || e.isInstanceOf[GreaterEquals])) => { 
 		
 		val linearTemp = exprToTemplate(tempExpr)
-                val coeffMap = linearTemp.coeffTemp.map((entry)=>{
+                val coeffMap = linearTemp.coeffTemplate.map((entry)=>{
 		    val (term, coeffTemp) = entry
+		    println("entry: "+term+","+coeffTemp)
                     val coeff = RealValuedExprInterpreter.evaluate(replace(tempVarMap,coeffTemp))
-		    (term, coeff)
+		    (term -> coeff)
 		})
-		val const = if(linearTemp.constTemp.isDefined) 
-				Some(RealValuedExprInterpreter.evaluate(replace(tempVarMap,linearTemp.constTemp.get)))
+		val const = if(linearTemp.constTemplate.isDefined) 
+				Some(RealValuedExprInterpreter.evaluate(replace(tempVarMap,linearTemp.constTemplate.get)))
                             else None
 
-		val realValues = coeffMap.values.toSeq ++ if(const.isDefined) Seq(const.get) else Seq()
+		val realValues = coeffMap.values.toSeq ++ { if(const.isDefined) Seq(const.get) else Seq() }
         
 		//the coefficients could be fractions ,so collect all the denominators
 		val getDenom = (t: Expr) => t match {
@@ -435,8 +436,11 @@ class ConstraintTracker(fundef : FunDef) {
    		   val (term, coeff) = entry
 		   val minterm = Times(coeff,term)
 		   if(acc == null) minterm else Plus(acc,minterm)
-	        }
-	        invLHS = if(intConst.isDefined) Plus(invLHS,intConst.get) else invLHS		
+	        })
+	        invLHS = if(intConst.isDefined){
+			   if(invLHS == null) intConst.get
+			   else Plus(invLHS,intConst.get) 
+			 } else invLHS		
 		op(invLHS,zero)
   	    }
 	    case _ => tempExpr
