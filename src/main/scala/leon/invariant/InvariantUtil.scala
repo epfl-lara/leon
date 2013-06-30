@@ -305,6 +305,10 @@ object InvariantUtil {
           foundVar = true
         e
       }
+      case ResultVariable() => {
+	foundVar = true
+	e
+      }
       case _ => e
     })(expr)
     

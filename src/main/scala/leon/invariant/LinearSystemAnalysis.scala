@@ -200,6 +200,7 @@ class ConstraintTracker(fundef : FunDef) {
       case Times(e1, e2) => {
         e2 match {
           case Variable(_) => ;
+	  case ResultVariable() => ;
           case FunctionInvocation(_, _) => ;
           case _ => throw IllegalStateException("Multiplicand not a constraint variable: " + e2)
         }
@@ -213,6 +214,9 @@ class ConstraintTracker(fundef : FunDef) {
       }            
       case Variable(_) => {
         //here the coefficient is 1
+        addCoefficient(minterm, one)
+      }
+      case ResultVariable() => {
         addCoefficient(minterm, one)
       }
       case _ => throw IllegalStateException("Unhandled min term: " + minterm)
@@ -402,15 +406,15 @@ class ConstraintTracker(fundef : FunDef) {
 		val linearTemp = exprToTemplate(tempExpr)
                 val coeffMap = linearTemp.coeffTemplate.map((entry)=>{
 		    val (term, coeffTemp) = entry
-		    println("entry: "+term+","+coeffTemp)
-                    val coeff = RealValuedExprInterpreter.evaluate(replace(tempVarMap,coeffTemp))
+		    val coeffE = replace(tempVarMap,coeffTemp)
+                    val coeff = RealValuedExprInterpreter.evaluate(coeffE)
 		    (term -> coeff)
 		})
 		val const = if(linearTemp.constTemplate.isDefined) 
 				Some(RealValuedExprInterpreter.evaluate(replace(tempVarMap,linearTemp.constTemplate.get)))
                             else None
 
-		val realValues = coeffMap.values.toSeq ++ { if(const.isDefined) Seq(const.get) else Seq() }
+		val realValues : Seq[Expr] = coeffMap.values.toSeq ++ { if(const.isDefined) Seq(const.get) else Seq() }
         
 		//the coefficients could be fractions ,so collect all the denominators
 		val getDenom = (t: Expr) => t match {
@@ -441,7 +445,8 @@ class ConstraintTracker(fundef : FunDef) {
 			   if(invLHS == null) intConst.get
 			   else Plus(invLHS,intConst.get) 
 			 } else invLHS		
-		op(invLHS,zero)
+		
+		linearTemp.Op(invLHS,zero)
   	    }
 	    case _ => tempExpr
 	})(template)	

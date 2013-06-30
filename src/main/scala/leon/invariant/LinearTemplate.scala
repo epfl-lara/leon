@@ -109,6 +109,14 @@ class LinearTemplate(val template: Expr,
     }
     case _ => false
   }  
+
+  def Op : (Expr,Expr) => Expr = template match {
+        case t: Equals => Equals.apply
+        case t: LessThan => LessThan.apply
+        case t: GreaterThan => GreaterThan.apply
+        case t: LessEquals => LessEquals.apply
+        case t: GreaterEquals => GreaterEquals.apply
+  }
 }
 
 /**
