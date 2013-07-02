@@ -46,6 +46,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     def getInferenceEngine(vc: ExtendedVC): (() => Boolean) = {
             
       val constTracker = new ConstraintTracker(vc.funDef)
+      val lsAnalyzer = new LinearSystemAnalyzer(constTracker)
+
       //val templateFactory = new TemplateFactory()
       var refinementStep : Int = 0
       
@@ -66,21 +68,19 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       } else {
         None
       }               
-      val vcnpost = InvariantUtil.FlattenFunction(Not(vc.post))            
-      val cond = And(vcbody,vcnpost)
-      val vcRefiner = new RefinementEngine(cond,vc.funDef,program)
-
-      /**
-      * Initialize refinement engine
-      **/                    
+      val vcnpost = InvariantUtil.FlattenFunction(Not(vc.post))                  
+                  
       //add the negation of the post-condition "or" the template
       //note that we need to use Or as we are using the negation of the disjunction
       val fullPost = if(postTemp.isDefined) 
     	  					Or(vcnpost, InvariantUtil.FlattenFunction(Not(postTemp.get)))
     	  			  else vcnpost
-      constTracker.addPostConstraints(vc.funDef,fullPost)                
-      //add body constraints (body condition templates will be added during solving)
+      constTracker.addPostConstraints(vc.funDef,fullPost)                    
       constTracker.addBodyConstraints(vc.funDef,vcbody)
+
+      //val cond = And(vcbody,vcnpost)
+      val cond = And(vcbody,fullPost)
+      val vcRefiner = new RefinementEngine(cond,vc.funDef,program)
           
       val inferenceEngine = () => {
         
@@ -133,7 +133,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
         //solve for the templates at this unroll step          
         //val templateSynthesizer = templateFactory.getTemplateSynthesizer()
-        val res = constTracker.solveForTemplates(uisolver)
+        val res = lsAnalyzer.solveForTemplates(uisolver)
 
         if (res.isDefined) {
 
