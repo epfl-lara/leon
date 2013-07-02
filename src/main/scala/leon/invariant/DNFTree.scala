@@ -93,7 +93,7 @@ object TreeUtil {
 
           visitor(n)
           visited += n
-          n.children.foreach(preorderVisitRecur(_))  
+          n.Children.foreach(preorderVisitRecur(_))  
         }      
       }
       case CtrLeaf() => ;
@@ -109,6 +109,10 @@ object TreeUtil {
     node.addChildren(tree)
 
     val treeEndNode = tree.getEndNode
-    children.foreach(treeEndNode.addChildren(_))
+    children.foreach((child) => {
+
+      if(child.isInstanceOf[CtrNode])
+        treeEndNode.addChildren(child.asInstanceOf[CtrNode])
+    })
   }
 }

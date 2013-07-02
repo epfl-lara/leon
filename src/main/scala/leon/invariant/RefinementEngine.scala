@@ -36,10 +36,10 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
   private def findAllHeads(ctrTracker: ConstraintTracker) : Map[Call,CtrNode] ={  
     var heads = Map[Call,CtrNode]()
     
-    ctrTracker.getFuncs.foldLeft()((acc,fd) => {
+    ctrTracker.getFuncs.foreach((fd) => {
       val (btree,ptree) = ctrTracker.getVC(fd)      
-      heads ++= findHeads(btree, fd) ++  findHeads(ptree, fd)      
-    }  
+      heads ++= findHeads(btree, fd) ++ findHeads(ptree, fd)      
+    })  
     heads
   }  
   
@@ -112,7 +112,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
             constTracker.addPostConstraints(recFun,npostTemp)
 
             //Find new heads
-            (btree,ptree) = constTracker.getVC(recFun)
+            val (btree,ptree) = constTracker.getVC(recFun)
             newheads ++= findHeads(btree) ++ findHeads(ptree)
           }
           //TODO: add the unrolled body to the caller constraints
@@ -120,20 +120,21 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
         else {
 
           //here inline the body && Post and add it to the tree of the rec caller          
-          val calleeSummary = if (!fi.funDef.postcondition.isEmpty) {
-            
-                                val post = fi.funDef.postcondition
-                                val argmap1 = InvariantUtil.formalToAcutal(call, ResultVariable())
-                                val inlinedPost = InvariantUtil.FlattenFunction(replace(argmap1, matchToIfThenElse(post.get)))
+          val calleeSummary = 
+            if (!fi.funDef.postcondition.isEmpty) {
 
-                                val argmap2 = InvariantUtil.formalToAcutal(call, resFresh)
-                                val inlinedBody = replace(argmap2, bodyExpr)
-                                And(inlinedBody, inlinedPost)
-                              } else {
+              val post = fi.funDef.postcondition
+              val argmap1 = InvariantUtil.formalToAcutal(call, ResultVariable())
+              val inlinedPost = InvariantUtil.FlattenFunction(replace(argmap1, matchToIfThenElse(post.get)))
 
-                                val argmap2 = InvariantUtil.formalToAcutal(call, resFresh)
-                                replace(argmap2, bodyExpr)
-                              }          
+              val argmap2 = InvariantUtil.formalToAcutal(call, resFresh)
+              val inlinedBody = replace(argmap2, bodyExpr)
+              And(inlinedBody, inlinedPost)
+            } else {
+
+              val argmap2 = InvariantUtil.formalToAcutal(call, resFresh)
+              replace(argmap2, bodyExpr)
+            }          
           //println("calleeSummary: "+calleeSummary)        
           //create a constraint tree for the summary
           val summaryTree = CtrNode()
