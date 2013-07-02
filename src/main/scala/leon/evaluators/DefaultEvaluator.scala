@@ -218,6 +218,10 @@ class DefaultEvaluator(ctx : LeonContext, prog : Program) extends Evaluator(ctx,
           case (e, f @ FiniteSet(els)) => BooleanLiteral(els.contains(e))
           case (l,r) => throw EvalError(typeErrorMsg(r, SetType(l.getType)))
         }
+        case SubsetOf(s1,s2) => (rec(ctx,s1), rec(ctx,s2)) match {
+          case (f@FiniteSet(els1),FiniteSet(els2)) => BooleanLiteral(els1.toSet.subsetOf(els2.toSet))
+          case (le,re) => throw EvalError(typeErrorMsg(le, s1.getType))
+        }
         case SetCardinality(s) => {
           val sr = rec(ctx, s)
           sr match {
