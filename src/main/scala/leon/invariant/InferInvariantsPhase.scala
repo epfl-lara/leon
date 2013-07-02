@@ -45,16 +45,12 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     //TODO: critical: handle unrolling of functions in templates
     def getInferenceEngine(vc: ExtendedVC): (() => Boolean) = {
             
-      val constTracker = new ConstraintTracker(vc.funDef)
-      val lsAnalyzer = new LinearSystemAnalyzer(constTracker)
-
-      //val templateFactory = new TemplateFactory()
-      var refinementStep : Int = 0
-      
+      //Create and initialize a constraint tracker
+      val constTracker = new ConstraintTracker(vc.funDef)            
       //flatten the functions in the vc
       val vcbody = InvariantUtil.FlattenFunction(vc.body)
       
-      //create a postcondition (this is tricky and may have to use templates)      
+      //create a postcondition 
       val postTemp = if(program.isRecursive(vc.funDef)) {
       //find the result variable used in the post-condition
     	//TODO: make the result variable unique so as to avoid conflicts
@@ -77,60 +73,25 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     	  			  else vcnpost
       constTracker.addPostConstraints(vc.funDef,fullPost)                    
       constTracker.addBodyConstraints(vc.funDef,vcbody)
+
+
+      //create entities that uses the constraint tracker
+      val lsAnalyzer = new LinearSystemAnalyzer(constTracker)
+      val vcRefiner = new RefinementEngine(program, constTracker)
+
+      var refinementStep : Int = 0
       
-      val cond = And(vcbody,fullPost)
-      val vcRefiner = new RefinementEngine(cond,vc.funDef,program)
-          
       val inferenceEngine = () => {
         
         if(refinementStep >=1) {
           
           reporter.info("More unrollings for invariant inference")          
-          val unrollSet = vcRefiner.refineAbstraction()          
-          unrollSet.foreach((entry) => {
-            val (call, recCaller, body, post) = entry            
-            val targetFun = call.fi.funDef
-            
-            /**
-             * process the unroll set
-             * (a) check if the calls are recursive.
-             * (b) If not just inline their body and add it to the tree of the caller
-             * (c) If yes create a new tree with the function definitions if one does not exists
-             */            
-            if (program.isRecursive(targetFun)) {              
-              //check if a constraint tree does not exist for the call's target          	
-              if (!constTracker.hasCtrTree(targetFun)) {
 
-                //add body constraints
-                constTracker.addBodyConstraints(targetFun, body.get)
-
-                //add (negated) post condition template for the function                  
-                val funRes = variablesOf(body.get).find(_.name.equals("result")).first
-
-                val argmap = InvariantUtil.formalToAcutal(
-                  Call(funRes.toVariable, FunctionInvocation(targetFun, targetFun.args.map(_.toVariable))),
-                  ResultVariable())
-
-                val postTemp = TemplateFactory.constructTemplate(argmap, targetFun)
-                val npostTemp = InvariantUtil.FlattenFunction(Not(postTemp))
-                //print the negated post
-                //println("Negated Post: "+npostTemp)
-                constTracker.addPostConstraints(targetFun,npostTemp)
-              }
-
-              //TODO: add the unrolled body to the caller constraints                       
-            } else {
-              				
-              val calleeSummary = if (post.isDefined) And(body.get, post.get) else body.get
-              //println("calleeSummary: "+calleeSummary)                                                        
-              constTracker.addBodyConstraints(recCaller, calleeSummary)
-            }
-          })
+          vcRefiner.refineAbstraction()          
         }
         refinementStep += 1
 
-        //solve for the templates at this unroll step          
-        //val templateSynthesizer = templateFactory.getTemplateSynthesizer()
+        //solve for the templates at this unroll step                  
         val res = lsAnalyzer.solveForTemplates(uisolver)
 
         if (res.isDefined) {

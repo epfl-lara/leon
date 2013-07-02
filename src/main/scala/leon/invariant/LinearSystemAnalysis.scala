@@ -53,6 +53,10 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
     val nonLinearCtrs  = ctrTracker.getFuncs.foldLeft(Seq[Expr]())((acc, fd) => {
 
       val (btree,ptree) = ctrTracker.getVC(fd)
+
+      //assume the post-conditions for the calls in the VCs of this function
+      assumePostConditions(bodyRoot, postRoot)
+
       val ctr = generateCtrsForTree(btree, ptree, uiSolver)      
       (acc :+ ctr)
     })
@@ -132,21 +136,14 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
       None
     }
   }
-  
+
   /**
-   * Returns a set of non linear constraints for the given constraint tree
-   */
-  def generateCtrsForTree(bodyRoot: CtrNode, postRoot : CtrNode, uiSolver : UninterpretedZ3Solver) : Expr = {       
-    
-    /**
-     * A utility function that converts a constraint + calls into a expression.
-     * Note: adds the uifs in conjunction to the ctrs
-     */    
-    def constraintsToExpr(ctrs: Seq[LinearConstraint], calls: Set[Call]): Expr = {
-      val pathExpr = And(ctrs.foldLeft(Seq[Expr]())((acc, ctr) => (acc :+ ctr.expr)))
-      val uifExpr = And(calls.map((call) => Equals(call.retexpr,call.fi)).toSeq)
-      And(pathExpr, uifExpr)
-    }
+  * This function refines the constraint tree so that they assume the post conditions/templates for calls in
+  * the body and post tree.
+  * TODO: We are not assuming the templates of the functions called inside the templates
+  **/
+  private var processedCalls = Set[Call]()
+  def assumePostConditions(bodyRoot: CtrNode, postRoot : CtrNode) : Unit = {
     
     /**
      * A helper function that creates templates for a call
@@ -161,6 +158,59 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
         tempExpr
       })
     }
+
+    var visited = Set[CtrNode]()
+    //this does a post order traversal
+    def assumeTemplates(root: CtrTree) : Unit = root match {
+
+      case n @ CtrNode(_) => {
+
+        if(!visited.contains(n)){
+          visited += n
+
+          //first recurse into the children  
+          n.children.foreach(assumeTemplates(_))
+
+          //now process this node
+          val newCalls = n.uifs.toSeq.filter((call) => !processedCalls.contains(call) && 
+            ctrTracker.hasCtrTree(call.fi.funDef))
+          val templates = newCalls.map(templateForCall(_))
+
+          if (!templates.isEmpty) {
+          
+            val ctr = And(templates)          
+            //flatten functions
+            val flatExpr = InvariantUtil.FlattenFunction(ctr)
+            //create the root of a new  tree          
+            val templateTree = CtrNode()          
+            ctrTracker.addConstraintRecur(flatExpr, templateTree)
+
+            //insert the templateTree after this node
+            TreeUtil.insertTree(n,templateTree)            
+          } 
+        }                
+      }      
+      case CtrLeaf() => ;
+    }
+
+    assumeTemplates(bodyRoot) 
+    assumeTemplates(postRoot)          
+  }
+  
+  /**
+   * Returns a set of non linear constraints for the given constraint tree
+   */
+  def generateCtrsForTree(bodyRoot: CtrNode, postRoot : CtrNode, uiSolver : UninterpretedZ3Solver) : Expr = {       
+    
+    /**
+     * A utility function that converts a constraint + calls into a expression.
+     * Note: adds the uifs in conjunction to the ctrs
+     */    
+    def constraintsToExpr(ctrs: Seq[LinearConstraint], calls: Set[Call]): Expr = {
+      val pathExpr = And(ctrs.foldLeft(Seq[Expr]())((acc, ctr) => (acc :+ ctr.expr)))
+      val uifExpr = And(calls.map((call) => Equals(call.retexpr,call.fi)).toSeq)
+      And(pathExpr, uifExpr)
+    }    
 
     /**
      * A helper function that composes a sequence of CtrTrees using the provided operation 
@@ -188,16 +238,20 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
 
     /**
      * The overall flow:
-     * Body --pipe---> post --pipe---> templateGen --pipe---> uifConstraintGen --pipe---> endPoint
+     * Body --pipe---> post --pipe---> uifConstraintGen --pipe---> endPoint
      */        
     //this tree could have 2^n paths 
-    def traverseBodyTree(tree: CtrTree, currentCtrs: Seq[LinearConstraint], currentUIFs: Set[Call]): Expr = {
+    def traverseBodyTree(tree: CtrTree, currentCtrs: Seq[LinearConstraint], currentUIFs: Set[Call], 
+      currTemps: Seq[LinearTemplate]): Expr = {
+
       tree match {
         case n @ CtrNode(_) => {
           val newCtrs = currentCtrs ++ n.constraints
+          val newTemps = currentTemps ++ n.templates
           val newUIFs = currentUIFs ++ n.uifs
+
           //recurse into children and collect all the constraints
-          foldAND(n.Children, (child : CtrTree) => traverseBodyTree(child, newCtrs, newUIFs))
+          foldAND(n.Children, (child : CtrTree) => traverseBodyTree(child, newCtrs, newUIFs, newTemps))
         }
         case CtrLeaf() => {
 
@@ -208,9 +262,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
             println("Body path expr: " + pathexpr)
             
             //pipe this to the post tree
-            traversePostTree(postRoot,currentCtrs,currentUIFs,Seq(),Seq())
-            
-            //antSet :+= (currentCtrs.toSet,currentUIFs)                      
+            traversePostTree(postRoot, currentCtrs, currentTemps, currentUIFs,Seq(),Seq())                                      
           } else {
             //println("Found unsat path: " + pathExpr)
             tru
@@ -220,8 +272,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
     }
      
     //this tree could have 2^n paths
-    def traversePostTree(tree: CtrTree, ants: Seq[LinearConstraint], currUIFs: Set[Call],
-         conseqs: Seq[LinearConstraint], currTemps: Seq[LinearTemplate]): Expr = {
+    def traversePostTree(tree: CtrTree, ants: Seq[LinearConstraint], antTemps: Seq[LinearTemplate],
+     currUIFs: Set[Call], conseqs: Seq[LinearConstraint], currTemps: Seq[LinearTemplate]): Expr = {
     						
       tree match {
         case n @ CtrNode(_) => {          
@@ -230,63 +282,15 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
           val newtemps = currTemps ++ n.templates
           
           //recurse into children and collect all the constraints
-          foldAND(n.Children, (child : CtrTree) => traversePostTree(child, ants, newuifs, newcons, newtemps)) 
+          foldAND(n.Children, (child : CtrTree) => traversePostTree(child, ants, antTemps, newuifs, newcons, newtemps)) 
         }
         case CtrLeaf() => {         
           //TODO: we can check here also for satisfiablility
-          //pipe this to the template generation phase
-          antTemplatesGen(ants, currUIFs, conseqs, currTemps)
+          //pipe to the uif constraint generator
+          uifsConstraintsGen(ants, antTemps, currUIFs, conseqs, currTemps)
         }
       }
-    }
-    
-    /**
-     * This adds templates for the calls in the antecedent to the path expression.
-     * TODO: We are not assuming the templates of the functions called inside the templates
-     */
-    def antTemplatesGen(ants: Seq[LinearConstraint], calls: Set[Call],
-         conseqs: Seq[LinearConstraint], conseqTemps: Seq[LinearTemplate]) : Expr = {
-
-      //here we consider only calls that has a ctr tree
-      val templates = calls.toSeq.filter((call) => ctrTracker.hasCtrTree(call.fi.funDef)).map(templateForCall(_))
-      val root = if (!templates.isEmpty) {
-        
-        val ctr = And(templates)
-        //println("UIF constraints: " + uifCtr)
-        //flatten functions
-        val nnfExpr = InvariantUtil.FlattenFunction(ctr)
-        //create the root of a new  tree
-        //TODO: can we reuse the old tree ??
-        val newnode = CtrNode()
-        //add the nnfExpr as a DNF formulae
-        ctrTracker.addConstraintRecur(nnfExpr, newnode)
-        newnode
-      } else CtrLeaf()
-                            
-      def traverseTemplateTree(tree: CtrTree, ants: Seq[LinearConstraint], antTemps : Seq[LinearTemplate],
-         calls: Set[Call],
-         conseqs: Seq[LinearConstraint], conseqTemps: Seq[LinearTemplate]): Expr = {
-        
-        tree match {
-          case n @ CtrNode(_) => {
-            
-            val newAnts = ants ++ n.constraints
-            val newTemps = antTemps ++ n.templates
-            val newCalls = calls ++ n.uifs 
-            
-            //recurse into children
-            foldAND(n.Children, (child : CtrTree) => traverseTemplateTree(child, newAnts, newTemps, newCalls, conseqs, conseqTemps))                           
-          }
-          case CtrLeaf() => {            
-             
-            //pipe to the uif constraint generator
-            uifsConstraintsGen(ants, antTemps, calls, conseqs, conseqTemps)
-          }
-        }
-      }
-      
-      traverseTemplateTree(root, ants, Seq(), calls, conseqs, conseqTemps)  
-    }
+    }    
     
     /**
      * Eliminates the calls using the theory of uninterpreted functions
@@ -348,8 +352,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
         implCtrs
       }
     }
-    
-    val nonLinearCtr = traverseBodyTree(bodyRoot, Seq(), Set())
+        
+    val nonLinearCtr = traverseBodyTree(bodyRoot, Seq(), Set(), Seq())
 
     nonLinearCtr match {
       case BooleanLiteral(true) => throw IllegalStateException("Found no constraints")

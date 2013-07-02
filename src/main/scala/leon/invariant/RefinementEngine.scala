@@ -121,19 +121,24 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
 
           //here inline the body && Post and add it to the tree of the rec caller          
           val calleeSummary = if (!fi.funDef.postcondition.isEmpty) {
+            
                                 val post = fi.funDef.postcondition
-                                val argmap = InvariantUtil.formalToAcutal(call, ResultVariable())
-                                val inlinedPost = InvariantUtil.FlattenFunction(replace(argmap, matchToIfThenElse(post.get)))
-                                val inlinedBody = replace(argmap, bodyExpr)
+                                val argmap1 = InvariantUtil.formalToAcutal(call, ResultVariable())
+                                val inlinedPost = InvariantUtil.FlattenFunction(replace(argmap1, matchToIfThenElse(post.get)))
+
+                                val argmap2 = InvariantUtil.formalToAcutal(call, resFresh)
+                                val inlinedBody = replace(argmap2, bodyExpr)
                                 And(inlinedBody, inlinedPost)
                               } else {
-                                replace(argmap, bodyExpr)
+
+                                val argmap2 = InvariantUtil.formalToAcutal(call, resFresh)
+                                replace(argmap2, bodyExpr)
                               }          
           //println("calleeSummary: "+calleeSummary)        
           //create a constraint tree for the summary
           val summaryTree = CtrNode()
           constTracker.addConstraintRecur(calleeSummary, summaryTree)          
-          constTracker.insertConstraintsInBody(ctrnode, summaryTree)
+          TreeUtil.insertTree(ctrnode, summaryTree)
 
           //Find new heads
           newheads ++= findHeads(summaryTree)
@@ -142,7 +147,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
 
       } else acc
     })
-    headCalls = newheads
+    headCallPtrs = newheads
     unrolls
   }
 }

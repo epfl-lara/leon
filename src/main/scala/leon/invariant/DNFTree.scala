@@ -101,4 +101,14 @@ object TreeUtil {
 
     preorderVisitRecur(root, visitor)
   }
+
+  def insertTree(node: CtrNode, tree: CtrNode) : Unit = {
+
+    val children = node.Children
+    node.removeAllChildren()
+    node.addChildren(tree)
+
+    val treeEndNode = tree.getEndNode
+    children.foreach(treeEndNode.addChildren(_))
+  }
 }
