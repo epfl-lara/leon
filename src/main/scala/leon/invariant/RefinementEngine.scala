@@ -24,93 +24,121 @@ import leon.invariant._
 import scala.collection.mutable.{Set => MutableSet}
 
 //the caller field represents the last recursive caller that invoked this call or the main function.
-case class CallNode(recCaller: FunDef, call: Call)
+//case class CallNode(recCaller: FunDef, call: Call)
 
-class RefinementEngine(prog: Program) {
+class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
      
-  private var currentAbs : Expr = _
-  private var headCalls = Set[CallNode]()
+  //private var currentAbs : Expr = _  
   //private var unrolledFuncs = Set[FunDef]()
-  
-  def this(vc: Expr, fd: FunDef, prog: Program) = {
-    this(prog)    
-    currentAbs = vc    
-    //unrolledFuncs += fd
-    headCalls = findHeads(vc, fd)
-  }
+  //pointers to the nodes that have function calls  
+  var headCallPtrs = findAllHeads(ctrTracker)  
+
+  private def findAllHeads(ctrTracker: ConstraintTracker) : Map[Call,CtrNode] ={  
+    var heads = Map[Call,CtrNode]()
+    
+    ctrTracker.getFuncs.foldLeft()((acc,fd) => {
+      val (btree,ptree) = ctrTracker.getVC(fd)      
+      heads ++= findHeads(btree, fd) ++  findHeads(ptree, fd)      
+    }  
+    heads
+  }  
   
   /**
    * Heads are procedure calls whose target definitions have not been unrolled
    */
-  private def findHeads(abs: Expr, caller: FunDef) : Set[CallNode] ={
-    //initialize head functions
-    var heads = Set[CallNode]()
-    simplePostTransform((e: Expr) => e match {
-      case eq@Equals(rexp,fi@FunctionInvocation(fd,args)) => {
-      //  if(!unrolledFuncs.contains(fi.funDef))
-        heads += CallNode(caller,Call(rexp,fi))
-        eq 
-       }
-      case _ => e
-    })(abs)
+  private def findHeads(ctrTree: CtrTree, caller: FunDef) : Map[Call,CtrNode] ={  
+    var heads = Map[Call,CtrNode]()
+
+    def visitor : (CtrNode => Unit) = 
+      (node: CtrNode) => {
+        val calls = node.uifs
+        calls.foreach((call) => { heads += (call,node) })  
+      }  
+    TreeUtil.preorderVisitor(ctrTree,visitor)      
     heads
   }  
   
 
   /**
-   * Returns a set of function invocations, body and post condition pairs.
+   * Returns a set of unrolled calls.
    * This procedure may refine an existing abstraction.
    * Currently, the refinement happens by unrolling.
+   *  here we unroll the methods in the current abstraction by one step
    */
-  def refineAbstraction(): Seq[(Call, FunDef, Option[Expr], Option[Expr])] = {
-    //here we unroll the methods in the current abstraction by one step
-    
-    //update unrolled funcs
+  def refineAbstraction(): Seq[Call] = {
+            
     //unrolledFuncs ++= headFuncs.map(_.funDef)
     
-    var newheads = Set[CallNode]()
-    val unrolls = headCalls.foldLeft(Seq[(Call, FunDef, Option[Expr], Option[Expr])]())((acc, callnode) => {      
-            
-      val fi = callnode.call.fi
+    var newheads = Map[Call,CtrNode]()
+    val unrolls = headCallPtrs.foldLeft(Seq[Call]())((acc, entry) => {      
+
+      val (call, ctrnode) = entry      
+      val fi = call.fi
+
       if (fi.funDef.body.isDefined) {
+
         val body = fi.funDef.getBody
         val resFresh = Variable(FreshIdentifier("result", true).setType(body.getType))
         val bexpr1 = Equals(resFresh, body)
 
-        val isRecursive = prog.isRecursive(fi.funDef)
-        
-        //get the last recursive caller which would be fi.funDef or callnode.recCaller
-        val recCaller = if(isRecursive) fi.funDef else callnode.recCaller
-
         val prec = fi.funDef.precondition
-        val bexpr2 = InvariantUtil.FlattenFunction(if (prec.isEmpty) {
+        val bodyExpr = InvariantUtil.FlattenFunction(if (prec.isEmpty) {
           bexpr1
         } else {
           And(matchToIfThenElse(prec.get), bexpr1)
-        })
+        })        
 
-        //if the function is not recursive: inline the function i.e,
-        //replace the formal parameters in the function by the actual arguments
-        val argmap = InvariantUtil.formalToAcutal(callnode.call, resFresh)
-        val bodyExpr = if(!isRecursive) replace(argmap, bexpr2) else bexpr2 
+        val isRecursive = prog.isRecursive(fi.funDef)        
 
-        val (mayBody,mayPost) = if (!fi.funDef.postcondition.isEmpty) {
+        if(isRecursive) {
 
-          val post = fi.funDef.postcondition
-          val post2 = InvariantUtil.FlattenFunction(replace(Map(ResultVariable() -> resFresh), matchToIfThenElse(post.get)))
-          val postExpr = if(!isRecursive) replace(argmap, post2) else post2
-                    
-          //update newheads 
-          newheads ++= findHeads(postExpr,recCaller)
-          (Some(bodyExpr), Some(postExpr))
-          
-        } else {
-                    
-          newheads ++= findHeads(bodyExpr, recCaller)
-          (Some(bodyExpr), None)
+          /** 
+           * create a new verification condition for this recursive function
+           **/
+          val recFun = fi.funDef
+          if (!constTracker.hasCtrTree(recFun)) { //check if a constraint tree does not exist for the call's target           
+
+            //add body constraints
+            ctrTracker.addBodyConstraints(recFun, bodyExpr)
+
+            //add (negated) post condition template for the function                              
+            val argmap = InvariantUtil.formalToAcutal(
+              Call(resFresh, FunctionInvocation(recFun, recFun.args.map(_.toVariable))), ResultVariable())
+
+            val postTemp = TemplateFactory.constructTemplate(argmap, recFun)
+            val npostTemp = InvariantUtil.FlattenFunction(Not(postTemp))
+            //print the negated post
+            //println("Negated Post: "+npostTemp)
+            constTracker.addPostConstraints(recFun,npostTemp)
+
+            //Find new heads
+            (btree,ptree) = constTracker.getVC(recFun)
+            newheads ++= findHeads(btree) ++ findHeads(ptree)
+          }
+          //TODO: add the unrolled body to the caller constraints
         }
+        else {
 
-        acc :+ (callnode.call, recCaller, mayBody, mayPost)
+          //here inline the body && Post and add it to the tree of the rec caller          
+          val calleeSummary = if (!fi.funDef.postcondition.isEmpty) {
+                                val post = fi.funDef.postcondition
+                                val argmap = InvariantUtil.formalToAcutal(call, ResultVariable())
+                                val inlinedPost = InvariantUtil.FlattenFunction(replace(argmap, matchToIfThenElse(post.get)))
+                                val inlinedBody = replace(argmap, bodyExpr)
+                                And(inlinedBody, inlinedPost)
+                              } else {
+                                replace(argmap, bodyExpr)
+                              }          
+          //println("calleeSummary: "+calleeSummary)        
+          //create a constraint tree for the summary
+          val summaryTree = CtrNode()
+          constTracker.addConstraintRecur(calleeSummary, summaryTree)          
+          constTracker.insertConstraintsInBody(ctrnode, summaryTree)
+
+          //Find new heads
+          newheads ++= findHeads(summaryTree)
+        }        
+        acc :+ call
 
       } else acc
     })

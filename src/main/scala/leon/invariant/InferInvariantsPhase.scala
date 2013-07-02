@@ -56,7 +56,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       
       //create a postcondition (this is tricky and may have to use templates)      
       val postTemp = if(program.isRecursive(vc.funDef)) {
-        //find the result variable used in the post-condition
+      //find the result variable used in the post-condition
     	//TODO: make the result variable unique so as to avoid conflicts
       	val resultVar = variablesOf(vc.post).find(_.name.equals("result")).first
       	
@@ -77,8 +77,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     	  			  else vcnpost
       constTracker.addPostConstraints(vc.funDef,fullPost)                    
       constTracker.addBodyConstraints(vc.funDef,vcbody)
-
-      //val cond = And(vcbody,vcnpost)
+      
       val cond = And(vcbody,fullPost)
       val vcRefiner = new RefinementEngine(cond,vc.funDef,program)
           
@@ -86,8 +85,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         
         if(refinementStep >=1) {
           
-          reporter.info("More unrollings for invariant inference")
-          //System.exit(0)
+          reporter.info("More unrollings for invariant inference")          
           val unrollSet = vcRefiner.refineAbstraction()          
           unrollSet.foreach((entry) => {
             val (call, recCaller, body, post) = entry            

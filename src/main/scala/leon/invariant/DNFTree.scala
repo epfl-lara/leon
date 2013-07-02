@@ -81,3 +81,24 @@ case class CtrNode(id : Int = GlobalNodeCounter.getUID) extends CtrTree {
     children.foldLeft(str)((g: String, node: CtrTree) => { g + node.toString })
   }
 }
+
+object TreeUtil {
+
+  def preorderVisit(root: CtrTree, visitor: CtrNode => Unit) = {
+    var visited = Set[CtrNode]()
+
+    def preorderVisitRecur(root: CtrTree) = root match {
+      case n@CtrNode(_) => {
+        if(!visited.contains(n)) {
+
+          visitor(n)
+          visited += n
+          n.children.foreach(preorderVisitRecur(_))  
+        }      
+      }
+      case CtrLeaf() => ;
+    }
+
+    preorderVisitRecur(root, visitor)
+  }
+}
