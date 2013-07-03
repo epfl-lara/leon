@@ -87,7 +87,7 @@ object TreeUtil {
   def preorderVisit(root: CtrTree, visitor: CtrNode => Unit) = {
     var visited = Set[CtrNode]()
 
-    def preorderVisitRecur(root: CtrTree) = root match {
+    def preorderVisitRecur(root: CtrTree) : Unit = root match {
       case n@CtrNode(_) => {
         if(!visited.contains(n)) {
 
@@ -99,7 +99,7 @@ object TreeUtil {
       case CtrLeaf() => ;
     }
 
-    preorderVisitRecur(root, visitor)
+    preorderVisitRecur(root)
   }
 
   def insertTree(node: CtrNode, tree: CtrNode) : Unit = {

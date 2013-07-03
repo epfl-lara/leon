@@ -74,10 +74,10 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       constTracker.addPostConstraints(vc.funDef,fullPost)                    
       constTracker.addBodyConstraints(vc.funDef,vcbody)
 
-
       //create entities that uses the constraint tracker
       val lsAnalyzer = new LinearSystemAnalyzer(constTracker)
-      val vcRefiner = new RefinementEngine(program, constTracker)
+      val vcRefiner = new RefinementEngine(program, constTracker)            
+      vcRefiner.initialize()
 
       var refinementStep : Int = 0
       
@@ -87,7 +87,12 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           
           reporter.info("More unrollings for invariant inference")          
 
-          vcRefiner.refineAbstraction()          
+          val unrolledCalls = vcRefiner.refineAbstraction()          
+          if(unrolledCalls.isEmpty) {
+            reporter.info("- Template not solvable!!")
+            System.exit(0)
+          }
+
         }
         refinementStep += 1
 
