@@ -195,7 +195,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
           val (res, model, unsatCore) = uiSolver.solveSATWithFunctionCalls(pathexpr)
           if (!res.isDefined || res.get == true) {
 
-            println("Body path expr: " + pathexpr)
+            //println("Body path expr: " + pathexpr)
             
             //pipe this to the post tree
             traversePostTree(postRoot, currentCtrs, currentTemps, currentUIFs,Seq(),Seq())                                      
@@ -237,6 +237,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
          conseqs: Seq[LinearConstraint], conseqTemps: Seq[LinearTemplate]) : Expr = {
       
       val pathexpr = constraintsToExpr(ants ++ conseqs, calls)        
+      println("Full-path: " + pathexpr)
       //println("All ctrs: "+ (ants ++ conseqs ++ calls ++ conseqTemps))                  
       val uifCtrs = constraintsForUIFs(calls.toSeq, pathexpr, uiSolver)
       

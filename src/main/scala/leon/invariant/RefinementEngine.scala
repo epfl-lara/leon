@@ -39,6 +39,8 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
     assumePostConditions()
 
     headCallPtrs = findAllHeads(ctrTracker)  
+    //println("Head-Calls: "+headCallPtrs.keys.toSeq)
+    //System.exit(0)
   }
 
   private def findAllHeads(ctrTracker: ConstraintTracker) : Map[Call,CtrNode] ={  
@@ -46,7 +48,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
     
     ctrTracker.getFuncs.foreach((fd) => {
       val (btree,ptree) = ctrTracker.getVC(fd)      
-      heads ++= findHeads(btree) ++ findHeads(ptree)      
+      heads ++= (findHeads(btree) ++ findHeads(ptree))
     })  
     heads
   }  
@@ -88,6 +90,14 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
     //update the head functions
     headCallPtrs = newheads 
 
+    //For debugging: print the post and body root of all the functions
+    /*ctrTracker.getFuncs.foreach((fd) => {
+        val (btree,ptree) = ctrTracker.getVC(fd)
+        println("Function: "+fd.id)
+        println("\t Body Tree: "+btree.toString)
+        println("\t Post Tree: "+ptree.toString)
+      })*/
+
     unrolls
   }
   
@@ -99,6 +109,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
    */
   def unrollCall(call : Call, ctrnode : CtrNode): Map[Call,CtrNode] = {                
 
+    //println("Unrolling: "+call)
     val fi = call.fi
     if (fi.funDef.body.isDefined) {
 
@@ -170,7 +181,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
         val newheads = findHeads(summaryTree)
 
         //insert the tree
-        TreeUtil.insertTree(ctrnode, summaryTree)
+        TreeUtil.insertTree(ctrnode, summaryTree)        
 
         newheads
       }                

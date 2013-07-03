@@ -122,8 +122,8 @@ object InvariantUtil {
    * (a) the function replaces every function call by a variable and creates a new equality
    * (b) it also replaces arguments that are not variables by fresh variables and creates 
    * a new equality mapping the fresh variable to the argument expression   
-   */   
-  var fiToVarMap = Map[FunctionInvocation, (Expr,Set[Call],Set[Expr])]()  
+   */      
+  //var fiToVarMap = Map[FunctionInvocation, (Expr,Set[Call],Set[Expr])]()  
   def FlattenFunction(inExpr: Expr): Expr = {        
     
     /**
@@ -133,44 +133,39 @@ object InvariantUtil {
     def flattenFunc(e: Expr): (Expr,Set[Call],Set[Expr]) = {
       e match {        
         case fi @ FunctionInvocation(fd, args) => {
-          if(fiToVarMap.contains(fi)){
-            fiToVarMap(fi)
-          }            
-          else {                                                                     
-            //now also flatten the args. The following is slightly tricky            
-            var newctrs = Seq[Expr]()
-            var newConjuncts = Set[Expr]()
-            var newUIFs = Set[Call]()
-            
-            val newargs = args.map((arg) =>              
-              arg match {                
-                case t : Terminal => t                                     
-                case _ => {                  
-                  val (nexpr,nuifs,ncjs) = flattenFunc(arg)
-                  
-                  newConjuncts ++= ncjs
-                  newUIFs ++= nuifs 
-                  
-                  nexpr match {
-                    case t : Terminal => t
-                    case _ => {
-                    	val freshArgVar = Variable(FreshIdentifier("arg", true).setType(arg.getType))                    	                    	
-                        newConjuncts += Equals(freshArgVar, nexpr) 
-                        freshArgVar
-                    }
-                  }                                    
-                }
-              })              
-            //create a new equality in UIFs
-            val newfi = FunctionInvocation(fd,newargs)
-            //create a new variable to represent the function
-            val freshResVar = Variable(FreshIdentifier("r", true).setType(fi.getType))
-            newUIFs += Call(freshResVar,newfi)
-            
-            val res = (freshResVar, newUIFs, newConjuncts)            
-            fiToVarMap += (fi -> res)
-            res
-          }                                
+
+          //now also flatten the args. The following is slightly tricky            
+          var newctrs = Seq[Expr]()
+          var newConjuncts = Set[Expr]()
+          var newUIFs = Set[Call]()
+          
+          val newargs = args.map((arg) =>              
+            arg match {                
+              case t : Terminal => t                                     
+              case _ => {                  
+                val (nexpr,nuifs,ncjs) = flattenFunc(arg)
+                
+                newConjuncts ++= ncjs
+                newUIFs ++= nuifs 
+                
+                nexpr match {
+                  case t : Terminal => t
+                  case _ => {
+                  	val freshArgVar = Variable(FreshIdentifier("arg", true).setType(arg.getType))                    	                    	
+                      newConjuncts += Equals(freshArgVar, nexpr) 
+                      freshArgVar
+                  }
+                }                                    
+              }
+            })              
+          //create a new equality in UIFs
+          val newfi = FunctionInvocation(fd,newargs)
+          //create a new variable to represent the function
+          val freshResVar = Variable(FreshIdentifier("r", true).setType(fi.getType))
+          newUIFs += Call(freshResVar,newfi)
+          
+          val res = (freshResVar, newUIFs, newConjuncts)                        
+          res          
         }
         case And(args) => {
           val newargs = args.map((arg) => {

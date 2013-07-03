@@ -29,8 +29,13 @@ import leon.verification.VerificationReport
 
 //A DAG that represents a DNF formula. Every path in the DAG corresponds to a disjunct
 //TODO: Maintenance Issue: Fix this entire portion of code that manipulates the tree
-abstract class CtrTree
-case class CtrLeaf() extends CtrTree
+abstract class CtrTree {
+  def prettyPrint(level: Int) : String
+}
+case class CtrLeaf() extends CtrTree {
+  override def prettyPrint(level : Int) : String = ""
+}
+
 object GlobalNodeCounter {
 	var id = 0	
 	def getUID : Int = {
@@ -76,9 +81,13 @@ case class CtrNode(id : Int = GlobalNodeCounter.getUID) extends CtrTree {
   	}
   }
 
+  override def prettyPrint(level : Int) : String = {
+    var str = " Ctrs: " + constraints + " Calls: " + uifs + " temps: " + templates +" children: "
+    children.foldLeft(str)((g: String, node: CtrTree) => { g + "\n" + "\t" * level +  node.prettyPrint(level + 1) })
+  }
+
   override def toString(): String = {
-    var str = " Constriants: " + constraints + " children: \n"
-    children.foldLeft(str)((g: String, node: CtrTree) => { g + node.toString })
+    prettyPrint(0)
   }
 }
 
