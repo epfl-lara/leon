@@ -77,8 +77,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       constTracker.addBodyConstraints(vc.funDef,vcbody)
 
       val (btree,ptree) = constTracker.getVC(vc.funDef)
-      println("Body Constraint Tree: "+btree)
-      //System.exit(0)
+      //println("Body Constraint Tree: "+btree)      
 
       //create entities that uses the constraint tracker
       val lsAnalyzer = new LinearSystemAnalyzer(constTracker)
@@ -170,7 +169,11 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     })
 
     val newfuncs = newFundefs.values.toSeq
-    val newObjDef = ObjectDef(program.mainObject.id.freshen, newfuncs, program.mainObject.invariants)
+    val otherDefs = program.mainObject.defs.diff(program.mainObject.definedFunctions)
+
+    val newObjDef = ObjectDef(program.mainObject.id.freshen, 
+      newfuncs ++ otherDefs, program.mainObject.invariants)
+
     val newprog = Program(program.id.freshen, newObjDef)
     //println("Program: "+newprog)
 

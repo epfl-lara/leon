@@ -316,7 +316,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
 
   
   //convert the theory formula into linear arithmetic formula
-  //TODO: Handle ADTs also  
+  //TODO: Correctly handle ADTs (the present solution is not complete)
   def constraintsForUIFs(calls: Seq[Call], precond: Expr, uisolver: UninterpretedZ3Solver) : Seq[Expr] = {
         
     //Part(I): Finding the set of all pairs of funcs that are implied by the precond
@@ -358,8 +358,9 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
               ;              
             }
             case _ => {
-              //here the arg. equality does not follow from the precondition but may be implied by instantiation of the templates              
+              //here the arg. equality does not follow from the precondition but may be implied by instantiation of the templates                            
               nimpliedSet ++= Set((call1,call2),(call2,call1))                       
+
               //TODO: consider the following optimization :
               //take the model found in this case. If the instantiation of the template does not satisfy the model
               //then may be it could imply the equality. So, we could try this case later. 
