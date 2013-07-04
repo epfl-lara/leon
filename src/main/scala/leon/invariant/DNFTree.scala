@@ -52,6 +52,11 @@ case class CtrNode(id : Int = GlobalNodeCounter.getUID) extends CtrTree {
   var templates = Set[LinearTemplate]()
   //UI function calls
   var uifs = Set[Call]()
+  //Abstract Data type constraints
+  var adtCtrs = Set[ADTConstraint]()
+  //Boolean Constraints
+  var boolCtrs = Set[BoolConstraint]()
+
   //children in the DNF tree
   private var children = Set[CtrTree](CtrLeaf())
 

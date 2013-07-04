@@ -76,8 +76,20 @@ class ConstraintTracker(fundef : FunDef) {
         case _ => {
           val node = CtrNode()          
           ie match {
+            case v@Variable(_) => { 
+              node.boolCtrs += new BoolConstraint(v)
+            }
+            case nv@Not(Variable(_)) => {
+             node.boolCtrs += new BoolConstraint(nv)            
+            }
             case Equals(v@Variable(_),fi@FunctionInvocation(_,_)) => {
             	node.uifs += Call(v,fi)
+            }
+            case Iff(v@Variable(_),ci@CaseClassInstanceOf(_,_)) => {
+              node.adtCtrs += new ADTConstraint(v,ci)
+            }
+            case Equals(v@Variable(_),cs@CaseClassSelector(_,_,_)) => {
+              node.adtCtrs += new ADTConstraint(v,cs)
             }
             case _ => {
               val template = exprToTemplate(ie)

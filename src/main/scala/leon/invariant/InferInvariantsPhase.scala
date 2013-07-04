@@ -46,12 +46,10 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     def getInferenceEngine(vc: ExtendedVC): (() => Boolean) = {
             
       //Create and initialize a constraint tracker
-      val constTracker = new ConstraintTracker(vc.funDef)            
-      //println("VC Body: "+vc.body)
+      val constTracker = new ConstraintTracker(vc.funDef)                  
       //flatten the functions in the vc      
       val vcbody = InvariantUtil.FlattenFunction(vc.body)
-      //println("VC Body falttened: "+vcbody)
-      //System.exit(0)
+      println("VC Body falttened: "+vcbody)      
       
       //create a postcondition 
       val postTemp = if(program.isRecursive(vc.funDef)) {
@@ -76,6 +74,10 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     	  			  else vcnpost
       constTracker.addPostConstraints(vc.funDef,fullPost)                    
       constTracker.addBodyConstraints(vc.funDef,vcbody)
+
+      val (btree,ptree) = constTracker.getVC(vc.funDef)
+      println("Body Constraint Tree: "+btree)
+      System.exit(0)
 
       //create entities that uses the constraint tracker
       val lsAnalyzer = new LinearSystemAnalyzer(constTracker)

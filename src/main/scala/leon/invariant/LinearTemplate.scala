@@ -27,6 +27,8 @@ import leon.verification.ExtendedVC
 import leon.verification.Tactic
 import leon.verification.VerificationReport
 
+trait Template { 
+}
 /**
  * Class representing linear templates which is a constraint of the form 
  * a1*v1 + a2*v2 + .. + an*vn + a0 <= 0 or = 0 or < 0 where ai's are unknown coefficients 
@@ -35,7 +37,7 @@ import leon.verification.VerificationReport
  */
 class LinearTemplate(val oper: (Expr,Expr) => Expr,
     coeffTemp : Map[Expr, Expr],
-    val constTemp: Option[Expr]) {
+    val constTemp: Option[Expr]) extends Template {
 
   val zero = IntLiteral(0)
 
@@ -148,4 +150,31 @@ class LinearConstraint(val opr: (Expr,Expr) => Expr, cMap: Map[Expr, Expr], val 
   }
 
   def expr : Expr = template
+}
+
+class BoolConstraint(val e : Expr) extends Template {
+  val expr = {
+    assert(e match{ 
+      case Variable(_) => true
+      case Not(Variable(_)) => true
+      case _ => false
+      })
+    e
+  }
+
+  override def toString(): String = {
+    expr.toString
+  }
+}
+
+class ADTConstraint(lhs: Variable, val right: Expr) extends Template {
+
+  val rhs = {
+    assert(right.isInstanceOf[CaseClassInstanceOf] || right.isInstanceOf[CaseClassSelector])
+    right
+  }
+
+  override def toString(): String = {
+    (Equals(lhs, rhs)).toString
+  }
 }

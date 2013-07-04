@@ -85,6 +85,7 @@ object InvariantUtil {
   }
     
   /**
+   * Assumed that that given expression has boolean type 
    * converting if-then-else and let into a logical formula
    */
   def reduceLangBlocks(inexpr: Expr) : Expr = {
@@ -123,45 +124,6 @@ object InvariantUtil {
           (resbody._1, resbody._2 ++ (resvalue._2 + Equals(freshvar,resvalue._1)))          
         }
         case _ =>  conjoinWithinClause(e, transform)
-        /*case t: Terminal => (t,Set())
-        
-        case And(args) => {
-          val newargs = args.map((arg) => {
-            val (nexp,ncjs) = transform(arg)
-            And(nexp,And((ncjs ++ ncjs).toSeq))            
-          })
-          (And(newargs),Set())
-        }
-        case Or(args) => {
-          val newargs = args.map((arg) => {
-            val (nexp,ncjs) = transform(arg)
-            And(nexp,And((ncjs ++ ncjs).toSeq))            
-          })
-          (Or(newargs),Set())
-        }        
-
-        case BinaryOperator(e1, e2, op) => {
-          val (nexp1,ncjs1) = transform(e1)
-          val (nexp2,ncjs2) = transform(e2)
-          (op(nexp1,nexp2),ncjs1 ++ ncjs2)          
-        }
-        
-        case u @ UnaryOperator(e1, op) => {
-          val (nexp,ncjs) = transform(e1)
-          (op(nexp),ncjs)
-        }
-        case n @ NAryOperator(args, op) => {
-          
-          var ncjs = Set[Expr]()
-          var ncalls = Set[Call]()
-          val newargs = args.map((arg) =>{
-            val (nexp,js) = transform(arg)
-            ncjs ++= js            
-            nexp
-          })          
-          (op(newargs),ncjs)
-        }
-        case _ => throw IllegalStateException("Impossible event: expr did not match any case: " + e)        */
       }
     }
     val (nexp,ncjs) = transform(inexpr)
@@ -186,14 +148,11 @@ object InvariantUtil {
      * set of new conjuncts
      */
     def flattenFunc(e: Expr): (Expr,Set[Expr]) = {
-      e match {        
-
+      e match {
         case fi @ FunctionInvocation(fd, args) => {
-
           //now also flatten the args. The following is slightly tricky            
           var newctrs = Seq[Expr]()
-          var newConjuncts = Set[Expr]()
-          //var newUIFs = Set[Call]()
+          var newConjuncts = Set[Expr]()          
           
           val newargs = args.map((arg) =>              
             arg match {                
@@ -201,8 +160,7 @@ object InvariantUtil {
               case _ => {                  
                 val (nexpr,ncjs) = flattenFunc(arg)
                 
-                newConjuncts ++= ncjs
-                //newUIFs ++= nuifs 
+                newConjuncts ++= ncjs                
                 
                 nexpr match {
                   case t : Terminal => t
@@ -224,74 +182,55 @@ object InvariantUtil {
           val res = (freshResVar, newConjuncts)                        
           res          
         }
-        /*case inst @ CaseClassInstanceOf(cd,e) => {
+        case inst@CaseClassInstanceOf(cd,e1) => {
           //replace e by a variable
-          val ()
-        }*/
+          val (newe,newcjs) = flattenFunc(e1)
+          var newConjuncts = newcjs
+
+          val freshArg = newe match {
+            case t : Terminal => t
+            case _ => {
+              val freshVar = Variable(FreshIdentifier("iarg", true).setType(newe.getType))
+              newConjuncts += Equals(freshVar, newe) 
+              freshVar
+            }
+          }            
+          val newInst = CaseClassInstanceOf(cd,freshArg)
+          val freshResVar = Variable(FreshIdentifier("ci", true).setType(inst.getType))
+          newConjuncts += Equals(freshResVar, newInst) 
+          (freshResVar, newConjuncts)
+        }
+        case cs@CaseClassSelector(cd, e1, sel) => {
+         val (newe,newcjs) = flattenFunc(e1)
+          var newConjuncts = newcjs
+
+          val freshArg = newe match {
+            case t : Terminal => t
+            case _ => {
+              val freshVar = Variable(FreshIdentifier("inst", true).setType(newe.getType))
+              newConjuncts += Equals(freshVar, newe) 
+              freshVar
+            }
+          }            
+          val newCS = CaseClassSelector(cd, freshArg, sel)
+          val freshResVar = Variable(FreshIdentifier("cs", true).setType(cs.getType))
+          newConjuncts += Equals(freshResVar, newCS)           
+          (freshResVar, newConjuncts) 
+        }
         case _ => conjoinWithinClause(e, flattenFunc)
-/*
-        case And(args) => {
-          val newargs = args.map((arg) => {
-            val (nexp,nuifs,ncjs) = flattenFunc(arg)
-            val uifExprs = nuifs.map((uif) => {
-              Equals(uif.retexpr,uif.fi)
-            })
-            
-            And(nexp,And((ncjs ++ uifExprs).toSeq))            
-          })
-          (And(newargs),Set(),Set())
-        }
-        case Or(args) => {
-          val newargs = args.map((arg) => {
-            val (nexp,nuifs,ncjs) = flattenFunc(arg)
-            val uifExprs = nuifs.map((uif) => {
-              Equals(uif.retexpr,uif.fi)
-            })
-            
-            And(nexp,And((ncjs ++ uifExprs).toSeq))            
-          })
-          (Or(newargs),Set(),Set())
-        }
-        case t: Terminal => (t,Set(),Set())
-        case u @ UnaryOperator(e1, op) => {
-          val (nexp,ncalls,ncjs) = flattenFunc(e1)
-          (op(nexp),ncalls,ncjs)
-        }
-        case b @ BinaryOperator(e1, e2, op) => {
-          val (nexp1,ncalls1,ncjs1) = flattenFunc(e1)
-          val (nexp2,ncalls2,ncjs2) = flattenFunc(e2)
-          (op(nexp1,nexp2),ncalls1 ++ ncalls2,ncjs1 ++ ncjs2)          
-        }
-        case n @ NAryOperator(args, op) => {
-          
-          var ncjs = Set[Expr]()
-          var ncalls = Set[Call]()
-          val newargs = args.map((arg) =>{
-            val (nexp,cs,js) = flattenFunc(arg)
-            ncjs ++= js
-            ncalls ++= cs            
-            nexp
-          })          
-          (op(newargs),ncalls,ncjs)
-        }
-        case _ => throw IllegalStateException("Impossible event: expr did not match any case: " + inExpr)        */
       }
     }
     
     //convert to negated normal form         
-    val nnfExpr = TransformNot(inExpr)
-    
+    val nnfExpr = TransformNot(inExpr)    
     //reduce the language before applying flatten function
     val newe = TransformNot(reduceLangBlocks(nnfExpr))
     
     val (nexp,ncjs) = flattenFunc(newe)
-    if(!ncjs.isEmpty) {
-      /*val uifExprs = nuifs.map((uif) => {
-        Equals(uif.retexpr, uif.fi)
-      })*/
+    if(!ncjs.isEmpty) {      
       And(nexp, And(ncjs.toSeq))
     }
-    else nexp            
+    else nexp           
   }
   
   
@@ -367,8 +306,8 @@ object InvariantUtil {
         e
       }
       case ResultVariable() => {
-	foundVar = true
-	e
+	     foundVar = true
+	     e
       }
       case _ => e
     })(expr)
