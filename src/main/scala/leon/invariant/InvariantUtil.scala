@@ -197,7 +197,7 @@ object InvariantUtil {
           }            
           val newInst = CaseClassInstanceOf(cd,freshArg)
           val freshResVar = Variable(FreshIdentifier("ci", true).setType(inst.getType))
-          newConjuncts += Equals(freshResVar, newInst) 
+          newConjuncts += Iff(freshResVar, newInst) 
           (freshResVar, newConjuncts)
         }
         case cs@CaseClassSelector(cd, e1, sel) => {
@@ -245,18 +245,26 @@ object InvariantUtil {
     def nnf(inExpr: Expr): Expr = {
       inExpr match {
         //matches integer binary relation
-        case Not(e @ BinaryOperator(e1, e2, op)) if (e1.getType == Int32Type
-            || e1.getType == RealType) => {          
-          e match {
-            case e: Equals => Or(nnf(LessThan(e1, e2)), nnf(GreaterThan(e1, e2)))
-              /*else 
-            	Or(nnf(LessEquals(e1, Minus(e2, one))), nnf(GreaterEquals(e1, Plus(e2, one))))
-            }*/
-            case e: LessThan => GreaterEquals(nnf(e1), nnf(e2))
-            case e: LessEquals => GreaterThan(nnf(e1), nnf(e2))
-            case e: GreaterThan => LessEquals(nnf(e1), nnf(e2))
-            case e: GreaterEquals => LessThan(nnf(e1), nnf(e2))
-            case _ => throw IllegalStateException("Unknown integer predicate: " + e)
+        case Not(e @ BinaryOperator(e1, e2, op)) => {
+          if (e1.getType == Int32Type || e1.getType == RealType) {          
+            e match {
+              case e: Equals => Or(nnf(LessThan(e1, e2)), nnf(GreaterThan(e1, e2)))
+                /*else 
+              	Or(nnf(LessEquals(e1, Minus(e2, one))), nnf(GreaterEquals(e1, Plus(e2, one))))
+              }*/
+              case e: LessThan => GreaterEquals(nnf(e1), nnf(e2))
+              case e: LessEquals => GreaterThan(nnf(e1), nnf(e2))
+              case e: GreaterThan => LessEquals(nnf(e1), nnf(e2))
+              case e: GreaterEquals => LessThan(nnf(e1), nnf(e2))
+              case _ => throw IllegalStateException("Unknown integer predicate: " + e)
+            }
+          }
+          else{
+            //in this case e1 and e2 could represent ADTs
+            e match {
+              case e: Equals => inExpr
+              case _ => throw IllegalStateException("Unknown operation on algebraic data types: " + e)
+            } 
           }
         }
         //TODO: Puzzling: "Not" is not recognized as an unary operator, need to find out why

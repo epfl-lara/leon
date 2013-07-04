@@ -40,6 +40,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
     LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."))
 
+  //TODO: handle direct equality and inequality on ADTs
   class InferenceEngine(reporter: Reporter, program: Program, context: LeonContext,      
       uisolver: UninterpretedZ3Solver) {        
     
@@ -77,7 +78,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
       val (btree,ptree) = constTracker.getVC(vc.funDef)
       println("Body Constraint Tree: "+btree)
-      System.exit(0)
+      //System.exit(0)
 
       //create entities that uses the constraint tracker
       val lsAnalyzer = new LinearSystemAnalyzer(constTracker)

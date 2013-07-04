@@ -167,14 +167,20 @@ class BoolConstraint(val e : Expr) extends Template {
   }
 }
 
-class ADTConstraint(lhs: Variable, val right: Expr) extends Template {
+class ADTConstraint(val e: Expr) extends Template {
 
-  val rhs = {
-    assert(right.isInstanceOf[CaseClassInstanceOf] || right.isInstanceOf[CaseClassSelector])
-    right
+  val expr = {
+    assert(e match {
+      case Iff(v@Variable(_),ci@CaseClassInstanceOf(_,_)) => true
+      case Equals(v@Variable(_),cs@CaseClassSelector(_,_,_)) => true
+      case Equals(lhs@Variable(_),rhs@Variable(_)) if(lhs.getType != Int32Type && lhs.getType != RealType) => true
+      case Not(Equals(lhs@Variable(_),rhs@Variable(_))) if(lhs.getType != Int32Type && lhs.getType != RealType) => true
+      case _ => false
+    })
+    e
   }
 
   override def toString(): String = {
-    (Equals(lhs, rhs)).toString
+    expr.toString
   }
 }

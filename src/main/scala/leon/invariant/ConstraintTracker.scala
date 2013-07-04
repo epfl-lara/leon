@@ -76,20 +76,23 @@ class ConstraintTracker(fundef : FunDef) {
         case _ => {
           val node = CtrNode()          
           ie match {
-            case v@Variable(_) => { 
-              node.boolCtrs += new BoolConstraint(v)
+            case Variable(_) => { 
+              node.boolCtrs += new BoolConstraint(ie)
             }
-            case nv@Not(Variable(_)) => {
-             node.boolCtrs += new BoolConstraint(nv)            
+            case Not(Variable(_)) => {
+             node.boolCtrs += new BoolConstraint(ie)            
             }
             case Equals(v@Variable(_),fi@FunctionInvocation(_,_)) => {
             	node.uifs += Call(v,fi)
             }
-            case Iff(v@Variable(_),ci@CaseClassInstanceOf(_,_)) => {
-              node.adtCtrs += new ADTConstraint(v,ci)
+            case Iff(Variable(_),CaseClassInstanceOf(_,_)) | Equals(Variable(_),CaseClassSelector(_,_,_)) => {
+              node.adtCtrs += new ADTConstraint(ie)
             }
-            case Equals(v@Variable(_),cs@CaseClassSelector(_,_,_)) => {
-              node.adtCtrs += new ADTConstraint(v,cs)
+            case Equals(lhs,rhs) if(lhs.getType != Int32Type && lhs.getType != RealType) => {
+              node.adtCtrs += new ADTConstraint(ie)
+            }
+            case Not(Equals(lhs,rhs)) if(lhs.getType != Int32Type && lhs.getType != RealType) => {
+              node.adtCtrs += new ADTConstraint(ie)
             }
             case _ => {
               val template = exprToTemplate(ie)

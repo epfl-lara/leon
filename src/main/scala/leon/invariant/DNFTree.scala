@@ -86,7 +86,14 @@ case class CtrNode(id : Int = GlobalNodeCounter.getUID) extends CtrTree {
   }
 
   override def prettyPrint(level : Int) : String = {
-    var str = " Ctrs: " + constraints + " Calls: " + uifs + " temps: " + templates +" children: "
+    var str = ""
+    if(!constraints.isEmpty) str += " Ctrs: " + constraints
+    if(!uifs.isEmpty) str+= " Calls: " + uifs
+    if(!templates.isEmpty) str += " Temps: " + templates
+    if(!adtCtrs.isEmpty) str += " Adts: "+ adtCtrs
+    if(!boolCtrs.isEmpty) str += " Bools: "+boolCtrs
+
+    str += " children: "
     children.foldLeft(str)((g: String, node: CtrTree) => { g + "\n" + "\t" * level +  node.prettyPrint(level + 1) })
   }
 
