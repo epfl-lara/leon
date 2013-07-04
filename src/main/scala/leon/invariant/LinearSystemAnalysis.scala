@@ -182,6 +182,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
 
       tree match {
         case n @ CtrNode(_) => {
+          //println("Traversing Body Tree")
           val newCtrs = currentCtrs ++ n.constraints
           val newTemps = currentTemps ++ n.templates
           val newUIFs = currentUIFs ++ n.uifs
@@ -212,9 +213,10 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
     def traversePostTree(tree: CtrTree, ants: Seq[LinearConstraint], antTemps: Seq[LinearTemplate],
       antAuxs: Seq[Expr], currUIFs: Set[Call], conseqs: Seq[LinearConstraint], 
       currTemps: Seq[LinearTemplate], currAuxs: Seq[Expr]): Expr = {
-    						
+          						
       tree match {
         case n @ CtrNode(_) => {          
+          //println("Traversing Post Tree")
           val newcons = conseqs ++ n.constraints
           val newuifs = currUIFs ++ n.uifs 
           val newtemps = currTemps ++ n.templates
@@ -244,6 +246,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
         
         tree match {
           case n @ CtrNode(_) => {
+            //println("Traversing UIF Tree")
             val newants = ants ++ n.constraints
             //recurse into children            
             foldAND(n.Children, (child : CtrTree) => traverseTree(child, newants, antTemps, conseqs, conseqTemps))
@@ -263,8 +266,10 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
       if (res.isDefined && res.get == false) {
         tru            
       } else {
-                    //println("All ctrs: "+ (ants ++ conseqs ++ calls ++ conseqTemps))                  
+                    //println("All ctrs: "+ (ants ++ conseqs ++ calls ++ conseqTemps))            \      
+        println("Starting Constraint generation")
         val uifCtrs = constraintsForUIFs(calls.toSeq, pathexpr, uiSolver)
+        println("Generated UIF Constraints")
         
         val uifroot = if (!uifCtrs.isEmpty) {
         
