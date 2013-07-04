@@ -379,7 +379,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
 
   /**
    * This procedure generates constraints for the calls to be equal
-   * TODO: how can we handle functions with templates variables and functions with template names
+   * TODO: how can we handle functions in which arguments have templates and templated functions ??
    */
   def axiomatizeEquality(call1: Call, call2: Call): (Expr, Expr) = {
     val v1 = call1.retexpr

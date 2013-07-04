@@ -10,7 +10,5 @@ object Size
 	  	case Node(l,x,r) => size(l) + size(r) + 1
 	  }
 	} ensuring(res => res != -1)
-	//ensuring(res => res < -1 || res > -1 )
-	//ensuring(res => res == 0)
 	//inductive generalization res >= 0
 } 

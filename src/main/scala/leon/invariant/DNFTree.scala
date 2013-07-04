@@ -44,7 +44,6 @@ object GlobalNodeCounter {
 	} 
 }
 
-//TODO: create a new id for each CtrNode
 case class CtrNode(id : Int = GlobalNodeCounter.getUID) extends CtrTree {
 
 	//constraints

@@ -29,6 +29,60 @@ object InvariantUtil {
   
   val zero = IntLiteral(0)
   val one = IntLiteral(1)
+
+  /**
+  * This function conjoins the conjuncts created by 'transfomer' within the clauses containing Expr.
+  * This is meant to be used by operations that may flatten subexpression using existential quantifiers.
+  **/
+  def conjoinWithinClause(e: Expr, transformer : Expr => (Expr,Set[Expr])) : (Expr, Set[Expr]) = 
+  e match {        
+      case And(args) => {
+        val newargs = args.map((arg) => {
+
+          val (nexp,ncjs) = transformer(arg)
+
+          And(nexp,And(ncjs.toSeq))            
+        })
+        (And(newargs),Set())
+      }
+      case Or(args) => {
+        val newargs = args.map((arg) => {
+
+          val (nexp,ncjs) = transformer(arg)
+
+          And(nexp,And(ncjs.toSeq))            
+        })
+        (Or(newargs),Set())
+      }
+      case t: Terminal => (t,Set())                
+      case BinaryOperator(e1, e2, op) => {
+       
+        val (nexp1,ncjs1) = transformer(e1)
+        val (nexp2,ncjs2) = transformer(e2)
+
+        (op(nexp1,nexp2),ncjs1 ++ ncjs2)          
+      }
+      
+      case u @ UnaryOperator(e1, op) => {
+        
+        val (nexp,ncjs) = transformer(e1)
+
+        (op(nexp),ncjs)
+      }
+      case n @ NAryOperator(args, op) => {
+        
+        var ncjs = Set[Expr]()
+        var ncalls = Set[Call]()
+        val newargs = args.map((arg) =>{
+        
+          val (nexp,js) = transformer(arg)
+          ncjs ++= js            
+          nexp
+        })          
+        (op(newargs),ncjs)
+      }
+      case _ => throw IllegalStateException("Impossible event: expr did not match any case: " + e)                                
+  }
     
   /**
    * converting if-then-else and let into a logical formula
@@ -68,7 +122,8 @@ object InvariantUtil {
           
           (resbody._1, resbody._2 ++ (resvalue._2 + Equals(freshvar,resvalue._1)))          
         }
-        case t: Terminal => (t,Set())
+        case _ =>  conjoinWithinClause(e, transform)
+        /*case t: Terminal => (t,Set())
         
         case And(args) => {
           val newargs = args.map((arg) => {
@@ -106,7 +161,7 @@ object InvariantUtil {
           })          
           (op(newargs),ncjs)
         }
-        case _ => throw IllegalStateException("Impossible event: expr did not match any case: " + e)        
+        case _ => throw IllegalStateException("Impossible event: expr did not match any case: " + e)        */
       }
     }
     val (nexp,ncjs) = transform(inexpr)
@@ -128,25 +183,26 @@ object InvariantUtil {
     
     /**
      * First return value is the new expression. The second return value is the 
-     * set of new calls and the third return value is the new conjuncts
+     * set of new conjuncts
      */
-    def flattenFunc(e: Expr): (Expr,Set[Call],Set[Expr]) = {
+    def flattenFunc(e: Expr): (Expr,Set[Expr]) = {
       e match {        
+
         case fi @ FunctionInvocation(fd, args) => {
 
           //now also flatten the args. The following is slightly tricky            
           var newctrs = Seq[Expr]()
           var newConjuncts = Set[Expr]()
-          var newUIFs = Set[Call]()
+          //var newUIFs = Set[Call]()
           
           val newargs = args.map((arg) =>              
             arg match {                
               case t : Terminal => t                                     
               case _ => {                  
-                val (nexpr,nuifs,ncjs) = flattenFunc(arg)
+                val (nexpr,ncjs) = flattenFunc(arg)
                 
                 newConjuncts ++= ncjs
-                newUIFs ++= nuifs 
+                //newUIFs ++= nuifs 
                 
                 nexpr match {
                   case t : Terminal => t
@@ -162,11 +218,18 @@ object InvariantUtil {
           val newfi = FunctionInvocation(fd,newargs)
           //create a new variable to represent the function
           val freshResVar = Variable(FreshIdentifier("r", true).setType(fi.getType))
-          newUIFs += Call(freshResVar,newfi)
-          
-          val res = (freshResVar, newUIFs, newConjuncts)                        
+          newConjuncts += Equals(freshResVar, newfi)
+
+          //newUIFs += Call(freshResVar,newfi)          
+          val res = (freshResVar, newConjuncts)                        
           res          
         }
+        /*case inst @ CaseClassInstanceOf(cd,e) => {
+          //replace e by a variable
+          val ()
+        }*/
+        case _ => conjoinWithinClause(e, flattenFunc)
+/*
         case And(args) => {
           val newargs = args.map((arg) => {
             val (nexp,nuifs,ncjs) = flattenFunc(arg)
@@ -211,7 +274,7 @@ object InvariantUtil {
           })          
           (op(newargs),ncalls,ncjs)
         }
-        case _ => throw IllegalStateException("Impossible event: expr did not match any case: " + inExpr)        
+        case _ => throw IllegalStateException("Impossible event: expr did not match any case: " + inExpr)        */
       }
     }
     
@@ -221,12 +284,12 @@ object InvariantUtil {
     //reduce the language before applying flatten function
     val newe = TransformNot(reduceLangBlocks(nnfExpr))
     
-    val (nexp,nuifs,ncjs) = flattenFunc(newe)
-    if(!nuifs.isEmpty || !ncjs.isEmpty) {
-      val uifExprs = nuifs.map((uif) => {
+    val (nexp,ncjs) = flattenFunc(newe)
+    if(!ncjs.isEmpty) {
+      /*val uifExprs = nuifs.map((uif) => {
         Equals(uif.retexpr, uif.fi)
-      })
-      And(nexp, And((ncjs ++ uifExprs).toSeq))
+      })*/
+      And(nexp, And(ncjs.toSeq))
     }
     else nexp            
   }
@@ -270,6 +333,9 @@ object InvariantUtil {
         case Iff(lhs,rhs) => {
           nnf(And(Implies(lhs,rhs),Implies(rhs,lhs)))
         }                
+
+        //handle ADTs
+        case ninst @ Not(CaseClassInstanceOf(cd, e)) => Not(CaseClassInstanceOf(cd,nnf(e)))
 
         case t: Terminal => t
         case u @ UnaryOperator(e1, op) => op(nnf(e1))

@@ -30,6 +30,7 @@ import scala.collection.mutable.{Set => MutableSet}
 /**
  * @author ravi
  * This phase performs automatic invariant inference. 
+ * TODO: handle programs with multiple functions for which post conditions are to be inferred
  */
 object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   val name = "InferInv"
@@ -42,13 +43,15 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   class InferenceEngine(reporter: Reporter, program: Program, context: LeonContext,      
       uisolver: UninterpretedZ3Solver) {        
     
-    //TODO: critical: handle unrolling of functions in templates
     def getInferenceEngine(vc: ExtendedVC): (() => Boolean) = {
             
       //Create and initialize a constraint tracker
       val constTracker = new ConstraintTracker(vc.funDef)            
-      //flatten the functions in the vc
+      //println("VC Body: "+vc.body)
+      //flatten the functions in the vc      
       val vcbody = InvariantUtil.FlattenFunction(vc.body)
+      //println("VC Body falttened: "+vcbody)
+      //System.exit(0)
       
       //create a postcondition 
       val postTemp = if(program.isRecursive(vc.funDef)) {
