@@ -8,6 +8,7 @@ import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.TypeTrees._
 import scala.collection.mutable.{ Set => MutableSet }
+import scala.collection.mutable.{ Map => MutableMap }
 import leon.evaluators._
 import java.io._
 import leon.LeonContext
@@ -21,7 +22,6 @@ import leon.verification.ExtendedVC
 import leon.verification.Tactic
 import leon.verification.VerificationReport
 import leon.invariant._
-import scala.collection.mutable.{Set => MutableSet}
 
 //TODO: the parts of the code that collect the new head functions is ugly. Fix this.
 class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
@@ -107,6 +107,8 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
    * here we unroll the methods in the current abstraction by one step.
    * This procedure has side-effects.
    */
+  private val MAX_UNROLLS = 2
+  private var unrollCounts = MutableMap[Call,Int]()
   def unrollCall(call : Call, ctrnode : CtrNode): Map[Call,CtrNode] = {                
 
     //println("Unrolling: "+call)
@@ -150,42 +152,60 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
           findHeads(btree) ++ findHeads(ptree)
         } else {
 
-          //TODO: add the unrolled body to the caller constraints
-          Map()
+          //unroll the body some fixed number of times
+          val ucount = if(unrollCounts.contains(call)) {
+                          val count = unrollCounts(call)
+                          unrollCounts.update(call,count + 1)
+                          count
+                      } else {
+                        unrollCounts += (call -> 0)
+                        0
+                      }
+          if(ucount <= MAX_UNROLLS) {            
+            inilineCall(call, bodyExpr, fi.funDef.postcondition, resFresh, ctrnode)          
+          } else {
+            Map()
+          }          
         }            
       }
-      else {
-
-        //here inline the body && Post and add it to the tree of the rec caller          
-        val calleeSummary = 
-          if (!fi.funDef.postcondition.isEmpty) {
-
-            val post = fi.funDef.postcondition
-            val argmap1 = InvariantUtil.formalToAcutal(call, ResultVariable())
-            val inlinedPost = InvariantUtil.FlattenFunction(replace(argmap1, matchToIfThenElse(post.get)))
-
-            val argmap2 = InvariantUtil.formalToAcutal(call, resFresh)
-            val inlinedBody = replace(argmap2, bodyExpr)
-            And(inlinedBody, inlinedPost)
-          } else {
-
-            val argmap2 = InvariantUtil.formalToAcutal(call, resFresh)
-            replace(argmap2, bodyExpr)
-          }          
-        //println("calleeSummary: "+calleeSummary)        
-        //create a constraint tree for the summary
-        val summaryTree = CtrNode()      
-        ctrTracker.addConstraintRecur(calleeSummary, summaryTree)          
-
-        //Find new heads (note: should not insert summaryTree and then call findheads)
-        val newheads = findHeads(summaryTree)
-
-        //insert the tree
-        TreeUtil.insertTree(ctrnode, summaryTree)        
-
-        newheads
+      else {        
+        inilineCall(call, bodyExpr, fi.funDef.postcondition, resFresh, ctrnode)
       }                
     } else Map()    
+  }
+
+  /**
+  * resVar is the result variable of the body
+  **/
+  def inilineCall(call : Call, body: Expr, post:Option[Expr], 
+    resVar: Variable, ctrnode: CtrNode) : Map[Call,CtrNode] = {    
+    //here inline the body && Post and add it to the tree of the rec caller          
+    val calleeSummary = 
+      if (post.isDefined) {
+
+        val argmap1 = InvariantUtil.formalToAcutal(call, ResultVariable())
+        val inlinedPost = InvariantUtil.FlattenFunction(replace(argmap1, matchToIfThenElse(post.get)))
+
+        val argmap2 = InvariantUtil.formalToAcutal(call, resVar)
+        val inlinedBody = replace(argmap2, body)
+        And(inlinedBody, inlinedPost)
+      } else {
+
+        val argmap2 = InvariantUtil.formalToAcutal(call, resVar)
+        replace(argmap2, body)
+      }          
+    //println("calleeSummary: "+calleeSummary)        
+    //create a constraint tree for the summary
+    val summaryTree = CtrNode()      
+    ctrTracker.addConstraintRecur(calleeSummary, summaryTree)          
+
+    //Find new heads (note: should not insert summaryTree and then call findheads)
+    val newheads = findHeads(summaryTree)
+
+    //insert the tree
+    TreeUtil.insertTree(ctrnode, summaryTree)        
+
+    newheads
   }
 
  /*

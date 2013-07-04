@@ -91,7 +91,7 @@ class ConstraintTracker(fundef : FunDef) {
               node.adtCtrs += new ADTConstraint(ie)
             }
             case Equals(lhs,rhs) if(lhs.getType != Int32Type && lhs.getType != RealType) => {
-              println("ADT constraint: "+ie)
+              //println("ADT constraint: "+ie)
               node.adtCtrs += new ADTConstraint(ie)
             }
             case Not(Equals(lhs,rhs)) if(lhs.getType != Int32Type && lhs.getType != RealType) => {

@@ -256,7 +256,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
       }
 
       val pathexpr = constraintsToExpr(ants ++ conseqs, calls, And(antAuxs ++ conseqAuxs))        
-      println("Full-path: " + pathexpr)
+      //println("Full-path: " + pathexpr)
 
       //if the path expression is unsatisfiable return true
       val (res, model, unsatCore) = uiSolver.solveSATWithFunctionCalls(pathexpr)
@@ -289,8 +289,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
      * Endpoint of the pipeline. Invokes the actual constraint solver.
      */
     def endpoint(ants: Seq[LinearConstraint], antTemps: Seq[LinearTemplate],
-      conseqs: Seq[LinearConstraint], conseqTemps: Seq[LinearTemplate]): Expr = {
-      //here we are solving A^~(B)
+      conseqs: Seq[LinearConstraint], conseqTemps: Seq[LinearTemplate]): Expr = {      
+      //here we are solving A^~(B)      
       if (conseqs.isEmpty && conseqTemps.isEmpty) tru
       else {
         val implCtrs = implicationSolver.constraintsForUnsat(ants, antTemps, conseqs, conseqTemps, uiSolver)
