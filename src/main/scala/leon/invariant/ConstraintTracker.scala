@@ -85,10 +85,13 @@ class ConstraintTracker(fundef : FunDef) {
             case Equals(v@Variable(_),fi@FunctionInvocation(_,_)) => {
             	node.uifs += Call(v,fi)
             }
-            case Iff(Variable(_),CaseClassInstanceOf(_,_)) | Equals(Variable(_),CaseClassSelector(_,_,_)) => {
+            case Iff(Variable(_),CaseClassInstanceOf(_,_)) | Equals(Variable(_),CaseClassSelector(_,_,_))
+                 | Equals(Variable(_),CaseClass(_,_)) => {
+
               node.adtCtrs += new ADTConstraint(ie)
             }
             case Equals(lhs,rhs) if(lhs.getType != Int32Type && lhs.getType != RealType) => {
+              println("ADT constraint: "+ie)
               node.adtCtrs += new ADTConstraint(ie)
             }
             case Not(Equals(lhs,rhs)) if(lhs.getType != Int32Type && lhs.getType != RealType) => {

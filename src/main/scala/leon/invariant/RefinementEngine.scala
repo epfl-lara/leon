@@ -113,7 +113,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
     val fi = call.fi
     if (fi.funDef.body.isDefined) {
 
-      val body = fi.funDef.getBody
+      val body = matchToIfThenElse(fi.funDef.getBody)
       val resFresh = Variable(FreshIdentifier("result", true).setType(body.getType))
       val bexpr1 = Equals(resFresh, body)
 

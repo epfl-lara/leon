@@ -173,6 +173,7 @@ class ADTConstraint(val e: Expr) extends Template {
     assert(e match {
       case Iff(v@Variable(_),ci@CaseClassInstanceOf(_,_)) => true
       case Equals(v@Variable(_),cs@CaseClassSelector(_,_,_)) => true
+      case Equals(v@Variable(_),cc@CaseClass(_,_)) => true
       case Equals(lhs@Variable(_),rhs@Variable(_)) if(lhs.getType != Int32Type && lhs.getType != RealType) => true
       case Not(Equals(lhs@Variable(_),rhs@Variable(_))) if(lhs.getType != Int32Type && lhs.getType != RealType) => true
       case _ => false

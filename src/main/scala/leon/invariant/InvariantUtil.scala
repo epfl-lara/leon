@@ -217,6 +217,11 @@ object InvariantUtil {
           newConjuncts += Equals(freshResVar, newCS)           
           (freshResVar, newConjuncts) 
         }
+        case cc@CaseClass(cd, args) => {
+          val freshResVar = Variable(FreshIdentifier("cc", true).setType(cc.getType))
+          val newConjuncts = Set(Equals(freshResVar, cc))
+          (freshResVar, newConjuncts)  
+        }
         case _ => conjoinWithinClause(e, flattenFunc)
       }
     }

@@ -280,6 +280,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
           newnode
 
         } else CtrLeaf()
+        //fls
         traverseTree(uifroot, ants, antTemps, conseqs, conseqTemps)  
       }      
     }
@@ -316,7 +317,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
 
   
   //convert the theory formula into linear arithmetic formula
-  //TODO: Correctly handle ADTs (the present solution is not complete)
+  //TODO: Find ways to efficiently handle ADTs (the current solution is incomplete for efficiency)
   def constraintsForUIFs(calls: Seq[Call], precond: Expr, uisolver: UninterpretedZ3Solver) : Seq[Expr] = {
         
     //Part(I): Finding the set of all pairs of funcs that are implied by the precond
@@ -359,11 +360,31 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
             }
             case _ => {
               //here the arg. equality does not follow from the precondition but may be implied by instantiation of the templates                            
-              nimpliedSet ++= Set((call1,call2),(call2,call1))                       
 
-              //TODO: consider the following optimization :
-              //take the model found in this case. If the instantiation of the template does not satisfy the model
-              //then may be it could imply the equality. So, we could try this case later. 
+              //An incomplete efficiency heuristic
+              //consider the ADT equalities in Ants alone. If that is not implied by precond then drop this call (incompletely assume
+              // that templates cannot make them equal)
+              val eqs = ant match{
+                case And(args) => args
+                case Equals(_,_) => Seq(ant)
+                case _ => throw IllegalStateException("Not a conjunction of equalities"+ant)
+              }
+              val adtEqs = eqs.filter((eq) => { 
+                val Equals(lhs,rhs) = eq
+                (lhs.getType != Int32Type && lhs.getType != RealType)                
+              })
+              val (adtImp,_,_) = uisolver.solveSATWithFunctionCalls(Not(Implies(precond,And(eqs))))
+              if(adtImp.isDefined && adtImp.get == true){
+                //here the implication need not necessarily hold therefore we consider that it can never 
+                //hold (assuming that the templates do not affect ADTs values thtough integers)
+                ;
+              }
+              else{
+                nimpliedSet ++= Set((call1,call2),(call2,call1))                       
+                //TODO: consider the following optimization :
+                //take the model found in this case. If the instantiation of the template does not satisfy the model
+                //then may be it could imply the equality. So, we could try this case later. 
+              }
             }
           }                  
         }                     

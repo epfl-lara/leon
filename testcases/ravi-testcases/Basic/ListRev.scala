@@ -1,3 +1,5 @@
+import leon.Utils._
+
 object ListWithSize {
     sealed abstract class List
     case class Cons(head: Int, tail: List) extends List
@@ -17,5 +19,5 @@ object ListWithSize {
     def reverse0(l1: List, l2: List) : List = (l1 match { 
       case Nil() => l2
       case Cons(x, xs) => reverse0(xs, Cons(x, l2))
-    }) //ensuring(res => size(res) == size(l1) + size(l2))
+    }) ensuring(res => true template((p,q,r) => p*size(l1) + q*size(l2) + r*size(res) == 0))
 }
