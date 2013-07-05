@@ -1,0 +1,431 @@
+\documentclass[a4paper,10pt]{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+\begin{document}
+\title{Research Project Report \\ 
+Template-based Invariant Inference For Leon Programs}
+\author{Ravichandhran Kandhadai Madhavan 
+\\ ravi.kandhadai@epfl.ch\\ \\
+\textit{under the guidance of} \\ \\
+Prof. Viktor Kuncak, \\
+Laboratory for Automated Reasoning and Analysis, \\
+EPFL \\
+}
+\maketitle
+
+\newcommand{\dash}[1]{\overline{#1}}
+\newcommand{\progst}[1]{\texttt{#1}}
+\newcommand{\temp}{\mathit{\phi_{temp}}}
+\newcommand{\post}{\mathit{\phi_{post}}}
+\newcommand{\body}{\mathit{\phi_{body}}}
+\newcommand{\zerovec}{\mathbf{0}}
+\newcommand{\Body}[1]{\mathit{Body(#1)}}
+\newcommand{\Post}[1]{\mathit{Post(#1)}}
+\newcommand{\Temp}[1]{\mathit{Temp(#1)}}
+%\newcommand{\implies}{\Rightarrow}
+
+\input{genericmacros}
+
+\section{Abstract}
+
+We propose an approach for inferring invariants for \emph{Leon} programs that belong to a given \emph{template} which are arbitrary \emph{linear} expressions (possibly involving  recursive functions and data structures) having unknown coefficients.
+Our approach binds the unknown coefficients in the templates to appropriate values so that the resulting expression
+is an invariant of the program.
+We have implemented our approach in the Leon verification framework and have used it to verify complex specifications 
+of several interesting Leon programs.
+
+\section{Introduction}
+
+Invariant inference is a crucial step in the automated verification of programs. 
+We consider the problem of inferring rich invariants that may involve recursive functions and data structures.
+We propose an approach for inferring such invariants when the structure of the invariants are specified as input in the form of formulas with linear atomic predicates possibly containing unknown coefficients.
+We refer to such formulas as templates. For example, $a \cdot res + b \cdot x + c \le 0 \wedge b < 0$ where
+$a,b,c$ are unknown coefficients is an example of a template.
+%
+\begin{figure}
+\begin{myprogram}
+\pnl \> def s(x: Int) : Int = \{ \\
+\pnl \> \> if(x < 0) \\
+\pnl \> \> \> - x \\
+\pnl \> \> else  \\
+\pnl \> \> \> 	s(x-1) + x\\
+\pnl \> \} ensuring(res => res != -1  \\
+\pnl \> \> \> template((a,b,c) => (a*res + b*x + c <= 0 \&\& b<0)))
+\end{myprogram}
+\caption{A simple program with a specification containing templates} \label{fig:eg}
+\end{figure}
+
+We extend the language of Leon programs so that templates can be specified along with the contracts. 
+For example, Fig~\ref{fig:eg} shows a Leon program that has templates in the specifications. 
+As shown in the Figure, the templates can be specified using the following syntax: 
+\progst{template((a, b, c, $\cdots$) => $\temp$(a,b,c,res,$\cdots$))} where, $\temp$ is a template formula
+defined over the result variable \progst{res}, arguments and unknown coefficients \progst{a,b,c}.
+We refer to the unknown coefficients as \emph{template variables}.
+We fix the domain of the unknown coefficients in the templates as the set of real numbers.
+
+Our approach infers an inductive invariant that would enable successful verification of the specification.
+It does so by binding the template variables to appropriate values so that the conjunction of the template and
+the postcondition is an inductive invariant of the program.
+For the example shown in Fig~\ref{fig:eg}, our implementation binds the unknown coefficients $a$,$b$ and $c$ to 
+the values $-6$, $-2$ and $1$, respectively.
+
+Our approach can be applied to programs manipulating recursive functions and data structures containing arbitrary specifications involving user-defined functions and data structures. However, the implementation as such does not support nonlinear operations on integers. For example, the program shown in Fig~\ref{fig:eg2} that appends two
+lists can be verified using our approach. 
+%
+\begin{figure}
+\begin{myprogram}
+object List \{ \\
+\pnl \> abstract class L \\
+\pnl \> class Cons(hd:Int, tl:L) extends L \\
+\pnl \> class Nil() extends L \\
+\\
+\pnl \> def s(l: L) : Int = (l match \{ \\
+\pnl \> \> case Nil() => 0 \\
+\pnl \> \> case Cons(\_, t) => 1 + s(t) \\
+\pnl \>\}) \\
+\\
+\pnl \> def append(l1: L, l2: L) : L = (l1 match \{ \\
+\pnl \> \> case Nil() => l2 \\
+\pnl \> \> case Cons(x,xs) => Cons(x,append(xs,l2)) \\
+\pnl \> \}) \\ 
+\pnl \> ensuring(res => s(res) != s(l1) - 1 \\
+\pnl \> \> \> template((a,b,c) => a*s(res)+b*s(l1) <= 0)) \\
+\}
+\end{myprogram}
+\caption{A list concatenation procedure} \label{fig:eg2}
+\end{figure}
+
+\section{The Approach}
+
+\subsection{Verification condition generation in the presence of templates}
+
+Let $X$ be a row vector of program variables and $A$ be a row vector of  template variables (unknown coefficients of the template).
+Given a specification \progst{$\phi(X)$ template(A => $\temp(X,A)$)} it should be should be interpreted as representing the formula $\post(X,A): \; \phi(X) \wedge \temp(X,A)$, where $A$ is existentially quantified
+and its scope extends to the entire procedure.
+We generate the verification condition using the standard procedure used by the Leon verification engine.
+The generated verification condition would be of the form $\body(X,A) \Rightarrow \post(X,A)$. Notice that $\body$ may also use the template variables as the verification condition is generated by assuming the postconditions for the recursive calls in the body.
+For the postcondition to hold we need the verification condition to be valid. Since the template variables can be bound to any real value the goal is to find an $A$ such that the verification condition is valid. Formally, we need to prove
+%
+\begin{align}
+& \exists A. \forall X. \; \body(X,A) \Rightarrow \post(X,A) \\
+& \equiv  \exists A. \forall X. \; \body(X,A) \wedge \neg(\post(X,A)) \Rightarrow \mathit{false}
+\label{eq:tempvc}
+\end{align}
+
+In general, $\body$ and $\post$ can be arbitrary boolean valued expressions belonging to our language. Therefore, they can contain user-defined functions and data structures.
+However, we first focus on a restrictive case where the predicates contain only numerical variables and 
+do not contain any user-defined functions or data structures.
+Subsequently, we extend the approach to handle all expressions belonging our language.
+
+\subsection{Solving a restricted case using Farkas' and Motzkin's Lemmas}
+
+Let $A = (a_1 \cdots a_m)$ and $X = (x_1 \cdots x_n)$.
+Let $\body \wedge \neg \post$ be of the form 
+$\bigwedge \limits_{k=1}^{p} \sigma_k(X,A)$ with each $\sigma_k$ of the form 
+$D_k (x_1 \cdots x_n \; 1)^T \le \zerovec$ where $D_k$ is a row vector of $(n+1)$ elements
+which are constants or template variables.
+Define $D_0$ as $(0 \cdots 0 \; 1)$.
+
+Consider the constraint \ref{eq:tempvc} shown above. Say the above assumption about $\body \wedge \neg \post$ hold. 
+Let $D$ be the $(n+1) \times (p+1)$ matrix 
+$\left(
+\begin{array}{c}
+D_0 \\
+D_1 \\
+\vdots \\
+D_p
+\end{array}
+\right)$
+By Farkas' Lemma, a solution to constraint \ref{eq:tempvc} exists if
+%
+\begin{align}
+\exists A. \exists \Lambda \in \mathbb{R}^{p+1}. \; \Lambda \ge \zerovec \wedge \Lambda D =(0 \cdots 0 \; 1) \label{eq:flemma}
+\end{align}
+%
+Since $D$ has only the template variables and constants, constraint~\ref{eq:flemma} is a non-linear constraint involving the template variables and lambdas. If there exists a model for constraint~\ref{eq:flemma} then the values of the template variables in the model are a valid solution for the constraint~\ref{eq:tempvc}.
+
+\paragraph{Extensions for handling mixed strict and non-strict inequalities.}
+
+In the above case we required that each $\sigma_k$ is of the form 
+$D_k (x_1 \cdots x_n \; 1)^T \le 0$. However, it is possible to extend the approach to
+also support strict inequalities using \emph{Motzkin's transposition theorem}.
+
+Let $\body \wedge \neg \post$ be of the form 
+$\bigwedge \limits_{k=1}^{p} \sigma_k(X,A) \wedge \bigwedge \limits_{k=p}^{p+q} \delta_k(X,A)$,
+where $\sigma_k$'s are defined as before and $\delta_k$'s are of the form 
+$D_k (x_1 \cdots x_n \; 1)^T < \zerovec$.
+By Motzkin's transposition theorem, a solution to constraint \ref{eq:tempvc} exists if
+%
+\begin{align}
+& \nonumber
+\exists A. \exists \Lambda_1 \in \mathbb{R}^{p+1}, \Lambda_2 \in \mathbb{R}^{q}, \Lambda = (\Lambda_1 \; \Lambda_2). \; \\ 
+& \qquad \Lambda \ge \zerovec \wedge (\Lambda D =(0 \cdots 0 \; 1) \vee (\Lambda_2 > \zerovec \wedge \Lambda D = \zerovec)) \label{eq:motlemma}
+\end{align}
+%
+Notice that we have disjunctions in the constraints when there are mixed strict and non-strict inequalities in the constraint~\ref{eq:tempvc}. 
+%From an efficiency perspective reducing the number of strict inequalities could be beneficial.
+
+\subsection{Extensions for handling disjunctions in the verification condition}
+
+Handling disjunctions in constraint~\ref{eq:tempvc} is straight forward. We first
+convert $\body \wedge \neg \post$ in to a DNF formula $\bigvee_i d_i$.
+Constraint~\ref{eq:tempvc} is equivalent to 
+%
+\begin{align}
+\exists A. \forall X. (\bigvee_i d_i) \Rightarrow false \;
+\equiv \; \exists A. \bigwedge_i (\forall X. \; d_i \Rightarrow false)
+\end{align}
+%
+Let $L_i =  (\forall X. \; d_i \Rightarrow false)$. We use the above approach to generate non linear constraints $C_i$ for each $L_i$ and solve the conjunction $C: \bigwedge C_i$.
+If there exists a model for $C$ then the values of $A$ in the model will satisfy the 
+constraint~\ref{eq:tempvc}.
+
+\subsection{Extending the approach to handle User Defined Functions (UDFs) in the function body}
+
+The Leon verification framework proposes an approach for generating verification conditions in the presence of calls to UDFs in the function body (like in Figs~\ref{fig:eg},\ref{fig:eg2} which have recursive calls in the body). In the Leon approach, the calls to the UDFs are treated as logical functions and retained in the verification condition. For example, $\body$ for the program shown in Figure~\ref{fig:eg} will  be of the form 
+$(x < 0 \wedge res = -x) \vee (x \ge 0 \wedge res = s(x-1) + x \wedge a*s(x-1) + b*x + c \le 0 \wedge b < 0 \wedge s(x-1) \ne -1)$.
+
+We handle such a verification condition containing UDFs iteratively. Each iteration consists of two phases. In the first phase, we treat the UDFs as uninterpreted functions (UIFs) and solve for the template variables.
+If there exists a solution then we halt and return the solution (the correctness of the solution is immediately evident).
+If a solution does not exist, we proceed to the \emph{unrolling} phase which refines the verification condition using the definition of the called function and repeats the entire approach with the refined verification condition. We now explain the phases in detail.
+
+\paragraph{Solving constraint~\ref{eq:tempvc} in the presence of uninterpreted functions.}
+
+Say $\body$ and $\post$ in constraint~\ref{eq:tempvc} contain uninterpreted functions.
+Let $\psi(X,A): \body(X,A) \wedge \neg \post(X,A)$.
+Without loss of generality assume that $\psi$ is a conjunction of atomic predicates.
+%As discussed in the earlier section, disjunctions are handled by splitting the problem in to several sub-problems that are disjunction free.
+
+We first flatten the functions in $\psi$. 
+We convert $\psi$, by introducing fresh variables say $X'$, to an equivalent formula $\psi_{I}(X,X',A) \wedge \psi_{F}(X,X',A)$ in which
+$\psi_I$ is a formula without UIFs and 
+$\psi_{F}$ is of the form $\bigwedge_i (v_i = f_i(Y_i))$ where, $f_i$ is a function symbol,  
+$v_i \in X \cup X'$ is either a program variable or a newly introduced fresh variable 
+and $Y_i \in (X \cup X')^n$ is a vector of program variables and fresh variables.  
+Clearly, constraint~\ref{eq:tempvc} is equivalent to 
+%
+\begin{align}
+\exists A. \forall X,X'. \; \psi_{I}(X,X',A) \wedge \psi_{F}(X,X') \Rightarrow false \label{eq:c2}
+\end{align}
+
+In the above constraint, the UIFs in $\psi_{F}$ can be eliminated using the axiom of uninterpreted functions which states that the result of  two functions are equal if the functions have the same name and the arguments are equal. In the following we treat $\psi_F$ as a set of atomic predicates.
+Let $\psi_R =$
+%
+\begin{align}
+\bigwedge \left\lbrace (\bigwedge \limits_{j=1}^{n} y_j = z_j) \Rightarrow v = u \vbar \exists f. \; (v = f(y_1,\cdots,y_n)) \in \psi_F \wedge (u = f(z_1,\cdots,z_n) \in \psi_F \right\rbrace  
+\end{align}
+
+Note that $\psi_R$ as defined above does not have any UIFs. By the axiom of uninterpreted functions constraint~\ref{eq:c2} is equivalent to 
+%
+\begin{align}
+\exists A. \forall X,X'. \; \psi_{I}(X,X',A) \wedge \psi_{R}(X,X')  \Rightarrow false \label{eq:c3}
+\end{align}
+%
+Constraint~\ref{eq:c3} can be solved using the approach discussed earlier. A model for constraint~\ref{eq:c3} is a valid model for constraint~\ref{eq:tempvc}.
+
+\paragraph{Handling user-defined functions in the verification condition.}
+
+Say the constraint~\ref{eq:tempvc} cannot be solved by treating the UDFs as uninterpreted functions. 
+Let $\psi: \body \wedge \neg \post$. Without loss of generality assume that the function invocations in $\psi$ are flattened.
+Let $Calls =\{ v_i = f_i(Y_i) \vbar 1 \le i \le n \}$ be the set of calls in $\psi$ and
+$F = \{ f_i \vbar 1 \le i \le m \}$ be the set of user-defined function symbols in $\psi$. 
+For each function in $f_i \in F$ let $\body_i$, $\post_i$ and $\temp_i$ denote the formulas corresponding to the body, postcondition and the template of the function $f_i$ and let $a_i$ denote the argument vector of the function.
+Note that $\body_i$ is obtained by assuming the postcondition and the templates of $f_i$ for the recursive calls 
+in the body of $f_i$ if $f_i$ is recursive.
+
+The approach fundamentally differs in the way recursive and non-recursive functions are handled (recursive functions also include mutually recursive functions).
+Let $F_{rec} \subseteq F$ denote the set of recursive functions.
+Let $\psi'$ be a formula defined as follows: 
+%
+\begin{align*}
+\psi': & \quad \psi \wedge  \bigwedge \{ (\body_i \wedge \post_i)[res \mapsto v_i, a_i(1) \mapsto y_1,\cdots, a_i(n) \mapsto y_n] \\
+	   & \qquad \qquad  \vbar v_i = f_i(y_1,\cdots,y_n) \in Calls, \;  f_i \in F \}
+\end{align*}
+
+In simple words, $\psi'$ is the formula got by inlining the body and the postcondition of 
+the recursive and non-recursive calls in $\psi$.
+Define $\psi''$ as:
+%
+\begin{align*}
+\psi'': & \quad \psi' \wedge  \bigwedge \{ \temp_k[res \mapsto v_k, a_k(1) \mapsto y_1,\cdots, a_k(n) \mapsto y_n] \\
+	   & \qquad \qquad  \vbar v_k = f_k(y_1,\cdots,y_n) \in Calls, f_k \in F_{rec} \}
+\end{align*}
+%
+That is, $\psi''$ further refines $\psi'$ by conjoining the templates of recursive calls in $\psi$.
+
+Define a formula $\psi_k$ for each recursive function $f_k \in F_{rec}$ as follows:
+%
+\begin{align*}
+\psi_k: \quad \body_k \wedge \neg \temp_k
+\end{align*}
+%
+$\psi_k$ is the condition that characterises that the template $\temp_k$ is inductive for the procedure $f_k$.
+
+We create a refined verification condition using $\psi''$ and $\psi_k$'s as follows:
+%
+\begin{align}
+\exists A. \forall X. \; (\psi''(X,A) \Rightarrow false) \wedge \bigwedge_{f_k \in F_{rec}} (\psi_k(X,A) \Rightarrow false)
+\end{align}
+
+We repeat the above approach on the refined verification condition. That is, we treat the user defined functions in the refined verification condition as uninterpreted functions and try to solve for $A$. If unsuccessful we further refine the verification condition as described above. 
+The process is non-terminating in the  presence of recursive functions.
+However, in the implementation we enforce termination by bounding the number of unrollings and also other heuristics.
+These are discussed in the later sections.
+
+\subsection{Handling Algebraic Data Types} 
+
+We now discuss the handling of algebraic data structures.  
+Let the verification condition $\psi(X,A)$ be $\body(X,A) \wedge \neg \post(X,A)$.
+Without loss of generality assume that $\psi$ only has conjunctions.
+We convert $\psi$ by the introducing fresh variables $X'$ to the following form by flattening the 
+user-defined functions and ADT terms in $\psi$.
+%
+\begin{align*}
+\psi_I(X,X') \wedge \psi_T(X,X',A) \wedge \psi_{F_I}(X,X') \wedge \psi_{F_A}(X,X') \wedge \psi_{ADT}(X,X')
+\end{align*}
+
+where, $\psi_I$ involves only numerical variables, $\psi_{T}$ uses only numerical variables and template variables, 
+$\psi_{F_I}$ is a conjunction of flattened functions of the form $v_i = f_i(Y_i)$ involving only numerical 
+variables and $\psi_{F_A}$ is a conjunction of flattened functions of the form $v_i = f_i(Y_i)$ 
+where $v_i$ is a numerical variable and $Y_i$ has atleast one ADT variable. 
+
+Finally, $\psi_{ADT}(X,X')$ is a conjunction of the remaining terms that involve ADTs and functions 
+that transform ADTs to ADTs.
+Note that the dependencies between the predicates manipulating ADTs and those manipulating 
+numerical variables flow through $\psi_{F_A}$. 
+
+\paragraph{An Efficiency Heuristic.}
+
+In general, the dependencies between the numerical and the ADT parts could be cyclic i.e, 
+the numerical part can introduce dependencies in the ADT part and vice-versa. 
+%Even though the templates to be solved only depend on the numerical variables,
+%it is necessary to preserve the dependencies that goes via the ADT part for the 
+%following reason. 
+Specifically, constraining two numerical variables (say by assigning values to the template variables) 
+may introduce more constraints between the numerical variables because of the dependencies that go through the ADT part.
+
+E.g. consider the following formula 
+$a \cdot x = b \cdot y \wedge u \ne v \wedge u = f(l1) \wedge v = f(l2) \wedge l1 = g(x) \wedge l2 = g(y)$ where, $a,b$ are template variables, $x,y,u,v$ are integers, $l1,l2$ are ADTs and $f,g$ are functions. 
+Here, if $a$ and $b$ are bound to the same value then $u = v$  is implied because of the dependencies 
+that go through the ADTs. Hence, the above formula could be falsified by binding both $a,b$ to the same value.
+
+However, we make a lossy assumption that the flow of dependencies is acyclic and 
+flows only from the ADT part to the numerical part. This assumption holds for most of the common 
+data structure manipulating programs. 
+Typically, the programs have fold functions that traverse data structures and produce integer values 
+e.g. the size and height functions on trees. 
+
+%Scenarios such as the one shown in the above example where the (equality/inequality) relationships between the 
+%ADTs are affected by the integer constraints is atypical of programs were are interested in.
+%Therefore, we make this lossy assumption.
+
+The following approach uses this assumption to efficiently eliminate the predicates involving ADTs 
+(namely, $\psi_{F_A}$ and $\psi_{ADT}$) from the verification condition.
+
+\paragraph{Eliminating ADTs from the verification condition.}
+
+Let $\psi' = \psi_I(X,X') \wedge \psi_T(X,X',A) \wedge \psi_{F_I}(X,X')$.
+Consider the formula $\psi_{F_A}(X,X')$. For each pair of calls 
+$v = f(Y,P)$ and $u = f(Z,Q)$ in $\psi_{F_A}$, where, $v,u$ are numerical variables, 
+$Y,Z$ are vector of numerical variables
+and $P,Q$ are vector of ADT variables, we check if $P = Q$ is implied by $\psi$ (the input verification condition)
+using a theory solver.
+If true, we conjoin the predicate $(\bigwedge_{y \in Y, z \in Z} y = z) \Rightarrow u = v$ with $\psi'$.
+Otherwise, we just ignore the pair of calls as, by our assumption, $P$ and $Q$ cannot be made
+equal by solving for the template variables.
+The resulting $\psi'$ would not have any ADT variables and hence can be solved using the techniques
+discussed in the previous sections.
+
+\section{Optimizations and Heuristics} 
+
+We now discuss some of the important optimizations  used in the implementation.
+
+\paragraph{Bounding the unrollings of recursive procedures.}
+
+As an efficiency heuristic, we bound the number of inlinings of the recursive procedures 
+called in a verification condition. This makes the algorithm terminating but introduces incompleteness.
+
+\paragraph{Selectively unrolling the \emph{abstraction} functions.}
+
+Informally, \emph{abstraction} functions define an abstract view of the actual 
+implementation (or data structure) that suffices for specifying the properties of interest.
+Loosely speaking, abstraction functions capture the abstract properties of the implementation 
+that are relevant for the clients of the implementation.
+For example, a function \emph{content} that computes the set of elements of a container (such as a list)
+is an abstraction function. Similarly, a \emph{size} function defined on a list can also be 
+an abstraction function.
+
+Typically, abstraction functions are used only in the contracts. Nevertheless, they can be 
+recursive and manipulate data structures. The idea is to unroll only the abstraction functions
+selectively instead of unrolling all the functions in the verification condition.
+
+%However, as before, for all the functions called in a verification condition, 
+%the templates and postconditions of the callees will be assumed in the verification condition.
+%Moreover, as discussed in earlier sections, if the callee is recursive, we
+%create a new verification condition for the callee that asserts the inductiveness of the templates.
+
+\paragraph{Assuming default templates.}
+
+For functions for which templates are not specified we assume a default template which is a linear
+combination of all the integer valued arguments and return values.
+For example, for the \emph{size} function shown in Fig~\ref{fig:eg2}, the default template 
+would be \progst{a*res + b <= 0}.
+
+\section{Experimental Evaluation}
+
+We have evaluated the approach on several micro-benchmarks with different postconditions.
+Fig.~\ref{fig:results} summarizes the results of running the tool on the benchmarks. 
+All the benchmarks took less than five minutes.
+The benchmarks are categorized as numerical and DS (data structures). 
+The numerical benchmarks use only integer variables but has function calls. 
+The data structure benchmarks use integers, user-defined functions and ADTs.
+%
+\begin{figure}
+\begin{center}
+\begin{tabular}{|l|c|c|}
+\hline
+\textit{Benchmark} & \textit{Unrollings} & \textit{Success/Failure} \\ \hline \hline
+\multicolumn{3}{|c|}{Numerical Benchmarks} \\ \hline \hline
+SimpleLoop	& 0	& S \\
+Loop2 		& 0	& S \\
+see-saw		& 0	& S \\
+ListAppendAbs & 1 & S \\
+SimpleInterProc & 1 & S \\
+UIFTest			& 2 &  S \\ \hline \hline
+\multicolumn{3}{|c|}{DS Benchmarks} \\ \hline \hline
+ListSize 	& 0 & S \\
+ListAppend	& 2 & S \\
+ListRev		& 2 & S \\
+ListRev2	& 3 & F \\ \hline
+\end{tabular}
+\end{center}
+\caption{Experimental Results} \label{fig:results}
+\end{figure}
+
+The program \emph{ListAppend} was the program shown in Fig.~\ref{fig:eg2}. The tool successfully instantiated the 
+template variables $a,b$ to $-1,1$ respectively. It also inferred that the \emph{size(l)} is positive using
+the default template.
+
+The program \emph{ListRev} is a list reversal program. The property to be proven was that the size of the 
+input and the reversed lists were equal. The input template for one of the functions was
+\progst{p*size(l1)+q*size(l2)+r*size(res) == 0}. 
+The approach successfully proved the property by instantiating the coefficients $p,q,r$ to values $-1,-1,1$.
+%It also inferred that $size(l)$ was always positive using the implicit default template.
+
+\emph{ListRev2} was a slightly complicated version of list reversal program that uses list concatenation.
+However, the implementation failed to instantiate the provided template within the given unroll bounds.
+
+\section{Future Work}
+
+There are three important issues which we plan to address in future. (a) The number of disjuncts in the 
+verification condition increase exponentially with the number of unrollings, we plan to investigate ways of making constraint generation incremental.
+(b) The number of calls to the theory solver during the reduction of algebraic data types and functions 
+becomes a major performance bottleneck. We plan to minimize the calls made to the theory solver during the reduction process.
+(c) Finally, we plan to investigate ways of inferring the templates automatically.
+
+%\bibliographystyle{acm}
+%\bibliography{project}
+
+\end{document}
