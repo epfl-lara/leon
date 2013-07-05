@@ -1,3 +1,5 @@
+import leon.Utils._
+
 object ListRev2 {
     sealed abstract class List
     case class Cons(head: Int, tail: List) extends List
@@ -7,16 +9,16 @@ object ListRev2 {
         case Nil() => 0
         case Cons(_, t) => 1 + size(t)
     }) //ensuring(res => res >= 0)
-
-    def append(l1 : List, l2 : List) : List = (l1 match {
-      case Nil() => l2
-      case Cons(x,xs) => Cons(x, append(xs, l2))
-    }) ensuring(res => true template((p,q,r) => p*size(l1) + q*size(l2) + r*size(res) == 0))
-    
+        
     def reverse(l: List) : List = {
       l match{
         case Nil() => l
         case Cons(hd,tl) => append(reverse(tl),Cons(hd,Nil()))
       }
     } ensuring(res => size(res) == size(l))
+
+    def append(l1 : List, l2 : List) : List = (l1 match {
+      case Nil() => l2
+      case Cons(x,xs) => Cons(x, append(xs, l2))
+    }) ensuring(res => true template((p,q,r) => p*size(l1) + q*size(l2) + r*size(res) == 0))
 }
