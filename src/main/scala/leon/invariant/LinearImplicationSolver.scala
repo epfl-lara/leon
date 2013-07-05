@@ -50,9 +50,9 @@ class LinearImplicationSolver {
     val allAnts = antsSimple ++ antsTemp
     val allConseqs = conseqsSimple ++ conseqsTemp
     //for debugging
-    println("#" * 20)
+    /*println("#" * 20)
     println(allAnts + " ^ " + allConseqs)    
-    println("#" * 20)
+    println("#" * 20)*/
     
 
     //Optimization 1: Check if ants are unsat (already handled)    

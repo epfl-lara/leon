@@ -259,7 +259,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
       }
 
       val pathexpr = constraintsToExpr(ants ++ conseqs, calls, And(antAuxs ++ conseqAuxs))        
-      //println("Full-path: " + pathexpr)
+      println("Full-path: " + pathexpr)
 
       //if the path expression is unsatisfiable return true
       val (res, model, unsatCore) = uiSolver.solveSATWithFunctionCalls(pathexpr)
