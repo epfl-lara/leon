@@ -202,13 +202,18 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
         val argmap1 = InvariantUtil.formalToAcutal(call, ResultVariable())
         val inlinedPost = InvariantUtil.FlattenFunction(replace(argmap1, matchToIfThenElse(post.get)))
 
+        //println("Identifiers: "+variablesOf(body))
         val argmap2 = InvariantUtil.formalToAcutal(call, resVar)
         val inlinedBody = replace(argmap2, body)
-        And(inlinedBody, inlinedPost)
+        val rex = And(inlinedBody, inlinedPost)
+        //println("Replaced Expr: "+rex+" argmap2: "+argmap2)
+        //System.exit(0)
+        rex
       } else {
 
         val argmap2 = InvariantUtil.formalToAcutal(call, resVar)
-        replace(argmap2, body)
+        val rex = replace(argmap2, body)        
+        rex
       }          
     //println("calleeSummary: "+calleeSummary)        
     //create a constraint tree for the summary

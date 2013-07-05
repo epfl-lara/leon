@@ -258,18 +258,18 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
         }
       }
 
-      val pathexpr = constraintsToExpr(ants ++ conseqs, calls, And(antAuxs ++ conseqAuxs))        
-      println("Full-path: " + pathexpr)
+      val pathexpr = constraintsToExpr(ants ++ conseqs, calls, And(antAuxs ++ conseqAuxs))              
 
       //if the path expression is unsatisfiable return true
       val (res, model, unsatCore) = uiSolver.solveSATWithFunctionCalls(pathexpr)
       if (res.isDefined && res.get == false) {
         tru            
       } else {
-                    //println("All ctrs: "+ (ants ++ conseqs ++ calls ++ conseqTemps))            \      
-        println("Starting Constraint generation")
+        println("Full-path: " + simplifyArithmetic(pathexpr))
+        //println("All ctrs: "+ (ants ++ conseqs ++ calls ++ conseqTemps))            \      
+        //println("Starting Constraint generation")
         val uifCtrs = constraintsForUIFs(calls.toSeq, pathexpr, uiSolver)
-        println("Generated UIF Constraints")
+        //println("Generated UIF Constraints")
         
         val uifroot = if (!uifCtrs.isEmpty) {
         

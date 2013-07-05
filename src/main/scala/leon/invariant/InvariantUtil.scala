@@ -151,79 +151,88 @@ object InvariantUtil {
       e match {
         case fi @ FunctionInvocation(fd, args) => {
           //now also flatten the args. The following is slightly tricky            
-          var newctrs = Seq[Expr]()
-          var newConjuncts = Set[Expr]()          
-          
-          val newargs = args.map((arg) =>              
-            arg match {                
-              case t : Terminal => t                                     
-              case _ => {                  
-                val (nexpr,ncjs) = flattenFunc(arg)
-                
-                newConjuncts ++= ncjs                
-                
-                nexpr match {
-                  case t : Terminal => t
-                  case _ => {
-                  	val freshArgVar = Variable(FreshIdentifier("arg", true).setType(arg.getType))                    	                    	
-                      newConjuncts += Equals(freshArgVar, nexpr) 
-                      freshArgVar
-                  }
-                }                                    
-              }
-            })              
+          val (newargs, newConjuncts) = flattenArgs(args)                        
           //create a new equality in UIFs
           val newfi = FunctionInvocation(fd,newargs)
           //create a new variable to represent the function
-          val freshResVar = Variable(FreshIdentifier("r", true).setType(fi.getType))
-          newConjuncts += Equals(freshResVar, newfi)
-
-          //newUIFs += Call(freshResVar,newfi)          
-          val res = (freshResVar, newConjuncts)                        
+          val freshResVar = Variable(FreshIdentifier("r", true).setType(fi.getType))                    
+          val res = (freshResVar, newConjuncts + Equals(freshResVar, newfi))                        
           res          
         }
-        case inst@CaseClassInstanceOf(cd,e1) => {
+        case inst@CaseClassInstanceOf(cd,e1) => {          
           //replace e by a variable
-          val (newe,newcjs) = flattenFunc(e1)
+          val (newargs,newcjs) = flattenArgs(Seq(e1))
           var newConjuncts = newcjs
 
-          val freshArg = newe match {
+          /*val freshArg = newe match {
             case t : Terminal => t
             case _ => {
               val freshVar = Variable(FreshIdentifier("iarg", true).setType(newe.getType))
               newConjuncts += Equals(freshVar, newe) 
               freshVar
-            }
-          }            
+            }            
+          }*/
+          val freshArg = newargs.first            
           val newInst = CaseClassInstanceOf(cd,freshArg)
           val freshResVar = Variable(FreshIdentifier("ci", true).setType(inst.getType))
           newConjuncts += Iff(freshResVar, newInst) 
           (freshResVar, newConjuncts)
         }
         case cs@CaseClassSelector(cd, e1, sel) => {
-         val (newe,newcjs) = flattenFunc(e1)
+         val (newargs,newcjs) = flattenArgs(Seq(e1))
           var newConjuncts = newcjs
 
-          val freshArg = newe match {
+          /*val freshArg = newe match {
             case t : Terminal => t
             case _ => {
               val freshVar = Variable(FreshIdentifier("inst", true).setType(newe.getType))
               newConjuncts += Equals(freshVar, newe) 
               freshVar
             }
-          }            
+          }            */
+          val freshArg = newargs.first
           val newCS = CaseClassSelector(cd, freshArg, sel)
           val freshResVar = Variable(FreshIdentifier("cs", true).setType(cs.getType))
           newConjuncts += Equals(freshResVar, newCS)           
+
           (freshResVar, newConjuncts) 
         }
         case cc@CaseClass(cd, args) => {
+
+          val (newargs,newcjs) = flattenArgs(args)
+          var newConjuncts = newcjs
+
+          val newCC = CaseClass(cd, newargs)
           val freshResVar = Variable(FreshIdentifier("cc", true).setType(cc.getType))
-          val newConjuncts = Set(Equals(freshResVar, cc))
+          newConjuncts += Equals(freshResVar, newCC)
+
           (freshResVar, newConjuncts)  
         }
         case _ => conjoinWithinClause(e, flattenFunc)
       }
+    }
+
+    def flattenArgs(args : Seq[Expr]): (Seq[Expr],Set[Expr]) = {
+      var newConjuncts = Set[Expr]()                  
+      val newargs = args.map((arg) =>              
+        arg match {                
+          case t : Terminal => t                                     
+          case _ => {                  
+            val (nexpr,ncjs) = flattenFunc(arg)
+            
+            newConjuncts ++= ncjs                
+            
+            nexpr match {
+              case t : Terminal => t
+              case _ => {
+                val freshArgVar = Variable(FreshIdentifier("arg", true).setType(arg.getType))                                           
+                  newConjuncts += Equals(freshArgVar, nexpr) 
+                  freshArgVar
+              }
+            }                                    
+          }
+      })
+      (newargs, newConjuncts)
     }
     
     //convert to negated normal form         
