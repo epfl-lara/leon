@@ -21,4 +21,6 @@ object ListRev2 {
       case Nil() => l2
       case Cons(x,xs) => Cons(x, append(xs, l2))
     }) ensuring(res => true template((p,q,r) => p*size(l1) + q*size(l2) + r*size(res) == 0))
+    //ensuring(res => size(l1) + size(l2)  == size(res))
+    
 }

@@ -31,7 +31,7 @@ class CallData(val node : CtrNode, val cnt: Int) {
 //TODO: the parts of the code that collect the new head functions is ugly. Fix this.
 class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
   
-  private val MAX_UNROLLS = 2     
+  private val MAX_UNROLLS = 1    
   //pointers to the nodes that have function calls 
   //the last component stores the number of time the calls need to be unrolled   
   private var headCallPtrs : Map[Call, CallData] = _
