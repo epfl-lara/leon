@@ -289,9 +289,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         reporter.info("Post: " + simplifyLets(post))
 
         if(post == BooleanLiteral(true)){
-          reporter.info("Post is true: Nothing to be proven")
-          new VerificationReport(vcs)
+          reporter.info("Post is true, nothing to be proven!!")          
         }
+        else {
 
         // try all solvers until one returns a meaningful answer
         var superseeded: Set[String] = Set.empty[String]
@@ -346,7 +346,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           }
           case _ =>
         }
-
+      }
       }
 
       val report = new VerificationReport(vcs)
