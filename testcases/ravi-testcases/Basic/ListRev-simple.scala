@@ -4,8 +4,7 @@ object ListWithSize {
     sealed abstract class List
     case class Cons(head: Int, tail: List) extends List
     case class Nil() extends List
- 
-    // proved with unrolling=0
+     
     def size(l: List) : Int = (l match { 
         case Nil() => 0
         case Cons(_, t) => 1 + size(t)
