@@ -1,0 +1,20 @@
+* Try incremental z3 solver
+* Handling unknown functions:
+
+Modify asssertionizing the functions as follows: r1 = g(X), r2 = t_f(Y) where t_f is a template varaible then add 
+(X = Y) ^ (g = t_f) => r1 = r2.
+Pick the (r1 = r2) terms having non-zero lambda (i.e, lagrange) coefficients those equalities are implied by the solution
+so their antecedents were made true. We can use the function name equality in the antecedent if any to decude 
+a solution for the function name template.
+
+* Try path invariants
+* Try inferring templates (this could very useful).
+
+* Handling Unknown ADTs (this may not be very useful even if this is tried):
+
+Handling cyclic dependencies between ADTs and numerical parts is difficut to handle. E.g. say we have a = y ^ x = s(i1) ^ y = s(i2)
+somehow say i1 = i2 is implied by the templates, this implies x = y, but a = y is also implied if a is bound to x.
+In the absence of cyclic dependencies something similar to the above approach will work. 
+Essentially when there no cyclic dependencies then the ADTs are essentially constants.
+
+
