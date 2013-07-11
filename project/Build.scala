@@ -43,7 +43,7 @@ object Leon extends Build {
 
     val ldLibPath = if (is64) ldLibraryDir64.absolutePath else ldLibraryDir32.absolutePath
 
-    val leonLibPath = depsPaths.find(_.endsWith("/library/target/scala-2.9.2/classes")) match {
+    val leonLibPath = depsPaths.find(_.endsWith("/library/target/scala-2.10/classes")) match {
       case None => throw new Exception("Couldn't find leon-library in the classpath.")
       case Some(p) => p
     }

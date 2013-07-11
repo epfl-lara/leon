@@ -4,17 +4,15 @@ version := "2.0"
 
 organization := "ch.epfl.lara"
 
-scalaVersion := "2.9.2"
+scalaVersion := "2.10.2"
 
 scalacOptions += "-deprecation"
 
 scalacOptions += "-unchecked"
 
+scalacOptions += "-feature"
+
 javacOptions += "-Xlint:unchecked"
-
-libraryDependencies += "org.scala-lang" % "scala-compiler" % "2.9.2"
-
-libraryDependencies += "org.scalatest" %% "scalatest" % "1.8" % "test"
 
 if(System.getProperty("sun.arch.data.model") == "64") {
   unmanagedBase <<= baseDirectory { base => base / "unmanaged" / "64" }
@@ -24,7 +22,11 @@ if(System.getProperty("sun.arch.data.model") == "64") {
 
 resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
 
-libraryDependencies += "com.typesafe.akka" % "akka-actor" % "2.0.4"
+libraryDependencies ++= Seq(
+    "org.scala-lang" % "scala-compiler" % "2.10.2",
+    "org.scalatest" %% "scalatest" % "1.9.1" excludeAll(ExclusionRule(organization="org.scala-lang")),
+    "com.typesafe.akka" %% "akka-actor" % "2.1.4"
+)
 
 fork in run := true
 

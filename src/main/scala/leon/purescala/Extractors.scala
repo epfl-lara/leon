@@ -105,7 +105,7 @@ object Extractors {
       case FiniteArray(args) => Some((args, FiniteArray))
       case Distinct(args) => Some((args, Distinct))
       case Tuple(args) => Some((args, Tuple))
-      case IfExpr(cond, then, elze) => Some((Seq(cond, then, elze), (as: Seq[Expr]) => IfExpr(as(0), as(1), as(2))))
+      case IfExpr(cond, thenn, elze) => Some((Seq(cond, thenn, elze), (as: Seq[Expr]) => IfExpr(as(0), as(1), as(2))))
       case MatchExpr(scrut, cases) =>
         Some((scrut +: cases.flatMap{ case SimpleCase(_, e) => Seq(e)
                                      case GuardedCase(_, e1, e2) => Seq(e1, e2) }
@@ -207,7 +207,7 @@ object Extractors {
   object TopLevelOrs { // expr1 AND (expr2 AND (expr3 AND ..)) => List(expr1, expr2, expr3)
     def unapply(e: Expr): Option[Seq[Expr]] = e match {
       case Or(exprs) =>
-        Some(exprs.flatMap(unapply(_).flatten))
+        Some(exprs.flatMap(unapply(_)).flatten)
       case e =>
         Some(Seq(e))
     }
@@ -215,7 +215,7 @@ object Extractors {
   object TopLevelAnds { // expr1 AND (expr2 AND (expr3 AND ..)) => List(expr1, expr2, expr3)
     def unapply(e: Expr): Option[Seq[Expr]] = e match {
       case And(exprs) =>
-        Some(exprs.flatMap(unapply(_).flatten))
+        Some(exprs.flatMap(unapply(_)).flatten)
       case e =>
         Some(Seq(e))
     }

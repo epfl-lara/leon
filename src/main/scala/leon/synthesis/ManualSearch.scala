@@ -157,7 +157,7 @@ class ManualSearch(synth: Synthesizer,
               }
             }
           } catch {
-            case e =>
+            case e: Throwable =>
               error("Woops: "+e.getMessage())
               e.printStackTrace()
           }

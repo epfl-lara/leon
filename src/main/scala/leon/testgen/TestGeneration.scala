@@ -139,7 +139,7 @@ class TestGeneration(context : LeonContext) {
   //  var allPaths: Seq[Expr] = Seq()
 
   //  def rec(expr: Expr, path: List[Expr]): Seq[Expr] = expr match {
-  //    case IfExpr(cond, then, elze) => rec(then, cond :: path) ++ rec(elze, Not(cond) :: path)
+  //    case IfExpr(cond, thenn, elze) => rec(thenn, cond :: path) ++ rec(elze, Not(cond) :: path)
   //    case _ => Seq(And(path.toSeq))
   //  }
 

@@ -41,7 +41,7 @@ class EvaluatorsTests extends FunSuite {
     val warningsBefore = leonContext.reporter.warningCount
 
     val program = pipeline.run(leonContext)((str, Nil))
-  
+
     assert(leonContext.reporter.errorCount   === errorsBefore)
     assert(leonContext.reporter.warningCount === warningsBefore)
 
@@ -316,7 +316,7 @@ class EvaluatorsTests extends FunSuite {
                |  def finite() : Set[Int] = Set(1, 2, 3)
                |  def build(x : Int, y : Int, z : Int) : Set[Int] = Set(x, y, z)
                |  def union(s1 : Set[Int], s2 : Set[Int]) : Set[Int] = s1 ++ s2
-               |  def inter(s1 : Set[Int], s2 : Set[Int]) : Set[Int] = s1 ** s2
+               |  def inter(s1 : Set[Int], s2 : Set[Int]) : Set[Int] = s1 & s2
                |  def diff(s1 : Set[Int], s2 : Set[Int]) : Set[Int] = s1 -- s2
                |}""".stripMargin
 

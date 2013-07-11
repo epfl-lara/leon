@@ -56,7 +56,7 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
   def pp(tree: Expr, lvl: Int): Unit = tree match {
     case Variable(id) => sb.append(idToString(id))
     case DeBruijnIndex(idx) => sb.append("_" + idx)
-    case LetTuple(bs,d,e) => {
+    case LetTuple(bs,d,e) =>
         //pp(e, pp(d, sb.append("(let (" + b + " := "), lvl).append(") in "), lvl).append(")")
       sb.append("(let (" + bs.map(idToString _).mkString(",") + " := ");
       pp(d, lvl)
@@ -64,9 +64,8 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
       ind(lvl+1)
       pp(e, lvl+1)
       sb.append(")")
-      sb
-    }
-    case Let(b,d,e) => {
+
+    case Let(b,d,e) =>
         //pp(e, pp(d, sb.append("(let (" + b + " := "), lvl).append(") in "), lvl).append(")")
       sb.append("(let (" + idToString(b) + " := ");
       pp(d, lvl)
@@ -74,8 +73,7 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
       ind(lvl+1)
       pp(e, lvl+1)
       sb.append(")")
-      sb
-    }
+
     case And(exprs) => ppNary(exprs, "(", " \u2227 ", ")", lvl)            // \land
     case Or(exprs) => ppNary(exprs, "(", " \u2228 ", ")", lvl)             // \lor
     case Not(Equals(l, r)) => ppBinary(l, r, " \u2260 ", lvl)    // \neq
@@ -88,41 +86,35 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
     case StringLiteral(s) => sb.append("\"" + s + "\"")
     case UnitLiteral => sb.append("()")
     case t@Tuple(exprs) => ppNary(exprs, "(", ", ", ")", lvl)
-    case s@TupleSelect(t, i) => {
+    case s@TupleSelect(t, i) =>
       pp(t, lvl)
       sb.append("._" + i)
-      sb
-    }
 
-    case c@Choose(vars, pred) => {
+    case c@Choose(vars, pred) =>
       sb.append("choose("+vars.map(idToString _).mkString(", ")+" => ")
       pp(pred, lvl)
       sb.append(")")
-    }
 
-    case CaseClass(cd, args) => {
+    case CaseClass(cd, args) =>
       sb.append(idToString(cd.id))
       if (cd.isCaseObject) {
         ppNary(args, "", "", "", lvl)
       } else {
         ppNary(args, "(", ", ", ")", lvl)
       }
-      sb
-    }
-    case CaseClassInstanceOf(cd, e) => {
+
+    case CaseClassInstanceOf(cd, e) =>
       pp(e, lvl)
       sb.append(".isInstanceOf[" + idToString(cd.id) + "]")
-      sb
-    }
+
     case CaseClassSelector(_, cc, id) =>
       pp(cc, lvl)
       sb.append("." + idToString(id))
 
-    case FunctionInvocation(fd, args) => {
+    case FunctionInvocation(fd, args) =>
       sb.append(idToString(fd.id))
       ppNary(args, "(", ", ", ")", lvl)
-      sb
-    }
+
     case Plus(l,r) => ppBinary(l, r, " + ", lvl)
     case Minus(l,r) => ppBinary(l, r, " - ", lvl)
     case Times(l,r) => ppBinary(l, r, " * ", lvl)
@@ -152,7 +144,7 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
     case MultisetCardinality(t) => ppUnary(t, "|", "|", lvl)
     case MultisetPlus(l,r) => ppBinary(l, r, " \u228E ", lvl)    // U+
     case MultisetToSet(e) => pp(e, lvl); sb.append(".toSet")
-    case FiniteMap(rs) => {
+    case FiniteMap(rs) =>
       sb.append("{")
       val sz = rs.size
       var c = 0
@@ -160,62 +152,58 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
         pp(k, lvl); sb.append(" -> "); pp(v, lvl); c += 1 ; if(c < sz) sb.append(", ")
       }}
       sb.append("}")
-    }
-    case MapGet(m,k) => {
+
+    case MapGet(m,k) =>
       pp(m, lvl)
       ppNary(Seq(k), "(", ",", ")", lvl)
-      sb
-    }
-    case MapIsDefinedAt(m,k) => {
+
+    case MapIsDefinedAt(m,k) =>
       pp(m, lvl)
       sb.append(".isDefinedAt")
       ppNary(Seq(k), "(", ",", ")", lvl)
-      sb
-    }
-    case ArrayLength(a) => {
+    
+    case ArrayLength(a) =>
       pp(a, lvl)
       sb.append(".length")
-    }
-    case ArrayClone(a) => {
+    
+    case ArrayClone(a) => 
       pp(a, lvl)
       sb.append(".clone")
-    }
-    case fill@ArrayFill(size, v) => {
+    
+    case fill@ArrayFill(size, v) => 
       sb.append("Array.fill(")
       pp(size, lvl)
       sb.append(")(")
       pp(v, lvl)
       sb.append(")")
-    }
-    case am@ArrayMake(v) => {
+    
+    case am@ArrayMake(v) =>
       sb.append("Array.make(")
       pp(v, lvl)
       sb.append(")")    
-    }
-    case sel@ArraySelect(ar, i) => {
+
+    case sel@ArraySelect(ar, i) =>
       pp(ar, lvl)
       sb.append("(")
       pp(i, lvl)
       sb.append(")")
-    }
-    case up@ArrayUpdated(ar, i, v) => {
+
+    case up@ArrayUpdated(ar, i, v) =>
       pp(ar, lvl)
       sb.append(".updated(")
       pp(i, lvl)
       sb.append(", ")
       pp(v, lvl)
       sb.append(")")
-    }
-    case FiniteArray(exprs) => {
+    
+    case FiniteArray(exprs) =>
       ppNary(exprs, "Array(", ", ", ")", lvl)
-    }
 
-    case Distinct(exprs) => {
+    case Distinct(exprs) =>
       sb.append("distinct")
       ppNary(exprs, "(", ", ", ")", lvl)
-    }
     
-    case IfExpr(c, t, e) => {
+    case IfExpr(c, t, e) =>
       sb.append("if (")
       pp(c, lvl)
       sb.append(")\n")
@@ -226,7 +214,6 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
       sb.append("else\n")
       ind(lvl+1)
       pp(e, lvl+1)
-    }
 
     case mex @ MatchExpr(s, csc) => {
       def ppc(p: Pattern): Unit = p match {
@@ -286,11 +273,10 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
     case ResultVariable() => sb.append("#res")
     case Not(expr) => ppUnary(expr, "\u00AC(", ")", lvl)               // \neg
 
-    case e @ Error(desc) => {
+    case e @ Error(desc) =>
       sb.append("error(\"" + desc + "\")[")
       pp(e.getType, lvl)
       sb.append("]")
-    }
 
     case (expr: PrettyPrintable) => expr.printWith(lvl, this)
 

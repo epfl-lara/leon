@@ -9,7 +9,7 @@ object Epsilon1 {
   //this should hold, that is the expected semantic of our epsilon
   def property1(): Boolean = {
     rand() == rand() 
-  } holds
+  }.holds
 
 
 }

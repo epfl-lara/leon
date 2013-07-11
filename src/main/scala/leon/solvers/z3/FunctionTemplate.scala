@@ -263,8 +263,8 @@ object FunctionTemplate {
             Or(parts.map(rec(pathVar, _)))
           }
 
-        case i @ IfExpr(cond, then, elze) => {
-          if(!containsFunctionCalls(cond) && !containsFunctionCalls(then) && !containsFunctionCalls(elze)) {
+        case i @ IfExpr(cond, thenn, elze) => {
+          if(!containsFunctionCalls(cond) && !containsFunctionCalls(thenn) && !containsFunctionCalls(elze)) {
             i
           } else {
             val newBool1 : Identifier = FreshIdentifier("b", true).setType(BooleanType)
@@ -277,7 +277,7 @@ object FunctionTemplate {
             exprVars += newExpr
 
             val crec = rec(pathVar, cond)
-            val trec = rec(newBool1, then)
+            val trec = rec(newBool1, thenn)
             val erec = rec(newBool2, elze)
 
             storeGuarded(pathVar, Or(Variable(newBool1), Variable(newBool2)))

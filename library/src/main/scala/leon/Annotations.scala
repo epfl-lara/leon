@@ -2,6 +2,8 @@
 
 package leon
 
+import scala.annotation.StaticAnnotation
+
 object Annotations {
   class induct extends StaticAnnotation
   class axiomatize extends StaticAnnotation

@@ -415,15 +415,13 @@ object ScalaPrinter {
         sb.append("}\n")
       }
 
-      case AbstractClassDef(id, parent) => {
+      case AbstractClassDef(id, parent) =>
         ind(sb, lvl)
         sb.append("sealed abstract class ")
         sb.append(id)
         parent.foreach(p => sb.append(" extends " + p.id))
-        sb
-      }
 
-      case CaseClassDef(id, parent, varDecls) => {
+      case CaseClassDef(id, parent, varDecls) =>
         ind(sb, lvl)
         sb.append("case class ")
         sb.append(id)
@@ -442,10 +440,8 @@ object ScalaPrinter {
         })
         sb.append(")")
         parent.foreach(p => sb.append(" extends " + p.id))
-        sb
-      }
 
-      case fd @ FunDef(id, rt, args, body, pre, post) => {
+      case fd @ FunDef(id, rt, args, body, pre, post) =>
 
         //for(a <- fd.annotations) {
         //  ind(sb, lvl)
@@ -508,9 +504,6 @@ object ScalaPrinter {
             sb.append("))")
           }
         }
-
-        sb
-      }
 
       case _ => sb.append("Defn?")
     }

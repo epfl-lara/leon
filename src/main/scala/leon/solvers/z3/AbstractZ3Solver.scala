@@ -623,7 +623,7 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
                 case OpTrue => BooleanLiteral(true)
                 case OpFalse => BooleanLiteral(false)
                 case OpEq => Equals(rargs(0), rargs(1))
-                case OpITE => {
+                case OpITE =>
                   assert(argsSize == 3)
                   val r0 = rargs(0)
                   val r1 = rargs(1)
@@ -631,15 +631,14 @@ trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder {
                   try {
                     IfExpr(r0, r1, r2).setType(leastUpperBound(r1.getType, r2.getType).get)
                   } catch {
-                    case e => {
+                    case e: Throwable =>
                       println("I was asking for lub because of this.")
                       println(t)
                       println("which was translated as")
                       println(IfExpr(r0,r1,r2))
                       throw e
-                    }
                   }
-                }
+
                 case OpAnd => And(rargs)
                 case OpOr => Or(rargs)
                 case OpIff => Iff(rargs(0), rargs(1))

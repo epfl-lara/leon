@@ -421,11 +421,11 @@ trait Bubbles {
     def showState {
       println("------------")
       println("Bubbles :")
-      allBubbles.values foreach {x => println(x toLongString)}
+      allBubbles.values foreach {x => println(x.toLongString)}
       println
       
       println("Edges :")
-      allEdges.values foreach {x => println(x toLongString)}
+      allEdges.values foreach {x => println(x.toLongString)}
       println
     }
 //     */
@@ -705,7 +705,7 @@ trait Bubbles {
   //     nodeOrder foreach println
       toModel(singletons(reconstruct))
     } catch {
-      case ex =>
+      case ex: Throwable =>
         var err = ex.toString
         if (errorVennRegion != null) err += "\nPossible cause :\n  " + errorVennRegion
         BAPAModel(z3model, Map.empty[Z3AST,Set[Int]], Set.empty[Z3AST], err)
@@ -741,7 +741,7 @@ case class BAPAModel(z3model: Z3Model, setModel: Map[Z3AST,Set[Int]], blacklist:
     }
     */
     // TODO: HACK ! (scalaZ3 interface has no model navigation yet)
-    val badstart = blacklist map {_ toString}
+    val badstart = blacklist map {_.toString}
     val lines = (z3model.toString split '\n').toList filterNot {line =>
       badstart exists {line startsWith _}
     }

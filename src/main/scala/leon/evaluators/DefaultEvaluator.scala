@@ -56,10 +56,10 @@ class DefaultEvaluator(ctx : LeonContext, prog : Program) extends Evaluator(ctx,
           rec(ctx + ((i -> first)), b)
         }
         case Error(desc) => throw RuntimeError("Error reached in evaluation: " + desc)
-        case IfExpr(cond, then, elze) => {
+        case IfExpr(cond, thenn, elze) => {
           val first = rec(ctx, cond)
           first match {
-            case BooleanLiteral(true) => rec(ctx, then)
+            case BooleanLiteral(true) => rec(ctx, thenn)
             case BooleanLiteral(false) => rec(ctx, elze)
             case _ => throw EvalError(typeErrorMsg(first, BooleanType))
           }

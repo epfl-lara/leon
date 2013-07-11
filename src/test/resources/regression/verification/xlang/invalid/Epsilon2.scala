@@ -9,5 +9,5 @@ object Epsilon1 {
   //this should not hold
   def property3(x: Int): Boolean = {
     rand3(x) == rand3(x+1)
-  } holds
+  }.holds
 }
