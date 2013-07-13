@@ -16,17 +16,20 @@ object XlangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
     val pgm1 = ArrayTransformation(ctx, pgm)
     val pgm2 = EpsilonElimination(ctx, pgm1)
     val (pgm3, wasLoop) = ImperativeCodeElimination.run(ctx)(pgm2)
-    val (pgm4, parents, freshFunDefs) = FunctionClosure.run(ctx)(pgm3)
+    val pgm4 = FunctionClosure.run(ctx)(pgm3)
 
-    val originalFunDefs = freshFunDefs.map(x => (x._2, x._1))
-
-    def functionWasLoop(fd: FunDef): Boolean = originalFunDefs.get(fd) match {
+    def functionWasLoop(fd: FunDef): Boolean = fd.orig match {
       case None => false //meaning, this was a top level function
       case Some(nested) => wasLoop.contains(nested) //could have been a LetDef originally
     }
-    def subFunctionsOf(fd: FunDef): Set[FunDef] = parents.flatMap((p: (FunDef, FunDef)) => p match {
-      case (child, parent) => if(parent == fd) List(child) else List() 
-    }).toSet
+
+    var subFunctionsOf = Map[FunDef, Set[FunDef]]().withDefaultValue(Set())
+    pgm4.definedFunctions.foreach { fd => fd.parent match {
+      case Some(p) =>
+        subFunctionsOf += p -> (subFunctionsOf(p) + fd)
+      case _ =>
+    }}
+
 
     val newOptions = ctx.options map {
       case LeonValueOption("functions", ListValue(fs)) => {
@@ -41,17 +44,17 @@ object XlangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
             case None =>
           }
         })
-        
+
         LeonValueOption("functions", ListValue(freshToAnalyse.toList))
       }
       case opt => opt
     }
 
     val vr = AnalysisPhase.run(ctx.copy(options = newOptions))(pgm4)
-    completeVerificationReport(vr, parents, functionWasLoop _)
+    completeVerificationReport(vr, functionWasLoop _)
   }
 
-  def completeVerificationReport(vr: VerificationReport, parents: Map[FunDef, FunDef], functionWasLoop: FunDef => Boolean): VerificationReport = {
+  def completeVerificationReport(vr: VerificationReport, functionWasLoop: FunDef => Boolean): VerificationReport = {
     val vcs = vr.conditions
 
     //this is enough to convert invariant postcondition and inductive conditions. However the initial validity
@@ -66,7 +69,7 @@ object XlangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
       if(functionWasLoop(funDef)) {
         val freshVc = new VerificationCondition(
           vc.condition, 
-          parents(funDef), 
+          funDef.parent.getOrElse(funDef), 
           if(vc.kind == VCKind.Postcondition) VCKind.InvariantPost else if(vc.kind == VCKind.Precondition) VCKind.InvariantInd else vc.kind,
           vc.tactic,
           vc.info).setPosInfo(funDef)

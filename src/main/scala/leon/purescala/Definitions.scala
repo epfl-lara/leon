@@ -317,6 +317,10 @@ object Definitions {
     var precondition: Option[Expr] = None
     var postcondition: Option[Expr] = None
 
+    // Metadata kept here after transformations
+    var parent: Option[FunDef] = None
+    var orig: Option[FunDef] = None
+
     def hasImplementation : Boolean = body.isDefined
     def hasBody = hasImplementation
     def hasPrecondition : Boolean = precondition.isDefined

@@ -13,7 +13,7 @@ import leon.purescala.TreeOps._
 import leon.purescala.TypeTrees._
 import leon.xlang.Trees._
 
-object FunctionClosure extends LeonPhase[Program, (Program, Map[FunDef, FunDef], Map[FunDef, FunDef])] {
+object FunctionClosure extends TransformationPhase {
 
   val name = "Function Closure"
   val description = "Closing function with its scoping variables"
@@ -24,20 +24,14 @@ object FunctionClosure extends LeonPhase[Program, (Program, Map[FunDef, FunDef],
   private var newFunDefs: Map[FunDef, FunDef] = Map()
   private var topLevelFuns: Set[FunDef] = Set()
   private var parent: FunDef = null //refers to the current toplevel parent
-  private var parents: Map[FunDef, FunDef] = null //each hoisted function mapped to its original parent
-  private var freshFunDefs: Map[FunDef, FunDef] = null //mapping from original FunDef in LetDef to the fresh ones
-  /* but notice the private keyword */
 
-  //return modified program, new funDef to their original parents, old FunDef to freshly introduced FunDef
-  def run(ctx: LeonContext)(program: Program): (Program, Map[FunDef, FunDef], Map[FunDef, FunDef]) = {
+  def apply(ctx: LeonContext, program: Program): Program = {
 
     pathConstraints = Nil
     enclosingLets  = Nil
     newFunDefs  = Map()
     topLevelFuns = Set()
     parent = null
-    parents = Map()
-    freshFunDefs = Map()
 
     val funDefs = program.definedFunctions
     funDefs.foreach(fd => {
@@ -47,7 +41,7 @@ object FunctionClosure extends LeonPhase[Program, (Program, Map[FunDef, FunDef],
     })
     val Program(id, ObjectDef(objId, defs, invariants)) = program
     val res = Program(id, ObjectDef(objId, defs ++ topLevelFuns, invariants))
-    (res, parents, freshFunDefs)
+    res
   }
 
   private def functionClosure(expr: Expr, bindedVars: Set[Identifier], id2freshId: Map[Identifier, Identifier], fd2FreshFd: Map[FunDef, (FunDef, Seq[Variable])]): Expr = expr match {
@@ -68,8 +62,9 @@ object FunctionClosure extends LeonPhase[Program, (Program, Map[FunDef, FunDef],
       val newFunDef = new FunDef(newFunId, fd.returnType, newVarDecls).setPosInfo(fd)
       topLevelFuns += newFunDef
       newFunDef.addAnnotation(fd.annotations.toSeq:_*) //TODO: this is still some dangerous side effects
-      parents += (newFunDef -> parent)
-      freshFunDefs += (fd -> newFunDef)
+      newFunDef.parent = Some(parent)
+      fd.parent        = Some(parent)
+      newFunDef.orig   = Some(fd)
 
       def introduceLets(expr: Expr, fd2FreshFd: Map[FunDef, (FunDef, Seq[Variable])]): Expr = {
         val (newExpr, _) = enclosingLets.foldLeft((expr, Map[Identifier, Identifier]()))((acc, p) => {
