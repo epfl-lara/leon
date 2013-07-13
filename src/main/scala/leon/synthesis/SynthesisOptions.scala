@@ -5,6 +5,7 @@ package synthesis
 
 case class SynthesisOptions(
   inPlace: Boolean                    = false,
+  batch: Boolean                      = false,
   generateDerivationTrees: Boolean    = false,
   filterFuns: Option[Set[String]]     = None,
   searchWorkers: Int                  = 1,
