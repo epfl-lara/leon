@@ -76,46 +76,4 @@ object TreeOps {
     }
     searchAndReplaceDFS(applyToTree)(expr)
   }
-
-  def containsLetDef(expr: Expr): Boolean = {
-    def convert(t : Expr) : Boolean = t match {
-      case (l : LetDef) => true
-      case _ => false
-    }
-    def combine(c1 : Boolean, c2 : Boolean) : Boolean = c1 || c2
-    def compute(t : Expr, c : Boolean) = t match {
-      case (l : LetDef) => true
-      case _ => c
-    }
-    treeCatamorphism(convert, combine, compute, expr)
-  }
-
-  trait ScopeSimplifier extends purescala.TreeOps.ScopeSimplifier {
-    override def rec(e: Expr, scope: Scope) = e match { 
-      case LetDef(fd: FunDef, body: Expr) =>
-        val newId    = genId(fd.id, scope)
-        var newScope = scope.register(fd.id -> newId)
-
-        val newArgs = for(VarDecl(id, tpe) <- fd.args) yield {
-          val newArg = genId(id, newScope)
-          newScope = newScope.register(id -> newArg)
-          VarDecl(newArg, tpe)
-        }
-
-        val newFd = new FunDef(newId, fd.returnType, newArgs)
-
-        newScope = newScope.registerFunDef(fd -> newFd)
-
-        newFd.body          = fd.body.map(b => rec(b, newScope))
-        newFd.precondition  = fd.precondition.map(pre => rec(pre, newScope))
-        newFd.postcondition = fd.postcondition.map(post => rec(post, newScope))
-
-
-        LetDef(newFd, rec(body, newScope))
-
-      case _ =>
-        super.rec(e, scope)
-    }
-  }
-
 }

@@ -55,11 +55,21 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
       sb.append("}\n")
       ind(lvl)
 
+    case LetDef(fd, body) =>
+      sb.append("{\n")
+      pp(fd, lvl+1)
+      sb.append("\n")
+      sb.append("\n")
+      ind(lvl)
+      pp(body, lvl)
+      sb.append("}\n")
+
     case And(exprs) => ppNary(exprs, "(", " && ", ")", lvl)            // \land
     case Or(exprs) => ppNary(exprs, "(", " || ", ")", lvl)             // \lor
     case Not(Equals(l, r)) => ppBinary(l, r, " != ", lvl)    // \neq
     case UMinus(expr) => ppUnary(expr, "-(", ")", lvl)
     case Equals(l,r) => ppBinary(l, r, " == ", lvl)
+
     case IntLiteral(v) => sb.append(v)
     case BooleanLiteral(v) => sb.append(v)
     case StringLiteral(s) => sb.append("\"" + s + "\"")

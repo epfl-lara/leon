@@ -5,7 +5,6 @@ package synthesis
 
 import purescala.Trees._
 import purescala.TreeOps._
-import leon.xlang.Trees.LetDef
 
 import synthesis.search.Cost
 

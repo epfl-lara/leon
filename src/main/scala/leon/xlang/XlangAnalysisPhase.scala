@@ -16,7 +16,7 @@ object XlangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
     val pgm1 = ArrayTransformation(ctx, pgm)
     val pgm2 = EpsilonElimination(ctx, pgm1)
     val (pgm3, wasLoop) = ImperativeCodeElimination.run(ctx)(pgm2)
-    val pgm4 = FunctionClosure.run(ctx)(pgm3)
+    val pgm4 = purescala.FunctionClosure.run(ctx)(pgm3)
 
     def functionWasLoop(fd: FunDef): Boolean = fd.orig match {
       case None => false //meaning, this was a top level function

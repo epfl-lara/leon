@@ -1,17 +1,14 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
 
 package leon
-package xlang
+package purescala
 
-import leon.TransformationPhase
-import leon.LeonContext
-import leon.purescala.Common._
-import leon.purescala.Definitions._
-import leon.purescala.Trees._
-import leon.purescala.Extractors._
-import leon.purescala.TreeOps._
-import leon.purescala.TypeTrees._
-import leon.xlang.Trees._
+import Common._
+import Definitions._
+import Trees._
+import Extractors._
+import TreeOps._
+import TypeTrees._
 
 object FunctionClosure extends TransformationPhase {
 

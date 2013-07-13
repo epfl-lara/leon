@@ -51,6 +51,14 @@ object Trees {
     val fixedType = body.getType
   }
 
+  case class LetDef(fd: FunDef, body: Expr) extends Expr {
+    val et = body.getType
+    if(et != Untyped)
+      setType(et)
+
+  }
+
+
   /* Control flow */
   case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr with FixedType with ScalacPositional {
     val fixedType = funDef.returnType

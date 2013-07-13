@@ -11,7 +11,7 @@ object Main {
       xlang.ArrayTransformation,
       xlang.EpsilonElimination,
       xlang.ImperativeCodeElimination,
-      xlang.FunctionClosure,
+      purescala.FunctionClosure,
       xlang.XlangAnalysisPhase,
       synthesis.SynthesisPhase,
       termination.TerminationPhase,

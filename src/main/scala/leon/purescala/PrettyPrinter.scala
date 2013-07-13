@@ -57,7 +57,6 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
     case Variable(id) => sb.append(idToString(id))
     case DeBruijnIndex(idx) => sb.append("_" + idx)
     case LetTuple(bs,d,e) =>
-        //pp(e, pp(d, sb.append("(let (" + b + " := "), lvl).append(") in "), lvl).append(")")
       sb.append("(let (" + bs.map(idToString _).mkString(",") + " := ");
       pp(d, lvl)
       sb.append(") in\n")
@@ -66,13 +65,20 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
       sb.append(")")
 
     case Let(b,d,e) =>
-        //pp(e, pp(d, sb.append("(let (" + b + " := "), lvl).append(") in "), lvl).append(")")
       sb.append("(let (" + idToString(b) + " := ");
       pp(d, lvl)
       sb.append(") in\n")
       ind(lvl+1)
       pp(e, lvl+1)
       sb.append(")")
+
+    case LetDef(fd,body) =>
+      sb.append("\n")
+      pp(fd, lvl+1)
+      sb.append("\n")
+      sb.append("\n")
+      ind(lvl)
+      pp(body, lvl)
 
     case And(exprs) => ppNary(exprs, "(", " \u2227 ", ")", lvl)            // \land
     case Or(exprs) => ppNary(exprs, "(", " \u2228 ", ")", lvl)             // \lor
