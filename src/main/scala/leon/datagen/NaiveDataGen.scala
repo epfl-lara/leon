@@ -1,7 +1,7 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
 
 package leon
-package purescala
+package datagen
 
 import purescala.Common._
 import purescala.Trees._
@@ -16,10 +16,13 @@ import scala.collection.mutable.{Map=>MutableMap}
 /** Utility functions to generate values of a given type.
   * In fact, it could be used to generate *terms* of a given type,
   * e.g. by passing trees representing variables for the "bounds". */
-object DataGen {
+class NaiveDataGen(ctx: LeonContext, p: Program, evaluator: Evaluator, _bounds : Option[Map[TypeTree,Seq[Expr]]] = None) extends DataGenerator {
+
   private val defaultBounds : Map[TypeTree,Seq[Expr]] = Map(
     Int32Type -> Seq(IntLiteral(0), IntLiteral(1), IntLiteral(-1))
   )
+
+  val bounds = _bounds.getOrElse(defaultBounds)
 
   private val boolStream : Stream[Expr] =
     Stream.cons(BooleanLiteral(true), Stream.cons(BooleanLiteral(false), Stream.empty))
@@ -111,20 +114,19 @@ object DataGen {
     }
   }
 
-  def findModels(expr : Expr, evaluator : Evaluator, maxModels : Int, maxTries : Int, bounds : Map[TypeTree,Seq[Expr]] = defaultBounds, forcedFreeVars: Option[Seq[Identifier]] = None) : Stream[Map[Identifier,Expr]] = {
-    val freeVars : Seq[Identifier] = forcedFreeVars.getOrElse(variablesOf(expr).toSeq)
-
-    evaluator.compile(expr, freeVars).map { evalFun =>
+  //def findModels(expr : Expr, maxModels : Int, maxTries : Int, bounds : Map[TypeTree,Seq[Expr]] = defaultBounds, forcedFreeVars: Option[Seq[Identifier]] = None) : Stream[Map[Identifier,Expr]] = {
+  def generateFor(ins: Seq[Identifier], satisfying: Expr, maxValid : Int, maxEnumerated : Int) : Iterator[Seq[Expr]] = {
+    evaluator.compile(satisfying, ins).map { evalFun =>
       val sat = EvaluationResults.Successful(BooleanLiteral(true))
 
-      naryProduct(freeVars.map(id => generate(id.getType, bounds)))
-        .take(maxTries)
+      naryProduct(ins.map(id => generate(id.getType, bounds)))
+        .take(maxEnumerated)
         .filter{s => evalFun(s) == sat }
-        .take(maxModels)
-        .map(s => freeVars.zip(s).toMap)
+        .take(maxValid)
+        .iterator
 
     } getOrElse {
-      Stream.empty
+      Stream.empty.iterator
     }
   }
 

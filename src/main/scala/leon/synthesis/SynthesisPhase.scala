@@ -24,7 +24,8 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     LeonValueOptionDef(   "timeout",         "--timeout=T",       "Timeout after T seconds when searching for synthesis solutions .."),
     LeonValueOptionDef(   "costmodel",       "--costmodel=cm",    "Use a specific cost model for this search"),
     LeonValueOptionDef(   "functions",       "--functions=f1:f2", "Limit synthesis of choose found within f1,f2,.."),
-    LeonFlagOptionDef(    "cegis:gencalls",  "--cegis:gencalls",  "Include function calls in CEGIS generators")
+    LeonFlagOptionDef(    "cegis:gencalls",  "--cegis:gencalls",  "Include function calls in CEGIS generators"),
+    LeonFlagOptionDef(    "cegis:vanuatoo",  "--cegis:vanuatoo",  "Generate inputs using new korat-style generator")
   )
 
   def processOptions(ctx: LeonContext): SynthesisOptions = {
@@ -74,6 +75,9 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
       case LeonFlagOption("cegis:gencalls") =>
         options = options.copy(cegisGenerateFunCalls = true)
+
+      case LeonFlagOption("cegis:vanuatoo") =>
+        options = options.copy(cegisUseVanuatoo = true)
 
       case LeonFlagOption("derivtrees") =>
         options = options.copy(generateDerivationTrees = true)

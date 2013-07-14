@@ -6,7 +6,6 @@ package rules
 
 import solvers.TimeoutSolver
 import purescala.Trees._
-import purescala.DataGen
 import purescala.Common._
 import purescala.Definitions._
 import purescala.TypeTrees._
@@ -17,6 +16,7 @@ import purescala.ScalaPrinter
 import scala.collection.mutable.{Map=>MutableMap}
 
 import evaluators._
+import datagen._
 
 import solvers.z3.FairZ3Solver
 
@@ -30,6 +30,7 @@ case object CEGIS extends Rule("CEGIS") {
     val useOptTimeout         = true
     val useFunGenerators      = sctx.options.cegisGenerateFunCalls
     val useBPaths             = sctx.options.cegisUseBPaths
+    val useVanuatoo           = sctx.options.cegisUseVanuatoo
     val useCETests            = sctx.options.cegisUseCETests
     val useCEPruning          = sctx.options.cegisUseCEPruning
     // Limits the number of programs CEGIS will specifically test for instead of reasonning symbolically
@@ -451,11 +452,11 @@ case object CEGIS extends Rule("CEGIS") {
         val exSolver  = new TimeoutSolver(sctx.solver, 3000L) // 3sec
         val cexSolver = new TimeoutSolver(sctx.solver, 3000L) // 3sec
 
-        var exampleInputs = Set[Seq[Expr]]()
+        var baseExampleInputs: Seq[Seq[Expr]] = Seq()
 
         // We populate the list of examples with a predefined one
         if (p.pc == BooleanLiteral(true)) {
-          exampleInputs += p.as.map(a => simplestValue(a.getType))
+          baseExampleInputs = p.as.map(a => simplestValue(a.getType)) +: baseExampleInputs
         } else {
           val solver = exSolver.getNewSolver
 
@@ -464,7 +465,7 @@ case object CEGIS extends Rule("CEGIS") {
           solver.check match {
             case Some(true) =>
               val model = solver.getModel
-              exampleInputs += p.as.map(a => model.getOrElse(a, simplestValue(a.getType)))
+              baseExampleInputs = p.as.map(a => model.getOrElse(a, simplestValue(a.getType))) +: baseExampleInputs
 
             case Some(false) =>
               return RuleApplicationImpossible
@@ -476,9 +477,25 @@ case object CEGIS extends Rule("CEGIS") {
 
         }
 
-        val discoveredInputs = DataGen.findModels(p.pc, evaluator, 20, 1000, forcedFreeVars = Some(p.as)).map{
-          m => p.as.map(a => m(a))
+        val inputIterator: Iterator[Seq[Expr]] = if (useVanuatoo) {
+          new VanuatooDataGen(sctx.context, sctx.program).generateFor(p.as, p.pc, 20, 3000)
+        } else {
+          new NaiveDataGen(sctx.context, sctx.program, evaluator).generateFor(p.as, p.pc, 20, 1000)
         }
+
+        val cachedInputIterator = new Iterator[Seq[Expr]] {
+          def next() = {
+            val i = inputIterator.next()
+            baseExampleInputs = i +: baseExampleInputs
+            i
+          }
+
+          def hasNext() = inputIterator.hasNext
+        }
+
+        def hasInputExamples() = baseExampleInputs.size > 0 || cachedInputIterator.hasNext
+
+        def allInputExamples() = baseExampleInputs.iterator ++ cachedInputIterator
 
         def checkForPrograms(programs: Set[Set[Identifier]]): RuleApplicationResult = {
           for (prog <- programs) {
@@ -499,10 +516,6 @@ case object CEGIS extends Rule("CEGIS") {
 
           RuleApplicationImpossible
         }
-
-        // println("Generating tests..")
-        // println("Found: "+discoveredInputs.size)
-        exampleInputs ++= discoveredInputs
 
         // Keep track of collected cores to filter programs to test
         var collectedCores = Set[Set[Identifier]]()
@@ -558,9 +571,10 @@ case object CEGIS extends Rule("CEGIS") {
             //println("#Tests:  "+exampleInputs.size)
 
             // We further filter the set of working programs to remove those that fail on known examples
-            if (useCEPruning && !exampleInputs.isEmpty && ndProgram.canTest()) {
+            if (useCEPruning && hasInputExamples() && ndProgram.canTest()) {
+
               for (p <- prunedPrograms) {
-                if (!exampleInputs.forall(ndProgram.testForProgram(p))) {
+                if (!allInputExamples().forall(ndProgram.testForProgram(p))) {
                   // This program failed on at least one example
                   solver1.assertCnstr(Not(And(p.map(Variable(_)).toSeq)))
                   prunedPrograms -= p
@@ -630,11 +644,11 @@ case object CEGIS extends Rule("CEGIS") {
                   //    println(". "+c+" = "+ex)
                   //}
 
-                  val validateWithZ3 = if (useCETests && !exampleInputs.isEmpty && ndProgram.canTest()) {
+                  val validateWithZ3 = if (useCETests && hasInputExamples() && ndProgram.canTest()) {
 
                     val p = bssAssumptions.collect { case Variable(b) => b }
 
-                    if (exampleInputs.forall(ndProgram.testForProgram(p))) {
+                    if (allInputExamples().forall(ndProgram.testForProgram(p))) {
                       // All valid inputs also work with this, we need to
                       // make sure by validating this candidate with z3
                       true
@@ -661,7 +675,7 @@ case object CEGIS extends Rule("CEGIS") {
 
                         val newCE = p.as.map(valuateWithModel(invalidModel))
 
-                        exampleInputs += newCE
+                        baseExampleInputs = newCE +: baseExampleInputs
 
                         //println("Found counter example: "+fixedAss)
 

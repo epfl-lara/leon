@@ -106,6 +106,9 @@ class Synthesizer(val context : LeonContext,
 
     if (vcreport.totalValid == vcreport.totalConditions) {
       (sol, true)
+    } else if (vcreport.totalValid + vcreport.totalUnknown == vcreport.totalConditions) {
+      reporter.warning("Solution may be invalid:")
+      (sol, false)
     } else {
       reporter.warning("Solution was invalid:")
       reporter.warning(fds.map(ScalaPrinter(_)).mkString("\n\n"))

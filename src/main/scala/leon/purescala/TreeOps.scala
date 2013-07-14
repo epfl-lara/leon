@@ -1775,10 +1775,13 @@ object TreeOps {
             val recSelectors = ccd.fieldsIds.filter(_.getType == on.getType)
 
             if (recSelectors.isEmpty) {
-              None
+              Seq()
             } else {
               val v = Variable(on)
-              Some(And(And(isType, expr), Not(replace(recSelectors.map(s => v -> CaseClassSelector(ccd, v, s)).toMap, expr))))
+
+              recSelectors.map{ s =>
+                And(And(isType, expr), Not(replace(Map(v -> CaseClassSelector(ccd, v, s)), expr)))
+              }
             }
       }.flatten
 
@@ -1786,7 +1789,10 @@ object TreeOps {
         solver.solveSAT(cond) match {
             case (Some(false), _)  =>
               true
-            case (_, model)  =>
+            case (Some(true), model)  =>
+              false
+            case (None, _)  =>
+              // Should we be optimistic here?
               false
         }
       }
