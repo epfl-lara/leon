@@ -24,6 +24,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     LeonValueOptionDef("timeout",         "--timeout=T",       "Timeout after T seconds when searching for synthesis solutions .."),
     LeonValueOptionDef("costmodel",       "--costmodel=cm",    "Use a specific cost model for this search"),
     LeonValueOptionDef("functions",       "--functions=f1:f2", "Limit synthesis of choose found within f1,f2,.."),
+    LeonFlagOptionDef( "batch",           "--batch",           "Batch synthesis of all chooses"),
     // CEGIS options
     LeonFlagOptionDef( "cegis:gencalls",   "--cegis:gencalls",      "Include function calls in CEGIS generators",      true),
     LeonFlagOptionDef( "cegis:unintprobe", "--cegis:unintprobe",    "Check for UNSAT without bloecks and with uninterpreted functions", false),
@@ -115,10 +116,16 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
     if (options.batch) {
       def synthesizeNext(p: Program): Program = {
-        ChooseInfo.extractFromProgram(ctx, p, options).headOption match {
+        ChooseInfo.extractFromProgram(ctx, p, options).sortBy(_.ch.posIntInfo).headOption match {
           case None => p
 
           case Some(ci) =>
+            val middle = " In "+ci.fd.id.toString+", synthesis of: "
+            val remSize = (80-middle.length)
+            ctx.reporter.info("-"*math.floor(remSize/2).toInt+middle+"-"*math.ceil(remSize/2).toInt)
+            ctx.reporter.info(ci.ch)
+            ctx.reporter.info("-"*80)
+
             val (sol, isComplete) = ci.synthesizer.synthesize()
 
             val term = sol.toSimplifiedExpr(ctx, p)
@@ -132,6 +139,9 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
             synthesizeNext(newP)
         }
       }
+
+      val res = synthesizeNext(p)
+      ctx.reporter.info(ScalaPrinter(res))
     } else {
       var chooses = ChooseInfo.extractFromProgram(ctx, p, options).filter(toProcess)
 
