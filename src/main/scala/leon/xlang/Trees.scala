@@ -8,8 +8,7 @@ import leon.purescala.TypeTrees._
 import leon.purescala.Trees._
 import leon.purescala.Definitions._
 import leon.purescala.Extractors._
-import leon.purescala.{PrettyPrinter, PrettyPrintable}
-import leon.purescala.ScalaPrinter._
+import leon.purescala.{PrettyPrinter, PrettyPrintable, ScalaPrinter}
 
 object Trees {
 
@@ -18,7 +17,7 @@ object Trees {
     sb
   }
 
-  case class Block(exprs: Seq[Expr], last: Expr) extends Expr with NAryExtractable with PrettyPrintable with ScalaPrintable with FixedType {
+  case class Block(exprs: Seq[Expr], last: Expr) extends Expr with NAryExtractable with PrettyPrintable with FixedType {
     def extract: Option[(Seq[Expr], (Seq[Expr])=>Expr)] = {
       val Block(args, rest) = this
       Some((args :+ rest, exprs => Block(exprs.init, exprs.last)))
@@ -35,26 +34,10 @@ object Trees {
       printer.append("}\n")
     }
 
-    def ppScala(sb: StringBuffer, lvl: Int, 
-      ep: (Expr, StringBuffer, Int) => Unit, 
-      tp: (TypeTree, StringBuffer, Int) => Unit,
-      dp: (Definition, StringBuffer, Int) => Unit
-    ): StringBuffer = {
-      sb.append("{\n")
-      (exprs :+ last).foreach(e => {
-        ind(sb, lvl+1)
-        ep(e, sb, lvl+1)
-        sb.append("\n")
-      })
-      ind(sb, lvl)
-      sb.append("}\n")
-      sb
-    }
-
     val fixedType = last.getType
   }
 
-  case class Assignment(varId: Identifier, expr: Expr) extends Expr with FixedType with UnaryExtractable with PrettyPrintable with ScalaPrintable {
+  case class Assignment(varId: Identifier, expr: Expr) extends Expr with FixedType with UnaryExtractable with PrettyPrintable {
     val fixedType = UnitType
 
     def extract: Option[(Expr, (Expr)=>Expr)] = {
@@ -68,22 +51,9 @@ object Trees {
       printer.pp(expr,lvl)
       printer.append(")")
     }
-
-    def ppScala(sb: StringBuffer, lvl: Int, 
-      ep: (Expr, StringBuffer, Int) => Unit, 
-      tp: (TypeTree, StringBuffer, Int) => Unit,
-      dp: (Definition, StringBuffer, Int) => Unit
-    ): StringBuffer = {
-      var nsb: StringBuffer = sb
-      nsb.append("(")
-      nsb.append(varId.name)
-      nsb.append(" = ")
-      ep(expr, nsb, lvl)
-      nsb.append(")")
-      nsb
-    }
   }
-  case class While(cond: Expr, body: Expr) extends Expr with FixedType with ScalacPositional with BinaryExtractable with PrettyPrintable with ScalaPrintable {
+
+  case class While(cond: Expr, body: Expr) extends Expr with FixedType with ScalacPositional with BinaryExtractable with PrettyPrintable {
     val fixedType = UnitType
     var invariant: Option[Expr] = None
 
@@ -114,72 +84,36 @@ object Trees {
       printer.pp(body, lvl+1)
       printer.append("\n")
     }
-
-    def ppScala(sb: StringBuffer, lvl: Int, 
-      ep: (Expr, StringBuffer, Int) => Unit, 
-      tp: (TypeTree, StringBuffer, Int) => Unit,
-      dp: (Definition, StringBuffer, Int) => Unit
-    ): StringBuffer = {
-      invariant match {
-        case Some(inv) => {
-          sb.append("\n")
-          ind(sb, lvl)
-          sb.append("@invariant: ")
-          ep(inv, sb, lvl)
-          sb.append("\n")
-          ind(sb, lvl)
-        }
-        case None =>
-      }
-      sb.append("while(")
-      ep(cond, sb, lvl)
-      sb.append(")\n")
-      ind(sb, lvl+1)
-      ep(body, sb, lvl+1)
-      sb.append("\n")
-    }
-
   }
 
-  case class Epsilon(pred: Expr) extends Expr with ScalacPositional with UnaryExtractable with PrettyPrintable with ScalaPrintable {
+  case class Epsilon(pred: Expr) extends Expr with ScalacPositional with UnaryExtractable with PrettyPrintable {
     def extract: Option[(Expr, (Expr)=>Expr)] = {
       Some((pred, (expr: Expr) => Epsilon(expr).setType(this.getType).setPosInfo(this)))
     }
 
     def printWith(lvl: Int, printer: PrettyPrinter) {
-      printer.append("epsilon(x" + this.posIntInfo._1 + "_" + this.posIntInfo._2 + ". ")
-      printer.pp(pred, lvl)
-      printer.append(")")
-    }
+      printer match {
+        case _: ScalaPrinter =>
+          sys.error("Not Scala Code")
 
-    def ppScala(sb: StringBuffer, lvl: Int, 
-      ep: (Expr, StringBuffer, Int) => Unit, 
-      tp: (TypeTree, StringBuffer, Int) => Unit,
-      dp: (Definition, StringBuffer, Int) => Unit
-    ): StringBuffer = {
-      sys.error("Not Scala Code")
+        case _ =>
+          printer.append("epsilon(x" + this.posIntInfo._1 + "_" + this.posIntInfo._2 + ". ")
+          printer.pp(pred, lvl)
+          printer.append(")")
+      }
     }
-
   }
-  case class EpsilonVariable(pos: (Int, Int)) extends Expr with Terminal with PrettyPrintable with ScalaPrintable {
+
+  case class EpsilonVariable(pos: (Int, Int)) extends Expr with Terminal with PrettyPrintable{
 
     def printWith(lvl: Int, printer: PrettyPrinter) {
       val (row, col) = pos
       printer.append("x" + row + "_" + col)
     }
-
-    def ppScala(sb: StringBuffer, lvl: Int, 
-      ep: (Expr, StringBuffer, Int) => Unit, 
-      tp: (TypeTree, StringBuffer, Int) => Unit,
-      dp: (Definition, StringBuffer, Int) => Unit
-    ): StringBuffer = {
-      val (row, col) = pos
-      sb.append("x" + row + "_" + col)
-    }
   }
 
   //same as let, buf for mutable variable declaration
-  case class LetVar(binder: Identifier, value: Expr, body: Expr) extends Expr with BinaryExtractable with PrettyPrintable with ScalaPrintable {
+  case class LetVar(binder: Identifier, value: Expr, body: Expr) extends Expr with BinaryExtractable with PrettyPrintable {
     binder.markAsLetBinder
     val et = body.getType
     if(et != Untyped)
@@ -191,36 +125,34 @@ object Trees {
     }
 
     def printWith(lvl: Int, printer: PrettyPrinter) {
-      val LetVar(b,d,e) = this
-      printer.append("(letvar (" + b + " := ");
-      printer.pp(d, lvl)
-      printer.append(") in\n")
-      printer.ind(lvl+1)
-      printer.pp(e, lvl+1)
-      printer.append(")")
-    }
+      printer match {
+        case _: ScalaPrinter =>
+          val LetVar(b,d,e) = this
+          printer.append("locally {\n")
+          printer.ind(lvl+1)
+          printer.append("var " + b + " = ")
+          printer.pp(d, lvl+1)
+          printer.append("\n")
+          printer.ind(lvl+1)
+          printer.pp(e, lvl+1)
+          printer.append("\n")
+          printer.ind(lvl)
+          printer.append("}\n")
+          printer.ind(lvl)
 
-    def ppScala(sb: StringBuffer, lvl: Int, 
-      ep: (Expr, StringBuffer, Int) => Unit, 
-      tp: (TypeTree, StringBuffer, Int) => Unit,
-      dp: (Definition, StringBuffer, Int) => Unit
-    ): StringBuffer = {
-      val LetVar(b,d,e) = this
-      sb.append("locally {\n")
-      ind(sb, lvl+1)
-      sb.append("var " + b + " = ")
-      ep(d, sb, lvl+1)
-      sb.append("\n")
-      ind(sb, lvl+1)
-      ep(e, sb, lvl+1)
-      sb.append("\n")
-      ind(sb, lvl)
-      sb.append("}\n")
-      ind(sb, lvl)
+        case _ =>
+          val LetVar(b,d,e) = this
+          printer.append("(letvar (" + b + " := ");
+          printer.pp(d, lvl)
+          printer.append(") in\n")
+          printer.ind(lvl+1)
+          printer.pp(e, lvl+1)
+          printer.append(")")
+      }
     }
   }
 
-  case class LetDef(fd: FunDef, body: Expr) extends Expr with NAryExtractable with PrettyPrintable with ScalaPrintable {
+  case class LetDef(fd: FunDef, body: Expr) extends Expr with NAryExtractable with PrettyPrintable {
     val et = body.getType
     if(et != Untyped)
       setType(et)
@@ -310,48 +242,41 @@ object Trees {
     }
 
     def printWith(lvl: Int, printer: PrettyPrinter) {
-      printer.append("\n")
-      printer.pp(fd, lvl+1)
-      printer.append("\n")
-      printer.append("\n")
-      printer.ind(lvl)
-      printer.pp(body, lvl)
+      printer match {
+        case _: ScalaPrinter =>
+          printer.append("{\n")
+          printer.pp(fd, lvl+1)
+          printer.append("\n")
+          printer.append("\n")
+          printer.ind(lvl)
+          printer.pp(body, lvl)
+          printer.append("}\n")
+        case _ =>
+          printer.append("\n")
+          printer.pp(fd, lvl+1)
+          printer.append("\n")
+          printer.append("\n")
+          printer.ind(lvl)
+          printer.pp(body, lvl)
+      }
     }
-
-    def ppScala(sb: StringBuffer, lvl: Int, 
-      ep: (Expr, StringBuffer, Int) => Unit, 
-      tp: (TypeTree, StringBuffer, Int) => Unit,
-      dp: (Definition, StringBuffer, Int) => Unit
-    ): StringBuffer = {
-      sb.append("{\n")
-      dp(fd, sb, lvl+1)
-      sb.append("\n")
-      sb.append("\n")
-      ind(sb, lvl)
-      ep(body, sb, lvl)
-      sb.append("}\n")
-      sb
-    }
-
   }
 
-  case class Waypoint(i: Int, expr: Expr) extends Expr with UnaryExtractable with PrettyPrintable with ScalaPrintable {
+  case class Waypoint(i: Int, expr: Expr) extends Expr with UnaryExtractable with PrettyPrintable{
     def extract: Option[(Expr, (Expr)=>Expr)] = {
       Some((expr, (e: Expr) => Waypoint(i, e)))
     }
 
     def printWith(lvl: Int, printer: PrettyPrinter) {
-      printer.append("waypoint_" + i + "(")
-      printer.pp(expr, lvl)
-      printer.append(")")
-    }
+      printer match {
+        case _: ScalaPrinter =>
+          sys.error("Not Scala Code")
 
-    def ppScala(sb: StringBuffer, lvl: Int, 
-      ep: (Expr, StringBuffer, Int) => Unit, 
-      tp: (TypeTree, StringBuffer, Int) => Unit,
-      dp: (Definition, StringBuffer, Int) => Unit
-    ): StringBuffer = {
-      sys.error("Not Scala Code")
+        case _ =>
+          printer.append("waypoint_" + i + "(")
+          printer.pp(expr, lvl)
+          printer.append(")")
+      }
     }
   }
 
