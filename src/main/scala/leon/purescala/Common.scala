@@ -28,7 +28,7 @@ object Common {
       }
     }
 
-    def uniqueName : String = name + id
+    def uniqueName : String = name + globalId
 
     def toVariable : Variable = Variable(this)
 

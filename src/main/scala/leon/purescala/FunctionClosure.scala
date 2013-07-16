@@ -46,7 +46,7 @@ object FunctionClosure extends TransformationPhase {
       val capturedVars: Set[Identifier] = bindedVars.diff(enclosingLets.map(_._1).toSet)
       val capturedConstraints: Set[Expr] = pathConstraints.toSet
 
-      val freshIds: Map[Identifier, Identifier] = capturedVars.map(id => (id, FreshIdentifier(id.name).setType(id.getType))).toMap
+      val freshIds: Map[Identifier, Identifier] = capturedVars.map(id => (id, FreshIdentifier(id.name, true).setType(id.getType))).toMap
       val freshVars: Map[Expr, Expr] = freshIds.map(p => (p._1.toVariable, p._2.toVariable))
       
       val extraVarDeclOldIds: Seq[Identifier] = capturedVars.toSeq
@@ -54,7 +54,7 @@ object FunctionClosure extends TransformationPhase {
       val extraVarDecls: Seq[VarDecl] = extraVarDeclFreshIds.map(id =>  VarDecl(id, id.getType))
       val newVarDecls: Seq[VarDecl] = fd.args ++ extraVarDecls
       val newBindedVars: Set[Identifier] = bindedVars ++ fd.args.map(_.id)
-      val newFunId = FreshIdentifier(fd.id.uniqueName) //since we hoist this at the top level, we need to make it a unique name
+      val newFunId = FreshIdentifier(parent.id.name+"Inner") //since we hoist this at the top level, we need to make it a unique name
 
       val newFunDef = new FunDef(newFunId, fd.returnType, newVarDecls).setPosInfo(fd)
       topLevelFuns += newFunDef
