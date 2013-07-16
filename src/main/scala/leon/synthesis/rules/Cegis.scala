@@ -111,9 +111,9 @@ case object CEGIS extends Rule("CEGIS") {
               false
           }
 
+          val isInnerFunction = fd.parent != None
 
-
-          isSubtypeOf(fd.returnType, t) && !isRecursiveCall && isNotSynthesizable
+          isSubtypeOf(fd.returnType, t) && !isRecursiveCall && isNotSynthesizable && !isInnerFunction
         }
 
         val funcs = funcCache.get(t) match {
