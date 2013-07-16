@@ -26,7 +26,7 @@ case object ErrorExpression extends ReconstructionExpression {
 
 object ImmediateExpression {
   
-  def apply(id: Identifier, expr:  Expr): ImmediateExpression = ImmediateExpression(id.toString, expr)
+  def apply(id: Identifier, expr:  Expr): ImmediateExpression = ImmediateExpression(id.name, expr)
   
 }
 
@@ -42,7 +42,7 @@ case class ImmediateExpression( name: String, expr:  Expr ) extends Reconstructi
 
 object UnaryReconstructionExpression {
   
-  def apply(id: Identifier, funToExpr: Expr => Expr): UnaryReconstructionExpression = UnaryReconstructionExpression(id.toString, funToExpr)
+  def apply(id: Identifier, funToExpr: Expr => Expr): UnaryReconstructionExpression = UnaryReconstructionExpression(id.name, funToExpr)
   
 }
 
@@ -58,7 +58,7 @@ case class UnaryReconstructionExpression( name: String, funToExpr: Expr => Expr 
 
 object NaryReconstructionExpression {
   
-  def apply(id: Identifier, funToExpr: List[Expr] => Expr): NaryReconstructionExpression = NaryReconstructionExpression(id.toString, funToExpr)
+  def apply(id: Identifier, funToExpr: List[Expr] => Expr): NaryReconstructionExpression = NaryReconstructionExpression(id.name, funToExpr)
   
 }
 

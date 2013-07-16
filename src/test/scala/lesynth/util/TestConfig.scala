@@ -24,6 +24,8 @@ object TestConfig {
   val synthesisTestDir = "testcases/insynth-synthesis-tests/" 
     
   val lesynthTestDir = "testcases/lesynth/test/" 
+    
+  val lesynthSynthesisDir = "testcases/lesynth/synthesis/"
   
   val HOME_FOLDER = "/home/kuraj/"
     

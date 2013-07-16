@@ -15,67 +15,42 @@ object BatchedQueue {
   def content(p: Queue): Set[Int] =
     content(p.f) ++ content(p.r)
 
-  def size(l: List): Int = l match {
-    case Nil => 0
-    case Cons(head, tail) => 1 + size(tail)
-  }
-
-  def size(q: Queue): Int =
-    size(q.f) + size(q.r)
-
-//  def isEmpty(p: Queue): Boolean = p.f == Nil && p.r == Nil
+  def isEmpty(p: Queue): Boolean = p.f == Nil
 
   case class Queue(f: List, r: List)
 
   def rev_append(aList: List, bList: List): List = (aList match {
     case Nil => bList
     case Cons(x, xs) => rev_append(xs, Cons(x, bList))
-  }) ensuring (
-    res =>
-      content(res) == content(aList) ++ content(bList) &&
-        size(res) == size(aList) + size(bList))
+  }) ensuring (content(_) == content(aList) ++ content(bList))
 
-  def reverse(list: List) = rev_append(list, Nil) ensuring (
-    res =>
-      content(res) == content(list) && size(res) == size(list))
+  def reverse(list: List) = rev_append(list, Nil) ensuring (content(_) == content(list))
 
+  def invariantList(q:Queue, f: List, r: List): Boolean = {
+  	rev_append(q.f, q.r) == rev_append(f, r) &&
+    { if (q.f == Nil) q.r == Nil else true }
+  }
+  
   def checkf(f: List, r: List): Queue = (f match {
     case Nil => Queue(reverse(r), Nil)
     case _ => Queue(f, r)
   }) ensuring {
-    res =>
-      content(res) == content(f) ++ content(r) &&
-        size(res) == size(f) + size(r)
+    res => content(res) == content(f) ++ content(r)
   }
-
-  def head(p: Queue): List = {
-    p.f match {
-      case Nil => Nil
-      case Cons(x, xs) => Cons(x, Nil)
-    }
-  }
-
-  def correctQueue(q:Queue) = if (q.f == Nil) q.r == Nil else true
   
-  def invariantList(q:Queue, f: List, r: List): Boolean = {
-  	rev_append(q.f, q.r) == rev_append(f, r)
-  }
-    
-  def merge(l1: List, l2: List): List = l1 match {
-    case Nil => l2
-    case Cons(a, tail) => Cons(a, merge(tail, l2))
-  }
-    
+  def tail(p: Queue): Queue = {
+  		require( if (p.f == Nil) p.r == Nil else true )
 //    p.f match {
 //      case Nil => p
 //      case Cons(_, xs) => checkf(xs, p.r)
 //    }
-  def tail(p: Queue): List = {
-    require(correctQueue(p))
     choose {
-      (res: List) =>
-        invariantList(p, merge(head(p), res), Nil)
+      (res: Queue) =>
+        p.f match {
+          case Nil => isEmpty(res)
+          case Cons(x, xs) => content(res) ++ Set(x) == content(p) && content(res) != content(p)
+        }
     }
   }
-
+  
 }

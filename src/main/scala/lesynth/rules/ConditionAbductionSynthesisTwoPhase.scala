@@ -16,7 +16,7 @@ import lesynth.evaluation._
 
 import leon.StopwatchCollections
 
-case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abduction synthesis (two phase).") {
+case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abduction synthesis (two phase).") with TopLevelRule {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
 
     p.xs match {
@@ -33,7 +33,6 @@ case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abductio
 
               // temporary hack, should not mutate FunDef
               val oldPostcondition = holeFunDef.postcondition
-              val oldPrecondition = holeFunDef.precondition
               
               try {
                 val freshResID = FreshIdentifier("result").setType(holeFunDef.returnType)
@@ -42,20 +41,18 @@ case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abductio
                 val codeGenEval = new CodeGenEvaluator(sctx.context, sctx.program)
                 def getInputExamples = {
                   () =>
-                    getDataGenInputExamples(codeGenEval, p, 
-                		200, 6000, Some(p.as)) ++
-                    getDataGenInputExamplesRandomIntegers(codeGenEval, p, 
-                		200, 6000, Some(p.as)
+                    //getDataGenInputExamples(sctx.context, sctx.program, codeGenEval, p, 
+                	//	100, 6000, Some(p.as)) ++
+                    getDataGenInputExamplesRandomIntegers(sctx.context, sctx.program, codeGenEval, p, 
+                		100, 6000, Some(p.as)
                 		// bound the random geenerator
-                		,5
-                	)
+                		,10)
                 }
                 
-            	val evaluationStrategy = new CodeGenEvaluationStrategy(program, holeFunDef, sctx.context, 1000)
+            	val evaluationStrategy = new CodeGenEvaluationStrategy(program, holeFunDef, sctx.context, 5000)
                 	
                 holeFunDef.postcondition = Some(replace(
                   Map(givenVariable.toVariable -> ResultVariable().setType(holeFunDef.returnType)), p.phi))
-                holeFunDef.precondition = Some(p.pc)
 
                 val synthesizer = new SynthesizerForRuleExamples(
                   solver, solver.getNewSolver, program, desiredType, holeFunDef, p, sctx, evaluationStrategy,
@@ -71,7 +68,10 @@ case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abductio
                   case fr@FullReport(resFunDef, _) =>
                     println(fr.summaryString)
                     println("Compilation time: " + StopwatchCollections.get("Compilation").getMillis)
-                    RuleSuccess(Solution(resFunDef.getPrecondition, Set.empty, resFunDef.body.get))
+                    RuleSuccess(
+                      Solution(BooleanLiteral(true), Set.empty, Tuple(Seq(resFunDef.body.get)),
+                    		isTrusted = !synthesizer.verifier.isTimeoutUsed)
+                    )
                 }
               } catch {
                 case e: Throwable =>
@@ -80,13 +80,12 @@ case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abductio
                   RuleApplicationImpossible
               } finally {
                 holeFunDef.postcondition = oldPostcondition
-                holeFunDef.precondition = oldPrecondition
               }
             }
           }
         })
       case _ =>
-        throw new RuntimeException("Rule is not applicable for more than one output variable.")
+//        throw new RuntimeException("Rule is not applicable for more than one output variable.")
         Nil
     }
     

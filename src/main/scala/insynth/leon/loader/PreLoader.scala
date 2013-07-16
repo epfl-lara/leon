@@ -197,7 +197,7 @@ object PreLoader extends ( (Boolean) => List[Declaration] ) {
       x: LeonType =>
 	    makeDeclaration(
 	      makeNAE( "If", (args: List[Expr]) => args match {
-	        case List(cond, then, elze) => IfExpr(cond, then, elze)
+	        case List(cond, then_, elze) => IfExpr(cond, then_, elze)
 	        case _ => throw new RuntimeException
 	      }),
 	      FunctionType( List(BooleanType, x, x), x )

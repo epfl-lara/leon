@@ -29,9 +29,9 @@ extends Declaration(inSynthType, weight) {
       
   def getDomainType = leonType
     
-  def getSimpleName = expression.toString
+  def getSimpleName = expression.getSimpleName
   
-  override def toString = getSimpleName + ":" + inSynthType + ":" + leonType + "[" + expression + "]"
+  override def toString = getSimpleName + " : " + inSynthType + " : " + leonType + " [" + expression + "]"
   
 }
 

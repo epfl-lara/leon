@@ -161,6 +161,8 @@ class Filter(program: Program, holeFunDef: FunDef, refiner: VariableRefiner) ext
       // if we check instance of an constructor we know that it is a constant
 //      case CaseClassInstanceOf(_, _: CaseClass) =>
 //        true
+	    case CaseClassInstanceOf(classDef, _: FunctionInvocation) =>
+	      true
 	    case CaseClassInstanceOf(classDef, innerExpr)
 	    	if isOfClassType(innerExpr, classDef) =>
 	      true

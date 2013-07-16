@@ -5,40 +5,44 @@ import leon.purescala.TypeTrees._
 import leon.purescala.Trees._
 import leon.purescala.TreeOps
 import leon.purescala.Common.Identifier
+import leon.purescala.Definitions.Program
 import leon.evaluators.Evaluator
 import leon.synthesis.Problem
-import leon.purescala.DataGen
+import leon.LeonContext
 
 import insynth.leon.loader.{ HoleExtractor, LeonLoader }
+import leon.datagen._
 
 object InputExamples {
-  import DataGen._
   
   val rnd = new scala.util.Random(System.currentTimeMillis)
   val MAX_INT = 1000
 
-  def getDataGenInputExamples(evaluator: Evaluator, p: Problem,
+  def getDataGenInputExamples(ctx: LeonContext, program: Program, evaluator: Evaluator, p: Problem,
     numOfModels: Int, numOfTries: Int, _forcedFreeVars: Option[Seq[Identifier]]) = {
-    val models = findModels(p.pc, evaluator, numOfModels, numOfTries,
-      forcedFreeVars = _forcedFreeVars)
 
-    models.toList
+    val ins = _forcedFreeVars.getOrElse(TreeOps.variablesOf(p.pc).toSeq)
+
+    val models = new NaiveDataGen(ctx, program, evaluator).generateFor(ins, p.pc, numOfModels, numOfTries)
+
+    models.toList.map(m => (ins zip m).toMap)
   }
   
-  def getDataGenInputExamplesRandomIntegers(evaluator: Evaluator, p: Problem,
+  def getDataGenInputExamplesRandomIntegers(ctx: LeonContext, program: Program, evaluator: Evaluator, p: Problem,
     numOfModels: Int, numOfTries: Int, _forcedFreeVars: Option[Seq[Identifier]],
     bound: Int = MAX_INT) = {
     import TreeOps._
     
-    val models = findModels(p.pc, evaluator, numOfModels, numOfTries,
-      forcedFreeVars = _forcedFreeVars)
+    val ins = _forcedFreeVars.getOrElse(TreeOps.variablesOf(p.pc).toSeq)
+
+    val models = new NaiveDataGen(ctx, program, evaluator).generateFor(ins, p.pc, numOfModels, numOfTries)
 
     def foundInteger(x: Expr) = x match {
       case _:IntLiteral => Some(IntLiteral(rnd.nextInt(bound)))
       case _ => None
     }
       
-    models.toList.map( innerMap =>
+    models.toList.map(m => (ins zip m).toMap).map( innerMap =>
       innerMap.map( innerEl => innerEl match {
         case (id, expr) => (id, searchAndReplace(foundInteger)(expr))
       })
