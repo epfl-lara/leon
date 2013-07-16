@@ -9,4 +9,9 @@ import leon.purescala.Trees.Expr
 case class Output(snippet: Expr, weight: Weight){
   def getSnippet = snippet
   def getWeight = weight
+    
+	override def equals(obj:Any) = {
+    obj.isInstanceOf[Output] && obj.asInstanceOf[Output].snippet == this.snippet
+  }
+	
 }

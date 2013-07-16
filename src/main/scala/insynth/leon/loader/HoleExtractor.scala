@@ -21,9 +21,9 @@ class HoleExtractor(program: Program, hole: Hole) {
     for (
       funDef <-program.definedFunctions;
       if funDef.hasBody;
-      val (foundHole, declarations) = scanMethod(funDef.getBody);      
+      (foundHole, declarations) = scanMethod(funDef.getBody);      
       if foundHole;
-      val argDeclarations = funDef.args map { makeArgumentDeclaration(_) }
+      argDeclarations = funDef.args map { makeArgumentDeclaration(_) }
     ) {
       foundHoleCount+=1
           	

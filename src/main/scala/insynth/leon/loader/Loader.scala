@@ -69,7 +69,7 @@ case class LeonLoader(program: Program, hole: Hole,
 	      fine("adding fields of variable " + variable)
             for (field <- fields)
 	          list += makeDeclaration(
-		        ImmediateExpression( "Field(" + cas + "." + field.id + ")",
+		        ImmediateExpression( field.id.name ,
 	            CaseClassSelector(cas, variable.toVariable, field.id) ),
 	            field.id.getType
     		  )
@@ -152,7 +152,7 @@ case class LeonLoader(program: Program, hole: Hole,
     case cas: CaseClassDef =>
       for (field <- cas.fields)
         yield makeDeclaration(
-        UnaryReconstructionExpression("Field(" + cas + "." + field.id + ")", { CaseClassSelector(cas, _: Expr, field.id) }),
+        UnaryReconstructionExpression(field.id.name, { CaseClassSelector(cas, _: Expr, field.id) }),
         FunctionType(List(classMap(cas.id)), field.id.getType))
   }
   
@@ -166,11 +166,11 @@ case class LeonLoader(program: Program, hole: Hole,
     for (caseClassDef@CaseClassDef(id, parent, fields) <- program.definedClasses)
     	yield fields match {
       	case Nil => makeDeclaration(
-	        ImmediateExpression( "Cst(" + id + ")", { CaseClass(caseClassDef, Nil) } ), 
+	        ImmediateExpression( id.name, { CaseClass(caseClassDef, Nil) } ), 
 	        classMap(id)
 	      )
       	case _ => makeDeclaration(
-	        NaryReconstructionExpression( "Cst(" + id + ")", { CaseClass(caseClassDef, _: List[Expr]) } ), 
+	        NaryReconstructionExpression( id.name , { CaseClass(caseClassDef, _: List[Expr]) } ), 
 	        FunctionType(fields map { _.id.getType } toList, classMap(id))
 	      )
     	}

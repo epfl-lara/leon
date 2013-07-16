@@ -1,12 +1,11 @@
 package insynth.leon.loader
 
-import insynth.leon.{ LeonDeclaration => Declaration, ReconstructionExpression,
-  ErrorExpression, UnaryReconstructionExpression, ImmediateExpression }
+import insynth.leon.{ LeonDeclaration => Declaration, _ }
 import insynth.engine.InitialEnvironmentBuilder
-import insynth.structures.{ SuccinctType => InSynthType, Variable => InSynthVariable, _}
+import insynth.structures.{ SuccinctType => InSynthType, Variable => InSynthVariable, _ }
 import insynth.leon.TypeTransformer
 
-import leon.purescala.Definitions.{ Program, FunDef, ClassTypeDef, VarDecl }
+import leon.purescala.Definitions._
 import leon.purescala.TypeTrees.{ TypeTree => LeonType, _ }
 import leon.purescala.Common.{ Identifier, FreshIdentifier }
 import leon.purescala.Trees._
@@ -45,13 +44,15 @@ object DeclarationFactory {
   }
   
   def makeInheritance(from: ClassTypeDef, to: ClassTypeDef) = {
-    val expr = UnaryReconstructionExpression(from + " is " + to, identity[Expr] _)
+    val expr = UnaryReconstructionExpression("[" +
+      from.id.name + "=>" + to.id.name + "]", identity[Expr] _)
     val inSynthType = Arrow(TSet(TypeTransformer(from)), TypeTransformer(to))
     Declaration(expr, inSynthType, Untyped)    
   }
   
   def makeInheritance(from: ClassType, to: ClassType) = {
-    val expr = UnaryReconstructionExpression("Inheritane(" + from.classDef + "<<is>>" + to.classDef + ")", identity[Expr] _)
+    val expr = UnaryReconstructionExpression("[" +
+      from.classDef.id.name + "=>" + to.classDef.id.name + "]", identity[Expr] _)
     val inSynthType = Arrow(TSet(TypeTransformer(from)), TypeTransformer(to))
     Declaration(expr, inSynthType, FunctionType(List(from), to))    
   }  
@@ -68,6 +69,13 @@ object DeclarationFactory {
       throw new RuntimeException
     Declaration(getAbsExpression(inSynthType), inSynthType, null)
   }
+  
+//  def makeFieldDeclaration(id: Identifier, caseClassDef: CaseClassType) = {
+//    makeDeclaration(
+//      NaryReconstructionExpression( id.name , { CaseClass(caseClassDef, _: List[Expr]) } ), 
+//      FunctionType(caseClassDef.fields map { _.id.getType } toList, classMap(id))
+//    ) 
+//  }
     	
   // define this for abstract declarations
   def getAbsExpression(inSynthType: InSynthType) =

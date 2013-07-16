@@ -1,7 +1,7 @@
 package lesynth
 package ranking
 
-import util.control.Breaks._
+import scala.util.control.Breaks._
 import scala.collection._
 
 import leon.purescala.Trees.{ Variable => LeonVariable, _ }
@@ -81,6 +81,14 @@ class Ranker(candidates: IndexedSeq[Candidate], evaluation: Evaluation, checkTim
     }
     
     (candidates(rankings(0)), rankings(0))    
+  }
+  
+  def fullyEvaluate(ind: Int) = {
+    val tuple = tuples(ind)
+    for (_ <- 0 until (tuple._2 - tuple._1))
+    	evaluate(ind)
+    	
+  	tuples(ind)
   }
   
 //  def getVerifiedMax = {    

@@ -28,7 +28,7 @@ import insynth.reconstruction.Output
 import insynth.util._
 import lesynth.util._
 
-class EnumerationTest extends FunSuite {
+class EnumerationFastTest extends FunSuite {
 
   import Scaffold._
   import TestConfig._
@@ -51,7 +51,7 @@ class EnumerationTest extends FunSuite {
       val hole = Hole(resultVariable.getType)
 
 	    val loader = new LeonLoader(program, hole, problem.as, false)
-	    val inSynth = new InSynth(loader, true)
+	    val inSynth = new InSynthTemp(loader, true)
 	    // save all declarations seen
 	    val allDeclarations = inSynth.getCurrentBuilder.getAllDeclarations
 	    
@@ -73,7 +73,7 @@ class EnumerationTest extends FunSuite {
     }
   }
   
-  ignore("Enumeration in Address example") {
+  test("Enumeration in Address example") {
         
     for ((sctx, funDef, problem) <- forFile(lesynthTestDir + "Addresses.scala")) {
       val program = sctx.program
@@ -84,7 +84,7 @@ class EnumerationTest extends FunSuite {
       val hole = Hole(resultVariable.getType)
 
 	    val loader = new LeonLoader(program, hole, problem.as, false)
-	    val inSynth = new InSynth(loader, true)
+	    val inSynth = new InSynthTemp(loader, true)
 	    // save all declarations seen
 	    val allDeclarations = inSynth.getCurrentBuilder.getAllDeclarations
 	    
@@ -107,79 +107,31 @@ class EnumerationTest extends FunSuite {
 	    
 	    val builder = new InitialEnvironmentBuilder(newDeclarations)
             
-	    val solver = inSynth.solver
-	    solver.getProofTree(builder)
-	    val solution = solver.getProofTree
-	    
-	    import ProofTreeOperations._
-	    assert(ProofTreeOperations.checkInhabitants(solution,
-        StringNode("AddressBook", Set(
-            //StringNode("[Cons=>List]", Set(StringNode("Cons"))),
-            StringNode("makeAddressBook", Set(StringNode("tail")))
-          ))
-        ))
+//	    val solver = inSynth.solver
+//	    solver.getProofTree(builder)
+//	    val solution = solver.getProofTree
+//	    
+//	    import ProofTreeOperations._
+//	    assert(ProofTreeOperations.checkInhabitants(solution,
+//        StringNode("AddressBook", Set(
+//            //StringNode("[Cons=>List]", Set(StringNode("Cons"))),
+//            StringNode("makeAddressBook", Set(StringNode("tail")))
+//          ))
+//        ))
 	    
 	    val outputs = inSynth.getExpressions(builder)
+	    
+      for (output <- outputs.take(20000))
+        printf("%20s %5f\n", output.getSnippet.toString, output.getWeight)
 	    
 //	    val proofTree = inSynth.solver.getProofTree(builder)
 //	    val os = new java.io.PrintWriter(new java.io.FileOutputStream("proofTree.xml"))
 //	    insynth.util.format.TreePrinter.printAnswerAsXML(os, proofTree, 6)
-	          
-//      for (output <- outputs.take(20000))
-//        printf("%20s %5f\n", output.getSnippet.toString, output.getWeight)
     }
     
   }
   
   ignore("Enumeration in Address (mergeAddressBooks) example") {
-        
-    for ((sctx, funDef, problem) <- forFile(lesynthTestDir + "AddressesMergeAddressBooks.scala")) {
-      val program = sctx.program
-      val arguments = funDef.args.map(_.id)
-
-      expect(1) { problem.xs.size }
-      val resultVariable = problem.xs.head
-      val hole = Hole(resultVariable.getType)
-
-	    val loader = new LeonLoader(program, hole, problem.as, false)
-	    val inSynth = new InSynth(loader, true)
-	    // save all declarations seen
-	    val allDeclarations = inSynth.getCurrentBuilder.getAllDeclarations
-	    
-//		  val nilAbstractClassDef = program.definedClasses.find(_.id.name == "Nil").
-//		  	get.asInstanceOf[CaseClassDef]
-//	    val listVal = funDef.args.head.toVariable
-//      
-//      val variableRefiner = 
-//  			new VariableRefiner(loader.directSubclassesMap,
-//  					loader.variableDeclarations, loader.classMap)
-//      
-//	    val (refined, newDeclarations) = 
-//	      variableRefiner.checkRefinements(
-//          CaseClassInstanceOf(nilAbstractClassDef, listVal), BooleanLiteral(true), allDeclarations)
-//      assert(refined)
-//      assert(allDeclarations.size + 2 == newDeclarations.size)
-//      
-//      for (decl <- newDeclarations)
-//        println(decl.getSimpleName)
-//	    
-//	    val builder = new InitialEnvironmentBuilder(newDeclarations)
-	    //assert(inSynth.getCurrentBuilder.getAllDeclarations.size > 13, { throw new RuntimeException; "aaa" })
-//	    assert(false)
-	    
-	    val outputs = inSynth.getExpressions//(builder)
-	    
-//	    val proofTree = inSynth.solver.getProofTree(builder)
-//	    val os = new java.io.PrintWriter(new java.io.FileOutputStream("proofTree.xml"))
-//	    insynth.util.format.TreePrinter.printAnswerAsXML(os, proofTree, 6)
-	          
-      for (output <- outputs.take(20000))
-        printf("%20s %5f\n", output.getSnippet.toString, output.getWeight)
-    }
-    
-  }
-  
-  test("Enumeration in Address (mergeAddressBooks) example with fast reconstructor") {
         
     for ((sctx, funDef, problem) <- forFile(lesynthTestDir + "AddressesMergeAddressBooks.scala")) {
       val program = sctx.program

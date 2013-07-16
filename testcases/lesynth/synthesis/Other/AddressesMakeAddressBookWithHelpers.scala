@@ -10,9 +10,9 @@ object Addresses {
   case class Cons(a: Address, tail:List) extends List
   case object Nil extends List
 
-  def setA(l: List) : Set[Address] = l match {
+  def content(l: List) : Set[Address] = l match {
     case Nil => Set.empty[Address]
-    case Cons(a, l1) => Set(a) ++ setA(l1)
+    case Cons(addr, l1) => Set(addr) ++ content(l1)
   }
   
 	def size(l: List) : Int = l match {
@@ -41,7 +41,16 @@ object Addresses {
   def addToBusiness(ab: AddressBook, adr: Address) = AddressBook(Cons(adr, ab.business), ab.pers)
   
   def size(ab: AddressBook): Int = size(ab.business) + size(ab.pers)
+  	  
+  	  def content(ab: AddressBook) : Set[Address] = content(ab.pers) ++ content(ab.business)
+  	  
+  def addressBookInvariant(ab: AddressBook) = allPrivate(ab.pers) && allBusiness(ab.business)
   
+  def merge(l1: List, l2: List): List = l1 match {
+    case Nil => l2
+    case Cons(a, tail) => Cons(a, merge(tail, l2))
+  }
+   
 //  def makeAddressBook(l: List): AddressBook = (l match {
 //    case Nil => AddressBook(Nil, Nil)
 //    case Cons(a, l1) => {
@@ -90,7 +99,8 @@ object Addresses {
 		choose {
     (res: AddressBook) =>
 		  size(res) == size(l) &&
-		  allPrivate(res.pers) && allBusiness(res.business)
+		  allPrivate(res.pers) && allBusiness(res.business) &&
+		  content(res) == content(l)
   }
   
 }

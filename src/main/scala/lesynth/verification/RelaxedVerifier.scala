@@ -13,8 +13,13 @@ import insynth.util.logging._
 
 class RelaxedVerifier(solver: IncrementalSolver, p: Problem, synthInfo: SynthesisInfo = new SynthesisInfo)
 	extends AbstractVerifier(solver, p, synthInfo) with HasLogger {
+  
+  var _isTimeoutUsed = false
+  
+  def isTimeoutUsed = _isTimeoutUsed
     
   override def checkValidity(expression: Expr) = {
+    fine("Checking validity - assertCnstr: " + Not(expression))
     solver.assertCnstr(Not(expression))   
     val solverCheckResult = solver.check
     fine("Solver said " + solverCheckResult + " for " + expression)
@@ -24,6 +29,7 @@ class RelaxedVerifier(solver: IncrementalSolver, p: Problem, synthInfo: Synthesi
       case Some(false) =>
         true
       case None =>
+        _isTimeoutUsed = true
         warning("Interpreting None (timeout) as evidence for validity.")
         true
     }
@@ -31,6 +37,7 @@ class RelaxedVerifier(solver: IncrementalSolver, p: Problem, synthInfo: Synthesi
   
   override def checkValidityNoMod(expression: Expr) = {
     solver.push
+    fine("Checking validityNoMod - assertCnstr: " + Not(expression))
     solver.assertCnstr(Not(expression))   
     val solverCheckResult = solver.check
     fine("Solver said " + solverCheckResult + " for " + expression)
@@ -42,6 +49,7 @@ class RelaxedVerifier(solver: IncrementalSolver, p: Problem, synthInfo: Synthesi
       case Some(false) =>
         true
       case None =>
+        _isTimeoutUsed = true
         warning("Interpreting None (timeout) as evidence for validity.")
         true
     }
@@ -49,6 +57,7 @@ class RelaxedVerifier(solver: IncrementalSolver, p: Problem, synthInfo: Synthesi
   
   override def checkSatisfiabilityNoMod(expression: Expr) = {
     solver.push
+    fine("Checking checkSatisfiabilityNoMod - assertCnstr: " + expression)
     solver.assertCnstr(expression)   
     val solverCheckResult = solver.check
     fine("Solver said " + solverCheckResult + " for " + expression)

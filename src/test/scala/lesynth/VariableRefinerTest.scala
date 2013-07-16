@@ -77,12 +77,14 @@ class VariableRefinerTest extends FunSpec with GivenWhenThen {
 				) :: Nil
   		)) {
         variableRefiner.checkRefinements(CaseClassInstanceOf(nilAbstractClassDef, listVal),
+        BooleanLiteral(true),
         allDeclarations)
       } 
 	    
       and("after 2nd consequtive call, nothing should happen")   
 	    expect((false, allDeclarations)) {
         variableRefiner.checkRefinements(CaseClassInstanceOf(nilAbstractClassDef, listVal),
+        BooleanLiteral(true),
         allDeclarations)
       } 
     }

@@ -2,7 +2,7 @@ package insynth
 
 import insynth.reconstruction.stream.{ OrderedStreamFactory, UnorderedStreamFactory }
 import insynth.reconstruction.codegen.CodeGenerator
-import insynth.reconstruction.Reconstructor
+import insynth.reconstruction.{ FastReconstructor => Reconstructor }
 
 import insynth.interfaces.Declaration
 import insynth.engine.InitialEnvironmentBuilder
@@ -21,7 +21,7 @@ import insynth.util.logging.HasLogger
  * @param program Leon program object that contains the hole
  * @param hole hole in the program on which the synthesis is called 
  */
-class InSynth(declarations: List[Declaration], goalType: Type, ordered: Boolean = true) extends HasLogger {
+class InSynthTemp(declarations: List[Declaration], goalType: Type, ordered: Boolean = true) extends HasLogger {
   
 //  def this(program: Program, hole: Hole, ordered: Boolean) =
 //    this(new LeonLoader(program, hole).load, hole.getType, ordered)
@@ -60,15 +60,15 @@ class InSynth(declarations: List[Declaration], goalType: Type, ordered: Boolean 
 
 }
 
-object InSynth {
+object InSynthTemp {
   
   def apply(declarations: List[Declaration], goalType: Type, ordered: Boolean) =
-    new InSynth(declarations, goalType, ordered)
+    new InSynthTemp(declarations, goalType, ordered)
   
 //  def apply(program: Program, hole: Hole, ordered: Boolean) =
-//    new InSynth(new LeonLoader(program, hole).load, hole.getType, ordered)
+//    new InSynthTemp(new LeonLoader(program, hole).load, hole.getType, ordered)
     
   def apply(loader: LeonLoader, ordered: Boolean) =
-    new InSynth(loader.load, loader.hole.getType, ordered)
+    new InSynthTemp(loader.load, loader.hole.getType, ordered)
   
 }

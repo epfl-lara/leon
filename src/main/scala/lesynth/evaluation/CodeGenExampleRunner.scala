@@ -25,6 +25,7 @@ case class CodeGenExampleRunner(program: Program, funDef: FunDef, ctx: LeonConte
 
   val evaluationContext = ctx.copy(reporter = new SilentReporter)
   
+  fine("building codegen evaluator with program:\n" + program)
   lazy val _evaluator = new CodeGenEvaluator(evaluationContext, program, params)
   override def getEvaluator = _evaluator
   
@@ -38,6 +39,7 @@ case class CodeGenExampleRunner(program: Program, funDef: FunDef, ctx: LeonConte
     )
   
   def compile(expr: Expr, ids: Seq[Identifier]) = {
+    finest("Compiling expr: " + expr + " for ids: " + ids)
     // this get is dubious
     StopwatchCollections.get("Compilation").newStopwatch profile getEvaluator.compile(expr, ids).get
   }
@@ -47,7 +49,7 @@ case class CodeGenExampleRunner(program: Program, funDef: FunDef, ctx: LeonConte
   override def evaluate(candidateInd: Int, exampleInd: Int) = {
     val closure = candidateClosures(candidateInd)    
     
-    finest("Index evaluate candidate [%d]%s, for [%d]%s.".format(
+    finer("Index evaluate candidate [%d]%s, for [%d]%s.".format(
       candidateInd, candidates(candidateInd).prepareExpression, exampleInd, examples(exampleInd)
 	))
     
@@ -86,15 +88,15 @@ case class CodeGenExampleRunner(program: Program, funDef: FunDef, ctx: LeonConte
     try {
 	    evalClosure(args) match {
 	      case Successful(BooleanLiteral(true)) =>
-	        finest("EvaluationSuccessful(true) for " + args)
+	        fine("EvaluationSuccessful(true) for " + args)
 	        true
 	      case m =>
-	        finest("Eval failed: " + m)
+	        fine("Eval failed: " + m)
 	        false
 	    }
     } catch {
       case e: StackOverflowError =>
-        finest("Eval failed: " + e)
+        fine("Eval failed: " + e)
         false        
     }
   }

@@ -19,6 +19,7 @@ abstract class AbstractVerifier(solver: IncrementalSolver, p: Problem,
   
   def analyzeFunction(funDef: FunDef) = {
     synthInfo.start(Verification)
+    fine("Analyzing function: " + funDef)
 
     // create an expression to verify
     val theExpr = generateInductiveVerificationCondition(funDef, funDef.getBody)
@@ -84,18 +85,28 @@ abstract class AbstractVerifier(solver: IncrementalSolver, p: Problem,
     val bodyAndPost = 		    
 	    Let(
     		resFresh, newBody,
-    		replace(Map(ResultVariable() -> resFresh.toVariable), matchToIfThenElse(p.pc))
+    		replace(Map(ResultVariable() -> resFresh.toVariable), matchToIfThenElse(funDef.getPostcondition))
   		)	
 
 		val precondition = if( isThereARecursiveCall ) {
-		  And( p.phi :: replacements.map( r => replace(r.getMapping, p.pc)) )
+		  And( funDef.getPrecondition :: replacements.map( r => replace(r.getMapping, funDef.getPostcondition)) )
 		} else
-		  p.phi
+		  funDef.getPrecondition
+//    val bodyAndPost = 		    
+//	    Let(
+//    		resFresh, newBody,
+//    		replace(Map(p.xs.head.toVariable -> resFresh.toVariable), matchToIfThenElse(p.phi))
+//  		)	
+//
+//		val precondition = if( isThereARecursiveCall ) {
+//		  And( p.pc :: replacements.map( r => replace(r.getMapping, p.phi)) )
+//		} else
+//		  p.pc
   		
     val withPrec = 
       Implies(matchToIfThenElse(precondition), bodyAndPost)
 
-    fine("Generated verification condition: " + withPrec)
+    info("Generated verification condition: " + withPrec)
     withPrec
   }
   
