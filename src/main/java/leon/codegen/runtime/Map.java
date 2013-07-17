@@ -4,22 +4,22 @@ package leon.codegen.runtime;
 
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.TreeMap;
+import java.util.HashMap;
 
 /** If someone wants to make it an efficient implementation of immutable
  *  maps, go ahead. */
 public final class Map {
-  private final TreeMap<Object,Object> _underlying;
+  private final HashMap<Object,Object> _underlying;
 
-  protected final TreeMap<Object,Object> underlying() {
+  protected final HashMap<Object,Object> underlying() {
     return _underlying;
   }
 
   public Map() {
-    _underlying = new TreeMap<Object,Object>();
+    _underlying = new HashMap<Object,Object>();
   }
 
-  private Map(TreeMap<Object,Object> u) {
+  private Map(HashMap<Object,Object> u) {
     _underlying = u;
   }
 
@@ -49,7 +49,7 @@ public final class Map {
   }
 
   public Map union(Map s) {
-    TreeMap<Object,Object> n = new TreeMap<Object,Object>(_underlying);
+    HashMap<Object,Object> n = new HashMap<Object,Object>(_underlying);
     n.putAll(s.underlying());
     return new Map(n);
   }

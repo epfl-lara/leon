@@ -407,6 +407,28 @@ class EvaluatorsTests extends FunSuite {
     }
   }
 
+  test("Sets and maps of structures") {
+    val p = """|object Program {
+               |  case class MyPair(x : Int, y : Boolean)
+               |
+               |  def buildPairCC(x : Int, y : Boolean) : MyPair = MyPair(x,y)
+               |  def mkSingletonCC(p : MyPair) : Set[MyPair] = Set(p)
+               |  def containsCC(s : Set[MyPair], p : MyPair) : Boolean = s.contains(p)
+               |
+               |  def buildPairT(x : Int, y : Boolean) : (Int,Boolean) = (x,y)
+               |  def mkSingletonT(p : (Int,Boolean)) : Set[(Int,Boolean)] = Set(p)
+               |  def containsT(s : Set[(Int,Boolean)], p : (Int,Boolean)) : Boolean = s.contains(p)
+               |}""".stripMargin
+
+    implicit val progs = parseString(p)
+    val evaluators = prepareEvaluators
+
+    for(e <- evaluators) {
+      checkComp(e, mkCall("containsCC", mkCall("mkSingletonCC", mkCall("buildPairCC", IL(42), T)), mkCall("buildPairCC", IL(42), T)), T)
+      checkComp(e, mkCall("containsT", mkCall("mkSingletonT", mkCall("buildPairT", IL(42), T)), mkCall("buildPairT", IL(42), T)), T)
+    }
+  }
+
   test("Misc") {
     val p = """|object Program {
                |  import leon.Utils._

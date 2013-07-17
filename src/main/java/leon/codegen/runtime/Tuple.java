@@ -32,8 +32,18 @@ public final class Tuple {
     Tuple other = (Tuple)that;
     if(other.getArity() != this.getArity()) return false;
     for(int i = 0; i < this.getArity(); i++) {
-        if(other.get(i) != this.get(i)) return false;
+        if(!other.get(i).equals(this.get(i))) return false;
     }
     return true; 
+  }
+
+  private int _hash = 0;
+  @Override
+  final public int hashCode() {
+    if(_hash != 0) return _hash;
+    int seed = (new String("Tuple" + getArity())).hashCode();
+    int h = LeonCodeGenRuntimeHashing.seqHash(elements, seed);
+    _hash = h;
+    return h;
   }
 }

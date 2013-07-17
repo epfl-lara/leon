@@ -4,23 +4,23 @@ package leon.codegen.runtime;
 
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.TreeSet;
+import java.util.HashSet;
 
 /** If someone wants to make it an efficient implementation of immutable
  *  sets, go ahead. */
 public final class Set {
-  private final TreeSet<Object> _underlying;
+  private final HashSet<Object> _underlying;
 
-  protected final TreeSet<Object> underlying() {
+  protected final HashSet<Object> underlying() {
     return _underlying;
   }
 
   public Set() {
-    _underlying = new TreeSet<Object>();
+    _underlying = new HashSet<Object>();
   }
 
   public Set(Object[] elements) {
-    _underlying = new TreeSet<Object>(Arrays.asList(elements));
+    _underlying = new HashSet<Object>(Arrays.asList(elements));
   }
 
   // Uses mutation! Useful at building time.
@@ -32,7 +32,7 @@ public final class Set {
     return _underlying.iterator();
   }
 
-  private Set(TreeSet<Object> u) {
+  private Set(HashSet<Object> u) {
     _underlying = u;
   }
 
@@ -54,13 +54,13 @@ public final class Set {
   }
 
   public Set union(Set s) {
-    TreeSet<Object> n = new TreeSet<Object>(_underlying);
+    HashSet<Object> n = new HashSet<Object>(_underlying);
     n.addAll(s.underlying());
     return new Set(n);
   }
 
   public Set intersect(Set s) {
-    TreeSet<Object> n = new TreeSet<Object>();
+    HashSet<Object> n = new HashSet<Object>();
     for(Object o : _underlying) {
       if(s.underlying().contains(o)) {
         n.add(o);
@@ -70,7 +70,7 @@ public final class Set {
   }
 
   public Set minus(Set s) {
-    TreeSet<Object> n = new TreeSet<Object>(_underlying);
+    HashSet<Object> n = new HashSet<Object>(_underlying);
     for(Object o : s.underlying()) {
       n.remove(o);
     }
