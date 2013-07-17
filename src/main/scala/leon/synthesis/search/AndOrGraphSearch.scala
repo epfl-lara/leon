@@ -6,56 +6,13 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
                                 OT <: AOOrTask[S],
                                 S](val g: AndOrGraph[AT, OT, S]) {
 
-  var processing = Set[g.Leaf]()
-
-  def nextLeaves(k: Int): List[g.Leaf] = {
-    import scala.math.Ordering.Implicits._
-
-    case class WL(t: g.Leaf, costs: List[Int])
-
-    var leaves = List[WL]()
-
-    def collectFromAnd(at: g.AndTree, costs: List[Int]) {
-      val newCosts = at.minCost.value :: costs
-      if (!at.isSolved && !at.isUnsolvable) {
-        at match {
-          case l: g.Leaf =>
-            collectLeaf(WL(l, newCosts.reverse)) 
-          case a: g.AndNode =>
-            for (o <- a.subTasks.filterNot(a.subSolutions.keySet).map(a.subProblems)) {
-              collectFromOr(o, newCosts)
-            }
-        }
-      }
-    }
-
-    def collectFromOr(ot: g.OrTree, costs: List[Int]) {
-      val newCosts = ot.minCost.value :: costs
-
-      if (!ot.isSolved && !ot.isUnsolvable) {
-        ot match {
-          case l: g.Leaf =>
-            collectLeaf(WL(l, newCosts.reverse))
-          case o: g.OrNode =>
-            for (a <- o.alternatives.values) {
-              collectFromAnd(a, newCosts)
-            }
-        }
-      }
-    }
-
-    def collectLeaf(wl: WL) {
-      if (!processing(wl.t)) {
-        leaves = wl :: leaves
-      }
-    }
-
-    collectFromOr(g.tree, Nil)
-
-    leaves.sortBy(_.costs).map(_.t)
+  def nextLeaves(): Iterable[g.Leaf] = {
+    g.leaves
   }
 
-  def nextLeaf(): Option[g.Leaf] = nextLeaves(1).headOption
+  def nextLeaf(): Option[g.Leaf] = {
+    nextLeaves().headOption
+  }
 
   abstract class ExpandResult[T <: AOTask[S]]
   case class Expanded[T <: AOTask[S]](sub: List[T]) extends ExpandResult[T]
@@ -84,8 +41,6 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
     if (g.tree.isSolved) {
       stop()
     }
-
-    processing -= al
   }
 
   def onExpansion(ol: g.OrLeaf, res: ExpandResult[AT]) {
@@ -104,8 +59,6 @@ abstract class AndOrGraphSearch[AT <: AOAndTask[S],
     if (g.tree.isSolved) {
       stop()
     }
-
-    processing -= ol
   }
 
   def traversePathFrom(n: g.Tree, path: List[Int]): Option[g.Tree] = {

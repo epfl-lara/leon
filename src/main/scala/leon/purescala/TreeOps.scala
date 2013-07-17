@@ -5,6 +5,8 @@ package purescala
 
 import leon.solvers.Solver
 
+import scala.collection.concurrent.TrieMap
+
 object TreeOps {
   import Common._
   import TypeTrees._
@@ -667,20 +669,20 @@ object TreeOps {
     rec(expr, Map.empty)
   }
 
-  private var matchConverterCache = new scala.collection.mutable.HashMap[Expr,Expr]()
   /** Rewrites all pattern-matching expressions into if-then-else expressions,
    * with additional error conditions. Does not introduce additional variables.
-   * We use a cache because we can. */
-  def matchToIfThenElse(expr: Expr) : Expr = {
-    val toRet = if(matchConverterCache.isDefinedAt(expr)) {
-      matchConverterCache(expr)
-    } else {
-      val converted = convertMatchToIfThenElse(expr)
-      matchConverterCache(expr) = converted
-      converted
-    }
+   */
+  val cacheMtITE = new TrieMap[Expr, Expr]()
 
-    toRet
+  def matchToIfThenElse(expr: Expr) : Expr = {
+    cacheMtITE.get(expr) match {
+      case Some(res) =>
+        res
+      case None =>
+        val r = convertMatchToIfThenElse(expr)
+        cacheMtITE += expr -> r
+        r
+    }
   }
 
   def conditionForPattern(in: Expr, pattern: Pattern, includeBinders: Boolean = false) : Expr = {
@@ -784,18 +786,18 @@ object TreeOps {
     searchAndReplaceDFS(rewritePM)(expr)
   }
 
-  private var mapGetConverterCache = new scala.collection.mutable.HashMap[Expr,Expr]()
   /** Rewrites all map accesses with additional error conditions. */
-  def mapGetWithChecks(expr: Expr) : Expr = {
-    val toRet = if (mapGetConverterCache.isDefinedAt(expr)) {
-      mapGetConverterCache(expr)
-    } else {
-      val converted = convertMapGet(expr)
-      mapGetConverterCache(expr) = converted
-      converted
-    }
+  val cacheMGWC = new TrieMap[Expr, Expr]()
 
-    toRet
+  def mapGetWithChecks(expr: Expr) : Expr = {
+    cacheMGWC.get(expr) match {
+      case Some(res) =>
+        res
+      case None =>
+        val r = convertMapGet(expr)
+        cacheMGWC += expr -> r
+        r
+    }
   }
 
   private def convertMapGet(expr: Expr) : Expr = {

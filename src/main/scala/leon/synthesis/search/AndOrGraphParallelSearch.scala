@@ -12,7 +12,8 @@ import akka.pattern.AskTimeoutException
 abstract class AndOrGraphParallelSearch[WC,
                                         AT <: AOAndTask[S],
                                         OT <: AOOrTask[S],
-                                        S](og: AndOrGraph[AT, OT, S], nWorkers: Int) extends AndOrGraphSearch[AT, OT, S](og) {
+                                        S](og: AndOrGraph[AT, OT, S],
+                                           nWorkers: Int) extends AndOrGraphSearch[AT, OT, S](og) {
 
   def initWorkerContext(w: ActorRef): WC
 
@@ -66,6 +67,19 @@ abstract class AndOrGraphParallelSearch[WC,
     case object NoTaskReady
   }
 
+  def getNextLeaves(idleWorkers: Map[ActorRef, Option[g.Leaf]], workingWorkers: Map[ActorRef, Option[g.Leaf]]): List[g.Leaf] = {
+    val processing = workingWorkers.values.flatten.toSet
+
+    val ts = System.currentTimeMillis();
+
+    val str = nextLeaves()
+      .filterNot(processing)
+      .take(idleWorkers.size)
+      .toList
+
+    str
+  }
+
   class Master extends Actor {
     import Protocol._
 
@@ -78,7 +92,7 @@ abstract class AndOrGraphParallelSearch[WC,
 
       assert(idleWorkers.size > 0)
 
-      nextLeaves(idleWorkers.size) match {
+      getNextLeaves(idleWorkers, workingWorkers) match {
         case Nil =>
           if (workingWorkers.isEmpty) {
             outer ! SearchDone
@@ -88,7 +102,6 @@ abstract class AndOrGraphParallelSearch[WC,
 
         case ls =>
           for ((w, leaf) <- idleWorkers.keySet zip ls) {
-            processing += leaf
             leaf match {
               case al: g.AndLeaf =>
                 workers += w -> Some(al)
@@ -100,6 +113,8 @@ abstract class AndOrGraphParallelSearch[WC,
           }
       }
     }
+
+    context.setReceiveTimeout(10.seconds)
 
     def receive = {
       case BeginSearch =>
@@ -130,9 +145,15 @@ abstract class AndOrGraphParallelSearch[WC,
 
       case Terminated(w) =>
         if (workers contains w) {
-          processing -= workers(w).get
           workers -= w
         }
+
+      case ReceiveTimeout =>
+        println("@ Worker status:")
+        for ((w, t) <- workers if t.isDefined) {
+          println("@  - "+w.toString+": "+t.get.task)
+        }
+
 
     }
   }

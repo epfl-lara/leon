@@ -2,8 +2,7 @@
 
 package leon.synthesis.search
 
-trait AOTask[S] {
-}
+trait AOTask[S] { }
 
 trait AOAndTask[S] extends AOTask[S] {
   def composeSolution(sols: List[S]): Option[S]
@@ -20,11 +19,34 @@ trait AOCostModel[AT <: AOAndTask[S], OT <: AOOrTask[S], S] {
 class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S](val root: OT, val costModel: AOCostModel[AT, OT, S]) {
   var tree: OrTree = RootNode
 
+  object LeafOrdering extends Ordering[Leaf] {
+    def compare(a: Leaf, b: Leaf) = {
+      val diff = scala.math.Ordering.Iterable[Int].compare(a.minReachCost, b.minReachCost)
+      if (diff == 0) {
+        if (a == b) {
+          0
+        } else {
+          a.## - b.##
+        }
+      } else {
+        diff
+      }
+    }
+  }
+
+  val leaves = collection.mutable.TreeSet()(LeafOrdering)
+  leaves += RootNode
+
   trait Tree {
     val task : AOTask[S]
     val parent: Node[_]
 
     def minCost: Cost
+
+    var minReachCost = List[Int]()
+
+    def updateMinReach(reverseParent: List[Int]);
+    def removeLeaves();
 
     var isTrustworthy: Boolean = true
     var solution: Option[S] = None
@@ -43,7 +65,22 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S](val root: OT, val cos
 
 
   trait Leaf extends Tree {
-    def minCost = costModel.taskCost(task)
+    val minCost = costModel.taskCost(task)
+
+    var removedLeaf = false;
+
+    def updateMinReach(reverseParent: List[Int]) {
+      if (!removedLeaf) {
+        leaves -= this
+        minReachCost = (minCost.value :: reverseParent).reverse
+        leaves += this
+      }
+    }
+
+    def removeLeaves() {
+      removedLeaf = true
+      leaves -= this
+    }
   }
 
   trait Node[T <: Tree] extends Tree {
@@ -69,22 +106,74 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S](val root: OT, val cos
           subCosts.foldLeft(costModel.taskCost(task))(_ + _)
       }
       if (minCost != old) {
-        Option(parent).foreach(_.updateMin())
+        if (parent ne null) {
+            parent.updateMin()
+        } else {
+            // Reached the root, propagate minReach up
+            updateMinReach(Nil)
+        }
+      } else {
+        // Reached boundary of update, propagate minReach up
+        updateMinReach(minReachCost.reverse.tail)
       }
     }
 
+    def updateMinReach(reverseParent: List[Int]) {
+      val rev = minCost.value :: reverseParent
+
+      minReachCost = rev.reverse
+
+      subProblems.values.foreach(_.updateMinReach(rev))
+    }
+
+    def removeLeaves() {
+      subProblems.values.foreach(_.removeLeaves())
+    }
 
     def unsolvable(l: OrTree) {
       isUnsolvable = true
+
+      this.removeLeaves()
+
       parent.unsolvable(this)
     }
 
     def expandLeaf(l: OrLeaf, succ: List[AT]) {
-      subProblems += l.task -> new OrNode(this, succ, l.task)
+      //println("[[2]] Expanding "+l.task+" to: ")
+      //for (t <- succ) {
+      //  println(" - "+t)
+      //}
+
+      //println("BEFORE: In leaves we have: ")
+      //for (i <- leaves.iterator) {
+      //  println("-> "+i.minReachCost+" == "+i.task)
+      //}
+
+      if (!l.removedLeaf) {
+        l.removeLeaves()
+
+        val orNode = new OrNode(this, succ, l.task)
+        subProblems += l.task -> orNode
+
+        updateMin()
+
+        leaves ++= orNode.andLeaves.values
+      }
+
+      //println("AFTER: In leaves we have: ")
+      //for (i <- leaves.iterator) {
+      //  println("-> "+i.minReachCost+" == "+i.task)
+      //}
     }
 
     def notifySolution(sub: OrTree, sol: S) {
       subSolutions += sub.task -> sol
+
+      sub match {
+        case l: Leaf =>
+          l.removeLeaves()
+        case _ =>
+      }
 
       if (subSolutions.size == subProblems.size) {
         task.composeSolution(subTasks.map(subSolutions)) match {
@@ -113,8 +202,15 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S](val root: OT, val cos
 
   object RootNode extends OrLeaf(null, root) {
 
+    minReachCost = List(minCost.value)
+
     override def expandWith(succ: List[AT]) {
-      tree = new OrNode(null, succ, root)
+      this.removeLeaves()
+
+      val orNode = new OrNode(null, succ, root)
+      tree = orNode
+
+      leaves ++= orNode.andLeaves.values
     }
   }
 
@@ -127,7 +223,8 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S](val root: OT, val cos
 
 
   class OrNode(val parent: AndNode, val altTasks: List[AT], val task: OT) extends OrTree with Node[AndTree] {
-    var alternatives: Map[AT, AndTree] = altTasks.map(t => t -> new AndLeaf(this, t)).toMap
+    val andLeaves                      = altTasks.map(t => t -> new AndLeaf(this, t)).toMap
+    var alternatives: Map[AT, AndTree] = andLeaves
     var triedAlternatives              = Map[AT, AndTree]()
     var minAlternative: AndTree        = _
     var minCost                        = costModel.taskCost(task)
@@ -139,8 +236,18 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S](val root: OT, val cos
         minAlternative = alternatives.values.minBy(_.minCost)
         val old = minCost 
         minCost        = minAlternative.minCost
+
+        //println("Updated minCost of "+task+" from "+old.value+" to "+minCost.value)
+        
         if (minCost != old) {
-          Option(parent).foreach(_.updateMin())
+          if (parent ne null) {
+            parent.updateMin()
+          } else {
+            // reached root, propagate minReach up
+            updateMinReach(Nil)
+          }
+        } else {
+          updateMinReach(minReachCost.reverse.tail)
         }
       } else {
         minAlternative = null
@@ -148,11 +255,24 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S](val root: OT, val cos
       }
     }
 
+    def updateMinReach(reverseParent: List[Int]) {
+      val rev = minCost.value :: reverseParent
+
+      minReachCost = rev.reverse
+
+      alternatives.values.foreach(_.updateMinReach(rev))
+    }
+
+    def removeLeaves() {
+      alternatives.values.foreach(_.removeLeaves())
+    }
+
     def unsolvable(l: AndTree) {
       if (alternatives contains l.task) {
         triedAlternatives += l.task -> alternatives(l.task)
         alternatives -= l.task
 
+        l.removeLeaves()
 
         if (alternatives.isEmpty) {
           isUnsolvable = true
@@ -166,16 +286,43 @@ class AndOrGraph[AT <: AOAndTask[S], OT <: AOOrTask[S], S](val root: OT, val cos
     }
 
     def expandLeaf(l: AndLeaf, succ: List[OT]) {
-      val n = new AndNode(this, succ, l.task)
-      n.subProblems = succ.map(t => t -> new OrLeaf(n, t)).toMap
-      n.updateMin()
+      //println("[[1]] Expanding "+l.task+" to: ")
+      //for (t <- succ) {
+      //  println(" - "+t)
+      //}
 
-      alternatives += l.task -> n
+      //println("BEFORE: In leaves we have: ")
+      //for (i <- leaves.iterator) {
+      //  println("-> "+i.minReachCost+" == "+i.task)
+      //}
 
-      updateMin()
+      if (!l.removedLeaf) {
+        l.removeLeaves()
+
+        val n = new AndNode(this, succ, l.task)
+
+        val newLeaves = succ.map(t => t -> new OrLeaf(n, t)).toMap
+        n.subProblems = newLeaves
+
+        alternatives += l.task -> n
+
+        n.updateMin()
+
+        updateMin()
+
+        leaves  ++= newLeaves.values
+      }
+
+
+      //println("AFTER: In leaves we have: ")
+      //for (i <- leaves.iterator) {
+      //  println("-> "+i.minReachCost+" == "+i.task)
+      //}
     }
 
     def notifySolution(sub: AndTree, sol: S) {
+      this.removeLeaves()
+
       solution match {
         case Some(preSol) if (costModel.solutionCost(preSol) < costModel.solutionCost(sol)) =>
           isTrustworthy  = sub.isTrustworthy
