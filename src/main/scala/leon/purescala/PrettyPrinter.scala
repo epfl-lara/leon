@@ -285,7 +285,7 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
 
   // TYPE TREES
   // all type trees are printed in-line
-  def ppNaryType(tpes: Seq[TypeTree], pre: String, op: String, post: String, lvl: Int): StringBuffer = {
+  def ppNaryType(tpes: Seq[TypeTree], pre: String, op: String, post: String, lvl: Int): Unit = {
     sb.append(pre)
     val sz = tpes.size
     var c = 0
@@ -295,10 +295,9 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
     })
 
     sb.append(post)
-    sb
   }
 
-  def pp(tpe: TypeTree, lvl: Int): StringBuffer = tpe match {
+  def pp(tpe: TypeTree, lvl: Int): Unit = tpe match {
     case Untyped => sb.append("???")
     case UnitType => sb.append("Unit")
     case Int32Type => sb.append("Int")

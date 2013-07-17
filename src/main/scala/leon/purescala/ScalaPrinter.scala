@@ -291,19 +291,8 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
 
   // TYPE TREES
   // all type trees are printed in-line
-  private def ppNaryType(sb: StringBuffer, tpes: Seq[TypeTree], pre: String, op: String, post: String, lvl: Int) = {
-    sb.append(pre)
-    val sz = tpes.size
-    var c = 0
 
-    tpes.foreach(t => {
-      pp(t, lvl) ; c += 1 ; if(c < sz) sb.append(op)
-    })
-
-    sb.append(post)
-  }
-
-  private def pp(tpe: TypeTree, sb: StringBuffer, lvl: Int): Unit = tpe match {
+  override def pp(tpe: TypeTree, lvl: Int): Unit = tpe match {
     case Untyped => sb.append("???")
     case UnitType => sb.append("Unit")
     case Int32Type => sb.append("Int")
@@ -333,7 +322,7 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
 
   // DEFINITIONS
   // all definitions are printed with an end-of-line
-  private def pp(defn: Definition, sb: StringBuffer, lvl: Int): Unit = {
+  override def pp(defn: Definition, lvl: Int): Unit = {
 
     defn match {
       case Program(id, mainObj) => {
