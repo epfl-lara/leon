@@ -85,6 +85,10 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       case _ =>
     }
 
+    if (options.manualSearch) {
+      options = options.copy(rules = rules.AsChoose +: options.rules)
+    }
+
     options
   }
 
