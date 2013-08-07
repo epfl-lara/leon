@@ -1,9 +1,9 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
 
-package leon.test.purescala
+package leon.test
+package purescala
 
 import leon.LeonContext
-import leon.SilentReporter
 
 import leon.purescala.Common._
 import leon.purescala.Definitions._
@@ -14,7 +14,7 @@ import leon.purescala.TreeOps._
 import org.scalatest.FunSuite
 
 class TreeOpsTests extends FunSuite {
-  private val silentContext = LeonContext(reporter = new SilentReporter)
+  private val silentContext = LeonContext(reporter = new TestSilentReporter)
   
   test("Path-aware simplifications") {
     import leon.solvers.z3.UninterpretedZ3Solver

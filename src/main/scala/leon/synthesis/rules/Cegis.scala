@@ -24,10 +24,9 @@ case object CEGIS extends Rule("CEGIS") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
 
     // CEGIS Flags to actiave or de-activate features
-    val useCEAsserts          = false
-    val useUninterpretedProbe = false
-    val useUnsatCores         = true
-    val useOptTimeout         = true
+    val useUninterpretedProbe = sctx.options.cegisUseUninterpretedProbe
+    val useUnsatCores         = sctx.options.cegisUseUnsatCores
+    val useOptTimeout         = sctx.options.cegisUseOptTimeout
     val useFunGenerators      = sctx.options.cegisGenerateFunCalls
     val useBPaths             = sctx.options.cegisUseBPaths
     val useVanuatoo           = sctx.options.cegisUseVanuatoo
@@ -35,7 +34,7 @@ case object CEGIS extends Rule("CEGIS") {
     val useCEPruning          = sctx.options.cegisUseCEPruning
     // Limits the number of programs CEGIS will specifically test for instead of reasonning symbolically
     val testUpTo              = 5
-    val useBssFiltering       = true
+    val useBssFiltering       = sctx.options.cegisUseBssFiltering
     val filterThreshold       = 1.0/2
     val evaluator             = new CodeGenEvaluator(sctx.context, sctx.program)
 
@@ -718,25 +717,6 @@ case object CEGIS extends Rule("CEGIS") {
                         if (unsatCore.isEmpty) {
                           needMoreUnrolling = true
                         } else {
-                          //if (useCEAsserts) {
-                          //  val freshCss = ndProgram.css.map(c => c -> Variable(FreshIdentifier(c.name, true).setType(c.getType))).toMap
-                          //  val ceIn     = ass.collect { 
-                          //    case id if invalidModel contains id => id -> invalidModel(id)
-                          //  }
-
-                          //  val ceMap = (freshCss ++ ceIn)
-
-                          //  val counterexample = substAll(ceMap, And(Seq(ndProgram.program, p.phi)))
-
-                          //  //val And(ands) = counterexample
-                          //  //println("CE:")
-                          //  //for (a <- ands) {
-                          //  //  println(" - "+a)
-                          //  //}
-
-                          //  solver1.assertCnstr(counterexample)
-                          //}
-
                           solver1.assertCnstr(Not(And(unsatCore.toSeq)))
                         }
 

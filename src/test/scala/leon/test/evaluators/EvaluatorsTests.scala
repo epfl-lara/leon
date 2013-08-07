@@ -24,7 +24,7 @@ class EvaluatorsTests extends FunSuite {
       verify    = false
     ),
     files = List(),
-    reporter = new SilentReporter
+    reporter = new TestSilentReporter
   )
 
   private val evaluatorConstructors : List[(LeonContext,Program)=>Evaluator] = List(

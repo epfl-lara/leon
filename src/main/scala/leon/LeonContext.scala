@@ -9,8 +9,8 @@ import java.io.File
  *  Contexts are immutable, and so should all there fields (with the possible
  *  exception of the reporter). */
 case class LeonContext(
-  val settings: Settings          = Settings(),
-  val options: Seq[LeonOption]    = Seq.empty,
-  val files: Seq[File]            = Seq.empty,
-  val reporter: Reporter          = new DefaultReporter
+  settings: Settings = Settings(),
+  options: Seq[LeonOption] = Seq(),
+  files: Seq[File] = Seq(),
+  reporter: Reporter = new DefaultReporter()
 )

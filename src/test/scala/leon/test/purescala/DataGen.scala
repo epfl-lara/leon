@@ -24,7 +24,7 @@ class DataGen extends FunSuite {
       verify    = false
     ),
     files = List(),
-    reporter = new SilentReporter
+    reporter = new TestSilentReporter
   )
 
   private def parseString(str : String) : Program = {

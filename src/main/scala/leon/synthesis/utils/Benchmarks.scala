@@ -73,7 +73,8 @@ object Benchmarks extends App {
   var nSuccessTotal, nInnapTotal, nDecompTotal, nAltTotal = 0
   var tTotal: Long = 0
 
-  val ctx = leon.Main.processOptions(new DefaultReporter, others ++ newOptions)
+  val reporter = new DefaultReporter()
+  val ctx = leon.Main.processOptions(others ++ newOptions)
 
   for (file <- ctx.files) {
     val innerCtx = ctx.copy(files = List(file))
@@ -84,10 +85,10 @@ object Benchmarks extends App {
 
     val (program, results) = pipeline.run(innerCtx)(file.getPath :: Nil)
 
-    val solver = new FairZ3Solver(ctx.copy(reporter = new SilentReporter))
+    val solver = new FairZ3Solver(ctx)
     solver.setProgram(program)
 
-    val simpleSolver = new UninterpretedZ3Solver(ctx.copy(reporter = new SilentReporter))
+    val simpleSolver = new UninterpretedZ3Solver(ctx)
     simpleSolver.setProgram(program)
 
     for ((f, ps) <- results.toSeq.sortBy(_._1.id.toString); p <- ps) {
@@ -98,7 +99,7 @@ object Benchmarks extends App {
         program         = program,
         solver          = solver,
         simpleSolver    = simpleSolver,
-        reporter        = new DefaultReporter,
+        reporter        = reporter,
         shouldStop      = new java.util.concurrent.atomic.AtomicBoolean
       )
 

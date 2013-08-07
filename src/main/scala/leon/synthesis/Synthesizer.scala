@@ -27,15 +27,12 @@ class Synthesizer(val context : LeonContext,
                   val problem: Problem,
                   val options: SynthesisOptions) {
 
-  val silentReporter = new SilentReporter
-  val silentContext = context.copy(reporter = silentReporter)
-
   val rules: Seq[Rule] = options.rules
 
-  val solver: FairZ3Solver = new FairZ3Solver(silentContext)
+  val solver: FairZ3Solver = new FairZ3Solver(context)
   solver.setProgram(program)
 
-  val simpleSolver: Solver = new UninterpretedZ3Solver(silentContext)
+  val simpleSolver: Solver = new UninterpretedZ3Solver(context)
   simpleSolver.setProgram(program)
 
   val reporter = context.reporter
@@ -97,11 +94,10 @@ class Synthesizer(val context : LeonContext,
 
     val (npr, fds) = solutionToProgram(sol)
 
-    val tsolver = new TimeoutSolver(new FairZ3Solver(silentContext), timeoutMs)
-    tsolver.setProgram(npr)
+    val tsolver = new TimeoutSolver(solver, timeoutMs)
 
     val vcs = generateVerificationConditions(reporter, npr, fds.map(_.id.name))
-    val vctx = VerificationContext(context, Seq(tsolver), silentReporter)
+    val vctx = VerificationContext(context, Seq(tsolver), context.reporter)
     val vcreport = checkVerificationConditions(vctx, vcs)
 
     if (vcreport.totalValid == vcreport.totalConditions) {

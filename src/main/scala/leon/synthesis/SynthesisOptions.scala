@@ -15,7 +15,11 @@ case class SynthesisOptions(
   manualSearch: Boolean               = false,
 
   // Cegis related options
-  cegisGenerateFunCalls: Boolean      = false,
+  cegisUseUninterpretedProbe: Boolean = false,
+  cegisUseUnsatCores: Boolean         = true,
+  cegisUseOptTimeout: Boolean         = true,
+  cegisUseBssFiltering: Boolean       = true,
+  cegisGenerateFunCalls: Boolean      = true,
   cegisUseCETests: Boolean            = true,
   cegisUseCEPruning: Boolean          = true,
   cegisUseBPaths: Boolean             = true,

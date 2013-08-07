@@ -14,7 +14,8 @@ import synthesis.Algebra._
 object LinearEquations {
   // This is a hack, but the use of an evaluator in this file is itself beyond that.
   import evaluators._
-  private lazy val evaluator = new DefaultEvaluator(LeonContext(), Program.empty)
+  // TODO: Kill with fire
+  private lazy val evaluator = new DefaultEvaluator(LeonContext(Settings(), Seq(), Seq(), new DefaultReporter()), Program.empty)
 
   //eliminate one variable from normalizedEquation t + a1*x1 + ... + an*xn = 0
   //return a mapping for each of the n variables in (pre, map, freshVars)

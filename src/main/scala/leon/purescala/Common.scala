@@ -21,10 +21,7 @@ object Common {
     override def hashCode: Int = globalId
 
     override def toString: String = {
-      if(Settings.showIDs) {
-        // angle brackets: name + "\u3008" + id + "\u3009"
-        name + "[" + id + "]"
-      } else if(alwaysShowUniqueID) {
+      if(alwaysShowUniqueID) {
         name + (if(id > 0) id else "")
       } else {
         name

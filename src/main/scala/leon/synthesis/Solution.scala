@@ -32,7 +32,7 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr) {
     defs.foldLeft(term){ case (t, fd) => LetDef(fd, t) }
 
   def toSimplifiedExpr(ctx: LeonContext, p: Program): Expr = {
-    val uninterpretedZ3 = new UninterpretedZ3Solver(ctx.copy(reporter = new SilentReporter))
+    val uninterpretedZ3 = new UninterpretedZ3Solver(ctx)
     uninterpretedZ3.setProgram(p)
 
     val simplifiers = List[Expr => Expr](

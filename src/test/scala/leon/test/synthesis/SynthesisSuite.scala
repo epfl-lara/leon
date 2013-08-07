@@ -1,6 +1,7 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
 
-package leon.test.synthesis
+package leon.test
+package synthesis
 
 import leon._
 import leon.purescala.Definitions._
@@ -32,7 +33,7 @@ class SynthesisSuite extends FunSuite {
         verify    = false
       ),
       files = List(),
-      reporter = new SilentReporter
+      reporter = new TestSilentReporter
     )
 
     val opts = SynthesisOptions()

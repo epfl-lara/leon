@@ -8,8 +8,14 @@ sealed abstract class LeonOption {
 }
 
 /** Boolean (on/off) options. Present means "on". */
-case class LeonFlagOption(name: String) extends LeonOption {
-  override def toString() : String = "--" + name
+case class LeonFlagOption(name: String, value: Boolean) extends LeonOption {
+  override def toString() : String = {
+    if (value) {
+      "--" + name
+    } else {
+      "--" + name + "=off"
+    }
+  }
 }
 
 /** Options of the form --option=value. */
@@ -31,22 +37,26 @@ sealed abstract class LeonOptionDef {
   val name: String
   val usageOption: String
   val usageDesc: String
-  val isFlag: Boolean
 }
 
-case class LeonFlagOptionDef(name: String, usageOption: String, usageDesc: String) extends LeonOptionDef {
-  val isFlag = true
-}
+case class LeonFlagOptionDef(name: String,
+                             usageOption: String,
+                             usageDesc: String,
+                             default: Boolean = false) extends LeonOptionDef
 
-case class LeonValueOptionDef(name: String, usageOption: String, usageDesc: String) extends LeonOptionDef {
-  val isFlag = false
-}
-
-case class LeonOptValueOptionDef(name: String, usageOption: String, usageDesc: String) extends LeonOptionDef {
-  val isFlag = false
-}
+case class LeonValueOptionDef(name: String,
+                              usageOption: String,
+                              usageDesc: String,
+                              flagValue: Option[String] = None,
+                              default: Option[String] = None) extends LeonOptionDef
 
 object ListValue {
   def apply(values: Seq[String]) = values.mkString(":")
-  def unapply(value: String): Option[Seq[String]] = Some(value.split(':').map(_.trim).filter(!_.isEmpty))
+  def unapply(value: String): Option[Seq[String]] = {
+    if (value == "off") {
+      None
+    } else {
+      Some(value.split(':').map(_.trim).filter(!_.isEmpty))
+    }
+  }
 }

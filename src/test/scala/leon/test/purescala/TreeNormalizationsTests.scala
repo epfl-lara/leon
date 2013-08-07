@@ -1,6 +1,7 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
 
-package leon.test.purescala
+package leon.test
+package purescala
 
 import leon.purescala.Common._
 import leon.purescala.Definitions._
@@ -8,7 +9,6 @@ import leon.purescala.TypeTrees._
 import leon.purescala.Trees._
 import leon.purescala.TreeOps._
 import leon.purescala.TreeNormalizations._
-import leon.SilentReporter
 
 import org.scalatest.FunSuite
 

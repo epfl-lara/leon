@@ -24,12 +24,11 @@ class ParallelSearch(synth: Synthesizer,
   private[this] var contexts = List[SynthesisContext]()
 
   def initWorkerContext(wr: ActorRef) = {
-    val reporter = new SilentReporter
-    val solver = new FairZ3Solver(synth.context.copy(reporter = reporter))
+    val solver = new FairZ3Solver(synth.context)
     solver.setProgram(synth.program)
     solver.initZ3
 
-    val  simpleSolver = new UninterpretedZ3Solver(synth.context.copy(reporter = reporter))
+    val  simpleSolver = new UninterpretedZ3Solver(synth.context)
     simpleSolver.setProgram(synth.program)
     simpleSolver.initZ3
 

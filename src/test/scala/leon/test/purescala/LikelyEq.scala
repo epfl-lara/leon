@@ -1,6 +1,7 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
 
-package leon.test.purescala
+package leon.test
+package purescala
 
 import leon._
 import leon.evaluators._
@@ -16,7 +17,7 @@ import leon.purescala.Trees._
  * only prove the non equality of two expressions.
  */
 object LikelyEq {
-  private lazy val evaluator : Evaluator = new DefaultEvaluator(LeonContext(reporter = new SilentReporter), Program.empty)
+  private lazy val evaluator : Evaluator = new DefaultEvaluator(LeonContext(reporter = new TestSilentReporter), Program.empty)
 
   private val min = -5
   private val max = 5

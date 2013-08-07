@@ -46,7 +46,7 @@ object TreeOps {
     def rec(ex: Expr, skip: Expr = null) : Expr = (if (ex == skip) None else subst(ex)) match {
       case Some(newExpr) => {
         if(newExpr.getType == Untyped) {
-          Settings.reporter.error("REPLACING IN EXPRESSION WITH AN UNTYPED TREE ! " + ex + " --to--> " + newExpr)
+          sys.error("REPLACING IN EXPRESSION WITH AN UNTYPED TREE ! " + ex + " --to--> " + newExpr)
         }
         if(ex == newExpr)
           if(recursive) rec(ex, ex) else ex
@@ -155,8 +155,8 @@ object TreeOps {
       case Some(newEx) => {
         somethingChanged = true
         if(newEx.getType == Untyped) {
-          Settings.reporter.warning("REPLACING [" + ex + "] WITH AN UNTYPED EXPRESSION !")
-          Settings.reporter.warning("Here's the new expression: " + newEx)
+          sys.error("REPLACING [" + ex + "] WITH AN UNTYPED EXPRESSION !")
+          sys.error("Here's the new expression: " + newEx)
         }
         newEx
       }
@@ -606,12 +606,12 @@ object TreeOps {
     val intersection = vars intersect definitions
     if(!intersection.isEmpty) {
       intersection.foreach(id => {
-        Settings.reporter.error("Variable with identifier '" + id + "' has escaped its let-definition !")
+        sys.error("Variable with identifier '" + id + "' has escaped its let-definition !")
       })
       false
     } else {
       vars.forall(id => if(id.isLetBinder) {
-        Settings.reporter.error("Variable with identifier '" + id + "' has lost its let-definition (it disappeared??)")
+        sys.error("Variable with identifier '" + id + "' has lost its let-definition (it disappeared??)")
         false
       } else {
         true

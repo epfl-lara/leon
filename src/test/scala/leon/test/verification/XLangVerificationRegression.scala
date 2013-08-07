@@ -47,7 +47,7 @@ class XLangVerificationRegression extends FunSuite {
         ),
         //options = List(LeonFlagOption("feelinglucky")),
         files = List(file),
-        reporter = new SilentReporter
+        reporter = new TestSilentReporter
       )
 
       val pipeline = mkPipeline
