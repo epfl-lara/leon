@@ -238,10 +238,13 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
       }
       case LetDef(fd, b) => {
         //Recall that here the nested function should not access mutable variables from an outside scope
-        val newFd = if(!fd.hasImplementation) fd else {
-          val (fdRes, fdScope, fdFun) = toFunction(fd.getBody)
-          fd.body = Some(fdScope(fdRes))
-          fd
+        val newFd = fd.body match {
+          case Some(b) =>
+            val (fdRes, fdScope, fdFun) = toFunction(b)
+            fd.body = Some(fdScope(fdRes))
+            fd
+          case None =>
+            fd
         }
         val (bodyRes, bodyScope, bodyFun) = toFunction(b)
         (bodyRes, (b2: Expr) => LetDef(newFd, bodyScope(b2)), bodyFun)

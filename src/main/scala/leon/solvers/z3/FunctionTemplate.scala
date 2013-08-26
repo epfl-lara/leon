@@ -343,19 +343,21 @@ object FunctionTemplate {
     }
 
     // Now the postcondition.
-    if (funDef.hasPostcondition) {
-      val post0 : Expr = matchToIfThenElse(funDef.getPostcondition)
-      val post : Expr = replace(Map(ResultVariable() -> invocation), post0)
+    funDef.postcondition match {
+      case Some(post) =>
+        val newPost : Expr = replace(Map(ResultVariable() -> invocation), matchToIfThenElse(post))
 
-      val postHolds : Expr =
-        if(funDef.hasPrecondition) {
-          Implies(prec.get, post)
-        } else {
-          post
-        }
+        val postHolds : Expr =
+          if(funDef.hasPrecondition) {
+            Implies(prec.get, newPost)
+          } else {
+            newPost
+          }
 
-      val finalPred2 : Expr = rec(activatingBool,  postHolds)
-      storeGuarded(activatingBool, finalPred2)
+        val finalPred2 : Expr = rec(activatingBool,  postHolds)
+        storeGuarded(activatingBool, finalPred2)
+      case None =>
+
     }
 
     new FunctionTemplate(solver, funDef, activatingBool, Set(condVars.toSeq : _*), Set(exprVars.toSeq : _*), Map(guardedExprs.toSeq : _*),
