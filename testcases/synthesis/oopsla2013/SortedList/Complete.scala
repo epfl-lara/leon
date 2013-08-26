@@ -23,7 +23,7 @@ object Complete {
     case Cons(_, xs) => isSorted(xs)
   }
 
-  def insert1(in1: List, v: Int): List = {
+  def insert(in1: List, v: Int): List = {
     require(isSorted(in1))
     in1 match {
       case Cons(h, t) =>
@@ -32,7 +32,7 @@ object Complete {
         } else if (v == h) {
           in1
         } else {
-          Cons(h, insert1(t, v))
+          Cons(h, insert(t, v))
         }
       case Nil =>
         Cons(v, Nil)
@@ -40,7 +40,7 @@ object Complete {
 
   } ensuring { res => (content(res) == content(in1) ++ Set(v)) && isSorted(res) }
 
-  //def insert1(in1: List, v: Int) = choose {
+  //def insert(in1: List, v: Int) = choose {
   //  (out : List) =>
   //    isSorted(in1) && (content(out) == content(in1) ++ Set(v)) && isSorted(out)
   //}
@@ -92,7 +92,7 @@ object Complete {
     require(isSorted(in1) && isSorted(in2))
     in1 match {
       case Cons(h1, t1) =>
-        union(t1, insert1(in2, h1))
+        union(t1, insert(in2, h1))
       case Nil =>
         in2
     }
@@ -152,7 +152,7 @@ object Complete {
 
   def sort1(in : List) : List = (in match {
     case Nil => Nil
-    case Cons(x, xs) => insert1(sort1(xs), x)
+    case Cons(x, xs) => insert(sort1(xs), x)
   }) ensuring(res => sortSpec(in, res))
 
   // Not really quicksort, neither mergesort.

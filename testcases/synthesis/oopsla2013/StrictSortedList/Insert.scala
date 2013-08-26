@@ -39,9 +39,10 @@ object Complete {
   //   }
   // } ensuring { res => (content(res) == content(in1) ++ Set(v)) && isSorted(res) }
 
-  def insert(in1: List, v: Int) = choose {
-    (out : List) =>
-      isSorted(in1) && (content(out) == content(in1) ++ Set(v)) && isSorted(out)
+  def insert(in1: List, v: Int) = {
+    require(isSorted(in1))
+    choose((out : List) =>
+      (content(out) == content(in1) ++ Set(v)) && isSorted(out))
   }
 
 }

@@ -76,9 +76,9 @@ object Complete {
   //   }
   // } ensuring { res => content(res) == content(in1) -- content(in2) && isSorted(res) }
 
-  def diff(in1: List, in2: List) = choose {
-    (out : List) =>
-      isSorted(in1) && isSorted(in2) && (content(out) == content(in1) -- content(in2)) && isSorted(out)
+  def diff(in1: List, in2: List) = {
+    require(isSorted(in1) && isSorted(in2))
+    choose((out : List) =>
+      content(out) == content(in1) -- content(in2) && isSorted(out))
   }
-
 }
