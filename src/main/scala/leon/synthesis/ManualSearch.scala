@@ -84,6 +84,14 @@ class ManualSearch(synth: Synthesizer,
     println("-"*80)
   }
 
+  override def stop() {
+    super.stop()
+    cmdQueue = "q" :: Nil
+    continue = false
+  }
+
+  var continue = true
+
 
   override def nextLeaf(): Option[g.Leaf] = {
     g.tree match {
@@ -92,7 +100,7 @@ class ManualSearch(synth: Synthesizer,
       case _ =>
 
         var res: Option[g.Leaf] = None
-        var continue = true
+        continue = true
 
         while(continue) {
           printGraph()
@@ -157,6 +165,11 @@ class ManualSearch(synth: Synthesizer,
               }
             }
           } catch {
+            case e: java.lang.NumberFormatException =>
+
+            case e: java.io.IOException =>
+              continue = false
+
             case e: Throwable =>
               error("Woops: "+e.getMessage())
               e.printStackTrace()
