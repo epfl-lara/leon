@@ -344,8 +344,8 @@ object FunctionTemplate {
 
     // Now the postcondition.
     funDef.postcondition match {
-      case Some(post) =>
-        val newPost : Expr = replace(Map(ResultVariable() -> invocation), matchToIfThenElse(post))
+      case Some((id, post)) =>
+        val newPost : Expr = replace(Map(Variable(id) -> invocation), matchToIfThenElse(post))
 
         val postHolds : Expr =
           if(funDef.hasPrecondition) {

@@ -143,17 +143,17 @@ object Extractors {
                     fd.precondition = Some(as(2))
                     LetDef(fd, as(1))
                   }))
-              case (None, Some(post)) =>
+              case (None, Some((pid, post))) =>
                   Some((Seq(b, body, post), (as: Seq[Expr]) => {
                     fd.body = Some(as(0))
-                    fd.postcondition = Some(as(2))
+                    fd.postcondition = Some((pid, as(2)))
                     LetDef(fd, as(1))
                   }))
-              case (Some(pre), Some(post)) =>
+              case (Some(pre), Some((pid, post))) =>
                   Some((Seq(b, body, pre, post), (as: Seq[Expr]) => {
                     fd.body = Some(as(0))
                     fd.precondition = Some(as(2))
-                    fd.postcondition = Some(as(3))
+                    fd.postcondition = Some((pid, as(3)))
                     LetDef(fd, as(1))
                   }))
             }
@@ -169,15 +169,15 @@ object Extractors {
                     fd.precondition = Some(as(1))
                     LetDef(fd, as(0))
                   }))
-              case (None, Some(post)) =>
+              case (None, Some((pid, post))) =>
                   Some((Seq(body, post), (as: Seq[Expr]) => {
-                    fd.postcondition = Some(as(1))
+                    fd.postcondition = Some((pid, as(1)))
                     LetDef(fd, as(0))
                   }))
-              case (Some(pre), Some(post)) =>
+              case (Some(pre), Some((pid, post))) =>
                   Some((Seq(body, pre, post), (as: Seq[Expr]) => {
                     fd.precondition = Some(as(1))
-                    fd.postcondition = Some(as(2))
+                    fd.postcondition = Some((pid, as(2)))
                     LetDef(fd, as(0))
                   }))
             }
