@@ -122,7 +122,7 @@ class Synthesizer(val context : LeonContext,
 
     // Create new fundef for the body
     val ret = TupleType(problem.xs.map(_.getType))
-    val res = ResultVariable().setType(ret)
+    val res = Variable(FreshIdentifier("res").setType(ret))
 
     val mapPost: Map[Expr, Expr] =
       problem.xs.zipWithIndex.map{ case (id, i)  =>
@@ -131,7 +131,7 @@ class Synthesizer(val context : LeonContext,
 
     val fd = new FunDef(FreshIdentifier("finalTerm", true), ret, problem.as.map(id => VarDecl(id, id.getType)))
     fd.precondition  = Some(And(problem.pc, sol.pre))
-    fd.postcondition = Some(replace(mapPost, problem.phi))
+    fd.postcondition = Some((res.id, replace(mapPost, problem.phi)))
     fd.body          = Some(sol.term)
 
     val newDefs = sol.defs + fd

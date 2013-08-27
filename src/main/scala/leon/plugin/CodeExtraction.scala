@@ -239,11 +239,13 @@ trait CodeExtraction extends Extractors {
 
       val (body2, ensuring) = body match {
         case ExEnsuredExpression(body2, resSym, contract) =>
-          varSubsts(resSym) = (() => ResultVariable().setType(funDef.returnType))
-          (body2, toPureScala(contract))
+          val resId = FreshIdentifier(resSym.name.toString).setType(funDef.returnType)
+          varSubsts(resSym) = (() => Variable(resId))
+          (body2, toPureScala(contract).map(r => (resId, r)))
 
         case ExHoldsExpression(body2) =>
-          (body2, Some(ResultVariable().setType(BooleanType)))
+          val resId = FreshIdentifier("res").setType(BooleanType)
+          (body2, Some((resId, Variable(resId))))
 
         case _ =>
           (body, None)
@@ -288,7 +290,7 @@ trait CodeExtraction extends Extractors {
         }
       }
 
-      val finalEnsuring = ensuring.filter{ e =>
+      val finalEnsuring = ensuring.filter{ case (id, e) =>
         if(containsLetDef(e)) {
           reporter.error(body3.pos, "Function postcondition should not contain nested function definition")
           false

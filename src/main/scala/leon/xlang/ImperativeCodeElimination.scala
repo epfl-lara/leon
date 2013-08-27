@@ -171,7 +171,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
             condScope(IfExpr(whileFunCond, whileFunRecursiveCall, whileFunBaseCase).setType(whileFunReturnType)))
           whileFunDef.body = Some(whileFunBody)
 
-          val resVar = ResultVariable().setType(whileFunReturnType)
+          val resVar = Variable(FreshIdentifier("res").setType(whileFunReturnType))
           val whileFunVars2ResultVars: Map[Expr, Expr] = 
             if(whileFunVars.size == 1) 
               Map(whileFunVars.head.toVariable -> resVar)
@@ -188,10 +188,10 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
           val invariantPostcondition: Option[Expr] = wh.invariant.map(expr => replace(modifiedVars2ResultVars, expr))
           whileFunDef.precondition = invariantPrecondition
           whileFunDef.postcondition = trivialPostcondition.map(expr => 
-              And(expr, invariantPostcondition match { 
+              (resVar.id, And(expr, invariantPostcondition match { 
                 case Some(e) => e
                 case None => BooleanLiteral(true)
-              }))
+              })))
 
           val finalVars = modifiedVars.map(id => FreshIdentifier(id.name).setType(id.getType))
           val finalScope = ((body: Expr) => {
@@ -238,10 +238,13 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
       }
       case LetDef(fd, b) => {
         //Recall that here the nested function should not access mutable variables from an outside scope
-        val newFd = if(!fd.hasImplementation) fd else {
-          val (fdRes, fdScope, fdFun) = toFunction(fd.getBody)
-          fd.body = Some(fdScope(fdRes))
-          fd
+        val newFd = fd.body match {
+          case Some(b) =>
+            val (fdRes, fdScope, fdFun) = toFunction(b)
+            fd.body = Some(fdScope(fdRes))
+            fd
+          case None =>
+            fd
         }
         val (bodyRes, bodyScope, bodyFun) = toFunction(b)
         (bodyRes, (b2: Expr) => LetDef(newFd, bodyScope(b2)), bodyFun)

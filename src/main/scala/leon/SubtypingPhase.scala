@@ -2,6 +2,7 @@
 
 package leon
 
+import purescala.Common._
 import purescala.TypeTrees._
 import purescala.Trees._
 import purescala.Definitions._
@@ -32,10 +33,15 @@ object SubtypingPhase extends LeonPhase[Program, Program] {
 
       fd.postcondition = fd.returnType match {
         case cct@CaseClassType(cd) => {
-          val subtypingConstraint = CaseClassInstanceOf(cd, ResultVariable())
+
           fd.postcondition match {
-            case Some(p) => Some(And(subtypingConstraint, p))
-            case None => Some(subtypingConstraint)
+            case Some((id, p)) =>
+              Some((id, And(CaseClassInstanceOf(cd, Variable(id)), p)))
+
+            case None =>
+              val resId = FreshIdentifier("res").setType(cct)
+
+              Some((resId, CaseClassInstanceOf(cd, Variable(resId))))
           }
         }
         case _ => fd.postcondition

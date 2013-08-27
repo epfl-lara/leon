@@ -433,22 +433,6 @@ object TreeOps {
       expr)
   }
 
-  def allIdentifiers(expr: Expr) : Set[Identifier] = expr match {
-    case l @ Let(binder, e, b) => allIdentifiers(e) ++ allIdentifiers(b) + binder
-    //TODO: Cannot have LetVar nor LetDef here, should not be visible at this point
-    //case l @ LetVar(binder, e, b) => allIdentifiers(e) ++ allIdentifiers(b) + binder
-    //case l @ LetDef(fd, b) => allIdentifiers(fd.getBody) ++ allIdentifiers(b) + fd.id
-    case n @ NAryOperator(args, _) =>
-      (args map (TreeOps.allIdentifiers(_))).foldLeft(Set[Identifier]())((a, b) => a ++ b)
-    case b @ BinaryOperator(a1,a2,_) => allIdentifiers(a1) ++ allIdentifiers(a2)
-    case u @ UnaryOperator(a,_) => allIdentifiers(a)
-    case i @ IfExpr(a1,a2,a3) => allIdentifiers(a1) ++ allIdentifiers(a2) ++ allIdentifiers(a3)
-    case m @ MatchExpr(scrut, cses) =>
-      (cses map (_.allIdentifiers)).foldLeft(Set[Identifier]())((a, b) => a ++ b) ++ allIdentifiers(scrut)
-    case Variable(id) => Set(id)
-    case t: Terminal => Set.empty
-  }
-
   def allDeBruijnIndices(expr: Expr) : Set[DeBruijnIndex] =  {
     def convert(t: Expr) : Set[DeBruijnIndex] = t match {
       case i @ DeBruijnIndex(idx) => Set(i)
@@ -1456,8 +1440,13 @@ object TreeOps {
 
         newFd.body          = fd.body.map(b => rec(b, newScope))
         newFd.precondition  = fd.precondition.map(pre => rec(pre, newScope))
-        newFd.postcondition = fd.postcondition.map(post => rec(post, newScope))
 
+        newFd.postcondition = fd.postcondition.map {
+          case (id, post) =>
+            val nid = genId(id, newScope)
+            val postScope = newScope.register(id -> nid)
+            (id, rec(post, postScope))
+        }
 
         LetDef(newFd, rec(body, newScope))
 
@@ -1627,13 +1616,6 @@ object TreeOps {
 
       case l @ LetDef(fd, bdy) =>
         LetDef(fd2fd(fd), bdy)
-
-      case r @ ResultVariable() =>
-        mapType(r.getType).map { newType =>
-          ResultVariable().setType(newType)
-        } getOrElse {
-          r
-        }
 
       case FunctionInvocation(fd, args) =>
         FunctionInvocation(fd2fd(fd), args)

@@ -285,7 +285,6 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
       sb.append(")")
     }
 
-    case ResultVariable() => sb.append("res")
     case Not(expr) => ppUnary(expr, "!(", ")", lvl)               // \neg
 
     case e @ Error(desc) => {
@@ -388,22 +387,17 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
         sb.append(")")
         parent.foreach(p => sb.append(" extends " + p.id))
 
-      case fd @ FunDef(id, rt, args, body, pre, post) =>
-
-        //for(a <- fd.annotations) {
-        //  ind(lvl)
-        //  sb.append("@" + a + "\n")
-        //}
+      case fd: FunDef =>
 
         ind(lvl)
         sb.append("def ")
-        sb.append(id)
+        sb.append(fd.id)
         sb.append("(")
 
-        val sz = args.size
+        val sz = fd.args.size
         var c = 0
         
-        args.foreach(arg => {
+        fd.args.foreach(arg => {
           sb.append(arg.id)
           sb.append(" : ")
           pp(arg.tpe, lvl)
@@ -415,41 +409,35 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
         })
 
         sb.append(") : ")
-        pp(rt, lvl)
-        sb.append(" = (")
-        if(body.isDefined) {
-          pre match {
-            case None => pp(body.get, lvl)
-            case Some(prec) => {
-              sb.append("{\n")
-              ind(lvl+1)
-              sb.append("require(")
-              pp(prec, lvl+1)
-              sb.append(")\n")
-              pp(body.get, lvl)
-              sb.append("\n")
-              ind(lvl)
-              sb.append("}")
-            }
-          }
-        } else
-          sb.append("[unknown function implementation]")
+        pp(fd.returnType, lvl)
+        sb.append(" = {")
 
-        post match {
-          case None => {
+        fd.precondition match {
+          case None =>
+          case Some(prec) =>
+            ind(lvl+1)
+            sb.append("require(")
+            pp(prec, lvl+1)
+            sb.append(");\n")
+        }
+
+        fd.body match {
+          case Some(body) =>
+            pp(body, lvl)
+          case None =>
+            sb.append("???")
+        }
+
+        fd.postcondition match {
+          case None =>
+            sb.append("}")
+
+          case Some((id, postc)) =>
+            sb.append("} ensuring(")
+            pp(Variable(id), lvl)
+            sb.append(" => ")
+            pp(postc, lvl)
             sb.append(")")
-          }
-          case Some(postc) => {
-            val res = Variable(FreshIdentifier("res", true).setType(fd.returnType))
-
-            val newPost = TreeOps.replace(Map(ResultVariable() -> res), postc)
-
-            sb.append(" ensuring(")
-            pp(res, lvl)
-            sb.append(" => ") //TODO, not very general solution...
-            pp(newPost, lvl)
-            sb.append("))")
-          }
         }
 
       case _ => sb.append("Defn?")

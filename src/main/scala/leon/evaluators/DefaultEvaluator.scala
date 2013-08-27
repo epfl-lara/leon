@@ -87,8 +87,10 @@ class DefaultEvaluator(ctx : LeonContext, prog : Program) extends Evaluator(ctx,
           val callResult = rec(frame, matchToIfThenElse(body))
 
           if(fd.hasPostcondition) {
+            val (id, post) = fd.postcondition.get
+
             val freshResID = FreshIdentifier("result").setType(fd.returnType)
-            val postBody = replace(Map(ResultVariable() -> Variable(freshResID)), matchToIfThenElse(fd.postcondition.get))
+            val postBody = replace(Map(Variable(id) -> Variable(freshResID)), matchToIfThenElse(post))
             rec(frame + ((freshResID -> callResult)), postBody) match {
               case BooleanLiteral(true) => ;
               case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for " + fd.id.name + " reached in evaluation.")

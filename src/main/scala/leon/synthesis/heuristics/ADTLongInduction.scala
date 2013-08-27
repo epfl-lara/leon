@@ -155,10 +155,11 @@ case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
             } else {
               val funPre = substAll(substMap, And(p.pc, Or(globalPre)))
               val funPost = substAll(substMap, p.phi)
+              val idPost = FreshIdentifier("res").setType(resType)
               val outerPre = Or(globalPre)
 
               newFun.precondition = Some(funPre)
-              newFun.postcondition = Some(LetTuple(p.xs.toSeq, ResultVariable().setType(resType), funPost))
+              newFun.postcondition = Some((idPost, LetTuple(p.xs.toSeq, Variable(idPost), funPost)))
 
               newFun.body = Some(MatchExpr(Variable(inductOn), cases))
 
