@@ -7,7 +7,10 @@ import leon.purescala.Trees._
 import leon.purescala.TypeTrees._
 import leon.purescala.TreeOps._
 import leon.purescala.Common._
+import leon.purescala.Definitions._
 import leon.test.purescala.LikelyEq
+import leon.evaluators._
+import leon.LeonContext
 
 import leon.synthesis.LinearEquations._
 
@@ -161,28 +164,30 @@ class LinearEquationsSuite extends LeonTestSuite {
   test("linearSet") {
     val as = Set[Identifier]()
 
+    val evaluator = new DefaultEvaluator(testContext, Program.empty)
+
     val eq1 = Array(3, 4, 8)
-    val basis1 = linearSet(as, eq1)
+    val basis1 = linearSet(evaluator, as, eq1)
     checkVectorSpace(basis1, eq1)
 
     val eq2 = Array(1, 2, 3)
-    val basis2 = linearSet(as, eq2)
+    val basis2 = linearSet(evaluator, as, eq2)
     checkVectorSpace(basis2, eq2)
 
     val eq3 = Array(1, 1)
-    val basis3 = linearSet(as, eq3)
+    val basis3 = linearSet(evaluator, as, eq3)
     checkVectorSpace(basis3, eq3)
 
     val eq4 = Array(1, 1, 2, 7)
-    val basis4 = linearSet(as, eq4)
+    val basis4 = linearSet(evaluator, as, eq4)
     checkVectorSpace(basis4, eq4)
 
     val eq5 = Array(1, -1)
-    val basis5 = linearSet(as, eq5)
+    val basis5 = linearSet(evaluator, as, eq5)
     checkVectorSpace(basis5, eq5)
 
     val eq6 = Array(1, -6, 3)
-    val basis6 = linearSet(as, eq6)
+    val basis6 = linearSet(evaluator, as, eq6)
     checkVectorSpace(basis6, eq6)
   }
 
@@ -215,6 +220,8 @@ class LinearEquationsSuite extends LeonTestSuite {
   test("elimVariable") {
     val as = Set[Identifier](aId, bId)
 
+    val evaluator = new DefaultEvaluator(testContext, Program.empty)
+
     def check(t: Expr, c: List[Expr], prec: Expr, witnesses: List[Expr], freshVars: List[Identifier]) {
       enumerate(freshVars.size, (vals: Array[Int]) => {
         val mapping: Map[Expr, Expr] = (freshVars.zip(vals.toList).map(t => (Variable(t._1), IntLiteral(t._2))).toMap)
@@ -225,28 +232,28 @@ class LinearEquationsSuite extends LeonTestSuite {
 
     val t1 = Minus(Times(IntLiteral(2), a), b)
     val c1 = List(IntLiteral(3), IntLiteral(4), IntLiteral(8))
-    val (pre1, wit1, f1) = elimVariable(as, t1::c1)
+    val (pre1, wit1, f1) = elimVariable(evaluator, as, t1::c1)
     check(t1, c1, pre1, wit1, f1)
 
     val t2 = Plus(Plus(IntLiteral(0), IntLiteral(2)), Times(IntLiteral(-1), IntLiteral(3)))
     val c2 = List(IntLiteral(1), IntLiteral(-1))
-    val (pre2, wit2, f2) = elimVariable(Set(), t2::c2)
+    val (pre2, wit2, f2) = elimVariable(evaluator, Set(), t2::c2)
     check(t2, c2, pre2, wit2, f2)
 
 
     val t3 = Minus(Times(IntLiteral(2), a), IntLiteral(3))
     val c3 = List(IntLiteral(2))
-    val (pre3, wit3, f3) = elimVariable(Set(aId), t3::c3)
+    val (pre3, wit3, f3) = elimVariable(evaluator, Set(aId), t3::c3)
     check(t3, c3, pre3, wit3, f3)
 
     val t4 = Times(IntLiteral(2), a)
     val c4 = List(IntLiteral(2), IntLiteral(4))
-    val (pre4, wit4, f4) = elimVariable(Set(aId), t4::c4)
+    val (pre4, wit4, f4) = elimVariable(evaluator, Set(aId), t4::c4)
     check(t4, c4, pre4, wit4, f4)
 
     val t5 = Minus(a, b)
     val c5 = List(IntLiteral(-60), IntLiteral(-3600))
-    val (pre5, wit5, f5) = elimVariable(Set(aId, bId), t5::c5)
+    val (pre5, wit5, f5) = elimVariable(evaluator, Set(aId, bId), t5::c5)
     check(t5, c5, pre5, wit5, f5)
 
   }

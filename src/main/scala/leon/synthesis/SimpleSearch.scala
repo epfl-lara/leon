@@ -3,41 +3,14 @@
 package leon
 package synthesis
 
+import leon.utils._
 import purescala.Definitions.FunDef
-
 import synthesis.search._
-
-case class TaskRunRule(app: RuleInstantiation) extends AOAndTask[Solution] {
-
-  val problem = app.problem
-  val rule    = app.rule
-
-  def composeSolution(sols: List[Solution]): Option[Solution] = {
-    app.onSuccess(sols)
-  }
-
-  override def toString = rule.name
-}
-
-case class TaskTryRules(p: Problem) extends AOOrTask[Solution] {
-  override def toString = p.toString
-}
-
-case class SearchCostModel(cm: CostModel) extends AOCostModel[TaskRunRule, TaskTryRules, Solution] {
-  def taskCost(t: AOTask[Solution]) = t match {
-    case ttr: TaskRunRule =>
-      cm.ruleAppCost(ttr.app)
-    case trr: TaskTryRules =>
-      cm.problemCost(trr.p)
-  }
-
-  def solutionCost(s: Solution) = cm.solutionCost(s)
-}
 
 class SimpleSearch(synth: Synthesizer,
                    problem: Problem,
                    rules: Seq[Rule],
-                   costModel: CostModel) extends AndOrGraphSearch[TaskRunRule, TaskTryRules, Solution](new AndOrGraph(TaskTryRules(problem), SearchCostModel(costModel))) {
+                   costModel: CostModel) extends AndOrGraphSearch[TaskRunRule, TaskTryRules, Solution](new AndOrGraph(TaskTryRules(problem), SearchCostModel(costModel))) with Interruptible {
 
   def this(synth: Synthesizer, problem: Problem) = {
     this(synth, problem, synth.rules, synth.options.costModel)
@@ -186,7 +159,6 @@ class SimpleSearch(synth: Synthesizer,
   }
 
 
-  var shouldStop = false
 
   def searchStep() {
     nextLeaf() match {
@@ -204,6 +176,19 @@ class SimpleSearch(synth: Synthesizer,
     }
   }
 
+  sctx.context.interruptManager.registerForInterrupts(this)
+
+  def interrupt() {
+    stop()
+  }
+
+  private var shouldStop = false
+
+  override def stop() {
+    super.stop()
+    shouldStop = true
+  }
+
   def search(): Option[(Solution, Boolean)] = {
     sctx.solver.init()
 
@@ -213,11 +198,5 @@ class SimpleSearch(synth: Synthesizer,
       searchStep()
     }
     g.tree.solution.map(s => (s, g.tree.isTrustworthy))
-  }
-
-  override def stop() {
-    super.stop()
-    shouldStop = true
-    sctx.solver.halt()
   }
 }

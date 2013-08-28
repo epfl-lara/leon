@@ -17,26 +17,16 @@ import leon.evaluators._
 import org.scalatest.FunSuite
 
 class DataGen extends LeonTestSuite {
-  private implicit lazy val leonContext = LeonContext(
-    settings = Settings(
-      synthesis = false,
-      xlang     = false,
-      verify    = false
-    ),
-    files = List(),
-    reporter = new TestSilentReporter
-  )
-
   private def parseString(str : String) : Program = {
     val pipeline = TemporaryInputPhase andThen ExtractionPhase
 
-    val errorsBefore   = leonContext.reporter.errorCount
-    val warningsBefore = leonContext.reporter.warningCount
+    val errorsBefore   = testContext.reporter.errorCount
+    val warningsBefore = testContext.reporter.warningCount
 
-    val program = pipeline.run(leonContext)((str, Nil))
+    val program = pipeline.run(testContext)((str, Nil))
   
-    assert(leonContext.reporter.errorCount   === errorsBefore)
-    assert(leonContext.reporter.warningCount === warningsBefore)
+    assert(testContext.reporter.errorCount   === errorsBefore)
+    assert(testContext.reporter.warningCount === warningsBefore)
 
     program
   }
@@ -70,8 +60,8 @@ class DataGen extends LeonTestSuite {
 
     val prog = parseString(p)
 
-    val eval      = new DefaultEvaluator(leonContext, prog)
-    val generator = new NaiveDataGen(leonContext, prog, eval)
+    val eval      = new DefaultEvaluator(testContext, prog)
+    val generator = new NaiveDataGen(testContext, prog, eval)
 
     generator.generate(BooleanType).toSet.size === 2
     generator.generate(TupleType(Seq(BooleanType,BooleanType))).toSet.size === 4
@@ -86,7 +76,7 @@ class DataGen extends LeonTestSuite {
 
     generator.generate(listType).take(100).toSet.size === 100
 
-    val evaluator = new CodeGenEvaluator(leonContext, prog)
+    val evaluator = new CodeGenEvaluator(testContext, prog)
 
     val a = Variable(FreshIdentifier("a").setType(Int32Type))
     val b = Variable(FreshIdentifier("b").setType(Int32Type))

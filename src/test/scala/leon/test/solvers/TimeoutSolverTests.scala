@@ -28,7 +28,7 @@ class TimeoutSolverTests extends LeonTestSuite {
   }
 
   private def getTOSolver : Solver = {
-    val s = new TimeoutSolver(new IdioticSolver(LeonContext()), 1000L)
+    val s = new TimeoutSolver(new IdioticSolver(testContext), 1000L)
     s.setProgram(Program.empty)
     s
   }

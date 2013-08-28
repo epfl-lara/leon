@@ -2,6 +2,8 @@
 
 package leon
 
+import leon.utils._
+
 import purescala.Definitions.Program
 import java.io.File
 
@@ -9,8 +11,9 @@ import java.io.File
  *  Contexts are immutable, and so should all there fields (with the possible
  *  exception of the reporter). */
 case class LeonContext(
+  reporter: Reporter,
+  interruptManager: InterruptManager,
   settings: Settings = Settings(),
   options: Seq[LeonOption] = Seq(),
-  files: Seq[File] = Seq(),
-  reporter: Reporter = new DefaultReporter()
+  files: Seq[File] = Seq()
 )

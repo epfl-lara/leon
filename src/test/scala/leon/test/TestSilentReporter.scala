@@ -1,6 +1,6 @@
 package leon
 package test
 
-class TestSilentReporter extends DefaultReporter() {
-  override def output(msg: String) : Unit = {}
+class TestSilentReporter extends DefaultReporter(Settings()) {
+  override def output(msg: String) : Unit = { }
 }

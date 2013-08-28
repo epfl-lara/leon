@@ -41,14 +41,6 @@ class ParallelSearch(synth: Synthesizer,
     ctx
   }
 
-  override def stop() = {
-    synth.shouldStop.set(true)
-    for (ctx <- contexts) {
-      ctx.solver.halt()
-    }
-    super.stop()
-  }
-
   def expandAndTask(ref: ActorRef, sctx: SynthesisContext)(t: TaskRunRule) = {
     val prefix = "[%-20s] ".format(Option(t.rule).getOrElse("?"))
 

@@ -25,19 +25,15 @@ class SynthesisRegressionSuite extends LeonTestSuite {
   }
 
   private def testSynthesis(cat: String, f: File, bound: Int) {
-    val ctx = LeonContext(
-      settings = Settings(
+    val ctx = testContext.copy(settings = Settings(
         synthesis = true,
         xlang     = false,
         verify    = false
-      ),
-      files = List(f),
-      reporter = new TestSilentReporter
-    )
+      ))
 
     val opts = SynthesisOptions(searchBound = Some(bound))
 
-    val pipeline = plugin.ExtractionPhase andThen SubtypingPhase
+    val pipeline = plugin.ExtractionPhase andThen leon.utils.SubtypingPhase
 
     val program = pipeline.run(ctx)(f.getAbsolutePath :: Nil)
 

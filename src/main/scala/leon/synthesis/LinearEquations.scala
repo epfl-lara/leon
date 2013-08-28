@@ -8,18 +8,14 @@ import purescala.Trees._
 import purescala.TreeNormalizations.linearArithmeticForm
 import purescala.TypeTrees._
 import purescala.Common._
+import evaluators._
 
 import synthesis.Algebra._
 
 object LinearEquations {
-  // This is a hack, but the use of an evaluator in this file is itself beyond that.
-  import evaluators._
-  // TODO: Kill with fire
-  private lazy val evaluator = new DefaultEvaluator(LeonContext(Settings(), Seq(), Seq(), new DefaultReporter()), Program.empty)
-
   //eliminate one variable from normalizedEquation t + a1*x1 + ... + an*xn = 0
   //return a mapping for each of the n variables in (pre, map, freshVars)
-  def elimVariable(as: Set[Identifier], normalizedEquation: List[Expr]): (Expr, List[Expr], List[Identifier]) = {
+  def elimVariable(evaluator: Evaluator, as: Set[Identifier], normalizedEquation: List[Expr]): (Expr, List[Expr], List[Identifier]) = {
     require(normalizedEquation.size > 1)
     require(normalizedEquation.tail.forall{case IntLiteral(i) if i != 0 => true case _ => false})
     val t: Expr = normalizedEquation.head
@@ -35,9 +31,9 @@ object LinearEquations {
     } else if(d > 1) {
       val newCoefsParams: List[Expr] = coefsParams.map(i => IntLiteral(i/d) : Expr)
       val newT = newCoefsParams.zip(IntLiteral(1)::orderedParams.map(Variable(_)).toList).foldLeft[Expr](IntLiteral(0))((acc, p) => Plus(acc, Times(p._1, p._2)))
-      elimVariable(as, newT :: normalizedEquation.tail.map{case IntLiteral(i) => IntLiteral(i/d) : Expr})
+      elimVariable(evaluator, as, newT :: normalizedEquation.tail.map{case IntLiteral(i) => IntLiteral(i/d) : Expr})
     } else {
-      val basis: Array[Array[Int]]  = linearSet(as, normalizedEquation.tail.map{case IntLiteral(i) => i}.toArray)
+      val basis: Array[Array[Int]]  = linearSet(evaluator, as, normalizedEquation.tail.map{case IntLiteral(i) => i}.toArray)
       val (pre, sol) = particularSolution(as, normalizedEquation)
       val freshVars: Array[Identifier] = basis(0).map(_ => FreshIdentifier("v", true).setType(Int32Type))
 
@@ -62,7 +58,7 @@ object LinearEquations {
   //Intuitively, we are building a "basis" for the "vector space" of solutions (although we are over
   //integers, so it is not a vector space).
   //we are returning a matrix where the columns are the vectors
-  def linearSet(as: Set[Identifier], coef: Array[Int]): Array[Array[Int]] = {
+  def linearSet(evaluator: Evaluator, as: Set[Identifier], coef: Array[Int]): Array[Array[Int]] = {
 
     val K = Array.ofDim[Int](coef.size, coef.size-1)
     for(i <- 0 until K.size) {

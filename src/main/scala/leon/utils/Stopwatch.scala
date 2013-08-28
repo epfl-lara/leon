@@ -1,6 +1,7 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
 
 package leon
+package utils
 
 class StopwatchCollection(name: String) {
   var acc: Long = 0L

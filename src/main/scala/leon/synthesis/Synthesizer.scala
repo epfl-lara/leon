@@ -10,7 +10,6 @@ import purescala.Trees._
 import purescala.ScalaPrinter
 import solvers.z3._
 import solvers.TimeoutSolver
-import sun.misc.{Signal, SignalHandler}
 
 import solvers.Solver
 import java.io.File
@@ -18,8 +17,6 @@ import java.io.File
 import collection.mutable.PriorityQueue
 
 import synthesis.search._
-
-import java.util.concurrent.atomic.AtomicBoolean
 
 class Synthesizer(val context : LeonContext,
                   val functionContext: Option[FunDef],
@@ -37,8 +34,6 @@ class Synthesizer(val context : LeonContext,
 
   val reporter = context.reporter
 
-  var shouldStop = new AtomicBoolean(false)
-
   def synthesize(): (Solution, Boolean) = {
 
     val search = if (options.manualSearch) {
@@ -54,20 +49,6 @@ class Synthesizer(val context : LeonContext,
             new SimpleSearch(this, problem)
         }
       }
-
-    val sigINT = new Signal("INT")
-    var oldHandler: SignalHandler = null
-    oldHandler = Signal.handle(sigINT, new SignalHandler {
-      def handle(sig: Signal) {
-        println
-        reporter.info("Aborting...")
-
-        shouldStop.set(true)
-        search.stop()
-
-        Signal.handle(sigINT, oldHandler)
-      }
-    })
 
     val ts = System.currentTimeMillis()
 

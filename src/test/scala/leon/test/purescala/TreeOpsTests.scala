@@ -12,11 +12,10 @@ import leon.purescala.TypeTrees._
 import leon.purescala.TreeOps._
 
 class TreeOpsTests extends LeonTestSuite {
-  private val silentContext = LeonContext(reporter = new TestSilentReporter)
   
   test("Path-aware simplifications") {
     import leon.solvers.z3.UninterpretedZ3Solver
-    val solver = new UninterpretedZ3Solver(silentContext)
+    val solver = new UninterpretedZ3Solver(testContext)
     solver.setProgram(Program.empty)
 
     // TODO actually testing something here would be better, sorry

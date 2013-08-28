@@ -3,6 +3,8 @@
 package leon
 package solvers.z3
 
+import leon.utils._
+
 import z3.scala._
 
 import leon.solvers.Solver
@@ -29,7 +31,7 @@ class FairZ3Solver(context : LeonContext)
 
   enclosing =>
 
-  def debug(s: String) = context.reporter.debug(ReportingSolver)(s)
+  val debug = context.reporter.debug(ReportingSolver)_
 
   // What wouldn't we do to avoid defining vars?
   val (feelingLucky, checkModels, useCodeGen, evalGroundApps, unrollUnsatCores) = locally {

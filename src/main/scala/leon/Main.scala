@@ -2,6 +2,8 @@
 
 package leon
 
+import leon.utils._
+
 object Main {
 
   lazy val allPhases: List[LeonPhase[_, _]] = {
@@ -58,7 +60,7 @@ object Main {
   def processOptions(args: Seq[String]): LeonContext = {
     val phases = allPhases
 
-    val initReporter = new DefaultReporter()
+    val initReporter = new DefaultReporter(Settings())
 
     val allOptions = this.allOptions
 
@@ -155,8 +157,8 @@ object Main {
       case _ =>
     }
 
-    // Create a new reporter taking debugSections into account
-    val reporter = new DefaultReporter(settings.debugSections)
+    // Create a new reporter taking settings into account
+    val reporter = new DefaultReporter(settings)
 
     reporter.ifDebug(ReportingOptions) {
       val debug = reporter.debug(ReportingOptions)_
@@ -171,7 +173,15 @@ object Main {
       }
     }
 
-    LeonContext(settings = settings, reporter = reporter, files = files, options = leonOptions)
+    val intManager = new InterruptManager(reporter)
+
+    intManager.registerSignalHandler()
+
+    LeonContext(settings = settings,
+                reporter = reporter,
+                files = files,
+                options = leonOptions,
+                interruptManager = intManager)
   }
 
   def computePipeline(settings: Settings): Pipeline[List[String], Any] = {
@@ -197,8 +207,6 @@ object Main {
   }
 
   def main(args : Array[String]) {
-    val reporter = new DefaultReporter()
-
     // Process options
     val ctx = processOptions(args.toList)
 
@@ -209,10 +217,10 @@ object Main {
       // Run pipeline
       pipeline.run(ctx)(args.toList) match {
         case report: verification.VerificationReport =>
-          reporter.info(report.summaryString)
+          ctx.reporter.info(report.summaryString)
 
         case report: termination.TerminationReport =>
-          reporter.info(report.summaryString)
+          ctx.reporter.info(report.summaryString)
 
         case _ =>
       }
