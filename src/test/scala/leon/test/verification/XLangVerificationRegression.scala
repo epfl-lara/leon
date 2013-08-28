@@ -17,7 +17,7 @@ class XLangVerificationRegression extends LeonTestSuite {
   private case class Output(report : VerificationReport, reporter : Reporter)
 
   private def mkPipeline : Pipeline[List[String],VerificationReport] =
-    leon.plugin.ExtractionPhase andThen leon.SubtypingPhase andThen xlang.XlangAnalysisPhase
+    leon.plugin.ExtractionPhase andThen leon.utils.SubtypingPhase andThen xlang.XlangAnalysisPhase
 
   private def mkTest(file : File, forError: Boolean = false)(block: Output=>Unit) = {
     val fullName = file.getPath()
@@ -35,16 +35,7 @@ class XLangVerificationRegression extends LeonTestSuite {
 
       // println("testing " + displayName)
 
-      val ctx = LeonContext(
-        settings = Settings(
-          synthesis = false,
-          xlang     = false,
-          verify    = true
-        ),
-        //options = List(LeonFlagOption("feelinglucky")),
-        files = List(file),
-        reporter = new TestSilentReporter
-      )
+      val ctx = testContext.copy(files = List(file))
 
       val pipeline = mkPipeline
 

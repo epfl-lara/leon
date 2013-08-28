@@ -15,15 +15,7 @@ import leon.purescala.Trees._
 import leon.purescala.TypeTrees._
 
 class EvaluatorsTests extends LeonTestSuite {
-  private implicit lazy val leonContext = LeonContext(
-    settings = Settings(
-      synthesis = false,
-      xlang     = false,
-      verify    = false
-    ),
-    files = List(),
-    reporter = new TestSilentReporter
-  )
+  private implicit lazy val leonContext = testContext
 
   private val evaluatorConstructors : List[(LeonContext,Program)=>Evaluator] = List(
     new DefaultEvaluator(_,_),

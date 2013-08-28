@@ -38,6 +38,8 @@ case object CEGIS extends Rule("CEGIS") {
     val filterThreshold       = 1.0/2
     val evaluator             = new CodeGenEvaluator(sctx.context, sctx.program)
 
+    val interruptManager      = sctx.context.interruptManager
+
     case class Generator(tpe: TypeTree, altBuilder: () => List[(Expr, Set[Identifier])]);
 
     var generators = Map[TypeTree, Generator]()
@@ -624,7 +626,7 @@ case object CEGIS extends Rule("CEGIS") {
 
             val bss = ndProgram.bss
 
-            while (result.isEmpty && !needMoreUnrolling && !sctx.shouldStop.get) {
+            while (result.isEmpty && !needMoreUnrolling && !interruptManager.isInterrupted()) {
 
               solver1.checkAssumptions(bssAssumptions.map(id => Not(Variable(id)))) match {
                 case Some(true) =>
@@ -761,7 +763,7 @@ case object CEGIS extends Rule("CEGIS") {
             }
 
             unrolings += 1
-          } while(unrolings < maxUnrolings && result.isEmpty && !sctx.shouldStop.get)
+          } while(unrolings < maxUnrolings && result.isEmpty && !interruptManager.isInterrupted())
 
           result.getOrElse(RuleApplicationImpossible)
 

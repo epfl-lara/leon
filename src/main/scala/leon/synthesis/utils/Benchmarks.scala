@@ -3,6 +3,7 @@
 package leon.synthesis.utils
 
 import leon._
+import leon.utils._
 import leon.purescala.Definitions._
 import leon.purescala.Trees._
 import leon.purescala.TreeOps._
@@ -73,7 +74,6 @@ object Benchmarks extends App {
   var nSuccessTotal, nInnapTotal, nDecompTotal, nAltTotal = 0
   var tTotal: Long = 0
 
-  val reporter = new DefaultReporter()
   val ctx = leon.Main.processOptions(others ++ newOptions)
 
   for (file <- ctx.files) {
@@ -99,8 +99,7 @@ object Benchmarks extends App {
         program         = program,
         solver          = solver,
         simpleSolver    = simpleSolver,
-        reporter        = reporter,
-        shouldStop      = new java.util.concurrent.atomic.AtomicBoolean
+        reporter        = ctx.reporter
       )
 
       val ts = System.currentTimeMillis

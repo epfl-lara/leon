@@ -17,8 +17,7 @@ case class SynthesisContext(
   program: Program,
   solver: Solver,
   simpleSolver: Solver,
-  reporter: Reporter,
-  shouldStop: AtomicBoolean
+  reporter: Reporter
 )
 
 object SynthesisContext {
@@ -30,8 +29,7 @@ object SynthesisContext {
       synth.program,
       synth.solver,
       synth.simpleSolver,
-      synth.reporter,
-      synth.shouldStop)
+      synth.reporter)
   }
 }
 

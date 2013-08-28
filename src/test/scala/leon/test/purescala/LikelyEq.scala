@@ -16,8 +16,8 @@ import leon.purescala.Trees._
  * This is a probabilistic based approach, it does not rely on any external solver and can
  * only prove the non equality of two expressions.
  */
-object LikelyEq {
-  private lazy val evaluator : Evaluator = new DefaultEvaluator(LeonContext(reporter = new TestSilentReporter), Program.empty)
+object LikelyEq extends LeonTestSuite {
+  private lazy val evaluator : Evaluator = new DefaultEvaluator(testContext, Program.empty)
 
   private val min = -5
   private val max = 5

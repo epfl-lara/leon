@@ -3,8 +3,6 @@
 package leon.test
 package solvers.z3
 
-import leon.LeonContext
-
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Trees._
@@ -43,8 +41,6 @@ class FairZ3SolverTestsNewAPI extends LeonTestSuite {
     "Solver should not be able to decide the formula " + expr + "."
   )
 
-  private val silentContext = LeonContext(reporter = new TestSilentReporter)
-
   // def f(fx : Int) : Int = fx + 1
   private val fx   : Identifier = FreshIdentifier("x").setType(Int32Type)
   private val fDef : FunDef = new FunDef(FreshIdentifier("f"), Int32Type, VarDecl(fx, Int32Type) :: Nil)
@@ -61,7 +57,7 @@ class FairZ3SolverTestsNewAPI extends LeonTestSuite {
   private val y : Expr = Variable(FreshIdentifier("y").setType(Int32Type))
   private def f(e : Expr) : Expr = FunctionInvocation(fDef, e :: Nil)
 
-  private val solver = new FairZ3Solver(silentContext)
+  private val solver = new FairZ3Solver(testContext)
   solver.setProgram(minimalProgram)
   solver.restartZ3
 

@@ -1,4 +1,8 @@
-package leon.test
+package leon
+package test
+
+import leon.utils._
+
 import scala.io.Source
 import org.scalatest._
 import org.scalatest.concurrent._
@@ -26,6 +30,20 @@ trait LeonTestSuite extends FunSuite with Timeouts {
     }
 
     def withValue(v: Long) = this.copy(v :: values)
+  }
+
+
+  var testContext = generateContext
+
+  def generateContext = {
+    val reporter = new TestSilentReporter
+
+    LeonContext(
+      settings = Settings(),
+      files = List(),
+      reporter = reporter,
+      interruptManager = new InterruptManager(reporter)
+    )
   }
 
   def testIdentifier(name: String): String = {
@@ -69,10 +87,18 @@ trait LeonTestSuite extends FunSuite with Timeouts {
     fw.close
   }
 
+  override implicit val defaultInterruptor = new Interruptor {
+    def apply(t: Thread) {
+      testContext.interruptManager.interrupt()
+    }
+  }
+
   override def test(name: String, tags: Tag*)(body: => Unit) {
     super.test(name, tags: _*) {
       val id = testIdentifier(name)
       val ts = now()
+
+      testContext = generateContext
 
       failAfter(2.minutes) {
         body

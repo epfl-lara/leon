@@ -25,15 +25,11 @@ class SynthesisSuite extends LeonTestSuite {
 
   def forProgram(title: String)(content: String)(block: (SynthesisContext, FunDef, Problem) => Unit) {
 
-    val ctx = LeonContext(
-      settings = Settings(
+    val ctx = testContext.copy(settings = Settings(
         synthesis = true,
         xlang     = false,
         verify    = false
-      ),
-      files = List(),
-      reporter = new TestSilentReporter
-    )
+      ))
 
     val opts = SynthesisOptions()
 
@@ -55,8 +51,7 @@ class SynthesisSuite extends LeonTestSuite {
                                     program,
                                     solver,
                                     simpleSolver,
-                                    new DefaultReporter,
-                                    new java.util.concurrent.atomic.AtomicBoolean)
+                                    ctx.reporter)
 
         block(sctx, f, p)
       }
