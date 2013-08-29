@@ -1,12 +1,11 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
 
-package leon.test.synthesis
-
-import org.scalatest.FunSuite
+package leon.test
+package synthesis
 
 import leon.synthesis.Algebra._
 
-class AlgebraSuite extends FunSuite {
+class AlgebraSuite extends LeonTestSuite {
 
   test("remainder") {
     assert(remainder(1,1) === 0)

@@ -12,12 +12,11 @@ import leon.solvers.Solver
 import leon.synthesis._
 import leon.synthesis.utils._
 
-import org.scalatest.FunSuite
 import org.scalatest.matchers.ShouldMatchers._
 
 import java.io.{BufferedWriter, FileWriter, File}
 
-class SynthesisSuite extends FunSuite {
+class SynthesisSuite extends LeonTestSuite {
   private var counter : Int = 0
   private def nextInt() : Int = {
     counter += 1

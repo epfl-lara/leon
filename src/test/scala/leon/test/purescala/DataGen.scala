@@ -16,7 +16,7 @@ import leon.evaluators._
 
 import org.scalatest.FunSuite
 
-class DataGen extends FunSuite {
+class DataGen extends LeonTestSuite {
   private implicit lazy val leonContext = LeonContext(
     settings = Settings(
       synthesis = false,

@@ -14,9 +14,7 @@ import leon.purescala.Definitions._
 import leon.purescala.Trees._
 import leon.purescala.TypeTrees._
 
-import org.scalatest.FunSuite
-
-class EvaluatorsTests extends FunSuite {
+class EvaluatorsTests extends LeonTestSuite {
   private implicit lazy val leonContext = LeonContext(
     settings = Settings(
       synthesis = false,

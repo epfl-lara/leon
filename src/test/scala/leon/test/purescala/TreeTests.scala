@@ -1,15 +1,14 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
 
-package leon.test.purescala
+package leon.test
+package purescala
 
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Trees._
 import leon.purescala.TypeTrees._
 
-import org.scalatest.FunSuite
-
-class TreeTests extends FunSuite {
+class TreeTests extends LeonTestSuite {
 
   test("And- and Or- simplifications") {
     val x = Variable(FreshIdentifier("x").setType(BooleanType))

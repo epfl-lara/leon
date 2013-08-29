@@ -1,8 +1,7 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
 
-package leon.test.synthesis
-
-import org.scalatest.FunSuite
+package leon.test
+package synthesis
 
 import leon.purescala.Trees._
 import leon.purescala.TypeTrees._
@@ -12,7 +11,7 @@ import leon.test.purescala.LikelyEq
 
 import leon.synthesis.LinearEquations._
 
-class LinearEquationsSuite extends FunSuite {
+class LinearEquationsSuite extends LeonTestSuite {
 
   def i(x: Int) = IntLiteral(x)
 

@@ -11,9 +11,7 @@ import leon.purescala.Trees._
 import leon.purescala.TypeTrees._
 import leon.purescala.TreeOps._
 
-import org.scalatest.FunSuite
-
-class TreeOpsTests extends FunSuite {
+class TreeOpsTests extends LeonTestSuite {
   private val silentContext = LeonContext(reporter = new TestSilentReporter)
   
   test("Path-aware simplifications") {

@@ -10,9 +10,7 @@ import leon.purescala.Trees._
 import leon.purescala.TreeOps._
 import leon.purescala.TreeNormalizations._
 
-import org.scalatest.FunSuite
-
-class TreeNormalizationsTests extends FunSuite {
+class TreeNormalizationsTests extends LeonTestSuite {
   def i(x: Int) = IntLiteral(x)
 
   val xId = FreshIdentifier("x").setType(Int32Type)
