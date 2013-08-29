@@ -46,7 +46,13 @@ class Synthesizer(val context : LeonContext,
       } else if (options.searchWorkers > 1) {
         new ParallelSearch(this, problem, options.searchWorkers)
       } else {
-        new SimpleSearch(this, problem)
+        options.searchBound match {
+          case Some(b) =>
+            new BoundedSearch(this, problem, b)
+
+          case None =>
+            new SimpleSearch(this, problem)
+        }
       }
 
     val sigINT = new Signal("INT")

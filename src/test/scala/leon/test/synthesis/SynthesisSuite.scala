@@ -136,20 +136,6 @@ class SynthesisSuite extends LeonTestSuite {
     }
   }
 
-
-  def assertFastEnough(sctx: SynthesisContext, rr: Traversable[RuleInstantiation], timeoutMs: Long) {
-    for (alt <- rr) {
-      val ts = System.currentTimeMillis
-
-      val res = alt.apply(sctx)
-
-      val t = System.currentTimeMillis - ts
-
-      t should be <= timeoutMs
-    }
-  }
-
-
   forProgram("Cegis 1")(
     """
 import scala.collection.immutable.Set
@@ -173,7 +159,6 @@ object Injection {
   ) {
     case (sctx, fd, p) =>
       assertAllAlternativesSucceed(sctx, rules.CEGIS.instantiateOn(sctx, p))
-      assertFastEnough(sctx, rules.CEGIS.instantiateOn(sctx, p), 100)
   }
 
   forProgram("Cegis 2")(
