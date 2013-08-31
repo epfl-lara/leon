@@ -94,7 +94,8 @@ class Synthesizer(val context : LeonContext,
 
     val (npr, fds) = solutionToProgram(sol)
 
-    val tsolver = new TimeoutSolver(solver, timeoutMs)
+    val tsolver = new TimeoutSolver(new FairZ3Solver(context), timeoutMs)
+    tsolver.setProgram(npr)
 
     val vcs = generateVerificationConditions(reporter, npr, fds.map(_.id.name))
     val vctx = VerificationContext(context, Seq(tsolver), context.reporter)
