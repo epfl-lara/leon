@@ -1,10 +1,12 @@
 package leon.test
 import scala.io.Source
 import org.scalatest._
+import org.scalatest.concurrent._
+import org.scalatest.time.SpanSugar._
 
 import java.io.File
 
-trait LeonTestSuite extends FunSuite {
+trait LeonTestSuite extends FunSuite with Timeouts {
   def now() = {
     System.currentTimeMillis
   }
@@ -72,7 +74,9 @@ trait LeonTestSuite extends FunSuite {
       val id = testIdentifier(name)
       val ts = now()
 
-      body
+      failAfter(2.minutes) {
+        body
+      }
 
       val total = now()-ts
 
