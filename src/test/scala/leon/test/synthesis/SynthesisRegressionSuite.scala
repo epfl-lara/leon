@@ -15,8 +15,6 @@ import leon.synthesis.utils._
 
 import java.io.File
 
-import TestUtils._
-
 class SynthesisRegressionSuite extends LeonTestSuite {
   private def forEachFileIn(path : String)(block : File => Unit) {
     val fs = filesInResourceDir(path, _.endsWith(".scala"))
@@ -63,11 +61,11 @@ class SynthesisRegressionSuite extends LeonTestSuite {
     testSynthesis("List", f, 200)
   }
 
-  forEachFileIn("regression/synthesis/SortedList/") { f =>
-    testSynthesis("SortedList", f, 400)
-  }
+  //forEachFileIn("regression/synthesis/SortedList/") { f =>
+  //  testSynthesis("SortedList", f, 400)
+  //}
 
-  forEachFileIn("regression/synthesis/StrictSortedList/") { f =>
-    testSynthesis("StrictSortedList", f, 400)
-  }
+  //forEachFileIn("regression/synthesis/StrictSortedList/") { f =>
+  //  testSynthesis("StrictSortedList", f, 400)
+  //}
 }

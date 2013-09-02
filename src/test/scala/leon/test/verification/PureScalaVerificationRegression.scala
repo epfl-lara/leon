@@ -8,8 +8,6 @@ import leon.verification.{AnalysisPhase,VerificationReport}
 
 import java.io.File
 
-import TestUtils._
-
 class PureScalaVerificationRegression extends LeonTestSuite {
   private var counter : Int = 0
   private def nextInt() : Int = {

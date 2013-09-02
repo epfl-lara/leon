@@ -2,6 +2,8 @@ package leon.test
 import scala.io.Source
 import org.scalatest._
 
+import java.io.File
+
 trait LeonTestSuite extends FunSuite {
   def now() = {
     System.currentTimeMillis
@@ -82,5 +84,21 @@ trait LeonTestSuite extends FunSuite {
 
       storeStats(id, stats.withValue(total))
     }
+  }
+
+  private val all : String=>Boolean = (s : String) => true
+
+  def filesInResourceDir(dir : String, filter : String=>Boolean = all) : Iterable[File] = {
+    import scala.collection.JavaConversions._
+
+    val d = this.getClass.getClassLoader.getResource(dir)
+
+    if(d == null || d.getProtocol != "file") {
+      assert(false, "Tests have to be run from within `sbt`, for otherwise the test files will be harder to access (and we dislike that).")
+    }
+
+    val asFile = new File(d.toURI())
+
+    asFile.listFiles().filter(f => filter(f.getPath()))
   }
 }
