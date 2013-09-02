@@ -1,8 +1,7 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
 
-package leon.test.solvers
-
-import org.scalatest.FunSuite
+package leon.test
+package solvers
 
 import leon._
 import leon.solvers._
@@ -11,7 +10,7 @@ import leon.purescala.Definitions._
 import leon.purescala.Trees._
 import leon.purescala.TypeTrees._
 
-class TimeoutSolverTests extends FunSuite {
+class TimeoutSolverTests extends LeonTestSuite {
   private class IdioticSolver(ctx : LeonContext) extends Solver(ctx) with NaiveIncrementalSolver {
     val name = "Idiotic"
     val description = "Loops when it doesn't know"

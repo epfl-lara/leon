@@ -13,6 +13,7 @@ case class SynthesisOptions(
   costModel: CostModel                = CostModel.default,
   rules: Seq[Rule]                    = Rules.all ++ Heuristics.all,
   manualSearch: Boolean               = false,
+  searchBound: Option[Int]            = None,
 
   // Cegis related options
   cegisUseUninterpretedProbe: Boolean = false,

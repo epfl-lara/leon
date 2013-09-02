@@ -14,9 +14,7 @@ import leon.purescala.TypeTrees._
 import leon.solvers.Solver
 import leon.solvers.z3.FairZ3Solver
 
-import org.scalatest.FunSuite
-
-class FairZ3SolverTestsNewAPI extends FunSuite {
+class FairZ3SolverTestsNewAPI extends LeonTestSuite {
   private var testCounter : Int = 0
   private def solverCheck(solver : Solver, expr : Expr, expected : Option[Boolean], msg : String) = {
     testCounter += 1

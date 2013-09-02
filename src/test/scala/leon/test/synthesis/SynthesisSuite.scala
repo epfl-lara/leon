@@ -12,12 +12,11 @@ import leon.solvers.Solver
 import leon.synthesis._
 import leon.synthesis.utils._
 
-import org.scalatest.FunSuite
 import org.scalatest.matchers.ShouldMatchers._
 
 import java.io.{BufferedWriter, FileWriter, File}
 
-class SynthesisSuite extends FunSuite {
+class SynthesisSuite extends LeonTestSuite {
   private var counter : Int = 0
   private def nextInt() : Int = {
     counter += 1
@@ -137,20 +136,6 @@ class SynthesisSuite extends FunSuite {
     }
   }
 
-
-  def assertFastEnough(sctx: SynthesisContext, rr: Traversable[RuleInstantiation], timeoutMs: Long) {
-    for (alt <- rr) {
-      val ts = System.currentTimeMillis
-
-      val res = alt.apply(sctx)
-
-      val t = System.currentTimeMillis - ts
-
-      t should be <= timeoutMs
-    }
-  }
-
-
   forProgram("Cegis 1")(
     """
 import scala.collection.immutable.Set
@@ -174,7 +159,6 @@ object Injection {
   ) {
     case (sctx, fd, p) =>
       assertAllAlternativesSucceed(sctx, rules.CEGIS.instantiateOn(sctx, p))
-      assertFastEnough(sctx, rules.CEGIS.instantiateOn(sctx, p), 100)
   }
 
   forProgram("Cegis 2")(

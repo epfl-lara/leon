@@ -1,14 +1,13 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
 
-package leon.test.purescala
-
-import org.scalatest.FunSuite
+package leon.test
+package purescala
 
 import leon.purescala.Common._
 import leon.purescala.Trees._
 
 
-class LikelyEqSuite extends FunSuite {
+class LikelyEqSuite extends LeonTestSuite {
   def i(x: Int) = IntLiteral(x)
 
   val xId = FreshIdentifier("x")
