@@ -9,13 +9,15 @@ import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
+import solvers._
+
 case object OptimisticGround extends Rule("Optimistic Ground") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     if (!p.as.isEmpty && !p.xs.isEmpty) {
       val res = new RuleInstantiation(p, this, SolutionBuilder.none, this.name) {
         def apply(sctx: SynthesisContext) = {
 
-          val solver = sctx.simpleSolver // Optimistic ground is given a simple solver (uninterpreted)
+          val solver = SimpleSolverAPI(sctx.fastSolverf) // Optimistic ground is given a simple solver (uninterpreted)
 
           val xss = p.xs.toSet
           val ass = p.as.toSet

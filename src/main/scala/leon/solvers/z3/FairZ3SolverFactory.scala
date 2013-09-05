@@ -23,9 +23,8 @@ import termination._
 import scala.collection.mutable.{Map => MutableMap}
 import scala.collection.mutable.{Set => MutableSet}
 
-class FairZ3Solver(context : LeonContext)
-  extends Solver(context)
-     with AbstractZ3Solver
+class FairZ3SolverFactory(val context : LeonContext, val program: Program)
+  extends AbstractZ3Solver
      with Z3ModelReconstruction
      with FairZ3Component {
 
@@ -53,25 +52,19 @@ class FairZ3Solver(context : LeonContext)
     (lucky, check, codegen, evalground, unrollUnsatCores)
   }
 
-  private var evaluator : Evaluator = null
-  protected[z3] def getEvaluator : Evaluator = evaluator
-
-  private var terminator : TerminationChecker = null
-  protected[z3] def getTerminator : TerminationChecker = terminator
-
-  override def setProgram(prog : Program) {
-    super.setProgram(prog)
-
-    evaluator = if(useCodeGen) {
+  private val evaluator : Evaluator = if(useCodeGen) {
       // TODO If somehow we could not recompile each time we create a solver,
       // that would be good?
-      new CodeGenEvaluator(context, prog)
+      new CodeGenEvaluator(context, program)
     } else {
-      new DefaultEvaluator(context, prog)
+      new DefaultEvaluator(context, program)
     }
 
-    terminator = new SimpleTerminationChecker(context, prog)
-  }
+  protected[z3] def getEvaluator : Evaluator = evaluator
+
+  private val terminator : TerminationChecker = new SimpleTerminationChecker(context, program)
+
+  protected[z3] def getTerminator : TerminationChecker = terminator
 
   // This is fixed.
   protected[leon] val z3cfg = new Z3Config(
@@ -109,33 +102,8 @@ class FairZ3Solver(context : LeonContext)
     }
   }
 
-  override def solve(vc: Expr) = {
-    val solver = getNewSolver
-    solver.assertCnstr(Not(vc))
-    solver.check.map(!_)
-  }
-
-  override def solveSAT(vc : Expr) : (Option[Boolean],Map[Identifier,Expr]) = {
-    val solver = getNewSolver
-    solver.assertCnstr(vc)
-    (solver.check, solver.getModel)
-  }
-
-  override def halt() {
-    super.halt
-    if(z3 ne null) {
-      z3.interrupt
-    }
-  }
-
-  override def solveSATWithCores(expression: Expr, assumptions: Set[Expr]): (Option[Boolean], Map[Identifier, Expr], Set[Expr]) = {
-    val solver = getNewSolver
-    solver.assertCnstr(expression)
-    (solver.checkAssumptions(assumptions), solver.getModel, solver.getUnsatCore)
-  }
-
   private def validateModel(model: Z3Model, formula: Expr, variables: Set[Identifier], silenceErrors: Boolean) : (Boolean, Map[Identifier,Expr]) = {
-    if(!forceStop) {
+    if(!interrupted) {
 
       val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
       val functionsAsMap: Map[Identifier, Expr] = functionsModel.flatMap(p => {
@@ -362,7 +330,7 @@ class FairZ3Solver(context : LeonContext)
     }
   }
 
-  def getNewSolver = new solvers.IncrementalSolver {
+  def getNewSolver = new Solver {
     private val evaluator    = enclosing.evaluator
     private val feelingLucky = enclosing.feelingLucky
     private val checkModels  = enclosing.checkModels
@@ -390,15 +358,12 @@ class FairZ3Solver(context : LeonContext)
       frameExpressions = Nil :: frameExpressions
     }
 
-    override def init() {
-      FairZ3Solver.super.init
+    override def recoverInterrupt() {
+      enclosing.recoverInterrupt()
     }
 
-    def halt() {
-      FairZ3Solver.super.halt
-      if(z3 ne null) {
-        z3.interrupt
-      }
+    override def interrupt() {
+      enclosing.interrupt()
     }
 
     def pop(lvl: Int = 1) {
@@ -471,7 +436,7 @@ class FairZ3Solver(context : LeonContext)
         }).toSet
       }
 
-      while(!foundDefinitiveAnswer && !forceStop) {
+      while(!foundDefinitiveAnswer && !interrupted) {
 
         //val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.toSeq.map(toZ3Formula(_).get)
         // println("Blocking set : " + blockingSet)
@@ -564,7 +529,7 @@ class FairZ3Solver(context : LeonContext)
             //debug("UNSAT BECAUSE: "+solver.getUnsatCore.mkString("\n  AND  \n"))
             //debug("UNSAT BECAUSE: "+core.mkString("  AND  "))
 
-            if (!forceStop) {
+            if (!interrupted) {
               if (this.feelingLucky) {
                 // we need the model to perform the additional test
                 debug(" - Running search without blocked literals (w/ lucky test)")
@@ -584,7 +549,7 @@ class FairZ3Solver(context : LeonContext)
                   foundAnswer(Some(false), core = z3CoreToCore(solver.getUnsatCore))
                 case Some(true) =>
                   //debug("SAT WITHOUT Blockers")
-                  if (this.feelingLucky && !forceStop) {
+                  if (this.feelingLucky && !interrupted) {
                     // we might have been lucky :D
                     luckyTime.start
                     val (wereWeLucky, cleanModel) = validateModel(solver.getModel, entireFormula, varsInVC, silenceErrors = true)
@@ -600,7 +565,7 @@ class FairZ3Solver(context : LeonContext)
               }
             }
 
-            if(forceStop) {
+            if(interrupted) {
               foundAnswer(None)
             }
 
@@ -638,7 +603,7 @@ class FairZ3Solver(context : LeonContext)
 
       //debug(" !! DONE !! ")
 
-      if(forceStop) {
+      if(interrupted) {
         None
       } else {
         definitiveAnswer

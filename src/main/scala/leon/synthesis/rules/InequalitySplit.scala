@@ -11,9 +11,11 @@ import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
 
+import solvers._
+
 case object InequalitySplit extends Rule("Ineq. Split.") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
-    val solver = sctx.simpleSolver
+    val solver = SimpleSolverAPI(sctx.fastSolverf)
 
     val candidates = p.as.filter(_.getType == Int32Type).combinations(2).toList.filter {
       case List(a1, a2) =>

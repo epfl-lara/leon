@@ -4,7 +4,9 @@ package leon
 package synthesis
 package rules
 
-import solvers.TimeoutSolver
+import solvers._
+import solvers.z3._
+
 import purescala.Trees._
 import purescala.Common._
 import purescala.Definitions._
@@ -18,7 +20,6 @@ import scala.collection.mutable.{Map=>MutableMap}
 import evaluators._
 import datagen._
 
-import solvers.z3.FairZ3Solver
 
 case object CEGIS extends Rule("CEGIS") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
@@ -450,8 +451,8 @@ case object CEGIS extends Rule("CEGIS") {
         var unrolings = 0
         val maxUnrolings = 3
 
-        val exSolver  = new TimeoutSolver(sctx.solver, 3000L) // 3sec
-        val cexSolver = new TimeoutSolver(sctx.solver, 3000L) // 3sec
+        val exSolver  = sctx.solverf.withTimeout(3000L) // 3sec
+        val cexSolver = sctx.solverf.withTimeout(3000L) // 3sec
 
         var baseExampleInputs: Seq[Seq[Expr]] = Seq()
 

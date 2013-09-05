@@ -27,6 +27,16 @@ class InterruptManager(reporter: Reporter) {
     }
   }
 
+  def recoverInterrupt() = synchronized {
+    if (interrupted.get()) {
+      interrupted.set(false)
+
+      interruptibles.keySet.foreach(_.recoverInterrupt())
+    } else {
+      reporter.warning("Not interrupted!")
+    }
+  }
+
   def registerForInterrupts(i: Interruptible) {
     interruptibles.put(i, true)
   }

@@ -3,7 +3,7 @@
 package leon
 package synthesis
 
-import solvers.Solver
+import solvers._
 import purescala.Trees._
 import purescala.Definitions.{Program, FunDef}
 import purescala.Common.Identifier
@@ -15,8 +15,8 @@ case class SynthesisContext(
   options: SynthesisOptions,
   functionContext: Option[FunDef],
   program: Program,
-  solver: Solver,
-  simpleSolver: Solver,
+  solverf: SolverFactory[Solver],
+  fastSolverf: SolverFactory[Solver],
   reporter: Reporter
 )
 
@@ -27,8 +27,8 @@ object SynthesisContext {
       synth.options,
       synth.functionContext,
       synth.program,
-      synth.solver,
-      synth.simpleSolver,
+      synth.solverf,
+      synth.fastSolverf,
       synth.reporter)
   }
 }
