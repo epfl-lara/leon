@@ -182,6 +182,10 @@ class SimpleSearch(synth: Synthesizer,
     stop()
   }
 
+  def recoverInterrupt() {
+    shouldStop = false
+  }
+
   private var shouldStop = false
 
   override def stop() {
@@ -190,8 +194,6 @@ class SimpleSearch(synth: Synthesizer,
   }
 
   def search(): Option[(Solution, Boolean)] = {
-    sctx.solver.init()
-
     shouldStop = false
 
     while (!g.tree.isSolved && !shouldStop) {

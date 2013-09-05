@@ -8,13 +8,11 @@ import purescala.Definitions.{Program, FunDef}
 import purescala.TreeOps._
 import purescala.Trees._
 import purescala.ScalaPrinter
+
+import solvers._
 import solvers.z3._
-import solvers.TimeoutSolver
 
-import solvers.Solver
 import java.io.File
-
-import collection.mutable.PriorityQueue
 
 import synthesis.search._
 
@@ -26,11 +24,8 @@ class Synthesizer(val context : LeonContext,
 
   val rules: Seq[Rule] = options.rules
 
-  val solver: FairZ3Solver = new FairZ3Solver(context)
-  solver.setProgram(program)
-
-  val simpleSolver: Solver = new UninterpretedZ3Solver(context)
-  simpleSolver.setProgram(program)
+  val solverf = new FairZ3SolverFactory(context, program)
+  val fastSolverf = new UninterpretedZ3SolverFactory(context, program)
 
   val reporter = context.reporter
 
@@ -81,8 +76,7 @@ class Synthesizer(val context : LeonContext,
 
     val (npr, fds) = solutionToProgram(sol)
 
-    val tsolver = new TimeoutSolver(new FairZ3Solver(context), timeoutMs)
-    tsolver.setProgram(npr)
+    val tsolver = new TimeoutSolverFactory(new FairZ3SolverFactory(context, npr), timeoutMs)
 
     val vcs = generateVerificationConditions(reporter, npr, fds.map(_.id.name))
     val vctx = VerificationContext(context, Seq(tsolver), context.reporter)

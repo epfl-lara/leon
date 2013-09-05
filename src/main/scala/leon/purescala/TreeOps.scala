@@ -3,7 +3,7 @@
 package leon
 package purescala
 
-import leon.solvers.Solver
+import leon.solvers._
 
 import scala.collection.concurrent.TrieMap
 
@@ -1133,17 +1133,19 @@ object TreeOps {
     simplePreTransform(pre)(e)
   }
 
-  def simplifyTautologies(solver : Solver)(expr : Expr) : Expr = {
+  def simplifyTautologies(sf: SolverFactory[Solver])(expr : Expr) : Expr = {
+    val solver = SimpleSolverAPI(sf)
+
     def pre(e : Expr) = e match {
 
       case LetDef(fd, expr) if fd.hasPrecondition =>
        val pre = fd.precondition.get 
 
-        solver.solve(pre) match {
+        solver.solveVALID(pre) match {
           case Some(true)  =>
             fd.precondition = None
             
-          case Some(false) => solver.solve(Not(pre)) match {
+          case Some(false) => solver.solveVALID(Not(pre)) match {
             case Some(true) =>
               fd.precondition = Some(BooleanLiteral(false))
             case _ =>
@@ -1155,9 +1157,9 @@ object TreeOps {
 
       case IfExpr(cond, thenn, elze) => 
         try {
-          solver.solve(cond) match {
+          solver.solveVALID(cond) match {
             case Some(true)  => thenn
-            case Some(false) => solver.solve(Not(cond)) match {
+            case Some(false) => solver.solveVALID(Not(cond)) match {
               case Some(true) => elze
               case _ => e
             }
@@ -1174,8 +1176,8 @@ object TreeOps {
     simplePreTransform(pre)(expr)
   }
 
-  def simplifyPaths(solver : Solver): Expr => Expr = {
-    new SimplifierWithPaths(solver).transform _
+  def simplifyPaths(sf: SolverFactory[Solver]): Expr => Expr = {
+    new SimplifierWithPaths(sf).transform _
   }
 
   trait Transformer {
@@ -1267,15 +1269,17 @@ object TreeOps {
     }
   }
 
-  class SimplifierWithPaths(solver: Solver) extends TransformerWithPC {
+  class SimplifierWithPaths(sf: SolverFactory[Solver]) extends TransformerWithPC {
     type C = List[Expr]
 
     val initC = Nil
 
+    val solver = SimpleSolverAPI(sf)
+
     protected def register(e: Expr, c: C) = e :: c
 
     def impliedBy(e : Expr, path : Seq[Expr]) : Boolean = try {
-      solver.solve(Implies(And(path), e)) match {
+      solver.solveVALID(Implies(And(path), e)) match {
         case Some(true) => true
         case _ => false
       }
@@ -1284,7 +1288,7 @@ object TreeOps {
     }
 
     def contradictedBy(e : Expr, path : Seq[Expr]) : Boolean = try {
-      solver.solve(Implies(And(path), Not(e))) match {
+      solver.solveVALID(Implies(And(path), Not(e))) match {
         case Some(true) => true
         case _ => false
       }
@@ -1766,7 +1770,7 @@ object TreeOps {
     case e => (None, e)
   }
 
-  def isInductiveOn(solver: Solver)(expr: Expr, on: Identifier): Boolean = on match {
+  def isInductiveOn(sf: SolverFactory[Solver])(expr: Expr, on: Identifier): Boolean = on match {
     case IsTyped(origId, AbstractClassType(cd)) =>
       def isAlternativeRecursive(cd: CaseClassDef): Boolean = {
         cd.fieldsIds.exists(_.getType == origId.getType)
@@ -1788,6 +1792,8 @@ object TreeOps {
               }
             }
       }.flatten
+
+      val solver = SimpleSolverAPI(sf)
 
       toCheck.forall { cond =>
         solver.solveSAT(cond) match {

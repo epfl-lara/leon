@@ -11,42 +11,57 @@ import leon.purescala.Trees._
 import leon.purescala.TypeTrees._
 
 class TimeoutSolverTests extends LeonTestSuite {
-  private class IdioticSolver(ctx : LeonContext) extends Solver(ctx) with NaiveIncrementalSolver {
-    val name = "Idiotic"
-    val description = "Loops when it doesn't know"
+  private class IdioticSolver(val context : LeonContext, val program: Program) extends SolverFactory[Solver] {
+    enclosing =>
 
-    def solve(expression : Expr) : Option[Boolean] = expression match {
-      case BooleanLiteral(true)  => Some(true)
-      case BooleanLiteral(false) => Some(false)
-      case Equals(x, y) if x == y => Some(true)
-      case _ => 
-        while(!forceStop) {
-          Thread.sleep(1)
+    val name = "Idiotic"
+    val description = "Loops"
+
+    def getNewSolver = new Solver {
+      def check = {
+        while(!interrupted) {
+          Thread.sleep(100)
         }
         None
+      }
+
+      def assertCnstr(e: Expr) {}
+
+      def checkAssumptions(assump: Set[Expr]) = ???
+      def getModel = ???
+      def getUnsatCore = ???
+      def push() = ???
+      def pop(lvl: Int) = ???
+
+      def interrupt() = enclosing.interrupt()
+      def recoverInterrupt() = enclosing.recoverInterrupt()
     }
   }
 
-  private def getTOSolver : Solver = {
-    val s = new TimeoutSolver(new IdioticSolver(testContext), 1000L)
-    s.setProgram(Program.empty)
-    s
+  private def getTOSolver : TimeoutSolverFactory[Solver] = {
+    new IdioticSolver(testContext, Program.empty).withTimeout(1000L)
+  }
+
+  private def check(sf: TimeoutSolverFactory[Solver], e: Expr): Option[Boolean] = {
+    val s = sf.getNewSolver
+    s.assertCnstr(e)
+    s.check
   }
 
   test("TimeoutSolver 1") {
-    val s = getTOSolver
-    assert(s.solve(BooleanLiteral(true)) === Some(true))
-    assert(s.solve(BooleanLiteral(false)) === Some(false))
+    val sf = getTOSolver
+    assert(check(sf, BooleanLiteral(true)) === None)
+    assert(check(sf, BooleanLiteral(false)) === None)
 
     val x = Variable(FreshIdentifier("x").setType(Int32Type))
-    assert(s.solve(Equals(x, x)) === Some(true))
+    assert(check(sf, Equals(x, x)) === None)
   }
 
   test("TimeoutSolver 2") {
-    val s = getTOSolver
+    val sf = getTOSolver
     val x = Variable(FreshIdentifier("x").setType(Int32Type))
     val o = IntLiteral(1)
-    assert(s.solve(Equals(Plus(x, o), Plus(o, x))) === None)
-    assert(s.solve(Equals(Plus(x, o), x)) === None)
+    assert(check(sf, Equals(Plus(x, o), Plus(o, x))) === None)
+    assert(check(sf, Equals(Plus(x, o), x)) === None)
   }
 }

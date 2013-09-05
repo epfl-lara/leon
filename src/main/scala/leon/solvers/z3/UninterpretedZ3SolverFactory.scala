@@ -5,7 +5,7 @@ package solvers.z3
 
 import z3.scala._
 
-import leon.solvers.Solver
+import leon.solvers._
 
 import purescala.Common._
 import purescala.Definitions._
@@ -21,7 +21,12 @@ import purescala.TypeTrees._
  *    - otherwise it returns UNKNOWN
  *  Results should come back very quickly.
  */
-class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with AbstractZ3Solver with Z3ModelReconstruction {
+class UninterpretedZ3SolverFactory(val context : LeonContext, val program: Program)
+  extends AbstractZ3Solver
+     with Z3ModelReconstruction {
+
+  enclosing =>
+
   val name = "Z3-u"
   val description = "Uninterpreted Z3 Solver"
 
@@ -52,34 +57,7 @@ class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with 
   protected[leon] def functionDeclToDef(decl: Z3FuncDecl) : FunDef = reverseFunctionMap(decl)
   protected[leon] def isKnownDecl(decl: Z3FuncDecl) : Boolean = reverseFunctionMap.isDefinedAt(decl)
 
-  override def solve(expression: Expr) : Option[Boolean] = solveSAT(Not(expression))._1.map(!_)
-
-  // Where the solving occurs
-  override def solveSAT(expression : Expr) : (Option[Boolean],Map[Identifier,Expr]) = {
-    val solver = getNewSolver
-
-    val emptyModel    = Map.empty[Identifier,Expr]
-    val unknownResult = (None, emptyModel)
-    val unsatResult   = (Some(false), emptyModel)
-
-    solver.assertCnstr(expression)
-
-    val result = solver.check match {
-      case Some(false) => unsatResult
-      case Some(true) => {
-        if(containsFunctionCalls(expression)) {
-          unknownResult
-        } else { 
-          (Some(true), solver.getModel)
-        }
-      }
-      case _ => unknownResult
-    }
-
-    result
-  }
-
-  def getNewSolver = new solvers.IncrementalSolver {
+  def getNewSolver = new Solver {
     initZ3
 
     val solver = z3.mkSolver
@@ -88,8 +66,12 @@ class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with 
       solver.push
     }
 
-    def halt() {
-      z3.interrupt
+    def interrupt() {
+      enclosing.interrupt()
+    }
+
+    def recoverInterrupt() {
+      enclosing.recoverInterrupt()
     }
 
     def pop(lvl: Int = 1) {
@@ -97,14 +79,26 @@ class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with 
     }
 
     private var variables = Set[Identifier]()
+    private var containsFunCalls = false
 
     def assertCnstr(expression: Expr) {
       variables ++= variablesOf(expression)
+      containsFunCalls ||= containsFunctionCalls(expression)
       solver.assertCnstr(toZ3Formula(expression).get)
     }
 
     def check: Option[Boolean] = {
-      solver.check
+      solver.check match {
+        case Some(true) =>
+          if (containsFunCalls) {
+            None
+          } else {
+            Some(true)
+          }
+
+        case r =>
+          r
+      }
     }
 
     def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
@@ -123,7 +117,5 @@ class UninterpretedZ3Solver(context : LeonContext) extends Solver(context) with 
         case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
       }).toSet
     }
-
-
   }
 }

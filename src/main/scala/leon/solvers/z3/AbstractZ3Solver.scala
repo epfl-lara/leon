@@ -6,6 +6,7 @@ package solvers.z3
 import leon.utils._
 
 import z3.scala._
+import solvers._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
@@ -18,25 +19,32 @@ import scala.collection.mutable.{Set => MutableSet}
 
 // This is just to factor out the things that are common in "classes that deal
 // with a Z3 instance"
-trait AbstractZ3Solver extends solvers.IncrementalSolverBuilder with Interruptible {
-  self: leon.solvers.Solver =>
-
+trait AbstractZ3Solver extends SolverFactory[Solver] {
   val context : LeonContext
+  val program : Program
+
   protected[z3] val reporter : Reporter = context.reporter
 
   context.interruptManager.registerForInterrupts(this)
-  def interrupt() {
-    halt()
-  }
 
   class CantTranslateException(t: Z3AST) extends Exception("Can't translate from Z3 tree: " + t)
 
   protected[leon] val z3cfg : Z3Config
   protected[leon] var z3 : Z3Context    = null
-  protected[leon] var program : Program = null
 
-  override def setProgram(prog: Program): Unit = {
-    program = prog
+  override def free() {
+    super.free()
+    if (z3 ne null) {
+      z3.delete()
+      z3 = null;
+    }
+  }
+
+  override def interrupt() {
+    super.interrupt()
+    if(z3 ne null) {
+      z3.interrupt
+    }
   }
 
   protected[leon] def prepareFunctions : Unit

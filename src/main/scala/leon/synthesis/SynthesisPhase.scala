@@ -4,8 +4,7 @@ package leon
 package synthesis
 
 import purescala.TreeOps._
-import solvers.TrivialSolver
-import solvers.z3.{FairZ3Solver,UninterpretedZ3Solver}
+import solvers.z3._
 
 import purescala.Trees._
 import purescala.ScalaPrinter
