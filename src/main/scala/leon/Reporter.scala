@@ -36,15 +36,15 @@ abstract class Reporter(settings: Settings) {
 
   private val debugMask = settings.debugSections.foldLeft(0){ _ | _.mask }
 
-  def ifDebug(section: ReportingSection)(body: => Any) {
+  def ifDebug(section: ReportingSection)(body: (Any => Unit) => Any) {
     if ((debugMask & section.mask) == section.mask) {
-      body
+      body(debugFunction)
     }
   }
 
   def debug(section: ReportingSection)(msg: => Any) {
-    ifDebug(section) {
-      debugFunction(msg)
+    ifDebug(section) { debug =>
+      debug(msg)
     }
   }
 }
@@ -84,16 +84,18 @@ class DefaultReporter(settings: Settings) extends Reporter(settings) {
 
 sealed abstract class ReportingSection(val name: String, val mask: Int)
 
-case object ReportingSolver    extends ReportingSection("solver",    1 << 0)
-case object ReportingSynthesis extends ReportingSection("synthesis", 1 << 1)
-case object ReportingTimers    extends ReportingSection("timers",    1 << 2)
-case object ReportingOptions   extends ReportingSection("options",   1 << 3)
+case object ReportingSolver       extends ReportingSection("solver",       1 << 0)
+case object ReportingSynthesis    extends ReportingSection("synthesis",    1 << 1)
+case object ReportingTimers       extends ReportingSection("timers",       1 << 2)
+case object ReportingOptions      extends ReportingSection("options",      1 << 3)
+case object ReportingVerification extends ReportingSection("verification", 1 << 4)
 
 object ReportingSections {
   val all = Set[ReportingSection](
     ReportingSolver,
     ReportingSynthesis,
     ReportingTimers,
-    ReportingOptions
+    ReportingOptions,
+    ReportingVerification
   )
 }

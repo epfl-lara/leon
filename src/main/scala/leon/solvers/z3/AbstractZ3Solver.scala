@@ -27,12 +27,26 @@ trait AbstractZ3Solver extends SolverFactory[Solver] {
 
   context.interruptManager.registerForInterrupts(this)
 
+  val debug = context.reporter.debug(ReportingSolver)_
+
+  private[this] var freed = false
+  val traceE = new Exception()
+
+  override def finalize() {
+    if (!freed) {
+      println("!! Solver "+this.getClass.getName+"["+this.hashCode+"] not freed properly prior to GC:")
+      traceE.printStackTrace()
+      free()
+    }
+  }
+
   class CantTranslateException(t: Z3AST) extends Exception("Can't translate from Z3 tree: " + t)
 
   protected[leon] val z3cfg : Z3Config
   protected[leon] var z3 : Z3Context    = null
 
   override def free() {
+    freed = true
     super.free()
     if (z3 ne null) {
       z3.delete()
@@ -112,6 +126,7 @@ trait AbstractZ3Solver extends SolverFactory[Solver] {
   var isInitialized = false
   protected[leon] def initZ3() {
     if (!isInitialized) {
+      val initTime     = new Stopwatch().start
       counter = 0
 
       z3 = new Z3Context(z3cfg)
@@ -120,6 +135,9 @@ trait AbstractZ3Solver extends SolverFactory[Solver] {
       prepareFunctions
 
       isInitialized = true
+
+      initTime.stop
+      context.timers.get("Z3Solver init") += initTime
     }
   }
 

@@ -18,7 +18,7 @@ trait LeonTestSuite extends FunSuite with Timeouts {
   case class Statistics(values: List[Long]) {
     val n      = values.size
     val avg    = values.sum.toDouble/n
-    val stddev = Math.sqrt(Math.abs(values.map(_.toDouble - avg).sum/n))
+    val stddev = Math.sqrt(values.map(v => Math.pow(v.toDouble - avg, 2)).sum/n)
 
     def accountsFor(ms: Long) = {
       if (n < 5) {
@@ -47,7 +47,9 @@ trait LeonTestSuite extends FunSuite with Timeouts {
   }
 
   def testIdentifier(name: String): String = {
-    (this.getClass.getName+"-"+name).replaceAll("[^0-9a-zA-Z-]", "")
+    def sanitize(s: String) = s.replaceAll("[^0-9a-zA-Z-]", "")
+
+    sanitize(this.getClass.getName)+"/"+sanitize(name)
   }
 
   def bookKeepingFile(id: String) = {

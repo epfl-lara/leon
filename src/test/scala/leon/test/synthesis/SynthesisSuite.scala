@@ -37,18 +37,12 @@ class SynthesisSuite extends LeonTestSuite {
 
     val (program, results) = pipeline.run(ctx)((content, Nil))
 
-    val solver = new FairZ3SolverFactory(ctx, program)
-
-    val simpleSolver = new UninterpretedZ3SolverFactory(ctx, program)
-
     for ((f, ps) <- results; p <- ps) {
       test("Synthesizing %3d: %-20s [%s]".format(nextInt(), f.id.toString, title)) {
         val sctx = SynthesisContext(ctx,
                                     opts,
                                     Some(f),
                                     program,
-                                    solver,
-                                    simpleSolver,
                                     ctx.reporter)
 
         block(sctx, f, p)

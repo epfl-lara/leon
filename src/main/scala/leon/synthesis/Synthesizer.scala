@@ -24,9 +24,6 @@ class Synthesizer(val context : LeonContext,
 
   val rules: Seq[Rule] = options.rules
 
-  val solverf = new FairZ3SolverFactory(context, program)
-  val fastSolverf = new UninterpretedZ3SolverFactory(context, program)
-
   val reporter = context.reporter
 
   def synthesize(): (Solution, Boolean) = {
@@ -48,6 +45,13 @@ class Synthesizer(val context : LeonContext,
     val ts = System.currentTimeMillis()
 
     val res = search.search()
+
+    search match {
+      case pr: ParallelSearch =>
+        context.timers.add(pr.expandTimers)
+        context.timers.add(pr.sendWorkTimers)
+      case _ =>
+    }
 
     val diff = System.currentTimeMillis()-ts
     reporter.info("Finished in "+diff+"ms")

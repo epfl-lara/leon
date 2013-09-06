@@ -113,4 +113,6 @@ class FairZ3SolverTestsNewAPI extends LeonTestSuite {
       assert(sub.getUnsatCore === Set(b2))
     }
   }
+
+  solver.free()
 }

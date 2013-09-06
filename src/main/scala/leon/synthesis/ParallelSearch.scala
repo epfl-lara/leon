@@ -23,13 +23,7 @@ class ParallelSearch(synth: Synthesizer,
   private[this] var contexts = List[SynthesisContext]()
 
   def initWorkerContext(wr: ActorRef) = {
-    val solverf = new FairZ3SolverFactory(synth.context, synth.program)
-    solverf.initZ3
-
-    val  fastSolverf = new UninterpretedZ3SolverFactory(synth.context, synth.program)
-    fastSolverf.initZ3
-
-    val ctx = SynthesisContext.fromSynthesizer(synth).copy(solverf = solverf, fastSolverf = fastSolverf)
+    val ctx = SynthesisContext.fromSynthesizer(synth)
 
     synchronized {
       contexts = ctx :: contexts

@@ -11,6 +11,10 @@ case class SimpleSolverAPI(sf: SolverFactory[Solver]) {
     s.check.map(r => !r)
   }
 
+  def free() {
+    sf.free()
+  }
+
   def solveSAT(expression: Expr): (Option[Boolean], Map[Identifier, Expr]) = {
     val s = sf.getNewSolver()
     s.assertCnstr(expression)

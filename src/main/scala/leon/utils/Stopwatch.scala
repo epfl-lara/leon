@@ -3,14 +3,35 @@
 package leon
 package utils
 
-class StopwatchCollection(name: String) {
-  var acc: Long = 0L
+class StopwatchCollection(val name: String) {
+  var min: Long = 0L
+  var tot: Long = 0L
+  var max: Long = 0L
+  var n: Int = 0
 
-  def +=(sw: Stopwatch) = synchronized { acc += sw.getMillis }
+  def +=(sw: Stopwatch) = synchronized { 
+    val ms = sw.getMillis
+    if(n == 0 || ms < min) {
+      min = ms
+    }
+    if(n == 0 || ms > max) {
+      max = ms
+    }
+    n   += 1
+    tot += ms
+  }
 
-  def getMillis = acc
+  override def toString = {
+    if (n == 0) {
+      "%-30s    N/A".format(name+":")
+    } else if (n > 1) {
+      "%-30s %6d ms (min: %d, avg: %d, max: %d, n: %d)".format(name+":", tot, min, tot/n, max, n)
+    } else {
+      "%-30s %6d ms".format(name+":", tot)
+    }
+  }
 
-  override def toString = "%20s: %5dms".format(name, acc)
+  def getMillis = tot
 }
 
 /** Implements a stopwatch for profiling purposes */
@@ -23,6 +44,14 @@ class Stopwatch(name: String = "Stopwatch") {
     beginning = System.currentTimeMillis
     end       = 0L
     this
+  }
+
+  def restart: this.type = { 
+    beginning = 0L
+    end = 0L
+    acc = 0L
+
+    start
   }
 
   def stop {
@@ -44,7 +73,7 @@ class Stopwatch(name: String = "Stopwatch") {
   override def toString = "%20s: %5d%sms".format(name, getMillis, if (isRunning) "..." else "")
 }
 
-object StopwatchCollections {
+class StopwatchCollections {
   private var all = Map[String, StopwatchCollection]()
 
   def get(name: String): StopwatchCollection = all.getOrElse(name, {
@@ -52,6 +81,10 @@ object StopwatchCollections {
     all += name -> sw
     sw
   })
+
+  def add(swc: StopwatchCollection) {
+    all += swc.name -> swc
+  }
 
   def getAll = all
 }

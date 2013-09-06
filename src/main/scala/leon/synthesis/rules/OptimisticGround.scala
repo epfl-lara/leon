@@ -17,7 +17,7 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
       val res = new RuleInstantiation(p, this, SolutionBuilder.none, this.name) {
         def apply(sctx: SynthesisContext) = {
 
-          val solver = SimpleSolverAPI(sctx.fastSolverf) // Optimistic ground is given a simple solver (uninterpreted)
+          val solver = SimpleSolverAPI(sctx.fastSolverFactory) // Optimistic ground is given a simple solver (uninterpreted)
 
           val xss = p.xs.toSet
           val ass = p.as.toSet
@@ -68,6 +68,8 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
 
             i += 1
           }
+
+          solver.free()
 
           result.getOrElse(RuleApplicationImpossible)
         }

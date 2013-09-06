@@ -4,6 +4,8 @@ package leon
 package synthesis
 
 import solvers._
+import solvers.z3._
+
 import purescala.Trees._
 import purescala.Definitions.{Program, FunDef}
 import purescala.Common.Identifier
@@ -15,10 +17,18 @@ case class SynthesisContext(
   options: SynthesisOptions,
   functionContext: Option[FunDef],
   program: Program,
-  solverf: SolverFactory[Solver],
-  fastSolverf: SolverFactory[Solver],
   reporter: Reporter
-)
+) {
+
+  def solverFactory: SolverFactory[Solver] = {
+    new FairZ3SolverFactory(context, program)
+  }
+
+  def fastSolverFactory: SolverFactory[Solver] = {
+    new UninterpretedZ3SolverFactory(context, program)
+  }
+
+}
 
 object SynthesisContext {
   def fromSynthesizer(synth: Synthesizer) = {
@@ -27,8 +37,6 @@ object SynthesisContext {
       synth.options,
       synth.functionContext,
       synth.program,
-      synth.solverf,
-      synth.fastSolverf,
       synth.reporter)
   }
 }

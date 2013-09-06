@@ -110,8 +110,7 @@ object Main {
           optionsValues +=  allOptionsMap(name) -> v
         }
       } else {
-        initReporter.error("'"+name+"' is not a valid option. See 'leon --help'")
-        None
+        initReporter.fatalError("'"+name+"' is not a valid option. See 'leon --help'")
       }
     }
 
@@ -143,12 +142,16 @@ object Main {
         settings = settings.copy(xlang = value)
       case LeonValueOption("debug", ListValue(sections)) =>
         val debugSections = sections.flatMap { s =>
-          ReportingSections.all.find(_.name == s) match {
-            case Some(rs) =>
-              Some(rs)
-            case None =>
-              initReporter.error("Section "+s+" not found, available: "+ReportingSections.all.map(_.name).mkString(", "))
-              None
+          if (s == "all") {
+            ReportingSections.all
+          } else {
+            ReportingSections.all.find(_.name == s) match {
+              case Some(rs) =>
+                Some(rs)
+              case None =>
+                initReporter.error("Section "+s+" not found, available: "+ReportingSections.all.map(_.name).mkString(", "))
+                None
+            }
           }
         }
         settings = settings.copy(debugSections = debugSections.toSet)
@@ -160,8 +163,7 @@ object Main {
     // Create a new reporter taking settings into account
     val reporter = new DefaultReporter(settings)
 
-    reporter.ifDebug(ReportingOptions) {
-      val debug = reporter.debug(ReportingOptions)_
+    reporter.ifDebug(ReportingOptions) { debug =>
 
       debug("Options considered by Leon:")
       for (lo <- leonOptions) lo match {
@@ -207,13 +209,19 @@ object Main {
   }
 
   def main(args : Array[String]) {
-    // Process options
-    val ctx = processOptions(args.toList)
-
-    // Compute leon pipeline
-    val pipeline = computePipeline(ctx.settings)
-
     try {
+      // Process options
+      val timer     = new Stopwatch().start
+
+      val ctx = processOptions(args.toList)
+
+      ctx.timers.get("Leon Opts") += timer
+
+      // Compute leon pipeline
+      val pipeline = computePipeline(ctx.settings)
+
+      timer.restart
+
       // Run pipeline
       pipeline.run(ctx)(args.toList) match {
         case report: verification.VerificationReport =>
@@ -223,6 +231,18 @@ object Main {
           ctx.reporter.info(report.summaryString)
 
         case _ =>
+      }
+
+      ctx.timers.get("Leon Run") += timer
+
+      ctx.reporter.ifDebug(ReportingTimers) { debug =>
+        debug("-"*80)
+        debug("Times:")
+        debug("-"*80)
+        for ((name, swc) <- ctx.timers.getAll.toSeq.sortBy(_._1)) {
+          debug(swc.toString)
+        }
+        debug("-"*80)
       }
     } catch {
       case LeonFatalError() => sys.exit(1)
