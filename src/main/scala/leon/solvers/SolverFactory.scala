@@ -36,4 +36,6 @@ trait SolverFactory[S <: Solver] extends Interruptible with LeonComponent {
         new TimeoutSolverFactory[S](this, ms)
     }
   }
+
+  implicit val debugSection = ReportingSolver
 }

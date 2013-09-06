@@ -16,4 +16,6 @@ trait Solver extends Interruptible {
   def checkAssumptions(assumptions: Set[Expr]): Option[Boolean]
   def getModel: Map[Identifier, Expr]
   def getUnsatCore: Set[Expr]
+
+  implicit val debugSection = ReportingSolver
 }
