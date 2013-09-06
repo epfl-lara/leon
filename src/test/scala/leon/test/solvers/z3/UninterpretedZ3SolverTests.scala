@@ -89,4 +89,6 @@ class UninterpretedZ3SolverTests extends LeonTestSuite {
       solver.solveVALID(Equals(g(x), g(x)))
     }
   }
+
+  solver.free()
 }

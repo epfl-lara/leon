@@ -14,10 +14,12 @@ import purescala.Definitions._
 
 case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
-    val tsolver = sctx.solverf.withTimeout(500L)
+    val tsolver = sctx.solverFactory.withTimeout(500L)
     val candidates = p.as.collect {
         case IsTyped(origId, AbstractClassType(cd)) if isInductiveOn(tsolver)(p.pc, origId) => (origId, cd)
     }
+
+    tsolver.free()
 
     val instances = for (candidate <- candidates) yield {
       val (origId, cd) = candidate

@@ -451,328 +451,333 @@ case object CEGIS extends Rule("CEGIS") {
         var unrolings = 0
         val maxUnrolings = 3
 
-        val exSolver  = sctx.solverf.withTimeout(3000L) // 3sec
-        val cexSolver = sctx.solverf.withTimeout(3000L) // 3sec
-
-        var baseExampleInputs: Seq[Seq[Expr]] = Seq()
-
-        // We populate the list of examples with a predefined one
-        if (p.pc == BooleanLiteral(true)) {
-          baseExampleInputs = p.as.map(a => simplestValue(a.getType)) +: baseExampleInputs
-        } else {
-          val solver = exSolver.getNewSolver
-
-          solver.assertCnstr(p.pc)
-
-          solver.check match {
-            case Some(true) =>
-              val model = solver.getModel
-              baseExampleInputs = p.as.map(a => model.getOrElse(a, simplestValue(a.getType))) +: baseExampleInputs
-
-            case Some(false) =>
-              return RuleApplicationImpossible
-
-            case None =>
-              sctx.reporter.warning("Solver could not solve path-condition")
-              return RuleApplicationImpossible // This is not necessary though, but probably wanted
-          }
-
-        }
-
-        val inputIterator: Iterator[Seq[Expr]] = if (useVanuatoo) {
-          new VanuatooDataGen(sctx.context, sctx.program).generateFor(p.as, p.pc, 20, 3000)
-        } else {
-          new NaiveDataGen(sctx.context, sctx.program, evaluator).generateFor(p.as, p.pc, 20, 1000)
-        }
-
-        val cachedInputIterator = new Iterator[Seq[Expr]] {
-          def next() = {
-            val i = inputIterator.next()
-            baseExampleInputs = i +: baseExampleInputs
-            i
-          }
-
-          def hasNext() = inputIterator.hasNext
-        }
-
-        def hasInputExamples() = baseExampleInputs.size > 0 || cachedInputIterator.hasNext
-
-        def allInputExamples() = baseExampleInputs.iterator ++ cachedInputIterator
-
-        def checkForPrograms(programs: Set[Set[Identifier]]): RuleApplicationResult = {
-          for (prog <- programs) {
-            val expr = ndProgram.determinize(prog)
-            val res = Equals(Tuple(p.xs.map(Variable(_))), expr)
-            val solver3 = cexSolver.getNewSolver
-            solver3.assertCnstr(And(p.pc :: res :: Not(p.phi) :: Nil))
-
-            solver3.check match {
-              case Some(false) =>
-                return RuleSuccess(Solution(BooleanLiteral(true), Set(), expr), isTrusted = true)
-              case None =>
-                return RuleSuccess(Solution(BooleanLiteral(true), Set(), expr), isTrusted = false)
-              case Some(true) =>
-                // invalid program, we skip
-            }
-          }
-
-          RuleApplicationImpossible
-        }
-
-        // Keep track of collected cores to filter programs to test
-        var collectedCores = Set[Set[Identifier]]()
-
-        val initExClause = And(p.pc :: p.phi :: Variable(initGuard) :: Nil)
-        val initCExClause = And(p.pc :: Not(p.phi) :: Variable(initGuard) :: Nil)
-
-        // solver1 is used for the initial SAT queries
-        var solver1 = exSolver.getNewSolver
-        solver1.assertCnstr(initExClause)
-
-        // solver2 is used for validating a candidate program, or finding new inputs
-        var solver2 = cexSolver.getNewSolver
-        solver2.assertCnstr(initCExClause)
-
-        var didFilterAlready = false
-
-        val tpe = TupleType(p.xs.map(_.getType))
+        val exSolver  = sctx.solverFactory.withTimeout(3000L) // 3sec
+        val cexSolver = sctx.solverFactory.withTimeout(3000L) // 3sec
 
         try {
-          do {
-            var needMoreUnrolling = false
+          var baseExampleInputs: Seq[Seq[Expr]] = Seq()
 
-            var bssAssumptions = Set[Identifier]()
+          // We populate the list of examples with a predefined one
+          if (p.pc == BooleanLiteral(true)) {
+            baseExampleInputs = p.as.map(a => simplestValue(a.getType)) +: baseExampleInputs
+          } else {
+            val solver = exSolver.getNewSolver
 
-            if (!didFilterAlready) {
-              val (clauses, closedBs) = ndProgram.unroll
+            solver.assertCnstr(p.pc)
 
-              bssAssumptions = closedBs
+            solver.check match {
+              case Some(true) =>
+                val model = solver.getModel
+                baseExampleInputs = p.as.map(a => model.getOrElse(a, simplestValue(a.getType))) +: baseExampleInputs
 
-              //println("UNROLLING: ")
-              //for (c <- clauses) {
-              //  println(" - " + c)
-              //}
-              //println("CLOSED Bs "+closedBs)
+              case Some(false) =>
+                return RuleApplicationImpossible
 
-              val clause = And(clauses)
-
-              solver1.assertCnstr(clause)
-              solver2.assertCnstr(clause)
+              case None =>
+                sctx.reporter.warning("Solver could not solve path-condition")
+                return RuleApplicationImpossible // This is not necessary though, but probably wanted
             }
 
-            // Compute all programs that have not been excluded yet
-            var prunedPrograms: Set[Set[Identifier]] = if (useCEPruning) {
-                ndProgram.allPrograms.filterNot(p => collectedCores.exists(c => c.subsetOf(p)))
-              } else {
-                Set()
+          }
+
+          val inputIterator: Iterator[Seq[Expr]] = if (useVanuatoo) {
+            new VanuatooDataGen(sctx.context, sctx.program).generateFor(p.as, p.pc, 20, 3000)
+          } else {
+            new NaiveDataGen(sctx.context, sctx.program, evaluator).generateFor(p.as, p.pc, 20, 1000)
+          }
+
+          val cachedInputIterator = new Iterator[Seq[Expr]] {
+            def next() = {
+              val i = inputIterator.next()
+              baseExampleInputs = i +: baseExampleInputs
+              i
+            }
+
+            def hasNext() = inputIterator.hasNext
+          }
+
+          def hasInputExamples() = baseExampleInputs.size > 0 || cachedInputIterator.hasNext
+
+          def allInputExamples() = baseExampleInputs.iterator ++ cachedInputIterator
+
+          def checkForPrograms(programs: Set[Set[Identifier]]): RuleApplicationResult = {
+            for (prog <- programs) {
+              val expr = ndProgram.determinize(prog)
+              val res = Equals(Tuple(p.xs.map(Variable(_))), expr)
+              val solver3 = cexSolver.getNewSolver
+              solver3.assertCnstr(And(p.pc :: res :: Not(p.phi) :: Nil))
+
+              solver3.check match {
+                case Some(false) =>
+                  return RuleSuccess(Solution(BooleanLiteral(true), Set(), expr), isTrusted = true)
+                case None =>
+                  return RuleSuccess(Solution(BooleanLiteral(true), Set(), expr), isTrusted = false)
+                case Some(true) =>
+                  // invalid program, we skip
+              }
+            }
+
+            RuleApplicationImpossible
+          }
+
+          // Keep track of collected cores to filter programs to test
+          var collectedCores = Set[Set[Identifier]]()
+
+          val initExClause = And(p.pc :: p.phi :: Variable(initGuard) :: Nil)
+          val initCExClause = And(p.pc :: Not(p.phi) :: Variable(initGuard) :: Nil)
+
+          // solver1 is used for the initial SAT queries
+          var solver1 = exSolver.getNewSolver
+          solver1.assertCnstr(initExClause)
+
+          // solver2 is used for validating a candidate program, or finding new inputs
+          var solver2 = cexSolver.getNewSolver
+          solver2.assertCnstr(initCExClause)
+
+          var didFilterAlready = false
+
+          val tpe = TupleType(p.xs.map(_.getType))
+
+          try {
+            do {
+              var needMoreUnrolling = false
+
+              var bssAssumptions = Set[Identifier]()
+
+              if (!didFilterAlready) {
+                val (clauses, closedBs) = ndProgram.unroll
+
+                bssAssumptions = closedBs
+
+                //println("UNROLLING: ")
+                //for (c <- clauses) {
+                //  println(" - " + c)
+                //}
+                //println("CLOSED Bs "+closedBs)
+
+                val clause = And(clauses)
+
+                solver1.assertCnstr(clause)
+                solver2.assertCnstr(clause)
               }
 
-            val allPrograms = prunedPrograms.size
+              // Compute all programs that have not been excluded yet
+              var prunedPrograms: Set[Set[Identifier]] = if (useCEPruning) {
+                  ndProgram.allPrograms.filterNot(p => collectedCores.exists(c => c.subsetOf(p)))
+                } else {
+                  Set()
+                }
 
-            //println("Programs: "+prunedPrograms.size)
-            //println("#Tests:  "+exampleInputs.size)
+              val allPrograms = prunedPrograms.size
 
-            // We further filter the set of working programs to remove those that fail on known examples
-            if (useCEPruning && hasInputExamples() && ndProgram.canTest()) {
+              //println("Programs: "+prunedPrograms.size)
+              //println("#Tests:  "+exampleInputs.size)
 
-              for (p <- prunedPrograms) {
-                if (!allInputExamples().forall(ndProgram.testForProgram(p))) {
-                  // This program failed on at least one example
-                  solver1.assertCnstr(Not(And(p.map(Variable(_)).toSeq)))
-                  prunedPrograms -= p
+              // We further filter the set of working programs to remove those that fail on known examples
+              if (useCEPruning && hasInputExamples() && ndProgram.canTest()) {
+
+                for (p <- prunedPrograms) {
+                  if (!allInputExamples().forall(ndProgram.testForProgram(p))) {
+                    // This program failed on at least one example
+                    solver1.assertCnstr(Not(And(p.map(Variable(_)).toSeq)))
+                    prunedPrograms -= p
+                  }
+                }
+
+                if (prunedPrograms.isEmpty) {
+                  needMoreUnrolling = true
+                }
+
+                //println("Passing tests: "+prunedPrograms.size)
+              }
+
+              val nPassing = prunedPrograms.size
+
+              if (nPassing == 0) {
+                needMoreUnrolling = true;
+              } else if (nPassing <= testUpTo) {
+                // Immediate Test
+                result = Some(checkForPrograms(prunedPrograms))
+              } else if (((nPassing < allPrograms*filterThreshold) || didFilterAlready) && useBssFiltering) {
+                // We filter the Bss so that the formula we give to z3 is much smalled
+                val bssToKeep = prunedPrograms.foldLeft(Set[Identifier]())(_ ++ _)
+                //println("To Keep: "+bssToKeep.size+"/"+ndProgram.bss.size)
+
+                // Cannot unroll normally after having filtered, so we need to
+                // repeat the filtering procedure at next unrolling.
+                didFilterAlready = true
+                
+                // Freshening solvers
+                solver1 = exSolver.getNewSolver
+                solver1.assertCnstr(initExClause)
+                solver2 = cexSolver.getNewSolver
+                solver2.assertCnstr(initCExClause)
+
+                val clauses = ndProgram.filterFor(bssToKeep)
+                val clause = And(clauses)
+
+                solver1.assertCnstr(clause)
+                solver2.assertCnstr(clause)
+
+                //println("Filtered clauses:")
+                //for (c <- clauses) {
+                //  println(" - " + c)
+                //}
+
+              }
+
+              val bss = ndProgram.bss
+
+              while (result.isEmpty && !needMoreUnrolling && !interruptManager.isInterrupted()) {
+
+                solver1.checkAssumptions(bssAssumptions.map(id => Not(Variable(id)))) match {
+                  case Some(true) =>
+                    val satModel = solver1.getModel
+
+                    val bssAssumptions: Set[Expr] = bss.map(b => satModel(b) match {
+                      case BooleanLiteral(true)  => Variable(b)
+                      case BooleanLiteral(false) => Not(Variable(b))
+                    })
+
+                    //println("CEGIS OUT!")
+                    //println("Found solution: "+bssAssumptions)
+
+                    //bssAssumptions.collect { case Variable(b) => ndProgram.mappings(b) }.foreach {
+                    //  case (c, ex) =>
+                    //    println(". "+c+" = "+ex)
+                    //}
+
+                    val validateWithZ3 = if (useCETests && hasInputExamples() && ndProgram.canTest()) {
+
+                      val p = bssAssumptions.collect { case Variable(b) => b }
+
+                      if (allInputExamples().forall(ndProgram.testForProgram(p))) {
+                        // All valid inputs also work with this, we need to
+                        // make sure by validating this candidate with z3
+                        true
+                      } else {
+                        // One valid input failed with this candidate, we can skip
+                        solver1.assertCnstr(Not(And(p.map(Variable(_)).toSeq)))
+                        false
+                      }
+                    } else {
+                      // No inputs or capability to test, we need to ask Z3
+                      true
+                    }
+
+                    if (validateWithZ3) {
+                      //println("Looking for CE...")
+                      solver2.checkAssumptions(bssAssumptions) match {
+                        case Some(true) =>
+                          //println("#"*80)
+                          val invalidModel = solver2.getModel
+
+                          val fixedAss = And(ass.collect {
+                            case a if invalidModel contains a => Equals(Variable(a), invalidModel(a))
+                          }.toSeq)
+
+                          val newCE = p.as.map(valuateWithModel(invalidModel))
+
+                          baseExampleInputs = newCE +: baseExampleInputs
+
+                          //println("Found counter example: "+fixedAss)
+
+                          // Retest whether the newly found C-E invalidates all programs
+                          if (useCEPruning && ndProgram.canTest) {
+                            if (prunedPrograms.forall(p => !ndProgram.testForProgram(p)(newCE))) {
+                              // println("I found a killer example!")
+                              needMoreUnrolling = true
+                            }
+                          }
+
+                          val unsatCore = if (useUnsatCores) {
+                            solver1.push()
+                            solver1.assertCnstr(fixedAss)
+
+                            val core = solver1.checkAssumptions(bssAssumptions) match {
+                              case Some(false) =>
+                                // Core might be empty if unrolling level is
+                                // insufficient, it becomes unsat no matter what
+                                // the assumptions are.
+                                solver1.getUnsatCore
+
+                              case Some(true) =>
+                                // Can't be!
+                                bssAssumptions
+
+                              case None =>
+                                return RuleApplicationImpossible
+                            }
+
+                            solver1.pop()
+
+                            collectedCores += core.collect{ case Variable(id) => id }
+
+                            core
+                          } else {
+                            bssAssumptions
+                          }
+
+                          if (unsatCore.isEmpty) {
+                            needMoreUnrolling = true
+                          } else {
+                            solver1.assertCnstr(Not(And(unsatCore.toSeq)))
+                          }
+
+                        case Some(false) =>
+
+                          val expr = ndProgram.determinize(satModel.filter(_._2 == BooleanLiteral(true)).keySet)
+
+                          result = Some(RuleSuccess(Solution(BooleanLiteral(true), Set(), expr)))
+
+                        case _ =>
+                          if (useOptTimeout) {
+                            // Interpret timeout in CE search as "the candidate is valid"
+                            sctx.reporter.info("CEGIS could not prove the validity of the resulting expression")
+                            val expr = ndProgram.determinize(satModel.filter(_._2 == BooleanLiteral(true)).keySet)
+                            result = Some(RuleSuccess(Solution(BooleanLiteral(true), Set(), expr), isTrusted = false))
+                          } else {
+                            return RuleApplicationImpossible
+                          }
+                      }
+                    }
+
+
+                  case Some(false) =>
+                    //println("%%%% UNSAT")
+
+                    if (useUninterpretedProbe) {
+                      solver1.check match {
+                        case Some(false) =>
+                          // Unsat even without blockers (under which fcalls are then uninterpreted)
+                          return RuleApplicationImpossible
+
+                        case _ =>
+                      }
+                    }
+
+                    needMoreUnrolling = true
+
+                  case _ =>
+                    // Last chance, we test first few programs
+                    return checkForPrograms(prunedPrograms.take(testUpTo))
                 }
               }
 
-              if (prunedPrograms.isEmpty) {
-                needMoreUnrolling = true
-              }
+              unrolings += 1
+            } while(unrolings < maxUnrolings && result.isEmpty && !interruptManager.isInterrupted())
 
-              //println("Passing tests: "+prunedPrograms.size)
-            }
+            result.getOrElse(RuleApplicationImpossible)
 
-            val nPassing = prunedPrograms.size
-
-            if (nPassing == 0) {
-              needMoreUnrolling = true;
-            } else if (nPassing <= testUpTo) {
-              // Immediate Test
-              result = Some(checkForPrograms(prunedPrograms))
-            } else if (((nPassing < allPrograms*filterThreshold) || didFilterAlready) && useBssFiltering) {
-              // We filter the Bss so that the formula we give to z3 is much smalled
-              val bssToKeep = prunedPrograms.foldLeft(Set[Identifier]())(_ ++ _)
-              //println("To Keep: "+bssToKeep.size+"/"+ndProgram.bss.size)
-
-              // Cannot unroll normally after having filtered, so we need to
-              // repeat the filtering procedure at next unrolling.
-              didFilterAlready = true
-              
-              // Freshening solvers
-              solver1 = exSolver.getNewSolver
-              solver1.assertCnstr(initExClause)
-              solver2 = cexSolver.getNewSolver
-              solver2.assertCnstr(initCExClause)
-
-              val clauses = ndProgram.filterFor(bssToKeep)
-              val clause = And(clauses)
-
-              solver1.assertCnstr(clause)
-              solver2.assertCnstr(clause)
-
-              //println("Filtered clauses:")
-              //for (c <- clauses) {
-              //  println(" - " + c)
-              //}
-
-            }
-
-            val bss = ndProgram.bss
-
-            while (result.isEmpty && !needMoreUnrolling && !interruptManager.isInterrupted()) {
-
-              solver1.checkAssumptions(bssAssumptions.map(id => Not(Variable(id)))) match {
-                case Some(true) =>
-                  val satModel = solver1.getModel
-
-                  val bssAssumptions: Set[Expr] = bss.map(b => satModel(b) match {
-                    case BooleanLiteral(true)  => Variable(b)
-                    case BooleanLiteral(false) => Not(Variable(b))
-                  })
-
-                  //println("CEGIS OUT!")
-                  //println("Found solution: "+bssAssumptions)
-
-                  //bssAssumptions.collect { case Variable(b) => ndProgram.mappings(b) }.foreach {
-                  //  case (c, ex) =>
-                  //    println(". "+c+" = "+ex)
-                  //}
-
-                  val validateWithZ3 = if (useCETests && hasInputExamples() && ndProgram.canTest()) {
-
-                    val p = bssAssumptions.collect { case Variable(b) => b }
-
-                    if (allInputExamples().forall(ndProgram.testForProgram(p))) {
-                      // All valid inputs also work with this, we need to
-                      // make sure by validating this candidate with z3
-                      true
-                    } else {
-                      // One valid input failed with this candidate, we can skip
-                      solver1.assertCnstr(Not(And(p.map(Variable(_)).toSeq)))
-                      false
-                    }
-                  } else {
-                    // No inputs or capability to test, we need to ask Z3
-                    true
-                  }
-
-                  if (validateWithZ3) {
-                    //println("Looking for CE...")
-                    solver2.checkAssumptions(bssAssumptions) match {
-                      case Some(true) =>
-                        //println("#"*80)
-                        val invalidModel = solver2.getModel
-
-                        val fixedAss = And(ass.collect {
-                          case a if invalidModel contains a => Equals(Variable(a), invalidModel(a))
-                        }.toSeq)
-
-                        val newCE = p.as.map(valuateWithModel(invalidModel))
-
-                        baseExampleInputs = newCE +: baseExampleInputs
-
-                        //println("Found counter example: "+fixedAss)
-
-                        // Retest whether the newly found C-E invalidates all programs
-                        if (useCEPruning && ndProgram.canTest) {
-                          if (prunedPrograms.forall(p => !ndProgram.testForProgram(p)(newCE))) {
-                            // println("I found a killer example!")
-                            needMoreUnrolling = true
-                          }
-                        }
-
-                        val unsatCore = if (useUnsatCores) {
-                          solver1.push()
-                          solver1.assertCnstr(fixedAss)
-
-                          val core = solver1.checkAssumptions(bssAssumptions) match {
-                            case Some(false) =>
-                              // Core might be empty if unrolling level is
-                              // insufficient, it becomes unsat no matter what
-                              // the assumptions are.
-                              solver1.getUnsatCore
-
-                            case Some(true) =>
-                              // Can't be!
-                              bssAssumptions
-
-                            case None =>
-                              return RuleApplicationImpossible
-                          }
-
-                          solver1.pop()
-
-                          collectedCores += core.collect{ case Variable(id) => id }
-
-                          core
-                        } else {
-                          bssAssumptions
-                        }
-
-                        if (unsatCore.isEmpty) {
-                          needMoreUnrolling = true
-                        } else {
-                          solver1.assertCnstr(Not(And(unsatCore.toSeq)))
-                        }
-
-                      case Some(false) =>
-
-                        val expr = ndProgram.determinize(satModel.filter(_._2 == BooleanLiteral(true)).keySet)
-
-                        result = Some(RuleSuccess(Solution(BooleanLiteral(true), Set(), expr)))
-
-                      case _ =>
-                        if (useOptTimeout) {
-                          // Interpret timeout in CE search as "the candidate is valid"
-                          sctx.reporter.info("CEGIS could not prove the validity of the resulting expression")
-                          val expr = ndProgram.determinize(satModel.filter(_._2 == BooleanLiteral(true)).keySet)
-                          result = Some(RuleSuccess(Solution(BooleanLiteral(true), Set(), expr), isTrusted = false))
-                        } else {
-                          return RuleApplicationImpossible
-                        }
-                    }
-                  }
-
-
-                case Some(false) =>
-                  //println("%%%% UNSAT")
-
-                  if (useUninterpretedProbe) {
-                    solver1.check match {
-                      case Some(false) =>
-                        // Unsat even without blockers (under which fcalls are then uninterpreted)
-                        return RuleApplicationImpossible
-
-                      case _ =>
-                    }
-                  }
-
-                  needMoreUnrolling = true
-
-                case _ =>
-                  // Last chance, we test first few programs
-                  return checkForPrograms(prunedPrograms.take(testUpTo))
-              }
-            }
-
-            unrolings += 1
-          } while(unrolings < maxUnrolings && result.isEmpty && !interruptManager.isInterrupted())
-
-          result.getOrElse(RuleApplicationImpossible)
-
-        } catch {
-          case e: Throwable =>
-            sctx.reporter.warning("CEGIS crashed: "+e.getMessage)
-            e.printStackTrace
-            RuleApplicationImpossible
+          } catch {
+            case e: Throwable =>
+              sctx.reporter.warning("CEGIS crashed: "+e.getMessage)
+              e.printStackTrace
+              RuleApplicationImpossible
+          }
+        } finally {
+          exSolver.free()
+          cexSolver.free()
         }
       }
     })

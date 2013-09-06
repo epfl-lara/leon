@@ -13,20 +13,7 @@ trait SolverFactory[S <: Solver] extends Interruptible with LeonComponent {
   val context: LeonContext
   val program: Program
 
-  var freed = false
-  val traceE = new Exception()
-
-  override def finalize() {
-    if (!freed) {
-      //println("!! Solver not freed properly prior to GC:")
-      //traceE.printStackTrace()
-      free()
-    }
-  }
-
-  def free() {
-    freed = true
-  }
+  def free() {}
 
   var interrupted = false
 

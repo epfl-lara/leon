@@ -41,6 +41,10 @@ class TimeoutSolverFactory[S <: Solver](val sf: SolverFactory[S], val timeoutMs:
     }
   }
 
+  override def free() {
+    sf.free()
+  }
+
   def withTimeout[T](solver: S)(body: => T): T = {
     val timer = new Timer(timeout(solver))
     timer.start

@@ -96,7 +96,7 @@ object Leon extends Build {
         // the Java command that uses sbt's local Scala to run the whole contraption.
         fw.write("java -Xmx2G -Xms512M -classpath ${SCALACLASSPATH} -Dscala.home=\"$SCALA_HOME\" -Dscala.usejavacp=true ")
         fw.write("scala.tools.nsc.MainGenericRunner -classpath ${SCALACLASSPATH} ")
-        fw.write(mainClass+" $@" + nl)
+        fw.write(mainClass+" $@ 2>&1 | tee last.log" + nl)
         fw.close
         file.setExecutable(true)
       } catch {

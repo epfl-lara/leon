@@ -14,7 +14,7 @@ import solvers._
 
 case object EqualitySplit extends Rule("Eq. Split") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
-    val solver = SimpleSolverAPI(sctx.fastSolverf)
+    val solver = SimpleSolverAPI(sctx.fastSolverFactory)
 
     val candidates = p.as.groupBy(_.getType).mapValues(_.combinations(2).filter {
       case List(a1, a2) =>
@@ -40,6 +40,7 @@ case object EqualitySplit extends Rule("Eq. Split") {
       case _ => false
     }).values.flatten
 
+    solver.free()
 
     candidates.flatMap(_ match {
       case List(a1, a2) =>

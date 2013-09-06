@@ -2,6 +2,7 @@
 
 package leon.synthesis.search
 
+import leon.utils._
 import akka.actor._
 import scala.concurrent.duration._
 import scala.concurrent.Await
@@ -20,6 +21,9 @@ abstract class AndOrGraphParallelSearch[WC,
   val timeout = 600.seconds
 
   var system: ActorSystem = _
+
+  val sendWorkTimers = new StopwatchCollection("Synthesis-par SendWork")
+  val expandTimers   = new StopwatchCollection("Synthesis-par Expand")
 
   def search(): Option[(S, Boolean)] = {
     system = ActorSystem("ParallelSearch")
@@ -92,6 +96,8 @@ abstract class AndOrGraphParallelSearch[WC,
 
       assert(idleWorkers.size > 0)
 
+      val t = new Stopwatch().start
+
       getNextLeaves(idleWorkers, workingWorkers) match {
         case Nil =>
           if (workingWorkers.isEmpty) {
@@ -112,6 +118,8 @@ abstract class AndOrGraphParallelSearch[WC,
             }
           }
       }
+
+      sendWorkTimers += t
     }
 
     context.setReceiveTimeout(10.seconds)
@@ -128,7 +136,9 @@ abstract class AndOrGraphParallelSearch[WC,
       case WorkerAndTaskDone(w, res) =>
         workers.get(w) match {
           case Some(Some(l: g.AndLeaf)) =>
+            val t = new Stopwatch().start
             onExpansion(l, res)
+            expandTimers += t
             workers += w -> None
           case _ =>
         }
@@ -137,7 +147,9 @@ abstract class AndOrGraphParallelSearch[WC,
       case WorkerOrTaskDone(w, res) =>
         workers.get(w) match {
           case Some(Some(l: g.OrLeaf)) =>
+            val t = new Stopwatch().start
             onExpansion(l, res)
+            expandTimers += t
             workers += w -> None
           case _ =>
         }

@@ -17,8 +17,11 @@ class TreeOpsTests extends LeonTestSuite {
   
   test("Path-aware simplifications") {
     val solver = new UninterpretedZ3SolverFactory(testContext, Program.empty)
+
     // TODO actually testing something here would be better, sorry
     // PS
+
+    solver.free()
 
     assert(true)
   }

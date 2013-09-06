@@ -7,8 +7,6 @@ import leon.utils._
 import leon.purescala.Definitions._
 import leon.purescala.Trees._
 import leon.purescala.TreeOps._
-import leon.solvers.z3._
-import leon.solvers._
 import leon.synthesis._
 
 import java.util.Date
@@ -90,9 +88,6 @@ object Benchmarks extends App {
 
     val (program, results) = pipeline.run(innerCtx)(file.getPath :: Nil)
 
-    val solverf = new FairZ3SolverFactory(ctx, program)
-
-    val fastSolverf = new UninterpretedZ3SolverFactory(ctx, program)
 
     for ((f, ps) <- results.toSeq.sortBy(_._1.id.toString); p <- ps) {
       val sctx = SynthesisContext(
@@ -100,8 +95,6 @@ object Benchmarks extends App {
         options         = opts,
         functionContext = Some(f),
         program         = program,
-        solverf         = solverf,
-        fastSolverf     = fastSolverf,
         reporter        = ctx.reporter
       )
 
@@ -144,13 +137,13 @@ object Benchmarks extends App {
 
   println
 
-  val infoHeader2 : String = "  ┌────────────┐\n" +
-                             "╔═╡ Timers     ╞" + ("═" * 71) + "╗\n" +
-                             "║ └────────────┘" + (" " * 71) + "║"
+  //val infoHeader2 : String = "  ┌────────────┐\n" +
+  //                           "╔═╡ Timers     ╞" + ("═" * 71) + "╗\n" +
+  //                           "║ └────────────┘" + (" " * 71) + "║"
 
-  println(infoHeader2)
-  for ((name, sw) <- StopwatchCollections.getAll.toSeq.sortBy(_._1)) {
-    println("║ %-70s %10s ms ║".format(name, sw.getMillis))
-  }
-  println(infoFooter)
+  //println(infoHeader2)
+  //for ((name, sw) <- StopwatchCollections.getAll.toSeq.sortBy(_._1)) {
+  //  println("║ %-70s %10s ms ║".format(name, sw.getMillis))
+  //}
+  //println(infoFooter)
 }

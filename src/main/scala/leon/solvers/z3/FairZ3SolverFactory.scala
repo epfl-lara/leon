@@ -30,9 +30,6 @@ class FairZ3SolverFactory(val context : LeonContext, val program: Program)
 
   enclosing =>
 
-  val debug = context.reporter.debug(ReportingSolver)_
-
-  // What wouldn't we do to avoid defining vars?
   val (feelingLucky, checkModels, useCodeGen, evalGroundApps, unrollUnsatCores) = locally {
     var lucky            = false
     var check            = false
@@ -406,13 +403,6 @@ class FairZ3SolverFactory(val context : LeonContext, val program: Program)
     }
 
     def fairCheck(assumptions: Set[Expr]): Option[Boolean] = {
-      val totalTime     = new Stopwatch().start
-      val luckyTime     = new Stopwatch()
-      val z3Time        = new Stopwatch()
-      val scalaTime     = new Stopwatch()
-      val unrollingTime = new Stopwatch()
-      val unlockingTime = new Stopwatch()
-
       foundDefinitiveAnswer = false
 
       def entireFormula  = And(assumptions.toSeq ++ frameExpressions.flatten)
@@ -447,11 +437,9 @@ class FairZ3SolverFactory(val context : LeonContext, val program: Program)
         // debug("Unroll.  Assumptions:\n"+unrollingBank.z3CurrentZ3Blockers.mkString("  &&  "))
         // debug("Userland Assumptions:\n"+assumptionsAsZ3.mkString("  &&  "))
 
-        z3Time.start
         solver.push() // FIXME: remove when z3 bug is fixed
         val res = solver.checkAssumptions((assumptionsAsZ3 ++ unrollingBank.z3CurrentZ3Blockers) :_*)
         solver.pop()  // FIXME: remove when z3 bug is fixed
-        z3Time.stop
 
         debug(" - Finished search with blocked literals")
 
@@ -476,9 +464,7 @@ class FairZ3SolverFactory(val context : LeonContext, val program: Program)
                 foundAnswer(None, model)
               }
             } else {
-              scalaTime.start
               val model = modelToMap(z3model, varsInVC)
-              scalaTime.stop
 
               //lazy val modelAsString = model.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
               //debug("- Found a model:")
@@ -537,11 +523,9 @@ class FairZ3SolverFactory(val context : LeonContext, val program: Program)
                 debug(" - Running search without blocked literals (w/o lucky test)")
               }
 
-              z3Time.start
               solver.push() // FIXME: remove when z3 bug is fixed
               val res2 = solver.checkAssumptions(assumptionsAsZ3 : _*)
               solver.pop()  // FIXME: remove when z3 bug is fixed
-              z3Time.stop
 
               res2 match {
                 case Some(false) =>
@@ -551,9 +535,7 @@ class FairZ3SolverFactory(val context : LeonContext, val program: Program)
                   //debug("SAT WITHOUT Blockers")
                   if (this.feelingLucky && !interrupted) {
                     // we might have been lucky :D
-                    luckyTime.start
                     val (wereWeLucky, cleanModel) = validateModel(solver.getModel, entireFormula, varsInVC, silenceErrors = true)
-                    luckyTime.stop
 
                     if(wereWeLucky) {
                       foundAnswer(Some(true), cleanModel)
@@ -577,29 +559,17 @@ class FairZ3SolverFactory(val context : LeonContext, val program: Program)
               debug(" - more unrollings")
 
               for(id <- toRelease) {
-                unlockingTime.start
                 val newClauses = unrollingBank.unlock(id)
-                unlockingTime.stop
 
-                unrollingTime.start
                 for(ncl <- newClauses) {
                   solver.assertCnstr(ncl)
                 }
-                unrollingTime.stop
               }
 
               debug(" - finished unrolling")
             }
         }
       }
-
-      totalTime.stop
-      StopwatchCollections.get("FairZ3 Total")       += totalTime
-      StopwatchCollections.get("FairZ3 Lucky Tests") += luckyTime
-      StopwatchCollections.get("FairZ3 Z3")          += z3Time
-      StopwatchCollections.get("FairZ3 Unrolling")   += unrollingTime
-      StopwatchCollections.get("FairZ3 Unlocking")   += unlockingTime
-      StopwatchCollections.get("FairZ3 ScalaTime")   += scalaTime
 
       //debug(" !! DONE !! ")
 

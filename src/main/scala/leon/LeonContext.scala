@@ -15,5 +15,6 @@ case class LeonContext(
   interruptManager: InterruptManager,
   settings: Settings = Settings(),
   options: Seq[LeonOption] = Seq(),
-  files: Seq[File] = Seq()
+  files: Seq[File] = Seq(),
+  timers: StopwatchCollections = new StopwatchCollections
 )

@@ -102,4 +102,6 @@ class FairZ3SolverTests extends LeonTestSuite {
       assert(core === Set(b2))
     }
   }
+
+  solver.free()
 }
