@@ -27,8 +27,6 @@ trait AbstractZ3Solver extends SolverFactory[Solver] {
 
   context.interruptManager.registerForInterrupts(this)
 
-  val debug = context.reporter.debug(ReportingSolver)_
-
   private[this] var freed = false
   val traceE = new Exception()
 

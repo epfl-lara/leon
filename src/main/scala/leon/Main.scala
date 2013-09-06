@@ -163,7 +163,7 @@ object Main {
     // Create a new reporter taking settings into account
     val reporter = new DefaultReporter(settings)
 
-    reporter.ifDebug(ReportingOptions) { debug =>
+    reporter.whenDebug(ReportingOptions) { debug =>
 
       debug("Options considered by Leon:")
       for (lo <- leonOptions) lo match {
@@ -235,7 +235,7 @@ object Main {
 
       ctx.timers.get("Leon Run") += timer
 
-      ctx.reporter.ifDebug(ReportingTimers) { debug =>
+      ctx.reporter.whenDebug(ReportingTimers) { debug =>
         debug("-"*80)
         debug("Times:")
         debug("-"*80)
@@ -244,6 +244,7 @@ object Main {
         }
         debug("-"*80)
       }
+
     } catch {
       case LeonFatalError() => sys.exit(1)
     }

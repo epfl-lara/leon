@@ -133,20 +133,20 @@ class FairZ3SolverFactory(val context : LeonContext, val program: Program)
 
       evalResult match {
         case EvaluationResults.Successful(BooleanLiteral(true)) =>
-          debug("- Model validated.")
+          reporter.debug("- Model validated.")
           (true, asMap)
 
         case EvaluationResults.Successful(BooleanLiteral(false)) =>
-          debug("- Invalid model.")
+          reporter.debug("- Invalid model.")
           (false, asMap)
 
         case EvaluationResults.RuntimeError(msg) =>
-          debug("- Model leads to runtime error.")
+          reporter.debug("- Model leads to runtime error.")
           (false, asMap)
 
         case EvaluationResults.EvaluatorError(msg) => 
           if (silenceErrors) {
-            debug("- Model leads to evaluator error: " + msg)
+            reporter.debug("- Model leads to evaluator error: " + msg)
           } else {
             reporter.warning("Something went wrong. While evaluating the model, we got this : " + msg)
           }
@@ -207,10 +207,10 @@ class FairZ3SolverFactory(val context : LeonContext, val program: Program)
 
     def dumpBlockers = {
       blockersInfo.groupBy(_._2._1).toSeq.sortBy(_._1).foreach { case (gen, entries) =>
-        debug("--- "+gen)
+        reporter.debug("--- "+gen)
 
         for (((bast), (gen, origGen, ast, fis)) <- entries) {
-          debug(".     "+bast +" ~> "+fis.map(_.funDef.id))
+          reporter.debug(".     "+bast +" ~> "+fis.map(_.funDef.id))
         }
       }
     }
@@ -431,17 +431,17 @@ class FairZ3SolverFactory(val context : LeonContext, val program: Program)
         //val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.toSeq.map(toZ3Formula(_).get)
         // println("Blocking set : " + blockingSet)
 
-        debug(" - Running Z3 search...")
+        reporter.debug(" - Running Z3 search...")
 
-        // debug("Searching in:\n"+solver.getAssertions.toSeq.mkString("\nAND\n"))
-        // debug("Unroll.  Assumptions:\n"+unrollingBank.z3CurrentZ3Blockers.mkString("  &&  "))
-        // debug("Userland Assumptions:\n"+assumptionsAsZ3.mkString("  &&  "))
+        // reporter.debug("Searching in:\n"+solver.getAssertions.toSeq.mkString("\nAND\n"))
+        // reporter.debug("Unroll.  Assumptions:\n"+unrollingBank.z3CurrentZ3Blockers.mkString("  &&  "))
+        // reporter.debug("Userland Assumptions:\n"+assumptionsAsZ3.mkString("  &&  "))
 
         solver.push() // FIXME: remove when z3 bug is fixed
         val res = solver.checkAssumptions((assumptionsAsZ3 ++ unrollingBank.z3CurrentZ3Blockers) :_*)
         solver.pop()  // FIXME: remove when z3 bug is fixed
 
-        debug(" - Finished search with blocked literals")
+        reporter.debug(" - Finished search with blocked literals")
 
         res match {
           case None =>
@@ -467,8 +467,8 @@ class FairZ3SolverFactory(val context : LeonContext, val program: Program)
               val model = modelToMap(z3model, varsInVC)
 
               //lazy val modelAsString = model.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
-              //debug("- Found a model:")
-              //debug(modelAsString)
+              //reporter.debug("- Found a model:")
+              //reporter.debug(modelAsString)
 
               foundAnswer(Some(true), model)
             }
@@ -518,9 +518,9 @@ class FairZ3SolverFactory(val context : LeonContext, val program: Program)
             if (!interrupted) {
               if (this.feelingLucky) {
                 // we need the model to perform the additional test
-                debug(" - Running search without blocked literals (w/ lucky test)")
+                reporter.debug(" - Running search without blocked literals (w/ lucky test)")
               } else {
-                debug(" - Running search without blocked literals (w/o lucky test)")
+                reporter.debug(" - Running search without blocked literals (w/o lucky test)")
               }
 
               solver.push() // FIXME: remove when z3 bug is fixed
@@ -529,10 +529,10 @@ class FairZ3SolverFactory(val context : LeonContext, val program: Program)
 
               res2 match {
                 case Some(false) =>
-                  //debug("UNSAT WITHOUT Blockers")
+                  //reporter.debug("UNSAT WITHOUT Blockers")
                   foundAnswer(Some(false), core = z3CoreToCore(solver.getUnsatCore))
                 case Some(true) =>
-                  //debug("SAT WITHOUT Blockers")
+                  //reporter.debug("SAT WITHOUT Blockers")
                   if (this.feelingLucky && !interrupted) {
                     // we might have been lucky :D
                     val (wereWeLucky, cleanModel) = validateModel(solver.getModel, entireFormula, varsInVC, silenceErrors = true)
@@ -552,11 +552,11 @@ class FairZ3SolverFactory(val context : LeonContext, val program: Program)
             }
 
             if(!foundDefinitiveAnswer) { 
-              debug("- We need to keep going.")
+              reporter.debug("- We need to keep going.")
 
               val toRelease = unrollingBank.getZ3BlockersToUnlock
 
-              debug(" - more unrollings")
+              reporter.debug(" - more unrollings")
 
               for(id <- toRelease) {
                 val newClauses = unrollingBank.unlock(id)
@@ -566,12 +566,12 @@ class FairZ3SolverFactory(val context : LeonContext, val program: Program)
                 }
               }
 
-              debug(" - finished unrolling")
+              reporter.debug(" - finished unrolling")
             }
         }
       }
 
-      //debug(" !! DONE !! ")
+      //reporter.debug(" !! DONE !! ")
 
       if(interrupted) {
         None

@@ -5,6 +5,7 @@ package leon
 import purescala.Definitions.Definition
 import purescala.Trees.Expr
 import purescala.PrettyPrinter
+import scala.annotation.implicitNotFound
 
 abstract class Reporter(settings: Settings) {
   def infoFunction(msg: Any) : Unit
@@ -36,16 +37,22 @@ abstract class Reporter(settings: Settings) {
 
   private val debugMask = settings.debugSections.foldLeft(0){ _ | _.mask }
 
-  def ifDebug(section: ReportingSection)(body: (Any => Unit) => Any) {
+  def ifDebug(body: (Any => Unit) => Any)(implicit section: ReportingSection) = {
     if ((debugMask & section.mask) == section.mask) {
       body(debugFunction)
     }
   }
 
-  def debug(section: ReportingSection)(msg: => Any) {
-    ifDebug(section) { debug =>
-      debug(msg)
+  def whenDebug(section: ReportingSection)(body: (Any => Unit) => Any) {
+    if ((debugMask & section.mask) == section.mask) {
+      body(debugFunction)
     }
+  }
+
+  def debug(msg: => Any)(implicit section: ReportingSection) = {
+    ifDebug{ debug =>
+      debug(msg)
+    }(section)
   }
 }
 
@@ -82,6 +89,7 @@ class DefaultReporter(settings: Settings) extends Reporter(settings) {
   }
 }
 
+@implicitNotFound("No implicit debug section found in scope. You need define an implicit ReportingSection to use debug/ifDebug")
 sealed abstract class ReportingSection(val name: String, val mask: Int)
 
 case object ReportingSolver       extends ReportingSection("solver",       1 << 0)
