@@ -102,7 +102,7 @@ trait LeonTestSuite extends FunSuite with Timeouts {
 
       testContext = generateContext
 
-      failAfter(2.minutes) {
+      failAfter(5.minutes) {
         body
       }
 
