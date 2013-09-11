@@ -211,7 +211,7 @@ object Main {
   def main(args : Array[String]) {
     try {
       // Process options
-      val timer     = new Stopwatch().start
+      val timer     = new Timer().start
 
       val ctx = processOptions(args.toList)
 

@@ -10,6 +10,7 @@ import purescala.Trees._
 import purescala.ScalaPrinter
 
 import solvers._
+import solvers.combinators._
 import solvers.z3._
 
 import java.io.File

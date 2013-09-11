@@ -160,7 +160,7 @@ class SimpleSearch(synth: Synthesizer,
 
 
   def searchStep() {
-    val t = new Stopwatch().start
+    val t = new Timer().start
     val nl = nextLeaf()
     synth.context.timers.get("Synthesis NextLeaf") += t
 
