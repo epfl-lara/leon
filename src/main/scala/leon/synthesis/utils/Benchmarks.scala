@@ -142,7 +142,7 @@ object Benchmarks extends App {
   //                           "║ └────────────┘" + (" " * 71) + "║"
 
   //println(infoHeader2)
-  //for ((name, sw) <- StopwatchCollections.getAll.toSeq.sortBy(_._1)) {
+  //for ((name, sw) <- TimerCollections.getAll.toSeq.sortBy(_._1)) {
   //  println("║ %-70s %10s ms ║".format(name, sw.getMillis))
   //}
   //println(infoFooter)

@@ -3,6 +3,8 @@
 package leon
 package solvers
 
+import solvers.combinators._
+
 import utils._
 import purescala.Common._
 import purescala.Definitions._

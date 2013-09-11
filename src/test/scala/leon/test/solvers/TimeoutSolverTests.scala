@@ -5,6 +5,7 @@ package solvers
 
 import leon._
 import leon.solvers._
+import leon.solvers.combinators._
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Trees._

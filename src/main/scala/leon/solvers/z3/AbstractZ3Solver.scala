@@ -124,7 +124,7 @@ trait AbstractZ3Solver extends SolverFactory[Solver] {
   var isInitialized = false
   protected[leon] def initZ3() {
     if (!isInitialized) {
-      val initTime     = new Stopwatch().start
+      val initTime     = new Timer().start
       counter = 0
 
       z3 = new Z3Context(z3cfg)

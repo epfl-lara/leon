@@ -3,13 +3,13 @@
 package leon
 package utils
 
-class StopwatchCollection(val name: String) {
+class TimerCollection(val name: String) {
   var min: Long = 0L
   var tot: Long = 0L
   var max: Long = 0L
   var n: Int = 0
 
-  def +=(sw: Stopwatch) = synchronized { 
+  def +=(sw: Timer) = synchronized { 
     val ms = sw.getMillis
     if(n == 0 || ms < min) {
       min = ms
@@ -34,8 +34,8 @@ class StopwatchCollection(val name: String) {
   def getMillis = tot
 }
 
-/** Implements a stopwatch for profiling purposes */
-class Stopwatch(name: String = "Stopwatch") {
+/** Implements a timer for profiling purposes */
+class Timer(name: String = "Timer") {
   var beginning: Long = 0L
   var end: Long = 0L
   var acc: Long = 0L
@@ -73,16 +73,16 @@ class Stopwatch(name: String = "Stopwatch") {
   override def toString = "%20s: %5d%sms".format(name, getMillis, if (isRunning) "..." else "")
 }
 
-class StopwatchCollections {
-  private var all = Map[String, StopwatchCollection]()
+class TimerCollections {
+  private var all = Map[String, TimerCollection]()
 
-  def get(name: String): StopwatchCollection = all.getOrElse(name, {
-    val sw = new StopwatchCollection(name)
+  def get(name: String): TimerCollection = all.getOrElse(name, {
+    val sw = new TimerCollection(name)
     all += name -> sw
     sw
   })
 
-  def add(swc: StopwatchCollection) {
+  def add(swc: TimerCollection) {
     all += swc.name -> swc
   }
 

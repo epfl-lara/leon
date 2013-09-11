@@ -2,6 +2,7 @@
 
 package leon
 package solvers
+package combinators
 
 import purescala.Common._
 import purescala.Definitions._
@@ -17,7 +18,7 @@ class TimeoutSolverFactory[S <: Solver](val sf: SolverFactory[S], val timeoutMs:
   val context = sf.context
   val program = sf.program
 
-  private class Timer(onTimeout: => Unit) extends Thread {
+  private class Countdown(onTimeout: => Unit) extends Thread {
     private var keepRunning = true
     private val asMillis : Long = timeoutMs
 
@@ -46,7 +47,7 @@ class TimeoutSolverFactory[S <: Solver](val sf: SolverFactory[S], val timeoutMs:
   }
 
   def withTimeout[T](solver: S)(body: => T): T = {
-    val timer = new Timer(timeout(solver))
+    val timer = new Countdown(timeout(solver))
     timer.start
     val res = body
     timer.finishedRunning
