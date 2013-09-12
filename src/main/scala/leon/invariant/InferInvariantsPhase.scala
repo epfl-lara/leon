@@ -30,7 +30,6 @@ import scala.collection.mutable.{Set => MutableSet}
 /**
  * @author ravi
  * This phase performs automatic invariant inference. 
- * TODO: handle programs with multiple functions for which post conditions are to be inferred
  */
 object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   val name = "InferInv"

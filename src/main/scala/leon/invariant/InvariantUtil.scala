@@ -23,7 +23,9 @@ import leon.verification.VerificationReport
 import leon.invariant._
 import scala.collection.mutable.{Set => MutableSet}
 
-case class Call(retexpr: Expr, fi: FunctionInvocation)
+case class Call(retexpr: Expr, fi: FunctionInvocation) {
+  val expr = Equals(retexpr,fi)   
+}
 
 object InvariantUtil {
   

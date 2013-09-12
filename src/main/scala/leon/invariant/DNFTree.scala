@@ -96,6 +96,16 @@ case class CtrNode(id : Int = GlobalNodeCounter.getUID) extends CtrTree {
     str += " children: "
     children.foldLeft(str)((g: String, node: CtrTree) => { g + "\n" + "\t" * level +  node.prettyPrint(level + 1) })
   }
+  
+  def toExpr : Expr={    
+    val tru = BooleanLiteral(true)
+    val expr = constraints.foldLeft(tru : Expr)((acc, ctr) => if(acc == tru) ctr.expr else And(acc,ctr.expr))
+    val expr2 = templates.foldLeft(expr)((acc, temp) => if(acc == tru) temp.template else And(acc,temp.template))
+    val expr3 = uifs.foldLeft(expr2)((acc, call) =>if(acc == tru) call.expr  else And(acc,call.expr))
+    val expr4 = adtCtrs.foldLeft(expr3)((acc, adtCtr) =>if(acc == tru) adtCtr.expr  else And(acc,adtCtr.expr))
+    val expr5 = boolCtrs.foldLeft(expr4)((acc, boolCtr) =>if(acc == tru) boolCtr.expr  else And(acc,boolCtr.expr))
+    expr5
+  } 
 
   override def toString(): String = {
     prettyPrint(0)
@@ -103,6 +113,29 @@ case class CtrNode(id : Int = GlobalNodeCounter.getUID) extends CtrTree {
 }
 
 object TreeUtil {
+  
+  val tru = BooleanLiteral(true)
+  
+  /**
+   * Creates an expression representing the tree
+   */
+  def toExpr(root: CtrTree) : Expr = root match {        
+	case n@CtrNode(_) => {	 
+       val childrenExpr = n.Children.foldLeft(tru: Expr)((acc, child) => {
+         val chExpr = toExpr(child)
+         chExpr match{
+           case BooleanLiteral(tru) => acc
+           case _ => if(acc == tru) chExpr else Or(acc, chExpr)
+         }
+       })
+       val nodeExpr = n.toExpr
+       
+       if(childrenExpr== tru) nodeExpr
+       else if(nodeExpr == tru) childrenExpr
+       else And(nodeExpr,childrenExpr)       
+	}   
+    case CtrLeaf() => tru
+  }
 
   def preorderVisit(root: CtrTree, visitor: CtrNode => Unit) = {
     var visited = Set[CtrNode]()
