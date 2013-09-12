@@ -37,19 +37,19 @@ abstract class Reporter(settings: Settings) {
 
   private val debugMask = settings.debugSections.foldLeft(0){ _ | _.mask }
 
-  def ifDebug(body: (Any => Unit) => Any)(implicit section: ReportingSection) = {
+  def ifDebug(body: (Any => Unit) => Any)(implicit section: DebugSection) = {
     if ((debugMask & section.mask) == section.mask) {
       body(debugFunction)
     }
   }
 
-  def whenDebug(section: ReportingSection)(body: (Any => Unit) => Any) {
+  def whenDebug(section: DebugSection)(body: (Any => Unit) => Any) {
     if ((debugMask & section.mask) == section.mask) {
       body(debugFunction)
     }
   }
 
-  def debug(msg: => Any)(implicit section: ReportingSection) = {
+  def debug(msg: => Any)(implicit section: DebugSection) = {
     ifDebug{ debug =>
       debug(msg)
     }(section)
@@ -89,21 +89,21 @@ class DefaultReporter(settings: Settings) extends Reporter(settings) {
   }
 }
 
-@implicitNotFound("No implicit debug section found in scope. You need define an implicit ReportingSection to use debug/ifDebug")
-sealed abstract class ReportingSection(val name: String, val mask: Int)
+@implicitNotFound("No implicit debug section found in scope. You need define an implicit DebugSection to use debug/ifDebug")
+sealed abstract class DebugSection(val name: String, val mask: Int)
 
-case object ReportingSolver       extends ReportingSection("solver",       1 << 0)
-case object ReportingSynthesis    extends ReportingSection("synthesis",    1 << 1)
-case object ReportingTimers       extends ReportingSection("timers",       1 << 2)
-case object ReportingOptions      extends ReportingSection("options",      1 << 3)
-case object ReportingVerification extends ReportingSection("verification", 1 << 4)
+case object DebugSectionSolver       extends DebugSection("solver",       1 << 0)
+case object DebugSectionSynthesis    extends DebugSection("synthesis",    1 << 1)
+case object DebugSectionTimers       extends DebugSection("timers",       1 << 2)
+case object DebugSectionOptions      extends DebugSection("options",      1 << 3)
+case object DebugSectionVerification extends DebugSection("verification", 1 << 4)
 
-object ReportingSections {
-  val all = Set[ReportingSection](
-    ReportingSolver,
-    ReportingSynthesis,
-    ReportingTimers,
-    ReportingOptions,
-    ReportingVerification
+object DebugSections {
+  val all = Set[DebugSection](
+    DebugSectionSolver,
+    DebugSectionSynthesis,
+    DebugSectionTimers,
+    DebugSectionOptions,
+    DebugSectionVerification
   )
 }

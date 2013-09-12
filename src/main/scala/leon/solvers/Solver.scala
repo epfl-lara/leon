@@ -17,5 +17,5 @@ trait Solver extends Interruptible {
   def getModel: Map[Identifier, Expr]
   def getUnsatCore: Set[Expr]
 
-  implicit val debugSection = ReportingSolver
+  implicit val debugSection = DebugSectionSolver
 }

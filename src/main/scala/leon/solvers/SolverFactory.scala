@@ -39,5 +39,5 @@ trait SolverFactory[S <: Solver] extends Interruptible with LeonComponent {
     }
   }
 
-  implicit val debugSection = ReportingSolver
+  implicit val debugSection = DebugSectionSolver
 }

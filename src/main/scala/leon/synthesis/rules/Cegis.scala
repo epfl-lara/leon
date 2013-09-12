@@ -272,11 +272,6 @@ case object CEGIS extends Rule("CEGIS") {
 
         val simplerRes = simplifyLets(res)
 
-        //println("COMPILATION RESULT: ")
-        //println(ScalaPrinter(simplerRes))
-        //println("BSS: "+bssOrdered)
-        //println("FREE: "+variablesOf(simplerRes))
-
         def compileWithArray(): Option[(Seq[Expr], Seq[Expr]) => EvaluationResult] = {
           val ba = FreshIdentifier("bssArray").setType(ArrayType(BooleanType))
           val bav = Variable(ba)
@@ -285,12 +280,7 @@ case object CEGIS extends Rule("CEGIS") {
           }).toMap
           val forArray = replace(substMap, simplerRes)
 
-          // println("FORARRAY RESULT: ")
-          // println(ScalaPrinter(forArray))
-          // println("FREE: "+variablesOf(simplerRes))
-
           // We trust arrays to be fast...
-          // val simple = evaluator.compile(simplerRes, bssOrdered ++ p.as)
           val eval = evaluator.compile(forArray, ba +: p.as)
 
           eval.map{e => { case (bss, ins) => 
@@ -549,11 +539,13 @@ case object CEGIS extends Rule("CEGIS") {
 
                 bssAssumptions = closedBs
 
-                //println("UNROLLING: ")
-                //for (c <- clauses) {
-                //  println(" - " + c)
-                //}
-                //println("CLOSED Bs "+closedBs)
+                sctx.reporter.ifDebug { debug =>
+                  debug("UNROLLING: ")
+                  for (c <- clauses) {
+                    debug(" - " + c)
+                  }
+                  debug("CLOSED Bs "+closedBs)
+                }
 
                 val clause = And(clauses)
 
@@ -570,8 +562,7 @@ case object CEGIS extends Rule("CEGIS") {
 
               val allPrograms = prunedPrograms.size
 
-              //println("Programs: "+prunedPrograms.size)
-              //println("#Tests:  "+exampleInputs.size)
+              sctx.reporter.debug("#Programs: "+prunedPrograms.size)
 
               // We further filter the set of working programs to remove those that fail on known examples
               if (useCEPruning && hasInputExamples() && ndProgram.canTest()) {
@@ -593,6 +584,8 @@ case object CEGIS extends Rule("CEGIS") {
 
               val nPassing = prunedPrograms.size
 
+              sctx.reporter.debug("#Programs passing tests: "+nPassing)
+
               if (nPassing == 0) {
                 needMoreUnrolling = true;
               } else if (nPassing <= testUpTo) {
@@ -601,7 +594,6 @@ case object CEGIS extends Rule("CEGIS") {
               } else if (((nPassing < allPrograms*filterThreshold) || didFilterAlready) && useBssFiltering) {
                 // We filter the Bss so that the formula we give to z3 is much smalled
                 val bssToKeep = prunedPrograms.foldLeft(Set[Identifier]())(_ ++ _)
-                //println("To Keep: "+bssToKeep.size+"/"+ndProgram.bss.size)
 
                 // Cannot unroll normally after having filtered, so we need to
                 // repeat the filtering procedure at next unrolling.
@@ -618,12 +610,6 @@ case object CEGIS extends Rule("CEGIS") {
 
                 solver1.assertCnstr(clause)
                 solver2.assertCnstr(clause)
-
-                //println("Filtered clauses:")
-                //for (c <- clauses) {
-                //  println(" - " + c)
-                //}
-
               }
 
               val bss = ndProgram.bss
@@ -638,14 +624,6 @@ case object CEGIS extends Rule("CEGIS") {
                       case BooleanLiteral(true)  => Variable(b)
                       case BooleanLiteral(false) => Not(Variable(b))
                     })
-
-                    //println("CEGIS OUT!")
-                    //println("Found solution: "+bssAssumptions)
-
-                    //bssAssumptions.collect { case Variable(b) => ndProgram.mappings(b) }.foreach {
-                    //  case (c, ex) =>
-                    //    println(". "+c+" = "+ex)
-                    //}
 
                     val validateWithZ3 = if (useCETests && hasInputExamples() && ndProgram.canTest()) {
 
@@ -666,10 +644,8 @@ case object CEGIS extends Rule("CEGIS") {
                     }
 
                     if (validateWithZ3) {
-                      //println("Looking for CE...")
                       solver2.checkAssumptions(bssAssumptions) match {
                         case Some(true) =>
-                          //println("#"*80)
                           val invalidModel = solver2.getModel
 
                           val fixedAss = And(ass.collect {
@@ -680,12 +656,9 @@ case object CEGIS extends Rule("CEGIS") {
 
                           baseExampleInputs = newCE +: baseExampleInputs
 
-                          //println("Found counter example: "+fixedAss)
-
                           // Retest whether the newly found C-E invalidates all programs
                           if (useCEPruning && ndProgram.canTest) {
                             if (prunedPrograms.forall(p => !ndProgram.testForProgram(p)(newCE))) {
-                              // println("I found a killer example!")
                               needMoreUnrolling = true
                             }
                           }
@@ -744,8 +717,6 @@ case object CEGIS extends Rule("CEGIS") {
 
 
                   case Some(false) =>
-                    //println("%%%% UNSAT")
-
                     if (useUninterpretedProbe) {
                       solver1.check match {
                         case Some(false) =>
@@ -772,7 +743,6 @@ case object CEGIS extends Rule("CEGIS") {
           } catch {
             case e: Throwable =>
               sctx.reporter.warning("CEGIS crashed: "+e.getMessage)
-              e.printStackTrace
               RuleApplicationImpossible
           }
         } finally {

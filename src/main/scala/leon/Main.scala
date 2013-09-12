@@ -143,13 +143,13 @@ object Main {
       case LeonValueOption("debug", ListValue(sections)) =>
         val debugSections = sections.flatMap { s =>
           if (s == "all") {
-            ReportingSections.all
+            DebugSections.all
           } else {
-            ReportingSections.all.find(_.name == s) match {
+            DebugSections.all.find(_.name == s) match {
               case Some(rs) =>
                 Some(rs)
               case None =>
-                initReporter.error("Section "+s+" not found, available: "+ReportingSections.all.map(_.name).mkString(", "))
+                initReporter.error("Section "+s+" not found, available: "+DebugSections.all.map(_.name).mkString(", "))
                 None
             }
           }
@@ -163,7 +163,7 @@ object Main {
     // Create a new reporter taking settings into account
     val reporter = new DefaultReporter(settings)
 
-    reporter.whenDebug(ReportingOptions) { debug =>
+    reporter.whenDebug(DebugSectionOptions) { debug =>
 
       debug("Options considered by Leon:")
       for (lo <- leonOptions) lo match {
@@ -235,7 +235,7 @@ object Main {
 
       ctx.timers.get("Leon Run") += timer
 
-      ctx.reporter.whenDebug(ReportingTimers) { debug =>
+      ctx.reporter.whenDebug(DebugSectionTimers) { debug =>
         debug("-"*80)
         debug("Times:")
         debug("-"*80)
