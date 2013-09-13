@@ -44,6 +44,10 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
     fis.toSet
   }
 
+  /**
+   * Computes the invariant for all the procedures given a mapping for the 
+   * template variables.
+   */
   def getAllInvariants(model: Map[Identifier, Expr]): Map[FunDef, Expr] = {
     val invs = ctrTracker.getFuncs.foldLeft(Seq[(FunDef, Expr)]())((acc, fd) => {
 
@@ -58,14 +62,17 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
           (v, model(v.id))
         }).toMap
 
-        acc :+ (fd, getInvariant(template, tempVarMap))
+        acc :+ (fd, instantiateTemplate(template, tempVarMap))
       }
     })
     invs.toMap
   }
 
-  //look for a solution of non-linear constraints. The constraint variables are all reals
-  def getInvariant(template: Expr, tempVarMap: Map[Expr,Expr]): Expr = {
+  /**
+   * Instantiates a template using the given mapping for the template variables.
+   * The instantiation also takes care of converting the rational coefficients to integer coefficients. 
+   */
+  def instantiateTemplate(template: Expr, tempVarMap: Map[Expr,Expr]): Expr = {
 
     //do a simple post transform and replace the template vars by their values
     val inv = simplePostTransform((tempExpr: Expr) => tempExpr match {
@@ -114,20 +121,23 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
   }
 
   /**
-   * This function computes invariants belonging to the template.
+   * This function computes invariants belonging to the given templates.
    * The result is a mapping from function definitions to the corresponding invariants.
    */
   def solveForTemplates(uiSolver: UninterpretedZ3Solver): Option[Map[FunDef, Expr]] = {
 
-    val selector = (ch: Iterable[CtrTree],d: Int) => ch
+    val selector = (p: CtrNode, ch: Iterable[CtrTree],d: Int) => ch
     //traverse each of the functions and collect the constraints
     val nonLinearCtrs  = ctrTracker.getFuncs.foldLeft(Seq[Expr]())((acc, fd) => {
       
       val (btree,ptree) = ctrTracker.getVC(fd)      
       val ctr = generateCtrsForTree(btree, ptree, uiSolver, selector)      
-      (acc :+ ctr)
+      if(ctr == tru) acc        
+      else (acc :+ ctr)
     })
-    val nonLinearCtr = if(nonLinearCtrs.size == 1) nonLinearCtrs.first 
+    
+    val nonLinearCtr = if(nonLinearCtrs.isEmpty) throw IllegalStateException("Found no constraints") 
+    					else if(nonLinearCtrs.size == 1) nonLinearCtrs.first 
 						else And(nonLinearCtrs)
 	          
     val (res, model, unsatCore) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)
@@ -141,87 +151,135 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
       None
     }	  
   }
-  
+
   /**
-   * This function computes invariants belonging to the template incrementally.
+   * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
    */
   def solveForTemplatesIncr(uiSolver: UninterpretedZ3Solver): Option[Map[FunDef, Expr]] = {
-    
-	val max_depth = 2	
-    val selector = (ch: Iterable[CtrTree],d: Int) => {
-      if(d <= max_depth) ch 
+
+    val max_depth = 2
+    //TODO: ideally we may want to associate a random number number generator with each node in the tree
+    //Is this necessary ??
+    val selector = (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {
+      if (d <= max_depth) ch
       else {
-    	 //pick one children randomly from the set.
+        //pick one children randomly from the set.
         //TODO: should this be made more efficient ??
-    	 val child = Random.shuffle(ch).head
-    	 Set(child)
+        val child = Random.shuffle(ch).head
+        Set(child)
       }
     }
     //traverse each of the functions and collect the constraints
     val funcs = ctrTracker.getFuncs
     val funcExprs = funcs.map((fd) => {
       val (btree, ptree) = ctrTracker.getVC(fd)
-      val formula = And(btree.toExpr, ptree.toExpr)
+      val formula = And(TreeUtil.toExpr(btree), TreeUtil.toExpr(ptree))
+      //println("Formula: "+fd.id+"-->"+formula)
       (fd -> formula)
     }).toMap
-    
-    //incrementally solve for the template variables
-    val nonLinearCtrs  = funcs.foldLeft(Seq[Expr]())((acc, fd) => {
 
-      val (btree,ptree) = ctrTracker.getVC(fd)            
-      val ctr = generateCtrsForTree(btree, ptree, uiSolver, selector)      
+    //incrementally solve for the template variables
+    val nonLinearCtrs = funcs.foldLeft(Seq[Expr]())((acc, fd) => {
+
+      val (btree, ptree) = ctrTracker.getVC(fd)
+      
+      //iterate as long as we have atleast one constraint (using imperative style as it is best fit here)
+      var ctr : Expr = tru
+      //this may get into an infinite while loop
+      //TODO: critical : how to fix this ??
+      //what if all the paths in the program are infeasible ? may be we should time out after sometime and have some random assignment
+      //of values to the terms
+      while(ctr == tru) {        
+         ctr = generateCtrsForTree(btree, ptree, uiSolver, selector)             	
+      }
+      
       (acc :+ ctr)
     })
-    val nonLinearCtr = if(nonLinearCtrs.size == 1) nonLinearCtrs.first 
-						else And(nonLinearCtrs)	
-	val (res, model, unsatCore) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)
-    if (res.isDefined && res.get == false) None
-    else {
-      //printing the model here for debugging
-      //println("Model: "+model)     
-	
-	 //check if 'inv' is a 'sufficiently strong' invariant by looking for a counter-example. 
-	 //if one exists find a path (in each tree) that results in the counter-example and add farkas' 
-	 //constraints for the path to the constraints to be solved	       
-      val vc = funcs.foldLeft(tru : Expr)((acc, fd) => {
-
-        val tempOption = TemplateFactory.getTemplate(fd)
-        if (!tempOption.isDefined)
-          funcExprs(fd)
-        else {
-          val template = tempOption.get
-          val tempvars = InvariantUtil.getTemplateVars(template)
-          val tempVarMap: Map[Expr, Expr] = tempvars.map((v) => {
-            //println(v.id +" mapsto " + model(v.id))
-            (v, model(v.id))
-          }).toMap
-          
-          val cande = replace(tempVarMap, funcExprs(fd))
-          And(acc, cande)          
-        }
-      })
-      //try to see if the vc is satisfiable 
-      val (res1, model1, _) = uiSolver.solveSATWithFunctionCalls(vc)
-      if (res.isDefined && res.get == false) {
-        //found a real invariant so return the invariant        
-        Some(getAllInvariants(model))
-      }
-      else {
-        //try to get the paths that lead to the error
-        val chooser = (ch: Iterable[CtrTree], d: Int) => {
-          
-        }
-    }	  	 	
+    
+    //For debugging purposes.
+    println("# of initals Constraints: "+nonLinearCtrs.size)
+    
+    val nonLinearCtr = if (nonLinearCtrs.size == 1) nonLinearCtrs.first
+    					else And(nonLinearCtrs)
+    recSolveForTemplatesIncr(uiSolver, nonLinearCtr, funcExprs)
   }
+  
+  def recSolveForTemplatesIncr(uiSolver: UninterpretedZ3Solver, nonLinearCtr: Expr,
+      funcExprs : Map[FunDef,Expr]): Option[Map[FunDef, Expr]] = {
 
+    val funcs = funcExprs.keys
+    val (res, model, _) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)
+    res match {
+      case None => None
+      case Some(false) => None
+      case Some(true) => {        
+        //For debugging: printing the candidate invariants found at this step
+        println("candidate Invariants")
+        val candInvs = getAllInvariants(model)
+        candInvs.foreach((inv) => println(inv._1.id + "-->" + inv._2))
+
+        //check if 'inv' is a 'sufficiently strong' invariant by looking for a counter-example. 
+        //if one exists find a path (in each tree) that results in the counter-example and add farkas' 
+        //constraints for the path to the constraints to be solved
+        val tempIdMap: Map[Identifier, Expr] = TemplateFactory.getTemplateIds.collect{
+          //println(v.id +" mapsto " + model(v.id))
+          case id:Identifier if model.contains(id) => (id -> model(id))         
+        }.toMap
+
+        val vc = funcs.foldLeft(tru: Expr)((acc, fd) => {
+
+          val cande = replaceFromIDs(tempIdMap, funcExprs(fd))
+          if (acc == tru) cande
+          else And(acc, cande)
+        })
+        //try to see if the vc is satisfiable
+        //println("verification condition: "+vc)        
+        val solEval = uiSolver.getSATSolverEvaluator(vc)
+        solEval.check match {
+          case None => throw IllegalStateException("cannot check the satisfiability of " + vc)
+          case Some(false) => {
+            //found a real invariant so return the invariant        
+            Some(getAllInvariants(model))
+          }
+          case Some(true) => {
+            //For debugging purposes.
+        	println("Found candidate invariants are not real invariants!!: "+solEval.getInternalModel)
+
+            //try to get the paths that lead to the error
+            val satChooser = (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {
+              ch.filter((child) => child match {
+                case CtrLeaf() => true
+                case cn @ CtrNode(_) => solEval.evalBoolExpr(cn.toExpr) match {
+                  case None => throw IllegalStateException("cannot evaluate " + cn.toExpr + " on " + solEval.getModel)
+                  case Some(b) => b
+                }
+              })
+            }
+            val newCtrs = funcs.foldLeft(Seq[Expr]())((acc, fd) => {
+
+              val (btree, ptree) = ctrTracker.getVC(fd)
+              val ctr = generateCtrsForTree(btree, ptree, uiSolver, satChooser)
+              (acc :+ ctr)
+            })
+            
+            //For debugging purposes.
+            println("# of new Constraints: "+newCtrs.size)
+            
+            //call the procedure recursively
+            recSolveForTemplatesIncr(uiSolver, And(nonLinearCtr, And(newCtrs)), funcExprs)
+          }
+        }
+      }
+    }
+  }
   
   /**
    * Returns a set of non linear constraints for the given constraint tree.
    * This is parametrized by a selector function that decides which paths to consider. 
    */
   def generateCtrsForTree(bodyRoot: CtrNode, postRoot : CtrNode, 
-      uiSolver : UninterpretedZ3Solver, selector : (Iterable[CtrTree], Int) => Iterable[CtrTree]) : Expr = {       
+      uiSolver : UninterpretedZ3Solver, selector : (CtrNode, Iterable[CtrTree], Int) => Iterable[CtrTree]) : Expr = {       
     
     /**
      * A utility function that converts a constraint + calls into a expression.
@@ -238,10 +296,10 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
      * and "AND" as the join operation.     
      * TODO: Maintenance Issue: The following code is imperative
      */
-    def foldAND(childTrees : Iterable[CtrTree], pred: CtrTree => Expr, depth: Int): Expr = {
+    def foldAND(parent: CtrNode, childTrees : Iterable[CtrTree], pred: CtrTree => Expr, depth: Int): Expr = {
       
       //get the children that need to be traversed
-      val trees = selector(childTrees, depth)
+      val trees = selector(parent, childTrees, depth)
       
       var expr: Expr = tru      
       trees.foreach((tree) => {                
@@ -279,7 +337,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
           val newAuxs = auxCtrs ++ (n.boolCtrs.map(_.expr) ++ n.adtCtrs.map(_.expr))
 
           //recurse into children and collect all the constraints
-          foldAND(n.Children, (child : CtrTree) => traverseBodyTree(child, newCtrs, newUIFs, newTemps, newAuxs, depth + 1), depth)
+          foldAND(n, n.Children, (child : CtrTree) => traverseBodyTree(child, newCtrs, newUIFs, newTemps, newAuxs, depth + 1), depth)
         }
         case CtrLeaf() => {
 
@@ -313,7 +371,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
           val newAuxs = currAuxs ++ (n.boolCtrs.map(_.expr) ++ n.adtCtrs.map(_.expr))
           
           //recurse into children and collect all the constraints
-          foldAND(n.Children, (child : CtrTree) => traversePostTree(child, ants, antTemps, antAuxs, 
+          foldAND(n, n.Children, (child : CtrTree) => traversePostTree(child, ants, antTemps, antAuxs, 
             newuifs, newcons, newtemps, newAuxs, depth + 1), depth) 
         }
         case CtrLeaf() => {                 
@@ -341,7 +399,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
             //println("Traversing UIF Tree")
             val newants = ants ++ n.constraints
             //recurse into children            
-            foldAND(n.Children, (child : CtrTree) => traverseTree(child, newants, antTemps, conseqs, conseqTemps, dep + 1), dep)
+            foldAND(n, n.Children, (child : CtrTree) => traverseTree(child, newants, antTemps, conseqs, conseqTemps, dep + 1), dep)
           }
           case CtrLeaf() => {            
             //pipe to the end point that invokes the constraint solver
@@ -399,7 +457,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
     val nonLinearCtr = traverseBodyTree(bodyRoot, Seq(), Set(), Seq(), Seq(), 0)
 
     nonLinearCtr match {
-      case BooleanLiteral(true) => throw IllegalStateException("Found no constraints")
+      case BooleanLiteral(true) => tru       
       case _ => {
         //for debugging
         /*println("NOn linear Ctr: "+nonLinearCtr)

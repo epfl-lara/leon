@@ -103,7 +103,7 @@ case class CtrNode(id : Int = GlobalNodeCounter.getUID) extends CtrTree {
     val expr2 = templates.foldLeft(expr)((acc, temp) => if(acc == tru) temp.template else And(acc,temp.template))
     val expr3 = uifs.foldLeft(expr2)((acc, call) =>if(acc == tru) call.expr  else And(acc,call.expr))
     val expr4 = adtCtrs.foldLeft(expr3)((acc, adtCtr) =>if(acc == tru) adtCtr.expr  else And(acc,adtCtr.expr))
-    val expr5 = boolCtrs.foldLeft(expr4)((acc, boolCtr) =>if(acc == tru) boolCtr.expr  else And(acc,boolCtr.expr))
+    val expr5 = boolCtrs.foldLeft(expr4)((acc, boolCtr) =>if(acc == tru) boolCtr.expr  else And(acc,boolCtr.expr))  
     expr5
   } 
 
@@ -120,7 +120,7 @@ object TreeUtil {
    * Creates an expression representing the tree
    */
   def toExpr(root: CtrTree) : Expr = root match {        
-	case n@CtrNode(_) => {	 
+	case n@CtrNode(_) => {	 	  
        val childrenExpr = n.Children.foldLeft(tru: Expr)((acc, child) => {
          val chExpr = toExpr(child)
          chExpr match{
@@ -130,9 +130,10 @@ object TreeUtil {
        })
        val nodeExpr = n.toExpr
        
+       //println("NOde: "+n.id+" Children expr: "+childrenExpr)
        if(childrenExpr== tru) nodeExpr
        else if(nodeExpr == tru) childrenExpr
-       else And(nodeExpr,childrenExpr)       
+       else And(nodeExpr,childrenExpr)          
 	}   
     case CtrLeaf() => tru
   }

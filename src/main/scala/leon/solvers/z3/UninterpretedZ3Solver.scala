@@ -88,5 +88,10 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
       case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
     }).toSet
   }
-
+}
+  
+ trait SolverEvaluator extends solvers.IncrementalSolver {    
+     def evalBoolExpr(expr: Expr) : Option[Boolean]     
+     
+     def getInternalModel : Z3Model
  }

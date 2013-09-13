@@ -41,6 +41,8 @@ object TemplateFactory {
   //a set of template ids
   private var ids = Set[Identifier]()
   
+  def getTemplateIds : Set[Identifier] = ids 
+  
   def freshIdentifier(name : String = "") : Identifier = {
     val idname = if(name.isEmpty()) "a?"
     			 else name + "?"

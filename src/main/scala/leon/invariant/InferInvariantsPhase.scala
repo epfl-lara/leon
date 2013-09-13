@@ -100,8 +100,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         }
         refinementStep += 1
 
-        //solve for the templates at this unroll step                  
-        val res = lsAnalyzer.solveForTemplates(uisolver)
+        //solve for the templates at this unroll step
+        //val res = lsAnalyzer.solveForTemplates(uisolver)
+        val res = lsAnalyzer.solveForTemplatesIncr(uisolver)
 
         if (res.isDefined) {
 
