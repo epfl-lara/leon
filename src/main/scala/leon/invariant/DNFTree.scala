@@ -33,7 +33,7 @@ abstract class CtrTree {
   def prettyPrint(level: Int) : String
 }
 case class CtrLeaf() extends CtrTree {
-  override def prettyPrint(level : Int) : String = ""
+  override def prettyPrint(level : Int) : String = "Nil"
 }
 
 object GlobalNodeCounter {
@@ -94,7 +94,7 @@ case class CtrNode(id : Int = GlobalNodeCounter.getUID) extends CtrTree {
     if(!boolCtrs.isEmpty) str += " Bools: "+boolCtrs
 
     str += " children: "
-    children.foldLeft(str)((g: String, node: CtrTree) => { g + "\n" + "\t" * level +  node.prettyPrint(level + 1) })
+    children.foldLeft(str)((g: String, node: CtrTree) => { g + "\n" + " " * level +  node.prettyPrint(level + 1) })
   }
   
   def toExpr : Expr={    

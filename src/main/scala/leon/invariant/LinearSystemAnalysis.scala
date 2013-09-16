@@ -174,10 +174,19 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
     val funcs = ctrTracker.getFuncs
     val funcExprs = funcs.map((fd) => {
       val (btree, ptree) = ctrTracker.getVC(fd)
-      val formula = And(TreeUtil.toExpr(btree), TreeUtil.toExpr(ptree))
+      val bexpr = TreeUtil.toExpr(btree)
+      val pexpr = TreeUtil.toExpr(ptree)
+      
+      //For debugging
+      println("Function name: "+fd.id)
+      println("Body expr: "+btree)
+      println("post expr: "+ptree)
+      
+      val formula = And(bexpr, pexpr)
       //println("Formula: "+fd.id+"-->"+formula)
       (fd -> formula)
     }).toMap
+    //System.exit(0)
 
     //incrementally solve for the template variables
     val nonLinearCtrs = funcs.foldLeft(Seq[Expr]())((acc, fd) => {
@@ -232,9 +241,9 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
           val cande = replaceFromIDs(tempIdMap, funcExprs(fd))
           if (acc == tru) cande
           else And(acc, cande)
-        })
+        })        
         //try to see if the vc is satisfiable
-        //println("verification condition: "+vc)        
+        //println("verification condition: "+simplifyArithmetic(vc))        
         val solEval = uiSolver.getSATSolverEvaluator(vc)
         solEval.check match {
           case None => throw IllegalStateException("cannot check the satisfiability of " + vc)
@@ -347,7 +356,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
 
             //println("Body path expr: " + pathexpr)
             
-            //pipe this to the post tree
+            //pipe this to the post tree           
             traversePostTree(postRoot, currentCtrs, currentTemps, auxCtrs, currentUIFs, Seq(), Seq(), Seq(), depth + 1)                                      
           } else {
             //println("Found unsat path: " + pathExpr)
@@ -376,6 +385,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
         }
         case CtrLeaf() => {                 
           //pipe to the uif constraint generator
+          //println("path after post traversal: "+constraintsToExpr(ants ++ conseqs, currUIFs, And(antAuxs ++ currAuxs)))
           uifsConstraintsGen(ants, antTemps, antAuxs, currUIFs, conseqs, currTemps, currAuxs, depth + 1)
         }
       }
@@ -453,7 +463,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
         implCtrs
       }
     }
-        
+       
+    //print the body and the post tree    
     val nonLinearCtr = traverseBodyTree(bodyRoot, Seq(), Set(), Seq(), Seq(), 0)
 
     nonLinearCtr match {
