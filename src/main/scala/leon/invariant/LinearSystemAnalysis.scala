@@ -158,7 +158,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
    */
   def solveForTemplatesIncr(uiSolver: UninterpretedZ3Solver): Option[Map[FunDef, Expr]] = {
 
-    val max_depth = 2
+    val max_depth = -1
     //TODO: ideally we may want to associate a random number number generator with each node in the tree
     //Is this necessary ??
     val selector = (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {
@@ -176,11 +176,6 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
       val (btree, ptree) = ctrTracker.getVC(fd)
       val bexpr = TreeUtil.toExpr(btree)
       val pexpr = TreeUtil.toExpr(ptree)
-      
-      //For debugging
-      println("Function name: "+fd.id)
-      println("Body expr: "+btree)
-      println("post expr: "+ptree)
       
       val formula = And(bexpr, pexpr)
       //println("Formula: "+fd.id+"-->"+formula)
@@ -226,7 +221,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
         //For debugging: printing the candidate invariants found at this step
         println("candidate Invariants")
         val candInvs = getAllInvariants(model)
-        candInvs.foreach((inv) => println(inv._1.id + "-->" + inv._2))
+        candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))
 
         //check if 'inv' is a 'sufficiently strong' invariant by looking for a counter-example. 
         //if one exists find a path (in each tree) that results in the counter-example and add farkas' 
@@ -236,12 +231,20 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
           case id:Identifier if model.contains(id) => (id -> model(id))         
         }.toMap
 
+        val wr = new PrintWriter(new File("formula-dump.txt"))
         val vc = funcs.foldLeft(tru: Expr)((acc, fd) => {
 
-          val cande = replaceFromIDs(tempIdMap, funcExprs(fd))
+          val cande = InvariantUtil.simplifyArithWithReals(replaceFromIDs(tempIdMap, funcExprs(fd)))
+          //For debugging                    
+          wr.println("Function name: " + fd.id)
+          wr.println("Formula expr: ")
+	      InvariantUtil.PrintWithIndentation(wr,funcExprs(fd))
+
           if (acc == tru) cande
           else And(acc, cande)
-        })        
+        })
+        wr.flush()
+	    wr.close()
         //try to see if the vc is satisfiable
         //println("verification condition: "+simplifyArithmetic(vc))        
         val solEval = uiSolver.getSATSolverEvaluator(vc)
@@ -253,15 +256,20 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
           }
           case Some(true) => {
             //For debugging purposes.
-        	println("Found candidate invariants are not real invariants!!: "+solEval.getInternalModel)
+        	println("Found candidate invariants are not real invariants!!")//+solEval.getInternalModel)
 
             //try to get the paths that lead to the error
             val satChooser = (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {
               ch.filter((child) => child match {
                 case CtrLeaf() => true
-                case cn @ CtrNode(_) => solEval.evalBoolExpr(cn.toExpr) match {
-                  case None => throw IllegalStateException("cannot evaluate " + cn.toExpr + " on " + solEval.getModel)
-                  case Some(b) => b
+                case cn @ CtrNode(_) => {
+
+                  //note the expr may have template variables so replace them with the candidate values
+                  val nodeExpr = replaceFromIDs(tempIdMap, cn.toExpr)
+                  solEval.evalBoolExpr(nodeExpr) match {
+                    case None => throw IllegalStateException("cannot evaluate " + cn.toExpr + " on " + solEval.getModel)
+                    case Some(b) => b
+                  }
                 }
               })
             }

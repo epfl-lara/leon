@@ -8,6 +8,7 @@ import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.TypeTrees._
 import scala.collection.mutable.{ Set => MutableSet }
+import scala.collection.immutable.Stack
 import leon.evaluators._
 import java.io._
 import leon.LeonContext
@@ -22,6 +23,7 @@ import leon.verification.Tactic
 import leon.verification.VerificationReport
 import leon.invariant._
 import scala.collection.mutable.{Set => MutableSet}
+import java.io._
 
 case class Call(retexpr: Expr, fi: FunctionInvocation) {
   val expr = Equals(retexpr,fi)   
@@ -367,4 +369,201 @@ object InvariantUtil {
     })(expr)
     foundReal
   }
+  
+  
+  def fix[A](f: (A) => A)(a: A): A = {
+      val na = f(a)
+      if(a == na) a else fix(f)(na)
+  }
+  
+  /**
+   * This is the inverse operation of flattening, this is mostly 
+   * used to produce a readable formula.
+   * This only works approximately.
+   */
+  def unFlatten(ine: Expr) : Expr = {
+    //applies one point rule repeatedly until a fix-point
+    val (ne,_,_ ) = applyOnePointRule((ine, Stack(), Set()))
+    //val (ne,_,_ ) = fix(applyOnePointRule)(ine, Stack(), Set())
+    ne
+  }
+  
+  val tru = BooleanLiteral(true)
+  def applyOnePointRule(param : (Expr, Stack[(Expr,Expr)], Set[Variable])) 
+  	: (Expr, Stack[(Expr,Expr)],  Set[Variable]) ={ 
+        
+    def recReplace(expr : Expr, eqStack : Stack[(Expr,Expr)], elimVars : Set[Variable]) 
+    : (Expr, Stack[(Expr,Expr)], Set[Variable]) = expr match {
+      
+      case v : Variable => {
+        if(elimVars.contains(v)) (eqStack.toMap.apply(v), eqStack, elimVars)        	                 
+        else (v, eqStack, elimVars)
+      }
+      case Equals(lhs, rhs) => {
+        
+        //replace in LHS and RHS
+        val newLHS = replace(eqStack.toMap, lhs)
+        val newRHS = replace(eqStack.toMap, rhs)
+        val newEq = Equals(newLHS,newRHS)
+        
+        lhs match {
+          case v : Variable => {
+            if(!elimVars.contains(v)) {
+              //println("Adding mapping "+v+" --> "+newRHS)
+              (tru, eqStack.push((v,newRHS)), elimVars + v)
+            }
+            else (newEq, eqStack, elimVars)
+          }
+          case _ => {
+            rhs match {
+              case v: Variable => if (!elimVars.contains(v)) 
+            	  					(tru, eqStack.push((v, newLHS)), elimVars + v)
+            	  				  else (newEq, eqStack, elimVars)
+              case _ => (newEq, eqStack, elimVars)
+            }
+          }
+        }        
+      }
+      case And(args) =>{        
+        val res = args.foldLeft((Seq[Expr](),eqStack,elimVars))((acc, e) => {
+          val (currArgs, s, l)  = acc
+          val (ne,ns,nl) = recReplace(e, s, l)
+          (currArgs :+ ne, ns, nl)
+        })
+        (And(res._1), res._2, res._3)        
+      }      
+      case Or(args) =>{
+        val newop = Or(args.map((e) => {
+          
+          //repeat this until a fix point
+          val (ne0,s0,l0) = recReplace(e, eqStack, elimVars)
+          //repeat this again
+          val (ne,s,l) = recReplace(ne0, s0, l0)
+          
+          //add all equalities collected in this branch here.
+          val eqs = s.collect{
+            case elem : (Expr,Expr) if(!eqStack.contains(elem)) => Equals(elem._1,elem._2)  
+          }
+          if(!eqs.isEmpty)
+        	  And(eqs :+ ne)
+          else ne
+        }))
+        (newop, eqStack,elimVars)        
+      }
+      case t: Terminal => (t, eqStack, elimVars)
+      case _ => {
+        val ne = replace(eqStack.toMap, expr)
+        (ne, eqStack, elimVars)
+      }        
+    }    
+    
+    val (ine, inStk, inVars) = param
+    //replace the keys with values
+    recReplace(ine, inStk, inVars)    
+  }
+
+  
+  def simplifyArithWithReals(expr: Expr): Expr = {
+    def simplify0(expr: Expr): Expr = expr match {
+      case Plus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 + i2)
+      //case Plus(RealLiteral(n1,d1), RealLiteral(n2,d2)) => IntLiteral(i1 + i2)
+      case Plus(WholeNumber(0), e) => e
+      case Plus(e, WholeNumber(0)) => e
+      case Plus(e1, UMinus(e2)) => Minus(e1, e2)
+      case Plus(Plus(e, IntLiteral(i1)), IntLiteral(i2)) => Plus(e, IntLiteral(i1+i2))
+      case Plus(Plus(IntLiteral(i1), e), IntLiteral(i2)) => Plus(IntLiteral(i1+i2), e)
+
+      case Minus(e, WholeNumber(0)) => e
+      case Minus(WholeNumber(0), e) => UMinus(e)
+      case Minus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 - i2)
+      case Minus(e1, UMinus(e2)) => Plus(e1, e2)
+      case Minus(e1, Minus(UMinus(e2), e3)) => Plus(e1, Plus(e2, e3))
+
+      case UMinus(IntLiteral(x)) => IntLiteral(-x)
+      case UMinus(UMinus(x)) => x
+      case UMinus(Plus(UMinus(e1), e2)) => Plus(e1, UMinus(e2))
+      case UMinus(Minus(e1, e2)) => Minus(e2, e1)
+
+      case Times(WholeNumber(1), e) => e
+      case Times(WholeNumber(-1), e) => UMinus(e)
+      case Times(e, WholeNumber(1)) => e
+      case Times(WholeNumber(0), _) => IntLiteral(0)
+      case Times(_, WholeNumber(0)) => IntLiteral(0)
+      case Times(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 * i2)      
+      case Times(IntLiteral(i1), Times(IntLiteral(i2), t)) => Times(IntLiteral(i1*i2), t)
+      case Times(IntLiteral(i1), Times(t, IntLiteral(i2))) => Times(IntLiteral(i1*i2), t)
+      case Times(IntLiteral(i), UMinus(e)) => Times(IntLiteral(-i), e)
+      case Times(UMinus(e), IntLiteral(i)) => Times(e, IntLiteral(-i))
+      case Times(IntLiteral(i1), Division(e, IntLiteral(i2))) if i2 != 0 && i1 % i2 == 0 => Times(IntLiteral(i1/i2), e)
+
+      case Division(IntLiteral(i1), IntLiteral(i2)) if i2 != 0 => IntLiteral(i1 / i2)
+      case Division(e, IntLiteral(1)) => e
+
+      //here we put more expensive rules
+      //btw, I know those are not the most general rules, but they lead to good optimizations :)
+      case Plus(UMinus(Plus(e1, e2)), e3) if e1 == e3 => UMinus(e2)
+      case Plus(UMinus(Plus(e1, e2)), e3) if e2 == e3 => UMinus(e1)
+      case Minus(e1, e2) if e1 == e2 => IntLiteral(0) 
+      case Minus(Plus(e1, e2), Plus(e3, e4)) if e1 == e4 && e2 == e3 => IntLiteral(0)
+      case Minus(Plus(e1, e2), Plus(Plus(e3, e4), e5)) if e1 == e4 && e2 == e3 => UMinus(e5)
+
+      //default
+      case e => e
+    }
+          
+
+    val res = fix(simplePostTransform(simplify0))(expr)
+    res
+  }
+
+  def PrintWithIndentation(wr : PrintWriter, expr: Expr) : Unit = {
+        
+    def uniOP(e : Expr, seen : Int) : Boolean = e match {
+      case And(args) => {
+        //have we seen an or ?
+        if(seen == 2)  false
+        else args.foldLeft(true)((acc, arg)=> acc && uniOP(arg,1))          
+      }
+      case Or(args) => {
+        //have we seen an And ?
+        if(seen == 1)  false
+        else args.foldLeft(true)((acc, arg)=> acc && uniOP(arg,2))          
+      }
+      case t: Terminal => true
+      case u @ UnaryOperator(e1, op) => uniOP(e1,seen)
+      case b @ BinaryOperator(e1, e2, op) => uniOP(e1,seen) && uniOP(e2,seen) 
+      case n @ NAryOperator(args, op) => args.foldLeft(true)((acc, arg)=> acc && uniOP(arg,seen))
+    }
+    
+    def printRec(e: Expr, indent : Int) : Unit  = {
+      if(uniOP(e,0)) wr.println(e)
+      else {
+        wr.write("\n"+" " * indent + "(\n")
+        e match {
+          case And(args) => {
+            var start = true
+            args.map((arg) => {
+              wr.print(" "*(indent+1))
+              if(!start) wr.print("^")
+              printRec(arg, indent + 1)
+              start = false
+            })
+          }
+          case Or(args) => {
+            var start = true
+            args.map((arg) => {
+              wr.print(" "*(indent+1))
+              if(!start) wr.print("v")
+              printRec(arg, indent + 1)
+              start = false
+            })
+          }
+          case _ => throw IllegalStateException("how can this happen ? ")          
+        }
+        wr.write(" " * indent + ")\n")
+      }      
+    }    
+    printRec(expr,0)
+  }
+
 }
