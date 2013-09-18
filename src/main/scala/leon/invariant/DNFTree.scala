@@ -13,6 +13,7 @@ import solvers.{ Solver, TrivialSolver, TimeoutSolver }
 import solvers.z3.FairZ3Solver
 import scala.collection.mutable.{ Set => MutableSet }
 import scala.collection.mutable.{ Map => MutableMap }
+import scala.collection.immutable._
 import leon.evaluators._
 import java.io._
 import leon.solvers.z3.UninterpretedZ3Solver
@@ -117,9 +118,94 @@ object TreeUtil {
   val tru = BooleanLiteral(true)
   
   /**
-   * Creates an expression representing the tree
+   * Creates an expression representing the tree (or DAG).
+   * Here, we exploit the fact that this not any arbitrary tree but a DNF tree (or DAG) which
+   * has a fork join structure of the DAG.
    */
-  def toExpr(root: CtrTree) : Expr = root match {        
+  def toExpr(root: CtrTree) : Expr = {        
+	//First compute join and fork points in the DAG
+    var forkJoinMap = MutableMap[CtrNode,CtrTree]()       
+    
+    //Doing a pre-order visit   
+    var visited = Set[CtrNode]()
+    //a stack may not be necessary, forkPts : Stack[CtrNode]
+    def findForkJoinPts(root: CtrTree, forkPt : CtrNode) : Unit = root match {
+      case n@CtrNode(_) => {        
+        if(!visited.contains(n)) {          
+          visited += n
+          val fkpt = if(n.Children.size > 1) {
+            
+            //initalize the join point as leaf, this will be updated later when a real fork point is encountered
+            forkJoinMap += (n -> CtrLeaf())
+            //forkPts.push(n)
+            n            
+          }  else forkPt
+          
+          n.Children.foreach(findForkJoinPts(_, fkpt))            
+        } 
+        else {
+          //this is the join point of the fork point at the top of 'forkPts' stack
+          /*val currFork = forkPts.top
+          val fkpts = forkPts.pop*/
+          forkJoinMap.update(forkPt,n)          
+        }      
+      }
+      case l@CtrLeaf() => ;
+    }
+    
+    //do a post-order visit and construct the expression
+    var visited2 = Set[CtrNode]()
+    //the function returns two values: a map from join points to their expression (until the next unmatched join point), 
+    //an expression represented by the node until the next unmatched join point
+    def computeExpr(root: CtrTree) : (Expr,Map[CtrTree,Expr]) = root match {
+      case n@CtrNode(_) => {        
+        if(!visited2.contains(n)) {          
+          visited2 += n
+          val nodeExpr = n.toExpr
+          
+          var joinExprMap = Map[CtrTree,Expr]()
+          val chExprs = n.Children.foldLeft(Seq[Expr]())((acc, child) => { 
+            val (ex, map) =  computeExpr(child)
+            joinExprMap ++= map
+            if(ex == tru) acc
+            else (acc :+ ex)
+          })
+          
+          //check if the 'n' is a join node
+          if(forkJoinMap.exists(_._2 == n)){
+            //this is a join node                       
+            val joinExpr = And(nodeExpr +: chExprs)
+            joinExprMap += (n -> joinExpr)
+            (tru, joinExprMap)
+          } 
+          else if(forkJoinMap.contains(n)){
+            //this is a fork node             
+            val joinExpr = joinExprMap(forkJoinMap(n)) //we are bound to find the key  here            
+            val forkExpr = And(Seq(nodeExpr,Or(chExprs), joinExpr))             
+            (forkExpr, joinExprMap)
+          } 
+          else {
+            (And(n.toExpr +: chExprs),joinExprMap)
+          }                              
+        } 
+        else {
+          (n.toExpr, Map())          
+        }      
+      }
+      case l@CtrLeaf() => (tru,Map(CtrLeaf() -> tru))
+    }
+    
+    root match{
+      case CtrLeaf() => tru
+      case _ => {
+    	  findForkJoinPts(root, root.asInstanceOf[CtrNode])
+    	  computeExpr(root)._1
+      }
+    }    
+  }
+  
+  //This takes exponential time !!
+/*  def toExpr(root: CtrTree) : Expr = root match {        
 	case n@CtrNode(_) => {	 	  
        val childrenExpr = n.Children.foldLeft(tru: Expr)((acc, child) => {
          val chExpr = toExpr(child)
@@ -136,7 +222,7 @@ object TreeUtil {
        else And(nodeExpr,childrenExpr)          
 	}   
     case CtrLeaf() => tru
-  }
+  }*/
 
   def preorderVisit(root: CtrTree, visitor: CtrNode => Unit) = {
     var visited = Set[CtrNode]()

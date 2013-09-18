@@ -461,7 +461,6 @@ object InvariantUtil {
     //replace the keys with values
     recReplace(ine, inStk, inVars)    
   }
-
   
   def simplifyArithWithReals(expr: Expr): Expr = {
     def simplify0(expr: Expr): Expr = expr match {

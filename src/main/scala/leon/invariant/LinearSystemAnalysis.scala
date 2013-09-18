@@ -69,55 +69,60 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
   }
 
   /**
-   * Instantiates a template using the given mapping for the template variables.
-   * The instantiation also takes care of converting the rational coefficients to integer coefficients. 
+   * Instantiates templated subexpressions of the given expression (expr) using the given mapping for the template variables.
+   * The instantiation also takes care of converting the rational coefficients to integer coefficients.
    */
-  def instantiateTemplate(template: Expr, tempVarMap: Map[Expr,Expr]): Expr = {
-
+  def instantiateTemplate(expr: Expr, tempVarMap: Map[Expr, Expr]): Expr = {
     //do a simple post transform and replace the template vars by their values
     val inv = simplePostTransform((tempExpr: Expr) => tempExpr match {
       case e @ BinaryOperator(lhs, rhs, op) if ((e.isInstanceOf[Equals] || e.isInstanceOf[LessThan]
         || e.isInstanceOf[LessEquals] || e.isInstanceOf[GreaterThan]
-        || e.isInstanceOf[GreaterEquals])) => {
+        || e.isInstanceOf[GreaterEquals]) 
+        && 
+        !InvariantUtil.getTemplateVars(tempExpr).isEmpty) => {
 
         val linearTemp = ctrTracker.exprToTemplate(tempExpr)
-        val coeffMap = linearTemp.coeffTemplate.map((entry) => {
-          val (term, coeffTemp) = entry
-          val coeffE = replace(tempVarMap, coeffTemp)
-          val coeff = RealValuedExprInterpreter.evaluate(coeffE)
-          (term -> coeff)
-        })
-        val const = if (linearTemp.constTemplate.isDefined)
-          Some(RealValuedExprInterpreter.evaluate(replace(tempVarMap, linearTemp.constTemplate.get)))
-        else None
-
-        val realValues: Seq[Expr] = coeffMap.values.toSeq ++ { if (const.isDefined) Seq(const.get) else Seq() }
-
-        //the coefficients could be fractions ,so collect all the denominators
-        val getDenom = (t: Expr) => t match {
-          case RealLiteral(num, denum) => denum
-          case _ => 1
-        }
-
-        val denoms = realValues.foldLeft(Set[Int]())((acc, entry) => { acc + getDenom(entry) })
-        //compute the LCM of the denominators (approx. LCM)
-        val lcm = denoms.foldLeft(1)((acc, d) => if (acc % d == 0) acc else acc * d)
-
-        //scale the numerator by lcm
-        val scaleNum = (t: Expr) => t match {
-          case RealLiteral(num, denum) => IntLiteral(num * (lcm / denum))
-          case IntLiteral(n) => IntLiteral(n * lcm)
-          case _ => throw IllegalStateException("Coefficient not assigned to any value")
-        }
-        val intCoeffMap = coeffMap.map((entry) => (entry._1, scaleNum(entry._2)))
-        val intConst = if (const.isDefined) Some(scaleNum(const.get)) else None
-
-        val linearCtr = new LinearConstraint(linearTemp.op, intCoeffMap, intConst)
-        linearCtr.expr
+        instantiateTemplate(linearTemp, tempVarMap)
       }
       case _ => tempExpr
-    })(template)
+    })(expr)
     inv
+  }
+
+  def instantiateTemplate(linearTemp: LinearTemplate, tempVarMap: Map[Expr, Expr]): Expr = {
+    val coeffMap = linearTemp.coeffTemplate.map((entry) => {
+      val (term, coeffTemp) = entry
+      val coeffE = replace(tempVarMap, coeffTemp)
+      val coeff = RealValuedExprInterpreter.evaluate(coeffE)
+      (term -> coeff)
+    })
+    val const = if (linearTemp.constTemplate.isDefined)
+      Some(RealValuedExprInterpreter.evaluate(replace(tempVarMap, linearTemp.constTemplate.get)))
+    else None
+
+    val realValues: Seq[Expr] = coeffMap.values.toSeq ++ { if (const.isDefined) Seq(const.get) else Seq() }
+
+    //the coefficients could be fractions ,so collect all the denominators
+    val getDenom = (t: Expr) => t match {
+      case RealLiteral(num, denum) => denum
+      case _ => 1
+    }
+
+    val denoms = realValues.foldLeft(Set[Int]())((acc, entry) => { acc + getDenom(entry) })
+    //compute the LCM of the denominators (approx. LCM)
+    val lcm = denoms.foldLeft(1)((acc, d) => if (acc % d == 0) acc else acc * d)
+
+    //scale the numerator by lcm
+    val scaleNum = (t: Expr) => t match {
+      case RealLiteral(num, denum) => IntLiteral(num * (lcm / denum))
+      case IntLiteral(n) => IntLiteral(n * lcm)
+      case _ => throw IllegalStateException("Coefficient not assigned to any value")
+    }
+    val intCoeffMap = coeffMap.map((entry) => (entry._1, scaleNum(entry._2)))
+    val intConst = if (const.isDefined) Some(scaleNum(const.get)) else None
+
+    val linearCtr = new LinearConstraint(linearTemp.op, intCoeffMap, intConst)
+    linearCtr.expr
   }
 
   /**
@@ -226,19 +231,20 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
         //check if 'inv' is a 'sufficiently strong' invariant by looking for a counter-example. 
         //if one exists find a path (in each tree) that results in the counter-example and add farkas' 
         //constraints for the path to the constraints to be solved
-        val tempIdMap: Map[Identifier, Expr] = TemplateFactory.getTemplateIds.collect{
+        val tempVarMap: Map[Expr, Expr] = TemplateFactory.getTemplateIds.collect{
           //println(v.id +" mapsto " + model(v.id))
-          case id:Identifier if model.contains(id) => (id -> model(id))         
+          case id:Identifier if model.contains(id) => (id.toVariable -> model(id))         
         }.toMap
 
         val wr = new PrintWriter(new File("formula-dump.txt"))
         val vc = funcs.foldLeft(tru: Expr)((acc, fd) => {
 
-          val cande = InvariantUtil.simplifyArithWithReals(replaceFromIDs(tempIdMap, funcExprs(fd)))
+          val e1  = instantiateTemplate(funcExprs(fd), tempVarMap)          
+          val cande = simplifyArithmetic(e1)
           //For debugging                    
           wr.println("Function name: " + fd.id)
           wr.println("Formula expr: ")
-	      InvariantUtil.PrintWithIndentation(wr,funcExprs(fd))
+	      InvariantUtil.PrintWithIndentation(wr,InvariantUtil.unFlatten(cande))
 
           if (acc == tru) cande
           else And(acc, cande)
@@ -265,7 +271,11 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
                 case cn @ CtrNode(_) => {
 
                   //note the expr may have template variables so replace them with the candidate values
-                  val nodeExpr = replaceFromIDs(tempIdMap, cn.toExpr)
+                  val nodeExpr = if (!cn.templates.isEmpty) {
+                    //the node has templates
+                    instantiateTemplate(cn.toExpr, tempVarMap)
+                  } else cn.toExpr
+                   
                   solEval.evalBoolExpr(nodeExpr) match {
                     case None => throw IllegalStateException("cannot evaluate " + cn.toExpr + " on " + solEval.getModel)
                     case Some(b) => b
