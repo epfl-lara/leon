@@ -490,9 +490,13 @@ object Trees {
     leastUpperBound(Seq(set1, set2).map(_.getType)).foreach(setType _)
   }
   case class SetMin(set: Expr) extends Expr with FixedType {
+    typeCheck(set, SetType(Int32Type))
+
     val fixedType = Int32Type
   }
   case class SetMax(set: Expr) extends Expr with FixedType {
+    typeCheck(set, SetType(Int32Type))
+
     val fixedType = Int32Type
   }
 

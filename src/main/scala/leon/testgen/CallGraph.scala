@@ -168,7 +168,7 @@ class CallGraph(val program: Program) {
     fd.annotations.exists(_ == "main")
   }
 
-  def findAllPaths(z3Solver: FairZ3SolverFactory): Set[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = {
+  def findAllPaths(z3Solverf: SolverFactory[Solver]): Set[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = {
     val waypoints: Set[ProgramPoint] = programPoints.filter{ case ExpressionPoint(Waypoint(_, _), _) => true case _ => false }
     val sortedWaypoints: Seq[ProgramPoint] = waypoints.toSeq.sortWith((p1, p2) => {
       val (ExpressionPoint(Waypoint(i1, _), _), ExpressionPoint(Waypoint(i2, _), _)) = (p1, p2)
@@ -183,7 +183,7 @@ class CallGraph(val program: Program) {
     if(sortedWaypoints.size == 0) {
       findSimplePaths(mainPoint.get)
     } else {
-      visitAllWaypoints(mainPoint.get :: sortedWaypoints.toList, z3Solver) match {
+      visitAllWaypoints(mainPoint.get :: sortedWaypoints.toList, z3Solverf) match {
         case None => Set()
         case Some(p) => Set(p)
       }
@@ -194,7 +194,7 @@ class CallGraph(val program: Program) {
     }
   }
 
-  def visitAllWaypoints(waypoints: List[ProgramPoint], z3Solver: FairZ3SolverFactory): Option[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = {
+  def visitAllWaypoints(waypoints: List[ProgramPoint], z3Solverf: SolverFactory[Solver]): Option[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = {
     def rec(head: ProgramPoint, tail: List[ProgramPoint], path: Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]): 
       Option[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = {
         tail match {
@@ -204,11 +204,10 @@ class CallGraph(val program: Program) {
             var completePath: Option[Seq[(ProgramPoint, ProgramPoint, TransitionLabel)]] = None
             allPaths.find(intermediatePath => {
               val pc = pathConstraint(path ++ intermediatePath)
-              z3Solver.restartZ3
 
               var testcase: Option[Map[Identifier, Expr]] = None
                 
-              val (solverResult, model) = SimpleSolverAPI(z3Solver).solveSAT(pc)
+              val (solverResult, model) = SimpleSolverAPI(z3Solverf).solveSAT(pc)
               solverResult match {
                 case None => {
                   false

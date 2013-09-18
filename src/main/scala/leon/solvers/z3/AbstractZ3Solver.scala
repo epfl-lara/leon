@@ -19,7 +19,12 @@ import scala.collection.mutable.{Set => MutableSet}
 
 // This is just to factor out the things that are common in "classes that deal
 // with a Z3 instance"
-trait AbstractZ3Solver extends SolverFactory[Solver] {
+trait AbstractZ3Solver
+  extends Solver
+     with TimeoutAssumptionSolver
+     with AssumptionSolver
+     with IncrementalSolver {
+
   val context : LeonContext
   val program : Program
 
@@ -45,18 +50,23 @@ trait AbstractZ3Solver extends SolverFactory[Solver] {
 
   override def free() {
     freed = true
-    super.free()
     if (z3 ne null) {
       z3.delete()
       z3 = null;
     }
   }
 
+  protected[z3] var interrupted = false;
+
   override def interrupt() {
-    super.interrupt()
+    interrupted = true
     if(z3 ne null) {
       z3.interrupt
     }
+  }
+
+  override def recoverInterrupt() {
+    interrupted = false
   }
 
   protected[leon] def prepareFunctions : Unit
@@ -455,13 +465,7 @@ trait AbstractZ3Solver extends SolverFactory[Solver] {
         case IntLiteral(v) => z3.mkInt(v, intSort)
         case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()
         case UnitLiteral => unitValue
-        case Equals(l, r) => {
-          //if(l.getType != r.getType) 
-          //  println("Warning : wrong types in equality for " + l + " == " + r)
-          z3.mkEq(rec( l ), rec( r ) )
-        }
-
-        //case Equals(l, r) => z3.mkEq(rec(l), rec(r))
+        case Equals(l, r) => z3.mkEq(rec( l ), rec( r ) )
         case Plus(l, r) => z3.mkAdd(rec(l), rec(r))
         case Minus(l, r) => z3.mkSub(rec(l), rec(r))
         case Times(l, r) => z3.mkMul(rec(l), rec(r))

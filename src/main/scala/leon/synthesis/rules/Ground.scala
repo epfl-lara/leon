@@ -14,7 +14,7 @@ case object Ground extends Rule("Ground") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     if (p.as.isEmpty) {
 
-      val solver = SimpleSolverAPI(sctx.solverFactory.withTimeout(5000L)) // We give that 5s
+      val solver = SimpleSolverAPI(new TimeoutSolverFactory(sctx.solverFactory, 5000L))
 
       val tpe = TupleType(p.xs.map(_.getType))
 
@@ -28,8 +28,6 @@ case object Ground extends Rule("Ground") {
         case _ =>
           None
       }
-
-      solver.free()
 
       result
     } else {

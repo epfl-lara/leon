@@ -86,8 +86,6 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
       		)
       		(res2._1, res2._2)
 	      }
-
-        solver.free()
       }
     }
     
@@ -144,7 +142,6 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
       		)
       		(res2._1, res2._2)
 	      }
-        solver.free()
       }
     }
     
@@ -204,8 +201,6 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
       		)
       		(res2._1, res2._2)
 	      }
-
-          solver.free()
       }
     }
     

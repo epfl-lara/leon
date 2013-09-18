@@ -69,8 +69,6 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
             i += 1
           }
 
-          solver.free()
-
           result.getOrElse(RuleApplicationImpossible)
         }
       }

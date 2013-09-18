@@ -20,9 +20,13 @@ class FairZ3SolverTestsNewAPI extends LeonTestSuite {
     test("Solver test #" + testCounter) {
       val sub = solver.getNewSolver
 
-      sub.assertCnstr(Not(expr))
+      try {
+        sub.assertCnstr(Not(expr))
 
-      assert(sub.check === expected.map(!_), msg)
+        assert(sub.check === expected.map(!_), msg)
+      } finally {
+        sub.free()
+      }
     }
   }
 
@@ -57,7 +61,7 @@ class FairZ3SolverTestsNewAPI extends LeonTestSuite {
   private val y : Expr = Variable(FreshIdentifier("y").setType(Int32Type))
   private def f(e : Expr) : Expr = FunctionInvocation(fDef, e :: Nil)
 
-  private val solver = new FairZ3SolverFactory(testContext, minimalProgram)
+  private val solver = SolverFactory(() => new FairZ3Solver(testContext, minimalProgram))
 
   private val tautology1 : Expr = BooleanLiteral(true)
   assertValid(solver, tautology1)
@@ -91,28 +95,38 @@ class FairZ3SolverTestsNewAPI extends LeonTestSuite {
 
     locally {
       val sub = solver.getNewSolver
-      sub.assertCnstr(f)
-      assert(sub.check === Some(true))
+      try {
+        sub.assertCnstr(f)
+        assert(sub.check === Some(true))
+      } finally {
+        sub.free()
+      }
     }
 
     locally {
       val sub = solver.getNewSolver
-      sub.assertCnstr(f)
-      val result = sub.checkAssumptions(Set(b1))
+      try {
+        sub.assertCnstr(f)
+        val result = sub.checkAssumptions(Set(b1))
 
-      assert(result === Some(true))
-      assert(sub.getUnsatCore.isEmpty)
+        assert(result === Some(true))
+        assert(sub.getUnsatCore.isEmpty)
+      } finally {
+        sub.free()
+      }
     }
 
     locally {
       val sub = solver.getNewSolver
-      sub.assertCnstr(f)
+      try {
+        sub.assertCnstr(f)
 
-      val result = sub.checkAssumptions(Set(b1, b2))
-      assert(result === Some(false))
-      assert(sub.getUnsatCore === Set(b2))
+        val result = sub.checkAssumptions(Set(b1, b2))
+        assert(result === Some(false))
+        assert(sub.getUnsatCore === Set(b2))
+      } finally {
+        sub.free()
+      }
     }
   }
-
-  solver.free()
 }

@@ -4,18 +4,24 @@ package leon
 package solvers
 
 import utils._
-import purescala.Common._
-import purescala.Trees._
+import purescala.Trees.Expr
+import purescala.Common.Identifier
 
-trait Solver extends Interruptible {
-  def push(): Unit
-  def pop(lvl: Int = 1): Unit
+
+trait Solver {
+  def name: String
+  val context: LeonContext
+
   def assertCnstr(expression: Expr): Unit
 
   def check: Option[Boolean]
-  def checkAssumptions(assumptions: Set[Expr]): Option[Boolean]
   def getModel: Map[Identifier, Expr]
-  def getUnsatCore: Set[Expr]
+
+  def free()
 
   implicit val debugSection = DebugSectionSolver
+
+  private[solvers] def debugS(msg: String) = {
+    context.reporter.debug("["+name+"] "+msg)
+  }
 }

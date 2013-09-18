@@ -40,8 +40,6 @@ case object EqualitySplit extends Rule("Eq. Split") {
       case _ => false
     }).values.flatten
 
-    solver.free()
-
     candidates.flatMap(_ match {
       case List(a1, a2) =>
 
