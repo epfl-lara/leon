@@ -182,7 +182,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
       val bexpr = TreeUtil.toExpr(btree)
       val pexpr = TreeUtil.toExpr(ptree)
       
-      val formula = And(bexpr, pexpr)
+      val formula = And(bexpr, pexpr)      
       //println("Formula: "+fd.id+"-->"+formula)
       (fd -> formula)
     }).toMap
@@ -246,13 +246,21 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
           wr.println("Formula expr: ")
 	      InvariantUtil.PrintWithIndentation(wr,InvariantUtil.unFlatten(cande))
 
+          //throw an exception if the candidate expression has reals
+          if (InvariantUtil.hasReals(cande))
+            throw IllegalStateException("Instantiated VC of " + fd.id + " contains reals: " + cande)
+          
+          println("verification condition for"+ fd.id +  " : "+cande)
+          println("Solution: "+uiSolver.solveSATWithFunctionCalls(cande))
+
           if (acc == tru) cande
           else And(acc, cande)
         })
         wr.flush()
 	    wr.close()
         //try to see if the vc is satisfiable
-        //println("verification condition: "+simplifyArithmetic(vc))        
+        /*println("verification condition: "+simplifyArithmetic(vc))
+        println("Solution: "+uiSolver.solveSATWithFunctionCalls(vc))*/
         val solEval = uiSolver.getSATSolverEvaluator(vc)
         solEval.check match {
           case None => throw IllegalStateException("cannot check the satisfiability of " + vc)
@@ -275,6 +283,10 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
                     //the node has templates
                     instantiateTemplate(cn.toExpr, tempVarMap)
                   } else cn.toExpr
+                  
+                  //throw an exception if the expression has reals
+                  if(InvariantUtil.hasReals(nodeExpr)) 
+                    throw IllegalStateException("Node expression has reals: "+nodeExpr)
                    
                   solEval.evalBoolExpr(nodeExpr) match {
                     case None => throw IllegalStateException("cannot evaluate " + cn.toExpr + " on " + solEval.getModel)

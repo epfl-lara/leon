@@ -200,7 +200,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
       if (post.isDefined) {
 
         val argmap1 = InvariantUtil.formalToAcutal(call, ResultVariable())
-        val inlinedPost = InvariantUtil.FlattenFunction(replace(argmap1, matchToIfThenElse(post.get)))
+        val inlinedPost = InvariantUtil.FlattenFunction(replace(argmap1, matchToIfThenElse(post.get)))        
 
         //println("Identifiers: "+variablesOf(body))
         val argmap2 = InvariantUtil.formalToAcutal(call, resVar)
