@@ -213,16 +213,17 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
     					else And(nonLinearCtrs)
     recSolveForTemplatesIncr(uiSolver, nonLinearCtr, funcExprs)
   }
-  
+
   def recSolveForTemplatesIncr(uiSolver: UninterpretedZ3Solver, nonLinearCtr: Expr,
-      funcExprs : Map[FunDef,Expr]): Option[Map[FunDef, Expr]] = {
+    funcExprs: Map[FunDef, Expr]): Option[Map[FunDef, Expr]] = {
 
     val funcs = funcExprs.keys
+
     val (res, model, _) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)
     res match {
       case None => None
       case Some(false) => None
-      case Some(true) => {        
+      case Some(true) => {
         //For debugging: printing the candidate invariants found at this step
         println("candidate Invariants")
         val candInvs = getAllInvariants(model)
@@ -231,83 +232,83 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
         //check if 'inv' is a 'sufficiently strong' invariant by looking for a counter-example. 
         //if one exists find a path (in each tree) that results in the counter-example and add farkas' 
         //constraints for the path to the constraints to be solved
-        val tempVarMap: Map[Expr, Expr] = TemplateFactory.getTemplateIds.collect{
+        val tempVarMap: Map[Expr, Expr] = TemplateFactory.getTemplateIds.collect {
           //println(v.id +" mapsto " + model(v.id))
-          case id:Identifier if model.contains(id) => (id.toVariable -> model(id))         
+          case id: Identifier if model.contains(id) => (id.toVariable -> model(id))
         }.toMap
 
-        val wr = new PrintWriter(new File("formula-dump.txt"))
-        val vc = funcs.foldLeft(tru: Expr)((acc, fd) => {
+       //val wr = new PrintWriter(new File("formula-dump.txt"))
+        val newctrs = funcs.foldLeft(Seq[Expr]())((acc, fd) => {
+          
+          val instVC = simplifyArithmetic(instantiateTemplate(funcExprs(fd), tempVarMap))
 
-          val e1  = instantiateTemplate(funcExprs(fd), tempVarMap)          
-          val cande = simplifyArithmetic(e1)
           //For debugging                    
-          wr.println("Function name: " + fd.id)
+          /*wr.println("Function name: " + fd.id)
           wr.println("Formula expr: ")
-	      InvariantUtil.PrintWithIndentation(wr,InvariantUtil.unFlatten(cande))
+          InvariantUtil.PrintWithIndentation(wr, InvariantUtil.unFlatten(cande))*/
 
           //throw an exception if the candidate expression has reals
-          if (InvariantUtil.hasReals(cande))
-            throw IllegalStateException("Instantiated VC of " + fd.id + " contains reals: " + cande)
-          
-          println("verification condition for"+ fd.id +  " : "+cande)
-          println("Solution: "+uiSolver.solveSATWithFunctionCalls(cande))
+          if (InvariantUtil.hasReals(instVC))
+            throw IllegalStateException("Instantiated VC of " + fd.id + " contains reals: " + instVC)
 
-          if (acc == tru) cande
-          else And(acc, cande)
-        })
-        wr.flush()
-	    wr.close()
-        //try to see if the vc is satisfiable
-        /*println("verification condition: "+simplifyArithmetic(vc))
-        println("Solution: "+uiSolver.solveSATWithFunctionCalls(vc))*/
-        val solEval = uiSolver.getSATSolverEvaluator(vc)
-        solEval.check match {
-          case None => throw IllegalStateException("cannot check the satisfiability of " + vc)
-          case Some(false) => {
-            //found a real invariant so return the invariant        
-            Some(getAllInvariants(model))
-          }
-          case Some(true) => {
-            //For debugging purposes.
-        	println("Found candidate invariants are not real invariants!!")//+solEval.getInternalModel)
+          //println("verification condition for" + fd.id + " : " + cande)
+          //println("Solution: "+uiSolver.solveSATWithFunctionCalls(cande))
 
-            //try to get the paths that lead to the error
-            val satChooser = (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {
-              ch.filter((child) => child match {
-                case CtrLeaf() => true
-                case cn @ CtrNode(_) => {
-
-                  //note the expr may have template variables so replace them with the candidate values
-                  val nodeExpr = if (!cn.templates.isEmpty) {
-                    //the node has templates
-                    instantiateTemplate(cn.toExpr, tempVarMap)
-                  } else cn.toExpr
-                  
-                  //throw an exception if the expression has reals
-                  if(InvariantUtil.hasReals(nodeExpr)) 
-                    throw IllegalStateException("Node expression has reals: "+nodeExpr)
-                   
-                  solEval.evalBoolExpr(nodeExpr) match {
-                    case None => throw IllegalStateException("cannot evaluate " + cn.toExpr + " on " + solEval.getModel)
-                    case Some(b) => b
-                  }
-                }
-              })
+          val solEval = uiSolver.getSATSolverEvaluator(instVC)
+          solEval.check match {
+            case None => throw IllegalStateException("cannot check the satisfiability of " + instVC)
+            case Some(false) => {
+              //do not generate any constraints
+              acc
             }
-            val newCtrs = funcs.foldLeft(Seq[Expr]())((acc, fd) => {
+            case Some(true) => {
+              //For debugging purposes.
+              println("Function: " + fd.id + "--Found candidate invariant is not a real invariant!!") //+solEval.getInternalModel)
 
+              //try to get the paths that lead to the error 
+              val satChooser = (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {
+                ch.filter((child) => child match {
+                  case CtrLeaf() => true
+                  case cn @ CtrNode(_) => {
+
+                    //note the expr may have template variables so replace them with the candidate values
+                    val nodeExpr = if (!cn.templates.isEmpty) {
+                      //the node has templates
+                      instantiateTemplate(cn.toExpr, tempVarMap)
+                    } else cn.toExpr
+
+                    //throw an exception if the expression has reals
+                    if (InvariantUtil.hasReals(nodeExpr))
+                      throw IllegalStateException("Node expression has reals: " + nodeExpr)
+
+                    solEval.evalBoolExpr(nodeExpr) match {
+                      case None => throw IllegalStateException("cannot evaluate " + cn.toExpr + " on " + solEval.getModel)
+                      case Some(b) => b
+                    }
+                  }
+                })
+              }
               val (btree, ptree) = ctrTracker.getVC(fd)
-              val ctr = generateCtrsForTree(btree, ptree, uiSolver, satChooser)
-              (acc :+ ctr)
-            })
-            
-            //For debugging purposes.
-            println("# of new Constraints: "+newCtrs.size)
-            
-            //call the procedure recursively
-            recSolveForTemplatesIncr(uiSolver, And(nonLinearCtr, And(newCtrs)), funcExprs)
+              val newctr = generateCtrsForTree(btree, ptree, uiSolver, satChooser)
+              if(newctr == tru)
+                throw IllegalStateException("cannot find a counter-example path!!")
+              acc :+ newctr
+            }
           }
+        })
+        /*wr.flush()
+        wr.close()*/
+        
+        //have we found a real invariant ?
+        if(newctrs.isEmpty) {
+          //yes, hurray
+          Some(getAllInvariants(model))          
+        } else {
+          //For debugging purposes.
+          println("# of new Constraints: " + newctrs.size)
+
+          //call the procedure recursively
+          recSolveForTemplatesIncr(uiSolver, And(nonLinearCtr, And(newctrs)), funcExprs)
         }
       }
     }
