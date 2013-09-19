@@ -28,7 +28,7 @@ import leon.verification.ExtendedVC
 import leon.verification.Tactic
 import leon.verification.VerificationReport
 
-class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
+class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, reporter : Reporter) {
 
   private val implicationSolver = new LinearImplicationSolver()
 
@@ -45,8 +45,20 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
   }
 
   /**
+   * Completes a model by adding mapping to new template variables
+   */
+  def completeModel(model: Map[Identifier, Expr], tempIds: Set[Identifier]): Map[Identifier, Expr] = {
+    tempIds.map((id) => {
+      if (!model.contains(id)) {        
+        (id, simplestValue(id.getType))
+      } else (id, model(id))
+    }).toMap
+  }
+
+  /**
    * Computes the invariant for all the procedures given a mapping for the 
    * template variables.
+   * (Undone) If the mapping does not have a value for an id, then the id is bound to the simplest value
    */
   def getAllInvariants(model: Map[Identifier, Expr]): Map[FunDef, Expr] = {
     val invs = ctrTracker.getFuncs.foldLeft(Seq[(FunDef, Expr)]())((acc, fd) => {
@@ -56,10 +68,16 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
         acc
       else {
         val template = tempOption.get
-        val tempvars = InvariantUtil.getTemplateVars(template)
+        val tempvars = InvariantUtil.getTemplateVars(template)        
         val tempVarMap: Map[Expr, Expr] = tempvars.map((v) => {
-          //println(v.id +" mapsto " + model(v.id))
-          (v, model(v.id))
+          //println(v.id +" mapsto " + model(v.id))         
+         /* if(!model.contains(v.id))          
+          {
+            reporter.warning("- Model does not have a mapping for template varaiable: "+v)
+            (v, simplestValue(v))
+          }
+          else*/
+            (v, model(v.id))
         }).toMap
 
         acc :+ (fd, instantiateTemplate(template, tempVarMap))
@@ -129,8 +147,11 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
    * This function computes invariants belonging to the given templates.
    * The result is a mapping from function definitions to the corresponding invariants.
    */
+  var exploredPaths = 0
   def solveForTemplates(uiSolver: UninterpretedZ3Solver): Option[Map[FunDef, Expr]] = {
-
+  
+    exploredPaths = 0
+    
     val selector = (p: CtrNode, ch: Iterable[CtrTree],d: Int) => ch
     //traverse each of the functions and collect the constraints
     val nonLinearCtrs  = ctrTracker.getFuncs.foldLeft(Seq[Expr]())((acc, fd) => {
@@ -139,13 +160,16 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
       val ctr = generateCtrsForTree(btree, ptree, uiSolver, selector)      
       if(ctr == tru) acc        
       else (acc :+ ctr)
-    })
+    })   
     
     val nonLinearCtr = if(nonLinearCtrs.isEmpty) throw IllegalStateException("Found no constraints") 
     					else if(nonLinearCtrs.size == 1) nonLinearCtrs.first 
 						else And(nonLinearCtrs)
 	          
     val (res, model, unsatCore) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)
+    
+    //print some statistics 
+    reporter.info("- Number of explored paths (of the DAG) in this unroll step: "+exploredPaths)
     if (res.isDefined && res.get == true) {
       //printing the model here for debugging
       //println("Model: "+model)
@@ -161,11 +185,14 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
    * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
    */
+  
   def solveForTemplatesIncr(uiSolver: UninterpretedZ3Solver): Option[Map[FunDef, Expr]] = {
 
+    exploredPaths = 0
     val max_depth = -1
     //TODO: ideally we may want to associate a random number number generator with each node in the tree
     //Is this necessary ??
+    //associate a random number generator for every element of the tree
     val selector = (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {
       if (d <= max_depth) ch
       else {
@@ -207,7 +234,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
     })
     
     //For debugging purposes.
-    println("# of initals Constraints: "+nonLinearCtrs.size)
+    println("# of initals Constraints: "+nonLinearCtrs.size)      
     
     val nonLinearCtr = if (nonLinearCtrs.size == 1) nonLinearCtrs.first
     					else And(nonLinearCtrs)
@@ -222,20 +249,24 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
     val (res, model, _) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)
     res match {
       case None => None
-      case Some(false) => None
+      case Some(false) =>  {
+        
+        //print some statistics 
+    	reporter.info("- Number of explored paths (of the DAG) in this unroll step: "+exploredPaths)
+        None
+      }
       case Some(true) => {
+        val compModel = completeModel(model, TemplateFactory.getTemplateIds)
+        
         //For debugging: printing the candidate invariants found at this step
         println("candidate Invariants")
-        val candInvs = getAllInvariants(model)
+        val candInvs = getAllInvariants(compModel)
         candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))
 
         //check if 'inv' is a 'sufficiently strong' invariant by looking for a counter-example. 
         //if one exists find a path (in each tree) that results in the counter-example and add farkas' 
-        //constraints for the path to the constraints to be solved
-        val tempVarMap: Map[Expr, Expr] = TemplateFactory.getTemplateIds.collect {
-          //println(v.id +" mapsto " + model(v.id))
-          case id: Identifier if model.contains(id) => (id.toVariable -> model(id))
-        }.toMap
+        //constraints for the path to the constraints to be solved        
+        val tempVarMap: Map[Expr, Expr] = compModel.map((elem) => (elem._1.toVariable,elem._2)).toMap
 
        //val wr = new PrintWriter(new File("formula-dump.txt"))
         val newctrs = funcs.foldLeft(Seq[Expr]())((acc, fd) => {
@@ -263,7 +294,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
             }
             case Some(true) => {
               //For debugging purposes.
-              println("Function: " + fd.id + "--Found candidate invariant is not a real invariant!!") //+solEval.getInternalModel)
+              println("Function: " + fd.id + "--Found candidate invariant is not a real invariant! ")//+solEval.getInternalModel)
 
               //try to get the paths that lead to the error 
               val satChooser = (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {
@@ -302,11 +333,13 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
         //have we found a real invariant ?
         if(newctrs.isEmpty) {
           //yes, hurray
-          Some(getAllInvariants(model))          
+          //print some statistics 
+          reporter.info("- Number of explored paths (of the DAG) in this unroll step: "+exploredPaths)
+           
+          Some(getAllInvariants(compModel))          
         } else {
           //For debugging purposes.
-          println("# of new Constraints: " + newctrs.size)
-
+          println("# of new Constraints: " + newctrs.size)          
           //call the procedure recursively
           recSolveForTemplatesIncr(uiSolver, And(nonLinearCtr, And(newctrs)), funcExprs)
         }
@@ -467,7 +500,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
           val uifCtr = And(uifCtrs)
           println("UIF constraints: " + uifCtr)        
           //push not inside
-          val nnfExpr = InvariantUtil.TransformNot(uifCtr)        
+          val nnfExpr = ExpressionTransformer.TransformNot(uifCtr)        
           //create the root of the UIF tree
           //TODO: create a UIF tree once and for all and prune the paths while traversing
           val newnode = CtrNode()
@@ -489,6 +522,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker) {
       //here we are solving A^~(B)      
       if (conseqs.isEmpty && conseqTemps.isEmpty) tru
       else {
+        exploredPaths += 1
         val implCtrs = implicationSolver.constraintsForUnsat(ants, antTemps, conseqs, conseqTemps, uiSolver)
         //println("Implication Constraints: "+implCtrs)
         implCtrs

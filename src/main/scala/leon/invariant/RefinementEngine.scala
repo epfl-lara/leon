@@ -31,7 +31,7 @@ class CallData(val node : CtrNode, val cnt: Int) {
 //TODO: the parts of the code that collect the new head functions is ugly. Fix this.
 class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
   
-  private val MAX_UNROLLS = 1    
+  private val MAX_UNROLLS = 2 
   //pointers to the nodes that have function calls 
   //the last component stores the number of time the calls need to be unrolled   
   private var headCallPtrs : Map[Call, CallData] = _
@@ -130,7 +130,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
       val bexpr1 = Equals(resFresh, body)
 
       val prec = fi.funDef.precondition
-      val bodyExpr = InvariantUtil.FlattenFunction(if (prec.isEmpty) {
+      val bodyExpr = ExpressionTransformer.normalizeExpr(if (prec.isEmpty) {
         bexpr1
       } else {
         And(matchToIfThenElse(prec.get), bexpr1)
@@ -153,7 +153,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
             Call(resFresh, FunctionInvocation(recFun, recFun.args.map(_.toVariable))), ResultVariable())
 
           val postTemp = TemplateFactory.constructTemplate(argmap, recFun)
-          val npostTemp = InvariantUtil.FlattenFunction(Not(postTemp))
+          val npostTemp = ExpressionTransformer.normalizeExpr(Not(postTemp))
           //print the negated post
           //println("Negated Post: "+npostTemp)
           ctrTracker.addPostConstraints(recFun,npostTemp)
@@ -200,7 +200,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
       if (post.isDefined) {
 
         val argmap1 = InvariantUtil.formalToAcutal(call, ResultVariable())
-        val inlinedPost = InvariantUtil.FlattenFunction(replace(argmap1, matchToIfThenElse(post.get)))        
+        val inlinedPost = ExpressionTransformer.normalizeExpr(replace(argmap1, matchToIfThenElse(post.get)))        
 
         //println("Identifiers: "+variablesOf(body))
         val argmap2 = InvariantUtil.formalToAcutal(call, resVar)
@@ -287,7 +287,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
           
             val ctr = And(templates)          
             //flatten functions
-            val flatExpr = InvariantUtil.FlattenFunction(ctr)
+            val flatExpr = ExpressionTransformer.normalizeExpr(ctr)
             //create the root of a new  tree          
             val templateTree = CtrNode()          
             ctrTracker.addConstraintRecur(flatExpr, templateTree)

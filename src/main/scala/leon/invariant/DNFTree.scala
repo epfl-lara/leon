@@ -87,7 +87,7 @@ case class CtrNode(id : Int = GlobalNodeCounter.getUID) extends CtrTree {
   }
 
   override def prettyPrint(level : Int) : String = {
-    var str = ""
+    var str = "Id: "+id     
     if(!constraints.isEmpty) str += " Ctrs: " + constraints
     if(!uifs.isEmpty) str+= " Calls: " + uifs
     if(!templates.isEmpty) str += " Temps: " + templates
@@ -111,6 +111,8 @@ case class CtrNode(id : Int = GlobalNodeCounter.getUID) extends CtrTree {
   override def toString(): String = {
     prettyPrint(0)
   }
+  
+  //TODO: should we dump the tree in a graph format ??
 }
 
 object TreeUtil {
@@ -122,35 +124,41 @@ object TreeUtil {
    * Here, we exploit the fact that this not any arbitrary tree but a DNF tree (or DAG) which
    * has a fork join structure of the DAG.
    */
-  def toExpr(root: CtrTree) : Expr = {        
+  def toExpr(topNode: CtrTree) : Expr = {        
 	//First compute join and fork points in the DAG
-    var forkJoinMap = MutableMap[CtrNode,CtrTree]()       
-    
-    //Doing a pre-order visit   
-    var visited = Set[CtrNode]()
-    //a stack may not be necessary, forkPts : Stack[CtrNode]
-    def findForkJoinPts(root: CtrTree, forkPt : CtrNode) : Unit = root match {
-      case n@CtrNode(_) => {        
-        if(!visited.contains(n)) {          
+    var forkJoinMap = MutableMap[CtrNode,CtrTree]()             
+    var visited = Set[CtrNode]()    
+    //a stack that records all the join points (in topological order)    
+    var joinPtsStack = Stack[CtrTree]()   
+    def findForkJoinPts(root: CtrTree): Unit = root match {
+      case n @ CtrNode(_) => {
+        if (!visited.contains(n)) {
           visited += n
-          val fkpt = if(n.Children.size > 1) {
-            
-            //initalize the join point as leaf, this will be updated later when a real fork point is encountered
-            forkJoinMap += (n -> CtrLeaf())
-            //forkPts.push(n)
-            n            
-          }  else forkPt
-          
-          n.Children.foreach(findForkJoinPts(_, fkpt))            
-        } 
-        else {
-          //this is the join point of the fork point at the top of 'forkPts' stack
-          /*val currFork = forkPts.top
-          val fkpts = forkPts.pop*/
-          forkJoinMap.update(forkPt,n)          
-        }      
+
+          n.Children.foreach(findForkJoinPts(_))
+
+          if (n.Children.size > 1) {
+            //this is a  fork point, make the most recent join point the join node of the fork node
+            val joinNode = joinPtsStack.top
+            //here we may to pop all the duplicates but the 'endnode' logic introduces some complexity.
+            //to handle this we pop only #(children) - 1 elements
+            for (i <- 1 to (n.Children.size - 1)) {
+              //make sure that all the popped elements are the same
+              if (joinNode != joinPtsStack.top)
+                throw IllegalStateException("DAG not in fork-join structure: " + n)
+              joinPtsStack = joinPtsStack.pop
+            }
+            forkJoinMap += (n -> joinNode)
+          }
+        } else {
+          //this is a join node
+          joinPtsStack = joinPtsStack.push(n)
+        }
       }
-      case l@CtrLeaf() => ;
+      case l @ CtrLeaf() => {
+        //we consider this as a join node
+        joinPtsStack = joinPtsStack.push(l)
+      }
     }
     
     //do a post-order visit and construct the expression
@@ -180,7 +188,11 @@ object TreeUtil {
           } 
           else if(forkJoinMap.contains(n)){
             //this is a fork node             
-            val joinExpr = joinExprMap(forkJoinMap(n)) //we are bound to find the key  here            
+            val joinNode = forkJoinMap(n)
+            if(!joinExprMap.contains(joinNode)) 
+              throw IllegalStateException("cannot find join-expr for join node: "+joinNode+" \nTree: "+topNode)
+            
+            val joinExpr = joinExprMap(joinNode)             
             val forkExpr = And(Seq(nodeExpr,Or(chExprs), joinExpr))             
             (forkExpr, joinExprMap)
           } 
@@ -189,17 +201,23 @@ object TreeUtil {
           }                              
         } 
         else {
-          (n.toExpr, Map())          
+          //this is a join node (the map will actually be created the first time this node is encountered)
+          (tru, Map())
         }      
       }
-      case l@CtrLeaf() => (tru,Map(CtrLeaf() -> tru))
+      case l@CtrLeaf() => {        
+        //this is a join node
+        (tru,Map(CtrLeaf() -> tru))
+      }
     }
     
-    root match{
+    topNode match{
       case CtrLeaf() => tru
       case _ => {
-    	  findForkJoinPts(root, root.asInstanceOf[CtrNode])
-    	  computeExpr(root)._1
+    	  findForkJoinPts(topNode)
+    	  //For debugging
+    	  //println("ForkJoinMap: "+forkJoinMap.map((elem) => (elem._1.id, if(elem._2 == CtrLeaf()) 0 else elem._2.asInstanceOf[CtrNode].id)))
+    	  computeExpr(topNode)._1
       }
     }    
   }

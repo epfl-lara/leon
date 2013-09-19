@@ -58,11 +58,14 @@ class ConstraintTracker(fundef : FunDef) {
     def addCtr(ie: Expr, endnode: CtrNode): CtrNode = {
       ie match {
         case Or(subexprs) => {
+          //create a new end node and make 'endnode' it child
+          val childEndNode = CtrNode()                    
+          childEndNode.addChildren(endnode)
           val children = subexprs.foldLeft(Set[CtrNode]())((acc, sube) => {                   
-            acc + addCtr(sube, endnode)
+            acc + addCtr(sube, childEndNode)
           })
           val rootnode = CtrNode()          
-          children.foreach((child) => { rootnode.addChildren(child); })
+          children.foreach((child) => { rootnode.addChildren(child); })                   
           rootnode
         }
         case And(subexprs) => {

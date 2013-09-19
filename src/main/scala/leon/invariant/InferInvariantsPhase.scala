@@ -48,7 +48,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       //Create and initialize a constraint tracker
       val constTracker = new ConstraintTracker(vc.funDef)                  
       //flatten the functions in the vc      
-      val vcbody = InvariantUtil.FlattenFunction(vc.body)
+      val vcbody = ExpressionTransformer.normalizeExpr(vc.body)
       println("VC Body falttened: "+vcbody)      
       
       //create a postcondition 
@@ -65,12 +65,12 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       } else {
         None
       }               
-      val vcnpost = InvariantUtil.FlattenFunction(Not(vc.post))                  
+      val vcnpost = ExpressionTransformer.normalizeExpr(Not(vc.post))                  
                   
       //add the negation of the post-condition "or" the template
       //note that we need to use Or as we are using the negation of the disjunction
       val fullPost = if(postTemp.isDefined) 
-    	  					Or(vcnpost, InvariantUtil.FlattenFunction(Not(postTemp.get)))
+    	  					Or(vcnpost, ExpressionTransformer.normalizeExpr(Not(postTemp.get)))
     	  			  else vcnpost
       constTracker.addPostConstraints(vc.funDef,fullPost)                    
       constTracker.addBodyConstraints(vc.funDef,vcbody)
@@ -79,7 +79,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       //println("Body Constraint Tree: "+btree)      
 
       //create entities that uses the constraint tracker
-      val lsAnalyzer = new LinearSystemAnalyzer(constTracker)
+      val lsAnalyzer = new LinearSystemAnalyzer(constTracker, reporter)
       val vcRefiner = new RefinementEngine(program, constTracker)            
       vcRefiner.initialize()
 
