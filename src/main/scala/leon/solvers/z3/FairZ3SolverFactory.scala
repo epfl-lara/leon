@@ -310,7 +310,8 @@ class FairZ3SolverFactory(val context : LeonContext, val program: Program)
         val (newExprs, newBlocks) = template.instantiate(id, fi.args)
 
         for((i, fis2) <- newBlocks) {
-          registerBlocker(nextGeneration(gen), i, fis2)
+          if (!unlockedSet(i))                               // this line fixed a bug when we re-add used blockers
+            registerBlocker(nextGeneration(gen), i, fis2)
           if(i == id) {
             reintroducedSelf = true
           }
