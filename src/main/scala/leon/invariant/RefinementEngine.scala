@@ -184,10 +184,11 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
                       }*/
           //A simple hack; for now
           //TODO: Fix this
-          if(call.fi.funDef.id.name == "size") {            
-            println("Unrolling size")
+          //if(call.fi.funDef.id.name == "size") {            
+            println("Unrolling "+fi.funDef.id)
             newheads ++= inilineCall(call, bodyExpr, fi.funDef.postcondition, resFresh, ctrnode, unrollCnt)          
-          } /*else {
+          //} 
+          /*else {
             Map()
           } */                   
         }            
@@ -195,6 +196,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
       }
       else {        
         //here we are unrolling a non-recursive function, so set the unrollCnt to maximum
+        println("Inlining "+fi.funDef.id)
         inilineCall(call, bodyExpr, fi.funDef.postcondition, resFresh, ctrnode, MAX_UNROLLS)
       }                
     } else Map()    
