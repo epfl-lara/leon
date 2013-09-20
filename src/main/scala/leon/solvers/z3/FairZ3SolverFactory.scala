@@ -228,18 +228,20 @@ class FairZ3SolverFactory(val context : LeonContext, val program: Program)
     }
 
     private def registerBlocker(gen: Int, id: Z3AST, fis: Set[Z3FunctionInvocation]) {
-      val z3ast = z3.mkNot(id)
-      blockersInfo.get(id) match {
-        case Some((exGen, origGen, _, exFis)) =>
-          // PS: when recycling `b`s, this assertion becomes dangerous.
-          // It's better to simply take the min of the generations.
-          // assert(exGen == gen, "Mixing the same id "+id+" with various generations "+ exGen+" and "+gen)
+      if (!wasUnlocked(id)) {
+        val z3ast = z3.mkNot(id)
+        blockersInfo.get(id) match {
+          case Some((exGen, origGen, _, exFis)) =>
+            // PS: when recycling `b`s, this assertion becomes dangerous.
+            // It's better to simply take the max of the generations.
+            // assert(exGen == gen, "Mixing the same id "+id+" with various generations "+ exGen+" and "+gen)
 
-          val minGen = gen max exGen
+            val maxGen = gen max exGen
 
-          blockersInfo(id) = ((minGen, origGen, z3ast, fis++exFis))
-        case None =>
-          blockersInfo(id) = ((gen, gen, z3ast, fis))
+            blockersInfo(id) = ((maxGen, origGen, z3ast, fis++exFis))
+          case None =>
+            blockersInfo(id) = ((gen, gen, z3ast, fis))
+        }
       }
     }
 
@@ -293,13 +295,11 @@ class FairZ3SolverFactory(val context : LeonContext, val program: Program)
 
     def unlock(id: Z3AST) : Seq[Z3AST] = {
       assert(blockersInfo contains id)
-
-      if(unlockedSet(id)) return Seq.empty
+      assert(!wasUnlocked(id))
 
       val (gen, origGen, _, fis) = blockersInfo(id)
 
       blockersInfo -= id
-      val twice = wasUnlocked(id)
 
       var newClauses : Seq[Z3AST] = Seq.empty
 
