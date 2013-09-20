@@ -31,10 +31,11 @@ class CallData(val node : CtrNode, val cnt: Int) {
 //TODO: the parts of the code that collect the new head functions is ugly. Fix this.
 class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
   
-  private val MAX_UNROLLS = 2 
-  //pointers to the nodes that have function calls 
-  //the last component stores the number of time the calls need to be unrolled   
+  private val MAX_UNROLLS = 1 
+  //a mapping from a call to the node containing the call (plus some additional data like the unroll depth etc.)    
   private var headCallPtrs : Map[Call, CallData] = _
+
+  //a set of calls for which its templates have been assumed
   private var templatedCalls = Set[Call]()
 
   /**
@@ -42,7 +43,8 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
   **/
   def initialize() : Unit = {
 
-    //this procedure has side-effects
+    //this procedure has side-effects on 'templatedCalls'
+    //we are consciously ignoring the return value of the procedure
     assumePostConditions()
 
     headCallPtrs = findAllHeads(ctrTracker)  
@@ -116,7 +118,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
   /**
    * Returns a set of unrolled calls and a set of new head functions   
    * here we unroll the methods in the current abstraction by one step.
-   * This procedure has side-effects.
+   * This procedure has side-effects on 'headCallPtrs'
    */  
   //private var unrollCounts = MutableMap[Call,Int]()
   def unrollCall(call : Call, ctrnode : CtrNode, unrollCnt : Int): Map[Call,CallData] = {                
@@ -185,13 +187,14 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
         newheads
       }
       else {        
-        inilineCall(call, bodyExpr, fi.funDef.postcondition, resFresh, ctrnode, unrollCnt)
+        //here we are unrolling a non-recursive function, so set the unrollCnt to maximum
+        inilineCall(call, bodyExpr, fi.funDef.postcondition, resFresh, ctrnode, MAX_UNROLLS)
       }                
     } else Map()    
   }
 
   /**
-  * resVar is the result variable of the body
+  * The parameter 'resVar' is the result variable of the body
   **/
   def inilineCall(call : Call, body: Expr, post:Option[Expr], 
     resVar: Variable, ctrnode: CtrNode, unrollCnt : Int) : Map[Call,CallData] = {    
