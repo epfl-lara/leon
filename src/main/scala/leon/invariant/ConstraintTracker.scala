@@ -112,6 +112,7 @@ class ConstraintTracker(fundef : FunDef) {
         }
       }
     }
+    //println("Creating constraint DAG for expresssion: "+inexpr)
     val exprRoot = addCtr(inexpr, CtrNode())
     val parentEnd = parentNode.getEndNode
     parentEnd.addChildren(exprRoot)    

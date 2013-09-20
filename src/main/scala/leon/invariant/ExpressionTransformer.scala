@@ -117,7 +117,7 @@ object ExpressionTransformer {
           
           val resset = transform(newexpr)
           
-          (freshvar, resset._2 + Equals(freshvar,resset._1)) 
+          (freshvar, resset._2 + resset._1) 
         }
         case Let(binder,value,body) => {
           val freshvar = FreshIdentifier(binder.name,true).setType(e.getType).toVariable

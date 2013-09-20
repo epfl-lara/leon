@@ -1,3 +1,5 @@
+import leon.Utils._
+
 object SizeAndHeight
 {
 	sealed abstract class Tree
@@ -11,7 +13,7 @@ object SizeAndHeight
 	  	  size(l) + size(r) +1
 	  	}
 	  }	  
-	} ensuring(res => res != height(t) - 1)
+	} ensuring(res => res != height(t) - 1 template((a,b,c) => a*res + b*height(t) + c >= 0))
 	//ensuring(res => res >= height(t))	
 	//ensuring(res => res >= height(t) && res  >= 0)
 			

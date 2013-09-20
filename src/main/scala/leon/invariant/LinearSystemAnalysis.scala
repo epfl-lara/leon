@@ -99,6 +99,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, reporter : Reporter) 
         && 
         !InvariantUtil.getTemplateVars(tempExpr).isEmpty) => {
 
+        //println("Template Expression: "+tempExpr)
         val linearTemp = ctrTracker.exprToTemplate(tempExpr)
         instantiateTemplate(linearTemp, tempVarMap)
       }
