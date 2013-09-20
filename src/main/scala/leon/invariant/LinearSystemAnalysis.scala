@@ -448,8 +448,9 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, reporter : Reporter) 
             newuifs, newcons, newtemps, newAuxs, depth + 1), depth) 
         }
         case CtrLeaf() => {                 
+
+          //println("path after post traversal: "+constraintsToExpr(ants ++ conseqs, currUIFs, And(antAuxs ++ currAuxs)))                   
           //pipe to the uif constraint generator
-          //println("path after post traversal: "+constraintsToExpr(ants ++ conseqs, currUIFs, And(antAuxs ++ currAuxs)))
           uifsConstraintsGen(ants, antTemps, antAuxs, currUIFs, conseqs, currTemps, currAuxs, depth + 1)
         }
       }
@@ -489,8 +490,20 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, reporter : Reporter) 
       if (res.isDefined && res.get == false) {
         tru            
       } else {
-        println("Full-path: " + simplifyArithmetic(pathexpr))
-        //println("All ctrs: "+ (ants ++ conseqs ++ calls ++ conseqTemps))            \      
+        //for debugging
+        //println("Full-path: " + simplifyArithmetic(pathexpr))
+        //println("All ctrs: "+ (ants ++ conseqs ++ calls ++ conseqTemps))                    
+          val uifexprs = calls.map((call) => Equals(call.retexpr,call.fi)).toSeq
+          val pathexprs = (ants ++ antTemps ++ conseqs ++ conseqTemps).map(_.template)
+          val plainFormula = And(antAuxs ++ conseqAuxs ++ uifexprs ++  pathexprs)
+          val formula = simplifyArithmetic(plainFormula)
+          
+          /*val wr = new PrintWriter(new File("full-path-"+formula.hashCode()+".txt"))
+          ExpressionTransformer.PrintWithIndentation(wr, formula)
+          wr.flush()
+          wr.close()*/
+          println("Full-path: " + formula)
+          
         //println("Starting Constraint generation")
         val uifCtrs = constraintsForUIFs(calls.toSeq, pathexpr, uiSolver)
         //println("Generated UIF Constraints")
@@ -523,6 +536,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, reporter : Reporter) 
       if (conseqs.isEmpty && conseqTemps.isEmpty) tru
       else {
         exploredPaths += 1
+                
         val implCtrs = implicationSolver.constraintsForUnsat(ants, antTemps, conseqs, conseqTemps, uiSolver)
         //println("Implication Constraints: "+implCtrs)
         implCtrs

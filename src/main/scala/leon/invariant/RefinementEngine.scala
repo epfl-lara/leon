@@ -31,11 +31,12 @@ class CallData(val node : CtrNode, val cnt: Int) {
 //TODO: the parts of the code that collect the new head functions is ugly. Fix this.
 class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
   
-  private val MAX_UNROLLS = 1 
+  private val MAX_UNROLLS = 2 
   //a mapping from a call to the node containing the call (plus some additional data like the unroll depth etc.)    
   private var headCallPtrs : Map[Call, CallData] = _
 
   //a set of calls for which its templates have been assumed
+  //TODO: Ideally this info should stored in a distributed way inside the nodes of the constraint tree
   private var templatedCalls = Set[Call]()
 
   /**
@@ -127,7 +128,9 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
     val fi = call.fi
     if (fi.funDef.body.isDefined) {
 
-      val body = matchToIfThenElse(fi.funDef.getBody)
+      //freshen the body and the post
+      val freshBody = freshenLocals(fi.funDef.getBody)      
+      val body = matchToIfThenElse(freshBody)
       val resFresh = Variable(FreshIdentifier("result", true).setType(body.getType))
       val bexpr1 = Equals(resFresh, body)
 
@@ -135,7 +138,8 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
       val bodyExpr = ExpressionTransformer.normalizeExpr(if (prec.isEmpty) {
         bexpr1
       } else {
-        And(matchToIfThenElse(prec.get), bexpr1)
+        val freshPre = freshenLocals(prec.get)
+        And(matchToIfThenElse(freshPre), bexpr1)
       })        
       
       val isRecursive = prog.isRecursive(fi.funDef)        
@@ -162,9 +166,12 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
 
           //Find new heads
           val (btree,ptree) = ctrTracker.getVC(recFun)
-          newheads ++= (findHeads(btree, MAX_UNROLLS) ++ findHeads(ptree, MAX_UNROLLS))
+          newheads ++= (findHeads(btree, MAX_UNROLLS) ++ findHeads(ptree, MAX_UNROLLS))          
         }
-        // else {
+        else {
+          //be very careful when removing the else, 
+          //TODO: make sure that both the branches do not use the same identifier names for calls
+          //this will affect the 'templatedExpression' cache
 
           //unroll the body some fixed number of times
           /*val ucount = if(unrollCounts.contains(call)) {
@@ -183,7 +190,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
           } /*else {
             Map()
           } */                   
-        //}            
+        }            
         newheads
       }
       else {        
@@ -202,8 +209,9 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
     val calleeSummary = 
       if (post.isDefined) {
 
+        val freshPost = freshenLocals(post.get)
         val argmap1 = InvariantUtil.formalToAcutal(call, ResultVariable())
-        val inlinedPost = ExpressionTransformer.normalizeExpr(replace(argmap1, matchToIfThenElse(post.get)))        
+        val inlinedPost = ExpressionTransformer.normalizeExpr(replace(argmap1, matchToIfThenElse(freshPost)))        
 
         //println("Identifiers: "+variablesOf(body))
         val argmap2 = InvariantUtil.formalToAcutal(call, resVar)
@@ -241,12 +249,12 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
     ctrTracker.getFuncs.foldLeft(Map[Call,CallData]())((acc, fd) => {
 
       val (btree,ptree) = ctrTracker.getVC(fd)      
-      val hds = assumePostConditionsForTree(btree, ptree)
+      val hds = assumePostConditionsForTree(btree, ptree, fd)            
       (acc ++ hds)
     })
   }
   
-  def assumePostConditionsForTree(bodyRoot: CtrNode, postRoot : CtrNode) : Map[Call,CallData] = {
+  def assumePostConditionsForTree(bodyRoot: CtrNode, postRoot : CtrNode, fd: FunDef) : Map[Call,CallData] = {
     
     /**
      * A helper function that creates templates for a call
@@ -276,9 +284,19 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
           //first recurse into the children  
           n.Children.foreach(assumeTemplates(_))
 
+          //For debugging      
+          /*if (fd.id.name.equals("size")) {
+            println("Node UIFs: " + n.uifs)            
+          }*/
+
           //now process this node
-          val newCalls = n.uifs.toSeq.filter((call) => !templatedCalls.contains(call) && 
-            ctrTracker.hasCtrTree(call.fi.funDef))          
+          val newCalls = n.uifs.toSeq.filter((call) => {                       
+            val accept = !templatedCalls.contains(call) && ctrTracker.hasCtrTree(call.fi.funDef)
+            /*if(call.fi.funDef.id.name == "size" && call.retexpr.asInstanceOf[Variable].id.name == "r14"){
+              println("******** Filter value for: "+call.expr+" is "+accept)
+            }*/
+            accept
+          })          
           
           //println("New calls: "+processedCalls)
           //update processed calls
@@ -306,6 +324,9 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker) {
       case CtrLeaf() => ;
     }
 
+    /*if (fd.id.name.equals("size")) {
+      println("Templated calls: "+templatedCalls)
+    }*/
     assumeTemplates(bodyRoot) 
     assumeTemplates(postRoot)
 
