@@ -96,8 +96,10 @@ trait LeonTestSuite extends FunSuite with Timeouts {
   }
 
   override def test(name: String, tags: Tag*)(body: => Unit) {
+
     super.test(name, tags: _*) {
       val id = testIdentifier(name)
+
       val ts = now()
 
       testContext = generateContext
@@ -111,7 +113,7 @@ trait LeonTestSuite extends FunSuite with Timeouts {
       val stats = getStats(id)
 
       if (!stats.accountsFor(total)) {
-        fail("Test took too long to run: "+total+"ms (avg: "+stats.avg+", stddev: "+stats.stddev+")")
+        info(Console.YELLOW+"[warning] Test took too long to run: "+total+"ms (avg: "+stats.avg+", stddev: "+stats.stddev+")")
       }
 
       storeStats(id, stats.withValue(total))
