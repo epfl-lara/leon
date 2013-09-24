@@ -4,7 +4,7 @@ object ComplexChains {
   
   abstract class List
   case class Cons(head: Int, tail: List) extends List
-  case class Nil extends List
+  case class Nil() extends List
 
   def f1(list: List): List = list match {
     case Cons(head, tail) if head > 0 => f2(Cons(1, list))

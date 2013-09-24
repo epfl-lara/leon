@@ -55,11 +55,11 @@ object Interpret {
 
   def treeBad(t : IntTree) : Boolean = {
     !(repOk(t) && computesPositive(t) && identityForPositive(t))
-  } holds
+  }.holds
 
   def thereIsGoodTree() : Boolean = {
     !treeBad(If(Less(Const(0),Var()), Var(), Minus(Const(0),Var())))
-  } holds
+  }.holds
 
   def main(args : Array[String]) {
     thereIsGoodTree()
