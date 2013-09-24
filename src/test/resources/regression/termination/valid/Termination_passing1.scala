@@ -3,7 +3,7 @@ import leon.Utils._
 object Termination {
   abstract class List
   case class Cons(head: Int, tail: List) extends List
-  case class Nil extends List
+  case class Nil() extends List
 
   def f1(list: List) : Int = f2(list)
 

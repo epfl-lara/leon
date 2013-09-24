@@ -6,13 +6,9 @@ package termination
 
 import leon.termination._
 
-import org.scalatest.FunSuite
-
 import java.io.File
 
-import TestUtils._
-
-class TerminationRegression extends FunSuite {
+class TerminationRegression extends LeonTestSuite {
   private var counter : Int = 0
   private def nextInt() : Int = {
     counter += 1
@@ -21,7 +17,7 @@ class TerminationRegression extends FunSuite {
   private case class Output(report : TerminationReport, reporter : Reporter)
 
   private def mkPipeline : Pipeline[List[String],TerminationReport] =
-    leon.plugin.ExtractionPhase andThen leon.SubtypingPhase andThen leon.termination.TerminationPhase
+    leon.plugin.ExtractionPhase andThen leon.utils.SubtypingPhase andThen leon.termination.TerminationPhase
 
   private def mkTest(file : File, leonOptions: Seq[LeonOption], forError: Boolean)(block: Output=>Unit) = {
     val fullName = file.getPath()
@@ -37,16 +33,15 @@ class TerminationRegression extends FunSuite {
       assert(file.exists && file.isFile && file.canRead,
              "Benchmark %s is not a readable file".format(displayName))
 
-      val ctx = LeonContext(
+      val ctx = testContext.copy(
         settings = Settings(
           synthesis = false,
           xlang     = false,
           verify    = false,
           termination = true
         ),
-        options = leonOptions,
-        files = List(file),
-        reporter = new SilentReporter
+        options = leonOptions.toList,
+        files = List(file)
       )
 
       val pipeline = mkPipeline

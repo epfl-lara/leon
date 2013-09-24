@@ -112,7 +112,7 @@ object Definitions {
       val resSet: CallGraph = (for(funDef <- definedFunctions) yield {
         funDef.precondition.map(treeCatamorphism[CallGraph](convert, combine, compute(funDef)_, _)).getOrElse(Set.empty) ++
         funDef.body.map(treeCatamorphism[CallGraph](convert, combine, compute(funDef)_, _)).getOrElse(Set.empty) ++
-        funDef.postcondition.map( pc => treeCatamorphism[CallGraph](convert, combine, compute(funDef)_, pc._2)).getOrElse(Set.empty)
+        funDef.postcondition.map(pc => treeCatamorphism[CallGraph](convert, combine, compute(funDef)_, pc._2)).getOrElse(Set.empty)
       }).foldLeft(Set[(FunDef, FunDef)]())(_ ++ _)
 
       var callers: Map[FunDef,Set[FunDef]] =
