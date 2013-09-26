@@ -1,9 +1,10 @@
 package insynth.leon
 
-import insynth.leon.loader.DeclarationFactory
-import insynth.structures.{ SuccinctType, Const, Arrow, TSet }
+import insynth.query._
 import insynth.engine.InitialSender
-import insynth.interfaces.QueryBuilder
+import insynth.structures.{ SuccinctType, Const, Arrow, TSet }
+
+import insynth.leon.loader.DeclarationFactory
 
 import leon.purescala.TypeTrees.{ TypeTree => LeonType, _ }
 import leon.purescala.Common.FreshIdentifier

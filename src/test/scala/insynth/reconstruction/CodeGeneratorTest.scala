@@ -2,6 +2,7 @@ package insynth.reconstruction
 
 import org.junit.Assert._
 import org.junit.{ Test, Ignore }
+import org.scalatest.junit.JUnitSuite
 
 import insynth.reconstruction.codegen.CodeGenerator
 
@@ -11,7 +12,7 @@ import insynth.testutil.{ CommonLambda, CommonDeclarations }
 
 // NOTE function cannot return function in Leon, no need to test that
 
-class CodeGeneratorTest {
+class CodeGeneratorTest extends JUnitSuite {
     
   import CommonLambda._
   import CommonDeclarations._
@@ -53,11 +54,6 @@ class CodeGeneratorTest {
     assertTrue(twoLevCase1 + " not found. " + message, generated contains twoLevCase1)
     assertTrue(twoLevCase2 + " not found. " + message, generated contains twoLevCase2)
         
-//    val threeLevCase1 = FunctionInvocation(threeParFunctionDef, List(oneLevCase1, twoLevCase2, BooleanLiteral(false)))
-//    val threeLevCase2 = FunctionInvocation(threeParFunctionDef, List(twoLevCase2, threeLevCase1, BooleanLiteral(false)))
-//    
-//    assertTrue(threeLevCase1 + " not found. " + message, generated contains threeLevCase1)
-//    assertTrue(threeLevCase2 + " not found. " + message, generated contains threeLevCase2)
   }
   
 }

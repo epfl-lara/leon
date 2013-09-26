@@ -14,6 +14,8 @@ import insynth.leon._
 
 import lesynth.refinement._
 
+import _root_.util.Scaffold._
+
 class VariableRefinerTest extends FunSpec with GivenWhenThen {    
   
   val listClassId = FreshIdentifier("List")
@@ -50,25 +52,25 @@ class VariableRefinerTest extends FunSpec with GivenWhenThen {
     
     it("should refine if variable is not Nil") {
       
-      given("a VariableRefiner")
+      Given("a VariableRefiner")
       val variableRefiner = new VariableRefiner(
-        directSubclassMap, Seq(listLeonDeclaration), classMap
+        directSubclassMap, Seq(listLeonDeclaration), classMap, reporter
       )
       
-      then("it should return appropriate id and class def")
-      expect(Some((listVal.id, nilAbstractClassDef))) {
+      Then("it should return appropriate id And class def")
+      expectResult(Some((listVal.id, nilAbstractClassDef))) {
       	variableRefiner.getIdAndClassDef(CaseClassInstanceOf(nilAbstractClassDef, listVal))
       }
-      and("return None for some unknown expression")
-      expect(None) {
+      And("return None for some unknown expression")
+      expectResult(None) {
       	variableRefiner.getIdAndClassDef(listVal)
       }
       
-      then("declarations should be updated accordingly")
+      Then("declarations should be updated accordingly")
       val allDeclarations = List(listLeonDeclaration)
-	    expect((true,
+	    expectResult((true,
         LeonDeclaration(
-					ImmediateExpression( "Field(" + consAbstractClassDef + "." + headId + ")",
+					ImmediateExpression( listVal + "." + headId,
             CaseClassSelector(consAbstractClassDef, listVal, headId) ), 
 					  TypeTransformer(Int32Type), Int32Type
 				) :: 
@@ -77,12 +79,13 @@ class VariableRefinerTest extends FunSpec with GivenWhenThen {
 				) :: Nil
   		)) {
         variableRefiner.checkRefinements(CaseClassInstanceOf(nilAbstractClassDef, listVal),
-        BooleanLiteral(true),
-        allDeclarations)
+	        BooleanLiteral(true),
+	        allDeclarations
+        )
       } 
 	    
-      and("after 2nd consequtive call, nothing should happen")   
-	    expect((false, allDeclarations)) {
+      And("after 2nd consequtive call, nothing should happen")   
+	    expectResult((false, allDeclarations)) {
         variableRefiner.checkRefinements(CaseClassInstanceOf(nilAbstractClassDef, listVal),
         BooleanLiteral(true),
         allDeclarations)

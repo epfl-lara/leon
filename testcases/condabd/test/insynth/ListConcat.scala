@@ -3,6 +3,7 @@ import scala.collection.immutable.Set
 import leon.Utils._
 
 object ListOperations {
+
     sealed abstract class List
     case class Cons(head: Int, tail: List) extends List
     case class Nil() extends List

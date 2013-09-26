@@ -4,8 +4,9 @@ import scala.util.Random
 
 import org.junit.Assert._
 import org.junit.{ Test, Ignore, Before }
+import org.scalatest.junit.JUnitSuite
 
-import insynth.leon.loader.{ LeonLoader, HoleExtractor }
+import insynth.leon.loader.LeonLoader
 import insynth.leon._
 
 import _root_.leon.purescala.Trees._
@@ -15,20 +16,20 @@ import _root_.leon.purescala.Definitions._
 
 import lesynth.refinement._
 
-import util._
+import _root_.util._
 
-class FilterTest {
+class FilterTest extends JUnitSuite {
 
-  import TestConfig._
   import TreeOps._
   import Scaffold._
   
+	val lesynthTestDir = "testcases/condabd/test/lesynth/"
+
   val rnd = new Random(System.currentTimeMillis())
   
   var filter: Filter = _
   
   var prog: Program = _
-  var hole: Hole = _
   var funDef: FunDef = _
   var variableRefiner: VariableRefiner = _
   
@@ -40,19 +41,18 @@ class FilterTest {
   @Before
   def extract = {
     
-    val problems = forFile(lesynthTestDir + "refinement/ListConcat.scala")
+    val problems = forFile(lesynthTestDir + "/ListConcat.scala")
 		assertEquals(1, problems.size)		
     
 		val (sctx, funDef, problem) = problems.head		
 		
 		prog = sctx.program
-    hole = Hole(funDef.getBody.getType)           
     this.funDef = funDef
 	
-    val loader = new LeonLoader(prog, hole, problem.as)
+    val loader = new LeonLoader(prog, problem.as, true)
     
     variableRefiner = new VariableRefiner(loader.directSubclassesMap, loader.variableDeclarations,
-  		loader.classMap)
+  		loader.classMap, sctx.reporter)
     
     tail = 
       loader.extractFields.find { 

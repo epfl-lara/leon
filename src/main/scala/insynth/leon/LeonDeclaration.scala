@@ -1,8 +1,8 @@
 package insynth.leon
 
 import insynth.structures.SuccinctType
-import insynth.interfaces.Declaration
 import insynth.structures.Weight._
+import insynth.load.Declaration
 
 import leon.purescala.TypeTrees.{ TypeTree => LeonType }
 import leon.purescala.Trees.Expr
@@ -12,7 +12,7 @@ case class LeonDeclaration(
 	val leonType: LeonType, val expression: ReconstructionExpression 
 )
 extends Declaration(inSynthType, weight) {
-      
+        
   def this(expression: ReconstructionExpression, inSynthType: SuccinctType,
     leonType: LeonType, commutative: Boolean, weight: Weight    
   ) = {
@@ -27,7 +27,7 @@ extends Declaration(inSynthType, weight) {
 	
   private var query = false
       
-  def getDomainType = leonType
+  def getDomainType = DomainTypeTransformer(leonType)
     
   def getSimpleName = expression.getSimpleName
   

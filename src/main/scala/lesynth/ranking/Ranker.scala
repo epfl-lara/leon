@@ -6,6 +6,9 @@ import scala.collection._
 
 import leon.purescala.Trees.{ Variable => LeonVariable, _ }
 
+// enable postfix
+import scala.language.postfixOps
+
 class Ranker(candidates: IndexedSeq[Candidate], evaluation: Evaluation, checkTimeout: (() => Boolean) = { () => false }, printStep: Boolean = false) {
   
   val candidatesSize = candidates.size

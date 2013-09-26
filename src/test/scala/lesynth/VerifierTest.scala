@@ -10,81 +10,145 @@ import insynth.leon.loader.LeonLoader
 import _root_.leon.purescala._
 import _root_.leon.evaluators._
 import _root_.leon.solvers._
+import _root_.leon.purescala.Trees._
+import leon.purescala.Common._
+import leon.purescala.Definitions._
+import leon.synthesis.Problem
 
-import util._
+import _root_.util._
 
 class VerifierTest extends FunSpec {
 
   import Utils._
   import Scaffold._
-  import TestConfig._
+
+	val lesynthTestDir = "testcases/condabd/test/lesynth"
+	  
+  def getPostconditionFunction(problem: Problem) = {
+    (list: Iterable[Identifier]) => {
+      (problem.phi /: list) {
+        case ((res, newId)) =>
+        	(res /: problem.as.find(_.name == newId.name)) {
+        	  case ((res, oldId)) =>
+        	    TreeOps.replace(Map(Variable(oldId) -> Variable(newId)), res)
+        	}
+      }
+    }
+  }
 	
 	describe("Concrete verifier: ") {    
-    val testCaseFileName = lesynthTestDir + "/verifier/ListConcat.scala"
+    val testCaseFileName = lesynthTestDir + "/ListConcatVerifierTest.scala"
     
     val problems = forFile(testCaseFileName)
     assert(problems.size == 1)
       
   	for ((sctx, funDef, problem) <- problems) {
   	  
-  	  val timeoutSolver = new TimeoutSolver(sctx.solver, 2000L)
+  	  val timeoutSolver = sctx.solverFactory.withTimeout(2000L)
+  	  
+		  val getNewPostcondition = getPostconditionFunction(problem)
   	
   	  describe("A Verifier") {
   	    it("should verify first correct concat body") {		  	  
-		  	  funDef.body = getFunDefByName(sctx.program, "goodConcat1").body
+  	      val newFunDef = getFunDefByName(sctx.program, "goodConcat1")
+		  	  funDef.body = newFunDef.body
+
+		  	  expectResult(1) { problem.xs.size }
+		  	  funDef.postcondition = Some((problem.xs.head, getNewPostcondition(newFunDef.args.map(_.id))))
+		  	  funDef.precondition = Some(BooleanLiteral(true)) 
 		  	  
-		  	  val verifier = new Verifier(timeoutSolver.getNewSolver, problem)
+		  	  val verifier = new Verifier(timeoutSolver, problem)
 		  	  
-		  	  verifier.analyzeFunction(funDef)._1
+		  	  assert( verifier.analyzeFunction(funDef)._1 )
   	    }  	    
   	    
   	    it("should verify 2nd correct concat body") {		  	  
-		  	  funDef.body = getFunDefByName(sctx.program, "goodConcat2").body
+  	      val newFunDef = getFunDefByName(sctx.program, "goodConcat2")
+		  	  funDef.body = newFunDef.body
+
+		  	  expectResult(1) { problem.xs.size }
+		  	  funDef.postcondition = Some((problem.xs.head, getNewPostcondition(newFunDef.args.map(_.id))))
+		  	  funDef.precondition = Some(BooleanLiteral(true)) 
 		  	  
-		  	  val verifier = new Verifier(timeoutSolver.getNewSolver, problem)
+		  	  val verifier = new Verifier(timeoutSolver, problem)
 		  	  
-		  	  verifier.analyzeFunction(funDef)._1
+		  	  assert( verifier.analyzeFunction(funDef)._1 )
   	    }  	    
   	    
   	    it("should not verify an incorrect concat body") {
-		  	  funDef.body = getFunDefByName(sctx.program, "badConcat1").body
+		  	  val newFunDef = getFunDefByName(sctx.program, "badConcat1")
+		  	  funDef.body = newFunDef.body
+
+		  	  expectResult(1) { problem.xs.size }
+		  	  funDef.postcondition = Some((problem.xs.head, getNewPostcondition(newFunDef.args.map(_.id))))
+		  	  funDef.precondition = Some(BooleanLiteral(true)) 
 		  	  
-		  	  val verifier = new Verifier(timeoutSolver.getNewSolver, problem)
+		  	  val verifier = new Verifier(timeoutSolver, problem)
 		  	  
-		  	  ! verifier.analyzeFunction(funDef)._1
+		  	  assert( ! verifier.analyzeFunction(funDef)._1 )
   	    }
   	  }
-  	}				
+  	  
+  	  timeoutSolver.free
+  	}
 	}
+
+  def getPreconditionFunction(problem: Problem) = {
+    (list: Iterable[Identifier]) => {
+      (problem.pc /: list) {
+        case ((res, newId)) =>
+        	(res /: problem.as.find(_.name == newId.name)) {
+        	  case ((res, oldId)) =>
+        	    TreeOps.replace(Map(Variable(oldId) -> Variable(newId)), res)
+        	}
+      }
+    }
+  }
   
 	describe("Relaxed verifier: ") {    
-    val testCaseFileName = lesynthTestDir + "/verifier/BinarySearchTree.scala"
+    val testCaseFileName = lesynthTestDir + "/BinarySearchTree.scala"
     
     val problems = forFile(testCaseFileName)
     assert(problems.size == 1)
       
   	for ((sctx, funDef, problem) <- problems) {
   	  
-  	  val timeoutSolver = new TimeoutSolver(sctx.solver, 1000L)
+  	  val timeoutSolver = sctx.solverFactory.withTimeout(1000L)
+  	  
+		  val getNewPostcondition = getPostconditionFunction(problem)
+		  val getNewPrecondition = getPreconditionFunction(problem)
   	
   	  describe("A RelaxedVerifier on BST") {
   	    it("should verify a correct member body") {		
-		  	  funDef.body = getFunDefByName(sctx.program, "goodMember").body  	  
+		  	  val newFunDef = getFunDefByName(sctx.program, "goodMember")
+		  	  funDef.body = newFunDef.body
+
+		  	  expectResult(1) { problem.xs.size }
+		  	  funDef.postcondition = Some((problem.xs.head, getNewPostcondition(newFunDef.args.map(_.id))))
+		  	  funDef.precondition = Some(getNewPrecondition(newFunDef.args.map(_.id)))
 		  	  
-		  	  val verifier = new RelaxedVerifier(timeoutSolver.getNewSolver, problem)
+		  	  val verifier = new RelaxedVerifier(timeoutSolver, problem)
 		  	  
-		  	  verifier.analyzeFunction(funDef)._1
+		  	  assert( verifier.analyzeFunction(funDef)._1 )
   	    }  	    
   	      	    
   	    it("should not verify an incorrect member body") {
-		  	  funDef.body = getFunDefByName(sctx.program, "badMember").body
+		  	  val newFunDef = getFunDefByName(sctx.program, "badMember")
+		  	  funDef.body = newFunDef.body
+
+		  	  expectResult(1) { problem.xs.size }
+		  	  funDef.postcondition = Some((problem.xs.head, getNewPostcondition(newFunDef.args.map(_.id))))
+		  	  funDef.precondition = Some(getNewPrecondition(newFunDef.args.map(_.id)))
 		  	  
-		  	  val verifier = new Verifier(timeoutSolver.getNewSolver, problem)
+		  	  val verifier = new Verifier(timeoutSolver, problem)
 		  	  
-		  	  verifier.analyzeFunction(funDef)._1
+		  	  assert( verifier.analyzeFunction(funDef)._1 )
   	    }
   	  }
-  	}				
+  	  
+  	  timeoutSolver.free
+  	}
+    
 	}
   
 }

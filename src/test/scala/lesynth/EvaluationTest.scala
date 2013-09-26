@@ -20,8 +20,9 @@ import lesynth.ranking.Candidate
 import insynth.reconstruction.Output
 import lesynth.examples.Example
 
-import lesynth.util.Scaffold
+import _root_.util.Scaffold
 
+// TODO codegen evaluator params should be used but not yet in master
 class EvaluationTest extends FunSuite {
 
   import Scaffold._
@@ -134,13 +135,12 @@ class EvaluationTest extends FunSuite {
       val program = sctx.program
       val arguments = funDef.args.map(_.id)
 
-      expect(1) { problem.xs.size }
+      expectResult(1) { problem.xs.size }
       val resultVariable = problem.xs.head
-      val hole = Hole(resultVariable.getType)
 
       val codeGenEval = new CodeGenEvaluator(sctx.context, program)
       def inputExamples =
-        InputExamples.getDataGenInputExamples(codeGenEval, problem,
+        InputExamples.getDataGenInputExamples(sctx.context, program, codeGenEval, problem,
           20, 2000, Some(arguments)).map(Example(_))
 
       import TreeOps._
@@ -154,11 +154,11 @@ class EvaluationTest extends FunSuite {
 
       val body1 =
         searchAndReplace(replaceFun)(
-          program.definedFunctions.find(_.id.name == "testFun1").get.getBody)
+          program.definedFunctions.find(_.id.name == "testFun1").get.body.get)
 
       val body2 =
         searchAndReplace(replaceFun)(
-          program.definedFunctions.find(_.id.name == "testFun2").get.getBody)
+          program.definedFunctions.find(_.id.name == "testFun2").get.body.get)
 
       val evaluationStrategy = new CodeGenEvaluationStrategy(program, funDef, sctx.context, 500)
 
@@ -191,13 +191,12 @@ class EvaluationTest extends FunSuite {
       val program = sctx.program
       val arguments = funDef.args.map(_.id)
 
-      expect(1) { problem.xs.size }
+      expectResult(1) { problem.xs.size }
       val resultVariable = problem.xs.head
-      val hole = Hole(resultVariable.getType)
 
       val codeGenEval = new CodeGenEvaluator(sctx.context, program)
       def inputExamples =
-        InputExamples.getDataGenInputExamples(codeGenEval, problem,
+        InputExamples.getDataGenInputExamples(sctx.context, program, codeGenEval, problem,
           20, 2000, Some(arguments)).map(Example(_))
 
       import TreeOps._
@@ -209,10 +208,10 @@ class EvaluationTest extends FunSuite {
 
       val body1 =
         searchAndReplace(replaceFun)(
-          program.definedFunctions.find(_.id.name == "testFun1").get.getBody)
+          program.definedFunctions.find(_.id.name == "testFun1").get.body.get)
       val body2 =
         searchAndReplace(replaceFun)(
-          program.definedFunctions.find(_.id.name == "testFun2").get.getBody)
+          program.definedFunctions.find(_.id.name == "testFun2").get.body.get)
 
       // evaluate expressions with let
       {
@@ -238,11 +237,12 @@ class EvaluationTest extends FunSuite {
           val resFresh = FreshIdentifier("result") //.setType(expr.getType)
           resFresh.setType(newBody.getType)
 
+          val (id, post) = newFun.postcondition.get
           // body can contain (self-)recursive calls
           (
             Let(resFresh, newBody,
-              replace(Map(ResultVariable() -> Variable(resFresh)),
-                matchToIfThenElse(newFun.getPostcondition))),
+              replace(Map(Variable(id) -> Variable(resFresh)),
+                matchToIfThenElse(post))),
               newFun)
         }
 
@@ -252,7 +252,8 @@ class EvaluationTest extends FunSuite {
         val params = CodeGenEvalParams(maxFunctionInvocations = 500, checkContracts = true)
 
         val evaluator = new CodeGenEvaluator(sctx.context,
-          program.copy(mainObject = program.mainObject.copy(defs = program.mainObject.defs ++ pairs.map(_._2))), params)
+          program.copy(mainObject = program.mainObject.copy(defs = program.mainObject.defs ++ pairs.map(_._2)))
+          /*, params*/)
 
         val eval1 = (for (ind <- 0 until inputExamples.size) yield {
           val res = evaluator.eval(candidates(0), inputExamples(ind).map)
@@ -305,7 +306,8 @@ class EvaluationTest extends FunSuite {
         val params = CodeGenEvalParams(maxFunctionInvocations = 500, checkContracts = true)
 
         val evaluator = new CodeGenEvaluator(sctx.context,
-          program.copy(mainObject = program.mainObject.copy(defs = program.mainObject.defs ++ pairs.map(_._2))), params)
+          program.copy(mainObject = program.mainObject.copy(defs = program.mainObject.defs ++ pairs.map(_._2)))
+          /*, params*/)
 
         val eval1 = (for (ind <- 0 until inputExamples.size) yield {
           val res = evaluator.eval(candidates(0), inputExamples(ind).map)

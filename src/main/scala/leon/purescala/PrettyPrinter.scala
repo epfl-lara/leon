@@ -313,6 +313,14 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
     case MultisetType(bt) => sb.append("Multiset["); pp(bt, lvl); sb.append("]")
     case TupleType(tpes) => ppNaryType(tpes, "(", ", ", ")", lvl)
     case c: ClassType => sb.append(c.classDef.id)
+    case FunctionType(fts, tt) => {
+      if (fts.size > 1)
+        ppNaryType(fts, "(", ", ", ")", lvl)
+      else if (fts.size == 1)
+        pp(fts.head, lvl)
+      sb.append(" => ")
+      pp(tt, lvl)
+    }
     case _ => sb.append("Type?")
   }
 

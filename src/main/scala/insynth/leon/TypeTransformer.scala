@@ -6,6 +6,10 @@ import leon.purescala.TypeTrees.{ TypeTree => LeonType, BottomType => LeonBottom
 import leon.purescala.Common.FreshIdentifier
 import leon.purescala.Definitions._
 
+// enable postfix operations and implicit conversions
+import scala.language.postfixOps
+import scala.language.implicitConversions
+
 object TypeTransformer extends ( LeonType => SuccinctType ) {
   
   def apply(typeDef: ClassTypeDef): SuccinctType = {    		

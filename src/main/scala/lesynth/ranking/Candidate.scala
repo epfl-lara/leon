@@ -18,7 +18,7 @@ object Candidate {
   def getFreshResultVariable(tpe: TypeTree) = _freshResultVariable = FreshIdentifier("result", true).setType(tpe)
   
   def makeDefaultCandidates(candidatePairs: IndexedSeq[Output], bodyBuilder: Expr => Expr, funDef: FunDef) = {
-    getFreshResultVariable(funDef.getBody.getType)
+    getFreshResultVariable(funDef.body.get.getType)
     candidatePairs map {
       pair =>
       	DefaultCandidate(pair.getSnippet, bodyBuilder(pair.getSnippet), pair.getWeight, funDef)
@@ -26,7 +26,7 @@ object Candidate {
   }
   
   def makeCodeGenCandidates(candidatePairs: IndexedSeq[Output], bodyBuilder: Expr => Expr, funDef: FunDef) = {
-    getFreshResultVariable(funDef.getBody.getType)
+    getFreshResultVariable(funDef.body.get.getType)
     candidatePairs map {
       pair =>
       	CodeGenCandidate(pair.getSnippet, bodyBuilder(pair.getSnippet), pair.getWeight, funDef)
@@ -54,10 +54,12 @@ case class DefaultCandidate(expr: Expr, bodyExpr: Expr, weight: Weight, holeFunD
     assert(bodyExpr.getType != Untyped)
     val resFresh = freshResultVariable//.setType(expr.getType)
 
+    val (id, post) = holeFunDef.postcondition.get
+
     // body can contain (self-)recursive calls
     Let(resFresh, bodyExpr,
-      replace(Map(ResultVariable() -> Variable(resFresh)),
-        matchToIfThenElse(holeFunDef.getPostcondition)))
+      replace(Map(Variable(id) -> Variable(resFresh)),
+        matchToIfThenElse(post)))
   }
   
   override def prepareExpression = {
@@ -96,10 +98,12 @@ case class CodeGenCandidate(expr: Expr, bodyExpr: Expr, weight: Weight, holeFunD
     assert(bodyExpr.getType != Untyped)
     val resFresh = freshResultVariable//.setType(expr.getType)
 
+    val (id, post) = newFun.postcondition.get
+
     // body can contain (self-)recursive calls
     (Let(resFresh, newBody,
-      replace(Map(ResultVariable() -> Variable(resFresh)),
-        matchToIfThenElse(newFun.getPostcondition)))
+      replace(Map(Variable(id) -> Variable(resFresh)),
+        matchToIfThenElse(post)))
     ,
     newFun)
   }

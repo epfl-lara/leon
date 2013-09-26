@@ -9,6 +9,9 @@ import leon.purescala.TypeTrees.{ TypeTree => LeonType, _ }
 import leon.purescala.Common.{ Identifier }
 import leon.purescala.Trees._
 
+// enable postfix operations
+import scala.language.postfixOps
+
 object PreLoader extends ( (Boolean) => List[Declaration] ) {
   
   import DeclarationFactory._

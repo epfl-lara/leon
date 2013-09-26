@@ -8,7 +8,7 @@ import leon.purescala.TreeOps._
 import leon.purescala.Extractors._
 import leon.purescala.Definitions._
 import leon.synthesis._
-import leon.solvers.{ Solver, TimeoutSolver }
+import leon.solvers._
 import leon.evaluators.CodeGenEvaluator
 
 import lesynth.examples.InputExamples._
@@ -16,7 +16,7 @@ import lesynth.evaluation._
 
 import leon.StopwatchCollections
 
-case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abduction synthesis (two phase).") with TopLevelRule {
+case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abduction synthesis (two phase).") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
 
     p.xs match {
@@ -24,7 +24,7 @@ case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abductio
         List(new RuleInstantiation(p, this, SolutionBuilder.none, "Condition abduction") {
           def apply(sctx: SynthesisContext): RuleApplicationResult = {
             try {
-              val solver = new TimeoutSolver(sctx.solver, 500L)
+              val solver = sctx.solverFactory.withTimeout(500L)
               val program = sctx.program
               val reporter = sctx.reporter
 
@@ -51,11 +51,10 @@ case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abductio
                 
             	val evaluationStrategy = new CodeGenEvaluationStrategy(program, holeFunDef, sctx.context, 5000)
                 	
-                holeFunDef.postcondition = Some(replace(
-                  Map(givenVariable.toVariable -> ResultVariable().setType(holeFunDef.returnType)), p.phi))
+                holeFunDef.postcondition = Some((givenVariable, p.phi))
 
                 val synthesizer = new SynthesizerForRuleExamples(
-                  solver, solver.getNewSolver, program, desiredType, holeFunDef, p, sctx, evaluationStrategy,
+                  solver, program, desiredType, holeFunDef, p, sctx, evaluationStrategy,
                   20, 1, 
                   reporter = reporter,
                   introduceExamples = getInputExamples,  
@@ -69,8 +68,8 @@ case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abductio
                     println(fr.summaryString)
                     println("Compilation time: " + StopwatchCollections.get("Compilation").getMillis)
                     RuleSuccess(
-                      Solution(BooleanLiteral(true), Set.empty, Tuple(Seq(resFunDef.body.get)),
-                    		isTrusted = !synthesizer.verifier.isTimeoutUsed)
+                      Solution(BooleanLiteral(true), Set.empty, Tuple(Seq(resFunDef.body.get))),
+                    		isTrusted = !synthesizer.verifier.isTimeoutUsed
                     )
                 }
               } catch {
