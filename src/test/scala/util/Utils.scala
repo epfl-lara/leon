@@ -1,4 +1,3 @@
-package lesynth
 package util
 
 import org.scalatest.FunSuite

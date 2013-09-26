@@ -2,17 +2,20 @@ package insynth.leon.loader
 
 import insynth.leon.{ LeonDeclaration => Declaration, NaryReconstructionExpression, ImmediateExpression, UnaryReconstructionExpression }
 import insynth.structures.{ SuccinctType => InSynthType }
-import insynth.interfaces.Loader
+import insynth.load.Loader
 import insynth.util.logging.HasLogger
 
 import leon.purescala.Definitions.{ Program, FunDef }
 import leon.purescala.TypeTrees.{ TypeTree => LeonType, _ }
-import leon.purescala.Trees.{ Hole, Expr, FunctionInvocation, _ }
+import leon.purescala.Trees.{ Expr, FunctionInvocation, _ }
 import leon.purescala.Common.{ Identifier }
 import leon.purescala.Definitions.{ AbstractClassDef, CaseClassDef, ClassTypeDef }
 
-case class LeonLoader(program: Program, hole: Hole,
-  variables: List[Identifier], loadArithmeticOps: Boolean = true) extends Loader with HasLogger {  
+// enable postfix operations
+import scala.language.postfixOps
+
+case class LeonLoader(program: Program, variables: List[Identifier], loadArithmeticOps: Boolean = true)
+	extends Loader with HasLogger {  
   //var temporaryDesiredType: LeonType = Int32Type
   
   lazy val classMap: Map[Identifier, ClassType] = extractClasses
@@ -38,11 +41,11 @@ case class LeonLoader(program: Program, hole: Hole,
     /* add declarations to builder */
           
     // add function declarations
-    for( funDef@FunDef(id, returnType, args, _, _, _) <- program.definedFunctions ) {
-      val leonFunctionType = FunctionType(args map { _.tpe } toList, returnType)
+    for( funDef <- program.definedFunctions ) {
+      val leonFunctionType = FunctionType(funDef.args map { _.tpe } toList, funDef.returnType)
               
       val newDeclaration = makeDeclaration(
-        NaryReconstructionExpression( id, { args: List[Expr] => FunctionInvocation(funDef, args) } ), 
+        NaryReconstructionExpression( funDef.id, { args: List[Expr] => FunctionInvocation(funDef, args) } ), 
         leonFunctionType
       )        
       
@@ -78,17 +81,7 @@ case class LeonLoader(program: Program, hole: Hole,
       case _ =>
     }
     
-    list.toList
-    
-    // no need for doing this (we will have everything from the synthesis problem context)
-//    new HoleExtractor(program, hole).extractHole match {
-//      case Some((holeDef, decls)) =>
-//        list ++= decls
-//                  
-//        (list.toList, decls, holeDef)
-//      case _ =>
-//        throw new RuntimeException("Hole extractor problem")
-//    }     
+    list.toList   
   }
     
   def initializeSubclassesMap(program: Program) = {  

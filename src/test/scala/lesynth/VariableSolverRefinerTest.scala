@@ -16,23 +16,24 @@ import insynth.leon.loader._
 
 import lesynth.refinement._
 
-import lesynth.util._
+import _root_.util._
 
-class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {    
-  
+class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
+
   import Scaffold._
-  import TestConfig._
+
+	val lesynthTestDir = "testcases/condabd/test/lesynth/"  
       
   describe("A variable solver refiner with list ADT") {
     
     it("should refine if condition is isEmpty()") {
       
-      for ( (sctx, funDef, problem) <- forFile(lesynthTestDir + "refinement/ListConcatWithEmpty.scala")) {
+      for ( (sctx, funDef, problem) <- forFile(lesynthTestDir + "/ListConcatWithEmpty.scala")) {
         val program = sctx.program
-        val solver = sctx.solver
+        val solver = sctx.solverFactory
+        val reporter = sctx.reporter
         
-		    val hole = Hole(funDef.getBody.getType)
-		    val loader = new LeonLoader(program, hole, problem.as, false)
+		    val loader = new LeonLoader(program, problem.as, false)
         val allDeclarations = loader.load
 //		    val inSynth = new InSynth(loader, true)
 //		    val allDeclarations = inSynth.getCurrentBuilder.getAllDeclarations
@@ -60,10 +61,10 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
 			    TypeTransformer(listAbstractClass), listAbstractClass
 			  )
         
-	      given("a VariableSolverRefiner")
+	      Given("a VariableSolverRefiner")
 	      val declarations = List(listLeonDeclaration)
 	      val variableRefiner = new VariableSolverRefiner(
-	        directSubclassMap, declarations, classMap, solver
+	        directSubclassMap, declarations, classMap, solver, reporter
 	      )
 		    
 	      val res = variableRefiner.checkRefinements(
@@ -72,13 +73,13 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
         		declarations
       		)
       		
-	      then("declarations should be updated accordingly")
-		    expect((true, declarations.size)) {
+	      Then("declarations should be updated accordingly")
+		    expectResult((true, declarations.size)) {
       		(res._1, res._2.size)
 	      }
 		    
-	      and("after 2nd consequtive call, nothing should happen")   
-		    expect((false, res._2)) {
+	      And("after 2nd consequtive call, nothing should happen")   
+		    expectResult((false, res._2)) {
 	        val res2 = variableRefiner.checkRefinements(
         		isEmpty(listVal),
         		isEmpty(listVal),
@@ -86,17 +87,19 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
       		)
       		(res2._1, res2._2)
 	      }
+
+        solver.free()
       }
     }
     
     it("should refine list to Cons if condition is hasContent()") {
       
-      for ( (sctx, funDef, problem) <- forFile(lesynthTestDir + "refinement/ListConcatWithEmpty.scala")) {
+      for ( (sctx, funDef, problem) <- forFile(lesynthTestDir + "/ListConcatWithEmpty.scala")) {
         val program = sctx.program
-        val solver = sctx.solver
+        val solver = sctx.solverFactory
+        val reporter = sctx.reporter
         
-		    val hole = Hole(funDef.getBody.getType)
-		    val loader = new LeonLoader(program, hole, problem.as, false)
+		    val loader = new LeonLoader(program, problem.as, false)
         val allDeclarations = loader.load
 //		    val inSynth = new InSynth(loader, true)
 //		    val allDeclarations = inSynth.getCurrentBuilder.getAllDeclarations
@@ -116,10 +119,10 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
 			    TypeTransformer(listAbstractClass), listAbstractClass
 			  )
         
-	      given("a VariableSolverRefiner")
+	      Given("a VariableSolverRefiner")
 	      val declarations = List(listLeonDeclaration)
 	      val variableRefiner = new VariableSolverRefiner(
-	        directSubclassMap, declarations, classMap, solver
+	        directSubclassMap, declarations, classMap, solver, reporter
 	      )
 		    
 	      val res = variableRefiner.checkRefinements(
@@ -128,13 +131,13 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
         		declarations
       		)
       		
-	      then("declarations should be updated accordingly")
-		    expect((true, declarations.size + 2)) {
+	      Then("declarations should be updated accordingly")
+		    expectResult((true, declarations.size + 2)) {
       		(res._1, res._2.size)
 	      }
 		    
-	      and("after 2nd consequtive call, nothing should happen")   
-		    expect((false, res._2)) {
+	      And("after 2nd consequtive call, nothing should happen")   
+		    expectResult((false, res._2)) {
 	        val res2 = variableRefiner.checkRefinements(
         		hasContent(listVal),
         		hasContent(listVal),
@@ -142,17 +145,18 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
       		)
       		(res2._1, res2._2)
 	      }
+        solver.free()
       }
     }
     
     it("should not refine if condition is isEmptyBad()") {
       
-      for ( (sctx, funDef, problem) <- forFile(lesynthTestDir + "refinement/ListConcatWithEmpty.scala")) {
+      for ( (sctx, funDef, problem) <- forFile(lesynthTestDir + "/ListConcatWithEmpty.scala")) {
         val program = sctx.program
-        val solver = sctx.solver
+        val solver = sctx.solverFactory
+        val reporter = sctx.reporter
         
-		    val hole = Hole(funDef.getBody.getType)
-		    val loader = new LeonLoader(program, hole, problem.as, false)
+		    val loader = new LeonLoader(program, problem.as, false)
         val allDeclarations = loader.load
 //		    val inSynth = new InSynth(loader, true)
 //		    val allDeclarations = inSynth.getCurrentBuilder.getAllDeclarations
@@ -180,10 +184,10 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
 			    TypeTransformer(listAbstractClass), listAbstractClass
 			  )
         
-	      given("a VariableSolverRefiner")
+	      Given("a VariableSolverRefiner")
 	      val declarations = List(listLeonDeclaration)
 	      val variableRefiner = new VariableSolverRefiner(
-	        directSubclassMap, declarations, classMap, solver
+	        directSubclassMap, declarations, classMap, solver, reporter
 	      )
 		    
 	      val res = variableRefiner.checkRefinements(
@@ -192,8 +196,8 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
         		declarations
       		)
 		    
-	      then("declarations should not be updated")   
-		    expect((false, res._2)) {
+	      Then("declarations should not be updated")   
+		    expectResult((false, res._2)) {
 	        val res2 = variableRefiner.checkRefinements(
         		isEmptyBad(listVal),
         		isEmptyBad(listVal),
@@ -201,6 +205,8 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
       		)
       		(res2._1, res2._2)
 	      }
+
+          solver.free()
       }
     }
     

@@ -14,7 +14,6 @@ import leon.solvers._
 import leon.purescala.Common.{ Identifier, FreshIdentifier }
 import leon.synthesis.Problem
 
-import insynth.interfaces._
 import insynth.leon.loader._
 import insynth.leon._
 
@@ -23,13 +22,15 @@ import insynth.util.logging.HasLogger
 // each variable of super type can actually have a subtype
 // get sine declaration maps to be able to refine them  
 class VariableSolverRefiner(directSubclassMap: Map[ClassType, Set[ClassType]], variableDeclarations: Seq[LeonDeclaration],
-  classMap: Map[Identifier, ClassType], solver: Solver, reporter: Reporter = new SilentReporter)
+  classMap: Map[Identifier, ClassType], solverf: SolverFactory[Solver], reporter: Reporter)
   extends VariableRefiner(directSubclassMap, variableDeclarations, classMap, reporter) with HasLogger {  
+
+  val solver = SimpleSolverAPI(solverf)
     
-  override def checkRefinements(expr: Expr, condition: Expr, allDeclarations: List[Declaration]) = {
+  override def checkRefinements(expr: Expr, condition: Expr, allDeclarations: List[LeonDeclaration]) = {
     val superResult = super.checkRefinements(expr, condition, allDeclarations)
     if (superResult._1 == false) {
-	    val variables = allIdentifiers(expr)
+	    val variables = variablesOf(expr)
 	    if (variables.size == 1) {
 	      val variable = variables.head
 	      variable match {
@@ -83,7 +84,7 @@ class VariableSolverRefiner(directSubclassMap: Map[ClassType, Set[ClassType]], v
     else superResult
   } 
   
-  def refineProblem(p: Problem, solver: Solver) = {
+  def refineProblem(p: Problem) = {
 
     val newAs = p.as.map {
       case oldId@IsTyped(id, AbstractClassType(cd)) =>

@@ -11,8 +11,8 @@ import leon.synthesis._
 
 import insynth.util.logging._
 
-class Verifier(solver: IncrementalSolver, p: Problem, synthInfo: SynthesisInfo = new SynthesisInfo)
-	extends AbstractVerifier(solver, p, synthInfo) with HasLogger {
+class Verifier(solverf: SolverFactory[Solver], p: Problem, synthInfo: SynthesisInfo = new SynthesisInfo)
+	extends AbstractVerifier(solverf, p, synthInfo) with HasLogger {
     
   import SynthesisInfo.Action._
   

@@ -27,7 +27,7 @@ case class DefaultExampleRunner(program: Program, funDef: FunDef, ctx: LeonConte
     _examples ++= newExamples.map(_.map)
   }
 
-  val evaluationContext = ctx.copy(reporter = new SilentReporter)
+  val evaluationContext = ctx
   
   lazy val _evaluator = new DefaultEvaluator(evaluationContext, program)
   override def getEvaluator = _evaluator

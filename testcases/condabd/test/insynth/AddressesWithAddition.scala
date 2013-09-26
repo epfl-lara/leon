@@ -2,9 +2,9 @@ import scala.collection.immutable.Set
 import leon.Annotations._
 import leon.Utils._
 
-object Addresses {
+object AddressesWithAddition {
   
-  case class Address(a: Int, b: Int, priv: Boolean)
+  case class Address(aComp: Int, bComp: Int, priv: Boolean)
   
   sealed abstract class List
   case class Cons(a: Address, tail:List) extends List
@@ -41,30 +41,12 @@ object Addresses {
   def addToBusiness(ab: AddressBook, adr: Address) = AddressBook(Cons(adr, ab.business), ab.pers)
   
   def size(ab: AddressBook): Int = size(ab.business) + size(ab.pers)
-  
-  def makeAddressBook(l: List): AddressBook = (l match {
-    case Nil => AddressBook(Nil, Nil)
-    case Cons(a, l1) => {
-      val res = makeAddressBook(l1)
-      if (a.priv) AddressBook(res.business, Cons(a, res.pers))
-      else AddressBook(Cons(a, res.business), res.pers)
-    }
-  }) ensuring {
+  	  
+  def makeAddressBook(l: List, x: Int, y: Boolean): AddressBook = 
+		choose {
     (res: AddressBook) =>
 		  size(res) == size(l) &&
 		  allPrivate(res.pers) && allBusiness(res.business)
   }
-  
-  def merge(l1: List, l2: List): List = l1 match {
-    case Nil => l2
-    case Cons(a, tail) => Cons(a, merge(tail, l2))
-  }
-  
-  def mergeAddressBooks(ab1: AddressBook, ab2: AddressBook) = 
-		choose {
-    (res: AddressBook) =>
-		  size(res) == size(ab1) + size(ab2) &&
-		  allPrivate(res.pers) && allBusiness(res.business)
-  	}
   
 }

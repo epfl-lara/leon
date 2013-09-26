@@ -3,7 +3,7 @@ package insynth.leon
 import insynth.leon.loader.DeclarationFactory
 import insynth.engine.InitialSender
 import insynth.structures.SuccinctType
-import insynth.interfaces.Query
+import insynth.query.Query
 
 import leon.purescala.TypeTrees._
 import leon.purescala.Common.FreshIdentifier

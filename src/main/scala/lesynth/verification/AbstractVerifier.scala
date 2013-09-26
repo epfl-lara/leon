@@ -11,10 +11,12 @@ import leon.synthesis._
 
 import insynth.util.logging._
 
-abstract class AbstractVerifier(solver: IncrementalSolver, p: Problem,
+abstract class AbstractVerifier(solverf: SolverFactory[Solver], p: Problem,
   synthInfo: SynthesisInfo)
 	extends HasLogger {
     
+  val solver = solverf.getNewSolver
+
   import SynthesisInfo.Action._
   
   def analyzeFunction(funDef: FunDef) = {
@@ -22,7 +24,7 @@ abstract class AbstractVerifier(solver: IncrementalSolver, p: Problem,
     fine("Analyzing function: " + funDef)
 
     // create an expression to verify
-    val theExpr = generateInductiveVerificationCondition(funDef, funDef.getBody)
+    val theExpr = generateInductiveVerificationCondition(funDef, funDef.body.get)
      
     solver.push
     val valid = checkValidity(theExpr)
@@ -58,7 +60,7 @@ abstract class AbstractVerifier(solver: IncrementalSolver, p: Problem,
     case class Replacement(id: Identifier, exprReplaced: FunctionInvocation) {
       def getMapping: Map[Expr, Expr] = {
         val funDef = exprReplaced.funDef
-        val pairList = (ResultVariable(), id.toVariable) ::
+        val pairList = (Variable(funDef.postcondition.get._1), id.toVariable) ::
         	(funDef.args.map(_.toVariable).toList zip exprReplaced.args)
       	pairList.toMap
       }
@@ -82,16 +84,17 @@ abstract class AbstractVerifier(solver: IncrementalSolver, p: Problem,
        
     // build the verification condition
     val resFresh = FreshIdentifier("result", true).setType(newBody.getType)
-    val bodyAndPost = 		    
+    val (id, post) = funDef.postcondition.get
+    val bodyAndPost =
 	    Let(
     		resFresh, newBody,
-    		replace(Map(ResultVariable() -> resFresh.toVariable), matchToIfThenElse(funDef.getPostcondition))
+    		replace(Map(Variable(id) -> resFresh.toVariable), matchToIfThenElse(post))
   		)	
 
 		val precondition = if( isThereARecursiveCall ) {
-		  And( funDef.getPrecondition :: replacements.map( r => replace(r.getMapping, funDef.getPostcondition)) )
+		  And( funDef.precondition.get :: replacements.map( r => replace(r.getMapping, post)) )
 		} else
-		  funDef.getPrecondition
+		  funDef.precondition.get
 //    val bodyAndPost = 		    
 //	    Let(
 //    		resFresh, newBody,

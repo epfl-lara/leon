@@ -3,18 +3,15 @@ package insynth.reconstruction.codegen
 import scala.text.Document
 import scala.text.Document.empty
 
-//import ch.epfl.insynth.reconstruction.intermediate._
-//import ch.epfl.insynth.trees
-//import ch.epfl.insynth.print._
-//import ch.epfl.insynth.reconstruction.combinator.{ NormalDeclaration, AbsDeclaration }
-import insynth.leon.{ LeonDeclaration => DomainDeclaration, _ }
+import insynth.leon._
 import insynth.reconstruction.stream._
 
-import insynth.util.format.{ FormatLeonType => FormatDomainType, FormatIntermediate }
+import insynth.structures.Function
+
 import insynth.util.logging.HasLogger
 
 import leon.purescala.Trees.{ Expr }
-import leon.purescala.TypeTrees.{ TypeTree => DomainType, FunctionType => Function }
+import leon.purescala.TypeTrees.{ TypeTree => DomainType, FunctionType }
 import leon.purescala.{ TypeTrees => domain }
 import leon.purescala.Trees.{ Expr => CodeGenOutput }
 
@@ -33,7 +30,7 @@ class CodeGenerator extends (Node => CodeGenOutput) with HasLogger {
   def apply(tree: Node) = {
     // match the starting tree to an application that produces query type
     tree match {
-      case Application(domain.FunctionType(_, _ /* BottomType */), queryDec :: List(innerApp)) =>
+      case Application(Function(_, _ /* BottomType */), queryDec :: List(innerApp)) =>
       	transform(innerApp)
       case _ => throw new RuntimeException
     }
@@ -61,13 +58,13 @@ class CodeGenerator extends (Node => CodeGenOutput) with HasLogger {
         // what to do here
         throw new RuntimeException
       // identifier from the scope
-      case Identifier(tpe, DomainDeclaration(_, _, _, im: ImmediateExpression)) => 
+      case Identifier(tpe, LeonDeclaration(_, _, _, im: ImmediateExpression)) => 
         im()
       // apply parameters in the tail of params according to the head of params 
       case app@Application(tpe, params) => {        
         // match the application definition term
         params.head match {
-          case Identifier(_, decl)  => {            
+          case Identifier(_, decl: LeonDeclaration)  => {            
 	          info("Generating application: " + decl + " with params: " + params + " params.size = " + params.size)   
 
 	          // for an expression of each parameters yield the appropriate transformed expression	            
@@ -93,17 +90,17 @@ class CodeGenerator extends (Node => CodeGenOutput) with HasLogger {
                 fun(paramsExpr.head)
                 
               // this should not happen
-              case _ => throw new RuntimeException
+              case _ => throw new Exception("Unsupported reconstruction: " + decl.expression)
             }
           } // case Identifier
           
-          case innerApp@Application(appType: domain.FunctionType, params) =>
-            warning("cannot have app head: " + innerApp + " in application " + app)
-          	throw new RuntimeException
+          case innerApp@Application(appType: Function, params) =>
+            warning("Cannot have app head: " + innerApp + " in application " + app)
+          	throw new Exception("Cannot have app head: " + innerApp + " in application " + app)
                       
           // function that is created as an argument or anything else
           case /*Identifier(_, _:AbsDeclaration) | */_:Variable | _ =>
-          	throw new RuntimeException
+          	throw new Exception("Unsupported combination for application head " + params.head)
           	
         } // params.head match 
       }

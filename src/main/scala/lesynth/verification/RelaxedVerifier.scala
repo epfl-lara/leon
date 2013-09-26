@@ -11,8 +11,8 @@ import leon.synthesis._
 
 import insynth.util.logging._
 
-class RelaxedVerifier(solver: IncrementalSolver, p: Problem, synthInfo: SynthesisInfo = new SynthesisInfo)
-	extends AbstractVerifier(solver, p, synthInfo) with HasLogger {
+class RelaxedVerifier(solverf: SolverFactory[Solver], p: Problem, synthInfo: SynthesisInfo = new SynthesisInfo)
+	extends AbstractVerifier(solverf, p, synthInfo) with HasLogger {
   
   var _isTimeoutUsed = false
   

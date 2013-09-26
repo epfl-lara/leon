@@ -325,6 +325,14 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
       pp(bt, lvl)
       sb.append("]")
     case TupleType(tpes) => ppNaryType(tpes, "(", ", ", ")", lvl)
+    case FunctionType(fts, tt) =>
+      if (fts.size > 1) {
+        ppNaryType(fts, "(", ", ", ")", lvl)
+      } else if (fts.size == 1) {
+        pp(fts.head, lvl)
+      }
+      sb.append(" => ")
+      pp(tt, lvl)
     case c: ClassType => sb.append(c.classDef.id)
     case _ => sb.append("Type?")
   }

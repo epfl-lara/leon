@@ -10,22 +10,21 @@ import leon.purescala.TypeTrees._
 import leon.purescala.Definitions._
 import leon.purescala.Common.{ Identifier, FreshIdentifier }
 
-import insynth.interfaces._
 import insynth.leon.loader._
-import insynth.leon._
+import insynth.leon.{ LeonDeclaration => Declaration, _ }
 
 import insynth.util.logging.HasLogger
 
 // each variable of super type can actually have a subtype
 // get sine declaration maps to be able to refine them  
-class VariableRefiner(directSubclassMap: Map[ClassType, Set[ClassType]], variableDeclarations: Seq[LeonDeclaration],
-  classMap: Map[Identifier, ClassType], reporter: Reporter = new SilentReporter) extends HasLogger {  
+class VariableRefiner(directSubclassMap: Map[ClassType, Set[ClassType]], variableDeclarations: Seq[Declaration],
+  classMap: Map[Identifier, ClassType], reporter: Reporter) extends HasLogger {  
   
     // map from identifier into a set of possible subclasses
   protected var variableRefinements: MutableMap[Identifier, MutableSet[ClassType]] = MutableMap.empty
     for (varDec <- variableDeclarations) {
       varDec match {
-        case LeonDeclaration(_, _, typeOfVar: ClassType, ImmediateExpression(_, Variable(id))) =>
+        case Declaration(_, _, typeOfVar: ClassType, ImmediateExpression(_, Variable(id))) =>
           variableRefinements += (id -> MutableSet(directSubclassMap(typeOfVar).toList: _*))
         case _ =>
       }
@@ -73,13 +72,13 @@ class VariableRefiner(directSubclassMap: Map[ClassType, Set[ClassType]], variabl
   def refinedDeclarations(id: Identifier, newType: ClassType, allDeclarations: List[Declaration]) =
     for (dec <- allDeclarations)
       yield dec match {
-        case LeonDeclaration(inSynthType, _, decClassType, imex @ ImmediateExpression(_, Variable(`id`))) =>	              
+        case Declaration(inSynthType, _, decClassType, imex @ ImmediateExpression(_, Variable(`id`))) =>	              
 	        ((
             newType.classDef match {
               case newTypeCaseClassDef@CaseClassDef(_, parent, fields) =>
                 fine("matched case class def for refinement " + newTypeCaseClassDef)
 		            for (field <- fields)
-				          yield LeonDeclaration(
+				          yield Declaration(
 						        ImmediateExpression(id.name + "." + field.id.name,
 					            CaseClassSelector(newTypeCaseClassDef, imex.expr, field.id) ), 
 						        TypeTransformer(field.id.getType), field.id.getType
@@ -87,7 +86,7 @@ class VariableRefiner(directSubclassMap: Map[ClassType, Set[ClassType]], variabl
               case _ =>
                 Seq.empty
             }
-	        ): Seq[Declaration]) :+ LeonDeclaration(imex, TypeTransformer(newType), newType)
+	        ): Seq[Declaration]) :+ Declaration(imex, TypeTransformer(newType), newType)
         case _ =>
           Seq(dec)
       }

@@ -9,12 +9,13 @@ object CommonLeonExpressions {
 
   import CommonDeclarations._
         
-  val boolInv = FunctionInvocation(functionBoolToIntFunDef, List(booleanLiteral))
-  val inv1WithBoolInv = FunctionInvocation(functionIntToIntFunDef, List(boolInv))
+  val inv1boolInv = FunctionInvocation(functionBoolToIntFunDef, List(booleanLiteral))
+  val inv2WithBoolInv = FunctionInvocation(functionIntToIntFunDef, List(inv1boolInv))
   val inv1WithInt = FunctionInvocation(functionIntToIntFunDef, List(intLiteral))
   val inv2WithInt = FunctionInvocation(functionIntToIntFunDef, List(inv1WithInt))
   val inv3WithInt = FunctionInvocation(functionIntToIntFunDef, List(inv2WithInt))
-  val inv2WithBoolInv = FunctionInvocation(functionIntToIntFunDef, List(inv1WithBoolInv))
   val inv3WithBoolInv = FunctionInvocation(functionIntToIntFunDef, List(inv2WithBoolInv))
+  val inv4WithBoolInv = FunctionInvocation(functionIntToIntFunDef, List(inv3WithBoolInv))
+  val inv4WithInt = FunctionInvocation(functionIntToIntFunDef, List(inv3WithInt))
 
 }

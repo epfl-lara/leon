@@ -2,9 +2,9 @@ package insynth.reconstruction
 
 import org.junit.{ Test, Ignore, BeforeClass, AfterClass }
 import org.junit.Assert._
+import org.scalatest.junit.JUnitSuite
 
 import insynth.reconstruction.codegen.CodeGenerator
-import insynth.Config
 
 import leon.purescala.Definitions.{ FunDef, VarDecl, Program, ObjectDef }
 import leon.purescala.Common.{ FreshIdentifier }
@@ -13,7 +13,7 @@ import leon.purescala.Trees.{ Variable => LeonVariable, _ }
 
 import insynth.testutil.{ CommonProofTrees, CommonDeclarations, CommonLeonExpressions, CommonUtils }
 
-class ReconstructorTest {
+class ReconstructorTest extends JUnitSuite {
 
   import CommonDeclarations._
   import CommonProofTrees._
@@ -44,13 +44,14 @@ class ReconstructorTest {
     
     val expressions = expStream.map(_.snippet).take(20).toSet
     
-    assertTrue(expressions contains boolInv)
-    assertTrue(expressions contains inv1WithBoolInv)
+    assertTrue(expressions contains inv1boolInv)
+    assertTrue(expressions contains inv2WithBoolInv)
     assertTrue(expressions contains inv1WithInt)
     assertTrue(expressions contains inv2WithInt)
     assertTrue(expressions contains inv3WithInt)  
-    assertTrue(expressions contains inv2WithBoolInv)    
-    assertTrue(expressions contains inv3WithBoolInv)      
+    assertTrue(expressions contains inv3WithBoolInv)    
+    assertTrue(expressions contains inv4WithBoolInv)  
+    assertTrue(expressions contains inv4WithInt)   
   }
   
   @Test
@@ -61,20 +62,26 @@ class ReconstructorTest {
     
     val expressions = assertTake(expStream, 20).map(_.snippet)
     
-    val listOfExpressions = List(boolInv, inv1WithInt, inv1WithBoolInv, inv2WithInt,
-      inv3WithInt, inv2WithBoolInv, inv3WithBoolInv)
+    val listOfExpressions = List(inv1boolInv, inv1WithInt, inv2WithBoolInv, inv2WithInt,
+      inv3WithInt, inv3WithBoolInv, inv4WithBoolInv, inv4WithInt)
     
     for (exp <- listOfExpressions)
     	assertTrue(expressions.toSet contains exp)
     	
-    val listOfExpressionsOrder = List(boolInv, inv1WithBoolInv, inv2WithInt,
-      inv2WithBoolInv, inv3WithBoolInv)
+    val listOfExpressionsOrder = List(
+      List(inv1boolInv, inv1WithInt),
+      List(inv2WithBoolInv, inv2WithInt),
+      List(inv3WithInt, inv3WithBoolInv),
+      List(inv4WithBoolInv, inv4WithInt)
+    )
     
-    for (ind <- 0 until listOfExpressionsOrder.size - 1)
-      assertTrue("Expression " + listOfExpressionsOrder(ind) + " (position " + expressions.indexOf(listOfExpressionsOrder(ind)) +
-        ") should occur before expression " + listOfExpressionsOrder(ind+1) + " (position " + expressions.indexOf(listOfExpressionsOrder(ind + 1)) + ")",
-        expressions.indexOf(listOfExpressionsOrder(ind)) < expressions.indexOf(listOfExpressionsOrder(ind+1)))
-      
+    for (ind <- 0 until listOfExpressionsOrder.size - 1) {
+      for( previousEl <- listOfExpressionsOrder(ind); nextEl <- listOfExpressionsOrder(ind + 1) )
+	      assertTrue("Expression " + previousEl + " (position " + expressions.indexOf(previousEl) +
+	        ") should occur before expression " + nextEl + " (position " + expressions.indexOf(nextEl) + ")",
+	        expressions.indexOf(previousEl) < expressions.indexOf(nextEl))
+    }
+  	      
   }
 
 }

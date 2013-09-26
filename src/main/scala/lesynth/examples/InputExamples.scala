@@ -10,7 +10,7 @@ import leon.evaluators.Evaluator
 import leon.synthesis.Problem
 import leon.LeonContext
 
-import insynth.leon.loader.{ HoleExtractor, LeonLoader }
+import insynth.leon.loader.LeonLoader
 import leon.datagen._
 
 object InputExamples {
@@ -49,12 +49,12 @@ object InputExamples {
     )
   }
 
-  def getFixedInputExamples(argumentIds: Seq[Identifier], loader: LeonLoader) = {
+  def getFixedInputExamples(argumentIds: Seq[Identifier], loader: LeonLoader, goalType: TypeTree) = {
     argumentIds match {
       case singleArgument :: Nil if isList(singleArgument) =>
         introduceOneListArgumentExamples(argumentIds, loader)
       case first :: second :: Nil if isList(first) && isList(second) =>
-        introduceTwoListArgumentsExamples(argumentIds, loader)
+        introduceTwoListArgumentsExamples(argumentIds, loader, goalType)
       case first :: second :: Nil if isInt(first) && isList(second) =>
         introduceExamplesIntList(argumentIds, loader)
       case _ => null
@@ -119,9 +119,10 @@ object InputExamples {
       yield Map(argumentIds(0) -> list)
   }
 
-  def introduceTwoListArgumentsExamples(argumentIds: Seq[leon.purescala.Common.Identifier], loader: LeonLoader) = {
+  def introduceTwoListArgumentsExamples(argumentIds: Seq[leon.purescala.Common.Identifier], loader: LeonLoader,
+  	goalType: TypeTree) = {
 
-    loader.hole.getType match {
+    goalType match {
       case ct: ClassType =>
         val setSubclasses = loader.directSubclassesMap(ct).map(_.asInstanceOf[CaseClassType].classDef)
 

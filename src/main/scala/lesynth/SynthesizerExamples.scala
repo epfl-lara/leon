@@ -4,7 +4,7 @@ import scala.collection.mutable.{ Map => MutableMap, Set => MutableSet }
 import scala.collection.mutable.{ PriorityQueue, ArrayBuffer, HashSet }
 import scala.util.control.Breaks._
 
-import leon.{ Reporter, DefaultReporter, SilentReporter, LeonContext }
+import leon.{ Reporter, DefaultReporter, LeonContext }
 import leon.Main.processOptions
 
 import leon.solvers._
@@ -20,10 +20,9 @@ import leon.evaluators.EvaluationResults
 import leon.evaluators._
 import leon.synthesis.{ Problem, SynthesisContext }
 
-import insynth.interfaces.Declaration
 import insynth.{ Solver => _, _ }
 import insynth.leon.loader._
-import insynth.leon._
+import insynth.leon.{ LeonDeclaration => Declaration, _ }
 import insynth.engine._
 import insynth.reconstruction.Output
 import insynth.util.logging.HasLogger
@@ -36,10 +35,12 @@ import lesynth.refinement._
 import SynthesisInfo._
 import SynthesisInfo.Action._
 
+// enable postfix operations
+import scala.language.postfixOps
+
 class SynthesizerForRuleExamples(
   // some synthesis instance information
-  val mainSolver: Solver,
-  var solver: IncrementalSolver,
+  val mainSolver: SolverFactory[Solver],
   val program: Program,
   val desiredType: LeonType,
   val holeFunDef: FunDef,
@@ -52,7 +53,7 @@ class SynthesizerForRuleExamples(
 //  leonTimeout: Int = 1, // seconds
   analyzeSynthesizedFunctionOnly: Boolean = false,
   showLeonOutput: Boolean = false,
-  reporter: Reporter = new DefaultReporter,
+  reporter: Reporter,
   //examples: List[Map[Identifier, Expr]] = Nil,
   // we need the holeDef to know the right ids
   introduceExamples: (() => List[Map[Identifier, Expr]]) = { () => Nil },
@@ -76,9 +77,8 @@ class SynthesizerForRuleExamples(
   
   // objects used in the synthesis
   private var loader: LeonLoader = _
-  private var inSynth: InSynthTemp = _
-  private var inSynthBoolean: InSynthTemp = _
-  private var hole: Hole = _
+  private var inSynth: InSynth = _
+  private var inSynthBoolean: InSynth = _
   // initial declarations
   private var allDeclarations: List[Declaration] = _
 
@@ -108,7 +108,7 @@ class SynthesizerForRuleExamples(
   // information about the synthesis
   private val synthInfo = new SynthesisInfo
   
-  val verifier = new RelaxedVerifier(solver, problem, synthInfo)
+  val verifier = new RelaxedVerifier(mainSolver, problem, synthInfo)
   import verifier._
 
   def synthesize: Report = {
@@ -128,7 +128,7 @@ class SynthesizerForRuleExamples(
     var keepGoing = true
     // update flag in case of time limit overdue
     def checkTimeout =
-      if (synthesisContext.shouldStop.get) {
+      if (synthesisContext.context.interruptManager.isInterrupted()) {
         reporter.info("Timeout occured, stopping this synthesis rules")
         keepGoing = false
         true
@@ -379,16 +379,15 @@ class SynthesizerForRuleExamples(
 
   def initialize = {
     // create new insynth object
-    hole = Hole(desiredType)
-    loader = new LeonLoader(program, hole, problem.as, false)
-    inSynth = new InSynthTemp(loader, true)
+    loader = new LeonLoader(program, problem.as, false)
+    inSynth = new InSynth(loader, desiredType, true)
     // save all declarations seen
-    allDeclarations = inSynth.getCurrentBuilder.getAllDeclarations
+    allDeclarations = inSynth.declarations
     // make conditions synthesizer
-    inSynthBoolean = new InSynthTemp(allDeclarations, BooleanType, true)
+    inSynthBoolean = new InSynth(allDeclarations, BooleanType, true)
 
     // funDef of the hole
-    fine("postcondition is: " + holeFunDef.getPostcondition)
+    fine("postcondition is: " + holeFunDef.postcondition.get)
     fine("declarations we see: " + allDeclarations.map(_.toString).mkString("\n"))
     //    interactivePause
 
@@ -396,7 +395,7 @@ class SynthesizerForRuleExamples(
     accumulatingCondition = BooleanLiteral(true)
     // save initial precondition
     initialPrecondition = holeFunDef.precondition.getOrElse(BooleanLiteral(true))
-    val holeFunDefBody = holeFunDef.getBody
+    val holeFunDefBody = holeFunDef.body.get
     // accumulate the final expression of the hole
     accumulatingExpression = (finalExp: Expr) => {      
 	    def replaceChoose(expr: Expr) = expr match {
@@ -427,7 +426,7 @@ class SynthesizerForRuleExamples(
   def tryToSynthesizeBranch(snippetTree: Expr, examplesPartition: (Seq[Example], Seq[Example])): Boolean = {
     val (succeededExamples, failedExamples) = examplesPartition
     // replace hole in the body with the whole if-then-else structure, with current snippet tree
-    val oldBody = holeFunDef.getBody
+    val oldBody = holeFunDef.body.get
     val newBody = accumulatingExpression(snippetTree)
     holeFunDef.body = Some(newBody)
 
@@ -435,7 +434,7 @@ class SynthesizerForRuleExamples(
     val oldPrecondition = holeFunDef.precondition.getOrElse(BooleanLiteral(true))
     holeFunDef.precondition = Some(initialPrecondition)
 
-    snippetTree.setType(hole.desiredType)
+    snippetTree.setType(desiredType)
     //holeFunDef.getBody.setType(hole.desiredType)
     reporter.info("Current candidate solution is:\n" + holeFunDef)
 
@@ -586,10 +585,12 @@ class SynthesizerForRuleExamples(
 				    assert(newBody.getType != Untyped)
             val resFresh2 = FreshIdentifier("result22", true).setType(newBody.getType)
 				
+              val (id, post) = newFun.postcondition.get
+
               val newCandidate = 
 				    Let(resFresh2, newBody,
-				      matchToIfThenElse(replace(Map(ResultVariable() -> LeonVariable(resFresh2)),
-				        newFun.getPostcondition)))
+				      matchToIfThenElse(replace(Map(LeonVariable(id) -> LeonVariable(resFresh2)),
+				        post)))
 				    finest("New fun for Error evaluation: " + newFun)
 //				    println("new candidate: " + newBody)
 	
@@ -597,8 +598,8 @@ class SynthesizerForRuleExamples(
 			          program.mainObject.copy(defs = newFun +: program.mainObject.defs ))
 //				    println("new program: " + newProgram)
 			          
-		          val _evaluator = new CodeGenEvaluator(synthesisContext.context, newProgram,		              
-		              _root_.leon.codegen.CodeGenEvalParams(maxFunctionInvocations = 500, checkContracts = true))
+		          val _evaluator = new CodeGenEvaluator(synthesisContext.context, newProgram		              
+		              /* TODO:, _root_.leon.codegen.CodeGenEvalParams(maxFunctionInvocations = 500, checkContracts = true) */)
 	
 				    	val res = _evaluator.eval(newCandidate, exMapping)
 				    	println(res)
@@ -654,10 +655,12 @@ class SynthesizerForRuleExamples(
 				    assert(newBody.getType != Untyped)
             val resFresh2 = FreshIdentifier("result22", true).setType(newBody.getType)
 				
+              val (id, post) = newFun.postcondition.get
+
               val newCandidate = 
 				    Let(resFresh2, newBody,
-				      matchToIfThenElse(replace(Map(ResultVariable() -> LeonVariable(resFresh2)),
-				        newFun.getPostcondition)))
+				      matchToIfThenElse(replace(Map(LeonVariable(id) -> LeonVariable(resFresh2)),
+				        post)))
 				    finest("New fun for Error evaluation: " + newFun)
 //				    println("new candidate: " + newBody)
 	
@@ -665,8 +668,8 @@ class SynthesizerForRuleExamples(
 			          program.mainObject.copy(defs = newFun +: program.mainObject.defs ))
 //				    println("new program: " + newProgram)
 			          
-		          val _evaluator = new CodeGenEvaluator(synthesisContext.context, newProgram,		              
-		              _root_.leon.codegen.CodeGenEvalParams(maxFunctionInvocations = 500, checkContracts = true))
+		          val _evaluator = new CodeGenEvaluator(synthesisContext.context, newProgram /* TODO: ,		              
+		              _root_.leon.codegen.CodeGenEvalParams(maxFunctionInvocations = 500, checkContracts = true) */)
 	
 				    	val res = _evaluator.eval(newCandidate, exMapping)
 				    	println("for mapping: " + exMapping + "res is: " + res)
