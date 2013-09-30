@@ -28,6 +28,10 @@ import scala.collection.mutable.{ Set => MutableSet }
 
 class TemplateIdentifier(override val id: Identifier) extends Variable(id)
 
+trait TemplateGenerator {
+  def getNextTemplate(): Expr
+}
+
 /**
  * Templates are expressions with template variables.
  * The program variables that can be free in the templates are only the arguments and
@@ -71,11 +75,8 @@ object TemplateFactory {
   }
 
   /**    
-   * This is the default template generator 
-   * TODO: Feature: 
-   * (a) allow template functions and functions with template variables
-   * (b) allow template ADTs
-   * (c) do we need to consider sophisticated ways of constructing terms ?  
+   * This is the default template generator.
+   *  
    */
   def getDefaultTemplate(fd : FunDef): Expr = {
 
@@ -89,7 +90,14 @@ object TemplateFactory {
     val tempExpr = LessEquals(lhs,IntLiteral(0))
     tempExpr
   }
-
+  
+  /**
+   * Returns an object that incrementally generates templates
+   */
+  def getTemplateGenerator(fd: FunDef, prog: Program) : TemplateGenerator = {
+    new TemplateEnumerator(fd,prog)
+  }
+  
   /**
    * Constructs a template using a mapping from the formals to actuals
    */
