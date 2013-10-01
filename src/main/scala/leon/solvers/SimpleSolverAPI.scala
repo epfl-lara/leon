@@ -6,7 +6,7 @@ package solvers
 import purescala.Common._
 import purescala.Trees._
 
-case class SimpleSolverAPI(sf: SolverFactory[Solver]) {
+case class SimpleSolverAPI[S <: Solver](sf: SolverFactory[S]) {
   def solveVALID(expression: Expr): Option[Boolean] = {
     val s = sf.getNewSolver()
     s.assertCnstr(Not(expression))

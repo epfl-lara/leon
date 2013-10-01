@@ -455,7 +455,13 @@ trait AbstractZ3Solver extends SolverFactory[Solver] {
         case IntLiteral(v) => z3.mkInt(v, intSort)
         case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()
         case UnitLiteral => unitValue
-        case Equals(l, r) => z3.mkEq(rec(l), rec(r))
+        case Equals(l, r) => {
+          //if(l.getType != r.getType) 
+          //  println("Warning : wrong types in equality for " + l + " == " + r)
+          z3.mkEq(rec( l ), rec( r ) )
+        }
+
+        //case Equals(l, r) => z3.mkEq(rec(l), rec(r))
         case Plus(l, r) => z3.mkAdd(rec(l), rec(r))
         case Minus(l, r) => z3.mkSub(rec(l), rec(r))
         case Times(l, r) => z3.mkMul(rec(l), rec(r))

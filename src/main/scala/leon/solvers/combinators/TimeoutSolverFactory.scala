@@ -9,8 +9,6 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TypeTrees._
 
-import scala.sys.error
-
 class TimeoutSolverFactory[S <: Solver](val sf: SolverFactory[S], val timeoutMs: Long) extends SolverFactory[Solver] {
   val description = sf.description + ", with "+timeoutMs+"ms timeout"
   val name = sf.name + "+to"
