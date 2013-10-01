@@ -30,6 +30,7 @@ import scala.collection.mutable.{Set => MutableSet}
 /**
  * @author ravi
  * This phase performs automatic invariant inference. 
+ * TODO: handle options
  */
 object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   val name = "InferInv"
@@ -40,84 +41,100 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."))
 
   //TODO: handle direct equality and inequality on ADTs
-  class InferenceEngine(reporter: Reporter, program: Program, context: LeonContext,      
-      uisolver: UninterpretedZ3Solver) {        
-    
-    def getInferenceEngine(vc: ExtendedVC): (() => Boolean) = {
-            
+  class InferenceEngineGenerator(reporter: Reporter, program: Program, context: LeonContext,
+    uisolver: UninterpretedZ3Solver) {
+
+    def getInferenceEngine(funDef: FunDef, tempGen : TemplateGenerator): (() => Option[Boolean]) = {
+
       //Create and initialize a constraint tracker
-      val constTracker = new ConstraintTracker(vc.funDef)                  
-      //flatten the functions in the vc      
-      val vcbody = ExpressionTransformer.normalizeExpr(vc.body)
-      println("VC Body falttened: "+vcbody)      
+      val constTracker = new ConstraintTracker(funDef)
       
-      //create a postcondition 
-      val postTemp = if(program.isRecursive(vc.funDef)) {
-      //find the result variable used in the post-condition
-    	//TODO: make the result variable unique so as to avoid conflicts
-      	val resultVar = variablesOf(vc.post).find(_.name.equals("result")).first
-      	
-      	val argmap = InvariantUtil.formalToAcutal(
-      	    Call(resultVar.toVariable,FunctionInvocation(vc.funDef,vc.funDef.args.map(_.toVariable))),      	    
-      	    ResultVariable())
-      	    
-      	Some(TemplateFactory.constructTemplate(argmap, vc.funDef))      	
-      } else {
-        None
-      }               
-      val vcnpost = ExpressionTransformer.normalizeExpr(Not(vc.post))                  
-                  
+      //create a body and post of the function
+      val body = funDef.body.get
+      val post = funDef.postcondition.get 
+      
+      val resFresh = Variable(FreshIdentifier("result", true).setType(body.getType))      
+      val simpBody = matchToIfThenElse(body)
+      val bodyExpr = Equals(resFresh, simpBody)
+      val postExpr = replace(Map(ResultVariable() -> resFresh), matchToIfThenElse(post))
+      
+      //flatten the functions in the body      
+      val flatBody = ExpressionTransformer.normalizeExpr(bodyExpr)      
+      //println("falttened Body: " + flatBody)
+
+      //create a postcondition template 
+      val postTemp = if (program.isRecursive(funDef)) {
+        
+        val argmap = InvariantUtil.formalToAcutal(
+          Call(resFresh, FunctionInvocation(funDef, funDef.args.map(_.toVariable))),
+          ResultVariable())
+
+        //Some(TemplateFactory.constructTemplate(argmap, vc.funDef))
+        val temp = TemplateFactory.constructTemplate(argmap, funDef, Some(tempGen))
+        Some(temp)
+      } else None
+      
+      val npost = ExpressionTransformer.normalizeExpr(Not(postExpr))
+
       //add the negation of the post-condition "or" the template
       //note that we need to use Or as we are using the negation of the disjunction
-      val fullPost = if(postTemp.isDefined) 
-    	  					Or(vcnpost, ExpressionTransformer.normalizeExpr(Not(postTemp.get)))
-    	  			  else vcnpost
-      constTracker.addPostConstraints(vc.funDef,fullPost)                    
-      constTracker.addBodyConstraints(vc.funDef,vcbody)
+      val fullPost = if (postTemp.isDefined)
+        Or(npost, ExpressionTransformer.normalizeExpr(Not(postTemp.get)))
+      else npost
+      //println("Full Post: "+fullPost)
+      constTracker.addPostConstraints(funDef, fullPost)
+      constTracker.addBodyConstraints(funDef, flatBody)
 
-      val (btree,ptree) = constTracker.getVC(vc.funDef)
+      val (btree, ptree) = constTracker.getVC(funDef)
       //println("Body Constraint Tree: "+btree)      
 
       //create entities that uses the constraint tracker
       val lsAnalyzer = new LinearSystemAnalyzer(constTracker, reporter)
-      val vcRefiner = new RefinementEngine(program, constTracker)            
+      val vcRefiner = new RefinementEngine(program, constTracker, Some(tempGen))
       vcRefiner.initialize()
 
-      var refinementStep : Int = 0
-      
+      var refinementStep: Int = 0
       val inferenceEngine = () => {
-        
-        if(refinementStep >=1) {
-          
-          reporter.info("More unrollings for invariant inference")          
 
-          val unrolledCalls = vcRefiner.refineAbstraction()          
-          if(unrolledCalls.isEmpty) {
-            reporter.info("- Template not solvable!!")
-            System.exit(0)
-          }
+        val refined =
+          if (refinementStep >= 1) {
 
-        }
+            reporter.info("- More unrollings for invariant inference")
+
+            val unrolledCalls = vcRefiner.refineAbstraction()
+            if (unrolledCalls.isEmpty) {
+              reporter.info("- Cannot do more unrollings, reached unroll bound")
+              false
+            }
+            else true            
+          } else true
+
         refinementStep += 1
 
-        //solve for the templates at this unroll step
-        //val res = lsAnalyzer.solveForTemplates(uisolver)
-        val res = lsAnalyzer.solveForTemplatesIncr(uisolver)
+        if (!refined) Some(false)
+        else {
+          //solve for the templates at this unroll step
+          //val res = lsAnalyzer.solveForTemplates(uisolver)
+          val res = lsAnalyzer.solveForTemplatesIncr(uisolver)
 
-        if (res.isDefined) {
+          if (res.isDefined) {
 
-          res.get.foreach((pair) => {
-            val (fd, inv) = pair            
-            reporter.info("- Found inductive invariant: " + fd.id + " --> " + inv)
-          })
-          reporter.info("- Verifying Invariants... ")
+            res.get.foreach((pair) => {
+              val (fd, inv) = pair
+              reporter.info("- Found inductive invariant: " + fd.id + " --> " + inv)
+            })
+            reporter.info("- Verifying Invariants... ")
 
-          verifyInvariant(program, context, reporter, res.get, vc.funDef)
-          System.exit(0)
-          true
-        } else false
+            verifyInvariant(program, context, reporter, res.get, funDef)
+            System.exit(0)
+            Some(true)
+          } else {            
+            //here, we do not know if the template is solvable or not, we need to do more unrollings.
+            None
+          }
+        }
       }
-      inferenceEngine     
+      inferenceEngine
     }
   }
 
@@ -202,9 +219,11 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       }
     }
   }
-  
-  
+
   def run(ctx: LeonContext)(program: Program): VerificationReport = {
+
+    val reporter = ctx.reporter
+    reporter.info("Running Invariant Inference Phase...")
 
     val functionsToAnalyse: MutableSet[String] = MutableSet.empty
     var timeout: Option[Int] = None
@@ -222,147 +241,64 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     //create an ui solver
     val uisolver = new UninterpretedZ3Solver(ctx)
     uisolver.setProgram(program)    
-    val reporter = ctx.reporter
-    
-    //create a clause listener factory
-    val infEngine = new InferenceEngine(reporter,program,ctx,uisolver)
 
-    val trivialSolver = new TrivialSolver(ctx)
-    val fairZ3 = new FairZ3Solver(ctx)
+    val infEngineGen = new InferenceEngineGenerator(reporter, program, ctx, uisolver)
+    val analysedFunctions: MutableSet[String] = MutableSet.empty
 
-    val solvers0: Seq[Solver] = trivialSolver :: fairZ3 :: Nil
-    val solvers: Seq[Solver] = timeout match {
-      case Some(t) => solvers0.map(s => new TimeoutSolver(s, 1000L * t))
-      case None => solvers0
-    }
+    for (
+      funDef <- program.definedFunctions.toList.sortWith((fd1, fd2) => fd1 < fd2) 
+      if (functionsToAnalyse.isEmpty || functionsToAnalyse.contains(funDef.id.name))
+    ) {
+      analysedFunctions += funDef.id.name
 
-    solvers.foreach(_.setProgram(program))
+      if (funDef.body.isDefined && funDef.postcondition.isDefined) {
+        val body = funDef.body.get
+        val post = funDef.postcondition.get
 
-    val defaultTactic = new DefaultTactic(reporter)
-    defaultTactic.setProgram(program)
-    /*val inductionTactic = new InductionTactic(reporter)
-    inductionTactic.setProgram(program)*/
-
-    def generateVerificationConditions: List[ExtendedVC] = {
-      var allVCs: Seq[ExtendedVC] = Seq.empty
-      val analysedFunctions: MutableSet[String] = MutableSet.empty
-
-      for (funDef <- program.definedFunctions.toList.sortWith((fd1, fd2) => fd1 < fd2) 
-          if (functionsToAnalyse.isEmpty || functionsToAnalyse.contains(funDef.id.name))) {
-        analysedFunctions += funDef.id.name
-
-        val tactic: Tactic = defaultTactic
-
-        //add the template as a post-condition to all the methods
-
-        /*allVCs ++= tactic.generatePreconditions(funDef)
-          allVCs ++= tactic.generatePatternMatchingExhaustivenessChecks(funDef)*/
-        allVCs ++= tactic.generateExtendedVCs(funDef)
-        /*allVCs ++= tactic.generateMiscCorrectnessConditions(funDef)
-          allVCs ++= tactic.generateArrayAccessChecks(funDef)*/
-
-        allVCs = allVCs.sortWith((vc1, vc2) => {
-          val id1 = vc1.funDef.id.name
-          val id2 = vc2.funDef.id.name
-          if (id1 != id2) id1 < id2 else vc1 < vc2
-        })
-      }
-
-      val notFound = functionsToAnalyse -- analysedFunctions
-      notFound.foreach(fn => reporter.error("Did not find function \"" + fn + "\" though it was marked for analysis."))
-
-      allVCs.toList
-    }
-
-    def checkVerificationConditions(vcs: Seq[ExtendedVC]): VerificationReport = {
-
-      for (vcInfo <- vcs) {
-        val funDef = vcInfo.funDef
-        /*val body = TransformNot(vcInfo.body)
-        val post = TransformNot(vcInfo.post)*/
-        val body = vcInfo.body
-        val post = vcInfo.post
-
-        reporter.info("Now considering '" + vcInfo.kind + "' VC for " + funDef.id + "...")
-        reporter.info("Verification condition (" + vcInfo.kind + ") for ==== " + funDef.id + " ====")
+        reporter.info("- considering function " + funDef.id + "...")
         reporter.info("Body: " + simplifyLets(body))
         reporter.info("Post: " + simplifyLets(post))
 
-        if(post == BooleanLiteral(true)){
-          reporter.info("Post is true, nothing to be proven!!")          
-        }
-        else {
+        if (post == BooleanLiteral(true)) {
+          reporter.info("Post is true, nothing to be proven!!")
+        } else {
+         
+          val t1 = System.nanoTime
 
-        // try all solvers until one returns a meaningful answer
-        var superseeded: Set[String] = Set.empty[String]
-        solvers.find(se => {
-          reporter.info("Trying with solver: " + se.name)
-          if (superseeded(se.name) || superseeded(se.description)) {
-            reporter.info("Solver was superseeded. Skipping.")
-            false
-          } else {
-            superseeded = superseeded ++ Set(se.superseeds: _*)
+          //create a template generator that generates templates for the functions
+          val tempGen = TemplateFactory.getTemplateGenerator(program)
+          var solved : Option[Boolean] = None
 
-            //set listeners        	  
-            //se.SetModelListener(getModelListener(funDef))
-            se.setInferenceEngine(infEngine.getInferenceEngine(vcInfo))
+          while (!solved.isDefined) {
+            
+            val infEngine = infEngineGen.getInferenceEngine(funDef, tempGen)
+            var infRes: Option[Boolean] = None
 
-            val t1 = System.nanoTime
-            se.init()
-            //invoke the solver with separate body and post-condition
-            //val (satResult, counterexample) = se.solveSAT(Not(vc))
-            val (satResult, counterexample) = se.solve(body, post)
-            val solverResult = satResult.map(!_)
-
-            val t2 = System.nanoTime
-            val dt = ((t2 - t1) / 1000000) / 1000.0
-
-            solverResult match {
-              case None => false
-              case Some(true) => {
-                reporter.info("==== VALID ====")
-
-                vcInfo.value = Some(true)
-                vcInfo.solvedWith = Some(se)
-                vcInfo.time = Some(dt)
-
-                true
-              }
+            while (!infRes.isDefined) {
+              infRes = infEngine()
+            }
+            solved = infRes match {
+              case Some(true) => Some(true)
               case Some(false) => {
-                reporter.error("Found counter-example : ")
-                reporter.error(counterexample.toSeq.sortBy(_._1.name).map(p => p._1 + " -> " + p._2).mkString("\n"))
-                reporter.error("==== INVALID ====")
-                vcInfo.value = Some(false)
-                vcInfo.solvedWith = Some(se)
-                vcInfo.time = Some(dt)
-
-                true
+                reporter.info("- Template not solvable!!")
+                //refine the templates here
+                val refined = TemplateFactory.refineTemplates(tempGen)
+                if(refined) None
+                else Some(false)
               }
+              case _ => throw new IllegalStateException("This case is not possible")
             }
           }
-        }) match {
-          case None => {
-            reporter.warning("No solver could prove or disprove the verification condition.")
-          }
-          case _ =>
+          if(!solved.get) 
+            reporter.info("- Exhausted all templates, cannot infer invariants")
+                                         
+          val t2 = System.nanoTime
+          val dt = ((t2 - t1) / 1000000) / 1000.0
         }
       }
-      }
-
-      val report = new VerificationReport(vcs)
-      report
     }
-
-    reporter.info("Running Invariant Inference Phase...")
-
-    val report = if (solvers.size > 1) {
-      reporter.info("Running verification condition generation...")
-      checkVerificationConditions(generateVerificationConditions)
-    } else {
-      reporter.warning("No solver specified. Cannot test verification conditions.")
-      VerificationReport.emptyReport
-    }
-
-    report
-  } 
+    val notFound = functionsToAnalyse -- analysedFunctions
+    notFound.foreach(fn => reporter.error("Did not find function \"" + fn + "\" though it was marked for analysis."))
+    VerificationReport.emptyReport
+  }
 }

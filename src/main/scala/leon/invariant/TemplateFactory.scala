@@ -25,11 +25,12 @@ import leon.verification.ExtendedVC
 import leon.verification.Tactic
 import leon.verification.VerificationReport
 import scala.collection.mutable.{ Set => MutableSet }
+import scala.collection.mutable.{ Map => MutableMap }
 
 class TemplateIdentifier(override val id: Identifier) extends Variable(id)
 
 trait TemplateGenerator {
-  def getNextTemplate(): Expr
+  def getNextTemplate(fd : FunDef): Expr
 }
 
 /**
@@ -40,7 +41,7 @@ trait TemplateGenerator {
 object TemplateFactory {
 
   //a mapping from function definition to the template
-  private var templateMap = Map[FunDef, Expr]()
+  private var templateMap = MutableMap[FunDef, Expr]()
   
   //a set of template ids
   private var ids = Set[Identifier]()
@@ -94,20 +95,49 @@ object TemplateFactory {
   /**
    * Returns an object that incrementally generates templates
    */
-  def getTemplateGenerator(fd: FunDef, prog: Program) : TemplateGenerator = {
-    new TemplateEnumerator(fd,prog)
+  def getTemplateGenerator(prog: Program) : TemplateGenerator = {
+    new TemplateEnumerator(prog)
   }
   
   /**
-   * Constructs a template using a mapping from the formals to actuals
+   * Constructs a template using a mapping from the formals to actuals.
+   * Uses default template if a template does not exist for the function and no template generator is provided.
+   * Otherwise, use the provided template generator
    */
-  def constructTemplate(argmap: Map[Expr,Expr], fd: FunDef): Expr = {
+  var refinementSet = Set[FunDef]()
+  def constructTemplate(argmap: Map[Expr,Expr], fd: FunDef, tempGen: Option[TemplateGenerator]): Expr = {
     
     //initialize the template for the function
     if (!templateMap.contains(fd)) {      
-      templateMap += (fd -> getDefaultTemplate(fd))
+      if(!tempGen.isDefined) templateMap += (fd -> getDefaultTemplate(fd))
+      else {
+    	templateMap += (fd -> tempGen.get.getNextTemplate(fd))
+    	refinementSet += fd
+    	//for debugging 
+      	println("Template generated for function "+fd.id+" : "+templateMap(fd))
+      	//System.exit(0)
+      }
     }        
     replace(argmap,templateMap(fd))
+  }
+    
+  
+  /**
+   * Refines the templates of the functions that were assigned templates using the template generator.    
+   */
+  def refineTemplates(tempGen : TemplateGenerator): Boolean = {
+    var modifiedTemplate = false
+    refinementSet.foreach((fd) => {
+      val oldTemp = templateMap(fd)
+      val newTemp = tempGen.getNextTemplate(fd)
+      
+      if(oldTemp != newTemp) {
+        modifiedTemplate = true
+        templateMap.update(fd, newTemp)
+        println("New template for function "+fd.id+" : "+newTemp)
+      }      
+    })    
+    modifiedTemplate
   }
   
   def getTemplate(fd : FunDef) : Option[Expr] = {
