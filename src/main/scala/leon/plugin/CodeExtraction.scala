@@ -288,10 +288,10 @@ trait CodeExtraction extends Extractors {
           //if the template body exists then create a template expression          
           if(templateBody.isDefined) {
             
-            import leon.invariant.TemplateFactory
+            import leon.invariant._
             
             //create a template variable for each template symbol
-            val symmap = templateSyms.map((sym) => (sym,TemplateFactory.freshTemplateVar(sym.nameString))).toMap 
+            val symmap = templateSyms.map((sym) => (sym,TemplateIdFactory.freshTemplateVar(sym.nameString))).toMap 
             templateSyms.foreach((tempSym) => {              
               varSubsts(tempSym) = (() => symmap(tempSym))              
             })
@@ -299,7 +299,7 @@ trait CodeExtraction extends Extractors {
             
             val tempExpr = s2ps(templateBody.get)
             //println("Template expression : "+tempExpr)
-            TemplateFactory.setTemplate(funDef,tempExpr)
+            UserTemplates.setTemplate(funDef,tempExpr)
           }
           
           //TODO: why is this commented ?? 

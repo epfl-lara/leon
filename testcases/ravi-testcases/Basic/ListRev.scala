@@ -17,5 +17,6 @@ object ListWithSize {
     def reverse0(l1: List, l2: List) : List = (l1 match { 
       case Nil() => l2
       case Cons(x, xs) => reverse0(xs, Cons(x, l2))
-    }) //ensuring(res => true template((p,q,r) => p*size(l1) + q*size(l2) + r*size(res) == 0))
+    }) 
+    //ensuring(res => true template((p,q,r) => p*size(l1) + q*size(l2) + r*size(res) == 0))
 }

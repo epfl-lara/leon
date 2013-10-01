@@ -27,22 +27,17 @@ import leon.verification.VerificationReport
 import scala.collection.mutable.{ Set => MutableSet }
 import scala.collection.mutable.{ Map => MutableMap }
 
-class TemplateIdentifier(override val id: Identifier) extends Variable(id)
-
-trait TemplateGenerator {
-  def getNextTemplate(fd : FunDef): Expr
+object UserTemplates {
+  private var userTemplates = Map[FunDef, Expr]()
+  
+  def setTemplate(fd:FunDef, tempExpr :Expr) = {
+    userTemplates += (fd -> tempExpr) 
+  }
+  
+  def templates = userTemplates  
 }
 
-/**
- * Templates are expressions with template variables.
- * The program variables that can be free in the templates are only the arguments and
- * the result variable
- */
-object TemplateFactory {
-
-  //a mapping from function definition to the template
-  private var templateMap = MutableMap[FunDef, Expr]()
-  
+object TemplateIdFactory {
   //a set of template ids
   private var ids = Set[Identifier]()
   
@@ -70,6 +65,27 @@ object TemplateFactory {
   def freshTemplateVar(name : String= "") : Variable = {
     Variable(freshIdentifier(name))
   }
+}
+
+trait TemplateGenerator {
+  def getNextTemplate(fd : FunDef): Expr
+}
+
+/**
+ * Templates are expressions with template variables.
+ * The program variables that can be free in the templates are only the arguments and
+ * the result variable
+ */
+class TemplateFactory(tempGen : Option[TemplateGenerator], reporter : Reporter) {
+
+  //a mapping from function definition to the template
+  private var templateMap = {
+    
+    //initialize the template map with predefined user maps
+    var muMap = MutableMap[FunDef, Expr]()
+    muMap ++= UserTemplates.templates
+    muMap
+  }
   
   def setTemplate(fd:FunDef, tempExpr :Expr) = {
     templateMap += (fd -> tempExpr) 
@@ -85,8 +101,8 @@ object TemplateFactory {
     val baseTerms = fd.args.filter((vardecl) => vardecl.tpe == Int32Type).map(_.toVariable) ++ 
     					(if(fd.returnType == Int32Type) Seq(ResultVariable()) else Seq())        
     					
-    val lhs = baseTerms.foldLeft(freshTemplateVar() : Expr)((acc, t)=> {       
-       Plus(Times(freshTemplateVar(),t),acc)
+    val lhs = baseTerms.foldLeft(TemplateIdFactory.freshTemplateVar() : Expr)((acc, t)=> {       
+       Plus(Times(TemplateIdFactory.freshTemplateVar(),t),acc)
     })
     val tempExpr = LessEquals(lhs,IntLiteral(0))
     tempExpr
@@ -94,10 +110,10 @@ object TemplateFactory {
   
   /**
    * Returns an object that incrementally generates templates
-   */
+   *//*
   def getTemplateGenerator(prog: Program) : TemplateGenerator = {
     new TemplateEnumerator(prog)
-  }
+  }*/
   
   /**
    * Constructs a template using a mapping from the formals to actuals.
@@ -105,7 +121,7 @@ object TemplateFactory {
    * Otherwise, use the provided template generator
    */
   var refinementSet = Set[FunDef]()
-  def constructTemplate(argmap: Map[Expr,Expr], fd: FunDef, tempGen: Option[TemplateGenerator]): Expr = {
+  def constructTemplate(argmap: Map[Expr,Expr], fd: FunDef): Expr = {
     
     //initialize the template for the function
     if (!templateMap.contains(fd)) {      
@@ -113,9 +129,8 @@ object TemplateFactory {
       else {
     	templateMap += (fd -> tempGen.get.getNextTemplate(fd))
     	refinementSet += fd
-    	//for debugging 
-      	println("Template generated for function "+fd.id+" : "+templateMap(fd))
-      	//System.exit(0)
+    	//for information 
+      	reporter.info("- Template generated for function "+fd.id+" : "+templateMap(fd))      	
       }
     }        
     replace(argmap,templateMap(fd))
@@ -125,19 +140,22 @@ object TemplateFactory {
   /**
    * Refines the templates of the functions that were assigned templates using the template generator.    
    */
-  def refineTemplates(tempGen : TemplateGenerator): Boolean = {
-    var modifiedTemplate = false
-    refinementSet.foreach((fd) => {
-      val oldTemp = templateMap(fd)
-      val newTemp = tempGen.getNextTemplate(fd)
-      
-      if(oldTemp != newTemp) {
-        modifiedTemplate = true
-        templateMap.update(fd, newTemp)
-        println("New template for function "+fd.id+" : "+newTemp)
-      }      
-    })    
-    modifiedTemplate
+  def refineTemplates(): Boolean = {
+    
+    if(tempGen.isDefined) {
+      var modifiedTemplate = false
+      refinementSet.foreach((fd) => {
+        val oldTemp = templateMap(fd)
+        val newTemp = tempGen.get.getNextTemplate(fd)
+
+        if (oldTemp != newTemp) {
+          modifiedTemplate = true
+          templateMap.update(fd, newTemp)
+          reporter.info("- New template for function " + fd.id + " : " + newTemp)
+        }
+      })
+      modifiedTemplate
+    } else false    
   }
   
   def getTemplate(fd : FunDef) : Option[Expr] = {

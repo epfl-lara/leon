@@ -28,7 +28,7 @@ import leon.verification.ExtendedVC
 import leon.verification.Tactic
 import leon.verification.VerificationReport
 
-class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, reporter : Reporter) {
+class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: TemplateFactory, reporter : Reporter) {
 
   private val implicationSolver = new LinearImplicationSolver()
 
@@ -63,7 +63,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, reporter : Reporter) 
   def getAllInvariants(model: Map[Identifier, Expr]): Map[FunDef, Expr] = {
     val invs = ctrTracker.getFuncs.foldLeft(Seq[(FunDef, Expr)]())((acc, fd) => {
 
-      val tempOption = TemplateFactory.getTemplate(fd)
+      val tempOption = tempFactory.getTemplate(fd)
       if (!tempOption.isDefined)
         acc
       else {
@@ -257,7 +257,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, reporter : Reporter) 
         None
       }
       case Some(true) => {
-        val compModel = completeModel(model, TemplateFactory.getTemplateIds)
+        val compModel = completeModel(model, TemplateIdFactory.getTemplateIds)
         
         //For debugging: printing the candidate invariants found at this step
         println("candidate Invariants")
@@ -339,8 +339,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, reporter : Reporter) 
            
           Some(getAllInvariants(compModel))          
         } else {
-          //For debugging purposes.
-          println("# of new Constraints: " + newctrs.size)          
+          //For statistics.
+          //reporter.info("- Number of new Constraints: " + newctrs.size)          
           //call the procedure recursively
           recSolveForTemplatesIncr(uiSolver, And(nonLinearCtr, And(newctrs)), funcExprs)
         }

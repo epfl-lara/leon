@@ -47,7 +47,7 @@ object InvariantUtil {
     var foundVar = false    
     simplePostTransform((e : Expr) => e match {    
       case Variable(id) => { 
-        if(!TemplateFactory.IsTemplateIdentifier(id))
+        if(!TemplateIdFactory.IsTemplateIdentifier(id))
           foundVar = true
         e
       }
@@ -65,7 +65,7 @@ object InvariantUtil {
     var tempVars = Set[Variable]()    
     simplePostTransform((e : Expr) => e match {
       case t@Variable(id) => {
-        if(TemplateFactory.IsTemplateIdentifier(id))
+        if(TemplateIdFactory.IsTemplateIdentifier(id))
         	tempVars += t
         e       
       }

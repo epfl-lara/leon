@@ -29,7 +29,7 @@ class CallData(val node : CtrNode, val cnt: Int) {
 }
 
 //TODO: the parts of the code that collect the new head functions is ugly. Fix this.
-class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempGen : Option[TemplateGenerator]) {
+class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory : TemplateFactory, reporter : Reporter) {
   
   private val MAX_UNROLLS = 2 
   //a mapping from a call to the node containing the call (plus some additional data like the unroll depth etc.)    
@@ -158,7 +158,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempGen : O
           val argmap = InvariantUtil.formalToAcutal(
             Call(resFresh, FunctionInvocation(recFun, recFun.args.map(_.toVariable))), ResultVariable())
 
-          val postTemp = TemplateFactory.constructTemplate(argmap, recFun, tempGen)
+          val postTemp = tempFactory.constructTemplate(argmap, recFun)
           val npostTemp = ExpressionTransformer.normalizeExpr(Not(postTemp))
           //print the negated post
           //println("Negated Post: "+npostTemp)
@@ -266,7 +266,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempGen : O
 
       templateMap.getOrElse(call, {
         val argmap = InvariantUtil.formalToAcutal(call, ResultVariable())
-        val tempExpr = TemplateFactory.constructTemplate(argmap, call.fi.funDef, tempGen)
+        val tempExpr = tempFactory.constructTemplate(argmap, call.fi.funDef)
         templateMap += (call -> tempExpr)
         tempExpr
       })

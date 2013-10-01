@@ -40,20 +40,20 @@ import scala.collection.mutable.{ Map => MutableMap }
    * 
    * For now this is incomplete 
    */
-class TemplateEnumerator(prog: Program) extends TemplateGenerator {
+class TemplateEnumerator(prog: Program, reporter : Reporter) extends TemplateGenerator {
 	private var tempEnumMap = Map[FunDef, FunctionTemplateEnumerator]()
 	
 	def getNextTemplate(fd : FunDef) : Expr = {
 	  if(tempEnumMap.contains(fd)) tempEnumMap(fd).getNextTemplate()
 	  else {
-	    val enumerator = new FunctionTemplateEnumerator(fd, prog)
+	    val enumerator = new FunctionTemplateEnumerator(fd, prog, reporter)
 	    tempEnumMap += (fd -> enumerator)
 	    enumerator.getNextTemplate()
 	  }	    
 	}
 }
 
-class FunctionTemplateEnumerator(fd: FunDef, prog: Program) {
+class FunctionTemplateEnumerator(fd: FunDef, prog: Program, reporter: Reporter) {
   private val MAX_INCREMENTS = 2
   private val zero = IntLiteral(0)
   //using default op as <=
@@ -103,7 +103,7 @@ class FunctionTemplateEnumerator(fd: FunDef, prog: Program) {
         //println("ttCurrent on Init: "+ttCurrent)
 
         //also 'assignCurrTemp' to a template variable
-        currTemp = TemplateFactory.freshTemplateVar()
+        currTemp = TemplateIdFactory.freshTemplateVar()
       } else {
         //for debugging
         //println("Current Terms: "+ttCurrent+" Funs: "+fds.map(_.id))
@@ -132,7 +132,7 @@ class FunctionTemplateEnumerator(fd: FunDef, prog: Program) {
       typeTermMap ++= newTerms
 
       //statistics
-      println("Number of new terms enumerated: " + newTerms.size)
+      reporter.info("- Number of new terms enumerated: " + newTerms.size)
 
       //return all the integer valued terms of newTerms
       val intTerms = if (newTerms.contains(Int32Type)) newTerms(Int32Type)
@@ -141,7 +141,7 @@ class FunctionTemplateEnumerator(fd: FunDef, prog: Program) {
       if(!intTerms.isEmpty) {      
         //create a linear combination of intTerms
         val newTemp = intTerms.foldLeft(null: Expr)((acc, t) => {
-          val summand = Times(TemplateFactory.freshTemplateVar(), t)
+          val summand = Times(TemplateIdFactory.freshTemplateVar(), t)
           if (acc == null) summand
           else
             Plus(summand, acc)

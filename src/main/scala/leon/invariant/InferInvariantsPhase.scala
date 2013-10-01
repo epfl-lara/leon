@@ -44,7 +44,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   class InferenceEngineGenerator(reporter: Reporter, program: Program, context: LeonContext,
     uisolver: UninterpretedZ3Solver) {
 
-    def getInferenceEngine(funDef: FunDef, tempGen : TemplateGenerator): (() => Option[Boolean]) = {
+    def getInferenceEngine(funDef: FunDef, tempFactory : TemplateFactory): (() => Option[Boolean]) = {
 
       //Create and initialize a constraint tracker
       val constTracker = new ConstraintTracker(funDef)
@@ -70,7 +70,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           ResultVariable())
 
         //Some(TemplateFactory.constructTemplate(argmap, vc.funDef))
-        val temp = TemplateFactory.constructTemplate(argmap, funDef, Some(tempGen))
+        val temp = tempFactory.constructTemplate(argmap, funDef)
         Some(temp)
       } else None
       
@@ -89,8 +89,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       //println("Body Constraint Tree: "+btree)      
 
       //create entities that uses the constraint tracker
-      val lsAnalyzer = new LinearSystemAnalyzer(constTracker, reporter)
-      val vcRefiner = new RefinementEngine(program, constTracker, Some(tempGen))
+      val lsAnalyzer = new LinearSystemAnalyzer(constTracker,  tempFactory, reporter)
+      val vcRefiner = new RefinementEngine(program, constTracker, tempFactory, reporter)
       vcRefiner.initialize()
 
       var refinementStep: Int = 0
@@ -265,13 +265,13 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
          
           val t1 = System.nanoTime
 
-          //create a template generator that generates templates for the functions
-          val tempGen = TemplateFactory.getTemplateGenerator(program)
+          //create a template generator that generates templates for the functions          
+          val tempFactory = new TemplateFactory(Some(new TemplateEnumerator(program, reporter)), reporter)
           var solved : Option[Boolean] = None
 
           while (!solved.isDefined) {
             
-            val infEngine = infEngineGen.getInferenceEngine(funDef, tempGen)
+            val infEngine = infEngineGen.getInferenceEngine(funDef, tempFactory)
             var infRes: Option[Boolean] = None
 
             while (!infRes.isDefined) {
@@ -282,7 +282,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
               case Some(false) => {
                 reporter.info("- Template not solvable!!")
                 //refine the templates here
-                val refined = TemplateFactory.refineTemplates(tempGen)
+                val refined = tempFactory.refineTemplates()
                 if(refined) None
                 else Some(false)
               }
