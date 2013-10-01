@@ -24,7 +24,7 @@ case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abductio
         List(new RuleInstantiation(p, this, SolutionBuilder.none, "Condition abduction") {
           def apply(sctx: SynthesisContext): RuleApplicationResult = {
             try {
-              val solver = sctx.solverFactory.withTimeout(500L)
+              val solver = SolverFactory(() => sctx.newSolver.setTimeout(500L))
               val program = sctx.program
               val reporter = sctx.reporter
 

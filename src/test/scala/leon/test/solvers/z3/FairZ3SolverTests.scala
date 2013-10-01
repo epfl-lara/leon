@@ -53,7 +53,7 @@ class FairZ3SolverTests extends LeonTestSuite {
   private val y : Expr = Variable(FreshIdentifier("y").setType(Int32Type))
   private def f(e : Expr) : Expr = FunctionInvocation(fDef, e :: Nil)
 
-  private val solver = SimpleSolverAPI(new FairZ3SolverFactory(testContext, minimalProgram))
+  private val solver = SimpleSolverAPI(SolverFactory(() => new FairZ3Solver(testContext, minimalProgram)))
 
   private val tautology1 : Expr = BooleanLiteral(true)
   assertValid(solver, tautology1)
@@ -102,6 +102,4 @@ class FairZ3SolverTests extends LeonTestSuite {
       assert(core === Set(b2))
     }
   }
-
-  solver.free()
 }

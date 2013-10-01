@@ -318,6 +318,7 @@ object Trees {
   object Not {
     def apply(expr : Expr) : Expr = expr match {
       case Not(e) => e
+      case BooleanLiteral(v) => BooleanLiteral(!v)
       case _ => new Not(expr)
     }
 
@@ -478,6 +479,7 @@ object Trees {
   case class SubsetOf(set1: Expr, set2: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }
+
   case class SetIntersection(set1: Expr, set2: Expr) extends Expr {
     leastUpperBound(Seq(set1, set2).map(_.getType)).foreach(setType _)
   }
@@ -487,8 +489,16 @@ object Trees {
   case class SetDifference(set1: Expr, set2: Expr) extends Expr {
     leastUpperBound(Seq(set1, set2).map(_.getType)).foreach(setType _)
   }
-  case class SetMin(set: Expr) extends Expr
-  case class SetMax(set: Expr) extends Expr
+  case class SetMin(set: Expr) extends Expr with FixedType {
+    typeCheck(set, SetType(Int32Type))
+
+    val fixedType = Int32Type
+  }
+  case class SetMax(set: Expr) extends Expr with FixedType {
+    typeCheck(set, SetType(Int32Type))
+
+    val fixedType = Int32Type
+  }
 
   /* Multiset expressions */
   case class EmptyMultiset(baseType: TypeTree) extends Expr with Terminal

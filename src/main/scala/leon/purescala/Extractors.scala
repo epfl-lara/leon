@@ -98,7 +98,6 @@ object Extractors {
                 }
               }
             ))
-
       case FiniteMap(args) => {
         val subArgs = args.flatMap{case (k, v) => Seq(k, v)}
         val builder: (Seq[Expr]) => Expr = (as: Seq[Expr]) => {

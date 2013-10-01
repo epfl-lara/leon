@@ -1,7 +1,7 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
 
 package leon
-package solvers.z3
+package solvers.combinators
 
 import purescala.Common._
 import purescala.Trees._
@@ -12,32 +12,17 @@ import purescala.Definitions._
 
 import evaluators._
 
-import z3.scala._
-
 import scala.collection.mutable.{Set=>MutableSet,Map=>MutableMap}
 
-case class Z3FunctionInvocation(funDef: FunDef, args: Seq[Z3AST])
-
 class FunctionTemplate private(
-  solver: FairZ3Solver,
   val funDef : FunDef,
-  activatingBool : Identifier,
+  val activatingBool : Identifier,
   condVars : Set[Identifier],
   exprVars : Set[Identifier],
   guardedExprs : Map[Identifier,Seq[Expr]],
   isRealFunDef : Boolean) {
 
-  private val isTerminatingForAllInputs : Boolean = (
-       isRealFunDef
-    && !funDef.hasPrecondition
-    && solver.getTerminator.terminates(funDef).isGuaranteed
-  )
-
-  // if(isRealFunDef) {
-  //   println("Just created template for %s... Safe? %s".format(funDef.id.name, isTerminatingForAllInputs.toString))
-  // }
-
-  private val z3 = solver.z3
+  private val funDefArgsIDs : Seq[Identifier] = funDef.args.map(_.id)
 
   private val asClauses : Seq[Expr] = {
     (for((b,es) <- guardedExprs; e <- es) yield {
@@ -45,26 +30,7 @@ class FunctionTemplate private(
     }).toSeq
   }
 
-  val z3ActivatingBool = solver.idToFreshZ3Id(activatingBool)
-
-  private val z3FunDefArgs     = funDef.args.map( ad => solver.idToFreshZ3Id(ad.id))
-
-  private val zippedCondVars   = condVars.map(id => (id, solver.idToFreshZ3Id(id)))
-  private val zippedExprVars   = exprVars.map(id => (id, solver.idToFreshZ3Id(id)))
-  private val zippedFunDefArgs = funDef.args.map(_.id) zip z3FunDefArgs
-
-  val idToZ3Ids: Map[Identifier, Z3AST] = {
-    Map(activatingBool -> z3ActivatingBool) ++
-    zippedCondVars ++
-    zippedExprVars ++
-    zippedFunDefArgs
-  }
-
-  val asZ3Clauses: Seq[Z3AST] = asClauses.map {
-    solver.toZ3Formula(_, idToZ3Ids).getOrElse(sys.error("Could not translate to z3. Did you forget --xlang?"))
-  }
-
-  private val blockers : Map[Identifier,Set[FunctionInvocation]] = {
+  val blockers : Map[Identifier,Set[FunctionInvocation]] = {
     val idCall = FunctionInvocation(funDef, funDef.args.map(_.toVariable))
 
     Map((for((b, es) <- guardedExprs) yield {
@@ -77,61 +43,40 @@ class FunctionTemplate private(
     }).flatten.toSeq : _*)
   }
 
-  val z3Blockers: Map[Z3AST,Set[Z3FunctionInvocation]] = blockers.map {
-    case (b, funs) =>
-      (idToZ3Ids(b) -> funs.map(fi => Z3FunctionInvocation(fi.funDef, fi.args.map(solver.toZ3Formula(_, idToZ3Ids).get))))
+  private def idToFreshID(id : Identifier) : Identifier = {
+    FreshIdentifier(id.name, true).setType(id.getType)
   }
 
   // We use a cache to create the same boolean variables.
-  private val cache : MutableMap[Seq[Z3AST],Map[Z3AST,Z3AST]] = MutableMap.empty
+  private val cache : MutableMap[Seq[Expr],Map[Identifier,Expr]] = MutableMap.empty 
 
-  def instantiate(aVar : Z3AST, args : Seq[Z3AST]) : (Seq[Z3AST], Map[Z3AST,Set[Z3FunctionInvocation]]) = {
+  def instantiate(aVar : Identifier, args : Seq[Expr]) : (Seq[Expr], Map[Identifier,Set[FunctionInvocation]]) = {
     assert(args.size == funDef.args.size)
-
-    // The "isRealFunDef" part is to prevent evaluation of "fake"
-    // function templates, as generated from FairZ3Solver.
-    if(solver.evalGroundApps && isRealFunDef) {
-      val ga = args.view.map(solver.asGround)
-      if(ga.forall(_.isDefined)) {
-        val leonArgs = ga.map(_.get).force
-        val invocation = FunctionInvocation(funDef, leonArgs)
-        solver.getEvaluator.eval(invocation) match {
-          case EvaluationResults.Successful(result) =>
-            val z3Invocation = z3.mkApp(solver.functionDefToDecl(funDef), args: _*)
-            val z3Value      = solver.toZ3Formula(result).get
-            val asZ3         = z3.mkEq(z3Invocation, z3Value)
-            return (Seq(asZ3), Map.empty)
-
-          case _ => throw new Exception("Evaluation of ground term should have succeeded.")
-        }
-      }
-    }
-    // ...end of ground evaluation part.
 
     val (wasHit,baseIDSubstMap) = cache.get(args) match {
       case Some(m) => (true,m)
       case None =>
-        val newMap : Map[Z3AST,Z3AST] = 
-          (zippedExprVars ++ zippedCondVars).map(p => p._2 -> solver.idToFreshZ3Id(p._1)).toMap ++
-          (z3FunDefArgs zip args)
+        val newMap : Map[Identifier,Expr] = 
+          (exprVars ++ condVars).map(id => id -> Variable(idToFreshID(id))).toMap ++
+          (funDefArgsIDs zip args)
         cache(args) = newMap
-        (false,newMap)
+        (false, newMap)
     }
 
-    val idSubstMap : Map[Z3AST,Z3AST] = baseIDSubstMap + (z3ActivatingBool -> aVar)
+    val idSubstMap : Map[Identifier,Expr] = baseIDSubstMap + (activatingBool -> Variable(aVar))
+    val exprSubstMap : Map[Expr,Expr] = idSubstMap.map(p => (Variable(p._1), p._2))
 
-    val (from, to) = idSubstMap.unzip
-    val (fromArray, toArray) = (from.toArray, to.toArray)
+    val newClauses  = asClauses.map(replace(exprSubstMap, _))
 
-    val newClauses  = asZ3Clauses.map(z3.substitute(_, fromArray, toArray))
-    val newBlockers = z3Blockers.map { case (b, funs) =>
-      val bp = if (b == z3ActivatingBool) {
+    val newBlockers = blockers.map { case (id, funs) =>
+      val bp = if (id == activatingBool) {
         aVar
       } else {
-        idSubstMap(b)
+        // That's not exactly safe...
+        idSubstMap(id).asInstanceOf[Variable].id
       }
 
-      val newFuns = funs.map(fi => fi.copy(args = fi.args.map(z3.substitute(_, fromArray, toArray))))
+      val newFuns = funs.map(fi => fi.copy(args = fi.args.map(replace(exprSubstMap, _))))
 
       bp -> newFuns
     }
@@ -152,7 +97,7 @@ class FunctionTemplate private(
 object FunctionTemplate {
   val splitAndOrImplies = false
 
-  def mkTemplate(solver: FairZ3Solver, funDef: FunDef, isRealFunDef : Boolean = true) : FunctionTemplate = {
+  def mkTemplate(funDef: FunDef, isRealFunDef : Boolean = true) : FunctionTemplate = {
     val condVars : MutableSet[Identifier] = MutableSet.empty
     val exprVars : MutableSet[Identifier] = MutableSet.empty
 
@@ -360,7 +305,7 @@ object FunctionTemplate {
 
     }
 
-    new FunctionTemplate(solver, funDef, activatingBool, Set(condVars.toSeq : _*), Set(exprVars.toSeq : _*), Map(guardedExprs.toSeq : _*),
+    new FunctionTemplate(funDef, activatingBool, Set(condVars.toSeq : _*), Set(exprVars.toSeq : _*), Map(guardedExprs.toSeq : _*),
 isRealFunDef)
   }
 }
