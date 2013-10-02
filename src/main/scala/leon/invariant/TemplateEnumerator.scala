@@ -57,7 +57,7 @@ class FunctionTemplateEnumerator(fd: FunDef, prog: Program, reporter: Reporter) 
   private val MAX_INCREMENTS = 2
   private val zero = IntLiteral(0)
   //using default op as <=
-  private var op : (Expr,Expr) => Expr = Equals.apply _
+  private var op : (Expr,Expr) => Expr = LessEquals  //Equals.apply _     
   private var currTemp: Expr = null
   private var incrStep: Int = 0
   private var typeTermMap = Map[TypeTree, MutableSet[Expr]]()
