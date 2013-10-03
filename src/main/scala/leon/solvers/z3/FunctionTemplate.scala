@@ -27,7 +27,7 @@ class FunctionTemplate private(
   guardedExprs : Map[Identifier,Seq[Expr]],
   isRealFunDef : Boolean) {
 
-  private val isTerminatingForAllInputs : Boolean = (
+  private def isTerminatingForAllInputs : Boolean = (
        isRealFunDef
     && !funDef.hasPrecondition
     && solver.getTerminator.terminates(funDef).isGuaranteed
