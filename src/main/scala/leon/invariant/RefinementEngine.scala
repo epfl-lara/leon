@@ -140,13 +140,12 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
           println("Creating VC for "+fi.funDef.id)
           /**
            * create a new verification condition for this recursive function
-           */
-          val prec = fi.funDef.precondition
-          val (bodyExpr, resFresh) = InvariantUtil.convertToRel(if (prec.isEmpty) {
-            fi.funDef.getBody
-          } else {
-            And(prec.get, fi.funDef.getBody)
-          })
+           */          
+          val (plainBody, resFresh) = InvariantUtil.convertToRel(recFun.getBody)
+          val bodyExpr = if (recFun.hasPrecondition) {
+            val prec = ExpressionTransformer.normalizeExpr(matchToIfThenElse(recFun.getPrecondition))
+            And(prec, plainBody)
+          } else plainBody
           
           //add body constraints
           ctrTracker.addBodyConstraints(recFun, bodyExpr)

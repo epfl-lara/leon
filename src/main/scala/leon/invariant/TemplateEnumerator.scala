@@ -44,7 +44,12 @@ class TemplateEnumerator(prog: Program, reporter : Reporter) extends TemplateGen
   
     //create a call graph for the program 
     //Caution: this call-graph could be modified later while call the 'getNextTemplate' method
-    private val callGraph = ProgramCallGraph.getCallGraph(prog)
+    private val callGraph = {
+      val cg = CallGraphUtil.constructCallGraph(prog)
+      //for debugging
+      //println(cg)
+      cg
+    }
     
 	private var tempEnumMap = Map[FunDef, FunctionTemplateEnumerator]()
 	
@@ -66,7 +71,8 @@ class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, callGraph : Cal
   private val MAX_INCREMENTS = 2
   private val zero = IntLiteral(0)
   //using default op as <=
-  private var op : (Expr,Expr) => Expr = LessEquals  //Equals.apply _     
+  private var op : (Expr,Expr) => Expr = LessEquals 
+    //Equals.apply _                    
   private var currTemp: Expr = null
   private var incrStep: Int = 0
   private var typeTermMap = Map[TypeTree, MutableSet[Expr]]()
@@ -121,12 +127,14 @@ class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, callGraph : Cal
         //apply the user-defined functions to the compatible terms in typeTermMap
         //Important: Make sure that the recursive calls are not introduced in the templates
         //TODO: this is a hack to prevent infinite recursion in specification. However, it is not clear if this will prevent inferrence of 
-        //any legitimate specifications (however this can be modified).        
+        //any legitimate specifications (however this can be modified).    
+        //println("Trying new terms")
+        //println(callGraph)
         fds.foreach((fun) => {
-
           //Check if adding a call from 'rootFun' to 'fun' creates a mutual recursion by checking if
           //'fun' transitively calls 'rootFun'
-          if (!callGraph.transitivelyCalls(fun, rootFun)) {
+          //println("Checking if "+fun.id+ " transitively calls "+rootFun.id)
+          if (!callGraph.transitivelyCalls(fun, rootFun)) {                        
             
             //check if every argument has at least one satisfying assignment?
             if (fun.args.filter((vardecl) => !ttCurrent.contains(vardecl.tpe)).isEmpty) {
@@ -140,11 +148,9 @@ class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, callGraph : Cal
                 muset ++= newcalls
                 newTerms += (fun.returnType -> muset)
               }
-              
-              //here modify the call-graph so that we record that now 'rootFun' calls 'Fun'              
-              callGraph.addEdgeIfNotPresent(rootFun, fun)
             }
-          }
+          } //else println("Yep!!")
+          
         })
         
         //for debugging
@@ -171,7 +177,11 @@ class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, callGraph : Cal
             Plus(summand, acc)
         })
         //add newTemp to currTemp
-        currTemp = Plus(newTemp, currTemp)        
+        currTemp = Plus(newTemp, currTemp)
+        
+        //get all the calls in the 'newTemp' and add edges from 'rootFun' to the callees to the call-graph
+        val callees = CallGraphUtil.getCallees(newTemp)
+        callees.foreach(callGraph.addEdgeIfNotPresent(rootFun, _))
       }
       op(currTemp, zero)
     }

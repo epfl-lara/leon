@@ -48,7 +48,10 @@ class DirectedGraph[T] {
         adjlist(src).contains(dest)
     }
     else false
-  }  
+  }
+  
+  def getNodes : Set[T] = adjlist.keySet.toSet
+  def getSuccessors(src : T) : Set[T] = adjlist(src)
 }
 
 class UndirectedGraph[T] extends DirectedGraph[T] {

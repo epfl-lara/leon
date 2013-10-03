@@ -1,3 +1,5 @@
+import leon.Utils._
+
 object SeeSaw
 {
 	def s(x: Int, y : Int) : Int =  {	  
@@ -15,6 +17,6 @@ object SeeSaw
 	  else {
 	    s(x+2,y+1)
 	  }
-	} ensuring(res => (100 - x  <= 2*res))	
+	} ensuring(res => (100 - x  <= 2*res) )	
 	//inductive generalization (100 - x  <= 2*(res - y))
 } 

@@ -50,12 +50,14 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       val constTracker = new ConstraintTracker(funDef)
       
       //create a body and post of the function
-      val body = funDef.body.get
-      val post = funDef.postcondition.get 
+      val body = funDef.getBody
+      val post = funDef.getPostcondition 
       
       val resFresh = Variable(FreshIdentifier("result", true).setType(body.getType))      
       val simpBody = matchToIfThenElse(body)
-      val bodyExpr = Equals(resFresh, simpBody)
+      val plainBody = Equals(resFresh, simpBody)
+      val bodyExpr = if(funDef.hasPrecondition) And(matchToIfThenElse(funDef.getPrecondition),plainBody)
+      			 	  else plainBody 
       val postExpr = replace(Map(ResultVariable() -> resFresh), matchToIfThenElse(post))
       
       //flatten the functions in the body      

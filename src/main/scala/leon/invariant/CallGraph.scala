@@ -30,13 +30,21 @@ class CallGraph {
 	def calls(src: FunDef, proc: FunDef) : Boolean = {
 	  graph.containsEdge(src, proc)
 	}
+	
+	override def toString : String = {
+	  val procs = graph.getNodes
+	  procs.foldLeft("")((acc, proc) => {
+	    acc + proc.id + " --calls--> " + 
+	    		graph.getSuccessors(proc).foldLeft("")((acc, succ) => acc + "," + succ.id) + "\n"	    			    
+	  })
+	}
 }
 
-object ProgramCallGraph {
-  def getCallGraph(prog : Program) : CallGraph = {
+object CallGraphUtil {
+  
+  def constructCallGraph(prog : Program) : CallGraph = {
 	
-    val cg = new CallGraph()
-    
+    val cg = new CallGraph()    
     prog.definedFunctions.foreach((fd) => {          
       if(fd.hasBody){
         var funExpr = fd.getBody
@@ -45,18 +53,22 @@ object ProgramCallGraph {
         if(fd.hasPostcondition) 
         	funExpr = Tuple(Seq(funExpr,fd.getPostcondition))
        	
-        simplePreTransform((expr) => expr match {
-          case FunctionInvocation(callee,args) => {
-            //introduce a new edge
-            cg.addEdgeIfNotPresent(fd, callee)
-            
-            expr
-          } 
-          case _ => expr
-        })(funExpr)
+        //introduce a new edge for every callee
+        getCallees(funExpr).foreach(cg.addEdgeIfNotPresent(fd, _))            
       }
-    })
-    
+    })    
     cg
-  } 
+  }
+
+  def getCallees(expr: Expr): Set[FunDef] = {
+    var callees = Set[FunDef]()
+    simplePreTransform((expr) => expr match {
+      case FunctionInvocation(callee, args) => {
+        callees += callee
+        expr
+      }
+      case _ => expr
+    })(expr)
+    callees
+  }
 }
