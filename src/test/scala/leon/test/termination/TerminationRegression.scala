@@ -99,6 +99,6 @@ class TerminationRegression extends LeonTestSuite {
     assert(reporter.warningCount === 0)
   }
 
-  forEachFileIn("error", true) { output => () }
+  //forEachFileIn("error", true) { output => () }
 
 }

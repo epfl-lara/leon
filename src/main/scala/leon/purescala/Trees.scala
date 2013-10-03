@@ -64,7 +64,6 @@ object Trees {
     val fixedType = funDef.returnType
 
     funDef.args.zip(args).foreach {
-      case (a, ResultVariable()) => true // assume its correct... don't know how to get context to really check
       case (a, c) => typeCheck(c, a.tpe)
     }
   }
