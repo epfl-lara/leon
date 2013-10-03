@@ -41,19 +41,28 @@ import scala.collection.mutable.{ Map => MutableMap }
    * For now this is incomplete 
    */
 class TemplateEnumerator(prog: Program, reporter : Reporter) extends TemplateGenerator {
+  
+    //create a call graph for the program 
+    //Caution: this call-graph could be modified later while call the 'getNextTemplate' method
+    private val callGraph = ProgramCallGraph.getCallGraph(prog)
+    
 	private var tempEnumMap = Map[FunDef, FunctionTemplateEnumerator]()
 	
 	def getNextTemplate(fd : FunDef) : Expr = {
 	  if(tempEnumMap.contains(fd)) tempEnumMap(fd).getNextTemplate()
 	  else {
-	    val enumerator = new FunctionTemplateEnumerator(fd, prog, reporter)
+	    val enumerator = new FunctionTemplateEnumerator(fd, prog, callGraph, reporter)
 	    tempEnumMap += (fd -> enumerator)
 	    enumerator.getNextTemplate()
 	  }	    
 	}
 }
 
-class FunctionTemplateEnumerator(fd: FunDef, prog: Program, reporter: Reporter) {
+/**
+ * This class manages  templates for the given function
+ * Caution: The methods of this class has side-effects on the 'callGraph' parameter
+ */
+class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, callGraph : CallGraph,  reporter: Reporter) {
   private val MAX_INCREMENTS = 2
   private val zero = IntLiteral(0)
   //using default op as <=
@@ -65,8 +74,9 @@ class FunctionTemplateEnumerator(fd: FunDef, prog: Program, reporter: Reporter) 
 
   //get all functions that are not the current function. 
   //the value of the current function is given by res and its body 
-  //itself characterizes how it is defined recursively w.r.t itself. 
-  private val fds = prog.definedFunctions.filter(_ != fd)
+  //itself characterizes how it is defined recursively w.r.t itself.
+  //Need to also avoid mutual recursion as it may lead to proving of invalid facts
+  private val fds = prog.definedFunctions.filter(_ != rootFun)
 
   def getNextTemplate(): Expr = {
     //println("Getting next template for function: "+fd.id)
@@ -83,7 +93,7 @@ class FunctionTemplateEnumerator(fd: FunDef, prog: Program, reporter: Reporter) 
       if (currTemp == null) {
         //initialize
         //add all the arguments and results of fd to 'typeTermMap'
-        fd.args.foreach((vardecl) => {
+        rootFun.args.foreach((vardecl) => {
           val tpe = vardecl.tpe
           val v = vardecl.id.toVariable
           if (newTerms.contains(tpe)) {
@@ -93,11 +103,11 @@ class FunctionTemplateEnumerator(fd: FunDef, prog: Program, reporter: Reporter) 
           }
         })
         
-        val resVar = ResultVariable().setType(fd.returnType)
-        if (newTerms.contains(fd.returnType)) {
-          newTerms(fd.returnType).add(resVar)
+        val resVar = ResultVariable().setType(rootFun.returnType)
+        if (newTerms.contains(rootFun.returnType)) {
+          newTerms(rootFun.returnType).add(resVar)
         } else {
-          newTerms += (fd.returnType -> MutableSet(resVar))
+          newTerms += (rootFun.returnType -> MutableSet(resVar))
         }        
         //for debugging
         //println("ttCurrent on Init: "+ttCurrent)
@@ -108,17 +118,31 @@ class FunctionTemplateEnumerator(fd: FunDef, prog: Program, reporter: Reporter) 
         //for debugging
         //println("Current Terms: "+ttCurrent+" Funs: "+fds.map(_.id))
         
-        //apply the user-defined functions to the compatible terms in typeTermMap                
+        //apply the user-defined functions to the compatible terms in typeTermMap
+        //Important: Make sure that the recursive calls are not introduced in the templates
+        //TODO: this is a hack to prevent infinite recursion in specification. However, it is not clear if this will prevent inferrence of 
+        //any legitimate specifications (however this can be modified).        
         fds.foreach((fun) => {
-          if (fun.args.filter((vardecl) => !ttCurrent.contains(vardecl.tpe)).isEmpty) {                       
-            //every argument has at least one satisfying assignment so compute all the combinations
-            val newcalls = generateFunctionCalls(fun)
-            if (newTerms.contains(fun.returnType)) {
-              newTerms(fun.returnType) ++= newcalls
-            } else {
-              var muset = MutableSet[Expr]()
-              muset ++= newcalls
-              newTerms += (fun.returnType -> muset)
+
+          //Check if adding a call from 'rootFun' to 'fun' creates a mutual recursion by checking if
+          //'fun' transitively calls 'rootFun'
+          if (!callGraph.transitivelyCalls(fun, rootFun)) {
+            
+            //check if every argument has at least one satisfying assignment?
+            if (fun.args.filter((vardecl) => !ttCurrent.contains(vardecl.tpe)).isEmpty) {
+              
+              //here compute all the combinations
+              val newcalls = generateFunctionCalls(fun)
+              if (newTerms.contains(fun.returnType)) {
+                newTerms(fun.returnType) ++= newcalls
+              } else {
+                var muset = MutableSet[Expr]()
+                muset ++= newcalls
+                newTerms += (fun.returnType -> muset)
+              }
+              
+              //here modify the call-graph so that we record that now 'rootFun' calls 'Fun'              
+              callGraph.addEdgeIfNotPresent(rootFun, fun)
             }
           }
         })

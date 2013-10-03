@@ -94,5 +94,16 @@ object InvariantUtil {
   def fix[A](f: (A) => A)(a: A): A = {
       val na = f(a)
       if(a == na) a else fix(f)(na)
-  }    
+  }
+
+  /**
+   * Convert body to a relation
+   */
+  def convertToRel(body: Expr): (Expr, Variable) = {
+    //freshen the body and the post
+    val freshBody = matchToIfThenElse(freshenLocals(body))
+    val resFresh = Variable(FreshIdentifier("result", true).setType(freshBody.getType))
+    val bodyExpr = ExpressionTransformer.normalizeExpr(Equals(resFresh, freshBody))
+    (bodyExpr, resFresh)
+  }
 }

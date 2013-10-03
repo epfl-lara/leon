@@ -13,7 +13,8 @@ object SizeAndHeight
 	  	  size(l) + size(r) +1
 	  	}
 	  }	  
-	} ensuring(res => res != height(t) - 1 template((a,b) => (a*res + b*height(t) >= 0))) 
+	} ensuring(res => res != height(t) - 1)
+	//ensuring(res => res != height(t) - 1 template((a,b) => (a*res + b*height(t) >= 0 ))) 
 	//ensuring(res => res >= height(t) && res  >= 0)	
 			
 	def height(t: Tree): Int = {
@@ -25,7 +26,5 @@ object SizeAndHeight
 	      if(hl > hr) hl + 1 else hr + 1	    
 	    }
 	  }
-	} 
-	//ensuring(res => true template((a) => a >= 0))
-	//ensuring(res => true template((a,b,c) => a*res + b*height(t)  >= 0))
+	} //ensuring(res => 0*size())	
 } 

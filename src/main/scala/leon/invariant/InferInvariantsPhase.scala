@@ -59,17 +59,18 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       val postExpr = replace(Map(ResultVariable() -> resFresh), matchToIfThenElse(post))
       
       //flatten the functions in the body      
-      val flatBody = ExpressionTransformer.normalizeExpr(bodyExpr)      
-      //println("falttened Body: " + flatBody)
-
+      val flatBody = ExpressionTransformer.normalizeExpr(bodyExpr)
+      //for debugging
+      println("falttened Body: " + flatBody)      
+      constTracker.addBodyConstraints(funDef, flatBody)
+      
       //create a postcondition template 
       val postTemp = if (program.isRecursive(funDef)) {
         
         val argmap = InvariantUtil.formalToAcutal(
           Call(resFresh, FunctionInvocation(funDef, funDef.args.map(_.toVariable))),
           ResultVariable())
-
-        //Some(TemplateFactory.constructTemplate(argmap, vc.funDef))
+          
         val temp = tempFactory.constructTemplate(argmap, funDef)
         Some(temp)
       } else None
@@ -81,11 +82,12 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       val fullPost = if (postTemp.isDefined)
         Or(npost, ExpressionTransformer.normalizeExpr(Not(postTemp.get)))
       else npost
-      //println("Full Post: "+fullPost)
-      constTracker.addPostConstraints(funDef, fullPost)
-      constTracker.addBodyConstraints(funDef, flatBody)
+      
+      //for debugging
+      println("Flattened Post: "+fullPost)      
+      constTracker.addPostConstraints(funDef, fullPost)      
 
-      val (btree, ptree) = constTracker.getVC(funDef)
+      //val (btree, ptree) = constTracker.getVC(funDef)
       //println("Body Constraint Tree: "+btree)      
 
       //create entities that uses the constraint tracker
@@ -237,6 +239,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
       case _ =>
     }
+    
+    //create a callgraph for the program
+    //val callGraph = ProgramCallGraph.getCallGraph(program)
 
     //create an ui solver
     val uisolver = new UninterpretedZ3Solver(ctx)

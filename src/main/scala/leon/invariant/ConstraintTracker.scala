@@ -27,15 +27,12 @@ import leon.verification.ExtendedVC
 import leon.verification.Tactic
 import leon.verification.VerificationReport
 
-class ConstraintTracker(fundef : FunDef) {
+class ConstraintTracker(rootFun : FunDef) {
 
-  //this is a mutable map (used for efficiency)
-  //private var treeNodeMap = collection.mutable.Map[Identifier, CtrNode]()
-  
   //verification conditions for each procedure.
   //Each verification condition is an implication where the antecedent and the consequent are represented as DNF trees.
   //The verification conditions may have templates
-  private var dnfVCs = Map[FunDef,(CtrNode,CtrNode)]()
+  private var dnfVCs = Map[FunDef,(CtrNode,CtrNode)]()  
     
   //some constants
   private val zero = IntLiteral(0)
@@ -118,12 +115,6 @@ class ConstraintTracker(fundef : FunDef) {
     parentEnd.addChildren(exprRoot)    
   }
 
-  def addConstraint(e: Expr, bodyRoot: CtrNode, postRoot: CtrNode, isBody: Boolean) = {
-      
-    val root = if(isBody) bodyRoot else postRoot    
-    addConstraintRecur(e, root)           
-  }
-
   //checks if a constraint tree exists for a function 
   def hasCtrTree(fdef: FunDef) = {
   	dnfVCs.contains(fdef)
@@ -140,8 +131,8 @@ class ConstraintTracker(fundef : FunDef) {
   }
 
   def addBodyConstraints(fdef: FunDef, body: Expr) = {
-    val (bodyRoot,postRoot) = getCtrTree(fdef)    
-    addConstraint(body, bodyRoot, postRoot, true)
+    val (bodyRoot,_) = getCtrTree(fdef)    
+    addConstraintRecur(body, bodyRoot)    
   }
 
   /**
@@ -149,8 +140,8 @@ class ConstraintTracker(fundef : FunDef) {
    * This is used for optimization.  
    */
   def addPostConstraints(fdef: FunDef, npost: Expr) = {
-    val (bodyRoot,postRoot) = getCtrTree(fdef)
-    addConstraint(npost, bodyRoot, postRoot, false)
+    val (_,postRoot) = getCtrTree(fdef)
+    addConstraintRecur(npost, postRoot)   
     //println("PostCtrTree\n"+postRoot.toString)    
   }
 

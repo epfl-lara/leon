@@ -48,7 +48,8 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     //we are consciously ignoring the return value of the procedure
     assumePostConditions()
 
-    headCallPtrs = findAllHeads(ctrTracker)  
+    headCallPtrs = findAllHeads(ctrTracker)
+    //for debugging
     //println("Head-Calls: "+headCallPtrs.keys.toSeq)
     //System.exit(0)
   }
@@ -59,8 +60,9 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     ctrTracker.getFuncs.foreach((fd) => {
       val (btree,ptree) = ctrTracker.getVC(fd)      
       heads ++= (findHeads(btree, MAX_UNROLLS) ++ findHeads(ptree, MAX_UNROLLS))
-    })  
+    })        
     heads
+    
   }  
   
   /**
@@ -73,7 +75,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
       def visitor : (CtrNode => Unit) = 
         (node: CtrNode) => {
           val calls = node.uifs
-          calls.foreach((call) => { heads += (call -> new CallData(node, unrollCnt)) })  
+          calls.foreach((call) => { heads += (call -> new CallData(node, unrollCnt)) })           
         }  
       TreeUtil.preorderVisit(ctrTree,visitor)      
     }
@@ -91,7 +93,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
       val (call, calldata) = entry            
 
       //the following creates new constraint trees and hence has side effects
-      if(calldata.unrollCnt > 0) {
+      if(calldata.unrollCnt > 0) {        
         newheads ++= unrollCall(call, calldata.ctrnode, calldata.unrollCnt - 1)
       }
 
@@ -124,33 +126,28 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
   //private var unrollCounts = MutableMap[Call,Int]()
   def unrollCall(call : Call, ctrnode : CtrNode, unrollCnt : Int): Map[Call,CallData] = {                
 
-    //println("Unrolling: "+call)
+    //println("Processing: "+call)
     val fi = call.fi
     if (fi.funDef.body.isDefined) {
 
-      //freshen the body and the post
-      val freshBody = freshenLocals(fi.funDef.getBody)      
-      val body = matchToIfThenElse(freshBody)
-      val resFresh = Variable(FreshIdentifier("result", true).setType(body.getType))
-      val bexpr1 = Equals(resFresh, body)
-
-      val prec = fi.funDef.precondition
-      val bodyExpr = ExpressionTransformer.normalizeExpr(if (prec.isEmpty) {
-        bexpr1
-      } else {
-        val freshPre = freshenLocals(prec.get)
-        And(matchToIfThenElse(freshPre), bexpr1)
-      })        
-      
+      //freshen the body and the post           
       val isRecursive = prog.isRecursive(fi.funDef)        
-      if(isRecursive) {
-        /** 
-         * create a new verification condition for this recursive function
-         **/
+      if(isRecursive) {                        
         var newheads = Map[Call,CallData]()
         val recFun = fi.funDef
-        if (!ctrTracker.hasCtrTree(recFun)) { //check if a constraint tree does not exist for the call's target           
+        if (!ctrTracker.hasCtrTree(recFun)) { //check if a constraint tree does not exist for the call's target
 
+          println("Creating VC for "+fi.funDef.id)
+          /**
+           * create a new verification condition for this recursive function
+           */
+          val prec = fi.funDef.precondition
+          val (bodyExpr, resFresh) = InvariantUtil.convertToRel(if (prec.isEmpty) {
+            fi.funDef.getBody
+          } else {
+            And(prec.get, fi.funDef.getBody)
+          })
+          
           //add body constraints
           ctrTracker.addBodyConstraints(recFun, bodyExpr)
 
@@ -168,13 +165,10 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
           val (btree,ptree) = ctrTracker.getVC(recFun)
           newheads ++= (findHeads(btree, MAX_UNROLLS) ++ findHeads(ptree, MAX_UNROLLS))          
         }
-        else {
-          //be very careful when removing the else, 
-          //TODO: make sure that both the branches do not use the same identifier names for calls
-          //this will affect the 'templatedExpression' cache
-
-          //unroll the body some fixed number of times
-          /*val ucount = if(unrollCounts.contains(call)) {
+        //unroll the body some fixed number of times
+        //Important: make sure we use a fresh body expression here
+        val (bodyExpr2,resFresh2) =  InvariantUtil.convertToRel(fi.funDef.getBody) 
+        /*val ucount = if(unrollCounts.contains(call)) {
                           val count = unrollCounts(call)
                           unrollCounts.update(call,count + 1)
                           count
@@ -182,21 +176,15 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
                         unrollCounts += (call -> 0)
                         0
                       }*/
-          //A simple hack; for now
-          //TODO: Fix this
-          //if(call.fi.funDef.id.name == "size") {            
-            println("Unrolling "+fi.funDef.id)
-            newheads ++= inilineCall(call, bodyExpr, fi.funDef.postcondition, resFresh, ctrnode, unrollCnt)          
-          //} 
-          /*else {
-            Map()
-          } */                   
-        }            
+        //TODO: unroll always ??                   
+        println("Unrolling " + Equals(call.retexpr,call.fi))
+        newheads ++= inilineCall(call, bodyExpr2, fi.funDef.postcondition, resFresh2, ctrnode, unrollCnt)          
         newheads
       }
       else {        
         //here we are unrolling a non-recursive function, so set the unrollCnt to maximum
         println("Inlining "+fi.funDef.id)
+        val (bodyExpr,resFresh) =  InvariantUtil.convertToRel(fi.funDef.getBody)
         inilineCall(call, bodyExpr, fi.funDef.postcondition, resFresh, ctrnode, MAX_UNROLLS)
       }                
     } else Map()    
