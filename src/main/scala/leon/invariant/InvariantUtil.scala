@@ -103,7 +103,24 @@ object InvariantUtil {
     //freshen the body and the post
     val freshBody = matchToIfThenElse(freshenLocals(body))
     val resFresh = Variable(FreshIdentifier("result", true).setType(freshBody.getType))
+    //println("Rel Body: "+Equals(resFresh, freshBody))
     val bodyExpr = ExpressionTransformer.normalizeExpr(Equals(resFresh, freshBody))
     (bodyExpr, resFresh)
   }
+  
+  def literalNum(e : Expr) : Int = {
+    var count : Int = 0
+    simplePostTransform((e : Expr) => e match {
+      case And(args) => {
+        count += args.size
+        e
+      }         
+      case Or(args) => {
+        count += args.size
+        e
+      }
+      case _ => e
+    })(e)
+    count
+  } 
 }

@@ -247,7 +247,12 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
 
     val funcs = funcExprs.keys
 
-    val (res, model, _) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)
+    println("solving...")        
+    val t1 = System.nanoTime      
+    val (res, model, _) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)    
+    val t2 = System.nanoTime
+    println("solved... in "+((t2 - t1) / 1000000) / 1000.0+"s")    
+    
     res match {
       case None => None
       case Some(false) =>  {
@@ -342,7 +347,10 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           //For statistics.
           //reporter.info("- Number of new Constraints: " + newctrs.size)          
           //call the procedure recursively
-          recSolveForTemplatesIncr(uiSolver, And(nonLinearCtr, And(newctrs)), funcExprs)
+          val constr = And(nonLinearCtr, And(newctrs))                  
+          println("Constraints Count: "+InvariantUtil.literalNum(constr))
+          println(constr)
+          recSolveForTemplatesIncr(uiSolver, constr, funcExprs)
         }
       }
     }

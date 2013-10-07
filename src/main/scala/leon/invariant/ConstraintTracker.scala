@@ -85,6 +85,10 @@ class ConstraintTracker(rootFun : FunDef) {
             case Equals(v@Variable(_),fi@FunctionInvocation(_,_)) => {
             	node.uifs += Call(v,fi)
             }
+            //need to handle boolean calls as well
+            case Iff(v@Variable(_),fi@FunctionInvocation(_,_)) => {
+            	node.uifs += Call(v,fi)
+            }
             case Iff(Variable(_),CaseClassInstanceOf(_,_)) | Equals(Variable(_),CaseClassSelector(_,_,_))
                  | Equals(Variable(_),CaseClass(_,_)) => {
 

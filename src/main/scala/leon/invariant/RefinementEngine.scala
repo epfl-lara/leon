@@ -137,7 +137,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
         val recFun = fi.funDef
         if (!ctrTracker.hasCtrTree(recFun)) { //check if a constraint tree does not exist for the call's target
 
-          println("Creating VC for "+fi.funDef.id)
+          println("Creating VC for "+fi.funDef.id)          
           /**
            * create a new verification condition for this recursive function
            */          

@@ -289,6 +289,7 @@ object ExpressionTransformer {
         }
         //TODO: Puzzling: "Not" is not recognized as an unary operator, need to find out why
         case e @ Not(t: Terminal) => e
+        case e @ Not(FunctionInvocation(_,_)) => e 
         case Not(And(args)) => Or(args.map(arg => nnf(Not(arg))))
         case Not(Or(args)) => And(args.map(arg => nnf(Not(arg))))
         case Not(Not(e1)) => nnf(e1)
@@ -296,7 +297,7 @@ object ExpressionTransformer {
         case Not(Iff(e1, e2)) => Or(nnf(Implies(e1, e2)), nnf(Implies(e2, e1)))
         case Implies(lhs,rhs) => {
           nnf(Or(Not(lhs),rhs))
-        }
+        }                
         case Iff(lhs,rhs) => {
           nnf(And(Implies(lhs,rhs),Implies(rhs,lhs)))
         }                
@@ -347,9 +348,9 @@ object ExpressionTransformer {
   def normalizeExpr(expr: Expr) : Expr = {
     
     //convert to negated normal form         
-    val nnfExpr = TransformNot(expr)    
+    //val nnfExpr = TransformNot(expr)    
     //reduce the language before applying flatten function
-    val redExpr = TransformNot(reduceLangBlocks(nnfExpr))
+    val redExpr = TransformNot(reduceLangBlocks(expr))
     //flatten all function calls
     val flatExpr = FlattenFunction(redExpr)
     
