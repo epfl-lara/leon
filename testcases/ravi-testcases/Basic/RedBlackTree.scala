@@ -8,17 +8,13 @@ object RedBlackTree {
   sealed abstract class Tree
   case class Empty() extends Tree
   case class Node(color: Color, left: Tree, value: Int, right: Tree) extends Tree
-
-  sealed abstract class OptionInt
-  case class Some(v : Int) extends OptionInt
-  case class None() extends OptionInt
      
   def twopower(x: Int) : Int = {
     //require(x >= 0)
     if(x < 1) 1    
     else      
       2* twopower(x - 1)
-  } //ensuring (res => res >= 1)
+  } 
 
   def size(t: Tree): Int = {
     require(blackBalanced(t))  
@@ -34,7 +30,7 @@ object RedBlackTree {
     case Node(Black(), l, _, _) => blackHeight(l) + 1
     case Node(Red(), l, _, _) => blackHeight(l)
    	}
-  } //ensuring (_ >= 1)
+  }
   
    //We consider leaves to be black by definition 
   def isBlack(t: Tree) : Boolean = t match {

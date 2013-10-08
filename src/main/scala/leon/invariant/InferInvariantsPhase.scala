@@ -26,6 +26,7 @@ import leon.verification.Tactic
 import leon.verification.VerificationReport
 import leon.invariant._
 import scala.collection.mutable.{Set => MutableSet}
+import leon.purescala.ScalaPrinter
 
 /**
  * @author ravi
@@ -197,13 +198,14 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
     val newprog = Program(program.id.freshen, newObjDef)
     //println("Program: "+newprog)
+    //println(ScalaPrinter(newprog))
 
     val defaultTactic = new DefaultTactic(reporter)
     defaultTactic.setProgram(newprog)
     val vc = defaultTactic.generatePostconditions(newFundefs(rootfd)).first
 
     val fairZ3 = new FairZ3Solver(ctx)
-    fairZ3.setProgram(newprog)
+    fairZ3.setProgram(newprog)    
     //println("Func : "+ vc.funDef + " new vc: "+vc.condition)            
     val sat = fairZ3.solveSAT(Not(vc.condition))
     sat._1 match {

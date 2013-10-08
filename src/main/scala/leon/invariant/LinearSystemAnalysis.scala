@@ -349,7 +349,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           //call the procedure recursively
           val constr = And(nonLinearCtr, And(newctrs))                  
           println("Constraints Count: "+InvariantUtil.literalNum(constr))
-          println(constr)
+          //println(constr)          
           recSolveForTemplatesIncr(uiSolver, constr, funcExprs)
         }
       }
