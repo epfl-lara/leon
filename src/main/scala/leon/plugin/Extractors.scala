@@ -310,6 +310,23 @@ trait Extractors {
       }
     }
 
+    object ExArrayLiteral {
+      def unapply(tree: Apply): Option[(Type, Seq[Tree])] = tree match {
+        case Apply(ExSelected("scala", "Array", "apply"), args) =>
+          tree.tpe match {
+            case TypeRef(_, _, List(t1)) =>
+              Some((t1, args))
+            case _ =>
+              None
+          }
+        case Apply(Apply(TypeApply(ExSelected("scala", "Array", "apply"), List(tpt)), args), ctags) =>
+          Some((tpt.tpe, args))
+
+        case _ =>
+          None
+      }
+    }
+
     object ExTuple {
       def unapply(tree: Apply): Option[(Seq[Type], Seq[Tree])] = tree match {
         case Apply(
