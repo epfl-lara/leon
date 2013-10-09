@@ -8,7 +8,7 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.TypeTrees._
-import solvers.{ Solver, TrivialSolver, TimeoutSolver }
+import solvers.{ Solver, TimeoutSolver }
 import solvers.z3.FairZ3Solver
 import scala.collection.mutable.{ Set => MutableSet }
 import leon.evaluators._
@@ -99,7 +99,8 @@ class TemplateFactory(tempGen : Option[TemplateGenerator], reporter : Reporter) 
 
     //just consider all the arguments, return values that are integers
     val baseTerms = fd.args.filter((vardecl) => vardecl.tpe == Int32Type).map(_.toVariable) ++ 
-    					(if(fd.returnType == Int32Type) Seq(ResultVariable()) else Seq())        
+    					(if(fd.returnType == Int32Type) Seq(InvariantUtil.getFunctionReturnVariable(fd)) 
+    					 else Seq())        
     					
     val lhs = baseTerms.foldLeft(TemplateIdFactory.freshTemplateVar() : Expr)((acc, t)=> {       
        Plus(Times(TemplateIdFactory.freshTemplateVar(),t),acc)

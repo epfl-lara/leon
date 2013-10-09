@@ -1,4 +1,4 @@
-package leon
+/*package leon
 package evaluators
 
 import purescala.Common._
@@ -9,9 +9,9 @@ import purescala.TypeTrees._
 
 import xlang.Trees._
 
-/**
+*//**
  * @author Ravi
- */
+ *//*
 class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evaluator(ctx, prog) {
   val name = "Trace collecting evaluator"
   val description = "Recursive interpreter for PureScala expressions that keeps of the execution trace"
@@ -29,11 +29,11 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
     //debugging 
     ctx.reporter.info("collecting execution traces...");      
 
-    /**   
+    *//**   
      * The result of rec is a pair of expression and SymVal, the expression is the result of evaluation 
      * which is a constant, the SymVal is the result of symbolic evaluation of the expression which 
      * corresponds to the strongest postcondition of the (concrete) path exercised by the input.
-     */    
+     *//*    
     def rec(ctx: Map[Identifier,Expr], expr: Expr) : (Expr,SymVal) = if(left <= 0) {
       throw RuntimeError("Diverging computation.")
     } else {
@@ -224,14 +224,14 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
           
         case Iff(le,re) => rec(ctx,And(Implies(le,re),Implies(re,le)))
         
-        /*case Implies(l,r) => (rec(ctx,l), rec(ctx,r)) match {
+        case Implies(l,r) => (rec(ctx,l), rec(ctx,r)) match {
           case (BooleanLiteral(b1),BooleanLiteral(b2)) => BooleanLiteral(!b1 || b2)
           case (le,re) => throw EvalError(typeErrorMsg(le, BooleanType))
         }
         case Iff(le,re) => (rec(ctx,le),rec(ctx,re)) match {
           case (BooleanLiteral(b1),BooleanLiteral(b2)) => BooleanLiteral(b1 == b2)
           case _ => throw EvalError(typeErrorMsg(le, BooleanType))
-        }*/
+        }
         
         case Equals(le,re) => {
           val (lc,ls) = rec(ctx,le)
@@ -278,9 +278,9 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
               val cres = args(index)
               //val CaseClass(cd3,evArgs) = sval.value
               
-              /*if(!cd3.equals(cd2))
+              if(!cd3.equals(cd2))
                 throw EvalError("types of concrete and symbolic values did not match, contype: "
-                    +CaseClassType(cd2)+", symtype: "+CaseClassType(cd3))*/
+                    +CaseClassType(cd2)+", symtype: "+CaseClassType(cd3))
               
               //val sres = evArgs(index)
               (cres,SymVal(sval.guard,CaseClassSelector(cd,sval.value,sel)))
@@ -381,7 +381,7 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
           }
         } 
 
-        /*case SetUnion(s1,s2) => (rec(ctx,s1), rec(ctx,s2)) match {
+        case SetUnion(s1,s2) => (rec(ctx,s1), rec(ctx,s2)) match {
           case (f@FiniteSet(els1),FiniteSet(els2)) => FiniteSet((els1 ++ els2).distinct).setType(f.getType)
           case (le,re) => throw EvalError(typeErrorMsg(le, s1.getType))
         }
@@ -412,13 +412,13 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
             case _ => throw EvalError(typeErrorMsg(sr, SetType(AnyType)))
           }
         }
-*/
+
         //case f @ FiniteSet(els) => FiniteSet(els.map(rec(ctx,_)).distinct).setType(f.getType)
         case i @ IntLiteral(_) => (i,SymVal(List[Expr](),i))
         case b @ BooleanLiteral(_) => (b,SymVal(List[Expr](),b))
         case u @ UnitLiteral => (u,SymVal(List[Expr](),u))
 
-        /*case f @ ArrayFill(length, default) => {
+        case f @ ArrayFill(length, default) => {
           val rDefault = rec(ctx, default)
           val rLength = rec(ctx, length)
           val IntLiteral(iLength) = rLength
@@ -475,7 +475,7 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
         case Distinct(args) => {
           val newArgs = args.map(rec(ctx, _))
           BooleanLiteral(newArgs.distinct.size == newArgs.size)
-        }*/ 
+        } 
 
         case Choose(_, _) =>
           throw EvalError("Cannot evaluate choose.")
@@ -508,3 +508,4 @@ class TraceCollectingEvaluator(ctx : LeonContext, prog : Program) extends Evalua
     variablesOf(expr) == Set.empty
   }
 }
+*/

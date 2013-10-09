@@ -15,6 +15,7 @@ object Main {
       xlang.ImperativeCodeElimination,
       purescala.FunctionClosure,
       xlang.XlangAnalysisPhase,
+      invariant.InferInvariantsPhase,
       synthesis.SynthesisPhase,
       termination.TerminationPhase,
       verification.AnalysisPhase
@@ -28,6 +29,7 @@ object Main {
 
   lazy val topLevelOptions : Set[LeonOptionDef] = Set(
       LeonFlagOptionDef ("termination", "--termination",        "Check program termination"),
+      LeonFlagOptionDef ("inferInv",   "--inferInv",          "Invariant Inference"),
       LeonFlagOptionDef ("synthesis",   "--synthesis",          "Partial synthesis of choose() constructs"),
       LeonFlagOptionDef ("xlang",       "--xlang",              "Support for extra program constructs (imperative,...)"),
       LeonFlagOptionDef ("library",     "--library",            "Inject Leon standard library"),

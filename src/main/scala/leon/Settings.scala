@@ -9,6 +9,7 @@ case class Settings(
   val debugSections: Set[DebugSection] = Set(), // Enables debug message for the following sections
   val termination: Boolean             = false,
   val synthesis: Boolean               = false,
+  val inferInv: Boolean               =  false,
   val xlang: Boolean                   = false,
   val verify: Boolean                  = true,
   val injectLibrary: Boolean           = false,

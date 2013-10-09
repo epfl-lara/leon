@@ -178,7 +178,7 @@ object ExpressionTransformer {
               freshVar
             }            
           }*/
-          val freshArg = newargs.first            
+          val freshArg = newargs(0)            
           val newInst = CaseClassInstanceOf(cd,freshArg)
           val freshResVar = Variable(FreshIdentifier("ci", true).setType(inst.getType))
           newConjuncts += Iff(freshResVar, newInst) 
@@ -196,7 +196,7 @@ object ExpressionTransformer {
               freshVar
             }
           }            */
-          val freshArg = newargs.first
+          val freshArg = newargs(0)
           val newCS = CaseClassSelector(cd, freshArg, sel)
           val freshResVar = Variable(FreshIdentifier("cs", true).setType(cs.getType))
           newConjuncts += Equals(freshResVar, newCS)           

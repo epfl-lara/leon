@@ -10,7 +10,7 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.TypeTrees._
-import solvers.{ Solver, TrivialSolver, TimeoutSolver }
+import solvers.{ Solver, TimeoutSolver }
 import solvers.z3.FairZ3Solver
 import scala.collection.mutable.{ Set => MutableSet }
 import scala.collection.mutable.{ Map => MutableMap }
@@ -27,9 +27,13 @@ import leon.verification.DefaultTactic
 import leon.verification.ExtendedVC
 import leon.verification.Tactic
 import leon.verification.VerificationReport
+import leon.solvers.SimpleSolverAPI
+import leon.solvers.z3.UIFZ3Solver
 
-class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: TemplateFactory, reporter : Reporter) {
+class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: TemplateFactory,
+    context : LeonContext, program : Program) {
 
+  private val reporter = context.reporter
   private val implicationSolver = new LinearImplicationSolver()
 
   //some constants
@@ -149,7 +153,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
    * The result is a mapping from function definitions to the corresponding invariants.
    */
   var exploredPaths = 0
-  def solveForTemplates(uiSolver: UninterpretedZ3Solver): Option[Map[FunDef, Expr]] = {
+  def solveForTemplates(uiSolver: SimpleSolverAPI): Option[Map[FunDef, Expr]] = {
   
     exploredPaths = 0
     
@@ -164,10 +168,10 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     })   
     
     val nonLinearCtr = if(nonLinearCtrs.isEmpty) throw IllegalStateException("Found no constraints") 
-    					else if(nonLinearCtrs.size == 1) nonLinearCtrs.first 
+    					else if(nonLinearCtrs.size == 1) nonLinearCtrs(0) 
 						else And(nonLinearCtrs)
 	          
-    val (res, model, unsatCore) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)
+    val (res, model) = uiSolver.solveSAT(nonLinearCtr)
     
     //print some statistics 
     reporter.info("- Number of explored paths (of the DAG) in this unroll step: "+exploredPaths)
@@ -187,7 +191,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
    * The result is a mapping from function definitions to the corresponding invariants.
    */
   
-  def solveForTemplatesIncr(uiSolver: UninterpretedZ3Solver): Option[Map[FunDef, Expr]] = {
+  def solveForTemplatesIncr(uiSolver: SimpleSolverAPI): Option[Map[FunDef, Expr]] = {
 
     exploredPaths = 0
     val max_depth = -1
@@ -237,19 +241,19 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     //For debugging purposes.
     println("# of initals Constraints: "+nonLinearCtrs.size)      
     
-    val nonLinearCtr = if (nonLinearCtrs.size == 1) nonLinearCtrs.first
+    val nonLinearCtr = if (nonLinearCtrs.size == 1) nonLinearCtrs(0)
     					else And(nonLinearCtrs)
     recSolveForTemplatesIncr(uiSolver, nonLinearCtr, funcExprs)
   }
 
-  def recSolveForTemplatesIncr(uiSolver: UninterpretedZ3Solver, nonLinearCtr: Expr,
+  def recSolveForTemplatesIncr(uiSolver: SimpleSolverAPI, nonLinearCtr: Expr,
     funcExprs: Map[FunDef, Expr]): Option[Map[FunDef, Expr]] = {
 
     val funcs = funcExprs.keys
 
     println("solving...")        
     val t1 = System.nanoTime      
-    val (res, model, _) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)    
+    val (res, model) = uiSolver.solveSAT(nonLinearCtr)    
     val t2 = System.nanoTime
     println("solved... in "+((t2 - t1) / 1000000) / 1000.0+"s")    
     
@@ -291,7 +295,9 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           //println("verification condition for" + fd.id + " : " + cande)
           //println("Solution: "+uiSolver.solveSATWithFunctionCalls(cande))
 
-          val solEval = uiSolver.getSATSolverEvaluator(instVC)
+          //this creates a new solver and does not work with the SimpleSolverAPI
+          val solEval = new UIFZ3Solver(context, program)
+          solEval.assertCnstr(instVC)          
           solEval.check match {
             case None => throw IllegalStateException("cannot check the satisfiability of " + instVC)
             case Some(false) => {
@@ -361,7 +367,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
    * This is parametrized by a selector function that decides which paths to consider. 
    */
   def generateCtrsForTree(bodyRoot: CtrNode, postRoot : CtrNode, 
-      uiSolver : UninterpretedZ3Solver, selector : (CtrNode, Iterable[CtrTree], Int) => Iterable[CtrTree]) : Expr = {       
+      uiSolver : SimpleSolverAPI, selector : (CtrNode, Iterable[CtrTree], Int) => Iterable[CtrTree]) : Expr = {       
     
     /**
      * A utility function that converts a constraint + calls into a expression.
@@ -424,7 +430,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         case CtrLeaf() => {
 
           val pathexpr = constraintsToExpr(currentCtrs, currentUIFs, And(auxCtrs))
-          val (res, model, unsatCore) = uiSolver.solveSATWithFunctionCalls(pathexpr)
+          val (res, model) = uiSolver.solveSAT(pathexpr)
           if (!res.isDefined || res.get == true) {
 
             //println("Body path expr: " + pathexpr)
@@ -495,7 +501,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       val pathexpr = constraintsToExpr(ants ++ conseqs, calls, And(antAuxs ++ conseqAuxs))              
 
       //if the path expression is unsatisfiable return true
-      val (res, model, unsatCore) = uiSolver.solveSATWithFunctionCalls(pathexpr)
+      val (res, model) = uiSolver.solveSAT(pathexpr)
       if (res.isDefined && res.get == false) {
         tru            
       } else {
@@ -572,7 +578,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
   
   //convert the theory formula into linear arithmetic formula
   //TODO: Find ways to efficiently handle ADTs (the current solution is incomplete for efficiency)
-  def constraintsForUIFs(calls: Seq[Call], precond: Expr, uisolver: UninterpretedZ3Solver) : Seq[Expr] = {
+  def constraintsForUIFs(calls: Seq[Call], precond: Expr, uisolver: SimpleSolverAPI) : Seq[Expr] = {
         
     //Part(I): Finding the set of all pairs of funcs that are implied by the precond
     var impliedGraph = new UndirectedGraph[Call]()
@@ -600,8 +606,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         if(!nimpliedSet.contains((call1, call2))){          
           val (ant,conseqs) = axiomatizeEquality(call1,call2)
          //check if equality follows from the preconds                   
-          val (nImpRes,_,_) = uisolver.solveSATWithFunctionCalls(Not(Implies(precond,ant)))
-          val (impRes,_,_) = uisolver.solveSATWithFunctionCalls(And(precond,ant))
+          val (nImpRes,_) = uisolver.solveSAT(Not(Implies(precond,ant)))
+          val (impRes,_) = uisolver.solveSAT(And(precond,ant))
           (nImpRes,impRes) match{
             case (Some(false),_) => {
              //here the argument equality follows from the precondition
@@ -627,7 +633,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
                 val Equals(lhs,rhs) = eq
                 (lhs.getType != Int32Type && lhs.getType != RealType)                
               })
-              val (adtImp,_,_) = uisolver.solveSATWithFunctionCalls(Not(Implies(precond,And(eqs))))
+              val (adtImp,_) = uisolver.solveSAT(Not(Implies(precond,And(eqs))))
               if(adtImp.isDefined && adtImp.get == true){
                 //here the implication need not necessarily hold therefore we consider that it can never 
                 //hold (assuming that the templates do not affect ADTs values thtough integers)

@@ -8,7 +8,7 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.TypeTrees._
-import solvers.{ Solver, TrivialSolver, TimeoutSolver }
+import solvers.{ Solver, TimeoutSolver }
 import solvers.z3.FairZ3Solver
 import scala.collection.mutable.{ Set => MutableSet }
 import leon.evaluators._
@@ -27,6 +27,8 @@ import leon.verification.VerificationReport
 import leon.invariant._
 import scala.collection.mutable.{Set => MutableSet}
 import leon.purescala.ScalaPrinter
+import leon.solvers.SimpleSolverAPI
+import leon.solvers.SolverFactory
 
 /**
  * @author ravi
@@ -43,7 +45,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
   //TODO: handle direct equality and inequality on ADTs
   class InferenceEngineGenerator(reporter: Reporter, program: Program, context: LeonContext,
-    uisolver: UninterpretedZ3Solver) {
+    uisolver: SimpleSolverAPI) {
 
     def getInferenceEngine(funDef: FunDef, tempFactory : TemplateFactory): (() => Option[Boolean]) = {
 
@@ -51,15 +53,17 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       val constTracker = new ConstraintTracker(funDef)
       
       //create a body and post of the function
-      val body = funDef.getBody
-      val post = funDef.getPostcondition 
+      val body = funDef.body.get
+      val (resid,post) = funDef.postcondition.get
+      val resvar = resid.toVariable
       
-      val resFresh = Variable(FreshIdentifier("result", true).setType(body.getType))      
+      //val resFresh = Variable(FreshIdentifier("result", true).setType(body.getType))      
       val simpBody = matchToIfThenElse(body)
-      val plainBody = Equals(resFresh, simpBody)
-      val bodyExpr = if(funDef.hasPrecondition) And(matchToIfThenElse(funDef.getPrecondition),plainBody)
-      			 	  else plainBody 
-      val postExpr = replace(Map(ResultVariable() -> resFresh), matchToIfThenElse(post))
+      val plainBody = Equals(resvar, simpBody)
+      val bodyExpr = if (funDef.hasPrecondition) {        
+        And(matchToIfThenElse(funDef.precondition.get), plainBody)
+      } else plainBody 
+      val postExpr = matchToIfThenElse(post) //replace(Map(ResultVariable() -> resFresh), )
       
       //flatten the functions in the body      
       val flatBody = ExpressionTransformer.normalizeExpr(bodyExpr)
@@ -70,9 +74,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       //create a postcondition template 
       val postTemp = if (program.isRecursive(funDef)) {
         
-        val argmap = InvariantUtil.formalToAcutal(
-          Call(resFresh, FunctionInvocation(funDef, funDef.args.map(_.toVariable))),
-          ResultVariable())
+        //this is a way to create an idenitity map :-))
+        val argmap = InvariantUtil.formalToAcutal(Call(resvar, FunctionInvocation(funDef, funDef.args.map(_.toVariable))))
           
         val temp = tempFactory.constructTemplate(argmap, funDef)
         Some(temp)
@@ -94,7 +97,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       //println("Body Constraint Tree: "+btree)      
 
       //create entities that uses the constraint tracker
-      val lsAnalyzer = new LinearSystemAnalyzer(constTracker,  tempFactory, reporter)
+      val lsAnalyzer = new LinearSystemAnalyzer(constTracker,  tempFactory, context, program)
       val vcRefiner = new RefinementEngine(program, constTracker, tempFactory, reporter)
       vcRefiner.initialize()
 
@@ -180,14 +183,23 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       //add a new postcondition                  
       val newpost = if (newposts.contains(fd)) {
         val inv = newposts(fd)
-        if (fd.postcondition.isDefined)
-          Some(And(fd.postcondition.get, inv))
-        else Some(inv)
+        if (fd.postcondition.isDefined){
+          val (resvar,postExpr) = fd.postcondition.get 
+          Some((resvar,And(postExpr, inv)))
+        }          
+        else {
+          //replace #res in the invariant by a new result variable
+          //TODO: subjected to change
+          val resvar = FreshIdentifier("res", true).setType(fd.returnType)
+          val ninv = replace(Map(ResultVariable() -> resvar.toVariable),inv)
+          Some((resvar,ninv))
+        }
       } else fd.postcondition
 
-      newfd.postcondition = if (newpost.isDefined)
-        Some(searchAndReplaceDFS(replaceFun)(newpost.get))
-      else None
+      newfd.postcondition = if (newpost.isDefined) {
+        val (resvar, pexpr) = newpost.get
+        Some(resvar, searchAndReplaceDFS(replaceFun)(pexpr))
+      } else None
     })
 
     val newfuncs = newFundefs.values.toSeq
@@ -202,10 +214,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
     val defaultTactic = new DefaultTactic(reporter)
     defaultTactic.setProgram(newprog)
-    val vc = defaultTactic.generatePostconditions(newFundefs(rootfd)).first
+    val vc = defaultTactic.generatePostconditions(newFundefs(rootfd))(0)
 
-    val fairZ3 = new FairZ3Solver(ctx)
-    fairZ3.setProgram(newprog)    
+    val fairZ3 = new SimpleSolverAPI(SolverFactory(() => new FairZ3Solver(ctx, newprog)))       
     //println("Func : "+ vc.funDef + " new vc: "+vc.condition)            
     val sat = fairZ3.solveSAT(Not(vc.condition))
     sat._1 match {
@@ -248,9 +259,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     //val callGraph = ProgramCallGraph.getCallGraph(program)
 
     //create an ui solver
-    val uisolver = new UninterpretedZ3Solver(ctx)
-    uisolver.setProgram(program)    
-
+    val uisolver = SimpleSolverAPI(SolverFactory(() => new UninterpretedZ3Solver(ctx, program)))    
     val infEngineGen = new InferenceEngineGenerator(reporter, program, ctx, uisolver)
     val analysedFunctions: MutableSet[String] = MutableSet.empty
 
@@ -262,7 +271,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
       if (funDef.body.isDefined && funDef.postcondition.isDefined) {
         val body = funDef.body.get
-        val post = funDef.postcondition.get
+        val (resvar,post) = funDef.postcondition.get
 
         reporter.info("- considering function " + funDef.id + "...")
         reporter.info("Body: " + simplifyLets(body))

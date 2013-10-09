@@ -9,7 +9,7 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.TypeTrees._
-import solvers.{ Solver, TrivialSolver, TimeoutSolver }
+import solvers.{ Solver, TimeoutSolver }
 import solvers.z3.FairZ3Solver
 import scala.collection.mutable.{ Set => MutableSet }
 import scala.collection.mutable.{ Map => MutableMap }

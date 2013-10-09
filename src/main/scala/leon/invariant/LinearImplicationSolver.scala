@@ -9,7 +9,7 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.TypeTrees._
-import solvers.{ Solver, TrivialSolver, TimeoutSolver }
+import solvers.{ Solver, TimeoutSolver }
 import solvers.z3.FairZ3Solver
 import scala.collection.mutable.{ Set => MutableSet }
 import leon.evaluators._
@@ -25,6 +25,7 @@ import leon.verification.DefaultTactic
 import leon.verification.ExtendedVC
 import leon.verification.Tactic
 import leon.verification.VerificationReport
+import leon.solvers.SimpleSolverAPI
 
 class LinearImplicationSolver {
   private val zero = IntLiteral(0)
@@ -45,7 +46,7 @@ class LinearImplicationSolver {
    */
   def constraintsForUnsat(antsSimple: Seq[LinearConstraint], antsTemp: Seq[LinearTemplate],
     conseqsSimple: Seq[LinearConstraint], conseqsTemp: Seq[LinearTemplate],
-    uisolver: UninterpretedZ3Solver): Expr = {
+    uisolver: SimpleSolverAPI): Expr = {
     
     val allAnts = antsSimple ++ antsTemp
     val allConseqs = conseqsSimple ++ conseqsTemp
@@ -58,7 +59,7 @@ class LinearImplicationSolver {
     //Optimization 1: Check if ants are unsat (already handled)    
     val pathVC = And(antsSimple.map(_.expr).toSeq ++ conseqsSimple.map(_.expr).toSeq)
     //val notPathVC = And(And(antsSimple.map(_.expr).toSeq),Not(And(conseqsSimple.map(_.expr).toSeq)))
-    val (satVC, _,_) = uisolver.solveSATWithFunctionCalls(pathVC)
+    val (satVC, _) = uisolver.solveSAT(pathVC)
     //val (satNVC,_,_) = uisolver.solveSATWithFunctionCalls(notPathVC)
 
     //Optimization 2: use the unsatisfiability of VC and not VC to simplify the constraint generation
@@ -77,7 +78,6 @@ class LinearImplicationSolver {
     
   }
 
-
   /**
    * This procedure produces a set of constraints that need to be satisfiable for the implication to hold
    * antsSimple - antecedents without template variables
@@ -90,7 +90,7 @@ class LinearImplicationSolver {
    */
   def constraintsForImplication(antsSimple: Seq[LinearConstraint], antsTemp: Seq[LinearTemplate],
     conseqsSimple: Seq[LinearConstraint], conseqsTemp: Seq[LinearTemplate],
-    uisolver: UninterpretedZ3Solver): Expr = {
+    uisolver: SimpleSolverAPI): Expr = {
     
     val allAnts = antsSimple ++ antsTemp
     val allConseqs = conseqsSimple ++ conseqsTemp
@@ -103,8 +103,8 @@ class LinearImplicationSolver {
     //Optimization 1: Check if ants are unsat (already handled)    
     val pathVC = And(antsSimple.map(_.expr).toSeq ++ conseqsSimple.map(_.expr).toSeq)
     val notPathVC = And(And(antsSimple.map(_.expr).toSeq),Not(And(conseqsSimple.map(_.expr).toSeq)))
-    val (satVC, _,_) = uisolver.solveSATWithFunctionCalls(pathVC)
-    val (satNVC,_,_) = uisolver.solveSATWithFunctionCalls(notPathVC)
+    val (satVC, _) = uisolver.solveSAT(pathVC)
+    val (satNVC,_) = uisolver.solveSAT(notPathVC)
 
     //Optimization 2: use the unsatisfiability of VC and not VC to simplify the constraint generation
     //(a) if A => C is false and A' is true then the entire formula is unsat

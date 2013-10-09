@@ -62,6 +62,7 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
     solver.check match {
       case Some(true) =>
         if (containsFunCalls) {
+          throw new IllegalStateException("The expression to solve has function calls!!")
           None
         } else {
           Some(true)
@@ -88,10 +89,4 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
       case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
     }).toSet
   }
-}
-  
- trait SolverEvaluator extends solvers.IncrementalSolver {    
-     def evalBoolExpr(expr: Expr) : Option[Boolean]     
-     
-     def getInternalModel : Z3Model
- }
+}  

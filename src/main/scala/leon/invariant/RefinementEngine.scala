@@ -128,7 +128,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
 
     //println("Processing: "+call)
     val fi = call.fi
-    if (fi.funDef.body.isDefined) {
+    if (fi.funDef.hasBody) {
 
       //freshen the body and the post           
       val isRecursive = prog.isRecursive(fi.funDef)        
@@ -141,18 +141,23 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
           /**
            * create a new verification condition for this recursive function
            */          
-          val (plainBody, resFresh) = InvariantUtil.convertToRel(recFun.getBody)
-          val bodyExpr = if (recFun.hasPrecondition) {
-            val prec = ExpressionTransformer.normalizeExpr(matchToIfThenElse(recFun.getPrecondition))
-            And(prec, plainBody)
-          } else plainBody
+          val freshBody = matchToIfThenElse(freshenLocals(recFun.body.get))
+          val resvar = if (recFun.hasPostcondition) {
+            recFun.postcondition.get._1.toVariable
+          } else {
+            //create a new resvar
+            Variable(FreshIdentifier("res", true).setType(recFun.returnType))
+          }          
+          val plainBody = Equals(resvar,freshBody)
+          val bodyExpr = ExpressionTransformer.normalizeExpr(if (recFun.hasPrecondition) {
+            And(matchToIfThenElse(recFun.precondition.get), plainBody)
+          } else plainBody)
           
           //add body constraints
           ctrTracker.addBodyConstraints(recFun, bodyExpr)
 
           //add (negated) post condition template for the function                              
-          val argmap = InvariantUtil.formalToAcutal(
-            Call(resFresh, FunctionInvocation(recFun, recFun.args.map(_.toVariable))), ResultVariable())
+          val argmap = InvariantUtil.formalToAcutal(Call(resvar, FunctionInvocation(recFun, recFun.args.map(_.toVariable))))
 
           val postTemp = tempFactory.constructTemplate(argmap, recFun)
           val npostTemp = ExpressionTransformer.normalizeExpr(Not(postTemp))
@@ -164,9 +169,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
           val (btree,ptree) = ctrTracker.getVC(recFun)
           newheads ++= (findHeads(btree, MAX_UNROLLS) ++ findHeads(ptree, MAX_UNROLLS))          
         }
-        //unroll the body some fixed number of times
-        //Important: make sure we use a fresh body expression here
-        val (bodyExpr2,resFresh2) =  InvariantUtil.convertToRel(fi.funDef.getBody) 
+        //unroll the body some fixed number of times                       
         /*val ucount = if(unrollCounts.contains(call)) {
                           val count = unrollCounts(call)
                           unrollCounts.update(call,count + 1)
@@ -177,14 +180,13 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
                       }*/
         //TODO: unroll always ??                   
         println("Unrolling " + Equals(call.retexpr,call.fi))
-        newheads ++= inilineCall(call, bodyExpr2, fi.funDef.postcondition, resFresh2, ctrnode, unrollCnt)          
+        newheads ++= inilineCall(call, ctrnode, MAX_UNROLLS)          
         newheads
       }
       else {        
         //here we are unrolling a non-recursive function, so set the unrollCnt to maximum
-        println("Inlining "+fi.funDef.id)
-        val (bodyExpr,resFresh) =  InvariantUtil.convertToRel(fi.funDef.getBody)
-        inilineCall(call, bodyExpr, fi.funDef.postcondition, resFresh, ctrnode, MAX_UNROLLS)
+        println("Inlining "+fi.funDef.id)               
+        inilineCall(call, ctrnode, MAX_UNROLLS)        
       }                
     } else Map()    
   }
@@ -192,33 +194,29 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
   /**
   * The parameter 'resVar' is the result variable of the body
   **/
-  def inilineCall(call : Call, body: Expr, post:Option[Expr], 
-    resVar: Variable, ctrnode: CtrNode, unrollCnt : Int) : Map[Call,CallData] = {    
-    //here inline the body && Post and add it to the tree of the rec caller          
-    val calleeSummary = 
-      if (post.isDefined) {
+  def inilineCall(call : Call, ctrnode: CtrNode, unrollCnt : Int) : Map[Call,CallData] = {    
+    //here inline the body && Post and add it to the tree of the rec caller
+    val callee = call.fi.funDef
+    val post = callee.postcondition
+    
+    //Important: make sure we use a fresh body expression here
+    val freshBody = matchToIfThenElse(freshenLocals(callee.body.get))    
+    val calleeSummary = if (post.isDefined) {
+      val (resvar, poste) = post.get
+      val freshPost = matchToIfThenElse(freshenLocals(poste))
+      val bodyRel = Equals(resvar.toVariable, freshBody)
+      And(bodyRel, freshPost)
+   } else {
+      Equals(ResultVariable().setType(callee.returnType), freshBody)
+    }
 
-        val freshPost = freshenLocals(post.get)
-        val argmap1 = InvariantUtil.formalToAcutal(call, ResultVariable())
-        val inlinedPost = ExpressionTransformer.normalizeExpr(replace(argmap1, matchToIfThenElse(freshPost)))        
-
-        //println("Identifiers: "+variablesOf(body))
-        val argmap2 = InvariantUtil.formalToAcutal(call, resVar)
-        val inlinedBody = replace(argmap2, body)
-        val rex = And(inlinedBody, inlinedPost)
-        //println("Replaced Expr: "+rex+" argmap2: "+argmap2)
-        //System.exit(0)
-        rex
-      } else {
-
-        val argmap2 = InvariantUtil.formalToAcutal(call, resVar)
-        val rex = replace(argmap2, body)        
-        rex
-      }          
-    //println("calleeSummary: "+calleeSummary)        
+    val argmap1 = InvariantUtil.formalToAcutal(call)
+    val inlinedSummary = ExpressionTransformer.normalizeExpr(replace(argmap1, calleeSummary))
+          
+    //println("calleeSummary: "+inlinedSummary)        
     //create a constraint tree for the summary
     val summaryTree = CtrNode()      
-    ctrTracker.addConstraintRecur(calleeSummary, summaryTree)          
+    ctrTracker.addConstraintRecur(inlinedSummary, summaryTree)          
 
     //Find new heads (note: should not insert summaryTree and then call findheads)
     val newheads = findHeads(summaryTree, unrollCnt)
@@ -252,7 +250,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     def templateForCall(call: Call): Expr = {
 
       templateMap.getOrElse(call, {
-        val argmap = InvariantUtil.formalToAcutal(call, ResultVariable())
+        val argmap = InvariantUtil.formalToAcutal(call)
         val tempExpr = tempFactory.constructTemplate(argmap, call.fi.funDef)
         templateMap += (call -> tempExpr)
         tempExpr

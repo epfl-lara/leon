@@ -9,7 +9,7 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.TypeTrees._
-import solvers.{ Solver, TrivialSolver, TimeoutSolver }
+import solvers.{ Solver, TimeoutSolver }
 import solvers.z3.FairZ3Solver
 import scala.collection.mutable.{ Set => MutableSet }
 import scala.collection.mutable.{ Map => MutableMap }
@@ -72,16 +72,16 @@ case class CtrNode(id : Int = GlobalNodeCounter.getUID) extends CtrTree {
   }
 
   def addChildren(child: CtrNode) = {
-    if (children.size == 1 && children.first == CtrLeaf())
+    if (children.size == 1 && children.contains(CtrLeaf()))
       children = Set[CtrTree](child)
     else
       children += child
   }
 
   def getEndNode : CtrNode = {    
-  	if(children.first == CtrLeaf()) this
+  	if (children.size == 1 && children.contains(CtrLeaf())) this
   	else {
-  	 val n@CtrNode(_) = children.first
+  	 val n@CtrNode(_) = children.toSeq(0)
   	 n.getEndNode
   	}
   }
