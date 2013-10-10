@@ -503,7 +503,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
               reporter.debug(" - Running search without blocked literals (w/o lucky test)")
             }
 
-            solver.push() // FIXME: remove when z3 bug is fixed
+            solver.push() // FIXME: remove when z3 bug is fixed            
             val res2 = solver.checkAssumptions(assumptionsAsZ3 : _*)
             solver.pop()  // FIXME: remove when z3 bug is fixed
 

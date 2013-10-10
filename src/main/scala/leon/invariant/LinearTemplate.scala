@@ -77,7 +77,7 @@ class LinearTemplate(val oper: (Expr,Expr) => Expr,
 	   } else lhs		
      val expr = oper(lhs,zero)
      assert(expr.isInstanceOf[Equals] || expr.isInstanceOf[LessThan] || expr.isInstanceOf[GreaterThan]
-		|| expr.isInstanceOf[LessEquals]|| oper == expr.isInstanceOf[GreaterEquals])
+		|| expr.isInstanceOf[LessEquals]|| expr.isInstanceOf[GreaterEquals])
      expr
   }        
 

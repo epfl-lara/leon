@@ -61,8 +61,7 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
   override def check: Option[Boolean] = {
     solver.check match {
       case Some(true) =>
-        if (containsFunCalls) {
-          throw new IllegalStateException("The expression to solve has function calls!!")
+        if (containsFunCalls) {          
           None
         } else {
           Some(true)

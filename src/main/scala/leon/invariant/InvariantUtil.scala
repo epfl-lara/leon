@@ -30,7 +30,10 @@ case class Call(retexpr: Expr, fi: FunctionInvocation) {
 }
 
 //this is used as a place hold result variable if not other result variable is specified
-case class ResultVariable() extends Expr with Terminal
+case class ResultVariable() extends Expr with Terminal {
+  override def toString : String = "#res"
+}
+
 
 object InvariantUtil {
   

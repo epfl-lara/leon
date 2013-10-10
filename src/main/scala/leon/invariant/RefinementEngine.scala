@@ -180,7 +180,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
                       }*/
         //TODO: unroll always ??                   
         println("Unrolling " + Equals(call.retexpr,call.fi))
-        newheads ++= inilineCall(call, ctrnode, MAX_UNROLLS)          
+        newheads ++= inilineCall(call, ctrnode, unrollCnt)          
         newheads
       }
       else {        

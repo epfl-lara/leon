@@ -299,8 +299,12 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           val solEval = new UIFZ3Solver(context, program)
           solEval.assertCnstr(instVC)          
           solEval.check match {
-            case None => throw IllegalStateException("cannot check the satisfiability of " + instVC)
-            case Some(false) => {
+            case None => {              
+              solEval.free()
+              throw IllegalStateException("cannot check the satisfiability of " + instVC)
+            }
+            case Some(false) => {              
+              solEval.free()
               //do not generate any constraints
               acc
             }
@@ -335,6 +339,9 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
               val newctr = generateCtrsForTree(btree, ptree, uiSolver, satChooser)
               if(newctr == tru)
                 throw IllegalStateException("cannot find a counter-example path!!")
+              
+              //free the solver here
+              solEval.free()
               acc :+ newctr
             }
           }

@@ -29,6 +29,7 @@ import scala.collection.mutable.{Set => MutableSet}
 import leon.purescala.ScalaPrinter
 import leon.solvers.SimpleSolverAPI
 import leon.solvers.SolverFactory
+import leon.solvers.z3.UIFZ3Solver
 
 /**
  * @author ravi
@@ -259,7 +260,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     //val callGraph = ProgramCallGraph.getCallGraph(program)
 
     //create an ui solver
-    val uisolver = SimpleSolverAPI(SolverFactory(() => new UninterpretedZ3Solver(ctx, program)))    
+    val uisolver = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(ctx, program)))    
     val infEngineGen = new InferenceEngineGenerator(reporter, program, ctx, uisolver)
     val analysedFunctions: MutableSet[String] = MutableSet.empty
 
