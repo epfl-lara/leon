@@ -271,17 +271,33 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     
     val nonLinearCtr = if (nonLinearCtrs.size == 1) nonLinearCtrs(0)
     					else And(nonLinearCtrs)
-    recSolveForTemplatesIncr(uiSolver, nonLinearCtr, funcExprs)
+    					
+    //create a new incremental solver and add the constraints 
+    val incSolver = new UIFZ3Solver(this.context, program)
+    incSolver.assertCnstr(nonLinearCtr)
+    val solution = recSolveForTemplatesIncr(incSolver, uiSolver, nonLinearCtr, funcExprs)
+    incSolver.free()
+    solution
   }
 
-  def recSolveForTemplatesIncr(uiSolver: SimpleSolverAPI, nonLinearCtr: Expr,
+  def recSolveForTemplatesIncr(incSolver: UIFZ3Solver, uiSolver: SimpleSolverAPI, nonLinearCtr: Expr,
     funcExprs: Map[FunDef, Expr]): Option[Map[FunDef, Expr]] = {
 
     val funcs = funcExprs.keys
 
     println("solving...")        
-    val t1 = System.nanoTime      
-    val (res, model) = uiSolver.solveSAT(nonLinearCtr)    
+    val t1 = System.nanoTime
+
+    //val (res, model) = uiSolver.solveSAT(nonLinearCtr)
+    val (res, model) = incSolver.check match {
+      case Some(true) =>
+        (Some(true), incSolver.getModel)
+      case Some(false) =>
+        (Some(false), Map[Identifier, Expr]())
+      case None =>
+        (None, Map[Identifier, Expr]())
+    }
+    
     val t2 = System.nanoTime
     println("solved... in "+((t2 - t1) / 1000000) / 1000.0+"s")    
     
@@ -388,10 +404,15 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           //For statistics.
           //reporter.info("- Number of new Constraints: " + newctrs.size)          
           //call the procedure recursively
-          val constr = And(nonLinearCtr, And(newctrs))                  
+          val newctr = And(newctrs)
+          val constr = And(nonLinearCtr, newctr)
+          //println("New Constr: "+nonLinearCtr)
           println("Constraints Count: "+InvariantUtil.literalNum(constr))
           //println(constr)          
-          recSolveForTemplatesIncr(uiSolver, constr, funcExprs)
+          //push the new constraints
+          incSolver.push()
+          incSolver.assertCnstr(newctr)
+          recSolveForTemplatesIncr(incSolver, uiSolver, constr, funcExprs)
         }
       }
     }

@@ -14,13 +14,6 @@ import purescala.Extractors._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 
-
-trait SolverEvaluator extends solvers.IncrementalSolver {    
-     def evalBoolExpr(expr: Expr) : Option[Boolean]     
-     
-     def getInternalModel : Z3Model
- }
-
 /** This is a rather direct mapping to Z3, where all functions are left uninterpreted.
  *  It reports the results as follows (based on the negation of the formula):
  *    - if Z3 reports UNSAT, it reports VALID
