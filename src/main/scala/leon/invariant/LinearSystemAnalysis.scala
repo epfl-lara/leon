@@ -35,7 +35,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
 
   private val reporter = context.reporter
   private val implicationSolver = new LinearImplicationSolver()
-
+  private val cg = CallGraphUtil.constructCallGraph(program)
+  
   //some constants
   private val fls = BooleanLiteral(false)
   private val tru = BooleanLiteral(true)
@@ -190,24 +191,14 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
    * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
    */
-  
+  //used for selecting children
+  val max_depth = -1
   def solveForTemplatesIncr(uiSolver: SimpleSolverAPI): Option[Map[FunDef, Expr]] = {
 
+    //for stats
     exploredPaths = 0
-    val max_depth = -1
-    //TODO: ideally we may want to associate a random number number generator with each node in the tree
-    //Is this necessary ??
-    //associate a random number generator for every element of the tree
-    val selector = (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {
-      if (d <= max_depth) ch
-      else {
-        //pick one children randomly from the set.
-        //TODO: should this be made more efficient ??
-        val child = Random.shuffle(ch).head
-        Set(child)
-      }
-    }
-    //traverse each of the functions and collect the constraints
+        
+    //traverse each of the functions and collect the VCs
     val funcs = ctrTracker.getFuncs
     val funcExprs = funcs.map((fd) => {
       val (btree, ptree) = ctrTracker.getVC(fd)
@@ -220,6 +211,31 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     }).toMap
     //System.exit(0)
 
+    //A selector that explores only paths that do not have any recursive function calls
+    //these, typically correspond to base cases  (and also result in linear constraints)
+    val noRecursiveCallSelector = (fd: FunDef) => {           
+      //find the set of all callers of fd
+      val callers = funcs.filter((cr) => cg.transitivelyCalls(cr, fd)).toSet      
+      (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {        
+        //check if any of the function called by the parent node transitively calls the  current function
+          if (parent.uifs.filter((call) => callers.contains(call.fi.funDef)).isEmpty) 
+            ch.toSet
+          else Set()
+        }
+    }
+        
+    //A selector that picks children at random
+    //TODO: ideally we may want to associate a random number number generator with each node in the tree.     
+    val randomSelector = (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {
+      if (d <= max_depth) ch
+      else {
+        //pick one children randomly from the set.
+        //TODO: should this be made more efficient ??
+        val child = Random.shuffle(ch).head
+        Set(child)
+      }
+    }
+       
     //incrementally solve for the template variables
     val nonLinearCtrs = funcs.foldLeft(Seq[Expr]())((acc, fd) => {
 
@@ -227,13 +243,25 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       
       //iterate as long as we have atleast one constraint (using imperative style as it is best fit here)
       var ctr : Expr = tru
-      //this may get into an infinite while loop
-      //TODO: critical : how to fix this ??
-      //what if all the paths in the program are infeasible ? may be we should time out after sometime and have some random assignment
-      //of values to the terms
-      while(ctr == tru) {        
-         ctr = generateCtrsForTree(btree, ptree, uiSolver, selector)             	
+      
+      if(program.isRecursive(fd)) {
+        //try pick paths without function calls if any      
+        println("Choosing constraints without calls")
+        ctr = generateCtrsForTree(btree, ptree, uiSolver, noRecursiveCallSelector(fd))
+        println("Found Some: " + (ctr != tru))
       }
+            
+      if (ctr == tru) {        
+        //this may get into an infinite while loop in rare scenarios
+        //TODO: critical : how to fix this ??
+        //TODO: what if all the paths in the program are infeasible ? may be we should time out after sometime and have some random assignment
+        //of values to the terms.
+        println("Randomly choosing constraints ...")
+        while (ctr == tru) {
+          ctr = generateCtrsForTree(btree, ptree, uiSolver, randomSelector)
+        }
+        println("Found one!")
+      }      
       
       (acc :+ ctr)
     })

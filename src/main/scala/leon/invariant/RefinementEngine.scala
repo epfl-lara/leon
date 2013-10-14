@@ -61,8 +61,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
       val (btree,ptree) = ctrTracker.getVC(fd)      
       heads ++= (findHeads(btree, MAX_UNROLLS) ++ findHeads(ptree, MAX_UNROLLS))
     })        
-    heads
-    
+    heads    
   }  
   
   /**
