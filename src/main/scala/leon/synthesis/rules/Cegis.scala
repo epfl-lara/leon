@@ -447,6 +447,8 @@ case object CEGIS extends Rule("CEGIS") {
         var baseExampleInputs: Seq[Seq[Expr]] = Seq()
 
         // We populate the list of examples with a predefined one
+        sctx.reporter.debug("Acquiring list of examples")
+
         if (p.pc == BooleanLiteral(true)) {
           baseExampleInputs = p.as.map(a => simplestValue(a.getType)) +: baseExampleInputs
         } else {
@@ -573,7 +575,7 @@ case object CEGIS extends Rule("CEGIS") {
             // We further filter the set of working programs to remove those that fail on known examples
             if (useCEPruning && hasInputExamples() && ndProgram.canTest()) {
 
-              for (p <- prunedPrograms) {
+              for (p <- prunedPrograms if !interruptManager.isInterrupted()) {
                 if (!allInputExamples().forall(ndProgram.testForProgram(p))) {
                   // This program failed on at least one example
                   solver1.assertCnstr(Not(And(p.map(Variable(_)).toSeq)))
@@ -752,6 +754,7 @@ case object CEGIS extends Rule("CEGIS") {
         } catch {
           case e: Throwable =>
             sctx.reporter.warning("CEGIS crashed: "+e.getMessage)
+            e.printStackTrace
             RuleApplicationImpossible
         } finally {
           solver1.free()

@@ -23,7 +23,10 @@ class InterruptManager(reporter: Reporter) {
     if (!interrupted.get()) {
       interrupted.set(true)
 
-      interruptibles.keySet.foreach(_.interrupt())
+      val it = interruptibles.keySet.iterator
+      for (i <- it) {
+         i.interrupt()
+      }
     } else {
       reporter.warning("Already interrupted!")
     }
@@ -33,7 +36,10 @@ class InterruptManager(reporter: Reporter) {
     if (interrupted.get()) {
       interrupted.set(false)
 
-      interruptibles.keySet.foreach(_.recoverInterrupt())
+      val it = interruptibles.keySet.iterator
+      for (i <- it) {
+         i.recoverInterrupt()
+      }
     } else {
       reporter.warning("Not interrupted!")
     }
@@ -46,12 +52,12 @@ class InterruptManager(reporter: Reporter) {
   def registerSignalHandler() {
     oldHandler = Signal.handle(sigINT, new SignalHandler {
       def handle(sig: Signal) {
+        Signal.handle(sigINT, oldHandler)
         println
-        reporter.info("Aborting...")
+        reporter.info("Aborting Leon...")
 
         interrupt()
 
-        Signal.handle(sigINT, oldHandler)
       }
     })
   }
