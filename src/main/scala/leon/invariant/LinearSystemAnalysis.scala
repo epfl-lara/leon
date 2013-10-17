@@ -191,7 +191,9 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
    * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
    */
-  //used for selecting children
+  //for stats
+  var ctrCount = 0 
+  //used for selecting children  
   val max_depth = -1
   def solveForTemplatesIncr(uiSolver: SimpleSolverAPI): Option[Map[FunDef, Expr]] = {
 
@@ -225,13 +227,20 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     }
         
     //A selector that picks children at random
-    //TODO: ideally we may want to associate a random number number generator with each node in the tree.     
+    //associate a random number number generator with each node in the tree.
+    var randGenMap = Map[CtrNode,Random]()
     val randomSelector = (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {
       if (d <= max_depth) ch
       else {
-        //pick one children randomly from the set.
-        //TODO: should this be made more efficient ??
-        val child = Random.shuffle(ch).head
+
+        val chIndex = if (randGenMap.contains(parent)) randGenMap(parent).nextInt(ch.size)
+        else {
+          val randgen = new Random()
+          randGenMap += (parent -> randgen)
+          randgen.nextInt(ch.size)
+        }       
+        val child = ch.toSeq.apply(chIndex)
+        //print(parent.id+" ---> "+ (if(child.isInstanceOf[CtrNode]) child.asInstanceOf[CtrNode].id else "leaf"))
         Set(child)
       }
     }
@@ -258,6 +267,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         //of values to the terms.
         println("Randomly choosing constraints ...")
         while (ctr == tru) {
+          println("Looping...")
           ctr = generateCtrsForTree(btree, ptree, uiSolver, randomSelector)
         }
         println("Found one!")
@@ -272,26 +282,37 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     val nonLinearCtr = if (nonLinearCtrs.size == 1) nonLinearCtrs(0)
     					else And(nonLinearCtrs)
     					
-    //create a new incremental solver and add the constraints 
-    val incSolver = new UIFZ3Solver(this.context, program)
-    incSolver.assertCnstr(nonLinearCtr)
-    val solution = recSolveForTemplatesIncr(incSolver, uiSolver, nonLinearCtr, funcExprs)
-    incSolver.free()
+    //create a new solver and add the constraints 
+    val solverWithCtrs = new UIFZ3Solver(this.context, program)
+    solverWithCtrs.assertCnstr(nonLinearCtr)
+    
+    //for stats
+    ctrCount = InvariantUtil.atomNum(nonLinearCtr)
+    
+    val solution = recSolveForTemplatesIncr(solverWithCtrs, uiSolver, funcExprs)
+    solverWithCtrs.free()
     solution
   }
 
-  def recSolveForTemplatesIncr(incSolver: UIFZ3Solver, uiSolver: SimpleSolverAPI, nonLinearCtr: Expr,
-    funcExprs: Map[FunDef, Expr]): Option[Map[FunDef, Expr]] = {
+  var fileCount = 0
+  def recSolveForTemplatesIncr(solverWithCtrs: UIFZ3Solver, uiSolver: SimpleSolverAPI, funcExprs: Map[FunDef, Expr])
+  			: Option[Map[FunDef, Expr]] = {
 
     val funcs = funcExprs.keys
 
     println("solving...")        
     val t1 = System.nanoTime
 
-    //val (res, model) = uiSolver.solveSAT(nonLinearCtr)
-    val (res, model) = incSolver.check match {
+    //println("Assertions: \n"+solverWithCtrs.ctrsToString)               
+    /*fileCount += 1
+    val pwr = new PrintWriter("z3formula-"+fileCount+".smt")    
+    pwr.println(solverWithCtrs.ctrsToString)
+    pwr.flush()
+    pwr.close()*/
+    
+    val (res, model) = solverWithCtrs.check match {
       case Some(true) =>
-        (Some(true), incSolver.getModel)
+        (Some(true), solverWithCtrs.getModel)
       case Some(false) =>
         (Some(false), Map[Identifier, Expr]())
       case None =>
@@ -404,15 +425,15 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           //For statistics.
           //reporter.info("- Number of new Constraints: " + newctrs.size)          
           //call the procedure recursively
-          val newctr = And(newctrs)
-          val constr = And(nonLinearCtr, newctr)
-          //println("New Constr: "+nonLinearCtr)
-          println("Constraints Count: "+InvariantUtil.literalNum(constr))
-          //println(constr)          
-          //push the new constraints
-          incSolver.push()
-          incSolver.assertCnstr(newctr)
-          recSolveForTemplatesIncr(incSolver, uiSolver, constr, funcExprs)
+          val newctr = And(newctrs)          
+          
+          //for stats and debugging
+          ctrCount += InvariantUtil.atomNum(newctr)
+          println("# of atomic predicates: "+ctrCount)
+                                       
+          //add the new constraints
+          solverWithCtrs.assertCnstr(newctr)
+          recSolveForTemplatesIncr(solverWithCtrs, uiSolver, funcExprs)
         }
       }
     }
@@ -608,8 +629,9 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       else {
         exploredPaths += 1
                 
+        println("Final Path Constraints: "+And((ants ++ antTemps ++ conseqs ++ conseqTemps).map(_.template)))
         val implCtrs = implicationSolver.constraintsForUnsat(ants, antTemps, conseqs, conseqTemps, uiSolver)
-        //println("Implication Constraints: "+implCtrs)
+        
         implCtrs
       }
     }

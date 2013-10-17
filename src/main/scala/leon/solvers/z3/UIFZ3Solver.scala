@@ -31,6 +31,7 @@ class UIFZ3Solver(val context : LeonContext, val program: Program)
   // this is fixed
   protected[leon] val z3cfg = new Z3Config(
     "MODEL" -> true,
+    //"NLSAT" -> true,
     //"MBQI" -> false,
     "TYPE_CHECK" -> true,
     "WELL_SORTED_CHECK" -> true
@@ -65,7 +66,7 @@ class UIFZ3Solver(val context : LeonContext, val program: Program)
 
 
   def pop(lvl: Int = 1) {
-    solver.pop(lvl)
+    solver.pop(lvl)    
   }
 
   private var variables = Set[Identifier]()
@@ -108,4 +109,9 @@ class UIFZ3Solver(val context : LeonContext, val program: Program)
       val res = model.eval(ast, true)
       model.context.getBoolValue(res.get)   
   }
+  
+  def ctrsToString : String = {    
+    z3.setAstPrintMode(Z3Context.AstPrintMode.Z3_PRINT_SMTLIB2_COMPLIANT)
+    solver.getAssertions().toSeq.foldLeft("")((acc, asser) => acc + z3.benchmarkToSMTLIBString("benchmark", "QF_NRA", "unknown", "", Seq(), asser))
+  } 
 }

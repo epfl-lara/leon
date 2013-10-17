@@ -126,7 +126,7 @@ object InvariantUtil {
     /*(bodyExpr, resFresh)
   }*/
   
-  def literalNum(e : Expr) : Int = {
+  def atomNum(e : Expr) : Int = {
     var count : Int = 0
     simplePostTransform((e : Expr) => e match {
       case And(args) => {

@@ -23,7 +23,7 @@ object RedBlackTree {
       case Empty() => 1
       case Node(_, l, v, r) => size(l) + 1 + size(r)
     })
-  } ensuring (res => res != (twopower(blackHeight(t)) - 2) template((a,b,c) => a*res + b*twopower(blackHeight(t)) + c <= 0))   
+  } ensuring (res => res != (twopower(blackHeight(t)) - 2) template((a,b,c) => a*res + b*twopower(blackHeight(t)) + c < 0))   
     
   def blackHeight(t : Tree) : Int = {    
    t match {    
