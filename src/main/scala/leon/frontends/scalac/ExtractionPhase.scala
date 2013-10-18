@@ -14,6 +14,7 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
 
   val name = "Scalc Extraction"
   val description = "Extraction of trees from the Scala Compiler"
+  val foundTime = false
 
   implicit val debug = DebugSectionTrees
 

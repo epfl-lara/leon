@@ -39,6 +39,7 @@ import leon.solvers.z3.UIFZ3Solver
 object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   val name = "InferInv"
   val description = "Invariant Inference"
+  val fls = BooleanLiteral(false)
   
   override val definedOptions: Set[LeonOptionDef] = Set(
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
@@ -64,31 +65,35 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       val bodyExpr = if (funDef.hasPrecondition) {        
         And(matchToIfThenElse(funDef.precondition.get), plainBody)
       } else plainBody 
-      val postExpr = matchToIfThenElse(post) //replace(Map(ResultVariable() -> resFresh), )
+      val postExpr = matchToIfThenElse(post) 
+      val npost = ExpressionTransformer.normalizeExpr(Not(postExpr))
       
       //flatten the functions in the body      
       val flatBody = ExpressionTransformer.normalizeExpr(bodyExpr)
       //for debugging
       println("falttened Body: " + flatBody)      
-      constTracker.addBodyConstraints(funDef, flatBody)
+      constTracker.addBodyConstraints(funDef, flatBody)      
       
       //create a postcondition template 
-      val postTemp = if (program.isRecursive(funDef)) {
+      val npostTemp = if (program.isRecursive(funDef)) {
         
         //this is a way to create an idenitity map :-))
         val argmap = InvariantUtil.formalToAcutal(Call(resvar, FunctionInvocation(funDef, funDef.args.map(_.toVariable))))
           
         val temp = tempFactory.constructTemplate(argmap, funDef)
-        Some(temp)
+        Some(ExpressionTransformer.normalizeExpr(Not(temp)))
       } else None
-      
-      val npost = ExpressionTransformer.normalizeExpr(Not(postExpr))
 
       //add the negation of the post-condition "or" the template
       //note that we need to use Or as we are using the negation of the disjunction
-      val fullPost = if (postTemp.isDefined)
-        Or(npost, ExpressionTransformer.normalizeExpr(Not(postTemp.get)))
-      else npost
+      val fullPost = if (npostTemp.isDefined) {
+        if (npost == fls) npostTemp.get
+        else Or(npost, npostTemp.get)
+      } else npost
+      
+      if(fullPost == fls){
+        throw new IllegalStateException("post is true, nothing to be proven!!")        
+      }
       
       //for debugging
       println("Flattened Post: "+fullPost)      
@@ -278,9 +283,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         reporter.info("Body: " + simplifyLets(body))
         reporter.info("Post: " + simplifyLets(post))
 
-        if (post == BooleanLiteral(true)) {
+        /*if (post == BooleanLiteral(true)) {
           reporter.info("Post is true, nothing to be proven!!")
-        } else {
+        } else {*/
          
           val t1 = System.nanoTime
 
@@ -313,7 +318,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
                                          
           val t2 = System.nanoTime
           val dt = ((t2 - t1) / 1000000) / 1000.0
-        }
+        //}
       }
     }
     val notFound = functionsToAnalyse -- analysedFunctions

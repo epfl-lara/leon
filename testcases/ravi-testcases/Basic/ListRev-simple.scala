@@ -15,6 +15,7 @@ object ListWithSize {
       case Nil() => l2
       case Cons(x,xs) => Cons(x, append(xs, l2))
 
-    }) ensuring(res => size(res) != size(l1) - 1)
+    }) ensuring(res => true template((a,b,c) => time <= a*size(l1) + b*size(l2) + c)) 
+    //ensuring(res => size(res) != size(l1) - 1)
     //template((a,b,c) => a*size(l1) + b*size(res) <= 0)
 }

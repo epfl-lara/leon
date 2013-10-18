@@ -133,6 +133,17 @@ trait ASTExtractors {
         case _ => None
       }
     }
+    
+    /**
+     * Extracts time variable from the templates and postconditions
+     */
+    object ExTimeVariable {
+      def unapply(tree: Select) : Boolean = tree match {
+        case ExSelected("leon", "Utils", "time") =>
+          true
+        case _ => false
+      }
+    }
 
     object ExEnsuredExpression {
       /** Extracts the 'ensuring' contract from an expression. */
