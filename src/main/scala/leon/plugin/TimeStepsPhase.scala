@@ -10,6 +10,7 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import leon.LeonContext
 import leon.LeonPhase
+import leon.invariant._
 
 object TimeStepsPhase extends LeonPhase[Program,Program] {
   val name = "Expose Time Phase"
@@ -46,9 +47,17 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         //replace fromRes by toRes._1 fromCond and time by toRes._2 in  fromCond
         val substsMap = Map[Expr, Expr](fromRes.toVariable -> TupleSelect(toResId.toVariable, 1), TimeVariable() -> TupleSelect(toResId.toVariable, 2))
         val toCond = mapCalls(replace(substsMap, fromCond))
+
+        //important also update the templates here         
+        if (UserTemplates.templates.contains(from)) {
+          val toTemplate = mapCalls(replace(substsMap,UserTemplates.templates(from)))
+          //creating new template          
+          UserTemplates.setTemplate(to, toTemplate)
+        }
+        
         Some((toResId, toCond))
       } else None
-      
+            
       to.body  = from.body.map(new ExposeTimes(ctx, getCostModel, funMap).apply _)
     }
 
@@ -233,7 +242,7 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
 
       // For debugging purposes            
       println("-"*80)
-      println("AFTER:")
+      println("AFTER:")      
       println(simple)
       simple
     }
