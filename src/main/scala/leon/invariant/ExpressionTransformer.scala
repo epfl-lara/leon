@@ -120,13 +120,55 @@ object ExpressionTransformer {
           (freshvar, resset._2 + resset._1) 
         }
         case Let(binder,value,body) => {
-          val freshvar = FreshIdentifier(binder.name,true).setType(e.getType).toVariable
-          val newbody = replace(Map(binder.toVariable -> freshvar),body)
+          //TODO: do we have to consider reuse of let variables ?
+          /*val freshvar = FreshIdentifier(binder.name,true).setType(value.getType).toVariable
+          val newbody = replace(Map(binder.toVariable -> freshvar),body)*/
           
-          val resbody = transform(newbody)          
-          val resvalue = transform(value) 
+          val (resbody, bodycjs) = transform(body)          
+          val (resvalue, valuecjs) = transform(value) 
           
-          (resbody._1, resbody._2 ++ (resvalue._2 + Equals(freshvar,resvalue._1)))          
+          (resbody, (valuecjs + Equals(binder.toVariable,resvalue)) ++ bodycjs)          
+        }
+        //the value is a tuple in the following case
+        case LetTuple(binders,value,body) => {
+                    
+          //TODO: do we have to consider reuse of let variables ?
+          /*val bindvarMap : Map[Expr,Expr] = binders.map((binder) => {
+            val bindvar = FreshIdentifier(binder.name,true).setType(value.getType).toVariable
+            (binder.toVariable -> bindvar)            
+          }).toMap
+          val newbody = replace(bindvarMap,body)*/
+          
+          val (resbody, bodycjs) = transform(body)          
+          val (resvalue, valuecjs) = transform(value)
+
+          //here we optimize the case where resvalue itself has tuples
+          val newConjuncts = resvalue match {
+            case Tuple(args) => {
+              binders.zip(args).map((elem) => {
+                val (bind, arg) = elem
+                Equals(bind.toVariable, arg)
+              })
+            }
+            case _ => {
+              //may it is better to assign resvalue to a temporary variable (if it is not already a variable)
+              val (resvalue2, cjs) = resvalue match {
+                case t: Terminal => (t, Seq())
+                case _ => {
+                  val freshres = FreshIdentifier("tres", true).setType(resvalue.getType).toVariable
+                  (freshres, Seq(Equals(freshres, resvalue)))
+                }
+              }
+              var i = 0
+              val cjs2 = binders.map((bind) => {
+                i += 1
+                Equals(bind.toVariable, TupleSelect(resvalue2, i))
+              })
+              (cjs ++ cjs2)
+            }
+          }          
+           
+          (resbody, (valuecjs ++ newConjuncts) ++ bodycjs)          
         }
         case _ =>  conjoinWithinClause(e, transform)
       }
@@ -170,14 +212,6 @@ object ExpressionTransformer {
           val (newargs,newcjs) = flattenArgs(Seq(e1))
           var newConjuncts = newcjs
 
-          /*val freshArg = newe match {
-            case t : Terminal => t
-            case _ => {
-              val freshVar = Variable(FreshIdentifier("iarg", true).setType(newe.getType))
-              newConjuncts += Equals(freshVar, newe) 
-              freshVar
-            }            
-          }*/
           val freshArg = newargs(0)            
           val newInst = CaseClassInstanceOf(cd,freshArg)
           val freshResVar = Variable(FreshIdentifier("ci", true).setType(inst.getType))
@@ -188,18 +222,21 @@ object ExpressionTransformer {
          val (newargs,newcjs) = flattenArgs(Seq(e1))
           var newConjuncts = newcjs
 
-          /*val freshArg = newe match {
-            case t : Terminal => t
-            case _ => {
-              val freshVar = Variable(FreshIdentifier("inst", true).setType(newe.getType))
-              newConjuncts += Equals(freshVar, newe) 
-              freshVar
-            }
-          }            */
           val freshArg = newargs(0)
           val newCS = CaseClassSelector(cd, freshArg, sel)
           val freshResVar = Variable(FreshIdentifier("cs", true).setType(cs.getType))
           newConjuncts += Equals(freshResVar, newCS)           
+
+          (freshResVar, newConjuncts) 
+        }
+        case ts@TupleSelect(e1,index) => {
+         val (newargs,newcjs) = flattenArgs(Seq(e1))
+          var newConjuncts = newcjs
+
+          val freshArg = newargs(0)
+          val newTS = TupleSelect(freshArg, index)
+          val freshResVar = Variable(FreshIdentifier("ts", true).setType(ts.getType))
+          newConjuncts += Equals(freshResVar, newTS)           
 
           (freshResVar, newConjuncts) 
         }
@@ -211,6 +248,16 @@ object ExpressionTransformer {
           val newCC = CaseClass(cd, newargs)
           val freshResVar = Variable(FreshIdentifier("cc", true).setType(cc.getType))
           newConjuncts += Equals(freshResVar, newCC)
+
+          (freshResVar, newConjuncts)  
+        }
+        case tp@Tuple(args) => {
+          val (newargs,newcjs) = flattenArgs(args)
+          var newConjuncts = newcjs
+
+          val newTP = Tuple(newargs)
+          val freshResVar = Variable(FreshIdentifier("tp", true).setType(tp.getType))
+          newConjuncts += Equals(freshResVar, newTP)
 
           (freshResVar, newConjuncts)  
         }
@@ -358,22 +405,25 @@ object ExpressionTransformer {
     val simpExpr = pullAndOrs(flatExpr)
     simpExpr
   }
-  
-  
+
   /**
-   * This is the inverse operation of flattening, this is mostly 
+   * This is the inverse operation of flattening, this is mostly
    * used to produce a readable formula.
-   * This only works approximately.
+   * Freevars is a set of identifiers that are program variables
+   * This assumes that temporary identifiers (which are not freevars) are not reused across clauses.
    */
-  def unFlatten(ine: Expr) : Expr = {
-    //applies one point rule repeatedly until a fix-point
-    val (ne,_,_ ) = applyOnePointRule((ine, Stack(), Set()))
-    //val (ne,_,_ ) = fix(applyOnePointRule)(ine, Stack(), Set())
-    ne
+  def unFlatten(ine: Expr, freevars: Set[Identifier]): Expr = {
+    var tempMap = Map[Expr, Expr]()
+    val newinst = simplePostTransform((e: Expr) => e match {
+      case Equals(v @ Variable(id), rhs @ _) if !freevars.contains(id) =>
+        tempMap += (v -> rhs); tru
+      case _ => e
+    })(ine)
+    val closure = (e: Expr) => replace(tempMap, e)
+    InvariantUtil.fix(closure)(newinst)
   }
-  
  
-  def applyOnePointRule(param : (Expr, Stack[(Expr,Expr)], Set[Variable])) 
+/*  def applyOnePointRule(param : (Expr, Stack[(Expr,Expr)], Set[Variable])) 
   	: (Expr, Stack[(Expr,Expr)],  Set[Variable]) ={ 
         
     def recReplace(expr : Expr, eqStack : Stack[(Expr,Expr)], elimVars : Set[Variable]) 
@@ -446,7 +496,7 @@ object ExpressionTransformer {
     recReplace(ine, inStk, inVars)    
   }
   
-  
+*/  
   /*def simplifyArithWithReals(expr: Expr): Expr = {
     def simplify0(expr: Expr): Expr = expr match {
       case Plus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 + i2)

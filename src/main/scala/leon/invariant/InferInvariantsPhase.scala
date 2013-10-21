@@ -61,14 +61,14 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       
       //val resFresh = Variable(FreshIdentifier("result", true).setType(body.getType))      
       val simpBody = matchToIfThenElse(body)
-      val plainBody = Equals(resvar, simpBody)
+      val plainBody = Equals(resvar, simpBody)      
       val bodyExpr = if (funDef.hasPrecondition) {        
         And(matchToIfThenElse(funDef.precondition.get), plainBody)
       } else plainBody 
       val postExpr = matchToIfThenElse(post) 
       val npost = ExpressionTransformer.normalizeExpr(Not(postExpr))
       
-      //flatten the functions in the body      
+      //flatten the functions in the body           
       val flatBody = ExpressionTransformer.normalizeExpr(bodyExpr)
       //for debugging
       println("falttened Body: " + flatBody)      

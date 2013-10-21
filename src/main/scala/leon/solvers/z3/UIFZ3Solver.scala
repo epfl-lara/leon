@@ -112,6 +112,33 @@ class UIFZ3Solver(val context : LeonContext, val program: Program)
   
   def ctrsToString : String = {    
     z3.setAstPrintMode(Z3Context.AstPrintMode.Z3_PRINT_SMTLIB2_COMPLIANT)
-    solver.getAssertions().toSeq.foldLeft("")((acc, asser) => acc + z3.benchmarkToSMTLIBString("benchmark", "QF_NRA", "unknown", "", Seq(), asser))
+    var i = 0
+    var smtstr = solver.getAssertions().toSeq.foldLeft("")((acc, asser) => {      
+      val str = z3.benchmarkToSMTLIBString("benchmark", "QF_NRA", "unknown", "", Seq(), asser)
+
+      val newstr = if (i > 0) {
+        //remove from the string the headers and also redeclaration of template variables
+        //split based on newline to get a list of strings
+        val strs = str.split("\n")
+        val newstrs = strs.filter((line) => {
+          if (line == "; benchmark") false
+          else if (line.startsWith("(set")) false
+          else if (line.startsWith("(declare-fun")) {
+            val fields = line.split(" ")
+            if (!fields(1).startsWith("l"))
+              false
+            else true
+          } else true
+        })
+        newstrs.foldLeft("")((acc, line) => acc + "\n" + line)
+      } else str
+      
+      i += 1
+      acc + newstr
+    })
+    
+    //finally add a get-model query
+    smtstr +=  "(get-model)"
+    smtstr
   } 
 }

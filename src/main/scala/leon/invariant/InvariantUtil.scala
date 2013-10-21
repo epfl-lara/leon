@@ -25,6 +25,10 @@ import leon.invariant._
 import scala.collection.mutable.{Set => MutableSet}
 import java.io._
 
+object FileCountGUID {
+	 var fileCount = 0
+}
+
 case class Call(retexpr: Expr, fi: FunctionInvocation) {
   val expr = Equals(retexpr,fi)   
 }

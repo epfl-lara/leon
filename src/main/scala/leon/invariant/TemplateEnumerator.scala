@@ -70,8 +70,8 @@ class TemplateEnumerator(prog: Program, reporter : Reporter) extends TemplateGen
 class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, callGraph : CallGraph,  reporter: Reporter) {
   private val MAX_INCREMENTS = 2
   private val zero = IntLiteral(0)
-  //using default op as <=
-  private var op : (Expr,Expr) => Expr = LessEquals 
+  //using default op as <= or == (manually adjusted)
+  private val op = LessEquals
     //LessThan                                  
     //LessEquals 
     //Equals.apply _                    

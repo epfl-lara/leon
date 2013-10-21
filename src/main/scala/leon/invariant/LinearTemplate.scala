@@ -167,19 +167,43 @@ class BoolConstraint(val e : Expr) extends Template {
   }
 }
 
+object ADTConstraint {
+  def apply(e : Expr) = {
+    val adtctr = new ADTConstraint(e)
+    e match {
+      //is this a tuple or case class select ?
+      case Equals(Variable(_),TupleSelect(_,_)) | Equals(Variable(_),CaseClassSelector(_,_,_)) => {
+        adtctr.sel = Some(e)
+      }
+      //is this a tuple or case class def ?
+      case Equals(Variable(_),Tuple(_)) | Equals(Variable(_),CaseClass(_,_)) => {
+        adtctr.cls = Some(e)
+      }
+      //is this an instanceOf ?
+      case Iff(v@Variable(_),ci@CaseClassInstanceOf(_,_)) => adtctr.inst = Some(e)
+      //equals and disequalities betweeen variables
+      case Equals(lhs@Variable(_),rhs@Variable(_)) if(lhs.getType != Int32Type && lhs.getType != RealType) => {
+        adtctr.comp = Some(e)
+      }
+      case Not(Equals(lhs@Variable(_),rhs@Variable(_))) if(lhs.getType != Int32Type && lhs.getType != RealType) => {
+        adtctr.comp = Some(e)
+      }
+      case _ => {        
+        throw IllegalStateException("Expression not an ADT constraint: "+ e)
+      }
+    }
+    adtctr
+  }
+}
+
 class ADTConstraint(val e: Expr) extends Template {
 
-  val expr = {
-    assert(e match {
-      case Iff(v@Variable(_),ci@CaseClassInstanceOf(_,_)) => true
-      case Equals(v@Variable(_),cs@CaseClassSelector(_,_,_)) => true
-      case Equals(v@Variable(_),cc@CaseClass(_,_)) => true
-      case Equals(lhs@Variable(_),rhs@Variable(_)) if(lhs.getType != Int32Type && lhs.getType != RealType) => true
-      case Not(Equals(lhs@Variable(_),rhs@Variable(_))) if(lhs.getType != Int32Type && lhs.getType != RealType) => true
-      case _ => false
-    })
-    e
-  }
+  //these will be set by the companinon classes
+  val expr : Expr = { e }
+  var sel : Option[Expr] = None
+  var inst : Option[Expr] = None
+  var cls : Option[Expr] = None
+  var comp : Option[Expr] = None 
 
   override def toString(): String = {
     expr.toString

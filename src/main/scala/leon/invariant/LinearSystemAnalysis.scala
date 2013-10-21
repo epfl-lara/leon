@@ -72,7 +72,11 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       if (!tempOption.isDefined)
         acc
       else {
-        val template = tempOption.get
+        //here flatten the template
+        val t = tempOption.get
+    	val freevars = variablesOf(t)
+        val template = ExpressionTransformer.FlattenFunction(t)
+        
         val tempvars = InvariantUtil.getTemplateVars(template)        
         val tempVarMap: Map[Expr, Expr] = tempvars.map((v) => {
           //println(v.id +" mapsto " + model(v.id))         
@@ -84,8 +88,12 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           else*/
             (v, model(v.id))
         }).toMap
+        
+        val instTemplate = instantiateTemplate(template, tempVarMap)
+        //now unflatten it
+        val comprTemp = ExpressionTransformer.unFlatten(instTemplate, freevars)
 
-        acc :+ (fd, instantiateTemplate(template, tempVarMap))
+        acc :+ (fd, comprTemp)
       }
     })
     invs.toMap
@@ -292,9 +300,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     val solution = recSolveForTemplatesIncr(solverWithCtrs, uiSolver, funcExprs)
     solverWithCtrs.free()
     solution
-  }
-
-  var fileCount = 0
+  }  
+  
   def recSolveForTemplatesIncr(solverWithCtrs: UIFZ3Solver, uiSolver: SimpleSolverAPI, funcExprs: Map[FunDef, Expr])
   			: Option[Map[FunDef, Expr]] = {
 
@@ -304,8 +311,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     val t1 = System.nanoTime
 
     //println("Assertions: \n"+solverWithCtrs.ctrsToString)               
-    /*fileCount += 1
-    val pwr = new PrintWriter("z3formula-"+fileCount+".smt")    
+    /*FileCountGUID.fileCount += 1
+    val pwr = new PrintWriter("z3formula-"+FileCountGUID.fileCount+".smt")    
     pwr.println(solverWithCtrs.ctrsToString)
     pwr.flush()
     pwr.close()*/
@@ -490,8 +497,13 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
      * Body --pipe---> post --pipe---> uifConstraintGen --pipe---> endPoint
      */        
     //this tree could have 2^n paths 
-    def traverseBodyTree(tree: CtrTree, currentCtrs: Seq[LinearConstraint], currentUIFs: Set[Call], 
-      currentTemps: Seq[LinearTemplate], auxCtrs : Seq[Expr], depth : Int): Expr = {
+    def traverseBodyTree(tree: CtrTree, 
+        currentCtrs: Seq[LinearConstraint], 
+        currentUIFs: Set[Call], 
+        currentTemps: Seq[LinearTemplate],
+        classSelectors : Seq[Expr],
+        auxCtrs : Seq[Expr],         
+        depth : Int): Expr = {
 
       tree match {
         case n @ CtrNode(_) => {
@@ -499,10 +511,11 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           val newCtrs = currentCtrs ++ n.constraints
           val newTemps = currentTemps ++ n.templates
           val newUIFs = currentUIFs ++ n.uifs
-          val newAuxs = auxCtrs ++ (n.boolCtrs.map(_.expr) ++ n.adtCtrs.map(_.expr))
+          val classSels = classSelectors ++ n.adtCtrs.collect{ case adtctr@_ if adtctr.sel.isDefined => adtctr.sel.get }          
+          val newAuxs = (auxCtrs ++ n.boolCtrs.map(_.expr)) ++ n.adtCtrs.collect{ case ac@_ if !ac.sel.isDefined => ac.expr }
 
           //recurse into children and collect all the constraints
-          foldAND(n, n.Children, (child : CtrTree) => traverseBodyTree(child, newCtrs, newUIFs, newTemps, newAuxs, depth + 1), depth)
+          foldAND(n, n.Children, (child : CtrTree) => traverseBodyTree(child, newCtrs, newUIFs, newTemps, classSels, newAuxs, depth + 1), depth)
         }
         case CtrLeaf() => {
 
@@ -513,7 +526,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
             //println("Body path expr: " + pathexpr)
             
             //pipe this to the post tree           
-            traversePostTree(postRoot, currentCtrs, currentTemps, auxCtrs, currentUIFs, Seq(), Seq(), Seq(), depth + 1)                                      
+            traversePostTree(postRoot, currentCtrs, currentTemps, auxCtrs, currentUIFs, classSelectors, Seq(), Seq(), Seq(), depth + 1)                                      
           } else {
             //println("Found unsat path: " + pathExpr)
             tru
@@ -523,9 +536,15 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     }
      
     //this tree could have 2^n paths
-    def traversePostTree(tree: CtrTree, ants: Seq[LinearConstraint], antTemps: Seq[LinearTemplate],
-      antAuxs: Seq[Expr], currUIFs: Set[Call], conseqs: Seq[LinearConstraint], 
-      currTemps: Seq[LinearTemplate], currAuxs: Seq[Expr], depth: Int): Expr = {
+    def traversePostTree(tree: CtrTree, 
+        ants: Seq[LinearConstraint], 
+        antTemps: Seq[LinearTemplate],
+        antAuxs: Seq[Expr], 
+        currUIFs: Set[Call], 
+        classSels : Seq[Expr],
+        conseqs: Seq[LinearConstraint], 
+        currTemps: Seq[LinearTemplate],        
+        currAuxs: Seq[Expr], depth: Int): Expr = {
           						
       tree match {
         case n @ CtrNode(_) => {          
@@ -533,17 +552,18 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           val newcons = conseqs ++ n.constraints
           val newuifs = currUIFs ++ n.uifs 
           val newtemps = currTemps ++ n.templates
-          val newAuxs = currAuxs ++ (n.boolCtrs.map(_.expr) ++ n.adtCtrs.map(_.expr))
+          val newSels = classSels ++ n.adtCtrs.collect{ case adtctr@_ if adtctr.sel.isDefined => adtctr.sel.get } 
+          val newAuxs = currAuxs ++ (n.boolCtrs.map(_.expr) ++ n.adtCtrs.collect{ case adtctr@_ if !adtctr.sel.isDefined => adtctr.expr })
           
           //recurse into children and collect all the constraints
           foldAND(n, n.Children, (child : CtrTree) => traversePostTree(child, ants, antTemps, antAuxs, 
-            newuifs, newcons, newtemps, newAuxs, depth + 1), depth) 
+            newuifs, newSels, newcons, newtemps, newAuxs, depth + 1), depth) 
         }
         case CtrLeaf() => {                 
 
           //println("path after post traversal: "+constraintsToExpr(ants ++ conseqs, currUIFs, And(antAuxs ++ currAuxs)))                   
           //pipe to the uif constraint generator
-          uifsConstraintsGen(ants, antTemps, antAuxs, currUIFs, conseqs, currTemps, currAuxs, depth + 1)
+          uifsConstraintsGen(ants, antTemps, antAuxs, currUIFs, classSels, conseqs, currTemps, currAuxs, depth + 1)
         }
       }
     }
@@ -552,9 +572,14 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
      * Eliminates the calls using the theory of uninterpreted functions
      * this could take 2^(n^2) time
      */
-    def uifsConstraintsGen(ants: Seq[LinearConstraint], antTemps: Seq[LinearTemplate], antAuxs: Seq[Expr],
-         calls: Set[Call], conseqs: Seq[LinearConstraint], conseqTemps: Seq[LinearTemplate], 
-         conseqAuxs: Seq[Expr], depth: Int) : Expr = {
+    def uifsConstraintsGen(ants: Seq[LinearConstraint], 
+        antTemps: Seq[LinearTemplate], 
+        antAuxs: Seq[Expr],
+        calls: Set[Call], 
+        classSels: Seq[Expr], 
+        conseqs: Seq[LinearConstraint], 
+        conseqTemps: Seq[LinearTemplate], 
+        conseqAuxs: Seq[Expr], depth: Int) : Expr = {
       
       def traverseTree(tree: CtrTree, 
          ants: Seq[LinearConstraint], antTemps: Seq[LinearTemplate], 
@@ -575,21 +600,20 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         }
       }
 
-      val pathexpr = constraintsToExpr(ants ++ conseqs, calls, And(antAuxs ++ conseqAuxs))              
+      val pathexpr = constraintsToExpr(ants ++ conseqs, calls, And(classSels ++ antAuxs ++ conseqAuxs))              
 
       //if the path expression is unsatisfiable return true
       val (res, model) = uiSolver.solveSAT(pathexpr)
       if (res.isDefined && res.get == false) {
         tru            
       } else {
+        val uifexprs = calls.map((call) => Equals(call.retexpr,call.fi)).toSeq
         //for debugging
         //println("Full-path: " + simplifyArithmetic(pathexpr))
-        //println("All ctrs: "+ (ants ++ conseqs ++ calls ++ conseqTemps))                    
-          val uifexprs = calls.map((call) => Equals(call.retexpr,call.fi)).toSeq
+        //println("All ctrs: "+ (ants ++ conseqs ++ calls ++ conseqTemps))                             
           val pathexprs = (ants ++ antTemps ++ conseqs ++ conseqTemps).map(_.template)
-          val plainFormula = And(antAuxs ++ conseqAuxs ++ uifexprs ++  pathexprs)
-          val formula = simplifyArithmetic(plainFormula)
-          
+          val plainFormula = And(antAuxs ++ conseqAuxs ++ classSels ++ uifexprs ++  pathexprs)
+          val formula = simplifyArithmetic(plainFormula)          
           /*val wr = new PrintWriter(new File("full-path-"+formula.hashCode()+".txt"))
           ExpressionTransformer.PrintWithIndentation(wr, formula)
           wr.flush()
@@ -597,7 +621,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           println("Full-path: " + formula)
           
         //println("Starting Constraint generation")
-        val uifCtrs = constraintsForUIFs(calls.toSeq, pathexpr, uiSolver)
+        val uifCtrs = constraintsForUIFs(uifexprs ++ classSels, pathexpr, uiSolver)
         //println("Generated UIF Constraints")
         
         val uifroot = if (!uifCtrs.isEmpty) {
@@ -622,8 +646,10 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     /**
      * Endpoint of the pipeline. Invokes the actual constraint solver.
      */
-    def endpoint(ants: Seq[LinearConstraint], antTemps: Seq[LinearTemplate],
-      conseqs: Seq[LinearConstraint], conseqTemps: Seq[LinearTemplate]): Expr = {      
+    def endpoint(ants: Seq[LinearConstraint], 
+        antTemps: Seq[LinearTemplate],
+        conseqs: Seq[LinearConstraint], 
+        conseqTemps: Seq[LinearTemplate]): Expr = {      
       //here we are solving A^~(B)      
       if (conseqs.isEmpty && conseqTemps.isEmpty) tru
       else {
@@ -637,7 +663,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     }
        
     //print the body and the post tree    
-    val nonLinearCtr = traverseBodyTree(bodyRoot, Seq(), Set(), Seq(), Seq(), 0)
+    val nonLinearCtr = traverseBodyTree(bodyRoot, Seq(), Set(), Seq(), Seq(), Seq(), 0)
 
     nonLinearCtr match {
       case BooleanLiteral(true) => tru       
@@ -652,27 +678,43 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       }
     }    
   }
-
   
   //convert the theory formula into linear arithmetic formula
   //TODO: Find ways to efficiently handle ADTs (the current solution is incomplete for efficiency)
-  def constraintsForUIFs(calls: Seq[Call], precond: Expr, uisolver: SimpleSolverAPI) : Seq[Expr] = {
+  //TODO: consider only functions with integer return type, also consider CaseClassSelectors and TupleSelectors
+  def constraintsForUIFs(calls: Seq[Expr], precond: Expr, uisolver: SimpleSolverAPI) : Seq[Expr] = {
         
-    //Part(I): Finding the set of all pairs of funcs that are implied by the precond
-    var impliedGraph = new UndirectedGraph[Call]()
-    var nimpliedSet = Set[(Call,Call)]()
+    //Part(I): Finding the set of all pairs of calls (or expressions) that are implied by the precond
+    var impliedGraph = new UndirectedGraph[Expr]()
+    var nimpliedSet = Set[(Expr,Expr)]()
     
     //compute the cartesian product of the calls and select the pairs having the same function symbol and also implied by the precond
     val vec = calls.toArray
     val size = calls.size
     var j = 0
-    val product = vec.foldLeft(Set[(Call, Call)]())((acc, call) => {
+    val product = vec.foldLeft(Set[(Expr, Expr)]())((acc, call) => {
 
-      var pairs = Set[(Call, Call)]()
+      var pairs = Set[(Expr, Expr)]()
       for (i <- j + 1 until size) {
         val call2 = vec(i)
-        if (call.fi.funDef == call2.fi.funDef)
-          pairs ++= Set((call, call2))
+        
+        //check if call and call2 are compatible
+        (call,call2 ) match {
+          case (Equals(_,FunctionInvocation(fd1,_)), Equals(_,FunctionInvocation(fd2,_))) if (fd1 == fd2) => {
+        	  pairs ++= Set((call, call2))
+          }
+          case (Iff(_,FunctionInvocation(fd1,_)), Iff(_,FunctionInvocation(fd2,_))) if (fd1 == fd2) => {
+        	  pairs ++= Set((call, call2))
+          }
+          case (Equals(_,CaseClassSelector(cd1,_,id1)), Equals(_,CaseClassSelector(cd2,_,id2))) if (cd1 == cd2 && id1 == id2) => {
+            pairs ++= Set((call, call2))
+          }
+          case (Equals(_,TupleSelect(e1,i1)), Equals(_,TupleSelect(e2,i2))) if (e1.getType == e2.getType && i1 == i2) => {
+            pairs ++= Set((call, call2))
+          }
+        }
+        /*if (call.fi.funDef == call2.fi.funDef)
+          pairs ++= Set((call, call2))*/
       }
       j += 1
       acc ++ pairs
@@ -714,7 +756,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
               val (adtImp,_) = uisolver.solveSAT(Not(Implies(precond,And(eqs))))
               if(adtImp.isDefined && adtImp.get == true){
                 //here the implication need not necessarily hold therefore we consider that it can never 
-                //hold (assuming that the templates do not affect ADTs values thtough integers)
+                //hold (assuming that the templates do not affect ADTs values through integers)
                 ;
               }
               else{
@@ -749,7 +791,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
    * This procedure generates constraints for the calls to be equal
    * TODO: how can we handle functions in which arguments have template variables and template function names ??
    */
-  def axiomatizeEquality(call1: Call, call2: Call): (Expr, Expr) = {
+  def axiomatizeEquality(call1: Expr, call2:  Expr): (Expr, Expr) = {    
+    
     val v1 = call1.retexpr
     val fi1 = call1.fi
     val v2 = call2.retexpr
