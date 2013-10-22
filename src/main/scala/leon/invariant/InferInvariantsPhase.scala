@@ -287,7 +287,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           reporter.info("Post is true, nothing to be proven!!")
         } else {*/
          
-          val t1 = System.nanoTime
+          val t1 = System.currentTimeMillis()
 
           //create a template generator that generates templates for the functions          
           val tempFactory = new TemplateFactory(Some(new TemplateEnumerator(program, reporter)), reporter)
@@ -313,11 +313,14 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
               case _ => throw new IllegalStateException("This case is not possible")
             }
           }
-          if(!solved.get) 
+          if(!solved.get) {
             reporter.info("- Exhausted all templates, cannot infer invariants")
+            System.exit(0)
+          }            
+            
                                          
-          val t2 = System.nanoTime
-          val dt = ((t2 - t1) / 1000000) / 1000.0
+          val t2 = System.currentTimeMillis()
+          val dt = ((t2 - t1) / 1000.0)
         //}
       }
     }

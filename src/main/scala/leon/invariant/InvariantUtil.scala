@@ -156,6 +156,7 @@ object InvariantUtil {
   
   def isCallExpr(e: Expr) : Boolean = e match {
     case Equals(Variable(_),FunctionInvocation(_,_)) => true
+    case Iff(Variable(_),FunctionInvocation(_,_)) => true
     case _ => false
   }
   

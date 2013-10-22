@@ -384,8 +384,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
             }
             case Some(true) => {
               //For debugging purposes.
-              println("Function: " + fd.id + "--Found candidate invariant is not a real invariant! ")//+solEval.getInternalModel)
-
+              println("Function: " + fd.id + "--Found candidate invariant is not a real invariant! ")
+                            
               //try to get the paths that lead to the error 
               val satChooser = (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {
                 ch.filter((child) => child match {
@@ -474,7 +474,15 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     def foldAND(parent: CtrNode, childTrees : Iterable[CtrTree], pred: CtrTree => Expr, depth: Int): Expr = {
       
       //get the children that need to be traversed
-      val trees = selector(parent, childTrees, depth)      
+      val trees = selector(parent, childTrees, depth)
+      
+      /*if(trees.isEmpty)
+      {
+        println("Empty children, child exprs: ")
+        childTrees.foreach((ch)=> if(ch.isInstanceOf[CtrNode]) println(ch.asInstanceOf[CtrNode].toExpr))
+        //throw new IllegalStateException("Empty children shild exprs: ")
+      }*/
+      
       var expr: Expr = tru
 
       breakable {
@@ -711,9 +719,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         val call2 = vec(i)
         if(mayAlias(call,call2)) {
         	pairs ++= Set((call, call2))        
-        }
-        /*if (call.fi.funDef == call2.fi.funDef)
-          pairs ++= Set((call, call2))*/
+        }        
       }
       j += 1
       acc ++ pairs
@@ -744,13 +750,15 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       }).filter((eq) => {
 
         val Equals(lhs, rhs) = eq
-        (lhs.getType != Int32Type && lhs.getType != RealType)
+        (lhs.getType != Int32Type && lhs.getType != BooleanType && lhs.getType != RealType)
 
       })
     }
     
     product.foreach((pair) => {
       val (call1,call2) = (pair._1,pair._2)      
+      
+      println("Assertionizing "+call1+" , call2: "+call2)
       if(!eqGraph.BFSReach(call1, call2)){        
         if(!neqSet.contains((call1, call2))){    
           
@@ -784,26 +792,27 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
               else{              
             	neqSet ++= Set((call1, call2), (call2, call1))
               }
-            }                              
-          } /*else if(InvariantUtil.isSelector(call1)){
-            val (lhs, rhs) = axiomatizeSelectors(call1,call2)
+            }
+          } else if (InvariantUtil.isSelector(call1)) {
             
+            val (lhs, rhs) = axiomatizeSelectors(call1, call2)
+
             //the two expressions are equal (or notequal) either if lhs are equal (or notequal) or if rhs are equal (or notequal)            
             val tv1 = isImplied(lhs)
-            val tv2 = if(tv1 == TVL.MAYBE) isImplied(rhs)
-            		  else TVL.MAYBE
+            val tv2 = if (tv1 == TVL.MAYBE) isImplied(rhs)
+            else TVL.MAYBE
             //note that since the formula is consistent, tv1 and tv2 must compatible i.e, one cannot be true and other false
-            if(tv1 == TVL.TRUE || tv2 == TVL.TRUE){
+            if (tv1 == TVL.TRUE || tv2 == TVL.TRUE) {
               eqGraph.addEdge(call1, call2)
-              
-            } else if(tv1 == TVL.FALSE || tv2 == TVL.FALSE) {
-              ;  //drop this
+
+            } else if (tv1 == TVL.FALSE || tv2 == TVL.FALSE) {
+              ; //drop this
             } else {
-              //here both are maybe
-              neqSet ++= Set((call1, call2), (call2, call1))
-            }            
-          } */else {
-            throw new IllegalStateException("Found incompatible expressions !!")
+              //here both are maybe, for now, drop this too
+              //neqSet ++= Set((call1, call2), (call2, call1))              
+            }
+          } else {
+            throw new IllegalStateException("Found incompatible expressions !! e1: " + call1 + " e2: " + call2)
           }  
                     
         }                     
@@ -832,10 +841,10 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
             case And(args) => args
             case Equals(_, _) => Seq(ant)
 
-          }).filterNot((eq) => {
+          }).filter((eq) => {
 
             val Equals(lhs, rhs) = eq
-            (lhs.getType == Int32Type || lhs.getType == RealType)
+            (lhs.getType == Int32Type || lhs.getType == RealType || lhs.getType == BooleanType)
 
           }) 
           
@@ -873,10 +882,17 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
    * This procedure generates constraints for the calls to be equal
    * TODO: how can we handle functions in which arguments have template variables and template function names ??
    */
-  def axiomatizeCalls(call1: Expr, call2:  Expr): (Expr, Expr) = {    
-    
-    val Equals(v1,fi1@FunctionInvocation(_,_)) = call1
-    val Equals(v2,fi2@FunctionInvocation(_,_)) = call2
+  def axiomatizeCalls(call1: Expr, call2:  Expr): (Expr, Expr) = {
+
+    val (v1, fi1, v2, fi2) = if (call1.isInstanceOf[Equals]) {
+      val Equals(r1, f1 @ FunctionInvocation(_, _)) = call1
+      val Equals(r2, f2 @ FunctionInvocation(_, _)) = call2
+      (r1, f1, r2, f2)
+    } else {
+      val Iff(r1, f1 @ FunctionInvocation(_, _)) = call1
+      val Iff(r2, f2 @ FunctionInvocation(_, _)) = call2
+      (r1, f1, r2, f2)
+    }    
     
     val ants = (fi1.args.zip(fi2.args)).foldLeft(Seq[Expr]())((acc, pair) => {
       val (arg1, arg2) = pair

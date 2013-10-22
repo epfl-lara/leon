@@ -93,14 +93,14 @@ class ConstraintTracker(rootFun : FunDef) {
                  | Equals(Variable(_),CaseClass(_,_)) | Equals(Variable(_),TupleSelect(_,_)) 
                  | Equals(Variable(_),Tuple(_)) => {
 
-              node.adtCtrs += new ADTConstraint(ie)
+              node.adtCtrs ++= ADTConstraints.createADTConstraints(ie)
             }
             case Equals(lhs,rhs) if(lhs.getType != Int32Type && lhs.getType != RealType) => {
               //println("ADT constraint: "+ie)
-              node.adtCtrs += new ADTConstraint(ie)
+              node.adtCtrs ++= ADTConstraints.createADTConstraints(ie)
             }
             case Not(Equals(lhs,rhs)) if(lhs.getType != Int32Type && lhs.getType != RealType) => {
-              node.adtCtrs += new ADTConstraint(ie)
+              node.adtCtrs ++= ADTConstraints.createADTConstraints(ie)
             }
             case _ => {
               val template = exprToTemplate(ie)

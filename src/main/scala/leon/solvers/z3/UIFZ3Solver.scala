@@ -90,6 +90,12 @@ class UIFZ3Solver(val context : LeonContext, val program: Program)
   def getModel = {
     modelToMap(solver.getModel, variables)
   }
+  
+  def compeleteModel(ids : Seq[Identifier]) : Unit = {
+    for (id <- ids) {
+      solver.getModel.eval(exprToZ3Id(id.toVariable), true)
+    }
+  }
 
   def getUnsatCore = {
     solver.getUnsatCore.map(ast => fromZ3Formula(null, ast, None) match {
@@ -107,8 +113,8 @@ class UIFZ3Solver(val context : LeonContext, val program: Program)
       //println("Evaluating: "+ast+" using: "+solver.getModel+" Result: "+solver.getModel.eval(ast, true))
       val model = solver.getModel
       val res = model.eval(ast, true)
-      model.context.getBoolValue(res.get)   
-  }
+      model.context.getBoolValue(res.get)
+   }
   
   def ctrsToString : String = {    
     z3.setAstPrintMode(Z3Context.AstPrintMode.Z3_PRINT_SMTLIB2_COMPLIANT)
