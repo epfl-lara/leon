@@ -1,6 +1,5 @@
 package leon
-package purescala
-package DataStructures 
+package purescala 
 
 class DirectedGraph[T] {
   

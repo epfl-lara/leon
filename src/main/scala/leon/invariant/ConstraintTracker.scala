@@ -2,7 +2,7 @@ package leon
 package invariant
 
 import z3.scala._
-import purescala.DataStructures._
+import purescala._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._

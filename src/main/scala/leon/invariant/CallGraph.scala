@@ -1,7 +1,7 @@
 package leon
 package invariant
 
-import purescala.DataStructures._
+import purescala._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._

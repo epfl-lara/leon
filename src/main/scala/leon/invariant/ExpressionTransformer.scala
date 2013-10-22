@@ -100,8 +100,8 @@ object ExpressionTransformer {
         case Equals(lhs, rhs) => {
           rhs match {
             //this is an optimization
-            case IfExpr(cond, then, elze) => {
-              val newexpr = Or(And(cond, Equals(lhs, then)), And(Not(cond), Equals(lhs, elze)))
+            case IfExpr(cond, thn, elze) => {
+              val newexpr = Or(And(cond, Equals(lhs, thn)), And(Not(cond), Equals(lhs, elze)))
               transform(newexpr)
             }
             case _ => {
@@ -111,9 +111,9 @@ object ExpressionTransformer {
             }
           }
         }
-        case IfExpr(cond, then, elze) => {
+        case IfExpr(cond, thn, elze) => {
           val freshvar = FreshIdentifier("ifres",true).setType(e.getType).toVariable          
-          val newexpr = Or(And(cond,Equals(freshvar,then)),And(Not(cond),Equals(freshvar,elze)))
+          val newexpr = Or(And(cond,Equals(freshvar,thn)),And(Not(cond),Equals(freshvar,elze)))
           
           val resset = transform(newexpr)
           

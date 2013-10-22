@@ -29,6 +29,14 @@ object FileCountGUID {
 	 var fileCount = 0
 }
 
+//three valued logic
+object TVL {
+  abstract class Value 
+  object FALSE extends Value
+  object TRUE extends Value
+  object MAYBE extends Value
+}
+
 case class Call(retexpr: Expr, fi: FunctionInvocation) {
   val expr = Equals(retexpr,fi)   
 }
@@ -145,4 +153,20 @@ object InvariantUtil {
     })(e)
     count
   } 
+  
+  def isCallExpr(e: Expr) : Boolean = e match {
+    case Equals(Variable(_),FunctionInvocation(_,_)) => true
+    case _ => false
+  }
+  
+  /*def getLHS(e: Expr) : Expr = e match {
+    case Equals(r@Variable(_),FunctionInvocation(_,_)) => r
+    case _ => throw new IllegalStateException("not a call expression")
+  }*/
+  
+  def isSelector(e: Expr) : Boolean = e match {
+    case Equals(Variable(_),CaseClassSelector(_,_,_)) => true
+    case Equals(Variable(_),TupleSelect(_,_)) => true
+    case _ => false
+  }
 }

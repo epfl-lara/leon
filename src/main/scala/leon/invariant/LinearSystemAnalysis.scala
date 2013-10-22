@@ -3,7 +3,6 @@ package invariant
 
 import scala.util.Random
 import z3.scala._
-import purescala.DataStructures._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
@@ -29,6 +28,9 @@ import leon.verification.Tactic
 import leon.verification.VerificationReport
 import leon.solvers.SimpleSolverAPI
 import leon.solvers.z3.UIFZ3Solver
+import leon.invariant._
+import leon.purescala.UndirectedGraph
+import scala.util.control.Breaks._
 
 class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: TemplateFactory,
     context : LeonContext, program : Program) {
@@ -171,7 +173,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     val nonLinearCtrs  = ctrTracker.getFuncs.foldLeft(Seq[Expr]())((acc, fd) => {
       
       val (btree,ptree) = ctrTracker.getVC(fd)      
-      val ctr = generateCtrsForTree(btree, ptree, uiSolver, selector)      
+      val ctr = generateCtrsForTree(btree, ptree, uiSolver, selector, false)      
       if(ctr == tru) acc        
       else (acc :+ ctr)
     })   
@@ -264,7 +266,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       if(program.isRecursive(fd)) {
         //try pick paths without function calls if any      
         println("Choosing constraints without calls")
-        ctr = generateCtrsForTree(btree, ptree, uiSolver, noRecursiveCallSelector(fd))
+        ctr = generateCtrsForTree(btree, ptree, uiSolver, noRecursiveCallSelector(fd), true)
         println("Found Some: " + (ctr != tru))
       }
             
@@ -276,7 +278,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         println("Randomly choosing constraints ...")
         while (ctr == tru) {
           println("Looping...")
-          ctr = generateCtrsForTree(btree, ptree, uiSolver, randomSelector)
+          ctr = generateCtrsForTree(btree, ptree, uiSolver, randomSelector, false)
         }
         println("Found one!")
       }      
@@ -307,8 +309,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
 
     val funcs = funcExprs.keys
 
-    println("solving...")        
-    val t1 = System.nanoTime
+    println("solving...")       
+    val t1 = System.currentTimeMillis()
 
     //println("Assertions: \n"+solverWithCtrs.ctrsToString)               
     /*FileCountGUID.fileCount += 1
@@ -326,8 +328,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         (None, Map[Identifier, Expr]())
     }
     
-    val t2 = System.nanoTime
-    println("solved... in "+((t2 - t1) / 1000000) / 1000.0+"s")    
+    val t2 = System.currentTimeMillis()
+    println("solved... in "+(t2 - t1) / 1000.0+"s")    
     
     res match {
       case None => None
@@ -408,7 +410,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
                 })
               }
               val (btree, ptree) = ctrTracker.getVC(fd)
-              val newctr = generateCtrsForTree(btree, ptree, uiSolver, satChooser)
+              val newctr = generateCtrsForTree(btree, ptree, uiSolver, satChooser, true)
               if(newctr == tru)
                 throw IllegalStateException("cannot find a counter-example path!!")
               
@@ -451,7 +453,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
    * This is parametrized by a selector function that decides which paths to consider. 
    */
   def generateCtrsForTree(bodyRoot: CtrNode, postRoot : CtrNode, 
-      uiSolver : SimpleSolverAPI, selector : (CtrNode, Iterable[CtrTree], Int) => Iterable[CtrTree]) : Expr = {       
+      uiSolver : SimpleSolverAPI, selector : (CtrNode, Iterable[CtrTree], Int) => Iterable[CtrTree],
+      exploreOnePath : Boolean) : Expr = {       
     
     /**
      * A utility function that converts a constraint + calls into a expression.
@@ -471,24 +474,31 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     def foldAND(parent: CtrNode, childTrees : Iterable[CtrTree], pred: CtrTree => Expr, depth: Int): Expr = {
       
       //get the children that need to be traversed
-      val trees = selector(parent, childTrees, depth)
-      
-      var expr: Expr = tru      
-      trees.foreach((tree) => {                
-        if (expr != fls) {                  
+      val trees = selector(parent, childTrees, depth)      
+      var expr: Expr = tru
+
+      breakable {
+        trees.foreach((tree) => {
           val res = pred(tree)
           res match {
-            case BooleanLiteral(false) => expr = fls;
+            case BooleanLiteral(false) => {
+              expr = fls;
+              break;
+            }
             case BooleanLiteral(true) => ;
             case _ => {
 
               if (expr == tru) {
                 expr = res
+                //break if explore one path is set
+                if (exploreOnePath) {
+                  break;
+                }
               } else expr = And(expr, res)
             }
           }
-        }
-      })
+        })
+      }
       expr
     } 
 
@@ -680,13 +690,15 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
   }
   
   //convert the theory formula into linear arithmetic formula
-  //TODO: Find ways to efficiently handle ADTs (the current solution is incomplete for efficiency)
-  //TODO: consider only functions with integer return type, also consider CaseClassSelectors and TupleSelectors
+  //TODO: Fix the current incomplete way of handling ADTs
+  //TODO: For efficiency, consider only functions with integer return type, also consider CaseClassSelectors and TupleSelectors
+  //TODO: one idea: use the dependence chains in the formulas to identify what to assertionze and what can never be implied
+  // by solvign for the templates
   def constraintsForUIFs(calls: Seq[Expr], precond: Expr, uisolver: SimpleSolverAPI) : Seq[Expr] = {
         
     //Part(I): Finding the set of all pairs of calls (or expressions) that are implied by the precond
-    var impliedGraph = new UndirectedGraph[Expr]()
-    var nimpliedSet = Set[(Expr,Expr)]()
+    var eqGraph = new UndirectedGraph[Expr]() //an equality graph
+    var neqSet = Set[(Expr,Expr)]()
     
     //compute the cartesian product of the calls and select the pairs having the same function symbol and also implied by the precond
     val vec = calls.toArray
@@ -697,21 +709,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       var pairs = Set[(Expr, Expr)]()
       for (i <- j + 1 until size) {
         val call2 = vec(i)
-        
-        //check if call and call2 are compatible
-        (call,call2 ) match {
-          case (Equals(_,FunctionInvocation(fd1,_)), Equals(_,FunctionInvocation(fd2,_))) if (fd1 == fd2) => {
-        	  pairs ++= Set((call, call2))
-          }
-          case (Iff(_,FunctionInvocation(fd1,_)), Iff(_,FunctionInvocation(fd2,_))) if (fd1 == fd2) => {
-        	  pairs ++= Set((call, call2))
-          }
-          case (Equals(_,CaseClassSelector(cd1,_,id1)), Equals(_,CaseClassSelector(cd2,_,id2))) if (cd1 == cd2 && id1 == id2) => {
-            pairs ++= Set((call, call2))
-          }
-          case (Equals(_,TupleSelect(e1,i1)), Equals(_,TupleSelect(e2,i2))) if (e1.getType == e2.getType && i1 == i2) => {
-            pairs ++= Set((call, call2))
-          }
+        if(mayAlias(call,call2)) {
+        	pairs ++= Set((call, call2))        
         }
         /*if (call.fi.funDef == call2.fi.funDef)
           pairs ++= Set((call, call2))*/
@@ -720,84 +719,165 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       acc ++ pairs
     })
     
+    def isImplied(cond: Expr): TVL.Value = {
+      
+      //check if the cond follows from the preconds                   
+      val (nImpRes, _) = uisolver.solveSAT(Not(Implies(precond, cond)))
+      val (impRes, _) = uisolver.solveSAT(And(precond, cond))
+      (nImpRes, impRes) match {
+        case (Some(false), _) => TVL.TRUE                     
+        case (_, Some(false)) => TVL.FALSE                    
+        case _ => TVL.MAYBE            
+      }
+    }
+
+    /**
+     * Requires 'e' to be a cojunction of equalities.
+     * Returns a set of ADT equalities in the input expression
+     */
+    def ADTequalities(e: Expr): Seq[Expr] = {
+      (e match {
+        case And(args) => args
+        case Equals(_, _) => Seq(e)
+        case _ => throw IllegalStateException("Not a conjunction of equalities" + e)
+
+      }).filter((eq) => {
+
+        val Equals(lhs, rhs) = eq
+        (lhs.getType != Int32Type && lhs.getType != RealType)
+
+      })
+    }
+    
     product.foreach((pair) => {
-      val (call1,call2) = (pair._1,pair._2)
-      if(!impliedGraph.BFSReach(call1, call2)){        
-        if(!nimpliedSet.contains((call1, call2))){          
-          val (ant,conseqs) = axiomatizeEquality(call1,call2)
-         //check if equality follows from the preconds                   
-          val (nImpRes,_) = uisolver.solveSAT(Not(Implies(precond,ant)))
-          val (impRes,_) = uisolver.solveSAT(And(precond,ant))
-          (nImpRes,impRes) match{
-            case (Some(false),_) => {
-             //here the argument equality follows from the precondition
-              impliedGraph.addEdge(call1, call2)              
-            }
-            case (_,Some(false)) => {
+      val (call1,call2) = (pair._1,pair._2)      
+      if(!eqGraph.BFSReach(call1, call2)){        
+        if(!neqSet.contains((call1, call2))){    
+          
+          if(InvariantUtil.isCallExpr(call1)) {
+            val (ant,conseq) =  axiomatizeCalls(call1,call2)
+            val tv = isImplied(ant)
+            if (tv == TVL.FALSE) {
               //here the arg. equality will never be implied by the precond (unless the precond becomes false). 
               //Therefore we can drop this constraint           
-              ;              
-            }
-            case _ => {
-              //here the arg. equality does not follow from the precondition but may be implied by instantiation of the templates                            
+              ;
+            } else if (tv == TVL.TRUE) {
+              //here the argument equality follows from the precondition
+              eqGraph.addEdge(call1, call2)
+            } else {
+              //here the argument equality does not follow from the precondition but may be implied by instantiation of the templates
+              //TODO: try some optimizations here, put the ideas here
+              //TODO: consider the following optimization :
+              //take the model found in this case. If the instantiation of the template does not satisfy the model
+              //then may be it could imply the equality. So, we could try this case later.              
 
               //An incomplete efficiency heuristic
-              //consider the ADT equalities in Ants alone. If that is not implied by precond then drop this call (incompletely assume
-              // that templates cannot make them equal)
-              val eqs = ant match{
-                case And(args) => args
-                case Equals(_,_) => Seq(ant)
-                case _ => throw IllegalStateException("Not a conjunction of equalities"+ant)
-              }
-              val adtEqs = eqs.filter((eq) => { 
-                val Equals(lhs,rhs) = eq
-                (lhs.getType != Int32Type && lhs.getType != RealType)                
-              })
-              val (adtImp,_) = uisolver.solveSAT(Not(Implies(precond,And(eqs))))
+              //If the adt equalities in ant is not implied by precond then drop this call (incompletely assume
+              // that templates cannot make them equal), this is true when the adts are inputs
+              val adtEqs = ADTequalities(ant)
+              val (adtImp,_) = uisolver.solveSAT(Not(Implies(precond,And(adtEqs))))
               if(adtImp.isDefined && adtImp.get == true){
                 //here the implication need not necessarily hold therefore we consider that it can never 
                 //hold (assuming that the templates do not affect ADTs values through integers)
                 ;
               }
-              else{
-                nimpliedSet ++= Set((call1,call2),(call2,call1))                       
-                //TODO: consider the following optimization :
-                //take the model found in this case. If the instantiation of the template does not satisfy the model
-                //then may be it could imply the equality. So, we could try this case later. 
+              else{              
+            	neqSet ++= Set((call1, call2), (call2, call1))
               }
-            }
-          }                  
+            }                              
+          } /*else if(InvariantUtil.isSelector(call1)){
+            val (lhs, rhs) = axiomatizeSelectors(call1,call2)
+            
+            //the two expressions are equal (or notequal) either if lhs are equal (or notequal) or if rhs are equal (or notequal)            
+            val tv1 = isImplied(lhs)
+            val tv2 = if(tv1 == TVL.MAYBE) isImplied(rhs)
+            		  else TVL.MAYBE
+            //note that since the formula is consistent, tv1 and tv2 must compatible i.e, one cannot be true and other false
+            if(tv1 == TVL.TRUE || tv2 == TVL.TRUE){
+              eqGraph.addEdge(call1, call2)
+              
+            } else if(tv1 == TVL.FALSE || tv2 == TVL.FALSE) {
+              ;  //drop this
+            } else {
+              //here both are maybe
+              neqSet ++= Set((call1, call2), (call2, call1))
+            }            
+          } */else {
+            throw new IllegalStateException("Found incompatible expressions !!")
+          }  
+                    
         }                     
       }
     })    
     
-    //Part (II) return the constraints. For each implied call, the constraints are just that their return values are equal.
-    //For other calls the constraints are full implication    
+    //Part (II) return the constraints. For equal calls, the constraints are just that their return values are equal, 
+    //for others, it is an implication     
+    //For equal class selectors, constraints are just that their return values are equal, for other's it is a bi-implication   
     val newctrs = product.foldLeft(Seq[Expr]())((acc,pair) => {
       val (call1,call2)= pair
-      if(impliedGraph.containsEdge(call1,call2)) {
-        acc :+ Equals(call1.retexpr,call2.retexpr)
+      if(eqGraph.containsEdge(call1,call2)) {
+        
+        val Equals(r1@_,_) = call1
+        val Equals(r2@_,_) = call2
+        acc :+ Equals(r1,r2)        
       }
-      else if(nimpliedSet.contains(pair)) {
-        val (ant,conseq) = axiomatizeEquality(call1,call2)
-        acc :+ Or(Not(ant),conseq)
+      else if(neqSet.contains(pair)) {
+        
+        //adding single implication
+        if(InvariantUtil.isCallExpr(call1)) {
+                   
+          val (ant,conseq) = axiomatizeCalls(call1,call2)
+          //here, remove ADT equalities if any from the ant (because it was already implied)
+          val intEqs = (ant match {
+            case And(args) => args
+            case Equals(_, _) => Seq(ant)
+
+          }).filterNot((eq) => {
+
+            val Equals(lhs, rhs) = eq
+            (lhs.getType == Int32Type || lhs.getType == RealType)
+
+          }) 
+          
+          //return Args => rets
+          acc :+ Or(Not(And(intEqs)),conseq)
+        	
+        } else {
+          //adding bi-implication          
+          val (lhs,rhs) = axiomatizeSelectors(call1,call2)
+          acc :+ And(Or(Not(lhs),rhs),Or(Not(rhs),lhs))
+        }        
       }        
       else acc
     })
     newctrs
+  }
+ 
+  /**
+   * This function actually checks if two non-primitive expressions could have the same value
+   * (when some constraints on their arguments hold).
+   * Remark: notice  that when the expressions have ADT types, then this is basically a form of may-alias check.
+   */
+  def mayAlias(e1: Expr, e2: Expr): Boolean = {
+    //check if call and call2 are compatible
+    (e1, e2) match {
+      case (Equals(_, FunctionInvocation(fd1, _)), Equals(_, FunctionInvocation(fd2, _))) if (fd1 == fd2) => true
+      case (Iff(_, FunctionInvocation(fd1, _)), Iff(_, FunctionInvocation(fd2, _))) if (fd1 == fd2) => true
+      case (Equals(_, CaseClassSelector(cd1, _, id1)), Equals(_, CaseClassSelector(cd2, _, id2))) if (cd1 == cd2 && id1 == id2) => true
+      case (Equals(_, TupleSelect(e1, i1)), Equals(_, TupleSelect(e2, i2))) if (e1.getType == e2.getType && i1 == i2) => true
+      case _ => false
+    }
   }
 
   /**
    * This procedure generates constraints for the calls to be equal
    * TODO: how can we handle functions in which arguments have template variables and template function names ??
    */
-  def axiomatizeEquality(call1: Expr, call2:  Expr): (Expr, Expr) = {    
+  def axiomatizeCalls(call1: Expr, call2:  Expr): (Expr, Expr) = {    
     
-    val v1 = call1.retexpr
-    val fi1 = call1.fi
-    val v2 = call2.retexpr
-    val fi2 = call2.fi
-
+    val Equals(v1,fi1@FunctionInvocation(_,_)) = call1
+    val Equals(v2,fi2@FunctionInvocation(_,_)) = call2
+    
     val ants = (fi1.args.zip(fi2.args)).foldLeft(Seq[Expr]())((acc, pair) => {
       val (arg1, arg2) = pair
       acc :+ Equals(arg1, arg2)
@@ -805,4 +885,22 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     val conseq = Equals(v1, v2)
     (And(ants), conseq)
   }   
+  
+  /**
+   * The return value should be interpreted as a bidirectional implication
+   */
+  def axiomatizeSelectors(sel1: Expr, sel2:  Expr): (Expr, Expr) = {    
+
+    sel1 match {
+      case Equals(r1@Variable(_),CaseClassSelector(_,arg1,_)) => {
+        val Equals(r2@Variable(_),CaseClassSelector(_,arg2,_)) = sel2
+        (Equals(arg1,arg2), Equals(r1,r2))
+      } 
+      case Equals(r1@Variable(_),TupleSelect(arg1,_)) => {
+        val Equals(r2@Variable(_),TupleSelect(arg2,_)) = sel2
+        (Equals(arg1,arg2), Equals(r1,r2))
+      }
+    }    
+  }
+  
 }
