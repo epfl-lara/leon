@@ -165,9 +165,9 @@ object InvariantUtil {
     case _ => throw new IllegalStateException("not a call expression")
   }*/
   
-  def isSelector(e: Expr) : Boolean = e match {
-    case Equals(Variable(_),CaseClassSelector(_,_,_)) => true
-    case Equals(Variable(_),TupleSelect(_,_)) => true
+  def isADTConstructor(e: Expr) : Boolean = e match {
+    case Equals(Variable(_),CaseClass(_,_)) => true
+    case Equals(Variable(_),Tuple(_)) => true
     case _ => false
   }
 }

@@ -74,8 +74,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       println("falttened Body: " + flatBody)      
       constTracker.addBodyConstraints(funDef, flatBody)      
       
-      //create a postcondition template 
-      val npostTemp = if (program.isRecursive(funDef)) {
+      //create a postcondition template if the function is recursive or if a template is provided for the function      
+      val npostTemp = if (program.isRecursive(funDef) || UserTemplates.templates.contains(funDef)) {
         
         //this is a way to create an idenitity map :-))
         val argmap = InvariantUtil.formalToAcutal(Call(resvar, FunctionInvocation(funDef, funDef.args.map(_.toVariable))))
@@ -139,9 +139,23 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
             })
             reporter.info("- Verifying Invariants... ")
 
-            verifyInvariant(program, context, reporter, res.get, funDef)
-            System.exit(0)
-            Some(true)
+            val verifierRes = verifyInvariant(program, context, reporter, res.get, funDef)
+            verifierRes._1 match {
+              case Some(false) => {
+                reporter.info("- Invariant verified")
+                Some(true)
+              }
+              case Some(true) => {
+                reporter.error("- Invalid invariant, model: " + verifierRes._2)
+                System.exit(-1)
+                None
+              }
+              case _ => {
+                reporter.error("- Unable to prove or disprove invariant")
+                System.exit(-1)
+                None
+              }
+            }            
           } else {            
             //here, we do not know if the template is solvable or not, we need to do more unrollings.
             None
@@ -157,7 +171,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
    * the inferred postcondition
    */
   def verifyInvariant(program: Program, ctx: LeonContext, reporter: Reporter,
-    newposts: Map[FunDef, Expr], rootfd: FunDef): Boolean = {
+    newposts: Map[FunDef, Expr], rootfd: FunDef): (Option[Boolean], Map[Identifier,Expr]) = {
 
     //create a fundef for each function in the program
     val newFundefs = program.mainObject.definedFunctions.map((fd) => {
@@ -225,22 +239,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     val fairZ3 = new SimpleSolverAPI(SolverFactory(() => new FairZ3Solver(ctx, newprog)))       
     //println("Func : "+ vc.funDef + " new vc: "+vc.condition)            
     val sat = fairZ3.solveSAT(Not(vc.condition))
-    sat._1 match {
-      case Some(false) => {
-        reporter.info("- Invariant verified")
-        true
-      }
-      case Some(true) => {
-        reporter.error("- Invalid invariant, model: " + sat._2)
-        System.exit(-1)
-        false
-      }
-      case _ => {
-        reporter.error("- Unable to prove or disprove invariant")
-        System.exit(-1)
-        false
-      }
-    }
+    sat
   }
 
   def run(ctx: LeonContext)(program: Program): VerificationReport = {

@@ -269,14 +269,16 @@ object ExpressionTransformer {
       var newConjuncts = Set[Expr]()                  
       val newargs = args.map((arg) =>              
         arg match {                
-          case t : Terminal => t                                     
+          case v : Variable => v
+          case r : ResultVariable => r
           case _ => {                  
             val (nexpr,ncjs) = flattenFunc(arg)
             
             newConjuncts ++= ncjs                
             
             nexpr match {
-              case t : Terminal => t
+              case v : Variable => v
+              case r : ResultVariable => r
               case _ => {
                 val freshArgVar = Variable(FreshIdentifier("arg", true).setType(arg.getType))                                           
                   newConjuncts += Equals(freshArgVar, nexpr) 

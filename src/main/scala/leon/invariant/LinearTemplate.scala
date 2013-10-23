@@ -167,17 +167,42 @@ class BoolConstraint(e : Expr) extends Template {
   }
 }
 
-object ADTConstraints {
-  def createADTConstraints(e : Expr) : Seq[ADTConstraint] = e match {
-    
-      //is this a tuple or case class select ?
-      case Equals(Variable(_),TupleSelect(_,_)) | Equals(Variable(_),CaseClassSelector(_,_,_)) => {
-        val adtctr = new ADTConstraint(e, Some(e))        
-        Seq(adtctr)
-      }
-      //is this a tuple or case class def ?
-      case Equals(clsvar@Variable(id),CaseClass(cd,args)) => {        
-        //convert this to a class selector
+object ADTConstraint {
+  def apply(e: Expr): ADTConstraint = e match {
+
+    //is this a tuple or case class select ?
+    case Equals(r @ Variable(_), CaseClassSelector(cd, ccvar, ccfld)) => {
+      //convert this to a cons by creating dummy variables        
+      val args = cd.fieldsIds.map((fld) => {
+        if (fld == ccfld) r
+        else {
+          //create a dummy identifier there
+          FreshIdentifier("dy", true).setType(fld.getType).toVariable
+        }
+      })
+      val ccExpr = Equals(ccvar, CaseClass(cd, args))
+      new ADTConstraint(ccExpr, Some(ccExpr))
+
+    }
+    case Equals(r @ Variable(_), TupleSelect(tpvar, index)) => {
+      //convert this to a Tuple by creating dummy variables        
+      val tupleType = tpvar.getType.asInstanceOf[TupleType]
+      val args = (1 until tupleType.dimension + 1).map((i) => {
+        if (i == index) r
+        else {
+          //create a dummy identifier there (note that here we have to use i-1)
+          FreshIdentifier("dy", true).setType(tupleType.bases(i - 1)).toVariable
+        }
+      })
+      val tpExpr = Equals(tpvar, Tuple(args))
+      new ADTConstraint(tpExpr, Some(tpExpr))
+
+    }
+    //is this a tuple or case class def ?
+    case Equals(Variable(_), CaseClass(_, _)) | Equals(Variable(_), Tuple(_)) => {
+      new ADTConstraint(e, Some(e))
+    }
+    /*//convert this to a class selector
         val sels = cd.fieldsIds.zip(args).map((elem) => {
           val (fld, arg) = elem
           Equals(arg,CaseClassSelector(cd,clsvar,fld))
@@ -196,30 +221,27 @@ object ADTConstraints {
         sels.map((sel) => {
           val adtctr = new ADTConstraint(e, Some(sel))          
           adtctr
-        })  
-      }         
-      //is this an instanceOf ?
-      case Iff(v@Variable(_),ci@CaseClassInstanceOf(_,_)) => {
-        val adtctr = new ADTConstraint(e, None, Some(e))        
-        Seq(adtctr)
-      }
-      //equals and disequalities betweeen variables
-      case Equals(lhs@Variable(_),rhs@Variable(_)) if(lhs.getType != Int32Type && lhs.getType != RealType) => {
-        val adtctr = new ADTConstraint(e, None, None, Some(e))        
-        Seq(adtctr)
-      }
-      case Not(Equals(lhs@Variable(_),rhs@Variable(_))) if(lhs.getType != Int32Type && lhs.getType != RealType) => {
-        val adtctr = new ADTConstraint(e, None, None, Some(e))        
-        Seq(adtctr)
-      }
-      case _ => {        
-        throw IllegalStateException("Expression not an ADT constraint: "+ e)
-      }
-    }   
+        })
+      }*/
+    //is this an instanceOf ?
+    case Iff(v @ Variable(_), ci @ CaseClassInstanceOf(_, _)) => {
+      new ADTConstraint(e, None, Some(e))
+    }
+    //equals and disequalities betweeen variables
+    case Equals(lhs @ Variable(_), rhs @ Variable(_)) if (lhs.getType != Int32Type && lhs.getType != RealType) => {
+      new ADTConstraint(e, None, None, Some(e))
+    }
+    case Not(Equals(lhs @ Variable(_), rhs @ Variable(_))) if (lhs.getType != Int32Type && lhs.getType != RealType) => {
+      new ADTConstraint(e, None, None, Some(e))
+    }
+    case _ => {
+      throw IllegalStateException("Expression not an ADT constraint: " + e)
+    }
+  }
 }
 
 class ADTConstraint(val expr: Expr, 
-    val sel: Option[Expr] = None, 
+    val cons: Option[Expr] = None, 
     val inst : Option[Expr] = None, 
     val comp : Option[Expr] = None ) extends Template {
 
