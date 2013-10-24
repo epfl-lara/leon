@@ -16,7 +16,7 @@ import vanuatoo.{Pattern => VPattern, _}
 import evaluators._
 
 class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
-  val unit = CompilationUnit.compileProgram(p, compileContracts = false).get
+  val unit = CompilationUnit.compileProgram(p).get
 
   val ints = (for (i <- Set(0, 1, 2, 3)) yield {
     i -> Constructor[Expr, TypeTree](List(), Int32Type, s => IntLiteral(i), ""+i)

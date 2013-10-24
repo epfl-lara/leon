@@ -8,7 +8,7 @@ import leon.purescala.Trees._
 import leon.purescala.Definitions.{ FunDef, VarDecl, Program, ObjectDef }
 import leon.purescala.Common.{ Identifier, FreshIdentifier }
 import leon.purescala.TreeOps
-import leon.codegen.CodeGenEvalParams
+import leon.codegen.CodeGenParams
 
 import insynth.reconstruction.Output
 import _root_.insynth.util.logging._
@@ -94,7 +94,7 @@ case class CodeGenEvaluationStrategy(program: Program, funDef: FunDef, ctx: Leon
 	finest("New program looks like: " + newProgram)
 	finest("Candidates look like: " + candidates.map(_.prepareExpression).mkString("\n"))
         
-		val params = CodeGenEvalParams(maxFunctionInvocations = maxSteps, checkContracts = true)
+    val params = CodeGenParams(maxFunctionInvocations = maxSteps, checkContracts = true)
 	
     exampleRunner = CodeGenExampleRunner(newProgram, funDef, ctx, candidates, inputExamples, params)
         

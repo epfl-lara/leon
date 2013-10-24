@@ -10,7 +10,7 @@ import leon.purescala.Trees._
 import leon.purescala.Definitions.{ FunDef, VarDecl, Program, ObjectDef }
 import leon.purescala.Common.{ Identifier, FreshIdentifier }
 import leon.purescala.TreeOps
-import leon.codegen.CodeGenEvalParams
+import leon.codegen.CodeGenParams
 
 import examples._
 import ranking._
@@ -19,14 +19,14 @@ import _root_.insynth.util.logging.HasLogger
 
 case class CodeGenExampleRunner(program: Program, funDef: FunDef, ctx: LeonContext,
   candidates: Seq[Candidate], inputExamples: Seq[Example],
-  params: CodeGenEvalParams = CodeGenEvalParams(maxFunctionInvocations = 200, checkContracts = true)) extends ExampleRunner(inputExamples) with HasLogger {
+  params: CodeGenParams = CodeGenParams(maxFunctionInvocations = 200, checkContracts = true)) extends ExampleRunner(inputExamples) with HasLogger {
 
   private var _examples = ArrayBuffer(transformExamples(inputExamples): _*)
 
   val evaluationContext = ctx
   
   fine("building codegen evaluator with program:\n" + program)
-  lazy val _evaluator = new CodeGenEvaluator(evaluationContext, program/*TODO:, params*/)
+  lazy val _evaluator = new CodeGenEvaluator(evaluationContext, program, params)
   override def getEvaluator = _evaluator
   
   def transformExamples(examples: Seq[Example]) =
