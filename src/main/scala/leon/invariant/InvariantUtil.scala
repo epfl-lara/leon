@@ -46,6 +46,33 @@ case class ResultVariable() extends Expr with Terminal {
   override def toString : String = "#res"
 }
 
+//this used to refer to the time steps of a procedure
+case class TimeVariable() extends Expr with Terminal with FixedType {
+    val fixedType = Int32Type
+    override def toString : String = "#time"
+}
+
+object TempIdFactory {
+  
+  val temporaries = MutableSet[Identifier]()
+  //these are dummy identifiers used in 'CaseClassSelector' conversion 
+  val dummyIds = MutableSet[Identifier]()
+  
+  def createTemp(name : String) : Identifier = {
+    val freshid = FreshIdentifier(name,true)
+    temporaries.add(freshid)
+    freshid
+  }
+  
+  def createDummy() : Identifier ={
+    val freshid = FreshIdentifier("dy",true)
+    dummyIds.add(freshid)
+    freshid
+  }
+  
+  def isTemporary(id: Identifier) : Boolean = temporaries.contains(id)
+  def isDummy(id: Identifier) : Boolean = dummyIds.contains(id)  
+}
 
 object InvariantUtil {
   

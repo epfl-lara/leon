@@ -90,8 +90,9 @@ class ConstraintTracker(rootFun : FunDef) {
             	node.uifs += Call(v,fi)
             }
             case Iff(Variable(_),CaseClassInstanceOf(_,_)) | Equals(Variable(_),CaseClassSelector(_,_,_))
-                 | Equals(Variable(_),CaseClass(_,_)) | Equals(Variable(_),TupleSelect(_,_)) 
-                 | Equals(Variable(_),Tuple(_)) => {
+            	 | Iff(Variable(_),CaseClassSelector(_,_,_)) | Equals(Variable(_),CaseClass(_,_)) 
+            	 | Equals(Variable(_),TupleSelect(_,_)) | Iff(Variable(_),TupleSelect(_,_)) 
+            	 | Equals(Variable(_),Tuple(_)) => {
 
               node.adtCtrs += ADTConstraint(ie)
             }

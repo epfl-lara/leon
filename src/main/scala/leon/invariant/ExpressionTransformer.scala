@@ -33,7 +33,7 @@ object ExpressionTransformer {
   
   val zero = IntLiteral(0)
   val one = IntLiteral(1)
-  val tru = BooleanLiteral(true)
+  val tru = BooleanLiteral(true)    
 
   /**
   * This function conjoins the conjuncts created by 'transfomer' within the clauses containing Expr.
@@ -112,7 +112,7 @@ object ExpressionTransformer {
           }
         }
         case IfExpr(cond, thn, elze) => {
-          val freshvar = FreshIdentifier("ifres",true).setType(e.getType).toVariable          
+          val freshvar = TempIdFactory.createTemp("ifres").setType(e.getType).toVariable          
           val newexpr = Or(And(cond,Equals(freshvar,thn)),And(Not(cond),Equals(freshvar,elze)))
           
           val resset = transform(newexpr)
@@ -121,7 +121,7 @@ object ExpressionTransformer {
         }
         case Let(binder,value,body) => {
           //TODO: do we have to consider reuse of let variables ?
-          /*val freshvar = FreshIdentifier(binder.name,true).setType(value.getType).toVariable
+          /*val freshvar = TempIdFactory.createTemp(binder.name,true).setType(value.getType).toVariable
           val newbody = replace(Map(binder.toVariable -> freshvar),body)*/
           
           val (resbody, bodycjs) = transform(body)          
@@ -134,7 +134,7 @@ object ExpressionTransformer {
                     
           //TODO: do we have to consider reuse of let variables ?
           /*val bindvarMap : Map[Expr,Expr] = binders.map((binder) => {
-            val bindvar = FreshIdentifier(binder.name,true).setType(value.getType).toVariable
+            val bindvar = TempIdFactory.createTemp(binder.name,true).setType(value.getType).toVariable
             (binder.toVariable -> bindvar)            
           }).toMap
           val newbody = replace(bindvarMap,body)*/
@@ -155,7 +155,7 @@ object ExpressionTransformer {
               val (resvalue2, cjs) = resvalue match {
                 case t: Terminal => (t, Seq())
                 case _ => {
-                  val freshres = FreshIdentifier("tres", true).setType(resvalue.getType).toVariable
+                  val freshres = TempIdFactory.createTemp("tres").setType(resvalue.getType).toVariable
                   (freshres, Seq(Equals(freshres, resvalue)))
                 }
               }
@@ -203,7 +203,7 @@ object ExpressionTransformer {
           //create a new equality in UIFs
           val newfi = FunctionInvocation(fd,newargs)
           //create a new variable to represent the function
-          val freshResVar = Variable(FreshIdentifier("r", true).setType(fi.getType))                    
+          val freshResVar = Variable(TempIdFactory.createTemp("r").setType(fi.getType))                    
           val res = (freshResVar, newConjuncts + Equals(freshResVar, newfi))                        
           res          
         }
@@ -214,7 +214,7 @@ object ExpressionTransformer {
 
           val freshArg = newargs(0)            
           val newInst = CaseClassInstanceOf(cd,freshArg)
-          val freshResVar = Variable(FreshIdentifier("ci", true).setType(inst.getType))
+          val freshResVar = Variable(TempIdFactory.createTemp("ci").setType(inst.getType))
           newConjuncts += Iff(freshResVar, newInst) 
           (freshResVar, newConjuncts)
         }
@@ -224,7 +224,7 @@ object ExpressionTransformer {
 
           val freshArg = newargs(0)
           val newCS = CaseClassSelector(cd, freshArg, sel)
-          val freshResVar = Variable(FreshIdentifier("cs", true).setType(cs.getType))
+          val freshResVar = Variable(TempIdFactory.createTemp("cs").setType(cs.getType))
           newConjuncts += Equals(freshResVar, newCS)           
 
           (freshResVar, newConjuncts) 
@@ -235,7 +235,7 @@ object ExpressionTransformer {
 
           val freshArg = newargs(0)
           val newTS = TupleSelect(freshArg, index)
-          val freshResVar = Variable(FreshIdentifier("ts", true).setType(ts.getType))
+          val freshResVar = Variable(TempIdFactory.createTemp("ts").setType(ts.getType))
           newConjuncts += Equals(freshResVar, newTS)           
 
           (freshResVar, newConjuncts) 
@@ -246,7 +246,7 @@ object ExpressionTransformer {
           var newConjuncts = newcjs
 
           val newCC = CaseClass(cd, newargs)
-          val freshResVar = Variable(FreshIdentifier("cc", true).setType(cc.getType))
+          val freshResVar = Variable(TempIdFactory.createTemp("cc").setType(cc.getType))
           newConjuncts += Equals(freshResVar, newCC)
 
           (freshResVar, newConjuncts)  
@@ -256,7 +256,7 @@ object ExpressionTransformer {
           var newConjuncts = newcjs
 
           val newTP = Tuple(newargs)
-          val freshResVar = Variable(FreshIdentifier("tp", true).setType(tp.getType))
+          val freshResVar = Variable(TempIdFactory.createTemp("tp").setType(tp.getType))
           newConjuncts += Equals(freshResVar, newTP)
 
           (freshResVar, newConjuncts)  
@@ -280,7 +280,7 @@ object ExpressionTransformer {
               case v : Variable => v
               case r : ResultVariable => r
               case _ => {
-                val freshArgVar = Variable(FreshIdentifier("arg", true).setType(arg.getType))                                           
+                val freshArgVar = Variable(TempIdFactory.createTemp("arg").setType(arg.getType))                                           
                   newConjuncts += Equals(freshArgVar, nexpr) 
                   freshArgVar
               }
@@ -424,81 +424,22 @@ object ExpressionTransformer {
     val closure = (e: Expr) => replace(tempMap, e)
     InvariantUtil.fix(closure)(newinst)
   }
- 
-/*  def applyOnePointRule(param : (Expr, Stack[(Expr,Expr)], Set[Variable])) 
-  	: (Expr, Stack[(Expr,Expr)],  Set[Variable]) ={ 
-        
-    def recReplace(expr : Expr, eqStack : Stack[(Expr,Expr)], elimVars : Set[Variable]) 
-    : (Expr, Stack[(Expr,Expr)], Set[Variable]) = expr match {
-      
-      case v : Variable => {
-        if(elimVars.contains(v)) (eqStack.toMap.apply(v), eqStack, elimVars)        	                 
-        else (v, eqStack, elimVars)
-      }
-      case Equals(lhs, rhs) => {
-        
-        //replace in LHS and RHS
-        val newLHS = replace(eqStack.toMap, lhs)
-        val newRHS = replace(eqStack.toMap, rhs)
-        val newEq = Equals(newLHS,newRHS)
-        
-        lhs match {
-          case v : Variable => {
-            if(!elimVars.contains(v)) {
-              //println("Adding mapping "+v+" --> "+newRHS)
-              (tru, eqStack.push((v,newRHS)), elimVars + v)
-            }
-            else (newEq, eqStack, elimVars)
-          }
-          case _ => {
-            rhs match {
-              case v: Variable => if (!elimVars.contains(v)) 
-            	  					(tru, eqStack.push((v, newLHS)), elimVars + v)
-            	  				  else (newEq, eqStack, elimVars)
-              case _ => (newEq, eqStack, elimVars)
-            }
-          }
-        }        
-      }
-      case And(args) =>{        
-        val res = args.foldLeft((Seq[Expr](),eqStack,elimVars))((acc, e) => {
-          val (currArgs, s, l)  = acc
-          val (ne,ns,nl) = recReplace(e, s, l)
-          (currArgs :+ ne, ns, nl)
-        })
-        (And(res._1), res._2, res._3)        
-      }      
-      case Or(args) =>{
-        val newop = Or(args.map((e) => {
-          
-          //repeat this until a fix point
-          val (ne0,s0,l0) = recReplace(e, eqStack, elimVars)
-          //repeat this again
-          val (ne,s,l) = recReplace(ne0, s0, l0)
-          
-          //add all equalities collected in this branch here.
-          val eqs = s.collect{
-            case elem : (Expr,Expr) if(!eqStack.contains(elem)) => Equals(elem._1,elem._2)  
-          }
-          if(!eqs.isEmpty)
-        	  And(eqs :+ ne)
-          else ne
-        }))
-        (newop, eqStack,elimVars)        
-      }
-      case t: Terminal => (t, eqStack, elimVars)
-      case _ => {
-        val ne = replace(eqStack.toMap, expr)
-        (ne, eqStack, elimVars)
-      }        
-    }    
-    
-    val (ine, inStk, inVars) = param
-    //replace the keys with values
-    recReplace(ine, inStk, inVars)    
-  }
   
-*/  
+  
+  /**
+   * A hacky way to implement subexpression check. 
+   * TODO: fix this
+   */
+  def isSubExpr(key: Expr, expr: Expr) : Boolean = {
+    
+    var found = false
+    simplePostTransform((e : Expr) => e match {
+      case _ if(e == key) => found = true; e
+      case _ => e
+    })(expr)
+    found
+  } 
+
   /*def simplifyArithWithReals(expr: Expr): Expr = {
     def simplify0(expr: Expr): Expr = expr match {
       case Plus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 + i2)

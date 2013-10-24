@@ -168,35 +168,48 @@ class BoolConstraint(e : Expr) extends Template {
 }
 
 object ADTConstraint {
+  
+  def handleClassSelector(r: Expr, cd: CaseClassDef, ccvar: Expr, ccfld: Identifier): ADTConstraint = {
+    //convert this to a cons by creating dummy variables        
+    val args = cd.fieldsIds.map((fld) => {
+      if (fld == ccfld) r
+      else {
+        //create a dummy identifier there
+        TempIdFactory.createDummy.setType(fld.getType).toVariable
+      }
+    })
+    val ccExpr = Equals(ccvar, CaseClass(cd, args))
+    new ADTConstraint(ccExpr, Some(ccExpr))
+  }
+
+  def handleTupleSelect(r: Expr, tpvar: Expr, index: Int): ADTConstraint = {
+    //convert this to a Tuple by creating dummy variables        
+    val tupleType = tpvar.getType.asInstanceOf[TupleType]
+    val args = (1 until tupleType.dimension + 1).map((i) => {
+      if (i == index) r
+      else {
+        //create a dummy identifier there (note that here we have to use i-1)
+        TempIdFactory.createDummy.setType(tupleType.bases(i - 1)).toVariable
+      }
+    })
+    val tpExpr = Equals(tpvar, Tuple(args))
+    new ADTConstraint(tpExpr, Some(tpExpr))
+  }
+  
   def apply(e: Expr): ADTConstraint = e match {
 
     //is this a tuple or case class select ?
     case Equals(r @ Variable(_), CaseClassSelector(cd, ccvar, ccfld)) => {
-      //convert this to a cons by creating dummy variables        
-      val args = cd.fieldsIds.map((fld) => {
-        if (fld == ccfld) r
-        else {
-          //create a dummy identifier there
-          FreshIdentifier("dy", true).setType(fld.getType).toVariable
-        }
-      })
-      val ccExpr = Equals(ccvar, CaseClass(cd, args))
-      new ADTConstraint(ccExpr, Some(ccExpr))
-
+    	handleClassSelector(r,cd,ccvar,ccfld)
+    }
+    case Iff(r @ Variable(_), CaseClassSelector(cd, ccvar, ccfld)) => {
+    	handleClassSelector(r,cd,ccvar,ccfld)
     }
     case Equals(r @ Variable(_), TupleSelect(tpvar, index)) => {
-      //convert this to a Tuple by creating dummy variables        
-      val tupleType = tpvar.getType.asInstanceOf[TupleType]
-      val args = (1 until tupleType.dimension + 1).map((i) => {
-        if (i == index) r
-        else {
-          //create a dummy identifier there (note that here we have to use i-1)
-          FreshIdentifier("dy", true).setType(tupleType.bases(i - 1)).toVariable
-        }
-      })
-      val tpExpr = Equals(tpvar, Tuple(args))
-      new ADTConstraint(tpExpr, Some(tpExpr))
-
+      handleTupleSelect(r,tpvar,index)
+    }
+    case Iff(r @ Variable(_), TupleSelect(tpvar, index)) => {
+      handleTupleSelect(r,tpvar,index)
     }
     //is this a tuple or case class def ?
     case Equals(Variable(_), CaseClass(_, _)) | Equals(Variable(_), Tuple(_)) => {

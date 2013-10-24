@@ -17,48 +17,90 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
   val description = "Expose runtime steps for each function"  
 
   def run(ctx: LeonContext)(program: Program) : Program = {
-    
+            
     // Map from old fundefs to new fundefs
 	var funMap = Map[FunDef, FunDef]()
   
-	//create new functions with augmented return types
+	//find functions that use time in the postcondition or are transitively called from such functions
+	var rootFuncs = Set[FunDef]()
+	program.definedFunctions.foreach((fd) => { 
+	  if(fd.hasPostcondition 
+	      && ExpressionTransformer.isSubExpr(TimeVariable(), fd.postcondition.get._2)) {
+	    rootFuncs += fd
+	  } 
+	  else if(UserTemplates.templates.contains(fd) 
+	      && ExpressionTransformer.isSubExpr(TimeVariable(), UserTemplates.templates(fd))) {
+	    rootFuncs += fd
+	  }	    
+	})
+	//find all functions transitively called from this
+	val cg = CallGraphUtil.constructCallGraph(program)
+	val callees = rootFuncs.foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd))
+
+    //create new functions.  Augment the return type of a function iff the postcondition uses 'time' 
+    // or if the function is transitively called from such a function
     for (fd <- program.definedFunctions) yield {
-      // STEP 1: Create new function and map the old function to the new, using funMap
-      val newRetType = TupleType(Seq(fd.returnType, Int32Type)) 
-      val freshId = FreshIdentifier(fd.id.name, true).setType(newRetType)
-      val newfd = new FunDef(freshId, newRetType, fd.args)
-      funMap += (fd -> newfd)
+      
+      if (callees.contains(fd)) {
+        val newRetType = TupleType(Seq(fd.returnType, Int32Type))
+        val freshId = FreshIdentifier(fd.id.name, true).setType(newRetType)
+        val newfd = new FunDef(freshId, newRetType, fd.args)
+        funMap += (fd -> newfd)
+      } else {
+
+        //here we need not augment the return types
+        val freshId = FreshIdentifier(fd.id.name, true).setType(fd.returnType)
+        val newfd = new FunDef(freshId, fd.returnType, fd.args)
+        funMap += (fd -> newfd)
+      }
     }
 
     def mapCalls(ine: Expr): Expr = {
       simplePostTransform((e: Expr) => e match {
         case FunctionInvocation(fd, args) =>
-          TupleSelect(FunctionInvocation(funMap(fd), args), 1)
+
+          if (callees.contains(fd)) {
+            TupleSelect(FunctionInvocation(funMap(fd), args), 1)
+          } else {
+            FunctionInvocation(funMap(fd), args)
+          }
+
         case _ => e
       })(ine)
-    }    
+    } 
+    
     for ((from, to) <- funMap) {
       //println("considering function: "+from.id.name)
       to.precondition  = from.precondition.map(mapCalls(_))
 
       to.postcondition = if (from.hasPostcondition) {
+        
         val (fromRes, fromCond) = from.postcondition.get
         val toResId = FreshIdentifier(fromRes.name, true).setType(to.returnType)
-        //replace fromRes by toRes._1 fromCond and time by toRes._2 in  fromCond
-        val substsMap = Map[Expr, Expr](fromRes.toVariable -> TupleSelect(toResId.toVariable, 1), TimeVariable() -> TupleSelect(toResId.toVariable, 2))
+
+        val substsMap = if (callees.contains(from)) {
+          //replace fromRes by toRes._1 in fromCond and time by toRes._2 in  fromCond
+          Map[Expr, Expr](fromRes.toVariable -> TupleSelect(toResId.toVariable, 1), TimeVariable() -> TupleSelect(toResId.toVariable, 2))
+        } else {
+          //replace fromRes by toRes in fromCond
+          Map[Expr, Expr](fromRes.toVariable -> toResId.toVariable)
+        }
         val toCond = mapCalls(replace(substsMap, fromCond))
 
         //important also update the templates here         
         if (UserTemplates.templates.contains(from)) {
-          val toTemplate = mapCalls(replace(substsMap,UserTemplates.templates(from)))
+          val toTemplate = mapCalls(replace(substsMap, UserTemplates.templates(from)))
           //creating new template          
           UserTemplates.setTemplate(to, toTemplate)
         }
-        
         Some((toResId, toCond))
+        
       } else None
-            
-      to.body  = from.body.map(new ExposeTimes(ctx, getCostModel, funMap).apply _)
+
+      //instrument the bodies of all 'callees' only for tracking time
+      to.body = if (callees.contains(from)) {
+        from.body.map(new ExposeTimes(ctx, getCostModel, funMap).apply _)
+      } else from.body.map(mapCalls _)
     }
 
     val newDefs = program.mainObject.defs.map {
@@ -232,18 +274,18 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
       val input  = matchToIfThenElse(e)
       
       // For debugging purposes      
-      println("#"*80)
+      /*println("#"*80)
       println("BEFORE:")
-      println(input)
+      println(input)*/
             
       // Apply transformations
       val res    = transform(input)      
       val simple = simplifyArithmetic(simplifyLets(res))
 
       // For debugging purposes            
-      println("-"*80)
+      /*println("-"*80)
       println("AFTER:")      
-      println(simple)
+      println(simple)*/
       simple
     }
   }

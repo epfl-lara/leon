@@ -41,6 +41,31 @@ class DirectedGraph[T] {
 
     BFSReachRecur(src)
   }
+  
+  def BFSReachables(src: T): Set[T] = {
+    var queue = List[T]()
+    var visited = Set[T]()
+    visited += src
+    
+    def BFSReachRecur(cur: T): Unit = {
+      if (adjlist.contains(cur)) {
+        adjlist(cur).foreach((neigh) => {        
+          if (!visited.contains(neigh)) {
+            visited += neigh
+            queue ::= neigh
+          }
+        })
+      }      
+      if (!queue.isEmpty) {
+        val (head :: tail) = queue
+        queue = tail
+        BFSReachRecur(head)
+      }
+    }
+
+    BFSReachRecur(src)
+    visited
+  }
 
   def containsEdge(src: T, dest: T) : Boolean = {
     if(adjlist.contains(src)) {

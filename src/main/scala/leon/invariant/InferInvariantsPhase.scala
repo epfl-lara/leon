@@ -46,8 +46,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."))
 
   //TODO: handle direct equality and inequality on ADTs
-  class InferenceEngineGenerator(reporter: Reporter, program: Program, context: LeonContext,
-    uisolver: SimpleSolverAPI) {
+  class InferenceEngineGenerator(reporter: Reporter, program: Program, context: LeonContext) {
 
     def getInferenceEngine(funDef: FunDef, tempFactory : TemplateFactory): (() => Option[Boolean]) = {
 
@@ -129,7 +128,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         else {
           //solve for the templates at this unroll step
           //val res = lsAnalyzer.solveForTemplates(uisolver)
-          val res = lsAnalyzer.solveForTemplatesIncr(uisolver)
+          val res = lsAnalyzer.solveForTemplatesIncr()
 
           if (res.isDefined) {
 
@@ -241,6 +240,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     val sat = fairZ3.solveSAT(Not(vc.condition))
     sat
   }
+  
 
   def run(ctx: LeonContext)(program: Program): VerificationReport = {
 
@@ -260,23 +260,21 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       case _ =>
     }
     
-    //create a callgraph for the program
-    //val callGraph = ProgramCallGraph.getCallGraph(program)
-
-    //create an ui solver
-    val uisolver = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(ctx, program)))    
-    val infEngineGen = new InferenceEngineGenerator(reporter, program, ctx, uisolver)
+    //this is an inference engine that checks if there exists an invariant belonging to the current templates 
+    val infEngineGen = new InferenceEngineGenerator(reporter, program, ctx)
+    //A template generator that generates templates for the functions (here we are generating templates by enumeration)          
+    val tempFactory = new TemplateFactory(Some(new TemplateEnumerator(program, reporter)), reporter)
+    
     val analysedFunctions: MutableSet[String] = MutableSet.empty
-
     for (
       funDef <- program.definedFunctions.toList.sortWith((fd1, fd2) => fd1 < fd2) 
       if (functionsToAnalyse.isEmpty || functionsToAnalyse.contains(funDef.id.name))
     ) {
-      analysedFunctions += funDef.id.name
+      analysedFunctions += funDef.id.name      
 
       if (funDef.body.isDefined && funDef.postcondition.isDefined) {
         val body = funDef.body.get
-        val (resvar,post) = funDef.postcondition.get
+        val (resvar,post) = funDef.postcondition.get                
 
         reporter.info("- considering function " + funDef.id + "...")
         reporter.info("Body: " + simplifyLets(body))
@@ -284,43 +282,39 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
         /*if (post == BooleanLiteral(true)) {
           reporter.info("Post is true, nothing to be proven!!")
-        } else {*/
-         
-          val t1 = System.currentTimeMillis()
+        } else {*/                     
 
-          //create a template generator that generates templates for the functions          
-          val tempFactory = new TemplateFactory(Some(new TemplateEnumerator(program, reporter)), reporter)
-          var solved : Option[Boolean] = None
+        val t1 = System.currentTimeMillis()
 
-          while (!solved.isDefined) {
-            
-            val infEngine = infEngineGen.getInferenceEngine(funDef, tempFactory)
-            var infRes: Option[Boolean] = None
+        var solved: Option[Boolean] = None
+        while (!solved.isDefined) {
 
-            while (!infRes.isDefined) {
-              infRes = infEngine()
-            }
-            solved = infRes match {
-              case Some(true) => Some(true)
-              case Some(false) => {
-                reporter.info("- Template not solvable!!")
-                //refine the templates here
-                val refined = tempFactory.refineTemplates()
-                if(refined) None
-                else Some(false)
-              }
-              case _ => throw new IllegalStateException("This case is not possible")
-            }
+          val infEngine = infEngineGen.getInferenceEngine(funDef, tempFactory)
+          var infRes: Option[Boolean] = None
+
+          //each call to infEngine performs unrolling of user-defined procedures in templates
+          while (!infRes.isDefined) {
+            infRes = infEngine()
           }
-          if(!solved.get) {
-            reporter.info("- Exhausted all templates, cannot infer invariants")
-            System.exit(0)
-          }            
-            
-                                         
-          val t2 = System.currentTimeMillis()
-          val dt = ((t2 - t1) / 1000.0)
-        //}
+          solved = infRes match {
+            case Some(true) => Some(true)
+            case Some(false) => {
+              reporter.info("- Template not solvable!!")
+              //refine the templates here
+              val refined = tempFactory.refineTemplates()
+              if (refined) None
+              else Some(false)
+            }
+            case _ => throw new IllegalStateException("This case is not possible")
+          }
+        }
+        if (!solved.get) {
+          reporter.info("- Exhausted all templates, cannot infer invariants")
+          System.exit(0)
+        }
+
+        val t2 = System.currentTimeMillis()
+        val dt = ((t2 - t1) / 1000.0)       
       }
     }
     val notFound = functionsToAnalyse -- analysedFunctions

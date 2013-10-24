@@ -32,50 +32,28 @@ class LinearImplicationSolver {
   private val one = IntLiteral(1)
   //for debugging 
   private var cvarsSet = Set[Expr]()
-  
+
   /**
-   * This procedure produces a set of constraints that need to be satisfiable for the 
+   * This procedure produces a set of constraints that need to be satisfiable for the
    * conjunction ants and conseqs to be false
    * antsSimple - antecedents without template variables
    * antsTemp - antecedents with template variables
    * Similarly for conseqsSimple and conseqsTemp
-   * 
+   *
    * Let A,A' and C,C' denote the simple and templated portions of the antecedent and the consequent respectively.
    * We need to check \exists a, \forall x, A[x] ^ A'[x,a] ^ C[x] ^ C'[x,a] = false
-   * 
+   *
    */
   def constraintsForUnsat(antsSimple: Seq[LinearConstraint], antsTemp: Seq[LinearTemplate],
-    conseqsSimple: Seq[LinearConstraint], conseqsTemp: Seq[LinearTemplate],
-    uisolver: SimpleSolverAPI): Expr = {
-    
+    conseqsSimple: Seq[LinearConstraint], conseqsTemp: Seq[LinearTemplate]): Expr = {
+
     val allAnts = antsSimple ++ antsTemp
     val allConseqs = conseqsSimple ++ conseqsTemp
     //for debugging
     /*println("#" * 20)
     println(allAnts + " ^ " + allConseqs)    
     println("#" * 20)*/
-    
-
-    //Optimization 1: Check if ants are unsat (already handled)    
-    val pathVC = And(antsSimple.map(_.expr).toSeq ++ conseqsSimple.map(_.expr).toSeq)
-    //val notPathVC = And(And(antsSimple.map(_.expr).toSeq),Not(And(conseqsSimple.map(_.expr).toSeq)))
-    val (satVC, _) = uisolver.solveSAT(pathVC)
-    //val (satNVC,_,_) = uisolver.solveSATWithFunctionCalls(notPathVC)
-
-    //Optimization 2: use the unsatisfiability of VC and not VC to simplify the constraint generation
-    //(a) if A^C is false then the entire formula is unsat so return true
-    //(b) if A^C is not false and A' is true and C' is true then we cannot make it unsat so return false
-    //(c) otherwise, if A^C is satisfiable we cannot do any simplification 
-    //TODO: Food for thought: can we do any more simplification      
-    satVC match {
-      case Some(false) => BooleanLiteral(true)
-      case _ if (antsTemp.isEmpty && conseqsTemp.isEmpty) => BooleanLiteral(false)
-      case _ => {
-        //here we are solving for unsatisfiablility
-        this.applyFarkasLemma(allAnts ++ allConseqs, Seq(), true)
-      }
-    }
-    
+    this.applyFarkasLemma(allAnts ++ allConseqs, Seq(), true)
   }
 
   /**

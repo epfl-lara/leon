@@ -23,7 +23,7 @@ object RedBlackTree {
       case Empty() => 1
       case Node(_, l, v, r) => size(l) + 1 + size(r)
     })
-  } ensuring (res => res != (twopower(blackHeight(t)) - 2) template((a,b,c) => a*res + b*twopower(blackHeight(t)) + c < 0))   
+  } //ensuring (res => res != (twopower(blackHeight(t)) - 2) template((a,b,c) => a*res + b*twopower(blackHeight(t)) + c < 0))   
     
   def blackHeight(t : Tree) : Int = {    
    t match {    
@@ -43,39 +43,41 @@ object RedBlackTree {
   def redNodesHaveBlackChildren(t: Tree) : Boolean = t match {
     case Empty() => true
     case Node(Black(), l, _, r) => redNodesHaveBlackChildren(l) && redNodesHaveBlackChildren(r)     						
-    case Node(Red(), l, _, r) => isBlack(l) && isBlack(r) && redNodesHaveBlackChildren(l) && redNodesHaveBlackChildren(r)    							
+    case Node(Red(), l, _, r) => isBlack(l) && isBlack(r) && redNodesHaveBlackChildren(l) && redNodesHaveBlackChildren(r)
+    case _ => false
   } 
 
-  def redDescHaveBlackChildren(t: Tree) : Boolean = t match {
-    case Empty() => true
+  def redDescHaveBlackChildren(t: Tree) : Boolean = t match {    
     case Node(_,l,_,r) => redNodesHaveBlackChildren(l) && redNodesHaveBlackChildren(r)
+    case _ => true
   }
   
   def blackBalanced(t : Tree) : Boolean = t match {
     case Node(_,l,_,r) => blackBalanced(l) && blackBalanced(r) && blackHeight(l) == blackHeight(r)
-    case Empty() => true
+    case _ => true
   }        
   
   // <<insert element x into the tree t>>
-  def ins(x: Int, t: Tree): (Tree,Int) = {
+  def ins(x: Int, t: Tree): Tree = {
     require(redNodesHaveBlackChildren(t) && blackBalanced(t))
     
     t match {
-      case Empty() => (Node(Red(),Empty(),x,Empty()), 0)
+      case Empty() => Node(Red(),Empty(),x,Empty())
       case Node(c,a,y,b) =>
         if(x < y) {
-        	val (t1,i) = ins(x, a)
-        	(balance(c, t1, y, b), i + 1)
+        	val t1 = ins(x, a)
+        	balance(c, t1, y, b)
         }
         else if (x == y){
-        	(Node(c,a,y,b), 0)
+        	Node(c,a,y,b)
         }
         else{
-          val (t1,i) = ins(x, b)
-          (balance(c,a,y,t1), i + 1)
+          val t1 = ins(x, b)
+          balance(c,a,y,t1)
         } 
     }
-  } //ensuring (res => true template((a,b) => a* res._2 <= 2 * blackHeight(t))) 
+  } ensuring(res => true template((a,b) => time <= a*blackHeight(t) + b)) 
+  //ensuring (res => true template((a,b) => a* res._2 <= 2 * blackHeight(t))) 
   //ensuring (res => res._2 <= 2 * blackHeight(t))                   
 
   def makeBlack(n: Tree): Tree = {
@@ -85,10 +87,10 @@ object RedBlackTree {
     }
   }  
   
-  def add(x: Int, t: Tree): (Tree,Int) = {
+  def add(x: Int, t: Tree): Tree = {
     require(redNodesHaveBlackChildren(t) && blackBalanced(t) )
-    val (t1,i) =  ins(x, t)
-    (makeBlack(t1),i)
+    val t1 =  ins(x, t)
+    makeBlack(t1)
   } //ensuring (res => res._2 <= 2 * blackHeight(t))                
   //size(t) >= (twopower(blackHeight(t)) - 1) &&
   
@@ -103,7 +105,7 @@ object RedBlackTree {
         Node(Red(),Node(Black(),a,xV,b),yV,Node(Black(),c,zV,d))
       case Node(Black(),a,xV,Node(Red(),b,yV,Node(Red(),c,zV,d))) => 
         Node(Red(),Node(Black(),a,xV,b),yV,Node(Black(),c,zV,d))
-      case Node(c,a,xV,b) => Node(c,a,xV,b)
+      case _ => Node(co,l,x,r)
     }
   } 
 }

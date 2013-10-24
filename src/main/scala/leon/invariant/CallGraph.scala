@@ -20,6 +20,10 @@ class CallGraph {
 		  graph.addEdge(src, callee)
 	}
 	
+	def transitiveCallees(src: FunDef) : Set[FunDef] = {
+	  graph.BFSReachables(src)
+	}
+	
 	/**
 	 * Checks if the src transitively calls the procedure proc
 	 */
