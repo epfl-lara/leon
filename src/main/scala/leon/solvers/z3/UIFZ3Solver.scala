@@ -74,7 +74,7 @@ class UIFZ3Solver(val context : LeonContext, val program: Program)
 
   def assertCnstr(expression: Expr) {
     variables ++= variablesOf(expression)
-    containsFunCalls ||= containsFunctionCalls(expression)
+    //containsFunCalls ||= containsFunctionCalls(expression)
     solver.assertCnstr(toZ3Formula(expression).get)
   }
 

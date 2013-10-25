@@ -31,6 +31,7 @@ import leon.solvers.z3.UIFZ3Solver
 import leon.invariant._
 import leon.purescala.UndirectedGraph
 import scala.util.control.Breaks._
+import leon.solvers.SolverFactory
 
 class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: TemplateFactory,
     context : LeonContext, program : Program) {
@@ -265,11 +266,11 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
     //create a new solver 
     val solverWithCtrs = new UIFZ3Solver(this.context, program)
-    solverWithCtrs.assertCnstr(tru)
+    //solverWithCtrs.assertCnstr(tru)
     //for stats
     ctrCount = 0
     
-    val solution = recSolveForTemplatesIncr(simplestModel, solverWithCtrs, funcExprs)
+    val solution = recSolveForTemplatesIncr(simplestModel, solverWithCtrs, funcExprs, tru)
     solverWithCtrs.free()
     solution
   }
@@ -373,9 +374,9 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     solverWithCtrs.free()
     solution
   }
-*/
-  var oldCtrs : Expr = _
-  def recSolveForTemplatesIncr(model: Map[Identifier, Expr], solverWithCtrs: UIFZ3Solver, funcExprs: Map[FunDef, Expr])
+*/  
+  def recSolveForTemplatesIncr(model: Map[Identifier, Expr], solverWithCtrs: UIFZ3Solver, funcExprs: Map[FunDef, Expr],
+      nonLinearCtr : Expr)
   	: Option[Map[FunDef, Expr]] = {
 
     val funcs = funcExprs.keys
@@ -482,44 +483,54 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       //For statistics.
       //reporter.info("- Number of new Constraints: " + newctrs.size)          
       //call the procedure recursively
-      val newctr = And(newctrs)
-      /*println("Computing new ctrs")
-      if(oldCtrs == newctr)
-        println("Old and new ctrs match!!!!")
-      oldCtrs = newctr*/
-      
+      val newctr = And(newctrs)      
 
       //for stats and debugging
       ctrCount += InvariantUtil.atomNum(newctr)
       println("# of atomic predicates: " + ctrCount)
 
       //add the new constraints      
+      //TODO: Report the bug to z3
       solverWithCtrs.assertCnstr(newctr)
-      
       //println("Assertions: \n"+solverWithCtrs.ctrsToString)               
-      FileCountGUID.fileCount += 1
-    	val pwr = new PrintWriter("z3formula-"+FileCountGUID.fileCount+".smt")    
-    	pwr.println(solverWithCtrs.ctrsToString)
-    	pwr.flush()
-    	pwr.close()    	
+      /*FileCountGUID.fileCount += 1
+      val filename = "z3formula-" + FileCountGUID.fileCount + ".smt"
+      val pwr = new PrintWriter(filename)
+      pwr.println(solverWithCtrs.ctrsToString)
+      pwr.flush()
+      pwr.close()
+      println("Formula printed to File: " + filename)*/
+      
+      /*val asserts = solverWithCtrs.solver.getAssertions()
+      val newsolver = new UIFZ3Solver(context,program)      
+      val expr = asserts.toSeq.foldLeft(tru : Expr)((acc, assert) => And(acc,solverWithCtrs.fromZ3Formula(null,assert)))
+      newsolver.assertCnstr(expr)*/            
+      
+      val conjunctedCtr = And(nonLinearCtr,newctr)
+      val simpSolver =  SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context,program)))      
     	
       println("solving...")
-      val t1 = System.currentTimeMillis()
-      val res = solverWithCtrs.check match {
+      val t1 = System.currentTimeMillis()      
+      //val res1 = newsolver.innerCheck
+      val (res,newModel) = simpSolver.solveSAT(conjunctedCtr)
+      val t2 = System.currentTimeMillis()
+      println("solved... in " + (t2 - t1) / 1000.0 + "s")
+      
+      res  match {
         case None => None
         case Some(false) => {
           //print some statistics 
           reporter.info("- Number of explored paths (of the DAG) in this unroll step: " + exploredPaths)
           None
         }
-        case Some(true) => {                    
-          recSolveForTemplatesIncr(solverWithCtrs.getModel, solverWithCtrs, funcExprs)
+        case Some(true) => {          
+          /*println("Found a model1: "+newModel)
+          println("Found a model2: "+newsolver.getModel)
+          newsolver.free()*/
+          recSolveForTemplatesIncr(newModel, solverWithCtrs, funcExprs, conjunctedCtr)
         }
       }      
-      res
-      /*val t2 = System.currentTimeMillis()
-      println("solved... in " + (t2 - t1) / 1000.0 + "s")
-       */ 
+       
     }
   }
   
@@ -783,6 +794,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
             traversePostTree(postRoot, currentCtrs, currentTemps, auxCtrs, currentUIFs, adtCons, Seq(), Seq(), Seq(), depth + 1)                                      
           } else {
             //println("Found unsat path: " + pathExpr)
+            throw new IllegalStateException("Found unsat path!! ")
             tru
           }
         }
@@ -837,7 +849,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
             //pipe to the uif constraint generator           
             uifsConstraintsGen(ants, antTemps, antAuxs, currUIFs, adtCons, conseqs, currTemps, currAuxs, depth + 1)                                      
           } else {
-            //println("Found unsat path: " + pathExpr)
+            throw new IllegalStateException("Found unsat path!! ")
             tru
           }
         }
@@ -1025,7 +1037,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
      */
     def ADTequalities(eqs: Seq[Expr]): Seq[Expr] = {
       eqs.filter((eq) => {
-        val Equals(lhs, rhs) = eq
+        val BinaryOperator(lhs, rhs, _) = eq
         (lhs.getType != Int32Type && lhs.getType != BooleanType && lhs.getType != RealType)
       })
     }
@@ -1117,21 +1129,21 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           
           val (lhs,_) = axiomatizeADTCons(call1,call2)                    
           val newLHS = lhs.filter(_ match {
-            case Equals(Variable(lid),Variable(rid)) => {
+            case BinaryOperator(Variable(lid),Variable(rid), _) => {
               //remove self equalities.
               if(lid == rid) false
               //TODO: remove the equalities between dummy ids. why is this not working ?
               //else if(TempIdFactory.isDummy(lid) || TempIdFactory.isDummy(rid)) false              
               else true
             }
-            case _ => throw new IllegalStateException("Not an equality !!")
+            case e@_ => throw new IllegalStateException("Not an equality or Iff: "+e)
           })
           preds ++= newLHS
         }
         
         //Finally, removing predicates on ADTs
         acc ++ preds.filter((eq) => {
-            val Equals(lhs, rhs) = eq
+            val BinaryOperator(lhs, rhs, op) = eq
             (lhs.getType == Int32Type || lhs.getType == RealType || lhs.getType == BooleanType)
           }) 
       }      
@@ -1143,7 +1155,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           val (ants,conseq) = axiomatizeCalls(call1,call2)
           //here, remove ADT equalities if any from the ant (because it was already implied)
           val intEqs = ants.filter((eq) => {
-            val Equals(lhs, rhs) = eq
+            val BinaryOperator(lhs, rhs, _) = eq
             (lhs.getType == Int32Type || lhs.getType == RealType || lhs.getType == BooleanType)
           }) 
           
