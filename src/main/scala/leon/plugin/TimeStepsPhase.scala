@@ -33,8 +33,8 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
 	    rootFuncs += fd
 	  }	    
 	})
-	//find all functions transitively called from this
-	val cg = CallGraphUtil.constructCallGraph(program)
+	//find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
+	val cg = CallGraphUtil.constructCallGraph(program, onlyBody = true)
 	val callees = rootFuncs.foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd))
 
     //create new functions.  Augment the return type of a function iff the postcondition uses 'time' 

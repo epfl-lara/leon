@@ -46,16 +46,18 @@ class CallGraph {
 
 object CallGraphUtil {
   
-  def constructCallGraph(prog : Program) : CallGraph = {
+  def constructCallGraph(prog : Program, onlyBody : Boolean = false) : CallGraph = {
 	
     val cg = new CallGraph()    
     prog.definedFunctions.foreach((fd) => {          
       if(fd.hasBody){
         var funExpr = fd.body.get
-        if(fd.hasPrecondition) 
-        	funExpr = Tuple(Seq(funExpr,fd.precondition.get))
-        if(fd.hasPostcondition) 
-        	funExpr = Tuple(Seq(funExpr,fd.postcondition.get._2))
+        if (!onlyBody) {
+          if (fd.hasPrecondition)
+            funExpr = Tuple(Seq(funExpr, fd.precondition.get))
+          if (fd.hasPostcondition)
+            funExpr = Tuple(Seq(funExpr, fd.postcondition.get._2))
+        }
        	
         //introduce a new edge for every callee
         getCallees(funExpr).foreach(cg.addEdgeIfNotPresent(fd, _))            

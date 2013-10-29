@@ -23,17 +23,20 @@ import leon.verification.Tactic
 import leon.verification.VerificationReport
 import leon.invariant._
 
-class CallData(val node : CtrNode, val cnt: Int) {
-  val ctrnode = node
-  val unrollCnt = cnt
+class CallData(val ctrnode : CtrNode, val parents: List[FunDef]) {  
 }
 
-//TODO: the parts of the code that collect the new head functions is ugly. Fix this.
+//TODO: the parts of the code that collect the new head functions is ugly and has many side-effects. Fix this.
 class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory : TemplateFactory, reporter : Reporter) {
+    
+  //this count indicates the number of times we unroll a recursive call
+  private val MAX_UNROLLS = 2
   
-  private val MAX_UNROLLS = 2 
-  //a mapping from a call to the node containing the call (plus some additional data like the unroll depth etc.)    
-  private var headCallPtrs : Map[Call, CallData] = _
+  //a mapping from a call to the node containing the call (plus some additional data like the list of transitive callers etc.)
+  private var callDataMap = Map[Call, CallData]()
+  
+  //a set of calls that have not been unrolled (there are potential unroll cadidates)
+  private var headCalls = Set[Call]()
 
   //a set of calls for which its templates have been assumed
   //TODO: Ideally this info should stored in a distributed way inside the nodes of the constraint tree
@@ -43,41 +46,46 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
   * This creates an initial abstraction 
   **/
   def initialize() : Unit = {
-
-    //this procedure has side-effects on 'templatedCalls'
-    //we are consciously ignoring the return value of the procedure
-    assumePostConditions()
-
-    headCallPtrs = findAllHeads(ctrTracker)
+    
+    //This procedure has side-effects on many fields.
+    headCalls = findAllHeads(ctrTracker)
+    
     //for debugging
     //println("Head-Calls: "+headCallPtrs.keys.toSeq)
     //System.exit(0)
+    
+    //This procedure has side-effects on many fields.
+    //We are consciously ignoring the return value of the procedure
+    assumePostConditions()
   }
 
-  private def findAllHeads(ctrTracker: ConstraintTracker) : Map[Call,CallData] ={  
-    var heads = Map[Call,CallData]()
+  private def findAllHeads(ctrTracker: ConstraintTracker) : Set[Call] ={  
+    var heads = Set[Call]()
     
     ctrTracker.getFuncs.foreach((fd) => {
       val (btree,ptree) = ctrTracker.getVC(fd)      
-      heads ++= (findHeads(btree, MAX_UNROLLS) ++ findHeads(ptree, MAX_UNROLLS))
+      heads ++= (findHeads(btree, List(fd)) ++ findHeads(ptree, List(fd)))
     })        
     heads    
-  }  
-  
-  /**
-   * Heads are procedure calls whose target definitions have not been unrolled
-   */
-  private def findHeads(ctrTree: CtrTree, unrollCnt : Int) : Map[Call,CallData] ={      
-    var heads = Map[Call,CallData]()
+  }
 
-    if(unrollCnt > 0) {
-      def visitor : (CtrNode => Unit) = 
-        (node: CtrNode) => {
-          val calls = node.uifs
-          calls.foreach((call) => { heads += (call -> new CallData(node, unrollCnt)) })           
-        }  
-      TreeUtil.preorderVisit(ctrTree,visitor)      
-    }
+  /**
+   * Heads are procedure calls whose target definitions have not been inlined.
+   * The argument parents represents the functions in the chain of unrolls that resulted in the 'ctrTree'  node.
+   * This procedure has side-effects on 'callDataMap'
+   */
+  private def findHeads(ctrTree: CtrTree, parents: List[FunDef]): Set[Call] = {
+    var heads = Set[Call]()
+
+    def visitor: (CtrNode => Unit) =
+      (node: CtrNode) => {
+        val calls = node.uifs
+        calls.foreach((call) => {
+          callDataMap += (call -> new CallData(node, parents))
+          heads += call
+        })
+      }
+    TreeUtil.preorderVisit(ctrTree, visitor)
     heads
   }    
 
@@ -86,24 +94,38 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
    * Currently, the refinement happens by unrolling the head functions.   
    */
   def refineAbstraction(): Set[Call] = {
-    var newheads = Map[Call,CallData]()
-    //unroll each call in the head pointers    
-    val unrolls = headCallPtrs.foldLeft(Set[Call]())((acc, entry) => {      
-      val (call, calldata) = entry            
-
-      //the following creates new constraint trees and hence has side effects
-      if(calldata.unrollCnt > 0) {        
-        newheads ++= unrollCall(call, calldata.ctrnode, calldata.unrollCnt - 1)
-      }
-
-      acc + call
-    })
+    var newheads = Set[Call]()    
     
-    //assume the post-conditions for the calls in the VCs of this function
-    newheads ++= assumePostConditions()
+    //unroll each call in the head pointers        
+    val unrolls = headCalls.foldLeft(Set[Call]())((acc, call) => {      
+
+      val calldata = callDataMap(call)            
+      val occurrences  = calldata.parents.count(_ == call.fi.funDef)
+      //if the call is not a recursive call, unroll it unconditionally      
+      if(occurrences == 0) {
+        newheads ++= unrollCall(call, calldata)
+        acc + call
+      } else {
+    	 //if the call is a recursive, unroll iff the number of times the recursive function occurs in the context is < MAX-UNROLL        
+        if(occurrences < MAX_UNROLLS)
+        {
+          newheads ++= unrollCall(call, calldata)
+          acc + call
+        } else{
+          //otherwise, drop the call. Here we are not unrolling the call
+          acc 
+        }         
+      }
+      //TODO: are there other ways of unrolling ??      
+    })
+
+    if (!unrolls.isEmpty) {
+      //assume the post-conditions for the calls in the VCs 
+      newheads ++= assumePostConditions()
+    }
 
     //update the head functions
-    headCallPtrs = newheads 
+    headCalls = newheads 
 
     //For debugging: print the post and body root of all the functions
     /*ctrTracker.getFuncs.foreach((fd) => {
@@ -120,10 +142,10 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
   /**
    * Returns a set of unrolled calls and a set of new head functions   
    * here we unroll the methods in the current abstraction by one step.
-   * This procedure has side-effects on 'headCallPtrs'
+   * This procedure has side-effects on 'headCalls' and 'callDataMap'
    */  
   //private var unrollCounts = MutableMap[Call,Int]()
-  def unrollCall(call : Call, ctrnode : CtrNode, unrollCnt : Int): Map[Call,CallData] = {                
+  def unrollCall(call : Call, calldata : CallData): Set[Call] = {                
 
     //println("Processing: "+call)
     val fi = call.fi
@@ -132,9 +154,10 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
       //freshen the body and the post           
       val isRecursive = prog.isRecursive(fi.funDef)        
       if(isRecursive) {                        
-        var newheads = Map[Call,CallData]()
+        var newheads = Set[Call]()
         val recFun = fi.funDef
-        if (!ctrTracker.hasCtrTree(recFun)) { //check if a constraint tree does not exist for the call's target
+        //check if a constraint tree does not exist for the call's target
+        if (!ctrTracker.hasCtrTree(recFun)) { 
 
           println("Creating VC for "+fi.funDef.id)          
           /**
@@ -142,7 +165,10 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
            */          
           val freshBody = matchToIfThenElse(freshenLocals(recFun.body.get))
           val resvar = if (recFun.hasPostcondition) {
-            recFun.postcondition.get._1.toVariable
+            //create a new result variable here for the same reason as freshening the locals,
+            //which is to avoid variable capturing during unrolling            
+            val origRes = recFun.postcondition.get._1
+            Variable(FreshIdentifier(origRes.name, true).setType(origRes.getType))            
           } else {
             //create a new resvar
             Variable(FreshIdentifier("res", true).setType(recFun.returnType))
@@ -166,34 +192,26 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
 
           //Find new heads
           val (btree,ptree) = ctrTracker.getVC(recFun)
-          newheads ++= (findHeads(btree, MAX_UNROLLS) ++ findHeads(ptree, MAX_UNROLLS))          
-        }
-        //unroll the body some fixed number of times                       
-        /*val ucount = if(unrollCounts.contains(call)) {
-                          val count = unrollCounts(call)
-                          unrollCounts.update(call,count + 1)
-                          count
-                      } else {
-                        unrollCounts += (call -> 0)
-                        0
-                      }*/
-        //TODO: unroll always ??                   
+          newheads ++= (findHeads(btree, List(recFun)) ++ findHeads(ptree, List(recFun)))          
+        }        
+                   
+        //Here, unroll the call into the caller tree
         println("Unrolling " + Equals(call.retexpr,call.fi))
-        newheads ++= inilineCall(call, ctrnode, unrollCnt)          
+        newheads ++= inilineCall(call, calldata.ctrnode, calldata.parents)          
         newheads
       }
       else {        
-        //here we are unrolling a non-recursive function, so set the unrollCnt to maximum
-        println("Inlining "+fi.funDef.id)               
-        inilineCall(call, ctrnode, MAX_UNROLLS)        
+        //here we are unrolling a non-recursive function
+        println("Inlining "+Equals(call.retexpr,call.fi))               
+        inilineCall(call, calldata.ctrnode, calldata.parents)        
       }                
-    } else Map()    
+    } else Set()    
   }
 
   /**
   * The parameter 'resVar' is the result variable of the body
   **/
-  def inilineCall(call : Call, ctrnode: CtrNode, unrollCnt : Int) : Map[Call,CallData] = {    
+  def inilineCall(call : Call, ctrnode: CtrNode, parents : List[FunDef]) : Set[Call] = {    
     //here inline the body && Post and add it to the tree of the rec caller
     val callee = call.fi.funDef
     val post = callee.postcondition
@@ -218,7 +236,8 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     ctrTracker.addConstraintRecur(inlinedSummary, summaryTree)          
 
     //Find new heads (note: should not insert summaryTree and then call findheads)
-    val newheads = findHeads(summaryTree, unrollCnt)
+    //note: For memory efficiency, the callee is prepended to parents and not appended
+    val newheads = findHeads(summaryTree, (callee +: parents))
 
     //insert the tree
     TreeUtil.insertTree(ctrnode, summaryTree)        
@@ -230,9 +249,9 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
   * This function refines the constraint tree by assuming the post conditions/templates for calls in
   * the body and post tree.
   */
-  def assumePostConditions() : Map[Call,CallData] = {
+  def assumePostConditions() : Set[Call] = {
     
-    ctrTracker.getFuncs.foldLeft(Map[Call,CallData]())((acc, fd) => {
+    ctrTracker.getFuncs.foldLeft(Set[Call]())((acc, fd) => {
 
       val (btree,ptree) = ctrTracker.getVC(fd)      
       val hds = assumePostConditionsForTree(btree, ptree, fd)            
@@ -240,7 +259,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     })
   }
   
-  def assumePostConditionsForTree(bodyRoot: CtrNode, postRoot : CtrNode, fd: FunDef) : Map[Call,CallData] = {
+  def assumePostConditionsForTree(bodyRoot: CtrNode, postRoot : CtrNode, fd: FunDef) : Set[Call] = {
     
     /**
      * A helper function that creates templates for a call
@@ -257,7 +276,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     }
 
     var visited = Set[CtrNode]()
-    var newheads = Map[Call,CallData]()
+    var newheads = Set[Call]()
 
     //this does a post order traversal
     def assumeTemplates(root: CtrTree) : Unit = root match {
@@ -288,23 +307,23 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
           //update processed calls
           templatedCalls ++= newCalls 
 
-          val templates = newCalls.map(templateForCall(_))
-
-          if (!templates.isEmpty) {
-          
-            val ctr = And(templates)          
+          val templates = newCalls.map(call => {
+            
+            val template = templateForCall(call)          
             //flatten functions
-            val flatExpr = ExpressionTransformer.normalizeExpr(ctr)
+            //TODO: should we freshen locals here ??
+            val flatExpr = ExpressionTransformer.normalizeExpr(template)
             //create the root of a new  tree          
             val templateTree = CtrNode()          
             ctrTracker.addConstraintRecur(flatExpr, templateTree)
 
-            //find new heads
-            newheads ++= findHeads(templateTree, MAX_UNROLLS)
+            //find new heads            
+            newheads ++= findHeads(templateTree, callDataMap(call).parents)
 
             //insert the templateTree after this node
-            TreeUtil.insertTree(n,templateTree)                        
-          } 
+            TreeUtil.insertTree(n,templateTree)                                 
+          })
+
         }                
       }      
       case CtrLeaf() => ;

@@ -1063,7 +1063,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           } else {
             //here the argument equality does not follow from the precondition but may be implied by instantiation of the templates
             //TODO: try some optimizations here, write down the ideas here
-            //TODO: consider the following optimization :
+            //(a) consider the following optimization :
             //take the model found in this case. If the instantiation of the template does not satisfy the model
             //then may be it could imply the equality. So, we could try this case later.              
 
@@ -1119,8 +1119,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       val (call1,call2)= pair
       if(eqGraph.containsEdge(call1,call2)) {
                
-        val Equals(r1@_,_) = call1
-        val Equals(r2@_,_) = call2
+        val BinaryOperator(r1@_,_,_) = call1
+        val BinaryOperator(r2@_,_,_) = call2
         var preds = if(r1 != r2) Seq(Equals(r1,r2))
         			else Seq()
         
