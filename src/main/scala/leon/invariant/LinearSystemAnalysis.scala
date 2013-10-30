@@ -43,6 +43,10 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
   //some constants
   private val fls = BooleanLiteral(false)
   private val tru = BooleanLiteral(true)
+  
+  //flags controlling debugging and statistics generation
+  //TODO: there is serious bug in using incremental solving. Report this to z3 community
+  val debugIncremental : Boolean = false  
  
   //some utility methods
   def getFIs(ctr: LinearConstraint): Set[FunctionInvocation] = {
@@ -275,65 +279,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     solution
   }
 
-  /*def solveForTemplatesIncr(): Option[Map[FunDef, Expr]] = {
-
-    //for stats
-    exploredPaths = 0
-        
-    //traverse each of the functions and collect the VCs
-    val funcs = ctrTracker.getFuncs
-    val funcExprs = funcs.map((fd) => {
-      val (btree, ptree) = ctrTracker.getVC(fd)
-      val bexpr = TreeUtil.toExpr(btree)
-      val pexpr = TreeUtil.toExpr(ptree)
-      
-      val formula = And(bexpr, pexpr)      
-      //println("Formula: "+fd.id+"-->"+formula)
-      (fd -> formula)
-    }).toMap
-    //System.exit(0)
-
-    //A selector that explores only paths that do not have any recursive function calls
-    //these, typically correspond to base cases  (and also result in linear constraints)
-    val noRecursiveCallSelector = (fd: FunDef) => {           
-      //find the set of all callers of fd
-      val callers = funcs.filter((cr) => cg.transitivelyCalls(cr, fd)).toSet      
-      (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {        
-        //check if any of the function called by the parent node transitively calls the  current function
-        //println("Checking againt callers... ")
-          if (parent.uifs.filter((call) => callers.contains(call.fi.funDef)).isEmpty) 
-            ch.toSet
-          else Set()
-        }
-    }
-        
-    //A selector that picks children at random
-    //associate a random number number generator with each node in the tree.
-    var randGenMap = Map[CtrNode,Random]()
-    val randomSelector = (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {
-      if (d <= max_depth) ch
-      else {
-
-        val chIndex = if (randGenMap.contains(parent)) randGenMap(parent).nextInt(ch.size)
-        else {
-          val randgen = new Random()
-          randGenMap += (parent -> randgen)
-          randgen.nextInt(ch.size)
-        }       
-        val child = ch.toSeq.apply(chIndex)
-        //print(parent.id+" ---> "+ (if(child.isInstanceOf[CtrNode]) child.asInstanceOf[CtrNode].id else "leaf"))
-        Set(child)
-      }
-    }
-       
-    //incrementally solve for the template variables
-    val nonLinearCtrs = funcs.foldLeft(Seq[Expr]())((acc, fd) => {
-
-      val (btree, ptree) = ctrTracker.getVC(fd)
-      
-      //iterate as long as we have atleast one constraint (using imperative style as it is best fit here)
-      var ctr : Expr = tru
-      
+  //not deleting since I find this interesting
+  /*
       if(program.isRecursive(fd)) {
         //try pick paths without function calls if any      
         println("Choosing constraints without calls (that are satisfiable)")
@@ -355,25 +302,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       }      
       
       (acc :+ ctr)
-    })
-    
-    //For debugging purposes.
-    println("# of initals Constraints: "+nonLinearCtrs.size)      
-    
-    val nonLinearCtr = if (nonLinearCtrs.size == 1) nonLinearCtrs(0)
-    					else And(nonLinearCtrs)
-    					
-    //create a new solver and add the constraints 
-    val solverWithCtrs = new UIFZ3Solver(this.context, program)
-    solverWithCtrs.assertCnstr(nonLinearCtr)
-    
-    //for stats
-    ctrCount = InvariantUtil.atomNum(nonLinearCtr)
-    
-    val solution = recSolveForTemplatesIncr(solverWithCtrs, funcExprs)
-    solverWithCtrs.free()
-    solution
-  }
+    })      
 */  
   def recSolveForTemplatesIncr(model: Map[Identifier, Expr], solverWithCtrs: UIFZ3Solver, funcExprs: Map[FunDef, Expr],
       nonLinearCtr : Expr)
@@ -400,11 +329,6 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       val instVC = simplifyArithmetic(instantiateTemplate(funcExprs(fd), tempVarMap))
 
       //For debugging
-      /*if(fd.id.name.equals("reverse")) {
-            println("Post of " + fd.id + " is: " + instantiateTemplate(TreeUtil.toExpr(ctrTracker.getVC(fd)._2), tempVarMap))            
-            System.out.flush()
-          }*/
-
       /*println("Instantiated VC of " + fd.id + " is: " + instVC)*/
       /* wr.println("Function name: " + fd.id)
           wr.println("Formula expr: ")
@@ -490,32 +414,33 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       println("# of atomic predicates: " + ctrCount)
 
       //add the new constraints      
-      //TODO: Report the bug to z3
+      //TODO: There is a serious bug here, report the bug to z3 if it happens again
       solverWithCtrs.assertCnstr(newctr)
-      //println("Assertions: \n"+solverWithCtrs.ctrsToString)               
-      /*FileCountGUID.fileCount += 1
-      val filename = "z3formula-" + FileCountGUID.fileCount + ".smt"
-      val pwr = new PrintWriter(filename)
-      pwr.println(solverWithCtrs.ctrsToString)
-      pwr.flush()
-      pwr.close()
-      println("Formula printed to File: " + filename)*/
-      
-      /*val asserts = solverWithCtrs.solver.getAssertions()
-      val newsolver = new UIFZ3Solver(context,program)      
-      val expr = asserts.toSeq.foldLeft(tru : Expr)((acc, assert) => And(acc,solverWithCtrs.fromZ3Formula(null,assert)))
-      newsolver.assertCnstr(expr)*/            
+
+      //For debugging
+      if (debugIncremental) {       
+        FileCountGUID.fileCount += 1
+        val filename = "z3formula-" + FileCountGUID.fileCount + ".smt"
+        val pwr = new PrintWriter(filename)
+        pwr.println(solverWithCtrs.ctrsToString)
+        pwr.flush()
+        pwr.close()
+        println("Formula printed to File: " + filename)
+      }                 
       
       val conjunctedCtr = And(nonLinearCtr,newctr)
       val simpSolver =  SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context,program)))      
     	
       println("solving...")
       val t1 = System.currentTimeMillis()      
-      //val res1 = newsolver.innerCheck
-      val (res,newModel) = simpSolver.solveSAT(conjunctedCtr)
+      val (res,newModel) = simpSolver.solveSAT(conjunctedCtr)       
       val t2 = System.currentTimeMillis()
       println("solved... in " + (t2 - t1) / 1000.0 + "s")
-      
+
+      //for debugging
+      if (debugIncremental) {
+        solverWithCtrs.innerCheck        
+      }
       res  match {
         case None => None
         case Some(false) => {
@@ -523,170 +448,31 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           reporter.info("- Number of explored paths (of the DAG) in this unroll step: " + exploredPaths)
           None
         }
-        case Some(true) => {          
-          /*println("Found a model1: "+newModel)
-          println("Found a model2: "+newsolver.getModel)
-          newsolver.free()*/
+        case Some(true) => {      
+
+          //For debugging
+          if (debugIncremental) {
+            println("Found a model1: "+newModel)
+            val model2 = solverWithCtrs.getModel
+            println("Found a model2: " + model2)
+            solverWithCtrs.push()
+            solverWithCtrs.assertCnstr(InvariantUtil.modelToExpr(model2))
+
+            val fn2 = "z3formula-withModel-" + FileCountGUID.fileCount + ".smt"
+            val pwr = new PrintWriter(fn2)
+            pwr.println(solverWithCtrs.ctrsToString)
+            pwr.flush()
+            pwr.close()
+            println("Formula & Model printed to File: " + fn2)
+
+            solverWithCtrs.pop()
+          }                   
           recSolveForTemplatesIncr(newModel, solverWithCtrs, funcExprs, conjunctedCtr)
         }
-      }      
-       
+      }             
     }
   }
-  
-  
-  /*def recSolveForTemplatesIncr(solverWithCtrs: UIFZ3Solver, uiSolver: SimpleSolverAPI, funcExprs: Map[FunDef, Expr])
-  			: Option[Map[FunDef, Expr]] = {
-
-    val funcs = funcExprs.keys
-
-    println("solving...")       
-    val t1 = System.currentTimeMillis()
-
-    //println("Assertions: \n"+solverWithCtrs.ctrsToString)               
-    FileCountGUID.fileCount += 1
-    val pwr = new PrintWriter("z3formula-"+FileCountGUID.fileCount+".smt")    
-    pwr.println(solverWithCtrs.ctrsToString)
-    pwr.flush()
-    pwr.close()
-    
-    val (res, model) = solverWithCtrs.check match {
-      case Some(true) =>
-        (Some(true), solverWithCtrs.getModel)
-      case Some(false) =>
-        (Some(false), Map[Identifier, Expr]())
-      case None =>
-        (None, Map[Identifier, Expr]())
-    }
-    
-    val t2 = System.currentTimeMillis()
-    println("solved... in "+(t2 - t1) / 1000.0+"s")    
-    
-    res match {
-      case None => None
-      case Some(false) =>  {
-        
-        //print some statistics 
-    	reporter.info("- Number of explored paths (of the DAG) in this unroll step: "+exploredPaths)
-        None
-      }
-      case Some(true) => {
-        //the following does not seem to be necessary as z3 updates the model on demand
-        //val compModel = completeModel(model, TemplateIdFactory.getTemplateIds)
-        
-        //For debugging: printing the candidate invariants found at this step
-        println("candidate Invariants")
-        val candInvs = getAllInvariants(model)
-        candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))
-
-        //check if 'inv' is a 'sufficiently strong' invariant by looking for a counter-example. 
-        //if one exists find a path (in each tree) that results in the counter-example and add farkas' 
-        //constraints for the path to the constraints to be solved        
-        val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable,elem._2)).toMap
-
-       val wr = new PrintWriter(new File("formula-dump.txt"))
-        val newctrs = funcs.foldLeft(Seq[Expr]())((acc, fd) => {
-          
-          val instVC = simplifyArithmetic(instantiateTemplate(funcExprs(fd), tempVarMap))                   
-        
-          //For debugging
-          if(fd.id.name.equals("reverse")) {
-            println("Post of " + fd.id + " is: " + instantiateTemplate(TreeUtil.toExpr(ctrTracker.getVC(fd)._2), tempVarMap))            
-            System.out.flush()
-          }
-            
-          println("Instantiated VC of " + fd.id + " is: " + instVC)          
-          wr.println("Function name: " + fd.id)
-          wr.println("Formula expr: ")
-          ExpressionTransformer.PrintWithIndentation(wr, instVC)
-          wr.flush()
-
-          //throw an exception if the candidate expression has reals
-          if (InvariantUtil.hasReals(instVC))
-            throw IllegalStateException("Instantiated VC of " + fd.id + " contains reals: " + instVC)
-
-          //println("verification condition for" + fd.id + " : " + cande)
-          //println("Solution: "+uiSolver.solveSATWithFunctionCalls(cande))
-
-          //this creates a new solver and does not work with the SimpleSolverAPI
-          val solEval = new UIFZ3Solver(context, program)
-          solEval.assertCnstr(instVC)          
-          solEval.check match {
-            case None => {              
-              solEval.free()
-              throw IllegalStateException("cannot check the satisfiability of " + instVC)
-            }
-            case Some(false) => {              
-              solEval.free()
-              //do not generate any constraints
-              acc
-            }
-            case Some(true) => {
-              //For debugging purposes.
-              println("Function: " + fd.id + "--Found candidate invariant is not a real invariant! ")
-                            
-              //try to get the paths that lead to the error 
-              val satChooser = (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {
-                ch.filter((child) => child match {
-                  case CtrLeaf() => true
-                  case cn @ CtrNode(_) => {
-
-                    //note the expr may have template variables so replace them with the candidate values
-                    val nodeExpr = if (!cn.templates.isEmpty) {
-                      //the node has templates
-                      instantiateTemplate(cn.toExpr, tempVarMap)
-                    } else cn.toExpr
-
-                    //throw an exception if the expression has reals
-                    if (InvariantUtil.hasReals(nodeExpr))
-                      throw IllegalStateException("Node expression has reals: " + nodeExpr)
-
-                    solEval.evalBoolExpr(nodeExpr) match {
-                      case None => throw IllegalStateException("cannot evaluate " + cn.toExpr + " on " + solEval.getModel)
-                      case Some(b) => b
-                    }
-                  }
-                })
-              }
-              val (btree, ptree) = ctrTracker.getVC(fd)
-              val newctr = generateCtrsForTree(btree, ptree, satChooser, true)
-              if(newctr == tru)
-                throw IllegalStateException("cannot find a counter-example path!!")
-              
-              //free the solver here
-              solEval.free()
-              acc :+ newctr
-            }
-          }
-        })
-        wr.flush()
-        wr.close()
-        
-        //have we found a real invariant ?
-        if(newctrs.isEmpty) {
-          //yes, hurray
-          //print some statistics 
-          reporter.info("- Number of explored paths (of the DAG) in this unroll step: "+exploredPaths)
-           
-          Some(getAllInvariants(model))          
-        } else {
-          //For statistics.
-          //reporter.info("- Number of new Constraints: " + newctrs.size)          
-          //call the procedure recursively
-          val newctr = And(newctrs)          
-          
-          //for stats and debugging
-          ctrCount += InvariantUtil.atomNum(newctr)
-          println("# of atomic predicates: "+ctrCount)
-                                       
-          //add the new constraints
-          solverWithCtrs.assertCnstr(newctr)
-          recSolveForTemplatesIncr(solverWithCtrs, uiSolver, funcExprs)
-        }
-      }
-    }
-  }
-  */
+      
   /**
    * Returns a set of non linear constraints for the given constraint tree.
    * This is parametrized by a selector function that decides which paths to consider. 
@@ -710,8 +496,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
 
     /**
      * A helper function that composes a sequence of CtrTrees using the user-provided operation 
-     * and "AND" as the join operation.     
-     * TODO: Maintenance Issue: The following code is imperative
+     * and "AND" as the join operation.          
      */
     def foldAND(parent: CtrNode, childTrees : Iterable[CtrTree], pred: CtrTree => Expr, depth: Int): Expr = {            
       val trees = selector(parent, childTrees, depth)
@@ -726,7 +511,6 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
             }
             case BooleanLiteral(true) => ;
             case _ => {
-
               if (expr == tru) {
                 expr = res
                 //break if explore one path is set
@@ -908,14 +692,17 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           wr.flush()
           wr.close()*/
       println("Full-path: " + formula)
-
-      //println("Starting Constraint generation")
+      
       val uifCtrs = constraintsForUIFs(uifexprs ++ adtCons, pathctr, solver)
-      //println("Generated UIF Constraints")
-
       val uifroot = if (!uifCtrs.isEmpty) {
 
-        val uifCtr = And(uifCtrs)
+        val fullCtr = And(uifCtrs)
+        
+        println("Full UIF Ctr: "+fullCtr)
+        
+        //eliminate dummy identifiers using one point rule
+        val uifCtr = ExpressionTransformer.apply1PRule(fullCtr, variablesOf(fullCtr).filter(TempIdFactory.isDummy _))
+        
         println("UIF constraints: " + uifCtr)
         //push not inside
         val nnfExpr = ExpressionTransformer.TransformNot(uifCtr)
@@ -946,7 +733,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       }
       else {
         exploredPaths += 1
-                
+        
+        //TODO: try some optimizations here to reduce the number of constraints to be considered                       
         println("Final Path Constraints: "+And((ants ++ antTemps ++ conseqs ++ conseqTemps).map(_.template)))
         val implCtrs = implicationSolver.constraintsForUnsat(ants, antTemps, conseqs, conseqTemps)        
         implCtrs
@@ -1112,11 +900,15 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       }
     })    
     
-    //Part (II) return the constraints. For equal calls, the constraints are just that their return values are equal, 
+    //Part (II) return the constraints. For equal calls, the constraints are just equalities between the return values, 
     //for others, it is an implication     
-    //For equal class selectors, constraints are just that their return values are equal, for other's it is a bi-implication   
+    //For equal class selectors, constraints are just equalities between the return values and arguments, 
+    //for others it is a bi-implication   
     val newctrs = product.foldLeft(Seq[Expr]())((acc,pair) => {
       val (call1,call2)= pair
+      //note: here it suffices to check for adjacency and not reachability of calls (i.e, exprs).
+      //This is because the transitive equalities (corresponding to rechability) are encoded by the generated equalities.
+      //This serves to reduce the generated lambdas
       if(eqGraph.containsEdge(call1,call2)) {
                
         val BinaryOperator(r1@_,_,_) = call1
@@ -1131,9 +923,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           val newLHS = lhs.filter(_ match {
             case BinaryOperator(Variable(lid),Variable(rid), _) => {
               //remove self equalities.
-              if(lid == rid) false
-              //TODO: remove the equalities between dummy ids. why is this not working ?
-              //else if(TempIdFactory.isDummy(lid) || TempIdFactory.isDummy(rid)) false              
+              if(lid == rid) false             
               else true
             }
             case e@_ => throw new IllegalStateException("Not an equality or Iff: "+e)

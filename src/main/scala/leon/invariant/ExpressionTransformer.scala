@@ -23,6 +23,7 @@ import leon.verification.Tactic
 import leon.verification.VerificationReport
 import leon.invariant._
 import scala.collection.mutable.{Set => MutableSet}
+import scala.collection.mutable.{Map => MutableMap}
 import java.io._
 
 /**
@@ -438,8 +439,129 @@ object ExpressionTransformer {
       case _ => e
     })(expr)
     found
-  } 
+  }
+  
+  /**
+   * Some simplification rules
+   */
+   def simplify(expr: Expr) : Expr = {
+        
+    simplePostTransform((e : Expr) => e match {
+      case Equals(lhs,rhs) if (lhs == rhs) => tru
+      case Iff(lhs,rhs) if (lhs == rhs) => tru
+      case _ => e
+    })(expr)    
+  }
+    
+   /**
+    * The input expression is assumed to be in nnf form
+    */
+  def apply1PRule(ine : Expr, vars: Set[Identifier]) : Expr = {
+    
+    def apply1PRuleRec(e : Expr) : Expr = e match { 
+    	case And(args) => {
+    	  //get all args that are not Ors
+    	  val disjunct = And(args.collect{ case arg@_ if !arg.isInstanceOf[Or] => arg })    	  
+    	  
+    	  val valMap = apply1PRuleOnDisjunct(disjunct, vars)    	  
+    	  //combine init and val map
+    	  val combMap : Map[Expr,Expr] = valMap.map((elem) => (elem._1.toVariable,elem._2)).toMap
+    	  //replace in expression
+    	  val newExpr = replace(combMap, e)
+    	  val And(newargs) = newExpr
+    	  
+    	  //now recurse into arguments that has Ors
+    	  And(newargs.map((newarg) => {
+    	    if(newarg.isInstanceOf[Or]) apply1PRuleRec(newarg)
+    	    else newarg
+    	  }))    	  
+    	}
+    	case Or(args) => {
+    	  Or(args.map(apply1PRuleRec _))
+    	}
+    	case _ => e    	
+    }
+    
+    val sexpr = pullAndOrs(ine)
+    val substExpr = simplify(apply1PRuleRec(sexpr))
+    
+    //replace expressions involving 'vars' (variables to be eliminated) by fresh variables
+    simplePreTransform((e : Expr) => e match {           
+      case And(args) => e
+      case Or(args) => e
+      case _ => {        
+        if(variablesOf(e).intersect(vars).isEmpty) e
+        else {
+          //replace them by a fresh variable 
+          TempIdFactory.createTemp("b").setType(BooleanType).toVariable
+        }
+      }
+    })(substExpr)
+  }
 
+  /**
+   * eliminates the specified variables from the input disjunct (i.e, a conjunction of atoms) using the one point rule
+    * The input expression is assumed to be in nnf form
+    */
+  def apply1PRuleOnDisjunct(disjunct: Expr, vars: Set[Identifier]): Map[Identifier, Expr] = {
+
+    if (!isDisjunct(disjunct)) throw new IllegalStateException("input expresssion is not a disjunct: " + disjunct)
+
+    var valueMap = Map[Identifier, Expr]()
+
+    def recCollect(e: Expr): Unit = e match {
+      case And(args) => args.foreach(recCollect _)
+      case Equals(Variable(id1), Variable(id2)) => {
+        val found1 = vars.contains(id1)
+        val found2 = vars.contains(id2)
+
+        if (found1 && !found2 && !valueMap.contains(id1)) valueMap += (id1 -> id2.toVariable)
+        else if (!found1 && found2 && !valueMap.contains(id2)) valueMap += (id2 -> id1.toVariable)
+        else if (found1 && found2 && !valueMap.contains(id1) && valueMap.contains(id2)) {
+          //in this case, one of the dummies has a mapping
+          valueMap += (id1 -> valueMap(id2))
+        } else if (found1 && found2 && valueMap.contains(id1) && !valueMap.contains(id2)) {
+          //dual to the above case
+          valueMap += (id2 -> valueMap(id1))
+        } else {
+          //do nothing, in this case both are dummies and both do not/do have a mapping or both are not dummies
+        }
+      }
+      case _ => ;
+    }
+
+    //keep applying recCollect until the valueMap does not change
+    var oldSize = -1
+    while (oldSize != valueMap.size) {
+      oldSize = valueMap.size
+      recCollect(disjunct)
+    }
+
+    valueMap
+  }
+
+  /**
+   * Input expression is assumed to be in nnf form
+   * Note: (a) Not(Equals()) and Not(Variable) is allowed  
+   */
+  def isDisjunct(e: Expr): Boolean = e match {
+    case And(args) => args.foldLeft(true)((acc, arg) => acc && isDisjunct(arg))
+    case Not(Equals(_,_)) | Not(Variable(_)) => true    
+    case Or(_) | Implies(_,_) | Iff(_,_) | Not(_)  => false
+    case _ => true
+  }
+
+  /**
+   * assuming that the expression is in nnf form
+   * Note: (a) Not(Equals()) and Not(Variable) is allowed 
+   */
+  def isConjunct(e: Expr): Boolean = e match {
+    case Or(args) => args.foldLeft(true)((acc, arg) => acc && isConjunct(arg))
+    case Not(Equals(_,_)) | Not(Variable(_)) => true    
+    case And(_) | Implies(_,_) | Iff(_,_) | Not(_)  => false
+    case _ => true
+  }
+  
   /*def simplifyArithWithReals(expr: Expr): Expr = {
     def simplify0(expr: Expr): Expr = expr match {
       case Plus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 + i2)

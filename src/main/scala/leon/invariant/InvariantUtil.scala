@@ -78,6 +78,7 @@ object InvariantUtil {
   
   val zero = IntLiteral(0)
   val one = IntLiteral(1)
+  val tru = BooleanLiteral(true)
 
   //compute the formal to the actual argument mapping   
   /*def formalToAcutal(call : Call, resvar : Expr) : Map[Expr, Expr] = {    
@@ -187,14 +188,18 @@ object InvariantUtil {
     case _ => false
   }
   
-  /*def getLHS(e: Expr) : Expr = e match {
-    case Equals(r@Variable(_),FunctionInvocation(_,_)) => r
-    case _ => throw new IllegalStateException("not a call expression")
-  }*/
-  
   def isADTConstructor(e: Expr) : Boolean = e match {
     case Equals(Variable(_),CaseClass(_,_)) => true
     case Equals(Variable(_),Tuple(_)) => true
     case _ => false
   }
+  
+  def modelToExpr(model : Map[Identifier,Expr]) : Expr = {    
+    model.foldLeft(tru : Expr)((acc, elem) => {
+      val (k,v) = elem      
+      val eq = Equals(k.toVariable,v)
+      if(acc == tru) eq 
+      else And(acc,eq)
+    })
+  } 
 }
