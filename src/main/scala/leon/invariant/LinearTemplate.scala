@@ -148,6 +148,12 @@ class LinearConstraint(opr: (Expr,Expr) => Expr, cMap: Map[Expr, Expr], constant
     //TODO: here we should try to simplify reduce the constant expressions    
     cMap
   }
+  
+  val const = constant.map((c) => {
+    //check if constant does not have any variables
+    assert(variablesOf(c).isEmpty)
+    c
+  })
 
   def expr : Expr = template
 }
@@ -269,3 +275,4 @@ class ADTConstraint(val expr: Expr,
     expr.toString
   }
 }
+

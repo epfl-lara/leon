@@ -34,6 +34,7 @@ object ExpressionTransformer {
   
   val zero = IntLiteral(0)
   val one = IntLiteral(1)
+  val mone = IntLiteral(-1)
   val tru = BooleanLiteral(true)    
 
   /**
@@ -442,7 +443,7 @@ object ExpressionTransformer {
   }
   
   /**
-   * Some simplification rules
+   * Some simplification rules (keep adding more and more rules)
    */
    def simplify(expr: Expr) : Expr = {
         
@@ -454,9 +455,11 @@ object ExpressionTransformer {
   }
     
    /**
-    * The input expression is assumed to be in nnf form
+    * The following may have some bugs
+    * TODO: we may consider this later if there is a need
     */
-  def apply1PRule(ine : Expr, vars: Set[Identifier]) : Expr = {
+   //the input is assumed to be in nnf form
+  /*def apply1PRule(ine : Expr, vars: Set[Identifier]) : Expr = {
     
     def apply1PRuleRec(e : Expr) : Expr = e match { 
     	case And(args) => {
@@ -497,48 +500,7 @@ object ExpressionTransformer {
         }
       }
     })(substExpr)
-  }
-
-  /**
-   * eliminates the specified variables from the input disjunct (i.e, a conjunction of atoms) using the one point rule
-    * The input expression is assumed to be in nnf form
-    */
-  def apply1PRuleOnDisjunct(disjunct: Expr, vars: Set[Identifier]): Map[Identifier, Expr] = {
-
-    if (!isDisjunct(disjunct)) throw new IllegalStateException("input expresssion is not a disjunct: " + disjunct)
-
-    var valueMap = Map[Identifier, Expr]()
-
-    def recCollect(e: Expr): Unit = e match {
-      case And(args) => args.foreach(recCollect _)
-      case Equals(Variable(id1), Variable(id2)) => {
-        val found1 = vars.contains(id1)
-        val found2 = vars.contains(id2)
-
-        if (found1 && !found2 && !valueMap.contains(id1)) valueMap += (id1 -> id2.toVariable)
-        else if (!found1 && found2 && !valueMap.contains(id2)) valueMap += (id2 -> id1.toVariable)
-        else if (found1 && found2 && !valueMap.contains(id1) && valueMap.contains(id2)) {
-          //in this case, one of the dummies has a mapping
-          valueMap += (id1 -> valueMap(id2))
-        } else if (found1 && found2 && valueMap.contains(id1) && !valueMap.contains(id2)) {
-          //dual to the above case
-          valueMap += (id2 -> valueMap(id1))
-        } else {
-          //do nothing, in this case both are dummies and both do not/do have a mapping or both are not dummies
-        }
-      }
-      case _ => ;
-    }
-
-    //keep applying recCollect until the valueMap does not change
-    var oldSize = -1
-    while (oldSize != valueMap.size) {
-      oldSize = valueMap.size
-      recCollect(disjunct)
-    }
-
-    valueMap
-  }
+  }*/
 
   /**
    * Input expression is assumed to be in nnf form

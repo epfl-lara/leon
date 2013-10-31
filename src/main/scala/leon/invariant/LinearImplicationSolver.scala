@@ -44,16 +44,13 @@ class LinearImplicationSolver {
    * We need to check \exists a, \forall x, A[x] ^ A'[x,a] ^ C[x] ^ C'[x,a] = false
    *
    */
-  def constraintsForUnsat(antsSimple: Seq[LinearConstraint], antsTemp: Seq[LinearTemplate],
-    conseqsSimple: Seq[LinearConstraint], conseqsTemp: Seq[LinearTemplate]): Expr = {
-
-    val allAnts = antsSimple ++ antsTemp
-    val allConseqs = conseqsSimple ++ conseqsTemp
+  def constraintsForUnsat(linearCtrs: Seq[LinearConstraint], temps: Seq[LinearTemplate]): Expr = {
+    
     //for debugging
     /*println("#" * 20)
     println(allAnts + " ^ " + allConseqs)    
     println("#" * 20)*/
-    this.applyFarkasLemma(allAnts ++ allConseqs, Seq(), true)
+    this.applyFarkasLemma(linearCtrs ++ temps, Seq(), true)
   }
 
   /**

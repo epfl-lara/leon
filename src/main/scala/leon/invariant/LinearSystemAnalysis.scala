@@ -120,7 +120,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         !InvariantUtil.getTemplateVars(tempExpr).isEmpty) => {
 
         //println("Template Expression: "+tempExpr)
-        val linearTemp = ctrTracker.exprToTemplate(tempExpr)
+        val linearTemp = LinearConstraintUtil.exprToTemplate(tempExpr)
         instantiateTemplate(linearTemp, tempVarMap)
       }
       case _ => tempExpr
@@ -475,7 +475,9 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       
   /**
    * Returns a set of non linear constraints for the given constraint tree.
-   * This is parametrized by a selector function that decides which paths to consider. 
+   * This is parametrized by a selector function that decides which paths to consider.
+   * TODO: use the counter example mode to choose which equalities to add 
+   * (this can ensure completeness without blow-up)  
    */
   def generateCtrsForTree(bodyRoot: CtrNode, postRoot : CtrNode, 
       selector : (CtrNode, Iterable[CtrTree], Int) => Iterable[CtrTree],
@@ -483,6 +485,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     
     //create an incremental solver, the solver is pushed and popped constraints as the paths in the DNFTree are explored
     val solver = new UIFZ3Solver(context, program)
+    //val booleanSolver = SimpleSolverAPI(SolverFactory(() => new UninterpretedZ3Solver(context, program)))
     
     /**
      * A utility function that converts a constraint + calls into a expression.
@@ -656,18 +659,28 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       def traverseTree(tree: CtrTree, 
          ants: Seq[LinearConstraint], antTemps: Seq[LinearTemplate], 
          conseqs: Seq[LinearConstraint], conseqTemps: Seq[LinearTemplate],
+         boolCtrs : Seq[Expr],
          dep: Int): Expr = {
         
+        //TODO: How do we handle boolean constraints here ??
         tree match {
           case n @ CtrNode(_) => {
-            //println("Traversing UIF Tree")            
+            //println("Traversing UIF Tree")                        
+            val newants = ants ++ n.constraints         
+            val newBools = boolCtrs ++ n.boolCtrs.map(_.expr)
+            //note: other constraints are  possible
+            
             //recurse into children
-            val newants = ants ++ n.constraints                        
-            foldAND(n, n.Children, (child : CtrTree) => traverseTree(child, newants, antTemps, conseqs, conseqTemps, dep + 1), dep)
+            foldAND(n, n.Children, (child : CtrTree) => traverseTree(child, newants, antTemps, conseqs, conseqTemps, newBools, dep + 1), dep)
           }
           case CtrLeaf() => {            
-            //pipe to the end point that invokes the constraint solver
-            endpoint(ants,antTemps,conseqs,conseqTemps)
+            //check if the boolCtrs are satisfiable            
+            /*val res = if(boolCtrs.isEmpty) Some(true) 
+            		   else booleanSolver.solveSAT(And(boolCtrs))._1
+            if(res != Some(false)) {*/
+              //pipe to the end point that invokes the constraint solver
+              endpoint(ants,antTemps,conseqs,conseqTemps)
+            /*} else tru*/        
           }
         }
       }
@@ -696,13 +709,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       val uifCtrs = constraintsForUIFs(uifexprs ++ adtCons, pathctr, solver)
       val uifroot = if (!uifCtrs.isEmpty) {
 
-        val fullCtr = And(uifCtrs)
-        
-        println("Full UIF Ctr: "+fullCtr)
-        
-        //eliminate dummy identifiers using one point rule
-        val uifCtr = ExpressionTransformer.apply1PRule(fullCtr, variablesOf(fullCtr).filter(TempIdFactory.isDummy _))
-        
+        val uifCtr = And(uifCtrs)               
         println("UIF constraints: " + uifCtr)
         //push not inside
         val nnfExpr = ExpressionTransformer.TransformNot(uifCtr)
@@ -714,7 +721,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
 
       } else CtrLeaf()
       //fls
-      traverseTree(uifroot, ants, antTemps, conseqs, conseqTemps, depth)  
+      traverseTree(uifroot, ants, antTemps, conseqs, conseqTemps, Seq(), depth)  
       //}      
     }
 
@@ -734,9 +741,33 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       else {
         exploredPaths += 1
         
-        //TODO: try some optimizations here to reduce the number of constraints to be considered                       
-        println("Final Path Constraints: "+And((ants ++ antTemps ++ conseqs ++ conseqTemps).map(_.template)))
-        val implCtrs = implicationSolver.constraintsForUnsat(ants, antTemps, conseqs, conseqTemps)        
+        //TODO: try some optimizations here to reduce the number of constraints to be considered
+        //(a) we can eliminate all variables that do not occur in the templates from the ants and conseqs 
+        // which is in the theory of presburger arithmetic (we apply only one point rule which is efficient)
+        // Note: this will remove dummy ids from the formulas as they will never occur in templates
+        // Note: this uses the interpolation property of arithmetics        
+        
+        //compute variables to be eliminated
+        val lnctrs = ants ++ conseqs
+        val temps = antTemps ++ conseqTemps
+        
+        val ctrVars = lnctrs.foldLeft(Set[Identifier]())((acc, lc) => acc ++ variablesOf(lc.expr))   
+        val tempVars = temps.foldLeft(Set[Identifier]())((acc, lt) => acc ++ variablesOf(lt.template))       
+        val elimVars = ctrVars.diff(tempVars)
+        
+        //println("Path Constraints before elimination: "+And((lnctrs ++ temps).map(_.template)))
+        
+        /*println("CtrVars: "+ctrVars)
+        println("TempVars: "+tempVars) 
+        println("Eliminating variables... "+elimVars)*/
+        val elimLnctrs = LinearConstraintUtil.apply1PRuleOnDisjunct(lnctrs, elimVars)
+        //drop all constraints with dummys from elimLnctrs
+        val newLnctrs = elimLnctrs.filterNot((ln) => variablesOf(ln.expr).exists(TempIdFactory.isDummy _))
+        
+        //val newLinearCtrs = lnctrs
+                
+        println("Final Path Constraints: "+And((newLnctrs ++ temps).map(_.template)))
+        val implCtrs = implicationSolver.constraintsForUnsat(newLnctrs, temps)        
         implCtrs
       }
     }       
