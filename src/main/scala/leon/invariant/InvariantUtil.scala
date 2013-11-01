@@ -79,18 +79,13 @@ object InvariantUtil {
   val zero = IntLiteral(0)
   val one = IntLiteral(1)
   val tru = BooleanLiteral(true)
-
-  //compute the formal to the actual argument mapping   
-  /*def formalToAcutal(call : Call, resvar : Expr) : Map[Expr, Expr] = {    
-    val argmap: Map[Expr, Expr] = Map(resvar -> call.retexpr) ++ call.fi.funDef.args.map(_.id.toVariable).zip(call.fi.args)
-    argmap
-  }*/
   
   def getFunctionReturnVariable(fd: FunDef) = {
     if(fd.hasPostcondition) fd.postcondition.get._1.toVariable
     else ResultVariable().setType(fd.returnType)
   }
   
+  //compute the formal to the actual argument mapping
   def formalToAcutal(call : Call) : Map[Expr, Expr] = {
     val fd = call.fi.funDef
     val resvar =getFunctionReturnVariable(fd) 
@@ -153,18 +148,6 @@ object InvariantUtil {
       val na = f(a)
       if(a == na) a else fix(f)(na)
   }
-
-  /**
-   * Convert body to a relation
-   */
-  //def convertToRel(body: Expr): (Expr, Variable) = {
-    //freshen the body
-    //val freshBody = matchToIfThenElse(freshenLocals(body))
-    //val resFresh = Variable(FreshIdentifier("result", true).setType(freshBody.getType))
-    //println("Rel Body: "+Equals(resFresh, freshBody))
-    //val bodyExpr = ExpressionTransformer.normalizeExpr(Equals(resFresh, freshBody))
-    /*(bodyExpr, resFresh)
-  }*/
   
   def atomNum(e : Expr) : Int = {
     var count : Int = 0
@@ -188,11 +171,13 @@ object InvariantUtil {
     case _ => false
   }
   
+  
   def isADTConstructor(e: Expr) : Boolean = e match {
     case Equals(Variable(_),CaseClass(_,_)) => true
     case Equals(Variable(_),Tuple(_)) => true
     case _ => false
   }
+  
   
   def modelToExpr(model : Map[Identifier,Expr]) : Expr = {    
     model.foldLeft(tru : Expr)((acc, elem) => {
@@ -202,4 +187,10 @@ object InvariantUtil {
       else And(acc,eq)
     })
   } 
+
+  def gcd(x: Int, y : Int) : Int ={
+    require(x >=0 && y >= 0)    
+    if(x == 0) y 
+    else gcd(y % x, x)
+  }
 }

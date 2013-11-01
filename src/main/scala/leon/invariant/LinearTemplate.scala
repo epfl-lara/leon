@@ -220,28 +220,7 @@ object ADTConstraint {
     //is this a tuple or case class def ?
     case Equals(Variable(_), CaseClass(_, _)) | Equals(Variable(_), Tuple(_)) => {
       new ADTConstraint(e, Some(e))
-    }
-    /*//convert this to a class selector
-        val sels = cd.fieldsIds.zip(args).map((elem) => {
-          val (fld, arg) = elem
-          Equals(arg,CaseClassSelector(cd,clsvar,fld))
-        })
-        sels.map((sel) => {
-          val adtctr = new ADTConstraint(e, Some(sel))          
-          adtctr
-        })        
-      }
-      case Equals(tpvar@Variable(_),Tuple(args)) => {
-        var i = 0
-        val sels = args.map((arg) => {
-          i += 1
-          Equals(arg,TupleSelect(tpvar,i))
-        })
-        sels.map((sel) => {
-          val adtctr = new ADTConstraint(e, Some(sel))          
-          adtctr
-        })
-      }*/
+    }    
     //is this an instanceOf ?
     case Iff(v @ Variable(_), ci @ CaseClassInstanceOf(_, _)) => {
       new ADTConstraint(e, None, Some(e))
@@ -259,17 +238,10 @@ object ADTConstraint {
   }
 }
 
-class ADTConstraint(val expr: Expr, 
-    val cons: Option[Expr] = None, 
-    val inst : Option[Expr] = None, 
-    val comp : Option[Expr] = None ) extends Template {
-
- /* //these will be set by the companinon classes
-  val expr : Expr = { e }
-  var sel : Option[Expr] = None
-  
-  var cls : Option[Expr] = None
-  */
+class ADTConstraint(val expr: Expr,
+  val cons: Option[Expr] = None,
+  val inst: Option[Expr] = None,
+  val comp: Option[Expr] = None) extends Template {
 
   override def toString(): String = {
     expr.toString

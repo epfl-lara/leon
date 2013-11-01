@@ -524,60 +524,6 @@ object ExpressionTransformer {
     case _ => true
   }
   
-  /*def simplifyArithWithReals(expr: Expr): Expr = {
-    def simplify0(expr: Expr): Expr = expr match {
-      case Plus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 + i2)
-      //case Plus(RealLiteral(n1,d1), RealLiteral(n2,d2)) => IntLiteral(i1 + i2)
-      case Plus(WholeNumber(0), e) => e
-      case Plus(e, WholeNumber(0)) => e
-      case Plus(e1, UMinus(e2)) => Minus(e1, e2)
-      case Plus(Plus(e, IntLiteral(i1)), IntLiteral(i2)) => Plus(e, IntLiteral(i1+i2))
-      case Plus(Plus(IntLiteral(i1), e), IntLiteral(i2)) => Plus(IntLiteral(i1+i2), e)
-
-      case Minus(e, WholeNumber(0)) => e
-      case Minus(WholeNumber(0), e) => UMinus(e)
-      case Minus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 - i2)
-      case Minus(e1, UMinus(e2)) => Plus(e1, e2)
-      case Minus(e1, Minus(UMinus(e2), e3)) => Plus(e1, Plus(e2, e3))
-
-      case UMinus(IntLiteral(x)) => IntLiteral(-x)
-      case UMinus(UMinus(x)) => x
-      case UMinus(Plus(UMinus(e1), e2)) => Plus(e1, UMinus(e2))
-      case UMinus(Minus(e1, e2)) => Minus(e2, e1)
-
-      case Times(WholeNumber(1), e) => e
-      case Times(WholeNumber(-1), e) => UMinus(e)
-      case Times(e, WholeNumber(1)) => e
-      case Times(WholeNumber(0), _) => IntLiteral(0)
-      case Times(_, WholeNumber(0)) => IntLiteral(0)
-      case Times(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 * i2)      
-      case Times(IntLiteral(i1), Times(IntLiteral(i2), t)) => Times(IntLiteral(i1*i2), t)
-      case Times(IntLiteral(i1), Times(t, IntLiteral(i2))) => Times(IntLiteral(i1*i2), t)
-      case Times(IntLiteral(i), UMinus(e)) => Times(IntLiteral(-i), e)
-      case Times(UMinus(e), IntLiteral(i)) => Times(e, IntLiteral(-i))
-      case Times(IntLiteral(i1), Division(e, IntLiteral(i2))) if i2 != 0 && i1 % i2 == 0 => Times(IntLiteral(i1/i2), e)
-
-      case Division(IntLiteral(i1), IntLiteral(i2)) if i2 != 0 => IntLiteral(i1 / i2)
-      case Division(e, IntLiteral(1)) => e
-
-      //here we put more expensive rules
-      //btw, I know those are not the most general rules, but they lead to good optimizations :)
-      case Plus(UMinus(Plus(e1, e2)), e3) if e1 == e3 => UMinus(e2)
-      case Plus(UMinus(Plus(e1, e2)), e3) if e2 == e3 => UMinus(e1)
-      case Minus(e1, e2) if e1 == e2 => IntLiteral(0) 
-      case Minus(Plus(e1, e2), Plus(e3, e4)) if e1 == e4 && e2 == e3 => IntLiteral(0)
-      case Minus(Plus(e1, e2), Plus(Plus(e3, e4), e5)) if e1 == e4 && e2 == e3 => UMinus(e5)
-
-      //default
-      case e => e
-    }
-          
-
-    val res = fix(simplePostTransform(simplify0))(expr)
-    res
-  }
-  */
-  
   def PrintWithIndentation(wr : PrintWriter, expr: Expr) : Unit = {
         
     def uniOP(e : Expr, seen : Int) : Boolean = e match {

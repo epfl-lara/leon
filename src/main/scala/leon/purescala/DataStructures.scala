@@ -4,6 +4,7 @@ package purescala
 class DirectedGraph[T] {
   
   var adjlist = scala.collection.mutable.Map[T, Set[T]]()
+  var edgeCount : Int = 0  
   
   def addEdge(src: T, dest: T): Unit = {
     val newset = if (adjlist.contains(src)) adjlist(src) + dest
@@ -11,6 +12,8 @@ class DirectedGraph[T] {
 
     //this has some side-effects 
     adjlist.update(src, newset)
+    
+    edgeCount += 1    
   }
 
   def BFSReach(src: T, dest: T): Boolean = {
@@ -74,6 +77,7 @@ class DirectedGraph[T] {
     else false
   }
   
+  def getEdgeCount : Int = edgeCount
   def getNodes : Set[T] = adjlist.keySet.toSet
   def getSuccessors(src : T) : Set[T] = adjlist(src)
 }
@@ -90,5 +94,7 @@ class UndirectedGraph[T] extends DirectedGraph[T] {
     //this has some side-effects 
     adjlist.update(src, newset1)
     adjlist.update(dest, newset2)
+    
+    edgeCount += 1
   }    
 }
