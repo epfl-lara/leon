@@ -330,7 +330,7 @@ object LinearConstraintUtil {
       val (ans, exprs) = isEqualityCtr(lc)
       if (ans) {
         val (le, re) = exprs.get               
-        if (le.isInstanceOf[Variable] && re.isInstanceOf[Variable]) {
+        /*if (le.isInstanceOf[Variable] && re.isInstanceOf[Variable]) {
           val lhs = le.asInstanceOf[Variable]
           val rhs = re.asInstanceOf[Variable]
           
@@ -352,7 +352,37 @@ object LinearConstraintUtil {
             //do nothing, in this case both are dummies and both do not (or) do have a mapping or both are not dummies
           }
         }        
-      }
+*/      
+        if (le.isInstanceOf[Variable] || re.isInstanceOf[Variable]) {
+          val varLHS = le.isInstanceOf[Variable]
+          val varRHS = re.isInstanceOf[Variable]
+          
+          val elimLHS = if(varLHS) elimVars.contains(le.asInstanceOf[Variable].id)
+          				 else false
+          val elimRHS = if(varRHS) elimVars.contains(re.asInstanceOf[Variable].id)
+                        else false         
+                        
+          if (elimLHS && !elimRHS) {
+             
+            updateMapping(le.asInstanceOf[Variable], re)
+            //&& !varMap.contains(rhs)
+            //varMap += (lhs -> rhs)
+          } else if (!elimLHS && elimRHS ) {
+            updateMapping(re.asInstanceOf[Variable], le)
+          }
+            
+          else if (foundLHS && foundRHS && !varMap.contains(lhs) && varMap.contains(rhs)) {
+            //in this case, one of the elim var has a mapping
+            varMap += (lhs -> varMap(rhs))
+          } else if (foundLHS && foundRHS && varMap.contains(lhs) && !varMap.contains(rhs)) {
+            //dual to the above case
+            varMap += (rhs -> varMap(lhs))
+          } else {
+            //do nothing, in this case both are dummies and both do not (or) do have a mapping or both are not dummies
+          }
+        }        
+
+        }
     }
     //keep applying extract substitute until the valueMap does not change
     var oldSize = -1
