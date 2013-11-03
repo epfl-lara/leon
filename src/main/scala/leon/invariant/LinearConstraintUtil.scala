@@ -260,29 +260,13 @@ object LinearConstraintUtil {
     rese
   }
   
-  def isEqualityCtr(lc : LinearConstraint) : (Boolean, Option[(Expr,Expr)]) = {      
-    if (lc.expr.isInstanceOf[Equals] && (lc.coeffMap.size == 2) && !lc.const.isDefined) {      
-        val pairs = lc.coeffMap.toSeq
-        val coeff1 = pairs(0)._2
-        val coeff2 = pairs(1)._2
-        if ((coeff1 == one && coeff2 == mone) || (coeff2 == one && coeff1 == mone)) {
-          //found an equality
-          val lhs = pairs(0)._1
-          val rhs = pairs(1)._1                   
-          (true,Some((lhs,rhs)))
-        } else (false,None)
-    }else (false,None)
-  }
-  
   /**
-   * Replaces a variable by another variable in the terms of the linear constraint.
-   * Note: replacing of expressions by expressions are not allowed.   
+   * Replaces an expression by another expression in the terms of the given linear constraint.
    */
-  def replaceInCtr(varMap : Map[Variable,Variable], lc : LinearConstraint) : Option[LinearConstraint] = {
+  def replaceInCtr(replaceMap : Map[Expr,Expr], lc : LinearConstraint) : Option[LinearConstraint] = {
     
-    //println("Replacing in "+lc)
-    val exprMap : Map[Expr,Expr] = varMap.map((el)=>(el._1,el._2))
-    val newexpr = ExpressionTransformer.simplify(simplifyArithmetic(replace(exprMap, lc.expr)))
+    //println("Replacing in "+lc)    
+    val newexpr = ExpressionTransformer.simplify(simplifyArithmetic(replace(replaceMap, lc.expr)))
     //println("new expression: "+newexpr)
     
     if(newexpr == tru) None
@@ -291,16 +275,6 @@ object LinearConstraintUtil {
       if(res.isEmpty) None
       else {
         val resctr = res.get.asInstanceOf[LinearConstraint]
-
-        /*val pairs = lc.coeffMap
-    val newCoeffMap = pairs.map((pair) => {
-      val (term,coeff) = pair
-      val newterm = replace(exprMap, term)
-      
-      (newterm,coeff)
-    }).toMap        
-    val resctr = new LinearConstraint(lc.op, newCoeffMap, lc.const)*/
-
         //println("resulting constraint: " + resctr)
         Some(resctr)
       }      
@@ -311,104 +285,107 @@ object LinearConstraintUtil {
    * Eliminates the specified variables from a conjunction of linear constraints (a disjunct) (that is satisfiable)
    * We assume that the disjunct is in nnf form
    */
-  def apply1PRuleOnDisjunct(linearCtrs: Seq[LinearConstraint], elimVars: Set[Identifier]): Seq[LinearConstraint] = {
+  def apply1PRuleOnDisjunct(linearCtrs: Seq[LinearConstraint], elimVars: Set[Identifier]): Seq[LinearConstraint] = {    
+    //eliminate one variable at a time
+    //each iteration produces a new set of linear constraints
+    elimVars.foldLeft(linearCtrs)((acc, elimVar) => {
+      apply1PRuleOnDisjunct(acc, elimVar)
+    })
+  }
+    
+  def apply1PRuleOnDisjunct(linearCtrs: Seq[LinearConstraint], elimVar: Identifier): Seq[LinearConstraint] = {
     
     //collect all relevant constraints
     val emptySeq = Seq[LinearConstraint]()
     val (relCtrs, rest) = linearCtrs.foldLeft((emptySeq,emptySeq))((acc,lc) => {
-      if(variablesOf(lc.expr).intersect(elimVars).isEmpty) {
-        (acc._1,lc +: acc._2)
+      if(variablesOf(lc.expr).contains(elimVar)) {
+        (lc +: acc._1,acc._2)        
       } else {
-        (lc +: acc._1,acc._2)
+        (acc._1,lc +: acc._2)
       }        
     })        
+    
+    //now consider each constraint look for (a) equality involving the elimVar or (b) check if all bounds are lower
+    //or (c) if all bounds are upper.    
+    var elimExpr : Option[Expr] = None
+    var elimCtr : Option[LinearConstraint] = None
+    var allUpperBounds : Boolean = true
+    var allLowerBounds : Boolean = true
 
-    var varMap = Map[Variable, Variable]()
-    def extractSubstitute(lc: LinearConstraint): Unit = {
+    relCtrs.foreach((lc) => {
+      if (!elimExpr.isDefined) {
+        //check for an equality
+        if (lc.expr.isInstanceOf[Equals] && lc.coeffMap.contains(elimVar.toVariable)) {
 
-      //check if the linear constraint encodes an equality and if yes, get the lhs and rhs
-      val (ans, exprs) = isEqualityCtr(lc)
-      if (ans) {
-        val (le, re) = exprs.get               
-        /*if (le.isInstanceOf[Variable] && re.isInstanceOf[Variable]) {
-          val lhs = le.asInstanceOf[Variable]
-          val rhs = re.asInstanceOf[Variable]
+          //println("Found equality for "+elimVar+" : "+lc)
+          //if the coeffcient of elimVar is +ve the the sign of the coeff of every other term should be changed
+          val IntLiteral(elimCoeff) = lc.coeffMap(elimVar.toVariable)
+          val changeSign = if (elimCoeff > 0) true else false
+
+          val startval = if (lc.const.isDefined) {
+            val IntLiteral(cval) = lc.const.get
+            val newconst = if (changeSign) -cval else cval
+            IntLiteral(newconst)
+
+          } else zero
+
+          val substExpr = lc.coeffMap.foldLeft(startval: Expr)((acc, summand) => {
+            val (term, IntLiteral(coeff)) = summand
+            if (term != elimVar.toVariable) {
+
+              val newcoeff = if (changeSign) -coeff else coeff
+              val newsummand = Times(term, IntLiteral(newcoeff))
+              if (acc == zero) newsummand
+              else Plus(acc, newsummand)
+
+            } else acc
+          })
+
+          elimExpr = Some(substExpr)
+          elimCtr = Some(lc)
           
-          //found an equality between variables
-          val foundLHS = elimVars.contains(lhs.id)
-          val foundRHS = elimVars.contains(rhs.id)
+        } else if ((lc.expr.isInstanceOf[LessEquals] || lc.expr.isInstanceOf[LessThan]) 
+            && lc.coeffMap.contains(elimVar.toVariable)) {
 
-          if (foundLHS && !foundRHS && !varMap.contains(lhs)) {
-            varMap += (lhs -> rhs)
-          } else if (!foundLHS && foundRHS && !varMap.contains(rhs)) {
-            varMap += (rhs -> lhs)
-          } else if (foundLHS && foundRHS && !varMap.contains(lhs) && varMap.contains(rhs)) {
-            //in this case, one of the elim var has a mapping
-            varMap += (lhs -> varMap(rhs))
-          } else if (foundLHS && foundRHS && varMap.contains(lhs) && !varMap.contains(rhs)) {
-            //dual to the above case
-            varMap += (rhs -> varMap(lhs))
+          val IntLiteral(elimCoeff) = lc.coeffMap(elimVar.toVariable)
+          if (elimCoeff > 0) {
+            //here, we have found an upper bound
+            allLowerBounds = false
           } else {
-            //do nothing, in this case both are dummies and both do not (or) do have a mapping or both are not dummies
+            //here, we have found a lower bound
+            allUpperBounds = false
           }
-        }        
-*/      
-        if (le.isInstanceOf[Variable] || re.isInstanceOf[Variable]) {
-          val varLHS = le.isInstanceOf[Variable]
-          val varRHS = re.isInstanceOf[Variable]
-          
-          val elimLHS = if(varLHS) elimVars.contains(le.asInstanceOf[Variable].id)
-          				 else false
-          val elimRHS = if(varRHS) elimVars.contains(re.asInstanceOf[Variable].id)
-                        else false         
-                        
-          if (elimLHS && !elimRHS) {
-             
-            updateMapping(le.asInstanceOf[Variable], re)
-            //&& !varMap.contains(rhs)
-            //varMap += (lhs -> rhs)
-          } else if (!elimLHS && elimRHS ) {
-            updateMapping(re.asInstanceOf[Variable], le)
-          }
-            
-          else if (foundLHS && foundRHS && !varMap.contains(lhs) && varMap.contains(rhs)) {
-            //in this case, one of the elim var has a mapping
-            varMap += (lhs -> varMap(rhs))
-          } else if (foundLHS && foundRHS && varMap.contains(lhs) && !varMap.contains(rhs)) {
-            //dual to the above case
-            varMap += (rhs -> varMap(lhs))
-          } else {
-            //do nothing, in this case both are dummies and both do not (or) do have a mapping or both are not dummies
-          }
-        }        
-
+        } else {
+          //here, we assume that the operators are normalized to Equals, LessThan and LessEquals
+          throw new IllegalStateException("LinearConstraint not in expeceted form : " + lc.expr)
         }
-    }
-    //keep applying extract substitute until the valueMap does not change
-    var oldSize = -1
-    while (oldSize != varMap.size) {
-      oldSize = varMap.size
-      relCtrs.foreach(extractSubstitute _)
-    }
-    
-    //here, one point rule has been exhausted.
-    //substitute for the elim variables    
-    val newCtrs = relCtrs.foldLeft(emptySeq)((acc, lc) => {      
-      val newlc = replaceInCtr(varMap, lc)
-      if(newlc.isDefined) newlc.get +: acc
-      else acc
-    })    
-    
-   //remove all self equalities and expressions involving elimVars 
-   //(note: some elimVars that did not have a mapping may remain in newCtrs)
-    val simpCtrs = newCtrs.filter((lc) => {
-      val (ans, exprs) = isEqualityCtr(lc)
-      if(ans && exprs.get._1 == exprs.get._2)
-        false
-      /*else if(!variablesOf(lc.expr).intersect(elimVars).isEmpty)  
-        false*/
-      else true
+      }
     })
-    (rest ++ simpCtrs)
-  }
+
+    val newctrs = if (elimExpr.isDefined) {
+
+      //println("Eliminating "+elimVar+" using "+elimExpr.get)
+      val elimMap = Map[Expr, Expr](elimVar.toVariable -> elimExpr.get)      
+      var repCtrs = Seq[LinearConstraint]()
+      relCtrs.foreach((ctr) => {
+        if (ctr != elimCtr.get) {
+          //replace 'elimVar' by 'elimExpr' in ctr
+          val repCtr = this.replaceInCtr(elimMap, ctr)
+          if (repCtr.isDefined) 
+            repCtrs +:= repCtr.get
+        }
+      })
+      repCtrs
+
+    } else if (allLowerBounds || allUpperBounds) {
+      //here, drop all relCtrs. None of them are important
+      Seq()
+    } else {
+      //cannot eliminate the variable
+      relCtrs
+    }
+    val resctrs = (newctrs ++ rest)
+    //println("After eliminating: "+elimVar+" : "+resctrs)
+    resctrs
+  }  
 }

@@ -47,9 +47,10 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
   //flags controlling debugging and statistics generation
   //TODO: there is serious bug in using incremental solving. Report this to z3 community
   val debugIncremental = false  
+  val debugElimination = true
   val printPaths = false
   val printCallConstriants = false
-  val printReducedFormula = false
+  val printReducedFormula = true
   val dumpNLFormula = false
   val dumpInstantiatedVC = false
  
@@ -679,6 +680,9 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         val lnctrs = ants ++ conseqs
         val temps = antTemps ++ conseqTemps
         
+        if(this.debugElimination)
+        	println("Path Constraints (before elim): "+(lnctrs ++ temps))
+        
         //TODO: try some optimizations here to reduce the number of constraints to be considered
         //(a) we can eliminate all variables that do not occur in the templates from the lnctrs
         // which are in the theory of presburger arithmetic (we apply only one point rule which is efficient)        
@@ -688,32 +692,38 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         val ctrVars = lnctrs.foldLeft(Set[Identifier]())((acc, lc) => acc ++ variablesOf(lc.expr))   
         val tempVars = temps.foldLeft(Set[Identifier]())((acc, lt) => acc ++ variablesOf(lt.template))       
         val elimVars = ctrVars.diff(tempVars)
-        
+
         //For debugging
-        reporter.info("Number of linear constraints: "+ lnctrs.size)
-        reporter.info("Number of template constraints: "+ temps.size)        
-        reporter.info("Number of elimVars: "+ elimVars.size)
+        if (debugElimination) {
+          reporter.info("Number of linear constraints: " + lnctrs.size)
+          reporter.info("Number of template constraints: " + temps.size)
+          reporter.info("Number of elimVars: " + elimVars.size)
+        }
         
         val elimLnctrs = LinearConstraintUtil.apply1PRuleOnDisjunct(lnctrs, elimVars)
+
+        if (this.debugElimination) {
+          reporter.info("Number of linear constraints (after elim): " + elimLnctrs.size)
+          var elimCtrCount = 0
+          var elimCtrs = Seq[LinearConstraint]()
+          var elimRems = Set[Identifier]()
+          elimLnctrs.foreach((lc) => {
+            val evars = variablesOf(lc.expr).intersect(elimVars)
+            if (!evars.isEmpty) {
+              elimCtrs :+= lc
+              elimCtrCount += 1
+              elimRems ++= evars
+            }
+          })
+          reporter.info("Number of constraints with elimVars: " + elimCtrCount)
+          reporter.info("constraints with elimVars: " + elimCtrs)
+          reporter.info("Number of remaining elimVars: " + elimRems.size)
+          //println("Elim vars: "+elimVars)
+          println("Path constriants (after elimination): " + elimLnctrs)
+        }
         
         //(b) drop all constraints with dummys from 'elimLnctrs' they aren't useful (this is because of the reason we introduce the identifiers)
         val newLnctrs = elimLnctrs.filterNot((ln) => variablesOf(ln.expr).exists(TempIdFactory.isDummy _))
-        
-        reporter.info("Number of linear constraints (after elim): "+ newLnctrs.size)
-        var elimCtrCount = 0
-        var elimCtrs = Seq[LinearConstraint]()
-        var elimRems = Set[Identifier]()
-        newLnctrs.foreach((lc) => {
-          val evars = variablesOf(lc.expr).intersect(elimVars)
-          if(!evars.isEmpty) {
-            elimCtrs :+= lc
-            elimCtrCount += 1            
-            elimRems ++= evars
-          }
-        })
-        reporter.info("Number of constraints with elimVars: "+ elimCtrCount)
-        reporter.info("constraints with elimVars: "+ elimCtrs)
-        reporter.info("Number of remaining elimVars: "+ elimRems.size)
         
         //TODO: investigate why eliminating variables in not good for constraint solvings
         //val newLnctrs = lnctrs
@@ -722,7 +732,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         // and what can never be implied by solving for the templates
         
         if(this.printReducedFormula)
-        	println("Final Path Constraints: "+And((newLnctrs ++ temps).map(_.template)))
+        	println("Final Path Constraints: "+(newLnctrs ++ temps))
         	
         val implCtrs = implicationSolver.constraintsForUnsat(newLnctrs, temps)        
         implCtrs
