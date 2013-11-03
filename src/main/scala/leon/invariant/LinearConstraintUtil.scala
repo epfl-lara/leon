@@ -210,6 +210,7 @@ object LinearConstraintUtil {
 
           //check if the expression has real valued sub-expressions
           val isReal = InvariantUtil.hasReals(e1) || InvariantUtil.hasReals(e2) 
+          //doing something else ... ?
           val (newe, newop) = e match {
             case t: Equals => (Minus(e1, e2), op)
             case t: LessEquals => (Minus(e1, e2), LessEquals)            
@@ -229,8 +230,11 @@ object LinearConstraintUtil {
           }
           val r = mkLinearRecur(newe)
           //simplify the resulting constants
-          val (Some(r2), const) = simplifyConsts(r)
-          val finale = if (const != 0) Plus(r2, IntLiteral(const)) else r2
+          val (r2, const) = simplifyConsts(r)
+          val finale = if (r2.isDefined) {
+            if (const != 0) Plus(r2.get, IntLiteral(const))
+            else r2.get
+          } else IntLiteral(const)
           //println(r + " simplifies to "+finale)
           newop(finale, zero)
         }
@@ -249,9 +253,6 @@ object LinearConstraintUtil {
         case Plus(e1, e2) => Plus(mkLinearRecur(e1), mkLinearRecur(e2))
         case t: Terminal => t
         case fi: FunctionInvocation => fi
-        /*case UnaryOperator(e,op) => op(mkLinearRecur(e))
-        case BinaryOperator(e1,e2,op) => op(mkLinearRecur(e1),mkLinearRecur(e2))
-        case NAryOperator(args,op) => op(args.map(mkLinearRecur(_)))*/
         case _ => throw IllegalStateException("Expression not linear: " + inExpr)
       }
     }
@@ -274,8 +275,7 @@ object LinearConstraintUtil {
       val res = tryExprToTemplate(newexpr)      
       if(res.isEmpty) None
       else {
-        val resctr = res.get.asInstanceOf[LinearConstraint]
-        //println("resulting constraint: " + resctr)
+        val resctr = res.get.asInstanceOf[LinearConstraint]        
         Some(resctr)
       }      
     }

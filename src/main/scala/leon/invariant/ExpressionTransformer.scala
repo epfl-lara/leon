@@ -309,15 +309,16 @@ object ExpressionTransformer {
    * The following procedure converts the formula into negated normal form by pushing all not's inside.
    * It also handles disequality constraints.
    * Some important features.
-   * (a) For relations with real variables, the following produces a strict inequality
-   * (b) For relations with integer variables, the strict inequalities are reduced to non-strict inequalities 
+   * (a) For a strict inequality with real variables/constants, the following produces a strict inequality
+   * (b) Strict inequalities with only integer variables/constants are reduced to non-strict inequalities 
    */
   def TransformNot(expr: Expr): Expr = {
     def nnf(inExpr: Expr): Expr = {
-      inExpr match {
+      if(inExpr.getType != BooleanType) inExpr
+      else inExpr match {
         //matches integer binary relation
         case Not(e @ BinaryOperator(e1, e2, op)) => {
-          if (e1.getType == Int32Type || e1.getType == RealType) {          
+          if (e1.getType == BooleanType || e1.getType == Int32Type || e1.getType == RealType) {          
             e match {
               case e: Equals => Or(nnf(LessThan(e1, e2)), nnf(GreaterThan(e1, e2)))
                 /*else 
@@ -327,35 +328,31 @@ object ExpressionTransformer {
               case e: LessEquals => GreaterThan(nnf(e1), nnf(e2))
               case e: GreaterThan => LessEquals(nnf(e1), nnf(e2))
               case e: GreaterEquals => LessThan(nnf(e1), nnf(e2))
-              case _ => throw IllegalStateException("Unknown integer predicate: " + e)
+              case e: Implies => And(nnf(e1), nnf(Not(e2)))
+              case e: Iff => Or(And(nnf(e1), nnf(Not(e2))), And(nnf(e2), nnf(Not(e1))))
+              case _ => throw IllegalStateException("Unknown binary operation: " + e)
             }
-          }
+          }          
           else{
-            //in this case e1 and e2 could represent ADTs
+            //in this case e is a binary operation over ADTs
             e match {
-              case e: Equals => inExpr
+              case ninst @ Not(CaseClassInstanceOf(cd, e)) => Not(CaseClassInstanceOf(cd,nnf(e)))
+              case e: Equals => Not(Equals(nnf(e1),nnf(e2)))
               case _ => throw IllegalStateException("Unknown operation on algebraic data types: " + e)
             } 
           }
         }
-        //TODO: Puzzling: "Not" is not recognized as an unary operator, need to find out why
+        case Not(Not(e1)) => nnf(e1)    
         case e @ Not(t: Terminal) => e
         case e @ Not(FunctionInvocation(_,_)) => e 
         case Not(And(args)) => Or(args.map(arg => nnf(Not(arg))))
-        case Not(Or(args)) => And(args.map(arg => nnf(Not(arg))))
-        case Not(Not(e1)) => nnf(e1)
-        case Not(Implies(e1, e2)) => And(nnf(e1), nnf(Not(e2)))
-        case Not(Iff(e1, e2)) => Or(nnf(Implies(e1, e2)), nnf(Implies(e2, e1)))
+        case Not(Or(args)) => And(args.map(arg => nnf(Not(arg))))            
         case Implies(lhs,rhs) => {
           nnf(Or(Not(lhs),rhs))
         }                
         case Iff(lhs,rhs) => {
           nnf(And(Implies(lhs,rhs),Implies(rhs,lhs)))
         }                
-
-        //handle ADTs
-        case ninst @ Not(CaseClassInstanceOf(cd, e)) => Not(CaseClassInstanceOf(cd,nnf(e)))
-
         case t: Terminal => t
         case u @ UnaryOperator(e1, op) => op(nnf(e1))
         case b @ BinaryOperator(e1, e2, op) => op(nnf(e1), nnf(e2))
@@ -447,9 +444,15 @@ object ExpressionTransformer {
    */
    def simplify(expr: Expr) : Expr = {
         
+     //Note: some simplification are already performed by the class constructors (see Tree.scala) 
     simplePostTransform((e : Expr) => e match {
       case Equals(lhs,rhs) if (lhs == rhs) => tru
       case Iff(lhs,rhs) if (lhs == rhs) => tru
+      case Equals(IntLiteral(v1),IntLiteral(v2)) => BooleanLiteral(v1 == v2)
+      case LessEquals(IntLiteral(v1),IntLiteral(v2)) => BooleanLiteral(v1 <= v2)
+      case LessThan(IntLiteral(v1),IntLiteral(v2)) => BooleanLiteral(v1 < v2)
+      case GreaterEquals(IntLiteral(v1),IntLiteral(v2)) => BooleanLiteral(v1 >= v2)
+      case GreaterThan(IntLiteral(v1),IntLiteral(v2)) => BooleanLiteral(v1 > v2)    
       case _ => e
     })(expr)    
   }
