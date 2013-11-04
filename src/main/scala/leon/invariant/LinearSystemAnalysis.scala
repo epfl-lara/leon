@@ -48,8 +48,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
   //TODO: there is serious bug in using incremental solving. Report this to z3 community
   val debugIncremental = false  
   val debugElimination = true
-  val printPaths = false
-  val printCallConstriants = false
+  val printPaths = true
+  val printCallConstriants = true
   val printReducedFormula = true
   val dumpNLFormula = false
   val dumpInstantiatedVC = false
@@ -355,7 +355,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           }
            
           val (btree, ptree) = ctrTracker.getVC(fd)
-          val newctr = generateCtrsForTree(btree, ptree, satChooser, doesAlias, true)
+          val newctr = generateCtrsForTree(btree, ptree, satChooser, doesAlias, true, /**Not used by kept around for debugging**/solEval)
           if (newctr == tru)
             throw IllegalStateException("cannot find a counter-example path!!")
 
@@ -452,7 +452,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
   def generateCtrsForTree(bodyRoot: CtrNode, postRoot : CtrNode, 
       selector : (CtrNode, Iterable[CtrTree], Int) => Iterable[CtrTree],
       doesAlias: (Expr, Expr) => Boolean, 
-      exploreOnePath : Boolean) : Expr = {
+      exploreOnePath : Boolean,
+      /**Kept around for debugging **/evalSolver: UIFZ3Solver) : Expr = {
     
     //create an incremental solver, the solver is pushed and popped constraints as the paths in the DNFTree are explored
     //val solver = new UIFZ3Solver(context, program)    
@@ -649,7 +650,19 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           println("UIF constraints: " + uifCtr)
           
         //push not inside
-        val nnfExpr = ExpressionTransformer.TransformNot(uifCtr)
+        val nnfExpr = ExpressionTransformer.TransformNot(uifCtr)        
+        //check if the two formula's are equivalent
+        /*val solver = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context,program)))
+        val (res,_) = solver.solveSAT(And(uifCtr,Not(nnfExpr)))
+        if(res == Some(false)) 
+          println("Both the formulas are equivalent!! ")
+         else throw new IllegalStateException("Transformer Formula: "+nnfExpr+" is not equivalent")*/
+        /*uifCtrs.foreach((ctr) => {
+        	if(evalSolver.evalBoolExpr(ctr) != Some(true))
+        		throw new IllegalStateException("Formula not sat by the model: "+ctr)
+        })*/
+        
+        
         //create the root of the UIF tree
         val newnode = CtrNode()
         //add the nnfExpr as a DNF formulae        
@@ -841,29 +854,36 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         if(InvariantUtil.isCallExpr(call1)) {
                    
           val (ants,_) = axiomatizeCalls(call1,call2)
-          //here, remove ADT equalities if any (because we cannot handle disequalities between ADTs as of now)
+          //drop everything if there exists ADTs (note here the antecedent is negated so cannot retain integer predicates)
           //TODO: fix this (this requires mapping of ADTs to integer world and introducing a < total order)
-          val intEqs = ants.filter((eq) => {
+          /*val intEqs = ants.filter((eq) => {
             val BinaryOperator(lhs, rhs, _) = eq
             (lhs.getType == Int32Type || lhs.getType == RealType || lhs.getType == BooleanType)
-          })                 
+          })*/                 
+          val adtEqs = ants.filter((eq) => if(eq.isInstanceOf[Equals]) {
+            val Equals(lhs, rhs) = eq
+            (lhs.getType != Int32Type && lhs.getType != RealType && lhs.getType != BooleanType)
+          } else false)
           
-          if(intEqs.isEmpty) acc
-          else acc :+ Not(And(intEqs))
+          if(adtEqs.isEmpty) acc :+ Not(And(ants))
+          else {
+            //drop everything
+            acc
+          } 
           
         } else {
           //here call1 and call2 are ADTs                    
           val (lhs,rhs) = axiomatizeADTCons(call1,call2)
           
-          val intLHSEqs = lhs.filter((eq) => {
-            val BinaryOperator(lhs, rhs, _) = eq
-            (lhs.getType == Int32Type || lhs.getType == RealType || lhs.getType == BooleanType)
-          })
+          val adtEqs = lhs.filter((eq) => if(eq.isInstanceOf[Equals]) {
+            val Equals(lhs, rhs) = eq
+            (lhs.getType != Int32Type && lhs.getType != RealType && lhs.getType != BooleanType)
+          } else false)
           
           //note the rhs is always of ADT type (so we are ignoring it) for completeness we must have 'And(Not(rhs),Not(And(lhs)))'
           //TODO: fix this
-          if(lhs.isEmpty) acc
-          else acc :+ Not(And(lhs))            
+          if(adtEqs.isEmpty) acc :+ Not(And(lhs))
+          else acc            
         }        
       }        
       else acc
