@@ -47,10 +47,10 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
   //flags controlling debugging and statistics generation
   //TODO: there is serious bug in using incremental solving. Report this to z3 community
   val debugIncremental = false  
-  val debugElimination = true
-  val printPaths = true
-  val printCallConstriants = true
-  val printReducedFormula = true
+  val debugElimination = false
+  val printPaths = false
+  val printCallConstriants = false
+  val printReducedFormula = false
   val dumpNLFormula = false
   val dumpInstantiatedVC = false
  
