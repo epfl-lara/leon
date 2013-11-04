@@ -611,7 +611,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         
         tree match {
           case n @ CtrNode(_) => {
-            //println("Traversing UIF Tree")                        
+            //println("Traversing UIF Tree: node id: "+n.id)                        
             val newants = ants ++ n.constraints         
             val newBools = boolCtrs ++ n.boolCtrs.map(_.expr)
             //note: other constraints are  possible
@@ -652,13 +652,13 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         val nnfExpr = ExpressionTransformer.TransformNot(uifCtr)
         //create the root of the UIF tree
         val newnode = CtrNode()
-        //add the nnfExpr as a DNF formulae
+        //add the nnfExpr as a DNF formulae        
         ctrTracker.addConstraintRecur(nnfExpr, newnode)
         newnode
 
       } else CtrLeaf()
       
-      traverseTree(uifroot, ants, antTemps, conseqs, conseqTemps, Seq(), depth)              
+      traverseTree(uifroot, ants, antTemps, conseqs, conseqTemps, Seq(), depth)           
     }
 
     /**

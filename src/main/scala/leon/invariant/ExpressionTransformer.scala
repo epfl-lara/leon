@@ -320,10 +320,7 @@ object ExpressionTransformer {
         case Not(e @ BinaryOperator(e1, e2, op)) => {
           if (e1.getType == BooleanType || e1.getType == Int32Type || e1.getType == RealType) {          
             e match {
-              case e: Equals => Or(nnf(LessThan(e1, e2)), nnf(GreaterThan(e1, e2)))
-                /*else 
-              	Or(nnf(LessEquals(e1, Minus(e2, one))), nnf(GreaterEquals(e1, Plus(e2, one))))
-              }*/
+              case e: Equals => Or(nnf(LessThan(e1, e2)), nnf(GreaterThan(e1, e2)))            
               case e: LessThan => GreaterEquals(nnf(e1), nnf(e2))
               case e: LessEquals => GreaterThan(nnf(e1), nnf(e2))
               case e: GreaterThan => LessEquals(nnf(e1), nnf(e2))
@@ -336,7 +333,7 @@ object ExpressionTransformer {
           else{
             //in this case e is a binary operation over ADTs
             e match {
-              case ninst @ Not(CaseClassInstanceOf(cd, e)) => Not(CaseClassInstanceOf(cd,nnf(e)))
+              case ninst @ Not(CaseClassInstanceOf(cd, e1)) => Not(CaseClassInstanceOf(cd,nnf(e1)))
               case e: Equals => Not(Equals(nnf(e1),nnf(e2)))
               case _ => throw IllegalStateException("Unknown operation on algebraic data types: " + e)
             } 
@@ -448,6 +445,7 @@ object ExpressionTransformer {
     simplePostTransform((e : Expr) => e match {
       case Equals(lhs,rhs) if (lhs == rhs) => tru
       case Iff(lhs,rhs) if (lhs == rhs) => tru
+      case UMinus(IntLiteral(v)) => IntLiteral(-v)
       case Equals(IntLiteral(v1),IntLiteral(v2)) => BooleanLiteral(v1 == v2)
       case LessEquals(IntLiteral(v1),IntLiteral(v2)) => BooleanLiteral(v1 <= v2)
       case LessThan(IntLiteral(v1),IntLiteral(v2)) => BooleanLiteral(v1 < v2)
