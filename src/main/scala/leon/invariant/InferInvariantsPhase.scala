@@ -208,7 +208,6 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         }          
         else {
           //replace #res in the invariant by a new result variable
-          //TODO: subjected to change
           val resvar = FreshIdentifier("res", true).setType(fd.returnType)
           val ninv = replace(Map(ResultVariable() -> resvar.toVariable),inv)
           Some((resvar,ninv))

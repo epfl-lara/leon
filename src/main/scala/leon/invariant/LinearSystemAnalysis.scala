@@ -31,7 +31,9 @@ import leon.solvers.z3.UIFZ3Solver
 import leon.invariant._
 import leon.purescala.UndirectedGraph
 import scala.util.control.Breaks._
-import leon.solvers.SolverFactory
+import leon.solvers._
+import leon.solvers.TimeoutSolverFactory
+import leon.solvers.TimeoutSolverFactory
 
 class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: TemplateFactory,
     context : LeonContext, program : Program) {
@@ -213,6 +215,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
     //create a new solver 
     val solverWithCtrs = new UIFZ3Solver(this.context, program)
+    //solverWithCtrs.push()
     //solverWithCtrs.assertCnstr(tru)
     //for stats
     ctrCount = 0
@@ -248,11 +251,9 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       (acc :+ ctr)
     })      
 */  
+  
   def recSolveForTemplatesIncr(model: Map[Identifier, Expr], solverWithCtrs: UIFZ3Solver, funcExprs: Map[FunDef, Expr],
-      nonLinearCtr : Expr)
-  	: Option[Map[FunDef, Expr]] = {
-
-    val funcs = funcExprs.keys
+      inputCtr : Expr) : Option[Map[FunDef, Expr]] = {    
 
     //the following does not seem to be necessary as z3 updates the model on demand
     //val compModel = completeModel(model, TemplateIdFactory.getTemplateIds)
@@ -261,119 +262,31 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     println("candidate Invariants")
     val candInvs = getAllInvariants(model)
     candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))
-
-    //check if 'inv' is a 'sufficiently strong' invariant by looking for a counter-example. 
-    //if one exists find a path (in each tree) that results in the counter-example and add farkas' 
-    //constraints for the path to the constraints to be solved        
-    val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap
+    
+    val funcs = funcExprs.keys           
+    val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap    
+    var conflictingFuns = Set[FunDef]()
+    //mapping from the functions to the counter-example (in the form expressions) that result in hard NL constraints
+    var hardCE = MutableMap[FunDef,Expr]()
     
     val newctrs = funcs.foldLeft(Seq[Expr]())((acc, fd) => {
 
       val instVC = simplifyArithmetic(instantiateTemplate(funcExprs(fd), tempVarMap))
-
-      //For debugging
-      if(this.dumpInstantiatedVC) {
-        val wr = new PrintWriter(new File("formula-dump.txt"))
-        println("Instantiated VC of " + fd.id + " is: " + instVC)
-        wr.println("Function name: " + fd.id)
-        wr.println("Formula expr: ")
-        ExpressionTransformer.PrintWithIndentation(wr, instVC)
-        wr.flush()
-        wr.close()
-      }
-
-      //throw an exception if the candidate expression has reals
-      if (InvariantUtil.hasReals(instVC))
-        throw IllegalStateException("Instantiated VC of " + fd.id + " contains reals: " + instVC)
-
-      //println("verification condition for" + fd.id + " : " + cande)
-      //println("Solution: "+uiSolver.solveSATWithFunctionCalls(cande))
-
-      //this creates a new solver and does not work with the SimpleSolverAPI
-      val solEval = new UIFZ3Solver(context, program)
-      solEval.assertCnstr(instVC)
-      solEval.check match {
-        case None => {
-          solEval.free()
-          throw IllegalStateException("cannot check the satisfiability of " + instVC)
-        }
-        case Some(false) => {
-          solEval.free()
-          //do not generate any constraints
-          acc
-        }
-        case Some(true) => {
-          //For debugging purposes.
-          println("Function: " + fd.id + "--Found candidate invariant is not a real invariant! ")
-          //println("Counter-example: "+solEval.getModel)
-
-          //try to get the paths that lead to the error 
-          val satChooser = (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {
-            ch.filter((child) => child match {
-              case CtrLeaf() => true
-              case cn @ CtrNode(_) => {
-
-                //note the expr may have template variables so replace them with the candidate values
-                val nodeExpr = if (!cn.templates.isEmpty) {
-                  //the node has templates
-                  instantiateTemplate(cn.toExpr, tempVarMap)
-                } else cn.toExpr
-
-                //throw an exception if the expression has reals
-                if (InvariantUtil.hasReals(nodeExpr))
-                  throw IllegalStateException("Node expression has reals: " + nodeExpr)
-
-                solEval.evalBoolExpr(nodeExpr) match {
-                  case None => throw IllegalStateException("cannot evaluate " + cn.toExpr + " on " + solEval.getModel)
-                  case Some(b) => b
-                }
-              }
-            })
-          }
-
-          //check if two calls (to functions or ADT cons) have the same value in the model 
-          val doesAlias = (call1: Expr, call2: Expr) => {
-            //first check if the return values are equal
-            val BinaryOperator(r1 @ Variable(_), _, _) = call1
-            val BinaryOperator(r2 @ Variable(_), _, _) = call2
-            val resEquals = solEval.evalBoolExpr(Equals(r1, r2))            
-            if (resEquals.isEmpty)
-              throw IllegalStateException("cannot evaluate " + Equals(r1, r2) + " on " + solEval.getModel)
-
-            if (resEquals.get) {
-              //for function calls do additional checks
-              if (InvariantUtil.isCallExpr(call1)) {
-                val (ants, _) = axiomatizeCalls(call1, call2)
-                val antExpr = And(ants)
-                solEval.evalBoolExpr(antExpr) match {
-                  case None => throw IllegalStateException("cannot evaluate " + antExpr + " on " + solEval.getModel)
-                  case Some(b) => b
-                }
-              } else{
-                //println(Equals(r1, r2) + " evalued to true")
-                true
-              } 
-            } else false
-          }
-           
-          val (btree, ptree) = ctrTracker.getVC(fd)
-          val newctr = generateCtrsForTree(btree, ptree, satChooser, doesAlias, true, /**Not used by kept around for debugging**/solEval)
-          if (newctr == tru)
-            throw IllegalStateException("cannot find a counter-example path!!")
-
-          //free the solver here
-          solEval.free()
-          acc :+ newctr
-        }
-      }
+      //find new non-linear constraints based on models to instVC (which are counter examples)
+      val (ctrsForFun, counterExample) = getNLConstraints(fd, instVC, tempVarMap)
+      if(!ctrsForFun.isEmpty) {
+        conflictingFuns += fd
+        hardCE += (fd -> InvariantUtil.modelToExpr(counterExample))
+        
+        acc ++ ctrsForFun        
+      } else acc    	  
     })
-    
+
     //have we found a real invariant ?
     if (newctrs.isEmpty) {
       //yes, hurray
       //print some statistics 
       reporter.info("- Number of explored paths (of the DAG) in this unroll step: " + exploredPaths)
-
       Some(getAllInvariants(model))
     } else {
       //For statistics.
@@ -387,6 +300,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
 
       //add the new constraints      
       //TODO: There is a serious bug here, report the bug to z3 if it happens again
+      //solverWithCtrs.push()
       solverWithCtrs.assertCnstr(newctr)
 
       //For debugging
@@ -398,23 +312,68 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         pwr.flush()
         pwr.close()
         println("Formula printed to File: " + filename)
-      }                 
-      
-      val conjunctedCtr = And(nonLinearCtr,newctr)
-      val simpSolver =  SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context,program)))                 
-    	
-      println("solving...")
-      val t1 = System.currentTimeMillis()      
-      val (res,newModel) = simpSolver.solveSAT(conjunctedCtr)       
-      val t2 = System.currentTimeMillis()
-      println("solved... in " + (t2 - t1) / 1000.0 + "s")
-
-      //for debugging
-      if (debugIncremental) {
-        solverWithCtrs.innerCheck        
+      }                                   
+            
+      def updateHardCE(fd: FunDef, counterExample : Map[Identifier,Expr]) : Unit = {
+        val ceExpr = InvariantUtil.modelToExpr(counterExample)
+        if(hardCE.contains(fd)) {
+          hardCE.update(fd, And(hardCE(fd),ceExpr))
+        } else {
+          hardCE += (fd -> ceExpr)
+        }        			   
       }
+
+      //solve the new set of non-linear constraints
+      def solveNLConstraints(easyPart: Expr, newPart: Expr): (Option[Boolean], Map[Identifier, Expr], Expr) = {
+        //val solver =  SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context,program)))
+        val timeout : Long = 60 * 1000 
+        val solver = SimpleSolverAPI(TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), timeout))
+
+        println("solving...")
+        val t1 = System.currentTimeMillis()
+        val (res, newModel) = solver.solveSAT(And(easyPart, newPart))
+        val t2 = System.currentTimeMillis()
+        if (res.isDefined)
+          println("solved... in " + (t2 - t1) / 1000.0 + "s")
+        else
+          println("timed out... in " + (t2 - t1) / 1000.0 + "s")
+
+        //for debugging
+        if (debugIncremental) {
+          solverWithCtrs.innerCheck
+        }
+        res match {
+          case None => {
+            //here, we might have timed out, so block current counter-example and get a new one
+            val newctrs = conflictingFuns.foldLeft(Seq[Expr]())((acc, fd) => {
+
+              val instVC = simplifyArithmetic(instantiateTemplate(funcExprs(fd), tempVarMap))              
+              val instVCmodCE = And(instVC, Not(hardCE(fd)))
+              val (ctrsForFun, counterExample) = getNLConstraints(fd, instVCmodCE, tempVarMap)              
+              updateHardCE(fd, counterExample)
+              acc ++ ctrsForFun
+            })
+            if (newctrs.isEmpty) {              
+              //give up, only hard paths remaining
+              reporter.info("Exhausted all easy paths ")
+              reporter.info("- Number of remaining hard paths: " + hardCE.size)
+              (None, Map(), tru)
+              
+            } else {              
+              //try this new path, this might be easy to solve
+              solveNLConstraints(easyPart, And(newctrs))
+            }
+          }
+          case _ => (res, newModel, newPart)
+        }
+      }               
+      
+      val (res, newModel, newPart) = solveNLConstraints(inputCtr, newctr)                      
       res  match {
-        case None => None
+        case None => {
+          //here, there are only hard cases remaining 
+          None
+        }
         case Some(false) => {
           //print some statistics 
           reporter.info("- Number of explored paths (of the DAG) in this unroll step: " + exploredPaths)
@@ -439,10 +398,110 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
 
             solverWithCtrs.pop()
           }                   
-          recSolveForTemplatesIncr(newModel, solverWithCtrs, funcExprs, conjunctedCtr)
+          recSolveForTemplatesIncr(newModel, solverWithCtrs, funcExprs, And(inputCtr, newPart))
         }
       }             
     }
+  }   
+	  
+  
+  def getNLConstraints(fd: FunDef, instVC : Expr, tempVarMap: Map[Expr,Expr]) : (Seq[Expr], Map[Identifier,Expr]) = {	   
+	  //For debugging
+	  if(this.dumpInstantiatedVC) {
+	    val wr = new PrintWriter(new File("formula-dump.txt"))
+	    println("Instantiated VC of " + fd.id + " is: " + instVC)
+	    wr.println("Function name: " + fd.id)
+	    wr.println("Formula expr: ")
+	    ExpressionTransformer.PrintWithIndentation(wr, instVC)
+	    wr.flush()
+	    wr.close()
+	  }
+	
+	  //throw an exception if the candidate expression has reals
+	  if (InvariantUtil.hasReals(instVC))
+	    throw IllegalStateException("Instantiated VC of " + fd.id + " contains reals: " + instVC)
+	
+	  //println("verification condition for" + fd.id + " : " + cande)
+	  //println("Solution: "+uiSolver.solveSATWithFunctionCalls(cande))
+	
+	  //this creates a new solver and does not work with the SimpleSolverAPI
+	  val solEval = new UIFZ3Solver(context, program)
+	  solEval.assertCnstr(instVC)
+	  solEval.check match {
+	    case None => {
+	      solEval.free()
+	      throw IllegalStateException("cannot check the satisfiability of " + instVC)
+	    }
+	    case Some(false) => {
+	      solEval.free()
+	      //do not generate any constraints
+	      (Seq(), Map())
+	    }
+	    case Some(true) => {
+	      //For debugging purposes.
+	      println("Function: " + fd.id + "--Found candidate invariant is not a real invariant! ")
+	      val counterExample = solEval.getModel
+	      //println("Counter-example: "+counterExample)
+	
+	      //try to get the paths that lead to the error 
+	      val satChooser = (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {
+	        ch.filter((child) => child match {
+	          case CtrLeaf() => true
+	          case cn @ CtrNode(_) => {
+	
+	            //note the expr may have template variables so replace them with the candidate values
+	            val nodeExpr = if (!cn.templates.isEmpty) {
+	              //the node has templates
+	              instantiateTemplate(cn.toExpr, tempVarMap)
+	            } else cn.toExpr
+	
+	            //throw an exception if the expression has reals
+	            if (InvariantUtil.hasReals(nodeExpr))
+	              throw IllegalStateException("Node expression has reals: " + nodeExpr)
+	
+	            solEval.evalBoolExpr(nodeExpr) match {
+	              case None => throw IllegalStateException("cannot evaluate " + cn.toExpr + " on " + solEval.getModel)
+	              case Some(b) => b
+	            }
+	          }
+	        })
+	      }
+	
+	      //check if two calls (to functions or ADT cons) have the same value in the model 
+	      val doesAlias = (call1: Expr, call2: Expr) => {
+	        //first check if the return values are equal
+	        val BinaryOperator(r1 @ Variable(_), _, _) = call1
+	        val BinaryOperator(r2 @ Variable(_), _, _) = call2
+	        val resEquals = solEval.evalBoolExpr(Equals(r1, r2))            
+	        if (resEquals.isEmpty)
+	          throw IllegalStateException("cannot evaluate " + Equals(r1, r2) + " on " + solEval.getModel)
+	
+	        if (resEquals.get) {
+	          //for function calls do additional checks
+	          if (InvariantUtil.isCallExpr(call1)) {
+	            val (ants, _) = axiomatizeCalls(call1, call2)
+	            val antExpr = And(ants)
+	            solEval.evalBoolExpr(antExpr) match {
+	              case None => throw IllegalStateException("cannot evaluate " + antExpr + " on " + solEval.getModel)
+	              case Some(b) => b
+	            }
+	          } else{
+	            //println(Equals(r1, r2) + " evalued to true")
+	            true
+	          } 
+	        } else false
+	      }
+	       
+	      val (btree, ptree) = ctrTracker.getVC(fd)
+	      val newctr = generateCtrsForTree(btree, ptree, satChooser, doesAlias, true, /**Not used but kept around for debugging**/solEval)
+	      if (newctr == tru)
+	        throw IllegalStateException("cannot find a counter-example path!!")
+	
+	      //free the solver here
+	      solEval.free()
+	      (Seq(newctr), counterExample)
+	    }
+	  }        
   }
       
   /**
