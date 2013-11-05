@@ -310,8 +310,8 @@ trait CodeExtraction extends Extractors {
       throw new ImpureCodeEncounteredException(null)
     }
     def unsupported(tr: Tree, msg: String): Nothing = {
-      reporter.error(tr.pos, tr.toString)
       reporter.error(tr.pos, msg)
+      reporter.error(tr.pos, tr.toString)
       throw new ImpureCodeEncounteredException(tr)
     }
 
@@ -390,14 +390,17 @@ trait CodeExtraction extends Extractors {
       var rest = tmpRest
 
       val res = current match {
+        case ExArrayLiteral(tpe, args) =>
+          FiniteArray(args.map(extractTree)).setType(ArrayType(extractType(tpe)))
+
         case ExCaseObject(sym) =>
           classesToClasses.get(sym) match {
             case Some(ccd: CaseClassDef) =>
               CaseClass(ccd, Seq())
-
             case _ =>
-              unsupported(tr, "Unknown case class "+sym.name)
+              unsupported(tr, "Unknown case object "+sym.name)
           }
+
 
         case ExParameterlessMethodCall(t,n) if extractTree(t).getType.isInstanceOf[CaseClassType] =>
           val selector = extractTree(t)

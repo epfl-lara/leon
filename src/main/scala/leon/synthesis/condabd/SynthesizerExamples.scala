@@ -37,13 +37,14 @@ import verification._
 
 import SynthesisInfo._
 import SynthesisInfo.Action._
+import SynthesisContext.SynthesisSolver
 
 // enable postfix operations
 import scala.language.postfixOps
 
 class SynthesizerForRuleExamples(
   // some synthesis instance information
-  val mainSolver: SolverFactory[Solver],
+  val mainSolver: SolverFactory[SynthesisSolver],
   val program: Program,
   val desiredType: LeonType,
   val holeFunDef: FunDef,

@@ -449,9 +449,11 @@ object TreeOps {
    * Note that the code is simple but far from optimal (many traversals...)
    */
   def simplifyLets(expr: Expr) : Expr = {
+
     def simplerLet(t: Expr) : Option[Expr] = t match {
 
-      case letExpr @ Let(i, t: Terminal, b) if !containsChoose(b) => Some(replace(Map((Variable(i) -> t)), b))
+      case letExpr @ Let(i, t: Terminal, b) if !containsChoose(b) =>
+        Some(replace(Map((Variable(i) -> t)), b))
 
       case letExpr @ Let(i,e,b) if !containsChoose(b) => {
         val occurences = treeCatamorphism[Int]((e:Expr) => e match {
@@ -468,7 +470,6 @@ object TreeOps {
       }
 
       case letTuple @ LetTuple(ids, Tuple(exprs), body) if !containsChoose(body) =>
-
         var newBody = body
 
         val (remIds, remExprs) = (ids zip exprs).filter { 
@@ -501,14 +502,23 @@ object TreeOps {
           Some(LetTuple(remIds, Tuple(remExprs), newBody))
         }
 
+      case l @ LetTuple(ids, tExpr: Terminal, body) if !containsChoose(body) =>
+        val substMap : Map[Expr,Expr] = ids.map(Variable(_) : Expr).zipWithIndex.toMap.map {
+          case (v,i) => (v -> TupleSelect(tExpr, i + 1).setType(v.getType))
+        }
+
+        Some(replace(substMap, body))
+
       case l @ LetTuple(ids, tExpr, body) if !containsChoose(body) =>
-        val TupleType(types) = tExpr.getType
         val arity = ids.size
-        // A map containing vectors of the form (0, ..., 1, ..., 0) where the one corresponds to the index of the identifier in the
-        // LetTuple. The idea is that we can sum such vectors up to compute the occurences of all variables in one traversal of the
-        // expression.
         val zeroVec = Seq.fill(arity)(0)
         val idMap   = ids.zipWithIndex.toMap.mapValues(i => zeroVec.updated(i, 1))
+
+        // A map containing vectors of the form (0, ..., 1, ..., 0) where
+        // the one corresponds to the index of the identifier in the
+        // LetTuple. The idea is that we can sum such vectors up to compute
+        // the occurences of all variables in one traversal of the
+        // expression.
 
         val occurences : Seq[Int] = treeCatamorphism[Seq[Int]]((e : Expr) => e match {
           case Variable(x) => idMap.getOrElse(x, zeroVec)
@@ -531,6 +541,7 @@ object TreeOps {
 
       case _ => None
     }
+
     searchAndReplaceDFS(simplerLet)(expr)
   }
 
@@ -1449,7 +1460,7 @@ object TreeOps {
           case (id, post) =>
             val nid = genId(id, newScope)
             val postScope = newScope.register(id -> nid)
-            (id, rec(post, postScope))
+            (nid, rec(post, postScope))
         }
 
         LetDef(newFd, rec(body, newScope))
@@ -1583,6 +1594,7 @@ object TreeOps {
       case Untyped | AnyType | BottomType | BooleanType | Int32Type | UnitType => None  
     }
 
+    var idMap     = Map[Identifier, Identifier]()
     var funDefMap = Map.empty[FunDef,FunDef]
 
     def fd2fd(funDef : FunDef) : FunDef = funDefMap.get(funDef) match {
@@ -1598,7 +1610,14 @@ object TreeOps {
             // These will be taken care of in the recursive traversal.
             fd.body = funDef.body
             fd.precondition = funDef.precondition
-            fd.postcondition = funDef.postcondition
+            funDef.postcondition match {
+              case Some((id, post)) =>
+                val freshId = FreshIdentifier(id.name, true).setType(rt)
+                idMap += id -> freshId
+                fd.postcondition = Some((freshId, post))
+              case None =>
+                fd.postcondition = None
+            }
             fd
         }
         funDefMap = funDefMap.updated(funDef, newFD)
@@ -1607,6 +1626,7 @@ object TreeOps {
 
     def pre(e : Expr) : Expr = e match {
       case Tuple(Seq()) => UnitLiteral
+      case Variable(id) if idMap contains id => Variable(idMap(id))
 
       case Tuple(Seq(s)) => pre(s)
 

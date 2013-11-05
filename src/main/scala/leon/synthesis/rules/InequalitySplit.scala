@@ -52,8 +52,6 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
       case _ => false
     }
 
-    solver.free()
-
 
     candidates.flatMap(_ match {
       case List(a1, a2) =>

@@ -20,17 +20,22 @@ case class SynthesisContext(
   reporter: Reporter
 ) {
 
-  def solverFactory: SolverFactory[Solver] = {
-    new FairZ3SolverFactory(context, program)
+  def newSolver: SynthesisContext.SynthesisSolver = {
+    new FairZ3Solver(context, program)
   }
 
-  def fastSolverFactory: SolverFactory[Solver] = {
-    new UninterpretedZ3SolverFactory(context, program)
+  def newFastSolver: SynthesisContext.SynthesisSolver = {
+    new UninterpretedZ3Solver(context, program)
   }
+
+  val solverFactory = SolverFactory(() => newSolver)
+  val fastSolverFactory = SolverFactory(() => newFastSolver)
 
 }
 
 object SynthesisContext {
+  type SynthesisSolver = TimeoutAssumptionSolver with IncrementalSolver
+
   def fromSynthesizer(synth: Synthesizer) = {
     SynthesisContext(
       synth.context,

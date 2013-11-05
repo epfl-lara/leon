@@ -19,7 +19,7 @@ import scala.collection.mutable.{Set=>MutableSet,Map=>MutableMap}
 case class Z3FunctionInvocation(funDef: FunDef, args: Seq[Z3AST])
 
 class FunctionTemplate private(
-  solver: FairZ3SolverFactory,
+  solver: FairZ3Solver,
   val funDef : FunDef,
   activatingBool : Identifier,
   condVars : Set[Identifier],
@@ -152,7 +152,7 @@ class FunctionTemplate private(
 object FunctionTemplate {
   val splitAndOrImplies = false
 
-  def mkTemplate(solver: FairZ3SolverFactory, funDef: FunDef, isRealFunDef : Boolean = true) : FunctionTemplate = {
+  def mkTemplate(solver: FairZ3Solver, funDef: FunDef, isRealFunDef : Boolean = true) : FunctionTemplate = {
     val condVars : MutableSet[Identifier] = MutableSet.empty
     val exprVars : MutableSet[Identifier] = MutableSet.empty
 

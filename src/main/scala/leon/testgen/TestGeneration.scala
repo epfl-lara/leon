@@ -27,7 +27,6 @@ class TestGeneration(context : LeonContext) {
   private val reporter = context.reporter
 
   def analyse(program: Program) {
-    val z3Solver = new FairZ3SolverFactory(context, program)
     reporter.info("Running test generation")
 
     val testcases = generateTestCases(program)
@@ -60,11 +59,11 @@ class TestGeneration(context : LeonContext) {
   }
 
   def generatePathConditions(program: Program): Set[Expr] = {
-    val z3Solver = new FairZ3SolverFactory(context, program)
+    val z3Solverf = SolverFactory( () => new FairZ3Solver(context, program))
 
     val callGraph = new CallGraph(program)
     callGraph.writeDotFile("testgen.dot")
-    val constraints = callGraph.findAllPaths(z3Solver).map(path => {
+    val constraints = callGraph.findAllPaths(z3Solverf).map(path => {
       println("Path is: " + path)
       val cnstr = callGraph.pathConstraint(path)
       println("constraint is: " + cnstr)
@@ -75,15 +74,14 @@ class TestGeneration(context : LeonContext) {
 
   private def generateTestCases(program: Program): Set[Map[Identifier, Expr]] = {
     val allPaths = generatePathConditions(program)
-    val z3Solver = new FairZ3SolverFactory(context, program)
+    val z3Solverf = SolverFactory( () => new FairZ3Solver(context, program))
 
     allPaths.flatMap(pathCond => {
       reporter.info("Now considering path condition: " + pathCond)
 
       var testcase: Option[Map[Identifier, Expr]] = None
         
-      z3Solver.restartZ3
-      val (solverResult, model) = SimpleSolverAPI(z3Solver).solveSAT(pathCond)
+      val (solverResult, model) = SimpleSolverAPI(z3Solverf).solveSAT(pathCond)
 
       solverResult match {
         case None => Seq()

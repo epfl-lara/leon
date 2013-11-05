@@ -10,10 +10,11 @@ import purescala.Extractors._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
+import SynthesisContext.SynthesisSolver
 
 import _root_.insynth.util.logging._
 
-class Verifier(solverf: SolverFactory[Solver], p: Problem, synthInfo: SynthesisInfo = new SynthesisInfo)
+class Verifier(solverf: SolverFactory[SynthesisSolver], p: Problem, synthInfo: SynthesisInfo = new SynthesisInfo)
 	extends AbstractVerifier(solverf, p, synthInfo) with HasLogger {
     
   import SynthesisInfo.Action._

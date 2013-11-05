@@ -12,38 +12,39 @@ import leon.purescala.Trees._
 import leon.purescala.TypeTrees._
 
 class TimeoutSolverTests extends LeonTestSuite {
-  private class IdioticSolver(val context : LeonContext, val program: Program) extends SolverFactory[Solver] {
-    enclosing =>
-
+  private class IdioticSolver(val context : LeonContext, val program: Program) extends Solver with TimeoutSolver {
     val name = "Idiotic"
     val description = "Loops"
 
-    def getNewSolver = new Solver {
-      def check = {
-        while(!interrupted) {
-          Thread.sleep(100)
-        }
-        None
+    var interrupted = false
+
+    def innerCheck = {
+      while(!interrupted) {
+        Thread.sleep(100)
       }
-
-      def assertCnstr(e: Expr) {}
-
-      def checkAssumptions(assump: Set[Expr]) = ???
-      def getModel = ???
-      def getUnsatCore = ???
-      def push() = ???
-      def pop(lvl: Int) = ???
-
-      def interrupt() = enclosing.interrupt()
-      def recoverInterrupt() = enclosing.recoverInterrupt()
+      None
     }
+
+    def recoverInterrupt() {
+      interrupted = false
+    }
+
+    def interrupt() {
+      interrupted = true
+    }
+
+    def assertCnstr(e: Expr) = {}
+
+    def free() {}
+
+    def getModel = ???
   }
 
-  private def getTOSolver : TimeoutSolverFactory[Solver] = {
-    new IdioticSolver(testContext, Program.empty).withTimeout(1000L)
+  private def getTOSolver : SolverFactory[Solver] = {
+    SolverFactory(() => new IdioticSolver(testContext, Program.empty).setTimeout(1000L))
   }
 
-  private def check(sf: TimeoutSolverFactory[Solver], e: Expr): Option[Boolean] = {
+  private def check(sf: SolverFactory[Solver], e: Expr): Option[Boolean] = {
     val s = sf.getNewSolver
     s.assertCnstr(e)
     s.check

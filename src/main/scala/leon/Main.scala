@@ -177,8 +177,6 @@ object Main {
 
     val intManager = new InterruptManager(reporter)
 
-    intManager.registerSignalHandler()
-
     LeonContext(settings = settings,
                 reporter = reporter,
                 files = files,
@@ -214,6 +212,8 @@ object Main {
       val timer     = new Timer().start
 
       val ctx = processOptions(args.toList)
+
+      ctx.interruptManager.registerSignalHandler()
 
       ctx.timers.get("Leon Opts") += timer
 

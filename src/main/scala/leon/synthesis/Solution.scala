@@ -8,6 +8,7 @@ import purescala.TypeTrees.{TypeTree,TupleType}
 import purescala.Definitions._
 import purescala.TreeOps._
 import solvers.z3._
+import solvers._
 
 // Defines a synthesis solution of the form:
 // ⟨ P | T ⟩
@@ -30,7 +31,7 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr) {
     defs.foldLeft(term){ case (t, fd) => LetDef(fd, t) }
 
   def toSimplifiedExpr(ctx: LeonContext, p: Program): Expr = {
-    val uninterpretedZ3 = new UninterpretedZ3SolverFactory(ctx, p)
+    val uninterpretedZ3 = SolverFactory(() => new UninterpretedZ3Solver(ctx, p))
 
     val simplifiers = List[Expr => Expr](
       simplifyTautologies(uninterpretedZ3)(_),

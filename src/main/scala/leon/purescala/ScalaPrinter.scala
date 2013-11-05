@@ -19,14 +19,14 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
   // EXPRESSIONS
   // all expressions are printed in-line
   override def pp(tree: Expr, lvl: Int): Unit = tree match {
-    case Variable(id) => sb.append(id)
+    case Variable(id) => sb.append(idToString(id))
     case DeBruijnIndex(idx) => sys.error("Not Valid Scala")
     case LetTuple(ids,d,e) =>
       sb.append("locally {\n")
       ind(lvl+1)
       sb.append("val (" )
       for (((id, tpe), i) <- ids.map(id => (id, id.getType)).zipWithIndex) {
-          sb.append(id.toString+": ")
+          sb.append(idToString(id)+": ")
           pp(tpe, lvl)
           if (i != ids.size-1) {
               sb.append(", ")
@@ -85,7 +85,7 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
       sb.append("._" + i)
 
     case CaseClass(cd, args) =>
-      sb.append(cd.id)
+      sb.append(idToString(cd.id))
       if (cd.isCaseObject) {
         ppNary(args, "", "", "", lvl)
       } else {
@@ -94,14 +94,14 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
 
     case CaseClassInstanceOf(cd, e) =>
       pp(e, lvl)
-      sb.append(".isInstanceOf[" + cd.id + "]")
+      sb.append(".isInstanceOf[" + idToString(cd.id) + "]")
 
     case CaseClassSelector(_, cc, id) =>
       pp(cc, lvl)
-      sb.append("." + id)
+      sb.append("." + idToString(id))
 
     case FunctionInvocation(fd, args) =>
-      sb.append(fd.id)
+      sb.append(idToString(fd.id))
       ppNary(args, "(", ", ", ")", lvl)
 
     case Plus(l,r) => ppBinary(l, r, " + ", lvl)
@@ -210,7 +210,7 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
     case Choose(ids, pred) =>
       sb.append("(choose { (")
       for (((id, tpe), i) <- ids.map(id => (id, id.getType)).zipWithIndex) {
-          sb.append(id.toString+": ")
+          sb.append(idToString(id)+": ")
           pp(tpe, lvl)
           if (i != ids.size-1) {
               sb.append(", ")
@@ -229,7 +229,7 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
         //case InstanceOfPattern(Some(id), ctd) =>
         case CaseClassPattern(bndr,     ccd, subps) => {
           bndr.foreach(b => sb.append(b + " @ "))
-          sb.append(ccd.id).append("(")
+          sb.append(idToString(ccd.id)).append("(")
           var c = 0
           val sz = subps.size
           subps.foreach(sp => {
@@ -241,10 +241,10 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
           sb.append(")")
         }
         case WildcardPattern(None)     => sb.append("_")
-        case WildcardPattern(Some(id)) => sb.append(id)
+        case WildcardPattern(Some(id)) => sb.append(idToString(id))
         case InstanceOfPattern(bndr, ccd) => {
           bndr.foreach(b => sb.append(b + " : "))
-          sb.append(ccd.id)
+          sb.append(idToString(ccd.id))
         }
         case TuplePattern(bndr, subPatterns) => {
           bndr.foreach(b => sb.append(b + " @ "))
@@ -333,7 +333,7 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
       }
       sb.append(" => ")
       pp(tt, lvl)
-    case c: ClassType => sb.append(c.classDef.id)
+    case c: ClassType => sb.append(idToString(c.classDef.id))
     case _ => sb.append("Type?")
   }
 
@@ -350,7 +350,7 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
       case ObjectDef(id, defs, invs) => {
         ind(lvl)
         sb.append("object ")
-        sb.append(id)
+        sb.append(idToString(id))
         sb.append(" {\n")
 
         var c = 0
@@ -372,19 +372,19 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
       case AbstractClassDef(id, parent) =>
         ind(lvl)
         sb.append("sealed abstract class ")
-        sb.append(id)
+        sb.append(idToString(id))
         parent.foreach(p => sb.append(" extends " + p.id))
 
       case CaseClassDef(id, parent, varDecls) =>
         ind(lvl)
         sb.append("case class ")
-        sb.append(id)
+        sb.append(idToString(id))
         sb.append("(")
         var c = 0
         val sz = varDecls.size
 
         varDecls.foreach(vd => {
-          sb.append(vd.id)
+          sb.append(idToString(vd.id))
           sb.append(": ")
           pp(vd.tpe, lvl)
           if(c < sz - 1) {
@@ -393,20 +393,20 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
           c = c + 1
         })
         sb.append(")")
-        parent.foreach(p => sb.append(" extends " + p.id))
+        parent.foreach(p => sb.append(" extends " + idToString(p.id)))
 
       case fd: FunDef =>
 
         ind(lvl)
         sb.append("def ")
-        sb.append(fd.id)
+        sb.append(idToString(fd.id))
         sb.append("(")
 
         val sz = fd.args.size
         var c = 0
         
         fd.args.foreach(arg => {
-          sb.append(arg.id)
+          sb.append(idToString(arg.id))
           sb.append(" : ")
           pp(arg.tpe, lvl)
 

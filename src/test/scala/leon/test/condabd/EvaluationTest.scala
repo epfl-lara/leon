@@ -10,7 +10,7 @@ import java.io.{ BufferedWriter, FileWriter, File }
 import leon.evaluators.CodeGenEvaluator
 import leon.purescala.TreeOps
 import leon.purescala.Common._
-import leon.codegen.CodeGenEvalParams
+import leon.codegen.CodeGenParams
 import leon.purescala.TypeTrees._
 import leon.evaluators.EvaluationResults._
 
@@ -248,11 +248,11 @@ class EvaluationTest extends FunSuite {
         val pairs = List(body1, body2) map (formExecutable(_))
         val candidates = pairs map (_._1)
 
-        val params = CodeGenEvalParams(maxFunctionInvocations = 500, checkContracts = true)
+        val params = CodeGenParams(maxFunctionInvocations = 500, checkContracts = true)
 
         val evaluator = new CodeGenEvaluator(sctx.context,
           program.copy(mainObject = program.mainObject.copy(defs = program.mainObject.defs ++ pairs.map(_._2)))
-          /*, params*/)
+          , params)
 
         val eval1 = (for (ind <- 0 until inputExamples.size) yield {
           val res = evaluator.eval(candidates(0), inputExamples(ind).map)
@@ -302,11 +302,11 @@ class EvaluationTest extends FunSuite {
         val pairs = List(body1, body2) map (formExecutable(_))
         val candidates = pairs map (_._1)
 
-        val params = CodeGenEvalParams(maxFunctionInvocations = 500, checkContracts = true)
+        val params = CodeGenParams(maxFunctionInvocations = 500, checkContracts = true)
 
         val evaluator = new CodeGenEvaluator(sctx.context,
           program.copy(mainObject = program.mainObject.copy(defs = program.mainObject.defs ++ pairs.map(_._2)))
-          /*, params*/)
+          , params)
 
         val eval1 = (for (ind <- 0 until inputExamples.size) yield {
           val res = evaluator.eval(candidates(0), inputExamples(ind).map)

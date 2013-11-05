@@ -10,14 +10,15 @@ import purescala.Trees._
 import purescala.TypeTrees._
 
 import codegen.CompilationUnit
+import codegen.CodeGenParams
 
 class CodeGenEvaluator(ctx : LeonContext, val unit : CompilationUnit) extends Evaluator(ctx, unit.program) {
   val name = "codegen-eval"
   val description = "Evaluator for PureScala expressions based on compilation to JVM"
 
   /** Another constructor to make it look more like other `Evaluator`s. */
-  def this(ctx : LeonContext, prog : Program) {
-    this(ctx, CompilationUnit.compileProgram(prog).get) // this .get is dubious...
+  def this(ctx : LeonContext, prog : Program, params: CodeGenParams = CodeGenParams()) {
+    this(ctx, CompilationUnit.compileProgram(prog, params).get) // this .get is dubious...
   }
 
   def eval(expression : Expr, mapping : Map[Identifier,Expr]) : EvaluationResult = {

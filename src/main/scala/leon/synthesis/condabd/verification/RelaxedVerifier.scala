@@ -10,10 +10,11 @@ import purescala.Extractors._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
+import SynthesisContext.SynthesisSolver
 
 import _root_.insynth.util.logging._
 
-class RelaxedVerifier(solverf: SolverFactory[Solver], p: Problem, synthInfo: SynthesisInfo = new SynthesisInfo)
+class RelaxedVerifier(solverf: SolverFactory[SynthesisSolver], p: Problem, synthInfo: SynthesisInfo = new SynthesisInfo)
 	extends AbstractVerifier(solverf, p, synthInfo) with HasLogger {
   
   var _isTimeoutUsed = false
