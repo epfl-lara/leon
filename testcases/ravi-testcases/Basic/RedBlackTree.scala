@@ -11,7 +11,7 @@ object RedBlackTree {
   case class Node(color: Color, left: Tree, value: Int, right: Tree) extends Tree
      
   def twopower(x: Int) : Int = {
-    //require(x >= 0)
+    require(x >= 0)
     if(x < 1) 1    
     else      
       2* twopower(x - 1)
@@ -23,7 +23,9 @@ object RedBlackTree {
       case Empty() => 1
       case Node(_, l, v, r) => size(l) + 1 + size(r)
     })
-  } //ensuring (res => res != (twopower(blackHeight(t)) - 2) template((a,b,c) => a*res + b*twopower(blackHeight(t)) + c < 0))   
+  } ensuring (res => true template((a,b) => twopower(blackHeight(t)) <= a*res + b))
+  //ensuring (res => true template((a,b) => res <= a*twopower(blackHeight(t)) + b)) 
+  //ensuring (res => res != (twopower(blackHeight(t)) - 2) template((a,b,c) => a*res + b*twopower(blackHeight(t)) + c < 0))   
     
   def blackHeight(t : Tree) : Int = {    
    t match {    
@@ -76,9 +78,7 @@ object RedBlackTree {
           balance(c,a,y,t1)
         } 
     }
-  } ensuring(res => true template((a,b) => time <= a*blackHeight(t) + b)) 
-  //ensuring (res => true template((a,b) => a* res._2 <= 2 * blackHeight(t))) 
-  //ensuring (res => res._2 <= 2 * blackHeight(t))                   
+  } ensuring(res => true template((a,b) => time <= a*blackHeight(t) + b))  
 
   def makeBlack(n: Tree): Tree = {
     n match {

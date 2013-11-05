@@ -220,6 +220,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     val solution = recSolveForTemplatesIncr(simplestModel, solverWithCtrs, funcExprs, tru)
     solverWithCtrs.free()
     solution
+    //uncomment the following if you want to skip solving but are find with any arbitrary choice
+    //Some(getAllInvariants(simplestModel))
   }
 
   //not deleting since I find the logic used here interesting

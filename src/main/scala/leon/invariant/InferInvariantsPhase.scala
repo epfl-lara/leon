@@ -46,6 +46,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."))
 
   //TODO: handle direct equality and inequality on ADTs
+  //TODO: Do we need to also assert that time is >= 0
   class InferenceEngineGenerator(reporter: Reporter, program: Program, context: LeonContext) {
 
     def getInferenceEngine(funDef: FunDef, tempFactory : TemplateFactory): (() => Option[Boolean]) = {
@@ -126,8 +127,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
         if (!refined) Some(false)
         else {
-          //solve for the templates at this unroll step
-          //val res = lsAnalyzer.solveForTemplates(uisolver)
+          //solve for the templates at this unroll step          
           val res = lsAnalyzer.solveForTemplatesIncr()
 
           if (res.isDefined) {
@@ -138,7 +138,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
             })
             reporter.info("- Verifying Invariants... ")
 
-            val verifierRes = verifyInvariant(program, context, reporter, res.get, funDef)
+            val verifierRes = verifyInvariant(program, context, reporter, res.get, funDef)            
             verifierRes._1 match {
               case Some(false) => {
                 reporter.info("- Invariant verified")
@@ -164,7 +164,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       inferenceEngine
     }
   }
-
+  
   /**
    * This function creates a new program with each functions postcondition strengthened by
    * the inferred postcondition
@@ -221,13 +221,12 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       } else None
     })
 
-    val newfuncs = newFundefs.values.toSeq
-    val otherDefs = program.mainObject.defs.diff(program.mainObject.definedFunctions)
+    val newDefs = program.mainObject.defs.map {
+      case fd: FunDef => newFundefs(fd)
+      case d => d
+    }
 
-    val newObjDef = ObjectDef(program.mainObject.id.freshen, 
-      newfuncs ++ otherDefs, program.mainObject.invariants)
-
-    val newprog = Program(program.id.freshen, newObjDef)
+    val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
     //println("Program: "+newprog)
     //println(ScalaPrinter(newprog))
 
