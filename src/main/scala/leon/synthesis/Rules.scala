@@ -8,6 +8,7 @@ import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.TreeOps._
 import rules._
+import condabd.rules._
 
 object Rules {
   def all = List[Rule](
@@ -30,6 +31,8 @@ object Rules {
     ADTSplit,
     IntegerEquation,
     IntegerInequalities
+    ,
+    ConditionAbductionSynthesisTwoPhase
   )
 }
 

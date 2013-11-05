@@ -359,7 +359,6 @@ class SynthesizerForRuleExamples(
       fine("Going into boolean synthesis")
       val stream = inSynthBoolean.getExpressions(getCurrentBuilder)
       fine("Out of boolean synthesis")
-      println("stream is here!")
       booleanExpressionsSaved =
         stream.distinct.take(numberOfBooleanSnippets).
           filterNot(expr => refiner.isAvoidable(expr.getSnippet, problem.as))
@@ -606,7 +605,7 @@ class SynthesizerForRuleExamples(
 		              /* TODO:, _root_.leon.codegen.CodeGenEvalParams(maxFunctionInvocations = 500, checkContracts = true) */)
 	
 				    	val res = _evaluator.eval(newCandidate, exMapping)
-				    	println(res)
+//				    	println(res)
 //				    	if (newCandidate.toString contains "tree.value < value")
 //				    		interactivePause
 				    		
@@ -619,7 +618,7 @@ class SynthesizerForRuleExamples(
 				    	  case _ =>
 				    	    // TODO think about this
 				    	    // I put condition into precondition so some examples will be violated?
-				    	    println("new evalution got: " + res + " for " + newCandidate + " and " + exMapping + " newFun is " + newFun)
+				    	    finest("new evalution got: " + res + " for " + newCandidate + " and " + exMapping + " newFun is " + newFun)
 				    	    true
 				    	}
 				    		
@@ -676,7 +675,7 @@ class SynthesizerForRuleExamples(
 		              _root_.leon.codegen.CodeGenEvalParams(maxFunctionInvocations = 500, checkContracts = true) */)
 	
 				    	val res = _evaluator.eval(newCandidate, exMapping)
-				    	println("for mapping: " + exMapping + "res is: " + res)
+				    	finest("for mapping: " + exMapping + "res is: " + res)
 //				    	if (newCandidate.toString contains "tree.value < value")
 //				    		interactivePause
 				    		
@@ -686,7 +685,7 @@ class SynthesizerForRuleExamples(
 				    	    false
 				    	  case EvaluationResults.Successful(BooleanLiteral(innerRes)) => innerRes
 				    	  case _ =>
-				    	    println("new evalution got: " + res + " for " + newCandidate + " and " + exMapping)
+				    	    finest("new evalution got: " + res + " for " + newCandidate + " and " + exMapping)
 				    	    false
 				    	}
       	})
