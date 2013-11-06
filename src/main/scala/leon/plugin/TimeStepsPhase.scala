@@ -39,7 +39,7 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
 
     //create new functions.  Augment the return type of a function iff the postcondition uses 'time' 
     // or if the function is transitively called from such a function
-    for (fd <- program.definedFunctions) yield {
+    for (fd <- program.definedFunctions) {
       
       if (callees.contains(fd)) {
         val newRetType = TupleType(Seq(fd.returnType, Int32Type))
@@ -54,6 +54,7 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         funMap += (fd -> newfd)
       }
     }
+	//println("FunMap: "+funMap.map((elem) => (elem._1.id, elem._2.id)))
 
     def mapCalls(ine: Expr): Expr = {
       simplePostTransform((e: Expr) => e match {
@@ -167,7 +168,6 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
           case t : Terminal => Tuple(Seq(recons(Seq()), getCostModel.costOfExpr(e)))
           
           case f@FunctionInvocation(fd,args) => {            
-            //newFunInv
             val newFunInv = FunctionInvocation(funMap(fd),resIds.map(Variable(_)))
             
             //create a variables to store the result of function invocation
@@ -202,13 +202,16 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         val recRes = tupleifyRecur(e,subs.tail,recons,resIds :+ resvar, timeIds :+ timevar)
         
         //transform the current element (handle function invocation separately)        
-        val newCurrExpr = subs.head match {
+        val newCurrExpr = transform(subs.head)
+        /*subs.head match {
           case FunctionInvocation(fd,args) => {
             //use the new function definition in funmap
-            FunctionInvocation(funMap(fd),args)            
+            val newfun = FunctionInvocation(funMap(fd),args)
+            //transform the function
+            transform(newfun)
           } 
           case _ => transform(subs.head)
-        }
+        }*/
         
         //create the new expression for the current recursion step
         val newexpr = LetTuple(Seq(resvar, timevar ),newCurrExpr,recRes)

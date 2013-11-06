@@ -32,8 +32,6 @@ import leon.invariant._
 import leon.purescala.UndirectedGraph
 import scala.util.control.Breaks._
 import leon.solvers._
-import leon.solvers.TimeoutSolverFactory
-import leon.solvers.TimeoutSolverFactory
 
 class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: TemplateFactory,
     context : LeonContext, program : Program) {
@@ -267,23 +265,23 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap    
     var conflictingFuns = Set[FunDef]()
     //mapping from the functions to the counter-example (in the form expressions) that result in hard NL constraints
-    var hardCE = MutableMap[FunDef,Expr]()
+    var hardCE = MutableMap[FunDef,Seq[Expr]]()
     
-    val newctrs = funcs.foldLeft(Seq[Expr]())((acc, fd) => {
+    val initialctrs = funcs.foldLeft(Seq[Expr]())((acc, fd) => {
 
       val instVC = simplifyArithmetic(instantiateTemplate(funcExprs(fd), tempVarMap))
       //find new non-linear constraints based on models to instVC (which are counter examples)
       val (ctrsForFun, counterExample) = getNLConstraints(fd, instVC, tempVarMap)
       if(!ctrsForFun.isEmpty) {
         conflictingFuns += fd
-        hardCE += (fd -> InvariantUtil.modelToExpr(counterExample))
+        hardCE += (fd -> Seq(InvariantUtil.modelToExpr(counterExample)))
         
         acc ++ ctrsForFun        
       } else acc    	  
     })
 
     //have we found a real invariant ?
-    if (newctrs.isEmpty) {
+    if (initialctrs.isEmpty) {
       //yes, hurray
       //print some statistics 
       reporter.info("- Number of explored paths (of the DAG) in this unroll step: " + exploredPaths)
@@ -292,19 +290,13 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       //For statistics.
       //reporter.info("- Number of new Constraints: " + newctrs.size)          
       //call the procedure recursively
-      val newctr = And(newctrs)      
-
-      //for stats and debugging
-      ctrCount += InvariantUtil.atomNum(newctr)
-      println("# of atomic predicates: " + ctrCount)
+      val initialctr = And(initialctrs)            
 
       //add the new constraints      
-      //TODO: There is a serious bug here, report the bug to z3 if it happens again
-      //solverWithCtrs.push()
-      solverWithCtrs.assertCnstr(newctr)
-
+      //TODO: There is a serious bug here, report the bug to z3 if it happens again      
       //For debugging
-      if (this.dumpNLFormula) {       
+      if (this.dumpNLFormula) {
+        solverWithCtrs.assertCnstr(initialctr)
         FileCountGUID.fileCount += 1
         val filename = "z3formula-" + FileCountGUID.fileCount + ".smt"
         val pwr = new PrintWriter(filename)
@@ -317,17 +309,22 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       def updateHardCE(fd: FunDef, counterExample : Map[Identifier,Expr]) : Unit = {
         val ceExpr = InvariantUtil.modelToExpr(counterExample)
         if(hardCE.contains(fd)) {
-          hardCE.update(fd, And(hardCE(fd),ceExpr))
+          hardCE.update(fd, ceExpr +: hardCE(fd) )
         } else {
-          hardCE += (fd -> ceExpr)
+          hardCE += (fd -> Seq(ceExpr))
         }        			   
       }
 
       //solve the new set of non-linear constraints
       def solveNLConstraints(easyPart: Expr, newPart: Expr): (Option[Boolean], Map[Identifier, Expr], Expr) = {
+
+        //for stats and debugging
+        val currentCount = ctrCount + InvariantUtil.atomNum(newPart)
+        println("# of atomic predicates: " + currentCount)
+        
         //val solver =  SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context,program)))
-        val timeout : Long = 60 * 1000 
-        val solver = SimpleSolverAPI(TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), timeout))
+        val timeout : Long = 10 * 1000 
+        val solver = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), timeout))
 
         println("solving...")
         val t1 = System.currentTimeMillis()
@@ -347,28 +344,32 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
             //here, we might have timed out, so block current counter-example and get a new one
             val newctrs = conflictingFuns.foldLeft(Seq[Expr]())((acc, fd) => {
 
-              val instVC = simplifyArithmetic(instantiateTemplate(funcExprs(fd), tempVarMap))              
-              val instVCmodCE = And(instVC, Not(hardCE(fd)))
+              val instVC = simplifyArithmetic(instantiateTemplate(funcExprs(fd), tempVarMap))
+              val disableCounterExs = Not(Or(hardCE(fd)))
+              val instVCmodCE = And(instVC, disableCounterExs)
               val (ctrsForFun, counterExample) = getNLConstraints(fd, instVCmodCE, tempVarMap)              
               updateHardCE(fd, counterExample)
               acc ++ ctrsForFun
             })
             if (newctrs.isEmpty) {              
               //give up, only hard paths remaining
-              reporter.info("Exhausted all easy paths ")
-              reporter.info("- Number of remaining hard paths: " + hardCE.size)
+              reporter.info("- Exhausted all easy paths !!")
+              reporter.info("- Number of remaining hard paths: " + hardCE.values.foldLeft(0)((acc, elem) => acc + elem.size))
               (None, Map(), tru)
               
-            } else {              
+            } else {                                          
               //try this new path, this might be easy to solve
               solveNLConstraints(easyPart, And(newctrs))
             }
           }
-          case _ => (res, newModel, newPart)
+          case _ => {
+            ctrCount += currentCount
+            (res, newModel, newPart)
+          }
         }
       }               
       
-      val (res, newModel, newPart) = solveNLConstraints(inputCtr, newctr)                      
+      val (res, newModel, newPart) = solveNLConstraints(inputCtr, initialctr)                      
       res  match {
         case None => {
           //here, there are only hard cases remaining 
