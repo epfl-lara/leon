@@ -1,0 +1,33 @@
+\section{Illustrations.}
+
+Consider the procedure shown in Figure~\ref{fig:eg2} that now simultaneously computes the size and the 
+length of the left most path of a binary tree.
+%
+\begin{figure}
+\begin{myprogram}
+s(t) \{ \\
+\pnl \> t match \{ \\
+\pnl \> case Emp() => (0,0); \\
+\pnl \> case N(x,l,r) => \{ \\
+\pnl \> \> (a,b) = s(l); (c,d) = s(r) \\
+\pnl \> \> (a + c + 1,b+1); \\
+	 \> \> \}
+\> \} \\
+\} ensuring(res => res.1 != res.2 - 1)
+\end{myprogram}
+\caption{An example program} \label{fig:eg2}
+\end{figure}
+%
+Applying the \IndGen algorithm for this example will result  in a condition that has the atomic predicate 
+$a+c+1 \ne b$. Assume that we already have a counter-example $t \mapsto Emp()$. 
+Invoking the \SG algorithm on this predicate with the counter-example will result in a formula
+like $a \ge b - \epsilon_1 \wedge c \ge -\epsilon_2$, where $\epsilon_1$ and $\epsilon_2$ are some 
+fractions between $0$ and $1$.
+This is because \SG will rewrite the predicate $a+c+1 \ne b$ as $t + c + 1 \ne 0 \wedge t = a - b$  for
+some fresh variable $t$ as $a$ and $b$ both belong to the same recursive call $(a,b) = s(l)$.
+The \hypervol algorithm when invoked on $t + c + 0.9 \le 0$ (along with evaluations of the counter-example
+$t \mapsto Emp()$) will generate $t \ge -\epsilon_1 \wedge c \ge -\epsilon_2$. 
+Finally, replacing $t$ by $a -b$ will result in $a \ge b - \epsilon_1 \wedge c \ge -\epsilon_2$.
+This formula gets translated to the required inductive invariant 
+$res.1 \ge res.2 - \epsilon_2 \wedge res.1 \ge -\epsilon_1$.
+ 

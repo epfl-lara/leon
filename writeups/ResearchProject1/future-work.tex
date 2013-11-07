@@ -1,0 +1,176 @@
+\section{Open issues and challenges}
+
+\paragraph{Handling non-termination.}
+
+Figure~\ref{fig:eg3} shows a example on which the algorithm would not terminate.
+%
+\begin{figure}
+\begin{myprogram}
+s(t) \{ \\
+\pnl \> t match \{ \\
+\pnl \> case Emp() => (0,0); \\
+\pnl \> case N(x,l,r) => \{ \\
+\pnl \> \> (a,b) = s(l) \\
+\pnl \> \> (a + 1,b - 1); \\
+	 \> \> \}
+\> \} \\
+\} ensuring(res => res.1 != res.2 - 1)
+\end{myprogram}
+\caption{An example in which the algorithm doesn't terminate.} \label{fig:eg3}
+\end{figure}
+%
+It is clear that $res.1 \ge res.2$ is the inductive invariant. However, the algorithm wouldn't 
+find that as it never performs any generalization. It will keep conjoining predicates of the 
+form $a \ne b -1$, $a \ne b - 2$, $\cdots$.  The generalization happens only during \SG procedure.
+Since there is only one recursive call \SG wouldn't attempt any generalization (as trivially,
+by construction, every atomic predicate would be expressible in terms of the arguments to the only 
+recursive call) . 
+However, we can utilize existing widening approaches to handle this scenario. 
+It remains to be seen how the \IndGen algorithm differs (or atleast fits in)
+the big picture of widening techniques. More specifically, is this approach subsumed
+by existing widening techniques i.e, does there exist techniques that can handle every 
+program that we can handle ? 
+
+\paragraph{The problem of over strengthening.}
+
+As mentioned earlier, the ability of \SDecide to find counter-examples within reasonable time is
+important. However, if we incorporate a widening technique into our approach then the algorithm
+may not go on forever along an invalid chain. Eventually it will hit the bottom of the 
+lattice and can back-track from there. 
+However, we may not be able to guarantee a strengthening predicate on termination.
+It remains to be seen how counter-example guidance and widening can be used effectively to
+identify quickly that the algorithm is traversing an invalid descending chain (i.e, a descending 
+chain of formulas in which every formula is non a valid post-condition).
+
+\paragraph{Splitting based on the arguments of the recursive calls.}
+
+\begin{figure}
+\begin{myprogram}
+f(n) \{ \\
+\pnl \> if(n <= 2) 1 \\
+\pnl \> else f(n-1) + f(n-2) - f(n-3) \\
+\> \} \\
+\} ensuring(res => res >= f(n-1))
+\end{myprogram}
+\caption{An example for which the splitting operation is unsound.} \label{fig:eg4}
+\end{figure}
+%
+The primary motivation for splitting based on the arguments of the recursive calls
+is that, typically procedures are \emph{fold} functions where each recursive call 
+works on independent sub-trees which means that arguments to one recursive call
+cannot be expressed in terms of  arguments to other recursive calls. 
+However, when these constraints do not hold (like in a fibonacci 
+recursion) then the splitting based on arguments may not make much sense.
+For example, consider the program shown in Figure~\ref{fig:eg4}.
+The given invariant is inductive  but  assume just for the explanation purpose that 
+\SDecide is not able to prove this is inductive.
+Say the three recursive calls to 
+$f$ in the intermediate representation are $f(a)$, $f(b)$ and $f(c)$ (where $a,b$ and $c$
+are temporary variables assigned to $n-1,n-2$ and $n-3$ respectively, before the
+recursive calls). 
+The \SG routine when invoked on the atomic predicate $f(a) + f(b) - f(c) \ge f(a)$
+would produce $f(b) \ge 0$ and $f(c) \le 0$. But, after parameter translation, this yields 
+the predicate $f(n) = 0$ which is not an invariant.
+Therefore, the splitting approach is not guaranteed to lead to a strengthening predicate
+when the arguments to the recursive calls are not independent.
+
+One simple way to handle this would be to extended the \Eliminate routine so that it
+expresses the input formula using the arguments of as few recursive calls as possible.
+Hence, in the above example, the atomic predicate would be $f(a) + f(a-1) - f(a-2) \ge f(a)$.
+This simplifies to $f(a-1) \ge f(a-2)$ and gets translated after parameter renaming to 
+$f(n-1) \ge f(n-2)$. This is a valid strengthening predicate (actually this is semantically
+equivalent to the post-condition itself).
+These scenarios needs to be investigated.
+
+\paragraph{Completeness.}
+
+This is the most interesting question. If we restrict ourselves to only fold operations
+and focus only on cases where the combine operation is linear then I think we can 
+hope for some sort of completeness guarantee (with appropriate widening). 
+The intuitive reason being that we only have a bunch of linear constraints 
+(involving ofcourse algebraic data-types).
+We know that if they are sufficiently surjective then leon already is complete
+but what if they aren't sufficiently surjective but the combine operation is linear
+\eg{} like in Figure~\ref{fig:eg} ?
+
+\paragraph{Some other issues.}
+
+a) Relationship to interpolation \\
+b) Handling non-linearity \\
+c) Taking context into account during \SG (this is quite important) \\
+d) Comparison to predicate abstraction \\
+e) Handling procedures modularly and splitting in the presence of user-defined functions.
+
+\paragraph{Appendix 1.} \label{sec:split-proof}
+
+Let $T$ be a mapping from procedures to post-conditions.
+Let $\bigvee \limits_{i=1}^{n} d_i$ be the verification condition $\vc{P}(T)$ in DNF form where each $d_i$
+is a disjunct.
+Also assume that there exists a strength predicate $\rho$ for $T(P)$.
+Consider a disjunct $d_i$.
+Let $\{ c_1,c_2,\cdots,c_m \}$ be the recursive calls in $d_i$.
+Without loss of generality assume that the argument set (and return variables) of 
+each of the recursive calls is disjoint from the others.
+Let $\{ \psi_1, \cdots, \psi_m \}$ be a set of formulas such that 
+$\bigwedge \limits_{j=1}^{m} \pop{c_j}(\rho) \imp \bigwedge \limits_{k=1}^{m} \psi_k$
+and $\fv(\psi_k) \subseteq \args{c_k}$.
+
+By the monotonicity of $\push{}$  operation w.r.t implication,
+\[ \push{c_1}(\push{c_2}(\cdots(\push{c_m}(\bigwedge \limits_{j=1}^{m} \pop{c_j}(\rho) 
+\imp \bigwedge \limits_{k=1}^{m} \psi_k)\cdots)) \].
+%
+By the assumption that the argument sets are disjoint and that 
+$\fv(\psi_k) \subseteq \args{c_k}$ we get,
+%
+\[\bigwedge \limits_{j=1}^{m} \push{c_j}(\pop{c_j}(\rho)) 
+\imp \bigwedge \limits_{k=1}^{m} \push{c_k}(\psi_k) \].
+%
+By definition, $\push{c_j}(\pop{c_j}(\rho)) = \rho$.
+Also, conjoin  of any number of $\rho$'s is equivalent to $\rho$.
+Therefore, $\rho \imp \bigwedge \limits_{k=1}^{m} \push{c_k}(\psi_k)$.
+Let $\psi^{d_i}$, with a superscript $d_i$ indicating correspondence to disjunct $d_i$, 
+denote $\bigwedge \limits_{k=1}^{m} \push{c_k}(\psi_k)$.
+
+By the above reasoning, we can show, that $\forall 1 \le i \le n, \rho \imp \psi^{d_i}$.
+Therefore, $\rho \imp \bigwedge \limits_{i=1}^{n} \psi^{d_i}$.
+In the \IndGen algorithm $\iota$ is equivalent to $\bigwedge \limits_{i=1}^{n} \psi^{d_i}$,
+therefore, it is weaker than $\rho$.
+
+%\paragraph{Modular inductive generalization.}
+%
+%The above algorithm is monolithic in the sense that the entire program is converted into a single procedure.
+%However, being modular is desirable for various reasons most importantly for better performance.
+%We now generalize the above algorithm to consider arbitrary procedures belonging to our language 
+%and allow arbitrary user-defined procedures in the contracts.
+
+%We maintain a tree $T$ of formulas. 
+%Initially we have only the implication $I$ in the tree.
+%But as the algorithm proceeds we will add more nodes to the tree and also refine the 
+%existing nodes.
+%For every internal node $n$ of the tree, their children represent the sub-formulas each of which 
+%when proven will imply the formula corresponding to $n$.
+%
+%The algorithm in every step picks a leaf of the tree and tries to prove it. 
+%We distinguish between two kinds of formulas, ones that are recursive and those that aren't.
+%
+%The algorithm tries to prove a formula by assuming every function is uninterpreted.
+%If the proof holds then we mark the node as proven and continue.
+%Otherwise, if there exists a counter example, then there are the following cases:
+%
+%(a) the formula has no uninterpreted functions
+%
+%We abort the entire procedure and say that a proof cannot be found (Actually, we can do better 
+%and look for alternative inductive generalizations if any along the path from the root.)
+%
+%(b) the formula is non-recursive but has uninterpreted functions.
+%
+%(Here we use induction)
+%Pick a function in the formula arbitrarily. Unroll the function once, make every 
+%conjunct a separate child. If the formula happens to be recursive assume the (original) condition 
+%for the recursive calls.
+%
+%(c) the formula is recursive.
+%
+%(Here we use inductive generalization).
+%Come up with an inductive generalization. Replace the parent formula $p$ with the new formula and
+%remove all the children of $p$.
