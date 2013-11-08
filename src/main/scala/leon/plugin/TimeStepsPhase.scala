@@ -28,8 +28,8 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
 	      && ExpressionTransformer.isSubExpr(TimeVariable(), fd.postcondition.get._2)) {
 	    rootFuncs += fd
 	  } 
-	  else if(UserTemplates.templates.contains(fd) 
-	      && ExpressionTransformer.isSubExpr(TimeVariable(), UserTemplates.templates(fd))) {
+	  else if(FunctionInfoFactory.hasTemplate(fd) 
+	      && ExpressionTransformer.isSubExpr(TimeVariable(), FunctionInfoFactory.getTemplate(fd))) {
 	    rootFuncs += fd
 	  }	    
 	})
@@ -89,10 +89,10 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         val toCond = mapCalls(replace(substsMap, fromCond))
 
         //important also update the templates here         
-        if (UserTemplates.templates.contains(from)) {
-          val toTemplate = mapCalls(replace(substsMap, UserTemplates.templates(from)))
+        if (FunctionInfoFactory.hasTemplate(from)) {
+          val toTemplate = mapCalls(replace(substsMap, FunctionInfoFactory.getTemplate(from)))
           //creating new template          
-          UserTemplates.setTemplate(to, toTemplate)
+          FunctionInfoFactory.setTemplate(to, toTemplate)
         }
         Some((toResId, toCond))
         

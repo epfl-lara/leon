@@ -34,15 +34,16 @@ import scala.util.control.Breaks._
 import leon.solvers._
 
 class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: TemplateFactory,
-    context : LeonContext, program : Program) {
+    context : LeonContext, program : Program, timeOut: Option[Int]) {
 
+  private val timeout = if(timeOut.isDefined) timeOut.get else 10
   private val reporter = context.reporter
   private val implicationSolver = new LinearImplicationSolver()
   private val cg = CallGraphUtil.constructCallGraph(program)
   
   //some constants
   private val fls = BooleanLiteral(false)
-  private val tru = BooleanLiteral(true)
+  private val tru = BooleanLiteral(true)    
   
   //flags controlling debugging and statistics generation
   //TODO: there is serious bug in using incremental solving. Report this to z3 community
@@ -52,7 +53,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
   val printCallConstriants = false
   val printReducedFormula = false
   val dumpNLFormula = false
-  val dumpInstantiatedVC = false
+  val dumpInstantiatedVC = false 
+  val debugAxioms = true
  
   //some utility methods
   def getFIs(ctr: LinearConstraint): Set[FunctionInvocation] = {
@@ -200,8 +202,12 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       val bexpr = TreeUtil.toExpr(btree)
       val pexpr = TreeUtil.toExpr(ptree)
       
-      val formula = And(bexpr, pexpr)            
-      (fd -> formula)
+      val formula = And(bexpr, pexpr)
+      
+      //apply (instantiate) the axioms of functions in the verification condition
+      val formulaWithAxioms = instantiateAxioms(formula)
+      
+      (fd -> formulaWithAxioms)
     }).toMap  
     
     //Assign some values for the template variables at random (actually use the simplest value for the type)
@@ -266,7 +272,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     var conflictingFuns = Set[FunDef]()
     //mapping from the functions to the counter-example (in the form expressions) that result in hard NL constraints
     var hardCE = MutableMap[FunDef,Seq[Expr]]()
-    
+        
     val initialctrs = funcs.foldLeft(Seq[Expr]())((acc, fd) => {
 
       val instVC = simplifyArithmetic(instantiateTemplate(funcExprs(fd), tempVarMap))
@@ -322,9 +328,10 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         val currentCount = ctrCount + InvariantUtil.atomNum(newPart)
         println("# of atomic predicates: " + currentCount)
         
-        //val solver =  SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context,program)))
-        val timeout : Long = 10 * 1000 
-        val solver = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), timeout))
+        //val solver =  SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context,program)))        
+        val solver = SimpleSolverAPI(
+            new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), 
+            timeout * 1000))
 
         println("solving...")
         val t1 = System.currentTimeMillis()
@@ -406,103 +413,159 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
   }   
 	  
   
-  def getNLConstraints(fd: FunDef, instVC : Expr, tempVarMap: Map[Expr,Expr]) : (Seq[Expr], Map[Identifier,Expr]) = {	   
-	  //For debugging
-	  if(this.dumpInstantiatedVC) {
-	    val wr = new PrintWriter(new File("formula-dump.txt"))
-	    println("Instantiated VC of " + fd.id + " is: " + instVC)
-	    wr.println("Function name: " + fd.id)
-	    wr.println("Formula expr: ")
-	    ExpressionTransformer.PrintWithIndentation(wr, instVC)
-	    wr.flush()
-	    wr.close()
-	  }
-	
-	  //throw an exception if the candidate expression has reals
-	  if (InvariantUtil.hasReals(instVC))
-	    throw IllegalStateException("Instantiated VC of " + fd.id + " contains reals: " + instVC)
-	
-	  //println("verification condition for" + fd.id + " : " + cande)
-	  //println("Solution: "+uiSolver.solveSATWithFunctionCalls(cande))
-	
-	  //this creates a new solver and does not work with the SimpleSolverAPI
-	  val solEval = new UIFZ3Solver(context, program)
-	  solEval.assertCnstr(instVC)
-	  solEval.check match {
-	    case None => {
-	      solEval.free()
-	      throw IllegalStateException("cannot check the satisfiability of " + instVC)
-	    }
-	    case Some(false) => {
-	      solEval.free()
-	      //do not generate any constraints
-	      (Seq(), Map())
-	    }
-	    case Some(true) => {
-	      //For debugging purposes.
-	      println("Function: " + fd.id + "--Found candidate invariant is not a real invariant! ")
-	      val counterExample = solEval.getModel
-	      //println("Counter-example: "+counterExample)
-	
-	      //try to get the paths that lead to the error 
-	      val satChooser = (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {
-	        ch.filter((child) => child match {
-	          case CtrLeaf() => true
-	          case cn @ CtrNode(_) => {
-	
-	            //note the expr may have template variables so replace them with the candidate values
-	            val nodeExpr = if (!cn.templates.isEmpty) {
-	              //the node has templates
-	              instantiateTemplate(cn.toExpr, tempVarMap)
-	            } else cn.toExpr
-	
-	            //throw an exception if the expression has reals
-	            if (InvariantUtil.hasReals(nodeExpr))
-	              throw IllegalStateException("Node expression has reals: " + nodeExpr)
-	
-	            solEval.evalBoolExpr(nodeExpr) match {
-	              case None => throw IllegalStateException("cannot evaluate " + cn.toExpr + " on " + solEval.getModel)
-	              case Some(b) => b
-	            }
-	          }
-	        })
-	      }
-	
-	      //check if two calls (to functions or ADT cons) have the same value in the model 
-	      val doesAlias = (call1: Expr, call2: Expr) => {
-	        //first check if the return values are equal
-	        val BinaryOperator(r1 @ Variable(_), _, _) = call1
-	        val BinaryOperator(r2 @ Variable(_), _, _) = call2
-	        val resEquals = solEval.evalBoolExpr(Equals(r1, r2))            
-	        if (resEquals.isEmpty)
-	          throw IllegalStateException("cannot evaluate " + Equals(r1, r2) + " on " + solEval.getModel)
-	
-	        if (resEquals.get) {
-	          //for function calls do additional checks
-	          if (InvariantUtil.isCallExpr(call1)) {
-	            val (ants, _) = axiomatizeCalls(call1, call2)
-	            val antExpr = And(ants)
-	            solEval.evalBoolExpr(antExpr) match {
-	              case None => throw IllegalStateException("cannot evaluate " + antExpr + " on " + solEval.getModel)
-	              case Some(b) => b
-	            }
-	          } else{
-	            //println(Equals(r1, r2) + " evalued to true")
-	            true
-	          } 
-	        } else false
-	      }
-	       
-	      val (btree, ptree) = ctrTracker.getVC(fd)
-	      val newctr = generateCtrsForTree(btree, ptree, satChooser, doesAlias, true, /**Not used but kept around for debugging**/solEval)
-	      if (newctr == tru)
-	        throw IllegalStateException("cannot find a counter-example path!!")
-	
-	      //free the solver here
-	      solEval.free()
-	      (Seq(newctr), counterExample)
-	    }
-	  }        
+  def getNLConstraints(fd: FunDef, instVC : Expr, tempVarMap: Map[Expr,Expr]) : (Seq[Expr], Map[Identifier,Expr]) = {
+    //For debugging
+    if (this.dumpInstantiatedVC) {
+      val wr = new PrintWriter(new File("formula-dump.txt"))
+      println("Instantiated VC of " + fd.id + " is: " + instVC)
+      wr.println("Function name: " + fd.id)
+      wr.println("Formula expr: ")
+      ExpressionTransformer.PrintWithIndentation(wr, instVC)
+      wr.flush()
+      wr.close()
+    }
+
+    //throw an exception if the candidate expression has reals
+    if (InvariantUtil.hasReals(instVC))
+      throw IllegalStateException("Instantiated VC of " + fd.id + " contains reals: " + instVC)
+
+    //println("verification condition for" + fd.id + " : " + cande)
+    //println("Solution: "+uiSolver.solveSATWithFunctionCalls(cande))
+
+    //this creates a new solver and does not work with the SimpleSolverAPI
+    println("Solvign VC inst")
+    val solEval = new UIFZ3Solver(context, program)
+    solEval.assertCnstr(instVC)
+    println("Solved VC inst")
+    /*//very important assert the axioms as well
+    solEval.assertCnstr(And(this.axiomsUsedInReduction))*/
+    
+    solEval.check match {
+      case None => {
+        solEval.free()
+        throw IllegalStateException("cannot check the satisfiability of " + instVC)
+      }
+      case Some(false) => {
+        solEval.free()
+        //do not generate any constraints
+        (Seq(), Map())
+      }
+      case Some(true) => {
+        //For debugging purposes.
+        println("Function: " + fd.id + "--Found candidate invariant is not a real invariant! ")
+        val counterExample = solEval.getModel
+        //println("Counter-example: "+counterExample)
+
+        //try to get the paths that lead to the error 
+        val satChooser = (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {
+          ch.filter((child) => child match {
+            case CtrLeaf() => true
+            case cn @ CtrNode(_) => {
+
+              //note the expr may have template variables so replace them with the candidate values
+              val nodeExpr = if (!cn.templates.isEmpty) {
+                //the node has templates
+                instantiateTemplate(cn.toExpr, tempVarMap)
+              } else cn.toExpr
+
+              //throw an exception if the expression has reals
+              if (InvariantUtil.hasReals(nodeExpr))
+                throw IllegalStateException("Node expression has reals: " + nodeExpr)
+
+              solEval.evalBoolExpr(nodeExpr) match {
+                case None => throw IllegalStateException("cannot evaluate " + cn.toExpr + " on " + solEval.getModel)
+                case Some(b) => b
+              }
+            }
+          })
+        }
+
+        //check if two calls (to functions or ADT cons) have the same value in the model 
+        val doesAlias = (call1: Expr, call2: Expr) => {
+          //first check if the return values are equal
+          val BinaryOperator(r1 @ Variable(_), _, _) = call1
+          val BinaryOperator(r2 @ Variable(_), _, _) = call2
+          val resEquals = solEval.evalBoolExpr(Equals(r1, r2))
+          if (resEquals.isEmpty)
+            throw IllegalStateException("cannot evaluate " + Equals(r1, r2) + " on " + solEval.getModel)
+
+          if (resEquals.get) {
+            //for function calls do additional checks
+            if (InvariantUtil.isCallExpr(call1)) {
+              val (ants, _) = axiomatizeCalls(call1, call2)
+              val antExpr = And(ants)
+              solEval.evalBoolExpr(antExpr) match {
+                case None => throw IllegalStateException("cannot evaluate " + antExpr + " on " + solEval.getModel)
+                case Some(b) => b
+              }
+            } else {
+              //println(Equals(r1, r2) + " evalued to true")
+              true
+            }
+          } else false
+        }
+        
+        val evaluator = (ant: Expr, conseq: Expr) =>
+          solEval.evalBoolExpr(ant) match {
+            case None => throw IllegalStateException("cannot evaluate " + ant)
+            case Some(true) => {
+              if(!solEval.evalBoolExpr(conseq).get){
+                throw IllegalStateException("ant does not imply conseq")
+              }
+              true
+            }
+            case Some(false) => false
+          }
+          
+        val model = solEval.getModel
+
+        //check if two calls satisfy an axiom 
+        val generateAxiom = (call1: Expr, call2: Expr) => {
+
+          //check if these are function calls belong to callsWithAxioms 
+          //TODO: this is a hack for now
+          if (callsWithAxioms.contains(call1) && callsWithAxioms.contains(call2)) {
+            val BinaryOperator(r1 @ Variable(_), fi1 @ FunctionInvocation(fd1, args1), _) = call1
+            val BinaryOperator(r2 @ Variable(_), fi2 @ FunctionInvocation(fd2, args2), _) = call2
+            
+            if (this.debugAxioms) {
+              println("Calls: (" + call1 + "," + call2 + ")")
+              println("Model: " + (args1 ++ args2 ++ Seq(r1, r2)).map((v) => (v, model(v.asInstanceOf[Variable].id))))
+            }
+            val (ants1, conseq1) = this.monotonizeCalls(call1, call2)
+            val ant1 = And(ants1)
+            if (evaluator(ant1, conseq1)) {
+              //for debugging 
+              println("Insantiated Axiom: " + Implies(ant1, conseq1))
+
+              Some(And(ant1, conseq1))
+            } else {
+              val (ants2, conseq2) = this.monotonizeCalls(call2, call1)
+              val ant2 = And(ants2)
+              if (evaluator(ant2, conseq2)) {
+                //for debugging
+                println("Insantiated Axiom: " + Implies(ant2, conseq2))
+
+                Some(And(ant2, conseq2))
+              } else {
+                //we need to say that arg1 and arg2 are incomparable
+                Some(And(Not(ant1), Not(ant2)))
+              }
+            }
+          } else None
+        }
+
+        val (btree, ptree) = ctrTracker.getVC(fd)
+        val newctr = generateCtrsForTree(btree, ptree, satChooser, doesAlias, generateAxiom,
+          true, /**Not used but kept around for debugging**/ solEval)
+        if (newctr == tru)
+          throw IllegalStateException("cannot find a counter-example path!!")
+
+        //free the solver here
+        solEval.free()
+        (Seq(newctr), counterExample)
+      }
+	}        
   }
       
   /**
@@ -514,6 +577,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
   def generateCtrsForTree(bodyRoot: CtrNode, postRoot : CtrNode, 
       selector : (CtrNode, Iterable[CtrTree], Int) => Iterable[CtrTree],
       doesAlias: (Expr, Expr) => Boolean, 
+      generateAxiom : (Expr,Expr) => Option[Expr],
       exploreOnePath : Boolean,
       /**Kept around for debugging **/evalSolver: UIFZ3Solver) : Expr = {
     
@@ -703,7 +767,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           wr.close()*/
       }
       
-      val uifCtrs = constraintsForUIFs(uifexprs ++ adtCons, pathctr, doesAlias)
+      val uifCtrs = constraintsForUIFs(uifexprs ++ adtCons, pathctr, doesAlias, generateAxiom)
       val uifroot = if (!uifCtrs.isEmpty) {
 
         val uifCtr = And(uifCtrs)       
@@ -836,11 +900,14 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
    */
   //TODO: important: optimize this code it seems to take a lot of time 
   //TODO: Fix the current incomplete way of handling ADTs and UIFs  
-  def constraintsForUIFs(calls: Seq[Expr], precond: Expr, doesAliasInCE : (Expr,Expr) => Boolean) : Seq[Expr] = {
+  def constraintsForUIFs(calls: Seq[Expr], precond: Expr, 
+      doesAliasInCE : (Expr,Expr) => Boolean,
+      generateAxiom : (Expr,Expr) => Option[Expr]) : Seq[Expr] = {
         //solverWithPrecond : UIFZ3Solvers
     var eqGraph = new UndirectedGraph[Expr]() //an equality graph
     var neqSet = Set[(Expr,Expr)]()
-    //var cannotEqSet = Set[(Expr,Expr)]()           
+    //a mapping from call pairs to the axioms they satisfy
+    var axiomSet = Map[(Expr,Expr), Expr]()             
     
     //compute the cartesian product of the calls and select the pairs having the same function symbol and also implied by the precond
     val vec = calls.toArray
@@ -866,12 +933,20 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
 
       //println("Assertionizing "+call1+" , call2: "+call2)      
       if (!eqGraph.BFSReach(call1, call2)
-        && !neqSet.contains((call1, call2))) {        
+        && !neqSet.contains((call1, call2))
+        && !axiomSet.contains(call1,call2)) {        
 
         if (doesAliasInCE(call1, call2)) {
-          eqGraph.addEdge(call1, call2)
-        } else {
-          neqSet ++= Set((call1, call2), (call2, call1))
+          eqGraph.addEdge(call1, call2)          
+        } 
+        else {
+          //check if the call satisfies some of its axioms 
+          val axiom = generateAxiom(call1, call2)
+          if(axiom.isDefined) {
+            axiomSet += (call1,call2) -> axiom.get            
+          } else {
+        	neqSet ++= Set((call1, call2), (call2, call1))
+          }          
         }       
       }
     })    
@@ -910,11 +985,15 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
             (lhs.getType == Int32Type || lhs.getType == RealType || lhs.getType == BooleanType)
           })
       }      
+      else if(axiomSet.contains(pair)) {
+        //here simply add the axiom to the resulting constraints
+        acc :+ axiomSet(pair)
+      }
       else if(neqSet.contains(pair)) {
                
         //println("unequal calls: "+call1+" , "+call2)
         if(InvariantUtil.isCallExpr(call1)) {
-                   
+          
           val (ants,_) = axiomatizeCalls(call1,call2)
           //drop everything if there exists ADTs (note here the antecedent is negated so cannot retain integer predicates)
           //TODO: fix this (this requires mapping of ADTs to integer world and introducing a < total order)
@@ -1014,5 +1093,58 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     })
     val conseq = Equals(v1, v2)
     (ants, conseq)
-  }  
+  }
+
+  def monotonizeCalls(call1: Expr, call2: Expr): (Seq[Expr], Expr) = {
+    val BinaryOperator(r1 @ Variable(_), fi1 @ FunctionInvocation(fd1, args1), _) = call1
+    val BinaryOperator(r2 @ Variable(_), fi2 @ FunctionInvocation(fd2, args2), _) = call2
+    //here implicitly assumed that fd1 == fd2 and fd1 has a monotonicity axiom, 
+    //TODO: in general we need to assert this here
+    val ant = (args1 zip args2).foldLeft(Seq[Expr]())((acc, pair) => {
+      val lesse = LessEquals(pair._1, pair._2)
+      lesse +: acc
+    })
+    val conseq = LessEquals(r1, r2)
+    (ant, conseq)
+  }
+
+  //this is populated lazily by instantiateAxioms
+  private var callsWithAxioms = Set[Expr]()
+
+  def instantiateAxioms(formula: Expr): Expr = {    
+    var axiomCallsInFormula = Set[Expr]()
+    
+    //collect all calls with axioms    
+    simplePostTransform((e: Expr) => e match {
+      case call @ _ if (InvariantUtil.isCallExpr(e)) => {
+        val BinaryOperator(_, FunctionInvocation(fd, _), _) = call
+        if (FunctionInfoFactory.isMonotonic(fd)) {
+          callsWithAxioms += call
+          axiomCallsInFormula += call
+        }
+          
+        call
+      }
+      case _ => e
+    })(formula)    
+        
+    var product = Seq[(Expr,Expr)]() 
+    axiomCallsInFormula.foreach((call1) =>{
+      axiomCallsInFormula.foreach((call2) => {
+        if(call1 != call2)
+          product = (call1, call2) +: product
+      })
+    })    
+    val axiomInstances = product.foldLeft(Seq[Expr]())((acc, pair) => {      
+      val (ants, conseq) = monotonizeCalls(pair._1, pair._2)
+      acc :+ Implies(And(ants), conseq)
+    })
+    
+    //for debugging
+    reporter.info("Number of axiom instances: "+2 * axiomCallsInFormula.size * axiomCallsInFormula.size)
+    //println("Axioms: "+axiomInstances)
+    
+    val axiomInst = ExpressionTransformer.TransformNot(And(axiomInstances))
+    And(formula, axiomInst)
+  }
 }

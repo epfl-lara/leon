@@ -30,11 +30,12 @@ import leon.purescala.ScalaPrinter
 import leon.solvers.SimpleSolverAPI
 import leon.solvers.SolverFactory
 import leon.solvers.z3.UIFZ3Solver
+import leon.verification.VerificationReport
 
 /**
  * @author ravi
  * This phase performs automatic invariant inference. 
- * TODO: handle options
+ * TODO: Fix the handling of getting a template for a function, the current code is very obscure
  */
 object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   val name = "InferInv"
@@ -43,6 +44,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   
   override val definedOptions: Set[LeonOptionDef] = Set(
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
+    LeonValueOptionDef("monotones", "--monotones=f1:f2", "Monotonic functions f1,f2,..."),
     LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."))
 
   //TODO: handle direct equality and inequality on ADTs
@@ -75,7 +77,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       constTracker.addBodyConstraints(funDef, flatBody)      
       
       //create a postcondition template if the function is recursive or if a template is provided for the function      
-      val npostTemp = if (program.isRecursive(funDef) || UserTemplates.templates.contains(funDef)) {
+      val npostTemp = if (program.isRecursive(funDef) || FunctionInfoFactory.hasTemplate(funDef)) {
         
         //this is a way to create an idenitity map :-))
         val argmap = InvariantUtil.formalToAcutal(Call(resvar, FunctionInvocation(funDef, funDef.args.map(_.toVariable))))
@@ -103,7 +105,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       //println("Body Constraint Tree: "+btree)      
 
       //create entities that uses the constraint tracker
-      val lsAnalyzer = new LinearSystemAnalyzer(constTracker,  tempFactory, context, program)
+      val lsAnalyzer = new LinearSystemAnalyzer(constTracker,  tempFactory, context, program, timeout)
       val vcRefiner = new RefinementEngine(program, constTracker, tempFactory, reporter)
       vcRefiner.initialize()
 
@@ -240,18 +242,30 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   }
   
 
+  //TODO handle options
+  var timeout: Option[Int] = None
   def run(ctx: LeonContext)(program: Program): VerificationReport = {
 
     val reporter = ctx.reporter
     reporter.info("Running Invariant Inference Phase...")
 
-    val functionsToAnalyse: MutableSet[String] = MutableSet.empty
-    var timeout: Option[Int] = None
+    val functionsToAnalyse: MutableSet[String] = MutableSet.empty    
 
     for (opt <- ctx.options) opt match {
       case LeonValueOption("functions", ListValue(fs)) =>
         functionsToAnalyse ++= fs
 
+      case LeonValueOption("monotones", ListValue(fs)) => {
+        val names = fs.toSet
+        program.definedFunctions.foreach((fd) =>{
+          //here, checking for name equality without identifiers
+          if(names.contains(fd.id.name)) {
+            FunctionInfoFactory.setMonotonicity(fd)
+            println("Marking "+fd.id+" as monotonic")
+          }
+        })
+      } 
+        
       case v @ LeonValueOption("timeout", _) =>
         timeout = v.asInt(ctx)
 

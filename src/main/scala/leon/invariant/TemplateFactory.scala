@@ -27,7 +27,7 @@ import leon.verification.VerificationReport
 import scala.collection.mutable.{ Set => MutableSet }
 import scala.collection.mutable.{ Map => MutableMap }
 
-object UserTemplates {
+/*object UserTemplates {
   private var userTemplates = Map[FunDef, Expr]()
   
   def setTemplate(fd:FunDef, tempExpr :Expr) = {
@@ -35,7 +35,7 @@ object UserTemplates {
   }
   
   def templates = userTemplates  
-}
+}*/
 
 object TemplateIdFactory {
   //a set of template ids
@@ -83,7 +83,7 @@ class TemplateFactory(tempGen : Option[TemplateGenerator], reporter : Reporter) 
     
     //initialize the template map with predefined user maps
     var muMap = MutableMap[FunDef, Expr]()
-    muMap ++= UserTemplates.templates
+    muMap ++= FunctionInfoFactory.templateMap
     muMap
   }
   
