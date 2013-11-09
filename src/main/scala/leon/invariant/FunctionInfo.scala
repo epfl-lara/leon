@@ -19,6 +19,10 @@ class FunctionInfo(val fundef : FunDef) {
 object FunctionInfoFactory {
 
   var functionInfos = Map[FunDef,FunctionInfo]()
+  
+  /**
+   * Sets a new template for the functions
+   */
   def setTemplate(fd:FunDef, tempExpr :Expr) = {
     
     val funinfo = functionInfos.getOrElse(fd, { 
@@ -26,7 +30,10 @@ object FunctionInfoFactory {
       functionInfos += (fd -> info)
       info
     })
-    funinfo.template = Some(tempExpr) 
+    if(!funinfo.template.isDefined)
+    	funinfo.template = Some(tempExpr) 
+    else 
+    	throw IllegalStateException("Template already set for function: "+fd)
   }
   
   def hasTemplate(fd: FunDef) : Boolean = {

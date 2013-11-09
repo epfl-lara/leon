@@ -53,7 +53,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
   val printReducedFormula = false
   val dumpNLFormula = false
   val dumpInstantiatedVC = false 
-  val debugAxioms = true
+  val debugAxioms = false
  
   //some utility methods
   def getFIs(ctr: LinearConstraint): Set[FunctionInvocation] = {
@@ -539,8 +539,9 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
             val (ants1, conseq1) = this.monotonizeCalls(call1, call2)
             val ant1 = And(ants1)
             if (evaluator(ant1, conseq1)) {
-              //for debugging 
-              println("Insantiated Axiom: " + Implies(ant1, conseq1))
+              //for debugging
+              //if(this.debugAxioms)
+            	println("Axiom pre implied ")
 
               Some(And(ant1, conseq1))
             } else {
@@ -548,10 +549,13 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
               val ant2 = And(ants2)
               if (evaluator(ant2, conseq2)) {
                 //for debugging
-                println("Insantiated Axiom: " + Implies(ant2, conseq2))
+                //if(this.debugAxioms)
+            	  println("Axiom pre implied ")
 
                 Some(And(ant2, conseq2))
               } else {
+                //if(this.debugAxioms)
+            	  println("Axiom pre not implied ")
                 //we need to say that arg1 and arg2 are incomparable
                 Some(And(Not(ant1), Not(ant2)))
               }
@@ -965,9 +969,9 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       //This is because the transitive equalities (corresponding to rechability) are encoded by the generated equalities.
       //This also serves to reduce the generated lambdas
       if(eqGraph.containsEdge(call1,call2)) {
-
-        //println("Equal calls: "+call1+" , "+call2)
+       
         val (lhs, rhs) = if (InvariantUtil.isCallExpr(call1)) {
+           //println("Equal calls ")
           axiomatizeCalls(call1, call2)
         } else {
           //here it is an ADT constructor call
@@ -998,6 +1002,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         //println("unequal calls: "+call1+" , "+call2)
         if(InvariantUtil.isCallExpr(call1)) {
           
+          //println("Unequal calls ")
           val (ants,_) = axiomatizeCalls(call1,call2)
           //drop everything if there exists ADTs (note here the antecedent is negated so cannot retain integer predicates)
           //TODO: fix this (this requires mapping of ADTs to integer world and introducing a < total order)

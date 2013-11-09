@@ -45,13 +45,15 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   override val definedOptions: Set[LeonOptionDef] = Set(
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
     LeonValueOptionDef("monotones", "--monotones=f1:f2", "Monotonic functions f1,f2,..."),
+    LeonValueOptionDef("modularize", "--modularize=f1:f2", "Perform modular analysis on f1,f2,..."),
     LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."))
 
   //TODO: handle direct equality and inequality on ADTs
   //TODO: Do we need to also assert that time is >= 0
   class InferenceEngineGenerator(reporter: Reporter, program: Program, context: LeonContext) {
 
-    def getInferenceEngine(funDef: FunDef, tempFactory : TemplateFactory): (() => Option[Boolean]) = {
+    def getInferenceEngine(funDef: FunDef, tempFactory : TemplateFactory)
+    	: (() => (Option[Boolean],Option[Expr])) = {
 
       //Create and initialize a constraint tracker
       val constTracker = new ConstraintTracker(funDef)
@@ -127,7 +129,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
         refinementStep += 1
 
-        if (!refined) Some(false)
+        if (!refined) (Some(false),None)
         else {
           //solve for the templates at this unroll step          
           val res = lsAnalyzer.solveForTemplatesIncr()
@@ -145,22 +147,23 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
             verifierRes._1 match {
               case Some(false) => {
                 reporter.info("- Invariant verified")
-                Some(true)
+                //return the invariant for the root function
+                (Some(true),Some(res.get(funDef)))
               }
               case Some(true) => {
                 reporter.error("- Invalid invariant, model: " + verifierRes._2)
-                System.exit(-1)
-                None
+                throw IllegalStateException("")              
               }
               case _ => {
                 //the solver timed out here
                 reporter.error("- Unable to prove or disprove invariant, the invariant is probably true")
-                Some(true)
+                //return the invariant for the root function
+                (Some(true),Some(res.get(funDef)))
               }
             }            
           } else {            
             //here, we do not know if the template is solvable or not, we need to do more unrollings.
-            None
+            (None,None)
           }
         }
       }
@@ -264,11 +267,12 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     val reporter = ctx.reporter
     reporter.info("Running Invariant Inference Phase...")
 
-    val functionsToAnalyse: MutableSet[String] = MutableSet.empty    
+    var modularFunctions = Set[FunDef]()
+    //val functionsToAnalyse: MutableSet[String] = MutableSet.empty    
 
     for (opt <- ctx.options) opt match {
-      case LeonValueOption("functions", ListValue(fs)) =>
-        functionsToAnalyse ++= fs
+//      case LeonValueOption("functions", ListValue(fs)) =>
+//        functionsToAnalyse ++= fs
 
       case LeonValueOption("monotones", ListValue(fs)) => {
         val names = fs.toSet
@@ -280,6 +284,17 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           }
         })
       } 
+      
+      case LeonValueOption("modularize", ListValue(fs)) => {
+        val names = fs.toSet
+        program.definedFunctions.foreach((fd) =>{
+          //here, checking for name equality without identifiers
+          if(names.contains(fd.id.name)) {
+            modularFunctions += fd
+            println("Marking "+fd.id+" as modular")
+          }
+        })
+      }
         
       case v @ LeonValueOption("timeout", _) =>
         timeout = v.asInt(ctx).get
@@ -292,11 +307,13 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     //A template generator that generates templates for the functions (here we are generating templates by enumeration)          
     val tempFactory = new TemplateFactory(Some(new TemplateEnumerator(program, reporter)), reporter)
     
+    //compute functions to analyze by sorting based on topological order
+    val callgraph = CallGraphUtil.constructCallGraph(program, withTemplates=true)
+    val functionsToAnalyze = program.definedFunctions.toList.sortWith((fd1,fd2) => callgraph.transitivelyCalls(fd2,fd1))
+    println("Analysis Order: "+functionsToAnalyze.map(_.id))
+    
     val analysedFunctions: MutableSet[String] = MutableSet.empty
-    for (
-      funDef <- program.definedFunctions.toList.sortWith((fd1, fd2) => fd1 < fd2) 
-      if (functionsToAnalyse.isEmpty || functionsToAnalyse.contains(funDef.id.name))
-    ) {
+    functionsToAnalyze.foreach((funDef) => {
       analysedFunctions += funDef.id.name      
 
       if (funDef.body.isDefined && funDef.postcondition.isDefined) {
@@ -317,14 +334,20 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         while (!solved.isDefined) {
 
           val infEngine = infEngineGen.getInferenceEngine(funDef, tempFactory)
-          var infRes: Option[Boolean] = None
+          var infRes: (Option[Boolean],Option[Expr]) = (None, None)         
 
           //each call to infEngine performs unrolling of user-defined procedures in templates
-          while (!infRes.isDefined) {
+          while (!infRes._1.isDefined) {
             infRes = infEngine()
           }
-          solved = infRes match {
-            case Some(true) => Some(true)
+          solved = infRes._1 match {
+            case Some(true) => {
+              //here, if modularize flag is set for the function then update the templates with the inferred invariant
+              if(modularFunctions.contains(funDef)) {
+                tempFactory.setTemplate(funDef, infRes._2.get)            
+              }
+              Some(true)
+            }
             case Some(false) => {
               reporter.info("- Template not solvable!!")
               //refine the templates here
@@ -343,9 +366,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         val t2 = System.currentTimeMillis()
         val dt = ((t2 - t1) / 1000.0)       
       }
-    }
-    val notFound = functionsToAnalyse -- analysedFunctions
-    notFound.foreach(fn => reporter.error("Did not find function \"" + fn + "\" though it was marked for analysis."))
+    })
+//    val notFound = functionsToAnalyse -- analysedFunctions
+//    notFound.foreach(fn => reporter.error("Did not find function \"" + fn + "\" though it was marked for analysis."))
     VerificationReport.emptyReport
   }
 }

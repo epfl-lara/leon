@@ -46,7 +46,7 @@ class CallGraph {
 
 object CallGraphUtil {
   
-  def constructCallGraph(prog : Program, onlyBody : Boolean = false) : CallGraph = {
+  def constructCallGraph(prog : Program, onlyBody : Boolean = false, withTemplates : Boolean = false) : CallGraph = {
 	
     val cg = new CallGraph()    
     prog.definedFunctions.foreach((fd) => {          
@@ -57,6 +57,10 @@ object CallGraphUtil {
             funExpr = Tuple(Seq(funExpr, fd.precondition.get))
           if (fd.hasPostcondition)
             funExpr = Tuple(Seq(funExpr, fd.postcondition.get._2))
+        }
+        
+        if(withTemplates && FunctionInfoFactory.hasTemplate(fd)){
+          funExpr = Tuple(Seq(funExpr,FunctionInfoFactory.getTemplate(fd)))
         }
        	
         //introduce a new edge for every callee
