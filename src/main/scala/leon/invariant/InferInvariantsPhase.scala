@@ -8,7 +8,7 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.TypeTrees._
-import solvers.{ Solver, TimeoutSolver }
+import solvers._
 import solvers.z3.FairZ3Solver
 import scala.collection.mutable.{ Set => MutableSet }
 import leon.evaluators._
@@ -152,9 +152,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
                 None
               }
               case _ => {
-                reporter.error("- Unable to prove or disprove invariant")
-                System.exit(-1)
-                None
+                //the solver timed out here
+                reporter.error("- Unable to prove or disprove invariant, the invariant is probably true")
+                Some(true)
               }
             }            
           } else {            
@@ -235,15 +235,29 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     defaultTactic.setProgram(newprog)
     val vc = defaultTactic.generatePostconditions(newFundefs(rootfd))(0)
 
-    val fairZ3 = new SimpleSolverAPI(SolverFactory(() => new FairZ3Solver(ctx, newprog)))       
+    val verifyTimeout = 5
+    val fairZ3 = new SimpleSolverAPI(
+        new TimeoutSolverFactory(SolverFactory(() => new FairZ3Solver(ctx, newprog)), 
+        verifyTimeout * 1000))       
     //println("Func : "+ vc.funDef + " new vc: "+vc.condition)            
-    val sat = fairZ3.solveSAT(Not(vc.condition))
+    val sat = fairZ3.solveSAT(Not(vc.condition))    
+//    if(sat._1 == Some(true)){
+//      val evaluator = new DefaultEvaluator(ctx, newprog)
+//      
+//      simplePostTransform((e: Expr) => e match {
+//        case FunctionInvocation(_,_) => {
+//          println(e + " --> "+evaluator.eval(e, sat._2))
+//          e
+//        }
+//        case _ => e
+//      })(vc.condition)      
+//    }
     sat
   }
   
 
-  //TODO handle options
-  var timeout: Option[Int] = None
+  //TODO provide options
+  var timeout: Int = 10  //default timeout is 10s
   def run(ctx: LeonContext)(program: Program): VerificationReport = {
 
     val reporter = ctx.reporter
@@ -267,7 +281,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       } 
         
       case v @ LeonValueOption("timeout", _) =>
-        timeout = v.asInt(ctx)
+        timeout = v.asInt(ctx).get
 
       case _ =>
     }

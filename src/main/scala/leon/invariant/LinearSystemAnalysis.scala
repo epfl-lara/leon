@@ -34,9 +34,8 @@ import scala.util.control.Breaks._
 import leon.solvers._
 
 class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: TemplateFactory,
-    context : LeonContext, program : Program, timeOut: Option[Int]) {
-
-  private val timeout = if(timeOut.isDefined) timeOut.get else 10
+    context : LeonContext, program : Program, timeout: Int) {
+  
   private val reporter = context.reporter
   private val implicationSolver = new LinearImplicationSolver()
   private val cg = CallGraphUtil.constructCallGraph(program)
@@ -433,12 +432,10 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     //println("Solution: "+uiSolver.solveSATWithFunctionCalls(cande))
 
     //this creates a new solver and does not work with the SimpleSolverAPI
-    println("Solvign VC inst")
+    //println("Solvign VC inst")
     val solEval = new UIFZ3Solver(context, program)
     solEval.assertCnstr(instVC)
-    println("Solved VC inst")
-    /*//very important assert the axioms as well
-    solEval.assertCnstr(And(this.axiomsUsedInReduction))*/
+    //println("Solved VC inst")
     
     solEval.check match {
       case None => {
