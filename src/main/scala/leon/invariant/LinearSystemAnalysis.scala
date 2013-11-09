@@ -404,8 +404,15 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
             println("Formula & Model printed to File: " + fn2)
 
             solverWithCtrs.pop()
-          }                   
-          recSolveForTemplatesIncr(newModel, solverWithCtrs, funcExprs, And(inputCtr, newPart))
+          }
+          //new model may not have mappings for all variables (use the mappings from earlier models for those variables)
+          val completeModel = model.keys.map((id) => {
+            if (newModel.contains(id))
+              (id -> newModel(id))
+            else (id -> model(id))
+          }).toMap
+          
+          recSolveForTemplatesIncr(completeModel, solverWithCtrs, funcExprs, And(inputCtr, newPart))
         }
       }             
     }

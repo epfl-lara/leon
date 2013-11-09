@@ -60,7 +60,7 @@ object LinearConstraintUtil {
         } else{
           coeffMap.update(term, newcoeff)
         }        	
-      } else coeffMap += (term -> coeff)
+      } else coeffMap += (term -> simplifyArithmetic(coeff))
 
       if (!variablesOf(coeff).isEmpty) {
         isTemplate = true
@@ -70,9 +70,9 @@ object LinearConstraintUtil {
     def addConstant(coeff: Expr) ={
       if (constant.isDefined) {
         val value = constant.get
-        constant = Some(Plus(value, coeff))
+        constant = Some(simplifyArithmetic(Plus(value, coeff)))
       } else 
-        constant = Some(coeff)
+        constant = Some(simplifyArithmetic(coeff))
 
       if (!variablesOf(coeff).isEmpty) {
         isTemplate = true

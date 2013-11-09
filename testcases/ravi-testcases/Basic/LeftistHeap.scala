@@ -20,28 +20,24 @@ object LeftistHeap {
     case Node(_,_,l,r) => hasLeftistProperty(l) && hasLeftistProperty(r) && rightHeight(l) >= rightHeight(r) && (rank(h) == rightHeight(h)) 
   })
 
-  /*def findMax(h: Heap) : Int = {
-    require(!isHeapEmpty(h) && hasLeftistProperty(h))
-    h match {
-      case Node(_,m,_,_) => m
-      case Leaf() => -1000
-    }
-  }*/ //ensuring(_ == heapContent(h).max)
+//  def findMax(h: Heap) : Int = {
+//    require(hasLeftistProperty(h))
+//    h match {
+//      case Node(_,m,_,_) => m
+//      case Leaf() => -1000
+//    }
+//  } ensuring(_ == heapContent(h).max)
 
-  /*def removeMax(h: Heap) : Heap = {
-    require(!isHeapEmpty(h) && hasLeftistProperty(h))
+  def removeMax(h: Heap) : Heap = {
+    require(hasLeftistProperty(h))
     h match {
       case Node(_,_,l,r) => merge(l, r)
       case l @ Leaf() => l
     }
-  } ensuring(res => {
-      val cOld = heapContent(h)
-      val cNew = heapContent(res)
-      (cNew == Set.empty[Int] || cNew.max <= cOld.max) &&
-      (cNew subsetOf cOld) &&
-      (cOld.size - cNew.size <= 1) &&
-      hasLeftistProperty(res)
-    })*/
+  } ensuring(res => true template((c,d) => twopower(time) <= c*size(h) + d))
+      //      && twopower(rightHeight(h.left)) <= c*size(h.left)
+//      && twopower(rightHeight(h.right)) <= c*size(h.left)
+
 
   def twopower(x: Int) : Int = {
     require(x >= 0)
