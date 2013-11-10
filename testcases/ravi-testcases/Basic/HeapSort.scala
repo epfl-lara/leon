@@ -46,7 +46,7 @@ object HeapSort {
             makeT(v2, l2, merge(h1, r2))
       }
     }
-  } 
+  } ensuring(res => true template((a,b,c) => a*heapSize(h1) + b*heapSize(h1) + c*heapSize(res) == 0))
 
   private def makeT(value: Int, left: Heap, right: Heap) : Heap = {
     if(rank(left) >= rank(right))
@@ -82,20 +82,20 @@ object HeapSort {
     case Cons(_, xs) => 1 + listSize(xs)
   })   
   
-  def removeElements(h : Heap, l : List) : List = h match {
+  def removeElements(h : Heap, l : List) : List = (h match {
     case Leaf() => l
     case _ => removeElements(removeMax(h),Cons(findMax(h),l)) 
-  }
+  }) ensuring(res => true template((a,b,c) => a*heapSize(h) + b*listSize(l) + c*listSize(res)  == 0))
  
-  def buildHeap(l : List, h: Heap) : Heap = l match {
+  def buildHeap(l : List, h: Heap) : Heap = (l match {
     case Nil() => h
     case Cons(x,xs) => buildHeap(xs, insert(x, h))
-  }
+  }) ensuring(res => true template((a,b,c) => a*heapSize(h) + b*listSize(l) + c*heapSize(res)  == 0))
 
   def sort(l: List): List = ({
     
     val heap = buildHeap(l,Leaf())
     removeElements(heap, Nil())
     
-  }) ensuring(res => listSize(res) <= listSize(l))
+  }) ensuring(res => listSize(res) == listSize(l))
 }
