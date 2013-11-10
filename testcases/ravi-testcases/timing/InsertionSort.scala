@@ -11,16 +11,23 @@ object InsertionSort {
     case Cons(_, xs) => 1 + size(xs)
   })    
 
+  def mult(x : Int, y : Int) : Int = {
+    require(x >= 0 && y >= 0)
+      if(x == 0 || y == 0) 0
+      else
+    	  mult(x-1,y-1) +  x + y - 1    	  
+  } 
+
   def sortedIns(e: Int, l: List): List = {   
     l match {
       case Nil() => Cons(e,Nil())
       case Cons(x,xs) => if (x <= e) Cons(x,sortedIns(e, xs)) else Cons(e, l)
     } 
-  } ensuring(res => true template((a,b,c) => a*size(res) + b*size(l) +c == 0))
+  } ensuring(res => size(res) == size(l) + 1 template((a,b) => time <= a*size(l) +b))
 
   def sort(l: List): List = (l match {
     case Nil() => Nil()
     case Cons(x,xs) => sortedIns(x, sort(xs))
     
-  }) ensuring(res => size(res) == size(l))
+  }) ensuring(res => size(res) == size(l) template((a,b) => time <= a*mult(size(l),size(l)) +b))
 }

@@ -33,7 +33,7 @@ object TreeOperations {
         if (hl > hr) hl + 1 else hr + 1
       }
     }
-  } ensuring(res => res != size(t) + 1 template((a,b,c)=> a*size(t) + b*res +c <= 0))
+  } 
 
   def insert(elem: Int, t: Tree): Tree = {
     t match {
@@ -41,14 +41,24 @@ object TreeOperations {
       case Node(l, x, r) => if (x <= elem) Node(l, x, insert(elem, r))
       else Node(insert(elem, l), x, r)
     }
-  } ensuring (res => true template ((a, b, c) => a * size(t) + b * size(res) + c == 0))
+  } ensuring (res => true template((a,b) => time <= a*height(t) + b))
 
-  def addAll(l: List, t: Tree): Tree = {
-    l match {
-      case Nil() => t
-      case Cons(x, xs) => addAll(xs, insert(x, t))
-    }
-  } ensuring (res => size(res) >= size(t))
+  def mult(x : Int, y : Int) : Int = {
+      if(x == 0 || y == 0) 0
+      else
+    	  mult(x-1,y-1) +  x + y - 1
+  } 
+  
+  //there is probably some bug here in instrumentation of time
+//  def addAll(l: List, t: Tree): Tree = {
+//    l match {
+//      case Nil() => t
+//      case Cons(x, xs) =>{
+//        val newt = insert(x, t)
+//        addAll(xs, newt)
+//      } 
+//    }
+//  } ensuring (res => true template((a,b,c) => time <= a*mult(listSize(l),height(t)) + c))
 
   def remove(elem: Int, t: Tree): Tree = {
     t match {
@@ -67,14 +77,14 @@ object TreeOperations {
         }
       }
     }
-  } ensuring (res => true template ((a, b, c) => a * size(res) + b * size(t) + c <= 0))
+  } ensuring (res => true template ((a, b, c) => time <= a*height(t) + b))
 
-  def removeAll(l: List, t: Tree): Tree = {
-    l match {
-      case Nil() => t
-      case Cons(x, xs) => removeAll(xs, remove(x, t))
-    }
-  } ensuring (res => size(res) <= size(t))
+//  def removeAll(l: List, t: Tree): Tree = {
+//    l match {
+//      case Nil() => t
+//      case Cons(x, xs) => removeAll(xs, remove(x, t))
+//    }
+//  } ensuring (res => true template((a,b,c) => time <= a*mult(listSize(l),height(t)) + c))
 
   def contains(elem : Int, t : Tree) : Boolean = {
     t match {
@@ -84,5 +94,5 @@ object TreeOperations {
         else if (x < elem) contains(elem, r)
         else contains(elem, l)
     }
-  }
+  } ensuring (res => true template((a,b) => time <= a*height(t) + b))
 } 
