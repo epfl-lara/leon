@@ -33,25 +33,25 @@ object ListOperations {
     }
   } ensuring (res => size(res) == size(l))
 
-  def remove(elem: Int, l: List): List = {
-    l match {
-      case Nil() => Nil()
-      case Cons(hd, tl) => if (hd == elem) remove(elem, tl) else Cons(hd, remove(elem, tl))
-    }
-  } 
-
-  def contains(list: List, elem: Int): Boolean = (list match {
-    case Nil() => false
-    case Cons(x, xs) => x == elem || contains(xs, elem)
-  }) ensuring (res => true)
-
-  def distinct(l: List): List = (
-    l match {
-      case Nil() => Nil()
-      case Cons(x, xs) => {
-        val newl = distinct(l)
-        if (contains(newl, x)) newl
-        else Cons(x, newl)
-      }
-    })
+//  def remove(elem: Int, l: List): List = {
+//    l match {
+//      case Nil() => Nil()
+//      case Cons(hd, tl) => if (hd == elem) remove(elem, tl) else Cons(hd, remove(elem, tl))
+//    }
+//  } 
+//
+//  def contains(list: List, elem: Int): Boolean = (list match {
+//    case Nil() => false
+//    case Cons(x, xs) => x == elem || contains(xs, elem)
+//  }) ensuring (res => true)
+//
+//  def distinct(l: List): List = (
+//    l match {
+//      case Nil() => Nil()
+//      case Cons(x, xs) => {
+//        val newl = distinct(l)
+//        if (contains(newl, x)) newl
+//        else Cons(x, newl)
+//      }
+//    })
 }

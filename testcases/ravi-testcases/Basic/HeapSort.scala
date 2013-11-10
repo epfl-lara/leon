@@ -10,10 +10,10 @@ object HeapSort {
   case class Leaf() extends Heap
   case class Node(rk : Int, value: Int, left: Heap, right: Heap) extends Heap
 
-  private def rightHeight(h: Heap) : Int = h match {
+  private def rightHeight(h: Heap) : Int = {h match {
     case Leaf() => 0
     case Node(_,_,_,r) => rightHeight(r) + 1
-  }
+  }} 
   
   private def rank(h: Heap) : Int = h match {
     case Leaf() => 0
@@ -31,7 +31,7 @@ object HeapSort {
       case Leaf() => 0
       case Node(_,v, l, r) => heapSize(l) + 1 + heapSize(r)
     })
-  } 
+  }
 
   private def merge(h1: Heap, h2: Heap) : Heap = {
     require(hasLeftistProperty(h1) && hasLeftistProperty(h2))
@@ -46,7 +46,8 @@ object HeapSort {
             makeT(v2, l2, merge(h1, r2))
       }
     }
-  } ensuring(res => true template((a,b,c) => a*heapSize(h1) + b*heapSize(h1) + c*heapSize(res) == 0))
+  } ensuring(res => hasLeftistProperty(res) template((a,b,c,d) => a*heapSize(h1) + b*heapSize(h2) + c*heapSize(res) + d == 0))
+  
 
   private def makeT(value: Int, left: Heap, right: Heap) : Heap = {
     if(rank(left) >= rank(right))
@@ -59,7 +60,7 @@ object HeapSort {
    require(hasLeftistProperty(heap))
    
     merge(Node(1, element, Leaf(), Leaf()), heap)    
-  } 
+  } //ensuring(res => heapSize(res) == heapSize(heap) + 1)
  
    def findMax(h: Heap) : Int = {
     require(hasLeftistProperty(h))
@@ -80,18 +81,24 @@ object HeapSort {
   def listSize(l : List) : Int = (l match {
     case Nil() => 0
     case Cons(_, xs) => 1 + listSize(xs)
-  })   
+  }) 
   
-  def removeElements(h : Heap, l : List) : List = (h match {
+  def removeElements(h : Heap, l : List) : List = {
+          require(hasLeftistProperty(h))
+   h match {
     case Leaf() => l
     case _ => removeElements(removeMax(h),Cons(findMax(h),l)) 
-  }) ensuring(res => true template((a,b,c) => a*heapSize(h) + b*listSize(l) + c*listSize(res)  == 0))
- 
-  def buildHeap(l : List, h: Heap) : Heap = (l match {
+    
+  }} ensuring(res => true template((a,b,c,d) => a*heapSize(h) + b*listSize(l) + c*listSize(res) + d  == 0))
+    
+  def buildHeap(l : List, h: Heap) : Heap = {
+          require(hasLeftistProperty(h))
+   l match {    
     case Nil() => h
     case Cons(x,xs) => buildHeap(xs, insert(x, h))
-  }) ensuring(res => true template((a,b,c) => a*heapSize(h) + b*listSize(l) + c*heapSize(res)  == 0))
-
+    
+  }} ensuring(res => hasLeftistProperty(res) template((a,b,c,d) => a*heapSize(h) + b*listSize(l) + c*heapSize(res)  == 0))
+ 
   def sort(l: List): List = ({
     
     val heap = buildHeap(l,Leaf())
