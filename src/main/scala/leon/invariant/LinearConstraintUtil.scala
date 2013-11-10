@@ -124,7 +124,8 @@ object LinearConstraintUtil {
     })
     
     if(coeffMap.isEmpty && constant.isEmpty) {
-      //here the generated template reduced to true
+      //here the generated template reduced to true 
+      //Some(new LinearTemplate(LessEquals, Map(), Some(IntLiteral(-1))))
       None
     } else if(isTemplate) {  
       Some(new LinearTemplate(op, coeffMap.toMap, constant))

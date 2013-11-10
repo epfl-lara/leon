@@ -116,7 +116,9 @@ class ConstraintTracker(rootFun : FunDef) {
       }
     }
     //println("Creating constraint DAG for expresssion: "+inexpr)
-    val exprRoot = addCtr(inexpr, CtrNode())
+    //first simplify the expression
+    val simpExpr = ExpressionTransformer.simplify(simplifyArithmetic(inexpr))
+    val exprRoot = addCtr(simpExpr, CtrNode())
     val parentEnd = parentNode.getEndNode
     parentEnd.addChildren(exprRoot)    
   }

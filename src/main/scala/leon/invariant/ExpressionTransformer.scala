@@ -36,6 +36,7 @@ object ExpressionTransformer {
   val one = IntLiteral(1)
   val mone = IntLiteral(-1)
   val tru = BooleanLiteral(true)    
+  val fls = BooleanLiteral(false)    
 
   /**
   * This function conjoins the conjuncts created by 'transfomer' within the clauses containing Expr.
@@ -444,6 +445,10 @@ object ExpressionTransformer {
      //Note: some simplification are already performed by the class constructors (see Tree.scala) 
     simplePostTransform((e : Expr) => e match {
       case Equals(lhs,rhs) if (lhs == rhs) => tru
+      case LessEquals(lhs,rhs) if (lhs == rhs) => tru
+      case GreaterEquals(lhs,rhs) if (lhs == rhs) => tru
+      case LessThan(lhs,rhs) if (lhs == rhs) => fls
+      case GreaterThan(lhs,rhs) if (lhs == rhs) => fls
       case Iff(lhs,rhs) if (lhs == rhs) => tru
       case UMinus(IntLiteral(v)) => IntLiteral(-v)
       case Equals(IntLiteral(v1),IntLiteral(v2)) => BooleanLiteral(v1 == v2)
