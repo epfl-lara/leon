@@ -38,7 +38,7 @@ object ListOperations {
       case Nil() => Nil()
       case Cons(hd, tl) => if (hd == elem) remove(elem, tl) else Cons(hd, remove(elem, tl))
     }
-  }
+  } 
 
   def contains(list: List, elem: Int): Boolean = (list match {
     case Nil() => false
