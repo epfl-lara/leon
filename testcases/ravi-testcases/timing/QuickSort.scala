@@ -1,4 +1,3 @@
-//import scala.collection.immutable.Set
 import leon.Utils._
 
 object QuickSort {
@@ -17,7 +16,7 @@ object QuickSort {
     case Nil() => bList
     case Cons(x,xs) => rev_append(xs,Cons(x,bList))
     
-  }} ensuring(res => true template((a,b,c) => a*size(res) + b*size(aList) + c*size(bList) == 0))
+  }} ensuring(res => size(res) == size(aList) + size(bList) template((a,b) => time <= a*size(aList) +b))
   
   def reverse(list:List): List = rev_append(list,Nil())
 
@@ -35,8 +34,9 @@ object QuickSort {
       else if(n == x) Triple(t.fst, Cons(x,t.snd), t.trd)
       else Triple(Cons(x,t.fst), t.snd, t.trd)
     }    
- }) ensuring(res => true template((a,b,c,d) => a*size(l) + b*size(res.fst) + c*size(res.snd) + d*size(res.trd) == 0))     
+ }) ensuring(res => (size(l) == size(res.fst) + size(res.snd) + size(res.trd)) template((a,b) => time <= a*size(l) +b))     
 
+ //Unable to prove n^2  upper bound :-(
   def quickSort(l:List): List = (l match {
     case Nil() => Nil()
     case Cons(x,Nil()) => l
@@ -45,5 +45,5 @@ object QuickSort {
       append(append(quickSort(t.fst), Cons(x, t.snd)), quickSort(t.trd))
     } 
     case _ => l
-  }) ensuring(res => size(res) == size(l)) 
+  })  
 }

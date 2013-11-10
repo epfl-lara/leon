@@ -20,20 +20,28 @@ object LeftistHeap {
     case Node(_,_,l,r) => hasLeftistProperty(l) && hasLeftistProperty(r) && rightHeight(l) >= rightHeight(r) && (rank(h) == rightHeight(h)) 
   })
   
+  def twopower(x: Int) : Int = {
+    require(x >= 0)
+    if(x < 1) 1    
+    else      
+      2* twopower(x - 1)
+  } 
+  
   def size(t: Heap): Int = {
+    require(hasLeftistProperty(t))
     (t match {
       case Leaf() => 0
       case Node(_,v, l, r) => size(l) + 1 + size(r)
     })
-  }
+  } ensuring (res => true template((a,b) => twopower(rightHeight(t)) <= a*res + b))
 
-  def removeMax(h: Heap) : Heap = {
-    require(hasLeftistProperty(h))
-    h match {
-      case Node(_,_,l,r) => merge(l, r)
-      case l @ Leaf() => l
-    }
-  } ensuring(res => size(res) >= size(h) - 1) 
+//  def removeMax(h: Heap) : Heap = {
+//    require(hasLeftistProperty(h))
+//    h match {
+//      case Node(_,_,l,r) => merge(l, r)
+//      case l @ Leaf() => l
+//    }
+//  }  
   
   private def merge(h1: Heap, h2: Heap) : Heap = {
     require(hasLeftistProperty(h1) && hasLeftistProperty(h2))
@@ -48,7 +56,7 @@ object LeftistHeap {
             makeT(v2, l2, merge(h1, r2))
       }
     }
-  } ensuring(res => true template((a,b,c) => a*size(h1) + b*size(h2) + c*size(res) == 0))  
+  } ensuring(res => true template((a,b,c) => time <= a*rightHeight(h1) + b*rightHeight(h2) + c))  
 
   private def makeT(value: Int, left: Heap, right: Heap) : Heap = {
     if(rank(left) >= rank(right))
@@ -62,5 +70,5 @@ object LeftistHeap {
    
     merge(Node(1, element, Leaf(), Leaf()), heap)
     
-  } ensuring(res => size(res) == size(heap) + 1)
+  } ensuring(res => true template((a,b,c) => time <= a*rightHeight(heap) + c))
 }

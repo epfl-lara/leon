@@ -17,7 +17,9 @@ object RedBlackTree {
       2* twopower(x - 1)
   } 
   
+  //TODO: investigate why making size return 0 in the base case cannot be proven by Leon
   def size(t: Tree): Int = {
+    require(blackBalanced(t))  
     (t match {
       case Empty() => 0
       case Node(_, l, v, r) => size(l) + 1 + size(r)
@@ -26,7 +28,7 @@ object RedBlackTree {
     
   def blackHeight(t : Tree) : Int = {    
    t match {    
-    case Empty() => 1
+    case Empty() => 0
     case Node(Black(), l, _, _) => blackHeight(l) + 1
     case Node(Red(), l, _, _) => blackHeight(l)
    	}
@@ -88,7 +90,8 @@ object RedBlackTree {
     require(redNodesHaveBlackChildren(t) && blackBalanced(t) )
     val t1 =  ins(x, t)
     makeBlack(t1)
-  }                 
+    
+  } ensuring(res => true template((a,b) => time <= a*blackHeight(t) + b))                
   
   def balance(co: Color, l: Tree, x: Int, r: Tree): Tree = {        
     Node(co,l,x,r)
