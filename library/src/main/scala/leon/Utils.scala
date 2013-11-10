@@ -39,7 +39,9 @@ object Utils {
     //TODO allow elegant ways of supporting templates with arbitrary number of arguments    
     def template(templateFunc : Float => Boolean) : Boolean = postcond
     def template(templateFunc : (Float,Float) => Boolean) : Boolean = postcond
-    def template(templateFunc : (Float,Float, Float)  => Boolean) : Boolean = postcond    
+    def template(templateFunc : (Float,Float, Float)  => Boolean) : Boolean = postcond
+    def template(templateFunc : (Float,Float, Float, Float)  => Boolean) : Boolean = postcond
+    def template(templateFunc : (Float,Float, Float, Float, Float)  => Boolean) : Boolean = postcond
   }
   implicit def any2Template(postcond: Boolean): TemplateCons = new TemplateCons(postcond)
   
