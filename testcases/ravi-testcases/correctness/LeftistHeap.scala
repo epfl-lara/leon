@@ -21,7 +21,6 @@ object LeftistHeap {
   })
   
   def size(t: Heap): Int = {
-    require(hasLeftistProperty(t))  
     (t match {
       case Leaf() => 0
       case Node(_,v, l, r) => size(l) + 1 + size(r)
@@ -34,7 +33,7 @@ object LeftistHeap {
       case Node(_,_,l,r) => merge(l, r)
       case l @ Leaf() => l
     }
-  } ensuring(res => size(res) == size(h) - 1) 
+  } ensuring(res => size(res) >= size(h) - 1) 
   
   private def merge(h1: Heap, h2: Heap) : Heap = {
     require(hasLeftistProperty(h1) && hasLeftistProperty(h2))
@@ -49,7 +48,7 @@ object LeftistHeap {
             makeT(v2, l2, merge(h1, r2))
       }
     }
-  } ensuring(res => true template((a,b,c,d) => a*size(h1) + b*size(h2) + c*size(res) + d == 0))
+  } ensuring(res => true template((a,b,c) => a*size(h1) + b*size(h2) + c*size(res) == 0))  
 
   private def makeT(value: Int, left: Heap, right: Heap) : Heap = {
     if(rank(left) >= rank(right))

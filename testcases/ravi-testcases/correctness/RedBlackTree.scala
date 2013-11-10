@@ -11,12 +11,11 @@ object RedBlackTree {
   case class Node(color: Color, left: Tree, value: Int, right: Tree) extends Tree
 
   def size(t: Tree): Int = {
-    require(blackBalanced(t))  
     (t match {
-      case Empty() => 1
+      case Empty() => 0
       case Node(_, l, v, r) => size(l) + 1 + size(r)
     })
-  }  
+  } 
     
   def blackHeight(t : Tree) : Int = {    
    t match {    
@@ -69,8 +68,8 @@ object RedBlackTree {
           balance(c,a,y,t1)
         } 
     }
-  } ensuring(res => true template((a,b,c) => a*size(t) + b*size(res) + c == 0))  
-
+  } ensuring(res => blackBalanced(res) template((a,b,c) => a*size(t) + b*size(res) +c <= 0))
+  
   def makeBlack(n: Tree): Tree = {
     n match {
       case Node(Red(),l,v,r) => Node(Black(),l,v,r)
@@ -82,7 +81,7 @@ object RedBlackTree {
     require(redNodesHaveBlackChildren(t) && blackBalanced(t) )
     val t1 =  ins(x, t)
     makeBlack(t1)
-  } ensuring (res => size(res) == size(t) + 1)                
+  } ensuring (res => size(res) <= size(t) + 1)                
   
   def balance(co: Color, l: Tree, x: Int, r: Tree): Tree = {        
     Node(co,l,x,r)
