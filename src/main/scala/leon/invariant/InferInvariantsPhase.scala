@@ -105,6 +105,18 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
       //val (btree, ptree) = constTracker.getVC(funDef)
       //println("Body Constraint Tree: "+btree)      
+      //println("Body Constraint Tree: "+btree)      
+      //println("Body Constraint Tree: "+btree)      
+      //println("Body Constraint Tree: "+btree)      
+      //println("Body Constraint Tree: "+btree)      
+      //println("Body Constraint Tree: "+btree)      
+      //println("Body Constraint Tree: "+btree)      
+      //println("Body Constraint Tree: "+btree)      
+      //println("Body Constraint Tree: "+btree)      
+      //println("Body Constraint Tree: "+btree)      
+      //println("Body Constraint Tree: "+btree)      
+      //println("Body Constraint Tree: "+btree)      
+      //println("Body Constraint Tree: "+btree)      
 
       //create entities that uses the constraint tracker
       val lsAnalyzer = new LinearSystemAnalyzer(constTracker,  tempFactory, context, program, timeout)
@@ -142,13 +154,13 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
             })
             reporter.info("- Verifying Invariants... ")
 
-            //val verifierRes = verifyInvariant(program, context, reporter, res.get, funDef)
-            val verifierRes = (Some(false),Map())
+            val verifierRes = verifyInvariant(program, context, reporter, res.get, funDef)
+            //val verifierRes = (Some(false),Map())
             verifierRes._1 match {
               case Some(false) => {
                 reporter.info("- Invariant verified")
                 //return the invariant for the root function
-                (Some(true),Some(res.get(funDef)))
+                (Some(true),Some(if(res.get.contains(funDef)) res.get(funDef) else BooleanLiteral(true)))                
               }
               case Some(true) => {
                 reporter.error("- Invalid invariant, model: " + verifierRes._2)
