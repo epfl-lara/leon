@@ -89,7 +89,8 @@ object QuickSort {
       append(append(quickSort(t.fst), Cons(x, t.snd)), quickSort(t.trd))
     } 
     case _ => l
-  }) ensuring(res => size(res) == size(l) template((a,b) => time <= a*mult(size(l),size(l)) +b))
+  }) ensuring(res => size(res) == size(l)) 
+  //template((a,b,c) => time <= a*mult(size(l),size(l)) + b*size(l) +c))
   //ensuring(res => size(res) == size(l) && time <= 100*size(l)*size(l) +30)   
   //ensuring(res => size(res) == size(l) template((a,b) => time <= a*mult(size(l),size(l)) +b))   
   //ensuring(res => contents(res) == contents(list)) // && is_sorted(res))

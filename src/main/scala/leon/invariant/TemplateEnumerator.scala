@@ -71,7 +71,7 @@ class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, callGraph : Cal
   private val MAX_INCREMENTS = 2
   private val zero = IntLiteral(0)
   //using default op as <= or == (manually adjusted)
-  private val op = LessEquals           
+  private val op = LessEquals        
     //LessThan                                  
     //LessEquals 
     //Equals.apply _                    

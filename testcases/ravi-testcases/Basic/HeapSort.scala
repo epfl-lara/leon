@@ -1,6 +1,11 @@
+import scala.collection.immutable.Set
 import leon.Utils._
 
-object LeftistHeap {
+object HeapSort {
+  sealed abstract class List
+  case class Cons(head:Int,tail:List) extends List
+  case class Nil() extends List
+  
   sealed abstract class Heap
   case class Leaf() extends Heap
   case class Node(rk : Int, value: Int, left: Heap, right: Heap) extends Heap
@@ -20,21 +25,13 @@ object LeftistHeap {
     case Node(_,_,l,r) => hasLeftistProperty(l) && hasLeftistProperty(r) && rightHeight(l) >= rightHeight(r) && (rank(h) == rightHeight(h)) 
   })
 
-
-  def twopower(x: Int) : Int = {
-    require(x >= 0)
-    if(x < 1) 1    
-    else      
-      2* twopower(x - 1)
-  } 
-
-  def size(t: Heap): Int = {
+  def heapSize(t: Heap): Int = {
     require(hasLeftistProperty(t))  
     (t match {
       case Leaf() => 0
-      case Node(_,v, l, r) => size(l) + 1 + size(r)
+      case Node(_,v, l, r) => heapSize(l) + 1 + heapSize(r)
     })
-  } ensuring (res => true template((a,b) => twopower(rightHeight(t)) <= a*res + b))
+  } 
 
   private def merge(h1: Heap, h2: Heap) : Heap = {
     require(hasLeftistProperty(h1) && hasLeftistProperty(h2))
@@ -49,7 +46,7 @@ object LeftistHeap {
             makeT(v2, l2, merge(h1, r2))
       }
     }
-  } ensuring(res => true template((a,b,c) => time <= a*rightHeight(h1) + b*rightHeight(h2) + c))
+  } 
 
   private def makeT(value: Int, left: Heap, right: Heap) : Heap = {
     if(rank(left) >= rank(right))
@@ -61,18 +58,44 @@ object LeftistHeap {
  def insert(element: Int, heap: Heap) : Heap = {
    require(hasLeftistProperty(heap))
    
-    merge(Node(1, element, Leaf(), Leaf()), heap)
-    
-  } ensuring(res => true template((a,b,c) => time <= a*rightHeight(heap) + c))
-
-  /*def main(args: Array[String]) : Unit = {
-    val h1 = emptyHeap()
-    val h2 = insert(8, insert(0, insert(8, insert(24, insert(41, insert(13, h1))))))
-    var h3 = h2
-    while(!isHeapEmpty(h3)) {
-      println(h3)
-      println(findMax(h3))
-      h3 = removeMax(h3)
+    merge(Node(1, element, Leaf(), Leaf()), heap)    
+  } 
+ 
+   def findMax(h: Heap) : Int = {
+    require(hasLeftistProperty(h))
+    h match {
+      case Node(_,m,_,_) => m
+      case Leaf() => -1000
     }
-  }*/
+  } 
+
+  def removeMax(h: Heap) : Heap = {
+    require(hasLeftistProperty(h))
+    h match {
+      case Node(_,_,l,r) => merge(l, r)
+      case l @ Leaf() => l
+    }
+  } 
+  
+  def listSize(l : List) : Int = (l match {
+    case Nil() => 0
+    case Cons(_, xs) => 1 + listSize(xs)
+  })   
+  
+  def removeElements(h : Heap, l : List) : List = h match {
+    case Leaf() => l
+    case _ => removeElements(removeMax(h),Cons(findMax(h),l)) 
+  }
+ 
+  def buildHeap(l : List, h: Heap) : Heap = l match {
+    case Nil() => h
+    case Cons(x,xs) => buildHeap(xs, insert(x, h))
+  }
+
+  def sort(l: List): List = ({
+    
+    val heap = buildHeap(l,Leaf())
+    removeElements(heap, Nil())
+    
+  }) ensuring(res => listSize(res) <= listSize(l))
 }
