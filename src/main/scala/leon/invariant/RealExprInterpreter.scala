@@ -18,7 +18,10 @@ object RealValuedExprInterpreter {
      val (num,denom) = plainEvaluate(expr)
      
      //compute GCD of numerator and denomenator
-     val divisor = BigInt(num).gcd(BigInt(denom)).intValue
+     //val divisor = BigInt(num).gcd(BigInt(denom)).intValue
+     val modNum = if(num < 0) -num else num
+     val modDenom = if(denom < 0) -denom else denom     
+     val divisor = InvariantUtil.gcd(modNum, modDenom)
      RealLiteral(num/divisor, denom/divisor)
   }
 

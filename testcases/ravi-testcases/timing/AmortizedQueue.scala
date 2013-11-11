@@ -11,12 +11,12 @@ object AmortizedQueue {
   def size(list : List) : Int = (list match {
     case Nil() => 0
     case Cons(_, xs) => 1 + size(xs)
-  })
+  }) 
   
   def sizeList(list : List) : Int = (list match {
     case Nil() => 0
     case Cons(_, xs) => 1 + sizeList(xs)
-  }) 
+  }) ensuring(res => res >= 0 template((a,b) => time <= a*size(list) + b))
   
   def qsize(q : Queue) : Int = size(q.front) + size(q.rear)
 
@@ -35,18 +35,16 @@ object AmortizedQueue {
     case _ => false
   }
 
-  def mult(x : Int, y : Int) : Int = {
-      if(x == 0 || y == 0) 0
-      else
-    	  mult(x-1,y-1) +  x + y - 1
-  } 
-  
-  def reverse(l : List) : List = (l match {
-    case Nil() => Nil()
-    case Cons(x, xs) => concat(reverse(xs), Cons(x, Nil()))
-    
-  }) ensuring (res => size(l) == size(res) template((a,b) => time <= a*mult(size(l),size(l)) + b))
+  def reverseRec(l1: List, l2: List): List = (l1 match {
+    case Nil() => l2
+    case Cons(x, xs) => reverseRec(xs, Cons(x, l2))
 
+  }) ensuring (res =>  size(l1) + size(l2) == size(res) template((a,b) => time <= a*size(l1) + b))
+
+  def reverse(l: List): List = {
+    reverseRec(l, Nil())    
+  } ensuring (res => size(l) == size(res) template((a,b) => time <= a*size(l) + b))
+  
   def amortizedQueue(front : List, rear : List) : Queue = {
     if (sizeList(rear) <= sizeList(front))
       Queue(front, rear)
@@ -58,7 +56,7 @@ object AmortizedQueue {
     
     amortizedQueue(q.front, Cons(elem, q.rear))
     
-  }) ensuring(res =>  true template((a,b,c) => time <= a*mult(size(q.rear),size(q.rear)) + b*size(q.front) +c))
+  }) ensuring(res =>  true template((a,b) => time <= a*qsize(q) + b))
 
   def dequeue(q : Queue) : Queue = {
     require(isAmortized(q) && !isEmpty(q))
@@ -66,7 +64,7 @@ object AmortizedQueue {
       case Queue(Cons(f, fs), rear) => amortizedQueue(fs, rear)
       case _ => Queue(Nil(),Nil())
     }
-  } //ensuring(res => qsize(res) == qsize(queue) - 1)
+  } ensuring(res =>  true template((a,b) => time <= a*qsize(q) + b))
   
   def removeLast(l : List) : List = {
     require(l != Nil())
@@ -75,7 +73,7 @@ object AmortizedQueue {
       case Cons(x,xs) => Cons(x, removeLast(xs))
       case _ => Nil()
     }
-  } //ensuring(res => true template((a,b,c) => a*size(res) + b*size(l) + c == 0))
+  } ensuring(res =>  size(res) <= size(l) template((a,b) => time <= a*size(l) + b))
   
   def pop(q : Queue) : Queue = {
     require(isAmortized(q) && !isEmpty(q))
@@ -84,5 +82,5 @@ object AmortizedQueue {
      case Queue(front, rear) => Queue(removeLast(front), rear)
      case _ => Queue(Nil(),Nil())
     }
-  } //ensuring(res => qsize(res) == qsize(q) - 1)
+  } ensuring(res =>  true template((a,b) => time <= a*size(q.front) + b))
 }

@@ -127,31 +127,38 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     })(expr)
     inv
   }
+  
+  def validateRealLiteral(e : Expr) = e match {
+    case RealLiteral(num, denom) => {
+      if (denom == 0)
+        throw new IllegalStateException("Denominator is zero !! " +e)
+      if (denom < 0)
+        throw new IllegalStateException("Denominator is negative: " + denom)
+      true
+    }
+    case _ => throw new IllegalStateException("Not a real literal: " + e)
+  }
 
   def instantiateTemplate(linearTemp: LinearTemplate, tempVarMap: Map[Expr, Expr]): Expr = {
     val coeffMap = linearTemp.coeffTemplate.map((entry) => {
       val (term, coeffTemp) = entry
       val coeffE = replace(tempVarMap, coeffTemp)
       val coeff = RealValuedExprInterpreter.evaluate(coeffE)
+
+      validateRealLiteral(coeff)
+      
       (term -> coeff)
     })
-    val const = if (linearTemp.constTemplate.isDefined)
-      Some(RealValuedExprInterpreter.evaluate(replace(tempVarMap, linearTemp.constTemplate.get)))
+    val const = if (linearTemp.constTemplate.isDefined){
+      val constE = replace(tempVarMap, linearTemp.constTemplate.get)
+      val constV = RealValuedExprInterpreter.evaluate(constE)
+      
+      validateRealLiteral(constV)      
+      Some(constV)
+    }      
     else None
 
     val realValues: Seq[Expr] = coeffMap.values.toSeq ++ { if (const.isDefined) Seq(const.get) else Seq() }
-    
-    //sanity check on real values
-    realValues.foreach((rval) => {
-    	if(!rval.isInstanceOf[RealLiteral])
-    	  throw new IllegalStateException("Not a real value: "+rval)
-    	val RealLiteral(num,denom) = rval
-    	if(denom == 0)
-    	  throw new IllegalStateException("Denominator is zero !! "+rval)
-    	if(denom < 0)
-    	  throw new IllegalStateException("Denominator is negative: "+denom)
-    })
-
     //the coefficients could be fractions ,so collect all the denominators
     val getDenom = (t: Expr) => t match {
       case RealLiteral(num, denum) => denum
@@ -213,7 +220,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     val tempIds = funcs.foldLeft(Set[Identifier]())((acc, fd) => {
       val tempOption = tempFactory.getTemplate(fd)
       if (!tempOption.isDefined) acc
-      else acc ++ variablesOf(tempOption.get)      
+      else acc ++ variablesOf(tempOption.get).filter(TemplateIdFactory.IsTemplateIdentifier _)      
     })
     val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
     //create a new solver 
@@ -326,8 +333,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         //for stats and debugging
         val currentCount = ctrCount + InvariantUtil.atomNum(newPart)
         println("# of atomic predicates: " + currentCount)
-        
-        //val solver =  SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context,program)))        
+                
         val solver = SimpleSolverAPI(
             new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), 
             timeout * 1000))
@@ -345,6 +351,17 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         if (debugIncremental) {
           solverWithCtrs.innerCheck
         }
+        //important reset res to none if the model we found has denominator as zero
+        /*val finalRes = if (res == Some(true)) {
+          val denomZero = newModel.values.exists((e: Expr) => e match {
+            case RealLiteral(_, 0) => true
+            case _ => false
+          })
+          if (denomZero){
+            reporter.info("The model has a divide by zero")
+            throw IllegalStateException("")
+          } else res
+        } else res*/
         res match {
           case None => {
             //here, we might have timed out, so block current counter-example and get a new one
@@ -405,14 +422,17 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
 
             solverWithCtrs.pop()
           }
-          //new model may not have mappings for all variables (use the mappings from earlier models for those variables)
-          val completeModel = model.keys.map((id) => {
+          //new model may not have mappings for all the template variables,
+          //use the mappings from earlier models if they exist
+          //otherwise, complete them using simplest values
+          val compModel = model.keys.map((id) => {
             if (newModel.contains(id))
               (id -> newModel(id))
-            else (id -> model(id))
-          }).toMap
-          
-          recSolveForTemplatesIncr(completeModel, solverWithCtrs, funcExprs, And(inputCtr, newPart))
+            else 
+              (id -> model(id))            
+          }).toMap            
+          //println("New model: "+ newModel + " Completed Model: "+compModel)
+          recSolveForTemplatesIncr(compModel, solverWithCtrs, funcExprs, And(inputCtr, newPart))
         }
       }             
     }

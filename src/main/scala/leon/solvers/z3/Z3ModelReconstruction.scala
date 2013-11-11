@@ -45,8 +45,9 @@ trait Z3ModelReconstruction {
         case None if (AUTOCOMPLETEMODELS) => completeID(id)
         case None => ;
         case Some(v @ Variable(exprId)) if (AUTOCOMPLETEMODELS && exprId == id) => completeID(id)
+        //do nothing if there exists no model for variable and autocomplete is turned off
+        case Some(v @ Variable(exprId)) if (exprId == id) => ;        
         case Some(ex) =>{
-          
           asMap = asMap + ((id -> ex))
         }
       }

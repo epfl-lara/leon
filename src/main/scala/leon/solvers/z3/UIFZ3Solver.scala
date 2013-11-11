@@ -21,12 +21,13 @@ import purescala.TypeTrees._
  *    - otherwise it returns UNKNOWN
  *  Results should come back very quickly.
  */
-class UIFZ3Solver(val context : LeonContext, val program: Program)
+class UIFZ3Solver(val context : LeonContext, val program: Program, autoComplete : Boolean = true)
   extends AbstractZ3Solver
      with Z3ModelReconstruction {
 
   val name = "Z3-u"
   val description = "Uninterpreted Z3 Solver"
+  override val AUTOCOMPLETEMODELS : Boolean = autoComplete
 
   // this is fixed
   protected[leon] val z3cfg = new Z3Config(

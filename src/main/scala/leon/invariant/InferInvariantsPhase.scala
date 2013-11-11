@@ -321,8 +321,36 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     
     //compute functions to analyze by sorting based on topological order
     val callgraph = CallGraphUtil.constructCallGraph(program, withTemplates=true)
-    val functionsToAnalyze = program.definedFunctions.toList.sortWith((fd1,fd2) => callgraph.transitivelyCalls(fd2,fd1))
-    println("Analysis Order: "+functionsToAnalyze.map(_.id))
+    
+    //sorting functions in topological order
+    def insert(index : Int, l : Seq[FunDef], fd: FunDef) : Seq[FunDef] ={
+      var i = 0
+      var head = Seq[FunDef]()      
+      l.foreach((elem) => {
+        if(i == index)
+          head :+= fd
+        head :+= elem
+        i += 1
+      })
+      head
+    }
+    var funcList = Seq[FunDef]()
+    program.definedFunctions.toList.foreach((f) =>{
+      var inserted = false
+      var index = 0
+      for(i <- 0 to funcList.length - 1) {
+        if(!inserted && callgraph.transitivelyCalls(funcList(i),f)) {
+          index = i
+          inserted = true 
+        }        
+      }
+      if(!inserted) 
+        funcList :+= f
+        else funcList = insert(index, funcList, f)
+    })
+    
+    val functionsToAnalyze = funcList      
+    reporter.info("Analysis Order: "+functionsToAnalyze.map(_.id))
     
     val analysedFunctions: MutableSet[String] = MutableSet.empty
     functionsToAnalyze.foreach((funDef) => {
