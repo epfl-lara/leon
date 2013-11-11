@@ -6,8 +6,7 @@ object AmortizedQueue {
   case class Cons(head : Int, tail : List) extends List
   case class Nil() extends List
 
-  sealed abstract class AbsQueue
-  case class Queue(front : List, rear : List) extends AbsQueue
+  case class Queue(front : List, rear : List) 
 
   def size(list : List) : Int = (list match {
     case Nil() => 0
@@ -16,16 +15,12 @@ object AmortizedQueue {
   
   def sizeList(list : List) : Int = (list match {
     case Nil() => 0
-    case Cons(_, xs) => 1 + size(xs)
+    case Cons(_, xs) => 1 + sizeList(xs)
   }) 
   
-  def qsize(q : AbsQueue) : Int = q match {
-    case Queue(front : List, rear : List) => size(front) + size(rear)
-  } 
+  def qsize(q : Queue) : Int = size(q.front) + size(q.rear)
 
-  def asList(queue : AbsQueue) : List = queue match {
-    case Queue(front, rear) => concat(front, reverse(rear))
-  }
+  def asList(q : Queue) : List = concat(q.front, reverse(q.rear))
 
   def concat(l1 : List, l2 : List) : List = (l1 match {
     case Nil() => l2
@@ -33,11 +28,9 @@ object AmortizedQueue {
     
   }) ensuring (res => size(res) == size(l1) + size(l2) template((a,b,c) => time <= a*size(l1) + b))
 
-  def isAmortized(queue : AbsQueue) : Boolean = queue match {
-    case Queue(front, rear) => sizeList(front) >= sizeList(rear)
-  }
+  def isAmortized(q : Queue) : Boolean = sizeList(q.front) >= sizeList(q.rear)
 
-  def isEmpty(queue : AbsQueue) : Boolean = queue match {
+  def isEmpty(queue : Queue) : Boolean = queue match {
     case Queue(Nil(), Nil()) => true
     case _ => false
   }
@@ -54,25 +47,22 @@ object AmortizedQueue {
     
   }) ensuring (res => size(l) == size(res) template((a,b) => time <= a*mult(size(l),size(l)) + b))
 
-  def amortizedQueue(front : List, rear : List) : AbsQueue = {
+  def amortizedQueue(front : List, rear : List) : Queue = {
     if (sizeList(rear) <= sizeList(front))
       Queue(front, rear)
     else
       Queue(concat(front, reverse(rear)), Nil())
   } 
 
-  def enqueue(queue : AbsQueue, elem : Int) : AbsQueue = (queue match {
-    case Queue(front, rear) => amortizedQueue(front, Cons(elem, rear))
-    case _ => Queue(Nil(),Nil())
+  def enqueue(q : Queue, elem : Int) : Queue = ({ 
     
-  }) ensuring(res =>  true template((a,b,c,d) => queue match {
-    case Queue(front, rear) => time <= a*mult(size(rear),size(rear)) + b*size(front) +c
-    case _ => time <= d
-  }))
+    amortizedQueue(q.front, Cons(elem, q.rear))
+    
+  }) ensuring(res =>  true template((a,b,c) => time <= a*mult(size(q.rear),size(q.rear)) + b*size(q.front) +c))
 
-  def dequeue(queue : AbsQueue) : AbsQueue = {
-    require(isAmortized(queue) && !isEmpty(queue))
-    queue match {
+  def dequeue(q : Queue) : Queue = {
+    require(isAmortized(q) && !isEmpty(q))
+    q match {
       case Queue(Cons(f, fs), rear) => amortizedQueue(fs, rear)
       case _ => Queue(Nil(),Nil())
     }
@@ -87,7 +77,7 @@ object AmortizedQueue {
     }
   } //ensuring(res => true template((a,b,c) => a*size(res) + b*size(l) + c == 0))
   
-  def pop(q : AbsQueue) : AbsQueue = {
+  def pop(q : Queue) : Queue = {
     require(isAmortized(q) && !isEmpty(q))
     q match {
      case Queue(front, Cons(r,rs)) => Queue(front, rs)

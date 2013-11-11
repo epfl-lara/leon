@@ -12,7 +12,7 @@ object TreeOperations {
 
   def listSize(l: List): Int = (l match {
     case Nil() => 0
-    case Cons(_, t) => 1 + listSize(l)
+    case Cons(_, t) => 1 + listSize(t)
   })
 
   def size(t: Tree): Int = {

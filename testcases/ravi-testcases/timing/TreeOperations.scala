@@ -12,7 +12,7 @@ object TreeOperations {
 
   def listSize(l: List): Int = (l match {
     case Nil() => 0
-    case Cons(_, t) => 1 + listSize(l)
+    case Cons(_, t) => 1 + listSize(t)
   })
 
   def size(t: Tree): Int = {
@@ -41,7 +41,7 @@ object TreeOperations {
       case Node(l, x, r) => if (x <= elem) Node(l, x, insert(elem, r))
       else Node(insert(elem, l), x, r)
     }
-  } ensuring (res => true template((a,b) => time <= a*height(t) + b))
+  } ensuring (res => height(res) <= height(t) + 1 template((a,b) => time <= a*height(t) + b))
 
   def mult(x : Int, y : Int) : Int = {
       if(x == 0 || y == 0) 0
@@ -49,16 +49,16 @@ object TreeOperations {
     	  mult(x-1,y-1) +  x + y - 1
   } 
   
-  //there is probably some bug here in instrumentation of time
-//  def addAll(l: List, t: Tree): Tree = {
-//    l match {
-//      case Nil() => t
-//      case Cons(x, xs) =>{
-//        val newt = insert(x, t)
-//        addAll(xs, newt)
-//      } 
-//    }
-//  } ensuring (res => true template((a,b,c) => time <= a*mult(listSize(l),height(t)) + c))
+  //cannot prove time bound for  this :-(
+  def addAll(l: List, t: Tree): Tree = {
+    l match {
+      case Nil() => t
+      case Cons(x, xs) =>{
+        val newt = insert(x, t)
+        addAll(xs, newt)
+      } 
+    }
+  }  
 
   def remove(elem: Int, t: Tree): Tree = {
     t match {
@@ -79,12 +79,13 @@ object TreeOperations {
     }
   } ensuring (res => true template ((a, b, c) => time <= a*height(t) + b))
 
-//  def removeAll(l: List, t: Tree): Tree = {
-//    l match {
-//      case Nil() => t
-//      case Cons(x, xs) => removeAll(xs, remove(x, t))
-//    }
-//  } ensuring (res => true template((a,b,c) => time <= a*mult(listSize(l),height(t)) + c))
+  //cannot prove time bound for  this :-(
+  def removeAll(l: List, t: Tree): Tree = {
+    l match {
+      case Nil() => t
+      case Cons(x, xs) => removeAll(xs, remove(x, t))
+    }
+  }
 
   def contains(elem : Int, t : Tree) : Boolean = {
     t match {
