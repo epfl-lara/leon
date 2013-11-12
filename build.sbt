@@ -36,3 +36,5 @@ fork in test := true
 logBuffered in Test := false
 
 testOptions in Test += Tests.Argument("-oD")
+
+sourcesInBase in Compile := false
