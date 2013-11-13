@@ -239,45 +239,46 @@ trait AbstractZ3Solver
     intSetMinFun = z3.mkFreshFuncDecl("setMin", Seq(intSetSort), intSort)
     intSetMaxFun = z3.mkFreshFuncDecl("setMax", Seq(intSetSort), intSort)
 
-    val roots = program.classHierarchyRoots
-    val indexMap: Map[ClassTypeDef, Int] = Map(roots.zipWithIndex: _*)
-    //println("indexMap: " + indexMap)
+    val hierarchies = program.classHierarchyRoots.flatMap { root => root match {
+      case c: CaseClassDef =>
+        Some((root, List(c)))
+
+      case a: AbstractClassDef =>
+        val childs = a.knownChildren.collect{ case a: CaseClassDef => a }.toList
+        if (childs.isEmpty) {
+          None
+        } else {
+          Some((root, childs))
+        }
+    }}
+
+    val indexMap: Map[ClassTypeDef, Int] = Map(hierarchies.map(_._1).zipWithIndex: _*)
 
     def typeToSortRef(tt: TypeTree): ADTSortReference = tt match {
-      // case BooleanType => RegularSort(boolSort)
-      // case Int32Type => RegularSort(intSort)
       case AbstractClassType(d) => RecursiveType(indexMap(d))
       case CaseClassType(d) => indexMap.get(d) match {
         case Some(i) => RecursiveType(i)
         case None => RecursiveType(indexMap(d.parent.get))
       }
-      // case _ => throw UntranslatableTypeException("Can't handle type " + tt)
       case _ => RegularSort(typeToSort(tt))
     }
 
-    val childrenLists: Seq[List[CaseClassDef]] = roots.map(_ match {
-      case c: CaseClassDef => List(c)
-      case a: AbstractClassDef => a.knownChildren.filter(_.isInstanceOf[CaseClassDef]).map(_.asInstanceOf[CaseClassDef]).toList
-    })
-    //println("children lists: " + childrenLists.toList.mkString("\n"))
+    val defs = for ((root, childrenList) <- hierarchies) yield {
+      (
+       root.id.uniqueName,
+       childrenList.map(ccd => ccd.id.uniqueName),
+       childrenList.map(ccd => ccd.fields.map(f => (f.id.uniqueName, typeToSortRef(f.tpe))))
+      )
+    }
 
-    val rootsAndChildren = (roots zip childrenLists)
+    //for ((n, sub, cstrs) <- defs) {
+    //  println(n+":")
+    //  for ((s,css) <- sub zip cstrs) {
+    //    println("  "+s)
+    //    println("    -> "+css)
+    //  }
+    //}
 
-    val defs = rootsAndChildren.map(p => {
-      val (root, childrenList) = p
-
-      root match {
-        case c: CaseClassDef => {
-          // we create a recursive type with exactly one constructor
-          (c.id.uniqueName, List(c.id.uniqueName), List(c.fields.map(f => (f.id.uniqueName, typeToSortRef(f.tpe)))))
-        }
-        case a: AbstractClassDef => {
-          (a.id.uniqueName, childrenList.map(ccd => ccd.id.uniqueName), childrenList.map(ccd => ccd.fields.map(f => (f.id.uniqueName, typeToSortRef(f.tpe)))))
-        }
-      }
-    })
-
-    //println(defs)
     // everything should be alright now...
     val resultingZ3Info = z3.mkADTSorts(defs)
 
@@ -289,7 +290,7 @@ trait AbstractZ3Solver
     reverseADTConstructors = Map.empty
     reverseADTFieldSelectors = Map.empty
 
-    for ((z3Inf, (root, childrenList)) <- (resultingZ3Info zip rootsAndChildren)) {
+    for ((z3Inf, (root, childrenList)) <- (resultingZ3Info zip hierarchies)) {
       adtSorts += (root -> z3Inf._1)
       assert(childrenList.size == z3Inf._2.size)
       for ((child, (consFun, testFun)) <- childrenList zip (z3Inf._2 zip z3Inf._3)) {
