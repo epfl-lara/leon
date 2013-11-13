@@ -430,8 +430,11 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
       res match {
         case None =>
-          // reporter.warning("Z3 doesn't know because: " + z3.getSearchFailure.message)
-          reporter.warning("Z3 doesn't know because ??")
+          reporter.ifDebug { debug => 
+            if (solver.getReasonUnknown != "canceled") {
+              debug("Z3 returned unknown: " + solver.getReasonUnknown)
+            }
+          }
           foundAnswer(None)
 
         case Some(true) => // SAT
