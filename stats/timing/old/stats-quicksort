@@ -1,0 +1,25 @@
+VC refinements : 5
+Disjunct Explorations : 16
+Avg VC size : 208.4
+Max VC size : 346
+Avg UIF-ADT size : 69.4
+Max UIF-ADT size : 136
+avgTempVars : 3.2
+maxTempVars : 4
+Total retries: 0
+avgFarkaSize : 33.0625
+maxFarkaSize : 86
+avgFarkaTime : 0.0138125s
+maxFarkaTime : 0.035s
+avgNLSize : 4.5
+maxNLSize : 15
+avgElimvars : 7.5625
+maxElimvars : 35
+avgElimAtoms : 7.0625
+maxElimAtoms : 35
+avgExploreTime : 0.05375s
+maxExploreTime : 0.143s
+avgCompatCalls : 53.0
+maxCompatCalls : 273
+avgLemmaApps : 0.0
+maxLemmaApps : 0

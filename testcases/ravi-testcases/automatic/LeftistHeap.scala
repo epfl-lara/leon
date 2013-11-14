@@ -10,14 +10,15 @@ object LeftistHeap {
     case Node(_,_,_,r) => rightHeight(r) + 1
   }
   
-  private def rank(h: Heap) : Int = h match {
+  /*private def rank(h: Heap) : Int = h match {
     case Leaf() => 0
     case Node(rk,_,_,_) => rk
-  }
+  }*/
 
   private def hasLeftistProperty(h: Heap) : Boolean = (h match {
     case Leaf() => true
-    case Node(_,_,l,r) => hasLeftistProperty(l) && hasLeftistProperty(r) && rightHeight(l) >= rightHeight(r) && (rank(h) == rightHeight(h)) 
+    case Node(_,_,l,r) => hasLeftistProperty(l) && hasLeftistProperty(r) && rightHeight(l) >= rightHeight(r)
+    //&& (rank(h) == rightHeight(h)) 
   })
   
   def size(t: Heap): Int = {
@@ -52,10 +53,10 @@ object LeftistHeap {
   //nsuring(res => true template((a,b,c) => a*size(h1) + b*size(h2) + c*size(res) == 0))  
 
   private def makeT(value: Int, left: Heap, right: Heap) : Heap = {
-    if(rank(left) >= rank(right))
-      Node(rank(right) + 1, value, left, right)
+    if(rightHeight(left) >= rightHeight(right))
+      Node(rightHeight(right) + 1, value, left, right)
     else
-      Node(rank(left) + 1, value, right, left)
+      Node(rightHeight(left) + 1, value, right, left)
   }
   
   def insert(element: Int, heap: Heap) : Heap = {
@@ -63,5 +64,5 @@ object LeftistHeap {
    
     merge(Node(1, element, Leaf(), Leaf()), heap)
     
-  } ensuring(res => size(res) == size(heap) + 1)
+  }ensuring(res => size(res) == size(heap) + 1)
 }

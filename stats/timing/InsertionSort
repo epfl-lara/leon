@@ -1,0 +1,40 @@
+Total Time: 8.335s
+VC refinements : 5
+Disjunct Explorations : 21
+Avg VC size : 297.6
+Max VC size : 603
+Avg UIF-ADT size : 86.0
+Max UIF-ADT size : 158
+avgTempVars : 5.6
+maxTempVars : 10
+Total retries: 0
+avgFarkaSize : 186.47619047619048
+maxFarkaSize : 668
+avgFarkaTime : 0.1689047619047619s
+maxFarkaTime : 1.01s
+avgNLSize : 12.571428571428571
+maxNLSize : 44
+avgDijSize : 43.666666666666664
+maxDijSize : 162
+avgElimvars : 23.0
+maxElimvars : 86
+avgElimAtoms : 22.238095238095237
+maxElimAtoms : 84
+avgExploreTime : 0.13204761904761902s
+maxExploreTime : 0.574s
+avgCompatCalls : 280.2857142857143
+maxCompatCalls : 1708
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+########## Outputs ############
+Invariants for Function: sortedIns1
+sortedIns1 --> ((((1 * res3._2) + (-8 * size1(l))) + -6) ≤ 0)
+size1 --> (((-1 * #res) + -1) ≤ 0)
+
+Invariants for Function: sort1
+sort1 --> ((((-9 * mult1(size1(l), size1(l))) + (1 * res2._2)) + -3) ≤ 0)
+size1 --> (((-1 * #res) + -1) ≤ 0)
+mult1 --> (((((-8 * y) + (-2 * x)) + (-16 * #res)) + -16) ≤ 0)
+sortedIns1 --> ((((1 * res3._2) + (-8 * size1(l))) + -5) ≤ 0)
+
+

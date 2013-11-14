@@ -1,0 +1,40 @@
+Total Time: 12.518s
+VC refinements : 6
+Disjunct Explorations : 17
+Avg VC size : 1034.5
+Max VC size : 2402
+Avg UIF-ADT size : 262.8333333333333
+Max UIF-ADT size : 513
+avgTempVars : 3.0
+maxTempVars : 4
+Total retries: 0
+avgFarkaSize : 173.05882352941177
+maxFarkaSize : 980
+avgFarkaTime : 0.05064705882352941s
+maxFarkaTime : 0.522s
+avgNLSize : 3.9411764705882355
+maxNLSize : 12
+avgElimvars : 21.941176470588236
+maxElimvars : 58
+avgElimAtoms : 48.23529411764706
+maxElimAtoms : 145
+avgExploreTime : 0.542235294117647s
+maxExploreTime : 3.337s
+avgCompatCalls : 161.23529411764707
+maxCompatCalls : 700
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+########## Outputs ############
+Invariants for Function: isNNF1
+isNNF1 --> ((((-34 * size1(f)) + (2 * res4._2)) + -17) ≤ 0)
+size1 --> (((-1 * #res) + -1) ≤ 0)
+
+Invariants for Function: simplify1
+simplify1 --> ((((2 * res3._2) + (-16 * size1(f))) + 1) ≤ 0)
+size1 --> (((-2 * #res) + -1) ≤ 0)
+
+Invariants for Function: isSimplified1
+isSimplified1 --> ((((-7 * size1(f)) + (1 * res5._2)) + 2) ≤ 0)
+size1 --> (((-1 * #res) + 0) ≤ 0)
+
+

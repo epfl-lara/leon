@@ -1,0 +1,42 @@
+Total Time: 587.21s
+VC refinements : 13
+Disjunct Explorations : 87
+Avg VC size : 2373.076923076923
+Max VC size : 4304
+Avg UIF-ADT size : 648.3076923076923
+Max UIF-ADT size : 1149
+avgTempVars : 7.615384615384615
+maxTempVars : 15
+Total retries: 2
+avgFarkaSize : 331.8045977011494
+maxFarkaSize : 2383
+avgFarkaTime : 3.0322758620689654s
+maxFarkaTime : 186.461s
+avgNLSize : 41.45977011494253
+maxNLSize : 246
+avgDijSize : 111.10344827586206
+maxDijSize : 711
+avgElimvars : 55.60919540229885
+maxElimvars : 346
+avgElimAtoms : 51.45977011494253
+maxElimAtoms : 331
+avgExploreTime : 3.5568275862068965s
+maxExploreTime : 45.073s
+avgCompatCalls : 3571.4367816091954
+maxCompatCalls : 37997
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+########## Outputs ############
+Invariants for Function: insert1
+hasLeftistProperty1 --> ((((0 * rightHeight1(h)) + (0 * size1(h))) + 0) == 0)
+merge1 --> ((((((((-1 * size1(h1)) + (0 * rightHeight1(h2))) + (-1 * size1(h2))) + (1 * size1(#res))) + (0 * rightHeight1(h1))) + (0 * rightHeight1(#res))) + 0) == 0)
+size1 --> ((((0 * rightHeight1(t)) + (0 * #res)) + 0) == 0)
+rightHeight1 --> (((0 * #res) + 0) == 0)
+
+Invariants for Function: removeMax1
+hasLeftistProperty1 --> ((((0 * size1(h)) + (0 * rightHeight1(h))) + 0) == 0)
+merge1 --> ((((((((0 * rightHeight1(h2)) + (0 * rightHeight1(#res))) + (-1 * size1(h2))) + (1 * size1(#res))) + (0 * rightHeight1(h1))) + (-1 * size1(h1))) + 0) == 0)
+size1 --> ((((0 * rightHeight1(t)) + (0 * #res)) + 0) == 0)
+rightHeight1 --> (((0 * #res) + 0) == 0)
+
+

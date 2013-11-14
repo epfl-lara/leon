@@ -1,0 +1,37 @@
+Total Time: 23.723s
+VC refinements : 7
+Disjunct Explorations : 44
+Avg VC size : 642.4285714285714
+Max VC size : 1938
+Avg UIF-ADT size : 196.85714285714286
+Max UIF-ADT size : 518
+avgTempVars : 8.571428571428571
+maxTempVars : 19
+Total retries: 0
+avgFarkaSize : 194.0
+maxFarkaSize : 1148
+avgFarkaTime : 0.14163636363636362s
+maxFarkaTime : 2.089s
+avgNLSize : 20.068181818181817
+maxNLSize : 100
+avgDijSize : 47.63636363636363
+maxDijSize : 289
+avgElimvars : 21.181818181818183
+maxElimvars : 134
+avgElimAtoms : 20.40909090909091
+maxElimAtoms : 133
+avgExploreTime : 0.31372727272727274s
+maxExploreTime : 2.927s
+avgCompatCalls : 632.2045454545455
+maxCompatCalls : 6826
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+########## Outputs ############
+Invariants for Function: addAll1
+height1 --> (((0 * #res) + 0) == 0)
+insert1 --> (((((((0 * elem) + (0 * height1(#res))) + (1 * size1(t))) + (0 * height1(t))) + (-1 * size1(#res))) + 1) == 0)
+addAll1 --> (((((((0 * height1(t)) + (1 * size1(t))) + (1 * listSize1(l))) + (-1 * size1(res1))) + (0 * height1(res1))) + 0) == 0)
+size1 --> ((((0 * height1(t)) + (0 * #res)) + 0) == 0)
+listSize1 --> (((0 * #res) + 0) == 0)
+
+

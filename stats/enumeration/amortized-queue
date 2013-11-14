@@ -1,0 +1,41 @@
+Total Time: 6.335s
+VC refinements : 18
+Disjunct Explorations : 67
+Avg VC size : 318.3888888888889
+Max VC size : 703
+Avg UIF-ADT size : 81.55555555555556
+Max UIF-ADT size : 159
+avgTempVars : 2.888888888888889
+maxTempVars : 10
+Total retries: 0
+avgFarkaSize : 55.417910447761194
+maxFarkaSize : 254
+avgFarkaTime : 0.012492537313432835s
+maxFarkaTime : 0.052s
+avgNLSize : 6.432835820895522
+maxNLSize : 55
+avgDijSize : 9.164179104477611
+maxDijSize : 102
+avgElimvars : 3.1343283582089554
+maxElimvars : 38
+avgElimAtoms : 2.4328358208955225
+maxElimAtoms : 31
+avgExploreTime : 0.039044776119402984s
+maxExploreTime : 0.468s
+avgCompatCalls : 84.55223880597015
+maxCompatCalls : 2175
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+########## Outputs ############
+Invariants for Function: amortizedQueue1
+
+Invariants for Function: enqueue1
+size1 --> (((0 * #res) + 0) == 0)
+concat1 --> (((((1 * size1(l2)) + (-1 * size1(#res))) + (1 * size1(l1))) + 0) == 0)
+reverseRec1 --> (((((1 * size1(#res)) + (-1 * size1(l1))) + (-1 * size1(l2))) + 0) == 0)
+
+Invariants for Function: pop1
+removeLast1 --> ((((1 * size1(l)) + (-1 * size1(#res))) + -1) == 0)
+size1 --> (((0 * #res) + 0) == 0)
+
+
