@@ -24,7 +24,7 @@ object TreeOperations {
     }
   }
 
-  def height(t: Tree): Int = {
+ /* def height(t: Tree): Int = {
     t match {
       case Leaf() => 0
       case Node(l, x, r) => {
@@ -33,7 +33,7 @@ object TreeOperations {
         if (hl > hr) hl + 1 else hr + 1
       }
     }
-  } 
+  } */
   //ensuring(res => res != size(t) + 1 template((a,b,c)=> a*size(t) + b*res +c <= 0))
 
   def insert(elem: Int, t: Tree): Tree = {
@@ -72,12 +72,12 @@ object TreeOperations {
   } 
   //ensuring (res => true template ((a, b, c) => a * size(res) + b * size(t) + c <= 0))
 
-  /*def removeAll(l: List, t: Tree): Tree = {
+  def removeAll(l: List, t: Tree): Tree = {
     l match {
       case Nil() => t
       case Cons(x, xs) => removeAll(xs, remove(x, t))
     }
-  } ensuring (res => size(res) <= size(t))*/
+  } ensuring (res => size(res) <= size(t))
 
 /*  def contains(elem : Int, t : Tree) : Boolean = {
     t match {
