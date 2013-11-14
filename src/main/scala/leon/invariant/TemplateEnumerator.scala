@@ -40,7 +40,7 @@ import scala.collection.mutable.{ Map => MutableMap }
    * 
    * For now this is incomplete 
    */
-class TemplateEnumerator(prog: Program, reporter : Reporter) extends TemplateGenerator {
+class TemplateEnumerator(prog: Program, reporter : Reporter, op: (Expr,Expr) => Expr) extends TemplateGenerator {
   
     //create a call graph for the program 
     //Caution: this call-graph could be modified later while call the 'getNextTemplate' method
@@ -56,7 +56,7 @@ class TemplateEnumerator(prog: Program, reporter : Reporter) extends TemplateGen
 	def getNextTemplate(fd : FunDef) : Expr = {
 	  if(tempEnumMap.contains(fd)) tempEnumMap(fd).getNextTemplate()
 	  else {
-	    val enumerator = new FunctionTemplateEnumerator(fd, prog, callGraph, reporter)
+	    val enumerator = new FunctionTemplateEnumerator(fd, prog, op,  callGraph, reporter)
 	    tempEnumMap += (fd -> enumerator)
 	    enumerator.getNextTemplate()
 	  }	    
@@ -65,13 +65,15 @@ class TemplateEnumerator(prog: Program, reporter : Reporter) extends TemplateGen
 
 /**
  * This class manages  templates for the given function
+ * 'op' is a side-effects parameter
  * Caution: The methods of this class has side-effects on the 'callGraph' parameter
  */
-class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, callGraph : CallGraph,  reporter: Reporter) {
+class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, op: (Expr,Expr) => Expr, 
+    callGraph : CallGraph,  reporter: Reporter) {
   private val MAX_INCREMENTS = 2
   private val zero = IntLiteral(0)
   //using default op as <= or == (manually adjusted)
-  private val op = LessEquals        
+  //private val op = LessEquals        
     //LessThan                                  
     //LessEquals 
     //Equals.apply _                    

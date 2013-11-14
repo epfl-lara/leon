@@ -27,6 +27,95 @@ import java.io._
 
 object FileCountGUID {
 	 var fileCount = 0
+	 def getID : Int = {
+	   var oldcnt = fileCount
+	   fileCount += 1
+	   oldcnt
+	 }
+}
+
+object Stats {
+  //stats  
+  var totalTime : Long = 0
+  var outerIterations = 0
+  var innerIterations = 0
+  var retries = 0
+  
+  //per outer iteration statistics
+  var cumVCsize : Long = 0
+  var maxVCsize : Long = 0
+  var cumUIFADTs : Long = 0
+  var maxUIFADTs : Long = 0
+  var cumTempVars : Long = 0
+  var maxTempVars : Long= 0
+  
+  //per inner iteration stats    
+  var cumFarkaSize : Long = 0
+  var maxFarkaSize : Long = 0
+  var cumFarkaTime : Long = 0
+  var maxFarkaTime : Long = 0  
+  var cumNLsize : Long = 0
+  var maxNLsize : Long = 0
+  var cumDijsize : Long = 0
+  var maxDijsize : Long = 0
+  var cumExploreTime: Long  = 0
+  var maxExploreTime: Long  = 0
+  var cumCompatCalls : Long = 0
+  var maxCompatCalls : Long = 0
+  var cumElimVars: Long  = 0
+  var maxElimVars: Long  = 0
+  var cumElimAtoms: Long  = 0
+  var maxElimAtoms: Long  = 0  
+  var cumLemmaApps: Long = 0
+  var maxLemmaApps: Long  = 0
+  
+  var output : String = ""
+    
+  def addOutput(out : String) = {
+    output += out + "\n"
+  }
+  
+  def cumMax(cum : Long, max: Long, newval : Long) : (Long,Long) = {    
+    (cum + newval, if(max < newval) newval else max)
+  }
+  
+  def dumpStats(pr : PrintWriter) ={
+    //outer iteration statistics
+    pr.println("Total Time: "+(totalTime/1000.0)+"s")
+    pr.println("VC refinements : "+outerIterations)
+    pr.println("Disjunct Explorations : "+innerIterations)
+    pr.println("Avg VC size : "+ (cumVCsize.toDouble / outerIterations))
+    pr.println("Max VC size : "+maxVCsize)
+    pr.println("Avg UIF-ADT size : "+ (cumUIFADTs.toDouble / outerIterations))
+    pr.println("Max UIF-ADT size : "+ maxUIFADTs)        
+    pr.println("avgTempVars : "+(cumTempVars.toDouble / outerIterations))
+    pr.println("maxTempVars : "+maxTempVars)
+    pr.println("Total retries: "+retries)    
+    
+    //inner iteration statistics
+    pr.println("avgFarkaSize : "+(cumFarkaSize.toDouble / innerIterations))
+    pr.println("maxFarkaSize : "+maxFarkaSize)
+    pr.println("avgFarkaTime : "+((cumFarkaTime.toDouble / innerIterations))/1000.0 +"s")
+    pr.println("maxFarkaTime : "+(maxFarkaTime)/1000.0+"s")
+    pr.println("avgNLSize : "+(cumNLsize.toDouble / innerIterations))
+    pr.println("maxNLSize : "+maxNLsize)           
+    pr.println("avgDijSize : "+(cumDijsize.toDouble / innerIterations))
+    pr.println("maxDijSize : "+maxDijsize)
+    pr.println("avgElimvars : "+(cumElimVars.toDouble / innerIterations))
+    pr.println("maxElimvars : "+maxElimVars)
+    pr.println("avgElimAtoms : "+(cumElimAtoms.toDouble / innerIterations))
+    pr.println("maxElimAtoms : "+maxElimAtoms)
+    pr.println("avgExploreTime : "+((cumExploreTime.toDouble / innerIterations))/1000.0 +"s")
+    pr.println("maxExploreTime : "+maxExploreTime/1000.0+"s")
+    pr.println("avgCompatCalls : "+(cumCompatCalls.toDouble / innerIterations))
+    pr.println("maxCompatCalls : "+maxCompatCalls)
+    pr.println("avgLemmaApps : "+(cumLemmaApps.toDouble / innerIterations))
+    pr.println("maxLemmaApps : "+maxLemmaApps)
+    
+    pr.println("########## Outputs ############")
+    pr.println(output)
+    pr.flush()    
+  }
 }
 
 //three valued logic
@@ -161,6 +250,18 @@ object InvariantUtil {
         count += args.size
         e
       }
+      case _ => e
+    })(e)
+    count
+  } 
+    
+  def numUIFADT(e : Expr) : Int = {
+    var count : Int = 0
+    simplePostTransform((e : Expr) => e match {
+      case FunctionInvocation(_,_) | CaseClass(_,_) | Tuple(_) => {
+        count += 1
+        e
+      }                     
       case _ => e
     })(e)
     count

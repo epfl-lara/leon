@@ -53,15 +53,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
   val printReducedFormula = false
   val dumpNLFormula = false
   val dumpInstantiatedVC = false 
-  val debugAxioms = false
- 
-  //some utility methods
-  def getFIs(ctr: LinearConstraint): Set[FunctionInvocation] = {
-    val fis = ctr.coeffMap.keys.collect((e) => e match {
-      case fi: FunctionInvocation => fi
-    })
-    fis.toSet
-  }
+  val debugAxioms = false    
 
   /**
    * Completes a model by adding mapping to new template variables
@@ -189,18 +181,15 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     linearCtr.expr
   }
   
-  //for stats
-  var exploredPaths = 0   
-  var ctrCount = 0 
   /**
    * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
    */  
   def solveForTemplatesIncr(): Option[Map[FunDef, Expr]] = {
-
-    //for stats
-    exploredPaths = 0
         
+    //for stats
+    Stats.outerIterations += 1
+    
     //traverse each of the functions and collect the VCs
     val funcs = ctrTracker.getFuncs
     val funcExprs = funcs.map((fd) => {
@@ -213,6 +202,19 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       //apply (instantiate) the axioms of functions in the verification condition
       val formulaWithAxioms = instantiateAxioms(formula)
       
+      //stats
+      val plainVCsize = InvariantUtil.atomNum(formula)
+      val vcsize = InvariantUtil.atomNum(formulaWithAxioms)
+      
+      val (cum, max) = Stats.cumMax(Stats.cumVCsize, Stats.maxVCsize, vcsize)
+      Stats.cumVCsize = cum; Stats.maxVCsize = max
+            
+      val (cum2, max2) = Stats.cumMax(Stats.cumUIFADTs, Stats.maxUIFADTs, InvariantUtil.numUIFADT(formula))
+      Stats.cumUIFADTs = cum2; Stats.maxUIFADTs = max2
+      
+      val (cum1, max1) = Stats.cumMax(Stats.cumLemmaApps, Stats.maxLemmaApps, vcsize - plainVCsize)
+      Stats.cumLemmaApps = cum1; Stats.maxLemmaApps = max1      
+      
       (fd -> formulaWithAxioms)
     }).toMap  
     
@@ -223,13 +225,16 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       else acc ++ variablesOf(tempOption.get).filter(TemplateIdFactory.IsTemplateIdentifier _)      
     })
     val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
+
+    //stats      
+    val (cum3, max3) = Stats.cumMax(Stats.cumTempVars, Stats.maxTempVars, tempIds.size)
+    Stats.cumTempVars = cum3; Stats.maxTempVars = max3
+      
     //create a new solver 
     val solverWithCtrs = new UIFZ3Solver(this.context, program)
     //solverWithCtrs.push()
     //solverWithCtrs.assertCnstr(tru)
-    //for stats
-    ctrCount = 0
-    
+   
     val solution = recSolveForTemplatesIncr(simplestModel, solverWithCtrs, funcExprs, tru)
     solverWithCtrs.free()
     solution
@@ -264,7 +269,9 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
   
   def recSolveForTemplatesIncr(model: Map[Identifier, Expr], solverWithCtrs: UIFZ3Solver, funcExprs: Map[FunDef, Expr],
       inputCtr : Expr) : Option[Map[FunDef, Expr]] = {    
-
+    
+    //for stats
+    Stats.innerIterations += 1
     //the following does not seem to be necessary as z3 updates the model on demand
     //val compModel = completeModel(model, TemplateIdFactory.getTemplateIds)
     
@@ -296,7 +303,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     if (initialctrs.isEmpty) {
       //yes, hurray
       //print some statistics 
-      reporter.info("- Number of explored paths (of the DAG) in this unroll step: " + exploredPaths)
+      //reporter.info("- Number of explored paths (of the DAG) in this unroll step: " + exploredPaths)
       Some(getAllInvariants(model))
     } else {
       //For statistics.
@@ -329,10 +336,12 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
 
       //solve the new set of non-linear constraints
       def solveNLConstraints(easyPart: Expr, newPart: Expr): (Option[Boolean], Map[Identifier, Expr], Expr) = {
-
-        //for stats and debugging
-        val currentCount = ctrCount + InvariantUtil.atomNum(newPart)
-        println("# of atomic predicates: " + currentCount)
+                
+        //for stats and debugging               
+        val farkasSize =  InvariantUtil.atomNum(newPart) 
+        val (cum, max) = Stats.cumMax(Stats.cumFarkaSize, Stats.maxFarkaSize, farkasSize + InvariantUtil.atomNum(easyPart))
+        Stats.cumFarkaSize = cum; Stats.maxFarkaSize = max
+        println("# of atomic predicates: " + farkasSize)
                 
         val solver = SimpleSolverAPI(
             new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), 
@@ -346,6 +355,10 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           println("solved... in " + (t2 - t1) / 1000.0 + "s")
         else
           println("timed out... in " + (t2 - t1) / 1000.0 + "s")
+          
+        //for stats       
+       val (cum2, max2) = Stats.cumMax(Stats.cumFarkaTime, Stats.maxFarkaTime, (t2 - t1))
+       Stats.cumFarkaTime = cum2; Stats.maxFarkaTime = max2          
 
         //for debugging
         if (debugIncremental) {
@@ -380,13 +393,16 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
               reporter.info("- Number of remaining hard paths: " + hardCE.values.foldLeft(0)((acc, elem) => acc + elem.size))
               (None, Map(), tru)
               
-            } else {                                          
+            } else {   
+              //for stats
+              Stats.innerIterations += 1
+              Stats.retries += 1
+              
               //try this new path, this might be easy to solve
               solveNLConstraints(easyPart, And(newctrs))
             }
           }
-          case _ => {
-            ctrCount += currentCount
+          case _ => {            
             (res, newModel, newPart)
           }
         }
@@ -400,7 +416,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         }
         case Some(false) => {
           //print some statistics 
-          reporter.info("- Number of explored paths (of the DAG) in this unroll step: " + exploredPaths)
+          //reporter.info("- Number of explored paths (of the DAG) in this unroll step: " + exploredPaths)
           None
         }
         case Some(true) => {      
@@ -459,10 +475,9 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     //println("Solution: "+uiSolver.solveSATWithFunctionCalls(cande))
 
     //this creates a new solver and does not work with the SimpleSolverAPI
-    //println("Solvign VC inst")
+    val t1 = System.currentTimeMillis()
     val solEval = new UIFZ3Solver(context, program)
     solEval.assertCnstr(instVC)
-    //println("Solved VC inst")
     
     solEval.check match {
       case None => {
@@ -591,6 +606,12 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
 
         //free the solver here
         solEval.free()
+        
+        //for stats
+        val t2 = System.currentTimeMillis()
+        val (cum,max) = Stats.cumMax(Stats.cumExploreTime, Stats.maxExploreTime, (t2 - t1))
+        Stats.cumExploreTime = cum; Stats.maxExploreTime = max
+        
         (Seq(newctr), counterExample)
       }
 	}        
@@ -841,8 +862,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         //here ants ^ conseq is sat (otherwise we wouldn't reach here) and there is no way to falsify this path
         fls        
       }
-      else {
-        exploredPaths += 1
+      else {        
         
         val lnctrs = ants ++ conseqs
         val temps = antTemps ++ conseqTemps
@@ -869,9 +889,8 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         
         val elimLnctrs = LinearConstraintUtil.apply1PRuleOnDisjunct(lnctrs, elimVars)
 
-        if (this.debugElimination) {
-          reporter.info("Number of linear constraints (after elim): " + elimLnctrs.size)
-          var elimCtrCount = 0
+        //for stats
+        var elimCtrCount = 0
           var elimCtrs = Seq[LinearConstraint]()
           var elimRems = Set[Identifier]()
           elimLnctrs.foreach((lc) => {
@@ -882,12 +901,27 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
               elimRems ++= evars
             }
           })
+        if (this.debugElimination) {
+          reporter.info("Number of linear constraints (after elim): " + elimLnctrs.size)          
           reporter.info("Number of constraints with elimVars: " + elimCtrCount)
           reporter.info("constraints with elimVars: " + elimCtrs)
           reporter.info("Number of remaining elimVars: " + elimRems.size)
           //println("Elim vars: "+elimVars)
-          println("Path constriants (after elimination): " + elimLnctrs)
+          println("Path constriants (after elimination): " + elimLnctrs)                  
         }
+        
+         //for stats
+        val (cum1,max1) = Stats.cumMax(Stats.cumElimVars, Stats.maxElimVars, (elimVars.size - elimRems.size))
+        Stats.cumElimVars = cum1; Stats.maxElimVars = max1;     
+        
+        val (cum2,max2) = Stats.cumMax(Stats.cumElimAtoms, Stats.maxElimAtoms, (lnctrs.size - elimLnctrs.size))
+        Stats.cumElimAtoms = cum2; Stats.maxElimAtoms = max2;
+        
+        val (cum3,max3) = Stats.cumMax(Stats.cumNLsize, Stats.maxNLsize, temps.size)
+        Stats.cumNLsize = cum3; Stats.maxNLsize = max3;        
+        
+        val (cum4,max4) = Stats.cumMax(Stats.cumDijsize, Stats.maxDijsize, lnctrs.size)
+        Stats.cumDijsize = cum4; Stats.maxDijsize = max4; 
         
         //(b) drop all constraints with dummys from 'elimLnctrs' they aren't useful (this is because of the reason we introduce the identifiers)
         val newLnctrs = elimLnctrs.filterNot((ln) => variablesOf(ln.expr).exists(TempIdFactory.isDummy _))
@@ -900,7 +934,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         
         if(this.printReducedFormula)
         	println("Final Path Constraints: "+(newLnctrs ++ temps))
-        	
+        
         val implCtrs = implicationSolver.constraintsForUnsat(newLnctrs, temps)        
         implCtrs
       }
@@ -954,7 +988,10 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       acc ++ pairs
     })
     
-    reporter.info("Number of compatible calls: "+product.size)             
+    //for stats
+    reporter.info("Number of compatible calls: "+product.size)     
+    val (cum,max) = Stats.cumMax(Stats.cumCompatCalls,Stats.maxCompatCalls, product.size)
+    Stats.cumCompatCalls= cum; Stats.maxCompatCalls = max
     
     product.foreach((pair) => {
       val (call1,call2) = (pair._1,pair._2)

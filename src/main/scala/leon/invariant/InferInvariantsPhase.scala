@@ -46,7 +46,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
     LeonValueOptionDef("monotones", "--monotones=f1:f2", "Monotonic functions f1,f2,..."),
     LeonValueOptionDef("modularize", "--modularize=f1:f2", "Perform modular analysis on f1,f2,..."),
-    LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."))
+    LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."),
+    LeonValueOptionDef("enumrel", "--enumrel=T", "The realtion that would be used for enumeration"))
 
   //TODO: handle direct equality and inequality on ADTs
   //TODO: Do we need to also assert that time is >= 0
@@ -103,21 +104,6 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       println("Flattened Post: "+fullPost)      
       constTracker.addPostConstraints(funDef, fullPost)      
 
-      //val (btree, ptree) = constTracker.getVC(funDef)
-      //println("Body Constraint Tree: "+btree)      
-      //println("Body Constraint Tree: "+btree)      
-      //println("Body Constraint Tree: "+btree)      
-      //println("Body Constraint Tree: "+btree)      
-      //println("Body Constraint Tree: "+btree)      
-      //println("Body Constraint Tree: "+btree)      
-      //println("Body Constraint Tree: "+btree)      
-      //println("Body Constraint Tree: "+btree)      
-      //println("Body Constraint Tree: "+btree)      
-      //println("Body Constraint Tree: "+btree)      
-      //println("Body Constraint Tree: "+btree)      
-      //println("Body Constraint Tree: "+btree)      
-      //println("Body Constraint Tree: "+btree)      
-
       //create entities that uses the constraint tracker
       val lsAnalyzer = new LinearSystemAnalyzer(constTracker,  tempFactory, context, program, timeout)
       val vcRefiner = new RefinementEngine(program, constTracker, tempFactory, reporter)
@@ -143,15 +129,20 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
         if (!refined) (Some(false),None)
         else {
-          //solve for the templates at this unroll step          
+          //solve for the templates in this unroll step          
           val res = lsAnalyzer.solveForTemplatesIncr()
 
           if (res.isDefined) {
 
+            var output = "Invariants for Function: "+funDef.id+"\n"
             res.get.foreach((pair) => {
               val (fd, inv) = pair
               reporter.info("- Found inductive invariant: " + fd.id + " --> " + inv)
+              output += fd.id + " --> " + inv + "\n"
             })
+            //add invariants to stats
+            Stats.addOutput(output)
+            
             reporter.info("- Verifying Invariants... ")
 
             val verifierRes = verifyInvariant(program, context, reporter, res.get, funDef)
@@ -274,6 +265,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
   //TODO provide options
   var timeout: Int = 10  //default timeout is 10s
+  var enumerationRelation : (Expr,Expr) => Expr = LessEquals
   def run(ctx: LeonContext)(program: Program): VerificationReport = {
 
     val reporter = ctx.reporter
@@ -307,17 +299,26 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           }
         })
       }
+      
+      case v @ LeonValueOption("enumrel", ListValue(ops)) => {        
+        val op = ops(0)
+        if(op.equals("equals")) enumerationRelation = Equals.apply _
+        else if(op.equals("lessequals")) enumerationRelation = LessEquals
+        else throw IllegalStateException("Unknown Enumeration Operation")        
+      }
         
       case v @ LeonValueOption("timeout", _) =>
         timeout = v.asInt(ctx).get
 
       case _ =>
     }
+
+    val t1 = System.currentTimeMillis()
     
     //this is an inference engine that checks if there exists an invariant belonging to the current templates 
     val infEngineGen = new InferenceEngineGenerator(reporter, program, ctx)
     //A template generator that generates templates for the functions (here we are generating templates by enumeration)          
-    val tempFactory = new TemplateFactory(Some(new TemplateEnumerator(program, reporter)), reporter)
+    val tempFactory = new TemplateFactory(Some(new TemplateEnumerator(program, reporter, enumerationRelation)), reporter)
     
     //compute functions to analyze by sorting based on topological order
     val callgraph = CallGraphUtil.constructCallGraph(program, withTemplates=true)
@@ -366,9 +367,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
         /*if (post == BooleanLiteral(true)) {
           reporter.info("Post is true, nothing to be proven!!")
-        } else {*/                     
-
-        val t1 = System.currentTimeMillis()
+        } else {*/                             
 
         var solved: Option[Boolean] = None
         while (!solved.isDefined) {
@@ -401,14 +400,14 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         if (!solved.get) {
           reporter.info("- Exhausted all templates, cannot infer invariants")
           System.exit(0)
-        }
-
-        val t2 = System.currentTimeMillis()
-        val dt = ((t2 - t1) / 1000.0)       
+        }              
       }
     })
-//    val notFound = functionsToAnalyse -- analysedFunctions
-//    notFound.foreach(fn => reporter.error("Did not find function \"" + fn + "\" though it was marked for analysis."))
+    val t2 = System.currentTimeMillis()
+    Stats.totalTime = t2 - t1     
+    //dump stats 
+    reporter.info("- Dumping statistics")
+    Stats.dumpStats(new PrintWriter("stats"+FileCountGUID.getID))
     VerificationReport.emptyReport
   }
 }

@@ -30,6 +30,14 @@ object LinearConstraintUtil {
   val mone = IntLiteral(-1)
   val tru = BooleanLiteral(true)
   
+  //some utility methods
+  def getFIs(ctr: LinearConstraint): Set[FunctionInvocation] = {
+    val fis = ctr.coeffMap.keys.collect((e) => e match {
+      case fi: FunctionInvocation => fi
+    })
+    fis.toSet
+  }
+  
   def exprToTemplate(expr: Expr): LinearTemplate = {
     val res = tryExprToTemplate(expr)
     if(res.isDefined) res.get
