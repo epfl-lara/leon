@@ -35,15 +35,15 @@ object AVLTree  {
     }
   )*/
 
-  def min(i1:Int, i2:Int) : Int = if (i1<=i2) i1 else i2
-  def max(i1:Int, i2:Int) : Int = if (i1>=i2) i1 else i2
+  /*def min(i1:Int, i2:Int) : Int = if (i1<=i2) i1 else i2
+  def max(i1:Int, i2:Int) : Int = if (i1>=i2) i1 else i2*/
   
    def twopower(x: Int) : Int = {
     require(x >= 0)
     if(x < 1) 1    
     else      
       2* twopower(x - 1)
-  } ensuring(_ >= 0 template((a) => a <= 0))
+  } //ensuring(_ >= 0 template((a) => a <= 0))
 
   def size(t: Tree): Int = {
     require(isAVL(t))  
@@ -51,20 +51,24 @@ object AVLTree  {
       case Leaf() => 0
       case Node(l, _, r,_) => size(l) + 1 + size(r)
     })
-  } ensuring (res => true template((a,b) => twopower(h(t)) <= 4*res + 2))
+  } ensuring (res => true template((a,b) => twopower(height(t)) <= 4*res + 2))
   
-  def h(t:Tree) : Int = (t match {
-    case Leaf() => 0
-    case Node(l,_,r,_) => if(h(l) >= h(r)) 
-    	h(l) + 1 
-      else 
-        h(r) + 1
-  }) ensuring(_ >= 0 template((a) => a <= 0))
+  def height(t: Tree): Int = {
+    t match {
+      case Leaf() => 0
+      case Node(l, x, r, _) => {
+        val hl = height(l)
+        val hr = height(r)
+        if (hl > hr) hl + 1 else hr + 1
+      }
+    }
+  } 
 
-  def rank(t:Tree) : Int = (t match {
+
+  /*def rank(t:Tree) : Int = (t match {
     case Leaf() => 0
     case Node(l,_,r,h) => h  
-  }) 
+  }) */
 
 /*  def treeMax(t:Tree) : OptionInt = {
     t match {
@@ -95,23 +99,22 @@ object AVLTree  {
 
 
 
-  def balanceFactor(t:Tree) : Int = t match {
+/*  def balanceFactor(t:Tree) : Int = t match {
     case Leaf() => 0
-    case Node(l,_,r,_) => h(l) - h(r)
+    case Node(l,_,r,_) => height(l) - height(r)
   }
-  
+  */
   /*def rankHeight(t: Tree) : Boolean = t match {
     case Leaf() => true 
     case Node(l,_,r,rk) => rankHeight(l) && rankHeight(r) && rk == h(t)
   }*/
 
-  def isAVL(t:Tree) : Boolean = {
-    //isBST(t) && rankHeight(t) &&
-    (t match {
-        case Leaf() => true
-        case Node(l,_,r,rk) => 
-          isAVL(l) && isAVL(r) && balanceFactor(t) >= -1 && balanceFactor(t) <= 1 //&& rk == h(t) 
-      })    
+  def isAVL(t:Tree) : Boolean = {    
+    t match {
+        case Leaf() => true        
+        case Node(l,_,r,_) => 
+          isAVL(l) && isAVL(r) && (height(l) - height(r)) >= -1 && (height(l) - height(r)) <= 1 //&& rk == h(t) 
+      }    
   } //ensuring (res => true template((a,b) => time <= a*h(t) + b))
 
 /* def bstMax(t:Tree) : OptionInt = {

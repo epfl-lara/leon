@@ -1,3 +1,4 @@
+import leon.Utils._
 object Size
 {
 	sealed abstract class Tree
@@ -9,6 +10,6 @@ object Size
 	  	case Leaf() => 0
 	  	case Node(l,x,r) => size(l) + size(r) + 1
 	  }
-	} ensuring(res => res != -1)
+	} ensuring(res => true template((a,b) => time <= a*res + b))
 	//inductive invariant res >= 0
 } 
