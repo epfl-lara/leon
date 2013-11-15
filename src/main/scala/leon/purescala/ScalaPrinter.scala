@@ -224,40 +224,6 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
       sb.append("})")
 
     case mex @ MatchExpr(s, csc) => {
-      def ppc(p: Pattern): Unit = p match {
-        //case InstanceOfPattern(None,     ctd) =>
-        //case InstanceOfPattern(Some(id), ctd) =>
-        case CaseClassPattern(bndr,     ccd, subps) => {
-          bndr.foreach(b => sb.append(b + " @ "))
-          sb.append(idToString(ccd.id)).append("(")
-          var c = 0
-          val sz = subps.size
-          subps.foreach(sp => {
-            ppc(sp)
-            if(c < sz - 1)
-              sb.append(", ")
-            c = c + 1
-          })
-          sb.append(")")
-        }
-        case WildcardPattern(None)     => sb.append("_")
-        case WildcardPattern(Some(id)) => sb.append(idToString(id))
-        case InstanceOfPattern(bndr, ccd) => {
-          bndr.foreach(b => sb.append(b + " : "))
-          sb.append(idToString(ccd.id))
-        }
-        case TuplePattern(bndr, subPatterns) => {
-          bndr.foreach(b => sb.append(b + " @ "))
-          sb.append("(")
-          subPatterns.init.foreach(p => {
-            ppc(p)
-            sb.append(", ")
-          })
-          ppc(subPatterns.last)
-          sb.append(")")
-        }
-        case _ => sb.append("Pattern?")
-      }
 
       sb.append("(")
       pp(s, lvl)
@@ -270,7 +236,7 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
       csc.foreach(cs => {
         ind(lvl+1)
         sb.append("case ")
-        ppc(cs.pattern)
+        pp(cs.pattern)
         cs.theGuard.foreach(g => {
           sb.append(" if ")
           pp(g, lvl+1)
@@ -451,6 +417,42 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
       case _ => sb.append("Defn?")
     }
   }
+
+  def pp(p: Pattern): Unit = p match {
+    //case InstanceOfPattern(None,     ctd) =>
+    //case InstanceOfPattern(Some(id), ctd) =>
+    case CaseClassPattern(bndr,     ccd, subps) => {
+      bndr.foreach(b => sb.append(b + " @ "))
+      sb.append(idToString(ccd.id)).append("(")
+      var c = 0
+      val sz = subps.size
+      subps.foreach(sp => {
+        pp(sp)
+        if(c < sz - 1)
+          sb.append(", ")
+        c = c + 1
+      })
+      sb.append(")")
+    }
+    case WildcardPattern(None)     => sb.append("_")
+    case WildcardPattern(Some(id)) => sb.append(idToString(id))
+    case InstanceOfPattern(bndr, ccd) => {
+      bndr.foreach(b => sb.append(b + " : "))
+      sb.append(idToString(ccd.id))
+    }
+    case TuplePattern(bndr, subPatterns) => {
+      bndr.foreach(b => sb.append(b + " @ "))
+      sb.append("(")
+      subPatterns.init.foreach(p => {
+        pp(p)
+        sb.append(", ")
+      })
+      pp(subPatterns.last)
+      sb.append(")")
+    }
+    case _ => sb.append("Pattern?")
+  }
+
 }
 
 object ScalaPrinter {

@@ -753,18 +753,9 @@ object TreeOps {
           }
           val newRhs = replaceFromIDs(map, cse.rhs)
           (realCond, newRhs)
-        } 
-
-        val optCondsAndRhs = if(SimplePatternMatching.isSimple(m)) {
-          // this is a hackish optimization: because we know all cases are covered, we replace the last condition by true (and that drops the check)
-          val lastExpr = condsAndRhs.last._2
-
-          condsAndRhs.dropRight(1) ++ Seq((BooleanLiteral(true),lastExpr))
-        } else {
-          condsAndRhs
         }
 
-        val bigIte = optCondsAndRhs.foldRight[Expr](Error("non-exhaustive match").setType(bestRealType(m.getType)).setPosInfo(m))((p1, ex) => {
+        val bigIte = condsAndRhs.foldRight[Expr](Error("non-exhaustive match").setType(bestRealType(m.getType)).setPosInfo(m))((p1, ex) => {
           if(p1._1 == BooleanLiteral(true)) {
             p1._2
           } else {
@@ -1074,7 +1065,6 @@ object TreeOps {
 
           var substMap = Map[Expr, Expr]()
 
-
           def computePatternFor(cd: CaseClassDef, prefix: Expr): Pattern = {
 
             val name = prefix match {
@@ -1133,20 +1123,65 @@ object TreeOps {
               p
           }
 
-          elze match {
-            case MatchExpr(scrut, cases) if scrut == scrutinee =>
-              MatchExpr(scrutinee,
-                SimpleCase(simplifyPattern(pattern), newThen) +:
-                cases
-              ).setType(e.getType)
+          val resCases = List(
+                           SimpleCase(simplifyPattern(pattern), newThen),
+                           SimpleCase(WildcardPattern(None), elze)
+                         )
 
-            case _ =>
-              MatchExpr(scrutinee,
-                Seq(SimpleCase(simplifyPattern(pattern), newThen),
-                    SimpleCase(WildcardPattern(None), elze)
-                  )
-              ).setType(e.getType)
+          def mergePattern(to: Pattern, anchor: Identifier, pat: Pattern): Pattern = to match {
+            case CaseClassPattern(ob, cd, subs) =>
+              if (ob == Some(anchor)) {
+                sys.error("WOOOT: "+to+" <<= "+pat +" on "+anchor)
+                pat
+              } else {
+                CaseClassPattern(ob, cd, subs.map(mergePattern(_, anchor, pat)))
+              }
+            case InstanceOfPattern(ob, cd) =>
+              if (ob == Some(anchor)) {
+                sys.error("WOOOT: "+to+" <<= "+pat +" on "+anchor)
+                pat
+              } else {
+                InstanceOfPattern(ob, cd)
+              }
+
+            case WildcardPattern(ob) =>
+              if (ob == Some(anchor)) {
+                pat
+              } else {
+                WildcardPattern(ob)
+              }
+            case TuplePattern(ob,subs) =>
+              if (ob == Some(anchor)) {
+                sys.error("WOOOT: "+to+" <<= "+pat +" on "+anchor)
+                pat
+              } else {
+                TuplePattern(ob, subs)
+              }
           }
+
+          val newCases = resCases.flatMap { c => c match {
+            case SimpleCase(wp: WildcardPattern, m @ MatchExpr(ex, cases)) if ex == scrutinee  =>
+              cases
+
+            case SimpleCase(pattern, m @ MatchExpr(v @ Variable(id), cases)) =>
+              if (pattern.binders(id)) {
+                cases.map{ nc =>
+                  SimpleCase(mergePattern(pattern, id, nc.pattern), nc.rhs)
+                }
+              } else {
+                Seq(c)
+              }
+            case _ => Seq(c)
+          }}
+
+          var finalMatch = MatchExpr(scrutinee, List(newCases.head)).setType(e.getType)
+
+          for (toAdd <- newCases.tail if !isMatchExhaustive(finalMatch)) {
+            finalMatch = MatchExpr(scrutinee, finalMatch.cases :+ toAdd).setType(e.getType)
+          }
+
+          finalMatch
+
         } else {
           e
         }
@@ -1854,6 +1889,250 @@ object TreeOps {
       case _ => c
     }
     treeCatamorphism(convert, combine, compute, expr)
+  }
+
+  def isHomomorphic(t1: Expr, t2: Expr)(implicit map: Map[Identifier, Identifier]): Boolean = {
+    object Same {
+      def unapply(tt: (Expr, Expr)): Option[(Expr, Expr)] = {
+        if (tt._1.getClass == tt._2.getClass) {
+          Some(tt)
+        } else {
+          None
+        }
+      }
+    }
+
+    def idHomo(i1: Identifier, i2: Identifier)(implicit map: Map[Identifier, Identifier]) = {
+      i1 == i2 || map.get(i1).map(_ == i2).getOrElse(false)
+    }
+
+    def fdHomo(fd1: FunDef, fd2: FunDef)(implicit map: Map[Identifier, Identifier]) = {
+      if (fd1.args.size == fd2.args.size &&
+          fd1.precondition.size == fd2.precondition.size &&
+          fd1.body.size == fd2.body.size &&
+          fd1.postcondition.size == fd2.postcondition.size) {
+
+        val newMap = map +
+                     (fd1.id -> fd2.id) ++
+                     (fd1.args zip fd2.args).map{ case (vd1, vd2) => (vd1.id, vd2.id) }
+
+        val preMatch = (fd1.precondition zip fd2.precondition).forall {
+          case (e1, e2) => isHomo(e1, e2)(newMap)
+        }
+
+        val postMatch = (fd1.postcondition zip fd2.postcondition).forall {
+          case ((id1, e1), (id2, e2)) => isHomo(e1, e2)(newMap + (id1 -> id2))
+        }
+
+        val bodyMatch = (fd1.body zip fd2.body).forall {
+          case (e1, e2) => isHomo(e1, e2)(newMap)
+        }
+
+        preMatch && postMatch && bodyMatch
+      } else {
+        false
+
+      }
+    }
+
+    def isHomo(t1: Expr, t2: Expr)(implicit map: Map[Identifier,Identifier]): Boolean = {
+      val res = (t1, t2) match {
+        case (Variable(i1), Variable(i2)) =>
+          idHomo(i1, i2)
+
+        case (Choose(ids1, e1), Choose(ids2, e2)) =>
+          isHomo(e1, e2)(map ++ (ids1 zip ids2))
+
+        case (Let(id1, v1, e1), Let(id2, v2, e2)) =>
+          isHomo(v1, v2) &&
+          isHomo(e1, e2)(map + (id1 -> id2))
+
+        case (LetTuple(ids1, v1, e1), LetTuple(ids2, v2, e2)) =>
+          if (ids1.size == ids2.size) {
+            isHomo(v1, v2) &&
+            isHomo(e1, e2)(map ++ (ids1 zip ids2))
+          } else {
+            false
+          }
+
+        case (LetDef(fd1, e1), LetDef(fd2, e2)) =>
+          fdHomo(fd1, fd2) &&
+          isHomo(e1, e2)(map + (fd1.id -> fd2.id))
+
+        case (MatchExpr(s1, cs1), MatchExpr(s2, cs2)) =>
+          if (cs1.size == cs2.size) {
+            val scrutMatch = isHomo(s1, s2)
+
+            def patternHomo(p1: Pattern, p2: Pattern): (Boolean, Map[Identifier, Identifier]) = (p1, p2) match {
+              case (InstanceOfPattern(ob1, cd1), InstanceOfPattern(ob2, cd2)) =>
+                (ob1.size == ob2.size && cd1 == cd2, Map((ob1 zip ob2).toSeq : _*))
+
+              case (WildcardPattern(ob1), WildcardPattern(ob2)) =>
+                (ob1.size == ob2.size, Map((ob1 zip ob2).toSeq : _*))
+
+              case (CaseClassPattern(ob1, ccd1, subs1), CaseClassPattern(ob2, ccd2, subs2)) =>
+                val m = Map[Identifier, Identifier]() ++ (ob1 zip ob2)
+
+                if (ob1.size == ob2.size && ccd1 == ccd2 && subs1.size == subs2.size) {
+                  (subs1 zip subs2).map { case (p1, p2) => patternHomo(p1, p2) }.foldLeft((true, m)) {
+                    case ((b1, m1), (b2,m2)) => (b1 && b2, m1 ++ m2)
+                  }
+                } else {
+                  (false, Map())
+                }
+
+              case (TuplePattern(ob1, subs1), TuplePattern(ob2, subs2)) =>
+                val m = Map[Identifier, Identifier]() ++ (ob1 zip ob2)
+
+                if (ob1.size == ob2.size && subs1.size == subs2.size) {
+                  (subs1 zip subs2).map { case (p1, p2) => patternHomo(p1, p2) }.foldLeft((true, m)) {
+                    case ((b1, m1), (b2,m2)) => (b1 && b2, m1 ++ m2)
+                  }
+                } else {
+                  (false, Map())
+                }
+              case _ =>
+                (false, Map())
+            }
+
+            val casesMatch = (cs1 zip cs2).forall {
+              case (SimpleCase(p1, e1), SimpleCase(p2, e2)) =>
+                val (h, nm) = patternHomo(p1, p2)
+
+                h && isHomo(e1, e2)(map ++ nm)
+
+              case (GuardedCase(p1, g1, e1), GuardedCase(p2, g2, e2)) =>
+                val (h, nm) = patternHomo(p1, p2)
+
+                h && isHomo(g1, g2)(map ++ nm) && isHomo(e1, e2)(map ++ nm)
+
+              case _ =>
+                false
+            }
+
+            scrutMatch && casesMatch
+          } else {
+            false
+          }
+
+        case (FunctionInvocation(fd1, args1), FunctionInvocation(fd2, args2)) =>
+          fdHomo(fd1, fd2) &&
+          (args1 zip args2).forall{ case (a1, a2) => isHomo(a1, a2) }
+
+        case Same(UnaryOperator(e1, _), UnaryOperator(e2, _)) =>
+          isHomo(e1, e2)
+
+        case Same(BinaryOperator(e11, e12, _), BinaryOperator(e21, e22, _)) =>
+          isHomo(e11, e21) && isHomo(e12, e22)
+
+        case Same(NAryOperator(es1, _), NAryOperator(es2, _)) =>
+          if (es1.size == es2.size) {
+            (es1 zip es2).forall{ case (e1, e2) => isHomo(e1, e2) }
+          } else {
+            false
+          }
+        case Same(t1 : Terminal, t2: Terminal) =>
+          true
+
+        case _ =>
+          false
+      }
+
+      //if (!res) {
+      //  println("@"*80)
+      //  println("MISMATCH:")
+      //  println("t1:"+t1)
+      //  println("t2:"+t2)
+      //  println("map:"+map)
+      //}
+
+      res
+    }
+
+    isHomo(t1,t2)
+  }
+
+  def isMatchExhaustive(m: MatchExpr): Boolean = {
+    /**
+     * Takes the matrix of the cases per position/types:
+     * e.g.
+     * e match {   // Where e: (T1, T2, T3)
+     *  case (P1, P2, P3) =>
+     *  case (P4, P5, P6) =>
+     *
+     * becomes checked as:
+     *   Seq( (T1, Seq(P1, P4)), (T2, Seq(P2, P5)), (T3, Seq(p3, p6)))
+     *
+     * We then check that P1+P4 covers every T1, etc..
+     */ 
+    def areExaustive(pss: Seq[(TypeTree, Seq[Pattern])]): Boolean = pss.forall { case (tpe, ps) =>
+
+      tpe match {
+        case TupleType(tpes) =>
+          val subs = ps.collect {
+            case TuplePattern(_, bs) =>
+              bs
+          }
+
+          areExaustive(tpes zip subs.transpose)
+
+        case _: ClassType =>
+
+          def typesOf(tpe: TypeTree): Set[CaseClassDef] = tpe match {
+            case AbstractClassType(ctp) =>
+              ctp.knownDescendents.collect { case c: CaseClassDef => c }.toSet
+
+            case CaseClassType(ctd) =>
+              Set(ctd)
+
+            case _ =>
+              Set()
+          }
+
+          var subChecks = typesOf(tpe).map(_ -> Seq[Seq[Pattern]]()).toMap
+
+          for (p <- ps) p match {
+            case w: WildcardPattern =>
+              // (a) Wildcard covers everything, no type left to check
+              subChecks = Map.empty
+
+            case InstanceOfPattern(_, cct) =>
+              // (a: B) covers all Bs
+              subChecks --= typesOf(classDefToClassType(cct))
+
+            case CaseClassPattern(_, ccd, subs) =>
+              // We record the patterns per types, if they still need to be checked
+              if (subChecks contains ccd) {
+                subChecks += (ccd -> (subChecks(ccd) :+ subs))
+              }
+
+            case _ =>
+              sys.error("Unnexpected case: "+p)
+          }
+
+          subChecks.forall { case (ccd, subs) =>
+            val tpes = ccd.fields.map(_.tpe)
+
+            if (subs.isEmpty) {
+              false
+            } else {
+              areExaustive(tpes zip subs.transpose)
+            }
+          }
+
+        case _ =>
+          true
+      }
+    }
+
+    val patterns = m.cases.map {
+      case SimpleCase(p, _) =>
+        p
+      case GuardedCase(p, _,  _) =>
+        return false
+    }
+
+    areExaustive(Seq((m.scrutinee.getType, patterns)))
   }
 
 }

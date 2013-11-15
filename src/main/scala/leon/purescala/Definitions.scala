@@ -55,7 +55,6 @@ object Definitions {
     def transitiveCallers(f1: FunDef) = mainObject.transitiveCallers.getOrElse(f1, Set())
     def transitiveCallees(f1: FunDef) = mainObject.transitiveCallees.getOrElse(f1, Set())
     def isRecursive(f1: FunDef) = mainObject.isRecursive(f1)
-    def isCatamorphism(f1: FunDef) = mainObject.isCatamorphism(f1)
     def caseClassDef(name: String) = mainObject.caseClassDef(name)
 
     def writeScalaFile(filename: String) {
@@ -161,16 +160,6 @@ object Definitions {
     def transitivelyCalls(f1: FunDef, f2: FunDef) : Boolean = transitiveCallGraph((f1,f2))
 
     def isRecursive(f: FunDef) = transitivelyCalls(f, f)
-
-    def isCatamorphism(f : FunDef) : Boolean = {
-      val c = callees(f)
-      if(f.hasImplementation && f.args.size == 1 && c.size == 1 && c.head == f) f.body.get match {
-        case SimplePatternMatching(scrut, _, _) if (scrut == f.args.head.toVariable) => true
-        case _ => false
-      } else {
-        false
-      }
-    }
   }
 
   /** Useful because case classes and classes are somewhat unified in some
