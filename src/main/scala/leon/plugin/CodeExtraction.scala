@@ -317,15 +317,20 @@ trait CodeExtraction extends Extractors {
 
 
     private def extractPattern(p: Tree, binder: Option[Identifier] = None): Pattern = p match {
-      case b @ Bind(name, Typed(pat, tpe)) =>
+      case b @ Bind(name, t @ Typed(pat, tpe)) =>
         val newID = FreshIdentifier(name.toString).setType(extractType(tpe.tpe))
         varSubsts(b.symbol) = (() => Variable(newID))
-        extractPattern(pat, Some(newID))
+        extractPattern(t, Some(newID))
 
       case b @ Bind(name, pat) =>
         val newID = FreshIdentifier(name.toString).setType(extractType(b.symbol.tpe))
         varSubsts(b.symbol) = (() => Variable(newID))
         extractPattern(pat, Some(newID))
+
+      case t @ Typed(Ident(nme.WILDCARD), tpe) if t.tpe.typeSymbol.isCase &&
+                                                  classesToClasses.contains(t.tpe.typeSymbol) =>
+        val cd = classesToClasses(t.tpe.typeSymbol).asInstanceOf[CaseClassDef]
+        InstanceOfPattern(binder, cd)
 
       case Ident(nme.WILDCARD) =>
         WildcardPattern(binder)

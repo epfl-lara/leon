@@ -691,7 +691,14 @@ object TreeOps {
     def rec(in: Expr, pattern: Pattern): Expr = {
       pattern match {
         case WildcardPattern(ob) => bind(ob, in)
-        case InstanceOfPattern(_,_) => scala.sys.error("InstanceOfPattern not yet supported.")
+        case InstanceOfPattern(ob, ct) =>
+          ct match {
+            case _: AbstractClassDef =>
+              bind(ob, in)
+
+            case cd: CaseClassDef =>
+              And(CaseClassInstanceOf(cd, in), bind(ob, in))
+          }
         case CaseClassPattern(ob, ccd, subps) => {
           assert(ccd.fields.size == subps.size)
           val pairs = ccd.fields.map(_.id).toList zip subps.toList
