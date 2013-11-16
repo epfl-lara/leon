@@ -1,0 +1,35 @@
+Total Time: 24.402s
+VC refinements : 7
+Disjunct Explorations : 30
+Avg VC size : 1080.7142857142858
+Max VC size : 1907
+Avg UIF-ADT size : 272.0
+Max UIF-ADT size : 417
+avgTempVars : 4.857142857142857
+maxTempVars : 8
+Total retries: 0
+avgFarkaSize : 168.5
+maxFarkaSize : 591
+avgFarkaTime : 0.21643333333333334s
+maxFarkaTime : 1.282s
+avgNLSize : 14.4
+maxNLSize : 45
+avgDijSize : 37.9
+maxDijSize : 147
+avgElimvars : 22.366666666666667
+maxElimvars : 95
+avgElimAtoms : 20.9
+maxElimAtoms : 90
+avgExploreTime : 0.3824666666666666s
+maxExploreTime : 1.988s
+avgCompatCalls : 217.4
+maxCompatCalls : 1391
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+########## Outputs ############
+Invariants for Function: create1
+insert1 --> (((((-2 * height1(t)) + (-2 * height1(#res))) + (2 * listSize1(inp))) + -1) ? 0)
+height1 --> (((-1 * #res) + -1) ? 0)
+listSize1 --> (((-1 * #res) + -1) ? 0)
+
+

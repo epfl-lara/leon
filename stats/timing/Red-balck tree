@@ -1,0 +1,49 @@
+Total Time: 210.442s
+VC refinements : 9
+Disjunct Explorations : 44
+Avg VC size : 3560.6666666666665
+Max VC size : 7637
+Avg UIF-ADT size : 903.6666666666666
+Max UIF-ADT size : 1720
+avgTempVars : 5.555555555555555
+maxTempVars : 8
+Total retries: 0
+avgFarkaSize : 192.11363636363637
+maxFarkaSize : 776
+avgFarkaTime : 0.04818181818181818s
+maxFarkaTime : 0.269s
+avgNLSize : 17.545454545454547
+maxNLSize : 43
+avgDijSize : 76.38636363636364
+maxDijSize : 193
+avgElimvars : 65.22727272727273
+maxElimvars : 163
+avgElimAtoms : 64.6590909090909
+maxElimAtoms : 158
+avgExploreTime : 4.033818181818182s
+maxExploreTime : 22.56s
+avgCompatCalls : 1210.7727272727273
+maxCompatCalls : 5813
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+########## Outputs ############
+Invariants for Function: ins1
+ins1 --> ((((-136 * blackHeight1(t)) + (1 * res5._2)) + -72) ≤ 0)
+redNodesHaveBlackChildren1 --> (-1 ≤ 0)
+blackHeight1 --> (((-1 * #res) + -1) ≤ 0)
+blackBalanced1 --> (-1 ≤ 0)
+
+Invariants for Function: size1
+size1 --> ((((-4 * res3) + (1 * twopower1(blackHeight1(t)))) + -2) ≤ 0)
+blackHeight1 --> (((-1 * #res) + -2) ≤ 0)
+twopower1 --> ((((-8 * #res) + (2 * x)) + 4) ≤ 0)
+blackBalanced1 --> (-1 ≤ 0)
+
+Invariants for Function: add1
+ins1 --> ((((-136 * blackHeight1(t)) + (1 * res5._2)) + -67) ≤ 0)
+blackHeight1 --> (((-2 * #res) + -1) ≤ 0)
+add1 --> ((((-161 * blackHeight1(t)) + (1 * res4._2)) + -79) ≤ 0)
+redNodesHaveBlackChildren1 --> (-1 ≤ 0)
+blackBalanced1 --> (-1 ≤ 0)
+
+
