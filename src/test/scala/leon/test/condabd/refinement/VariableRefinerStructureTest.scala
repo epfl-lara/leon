@@ -1,4 +1,5 @@
 package leon.test.condabd
+package refinement
 
 import scala.util.Random
 
@@ -15,44 +16,16 @@ import leon.synthesis.condabd.refinement._
 
 import util.Scaffold._
 
-class VariableRefinerTest extends FunSpec with GivenWhenThen {    
+class VariableRefinerTest extends FunSpec with GivenWhenThen {
   
-  val listClassId = FreshIdentifier("List")
-  val listAbstractClassDef = new AbstractClassDef(listClassId)
-  val listAbstractClass = new AbstractClassType(listAbstractClassDef)
-  
-  val nilClassId = FreshIdentifier("Nil")
-  val nilAbstractClassDef = new CaseClassDef(nilClassId).setParent(listAbstractClassDef)
-  val nilAbstractClass = new CaseClassType(nilAbstractClassDef)
-  
-  val consClassId = FreshIdentifier("Cons")
-  val consAbstractClassDef = new CaseClassDef(consClassId).setParent(listAbstractClassDef)
-  val headId = FreshIdentifier("head").setType(Int32Type)
-  consAbstractClassDef.fields = Seq(VarDecl(headId, Int32Type))
-  val consAbstractClass = new CaseClassType(consAbstractClassDef)
-  
-  val directSubclassMap: Map[ClassType, Set[ClassType]] = Map(
-    listAbstractClass -> Set(nilAbstractClass, consAbstractClass)
-  )
-  
-  val listVal = Variable(FreshIdentifier("tempVar"))
-  val listLeonDeclaration = LeonDeclaration(
-    ImmediateExpression( "tempVar", listVal ), 
-    TypeTransformer(listAbstractClass), listAbstractClass
-  )
-  
-  val classMap: Map[Identifier, ClassType] = Map(
-    listClassId -> listAbstractClass,
-    nilClassId -> nilAbstractClass,
-    consClassId -> consAbstractClass
-  ) 
+  import RefinementExamples._
   
   describe("A variable refiner with list ADT") {
     
     it("should refine if variable is not Nil") {
       
-      Given("a VariableRefiner")
-      val variableRefiner = new VariableRefiner(
+      Given("a VariableRefiner based on structure")
+      val variableRefiner = new VariableRefinerStructure(
         directSubclassMap, Seq(listLeonDeclaration), classMap, reporter
       )
       
@@ -77,7 +50,7 @@ class VariableRefinerTest extends FunSpec with GivenWhenThen {
 					listLeonDeclaration.expression, TypeTransformer(consAbstractClass), consAbstractClass
 				) :: Nil
   		)) {
-        variableRefiner.checkRefinements(CaseClassInstanceOf(nilAbstractClassDef, listVal),
+        variableRefiner.refine(CaseClassInstanceOf(nilAbstractClassDef, listVal),
 	        BooleanLiteral(true),
 	        allDeclarations
         )
@@ -85,7 +58,7 @@ class VariableRefinerTest extends FunSpec with GivenWhenThen {
 	    
       And("after 2nd consequtive call, nothing should happen")   
 	    expectResult((false, allDeclarations)) {
-        variableRefiner.checkRefinements(CaseClassInstanceOf(nilAbstractClassDef, listVal),
+        variableRefiner.refine(CaseClassInstanceOf(nilAbstractClassDef, listVal),
         BooleanLiteral(true),
         allDeclarations)
       } 

@@ -376,8 +376,8 @@ class SynthesizerForRuleExamples(
   }
 
   def interactivePause = {
-    System.out.println("Press Any Key To Continue...");
-    new java.util.Scanner(System.in).nextLine();
+//    System.out.println("Press Any Key To Continue...");
+//    new java.util.Scanner(System.in).nextLine();
   }
 
   def getNewExampleQueue = PriorityQueue[(Expr, Int)]()(
@@ -420,9 +420,12 @@ class SynthesizerForRuleExamples(
 
     // each variable of super type can actually have a subtype
     // get sine declaration maps to be able to refine them  
-    variableRefiner =
-  		new VariableRefiner(loader.directSubclassesMap,
-				loader.variableDeclarations, loader.classMap, reporter)
+    variableRefiner = new VariableRefinerCompose add
+      // refiner on structure
+  		new VariableRefinerStructure(loader.directSubclassesMap,
+				loader.variableDeclarations, loader.classMap, reporter) add
+			// refiner that uses execution
+			new VariableRefinerExecution(loader.variableDeclarations, loader.classMap)
 //  		new VariableSolverRefiner(loader.directSubclassesMap,
 //				loader.variableDeclarations, loader.classMap, mainSolver, reporter)
 
@@ -510,24 +513,49 @@ class SynthesizerForRuleExamples(
         ) {
           fine("boolean snippet is: " + innerSnippetTree)
           info("Trying: " + innerSnippetTree + " as a condition.")
-          val (innerFound, innerPrec) = tryToSynthesizeBooleanCondition(
+          val innerPrecFound = tryToSynthesizeBooleanCondition(
             snippetTree, innerSnippetTree,
             // counter examples represent those for which candidate fails
             (failedExamples.map(_.map) ++ maps), succeededExamples.map(_.map)
           )
 
-          // if precondition found
-          if (innerFound) {
-            info("Precondition " + innerPrec + " found for " + snippetTree)
-
-            innerPrec match {
-              case s @ Some(_) =>
-                // new precondition (restore in finally)
-                preconditionToRestore = s
-              case _ =>
+          info("tryToSynthesizeBooleanCondition returned " + innerPrecFound + " for " + snippetTree)
+          if ( innerPrecFound ) {
+            // update accumulating expression
+            val oldAccumulatingExpression = accumulatingExpression
+            val newAccumulatingExpression =
+              (finalExpr: Expr) =>
+                oldAccumulatingExpression({
+                  val innerIf = IfExpr(innerSnippetTree, snippetTree, finalExpr)
+                  innerIf.setType(snippetTree.getType)
+                  innerIf
+                })
+  
+            accumulatingExpression = newAccumulatingExpression
+  
+            // update accumulating precondition
+            fine("updating accumulatingPrecondition")
+            accumulatingCondition = And(Seq(accumulatingCondition, Not(innerSnippetTree)))
+            fine("updating hole fun precondition and body (to be hole)")
+            // new precondition (restore in finally)
+            preconditionToRestore = Some(accumulatingCondition)
+  
+            val currentBranchCondition = And(Seq(accumulatingCondition, innerSnippetTree))
+            val variableRefinementResult = variableRefiner.refine(innerSnippetTree,
+              currentBranchCondition, allDeclarations, exampleRunner.getEvaluator)
+  
+            if (variableRefinementResult._1) {
+              info("Variable is refined.")
+              allDeclarations = variableRefinementResult._2
+  
+              // the reason for two flags is for easier management of re-syntheses only if needed 
+              variableRefinedBranch = true
+              variableRefinedCondition = true
             }
+            
             return true
           }
+
         } // iterating over all boolean solutions
 
         info("No precondition found for branch expression: " + snippetTree)
@@ -545,8 +573,17 @@ class SynthesizerForRuleExamples(
     }
   }
 
+  /**
+   * tries to abduce a new branch
+   * @param snippetTree expression candidate
+   * @param innerSnippetTree condition candidate
+   * @param counterExamples failed examples 
+   * @param succExamples successful examples
+   * @return whether branch condition is found
+   */
   def tryToSynthesizeBooleanCondition(snippetTree: Expr, innerSnippetTree: Expr,
-    counterExamples: Seq[Map[Identifier, Expr]], succExamples: Seq[Map[Identifier, Expr]]): (Boolean, Option[Expr]) = {
+    counterExamples: Seq[Map[Identifier, Expr]], succExamples: Seq[Map[Identifier, Expr]]):
+      Boolean = {
     // new condition together with existing precondition
     val newPrecondition = And(Seq(initialPrecondition, accumulatingCondition, innerSnippetTree))
     val newPathCondition = And(Seq(problem.pc, accumulatingCondition, innerSnippetTree))
@@ -719,56 +756,24 @@ class SynthesizerForRuleExamples(
         if (valid) {
           // we found a branch
           info("We found a branch, for expression %s, with condition %s.".format(snippetTree, innerSnippetTree))
-
-          // update accumulating expression
-          val oldAccumulatingExpression = accumulatingExpression
-          val newAccumulatingExpression =
-            (finalExpr: Expr) =>
-              oldAccumulatingExpression({
-                val innerIf = IfExpr(innerSnippetTree, snippetTree, finalExpr)
-                innerIf.setType(snippetTree.getType)
-                innerIf
-              })
-
-          accumulatingExpression = newAccumulatingExpression
-          val currentBranchCondition = And(Seq(accumulatingCondition, innerSnippetTree))
-
-          // update accumulating precondition
-          fine("updating accumulatingPrecondition")
-          accumulatingCondition = And(Seq(accumulatingCondition, Not(innerSnippetTree)))
-          fine("updating hole fun precondition and body (to be hole)")
-
-          // set to set new precondition
-          val preconditionToRestore = Some(accumulatingCondition)
-
-          val variableRefinementResult = variableRefiner.checkRefinements(innerSnippetTree, currentBranchCondition, allDeclarations)
-          if (variableRefinementResult._1) {
-            info("Variable is refined.")
-            allDeclarations = variableRefinementResult._2
-
-            // the reason for two flags is for easier management of re-syntheses only if needed 
-            variableRefinedBranch = true
-            variableRefinedCondition = true
-          }
-
+          
           // found a boolean snippet, break
-          (true, preconditionToRestore)
+          true
         } else {
 			    // collect (add) counterexamples from leon
 			    if (collectCounterExamplesFromLeon && !map.isEmpty)
 			      gatheredExamples ++= (map :: Nil).map(Example(_))            
           
           // reset funDef and continue with next boolean snippet
-          val preconditionToRestore = Some(accumulatingCondition)
-          (false, preconditionToRestore)
+			    false
         }
       } else {
         fine("Solver filtered out the precondition (does not imply counterexamples)")
-        (false, None)
+        false
       }
     } else {// if (!isItAContradiction)
       fine("Solver filtered out the precondition (is not sound)")
-      (false, None)      
+      false      
     }
   }
 
