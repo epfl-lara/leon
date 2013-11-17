@@ -1,4 +1,5 @@
 package leon.test.condabd
+package refinement
 
 import scala.util.Random
 
@@ -51,7 +52,7 @@ class FilterTest extends JUnitSuite {
 	
     val loader = new LeonLoader(prog, problem.as, true)
     
-    variableRefiner = new VariableRefiner(loader.directSubclassesMap, loader.variableDeclarations,
+    variableRefiner = new VariableRefinerStructure(loader.directSubclassesMap, loader.variableDeclarations,
   		loader.classMap, sctx.reporter)
     
     tail = 

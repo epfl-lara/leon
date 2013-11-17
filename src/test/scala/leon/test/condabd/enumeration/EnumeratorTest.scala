@@ -92,11 +92,11 @@ class EnumeratorTest extends JUnitSuite {
     val listVal = funDef.args.head.toVariable
     
     val variableRefiner = 
-			new VariableRefiner(loader.directSubclassesMap,
+			new VariableRefinerStructure(loader.directSubclassesMap,
 					loader.variableDeclarations, loader.classMap, reporter)
     
     val (refined, newDeclarations) = 
-      variableRefiner.checkRefinements(
+      variableRefiner.refine(
         CaseClassInstanceOf(nilAbstractClassDef, listVal), BooleanLiteral(true), allDeclarations)
     assertTrue(refined)
     assert(allDeclarations.size + 2 == newDeclarations.size)

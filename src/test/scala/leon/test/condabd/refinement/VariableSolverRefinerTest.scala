@@ -1,4 +1,5 @@
 package leon.test.condabd
+package refinement
 
 import scala.util.Random
 
@@ -20,6 +21,7 @@ import util._
 class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
 
   import Scaffold._
+  import RefinementExamples._
 
 	val lesynthTestDir = "testcases/condabd/test/lesynth/"  
       
@@ -66,7 +68,7 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
 	        directSubclassMap, declarations, classMap, solver, reporter
 	      )
 		    
-	      val res = variableRefiner.checkRefinements(
+	      val res = variableRefiner.refine(
         		isEmpty(listVal),
         		isEmpty(listVal),
         		declarations
@@ -79,7 +81,7 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
 		    
 	      And("after 2nd consequtive call, nothing should happen")   
 		    expectResult((false, res._2)) {
-	        val res2 = variableRefiner.checkRefinements(
+	        val res2 = variableRefiner.refine(
         		isEmpty(listVal),
         		isEmpty(listVal),
         		res._2
@@ -122,7 +124,7 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
 	        directSubclassMap, declarations, classMap, solver, reporter
 	      )
 		    
-	      val res = variableRefiner.checkRefinements(
+	      val res = variableRefiner.refine(
         		hasContent(listVal),
         		hasContent(listVal),
         		declarations
@@ -135,7 +137,7 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
 		    
 	      And("after 2nd consequtive call, nothing should happen")   
 		    expectResult((false, res._2)) {
-	        val res2 = variableRefiner.checkRefinements(
+	        val res2 = variableRefiner.refine(
         		hasContent(listVal),
         		hasContent(listVal),
         		res._2
@@ -186,7 +188,7 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
 	        directSubclassMap, declarations, classMap, solver, reporter
 	      )
 		    
-	      val res = variableRefiner.checkRefinements(
+	      val res = variableRefiner.refine(
         		isEmptyBad(listVal),
         		isEmptyBad(listVal),
         		declarations
@@ -194,7 +196,7 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
 		    
 	      Then("declarations should not be updated")   
 		    expectResult((false, res._2)) {
-	        val res2 = variableRefiner.checkRefinements(
+	        val res2 = variableRefiner.refine(
         		isEmptyBad(listVal),
         		isEmptyBad(listVal),
         		res._2
@@ -204,30 +206,6 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
       }
     }
     
-  }
-  
-  private def buildClassMap(program: Program) = {
-	  val listAbstractClassDef = program.definedClasses.find(_.id.name == "List").
-  		get.asInstanceOf[AbstractClassDef]
-	  
-	  val nilAbstractClassDef = program.definedClasses.find(_.id.name == "Nil").
-  		get.asInstanceOf[CaseClassDef]
-	  
-	  val consAbstractClassDef = program.definedClasses.find(_.id.name == "Cons").
-  		get.asInstanceOf[CaseClassDef]
-	  	  
-	  val directSubclassMap: Map[ClassType, Set[ClassType]] = Map(
-	    AbstractClassType(listAbstractClassDef) ->
-	    	Set(CaseClassType(nilAbstractClassDef), CaseClassType(consAbstractClassDef))
-	  )
-  
-	  val classMap: Map[Identifier, ClassType] = Map(
-	    listAbstractClassDef.id -> AbstractClassType(listAbstractClassDef),
-	    nilAbstractClassDef.id -> CaseClassType(nilAbstractClassDef),
-	    consAbstractClassDef.id -> CaseClassType(consAbstractClassDef)
-	  )
-	  
-	  (directSubclassMap, AbstractClassType(listAbstractClassDef), classMap)
   }
   
 }
