@@ -12,7 +12,7 @@ object Trees {
 
   /* EXPRESSIONS */
 
-  abstract class Expr extends Typed with Serializable {
+  abstract class Expr extends Tree with Typed with Serializable {
     override def toString: String = PrettyPrinter(this)
   }
 
@@ -141,7 +141,7 @@ object Trees {
     override def hashCode: Int = scrutinee.hashCode+cases.hashCode
   }
 
-  sealed abstract class MatchCase extends Serializable {
+  sealed abstract class MatchCase extends Tree {
     val pattern: Pattern
     val rhs: Expr
     val theGuard: Option[Expr]
@@ -158,7 +158,7 @@ object Trees {
     def expressions = List(guard, rhs)
   }
 
-  sealed abstract class Pattern extends Serializable {
+  sealed abstract class Pattern extends Tree {
     val subPatterns: Seq[Pattern]
     val binder: Option[Identifier]
 

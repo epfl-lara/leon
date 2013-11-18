@@ -23,11 +23,11 @@ object Trees {
       Some((args :+ rest, exprs => Block(exprs.init, exprs.last)))
     }
 
-    def printWith(lvl: Int, printer: PrettyPrinter) {
+    def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
       printer.append("{\n")
       (exprs :+ last).foreach(e => {
         printer.ind(lvl+1)
-        printer.pp(e, lvl+1)
+        printer.pp(e, Some(this))(lvl+1)
         printer.append("\n")
       })
       printer.ind(lvl)
@@ -44,11 +44,11 @@ object Trees {
       Some((expr, Assignment(varId, _)))
     }
 
-    def printWith(lvl: Int, printer: PrettyPrinter) {
+    def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
       printer.append("(")
       printer.append(varId.name)
       printer.append(" = ")
-      printer.pp(expr,lvl)
+      printer.pp(expr, Some(this))
       printer.append(")")
     }
   }
@@ -65,23 +65,23 @@ object Trees {
       Some((cond, body, (t1, t2) => While(t1, t2).setInvariant(this.invariant).setPosInfo(this)))
     }
 
-    def printWith(lvl: Int, printer: PrettyPrinter) {
+    def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
       invariant match {
         case Some(inv) => {
           printer.append("\n")
-          printer.ind(lvl)
+          printer.ind
           printer.append("@invariant: ")
-          printer.pp(inv, lvl)
+          printer.pp(inv, Some(this))
           printer.append("\n")
-          printer.ind(lvl)
+          printer.ind
         }
         case None =>
       }
       printer.append("while(")
-      printer.pp(cond, lvl)
+      printer.pp(cond, Some(this))
       printer.append(")\n")
       printer.ind(lvl+1)
-      printer.pp(body, lvl+1)
+      printer.pp(body, Some(this))(lvl+1)
       printer.append("\n")
     }
   }
@@ -91,14 +91,14 @@ object Trees {
       Some((pred, (expr: Expr) => Epsilon(expr).setType(this.getType).setPosInfo(this)))
     }
 
-    def printWith(lvl: Int, printer: PrettyPrinter) {
+    def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
       printer match {
         case _: ScalaPrinter =>
           sys.error("Not Scala Code")
 
         case _ =>
           printer.append("epsilon(x" + this.posIntInfo._1 + "_" + this.posIntInfo._2 + ". ")
-          printer.pp(pred, lvl)
+          printer.pp(pred, Some(this))
           printer.append(")")
       }
     }
@@ -106,7 +106,7 @@ object Trees {
 
   case class EpsilonVariable(pos: (Int, Int)) extends Expr with Terminal with PrettyPrintable{
 
-    def printWith(lvl: Int, printer: PrettyPrinter) {
+    def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
       val (row, col) = pos
       printer.append("x" + row + "_" + col)
     }
@@ -124,29 +124,28 @@ object Trees {
       Some((expr, body, (e: Expr, b: Expr) => LetVar(binders, e, b)))
     }
 
-    def printWith(lvl: Int, printer: PrettyPrinter) {
+    def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
       printer match {
         case _: ScalaPrinter =>
           val LetVar(b,d,e) = this
           printer.append("locally {\n")
           printer.ind(lvl+1)
           printer.append("var " + b + " = ")
-          printer.pp(d, lvl+1)
+          printer.pp(d, Some(this))(lvl+1)
           printer.append("\n")
           printer.ind(lvl+1)
-          printer.pp(e, lvl+1)
-          printer.append("\n")
-          printer.ind(lvl)
-          printer.append("}\n")
-          printer.ind(lvl)
+          printer.pp(e, Some(this))(lvl+1)
+          printer.nl
+          printer.append("}")
+          printer.nl
 
         case _ =>
           val LetVar(b,d,e) = this
           printer.append("(letvar (" + b + " := ");
-          printer.pp(d, lvl)
+          printer.pp(d, Some(this))
           printer.append(") in\n")
           printer.ind(lvl+1)
-          printer.pp(e, lvl+1)
+          printer.pp(e, Some(this))(lvl+1)
           printer.append(")")
       }
     }
@@ -157,14 +156,14 @@ object Trees {
       Some((expr, (e: Expr) => Waypoint(i, e)))
     }
 
-    def printWith(lvl: Int, printer: PrettyPrinter) {
+    def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
       printer match {
         case _: ScalaPrinter =>
           sys.error("Not Scala Code")
 
         case _ =>
           printer.append("waypoint_" + i + "(")
-          printer.pp(expr, lvl)
+          printer.pp(expr, Some(this))
           printer.append(")")
       }
     }
@@ -180,12 +179,12 @@ object Trees {
       Some((Seq(t1,t2,t3), (as: Seq[Expr]) => ArrayUpdate(as(0), as(1), as(2))))
     }
 
-    def printWith(lvl: Int, printer: PrettyPrinter) {
-      printer.pp(array, lvl)
+    def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
+      printer.pp(array, Some(this))
       printer.append("(")
-      printer.pp(index, lvl)
+      printer.pp(index, Some(this))
       printer.append(") = ")
-      printer.pp(newValue, lvl)
+      printer.pp(newValue, Some(this))
     }
   }
 
