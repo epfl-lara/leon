@@ -65,6 +65,13 @@ object Definitions {
       out.write(ScalaPrinter(this))
       out.close
     }
+
+    def duplicate = {
+      copy(mainObject = mainObject.copy(defs = mainObject.defs.collect {
+        case fd: FunDef => fd.duplicate
+        case d => d
+      }))
+    }
   }
 
   object Program {
@@ -277,6 +284,16 @@ object Definitions {
     // Metadata kept here after transformations
     var parent: Option[FunDef] = None
     var orig: Option[FunDef] = None
+
+    def duplicate: FunDef = {
+      val fd = new FunDef(id, returnType, args)
+      fd.body = body
+      fd.precondition = precondition
+      fd.postcondition = postcondition
+      fd.parent = parent
+      fd.orig = orig
+      fd
+    }
 
     def hasImplementation : Boolean = body.isDefined
     def hasBody                     = hasImplementation
