@@ -10,6 +10,7 @@ case class Settings(
   val termination: Boolean             = false,
   val synthesis: Boolean               = false,
   val inferInv: Boolean               =  false,
+  val genHorn: Boolean               =  false,
   val xlang: Boolean                   = false,
   val verify: Boolean                  = true,
   val injectLibrary: Boolean           = false,

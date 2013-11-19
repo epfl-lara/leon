@@ -268,7 +268,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   var enumerationRelation : (Expr,Expr) => Expr = LessEquals
   def run(ctx: LeonContext)(program: Program): VerificationReport = {
 
-    val reporter = ctx.reporter
+    val reporter = ctx.reporter                 
     reporter.info("Running Invariant Inference Phase...")
 
     var modularFunctions = Set[FunDef]()
