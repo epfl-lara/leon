@@ -41,7 +41,7 @@ object LeonToHornPhase extends UnitPhase[Program] {
   val description = "Horn clause generation phase"
   val fls = BooleanLiteral(false)
   
-  override val definedOptions: Set[LeonOptionDef] = Set(
+  override val definedOptions: Set[LeonOptionDef] = Set(      
     LeonValueOptionDef("outfilename", "--outfilename=<filename>", "name of the output file to dump horn clauses"),
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,...")
   )

@@ -1,4 +1,5 @@
-package leon.sexpr
+package leon
+package smtlib
 
 import Tokens._
 import SExprs._

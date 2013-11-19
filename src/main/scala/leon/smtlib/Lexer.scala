@@ -1,6 +1,8 @@
-package leon.sexpr
+package leon
+package smtlib
 
 import Tokens._
+
 
 class Lexer(reader: java.io.Reader) {
 

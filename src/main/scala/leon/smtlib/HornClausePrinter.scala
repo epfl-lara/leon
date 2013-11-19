@@ -9,7 +9,6 @@ import TreeOps._
 import TypeTrees._
 import Definitions._
 
-import sexpr._
 import SExprs._
 
 /** This pretty-printer prints an SMTLIB2 representation of the Purescala program */
@@ -55,7 +54,7 @@ object HornClausePrinter {
         convertedFunDefs.flatMap(_._3) ++
         Seq(SList(SSymbol("check-sat")))
       )
-    ).map(sexpr.PrettyPrinter(_)).mkString("\n")
+    ).map(SExprs.toString(_)).mkString("\n")
 
   }
 
