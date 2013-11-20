@@ -112,12 +112,12 @@ object SortedList {
   }) ensuring(res => !res || !contains(l, x))
 
   def discard(value : Boolean) = true
-  
+
   @induct
   def ltaLemma(x : Int, y : Int, l : List) : Boolean = {
     require(lessThanAll(y, l) && x < y)
     lessThanAll(x, Cons(y, l))
-  } holds 
+  } holds
 
   def isSorted(l: List): Boolean = l match {
     case Nil() => true

@@ -55,10 +55,10 @@ object BinarySearchTree {
       }
     }
   }) ensuring (res => res match { case SortedTriple(min,max,sort) => min match {
-     	      	      	  				   case None() => res == SortedTriple(None(),None(),sort)
-							   case Some(minv) => max match {
-							     case None() => false
-							     case Some(maxv) => sort && minv <= maxv}}})
+                                    case None() => res == SortedTriple(None(),None(),sort)
+                                    case Some(minv) => max match {
+                                      case None() => false
+                                      case Some(maxv) => sort && minv <= maxv}}})
 
   def treeMin(tree: Node): Int = {
     require(isSorted(tree).sorted)

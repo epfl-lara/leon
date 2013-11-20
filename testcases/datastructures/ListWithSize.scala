@@ -59,7 +59,7 @@ object ListWithSize {
     def sizeAndContent(l: List) : Boolean = {
       size(l) == 0 || content(l) != Set.empty[Int]
     } holds
-    
+
     def drunk(l : List) : List = (l match {
       case Nil() => Nil()
       case Cons(x,l1) => Cons(x,Cons(x,drunk(l1)))
@@ -110,7 +110,7 @@ object ListWithSize {
 
     // proved with unrolling=4
     @induct
-    def concat(l1: List, l2: List) : List = 
+    def concat(l1: List, l2: List) : List =
       concat0(l1, l2, Nil()) ensuring(content(_) == content(l1) ++ content(l2))
 
     @induct

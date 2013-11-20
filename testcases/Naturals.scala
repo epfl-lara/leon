@@ -9,8 +9,8 @@ object Naturals {
 
     def plus(x : Nat, y : Nat) : Nat = {
       x match {
-				case Zero() => y
-				case Succ(x1) => Succ(plus(x1, y))
+                case Zero() => y
+                case Succ(x1) => Succ(plus(x1, y))
       }
     }
 
@@ -48,8 +48,8 @@ object Naturals {
     } holds
 
 
-		//we need simplification !
-		//(x.isInstanceOf[Zero] ==> (plus(x, y) == plus(y, x)))  this base case does not work even if it is above!!
+        //we need simplification !
+        //(x.isInstanceOf[Zero] ==> (plus(x, y) == plus(y, x)))  this base case does not work even if it is above!!
     // we do not know why this inductive proof fails
     @induct
     def commut(x : Nat, y : Nat) : Boolean = {

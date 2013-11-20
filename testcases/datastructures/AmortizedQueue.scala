@@ -1,4 +1,3 @@
-import scala.collection.immutable.Set
 import leon.Utils._
 import leon.Annotations._
 
@@ -19,7 +18,7 @@ object AmortizedQueue {
     case Nil() => Set.empty[Int]
     case Cons(x, xs) => Set(x) ++ content(xs)
   }
-  
+
   def q2l(queue : AbsQueue) : List = queue match {
     case Queue(front, rear) => concat(front, reverse(rear))
   }
@@ -27,8 +26,8 @@ object AmortizedQueue {
   def nth(l:List, n:Int) : Int = {
     require(0 <= n && n < size(l))
     l match {
-      case Cons(x,xs) => 
-	if (n==0) x else nth(xs, n-1)
+      case Cons(x,xs) =>
+    if (n==0) x else nth(xs, n-1)
     }
   }
 
@@ -48,14 +47,14 @@ object AmortizedQueue {
     require(0 <= i && i < size(l1) + size(l2))
     l1 match {
       case Nil() => l2
-      case Cons(x,xs) => Cons(x, 
-			      if (i == 0) concat(xs, l2)
-			      else concatTest(xs, l2, i-1))
+      case Cons(x,xs) => Cons(x,
+                  if (i == 0) concat(xs, l2)
+                  else concatTest(xs, l2, i-1))
     }
-  }) ensuring (res => size(res) == size(l1) + size(l2) && 
-	       content(res) == content(l1) ++ content(l2) &&
-	       nth(res,i) == (if (i < size(l1)) nth(l1,i) else nth(l2,i-size(l1))) &&
-	       res == concat(l1,l2))
+  }) ensuring (res => size(res) == size(l1) + size(l2) &&
+           content(res) == content(l1) ++ content(l2) &&
+           nth(res,i) == (if (i < size(l1)) nth(l1,i) else nth(l2,i-size(l1))) &&
+           res == concat(l1,l2))
 
   def nthConcat(l1:List, l2:List, i:Int) : Boolean = {
     require(0 <= i && i < size(l1) + size(l2))
@@ -70,7 +69,7 @@ object AmortizedQueue {
       case (Nil(),_) => false
       case (_,Nil()) => false
       case (Cons(x,xs),Cons(y,ys)) => {
-	x==y && (if (k==0) true else sameUpto(xs,ys,k-1))
+    x==y && (if (k==0) true else sameUpto(xs,ys,k-1))
       }
     }
   } ensuring(res => !(size(l1)==k && size(l2)==k && res) || l1==l2)
@@ -141,7 +140,7 @@ object AmortizedQueue {
     queue match {
       case Queue(Cons(f, fs), rear) => amortizedQueue(fs, rear)
     }
-  }) ensuring(res => isAmortized(res) && (q2l(queue) match { 
+  }) ensuring(res => isAmortized(res) && (q2l(queue) match {
     case Nil() => false
     case Cons(_,xs) => q2l(res)==xs
   }))
@@ -151,7 +150,7 @@ object AmortizedQueue {
     queue match {
       case Queue(Cons(f, _), _) => f
     }
-  }) ensuring(res => q2l(queue) match { 
+  }) ensuring(res => q2l(queue) match {
     case Nil() => false
     case Cons(x,_) => x==res
   })

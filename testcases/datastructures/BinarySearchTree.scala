@@ -1,6 +1,3 @@
-import scala.collection.immutable.Set
-//import scala.collection.immutable.Multiset
-
 object BSTSimpler {
   sealed abstract class Tree
   case class Node(left: Tree, value: Int, right: Tree) extends Tree

@@ -27,7 +27,7 @@ object QuickSort {
     case Nil() => bList
     case _ => rev_append(reverse(aList),bList)
   }
-  
+
   def greater(n:Int,list:List) : List = list match {
     case Nil() => Nil()
     case Cons(x,xs) => if (n < x) Cons(x,greater(n,xs)) else greater(n,xs)

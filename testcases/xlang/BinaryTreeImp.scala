@@ -2,8 +2,8 @@ import scala.collection.immutable.Set
 import leon.Annotations._
 import leon.Utils._
 
-object BinaryTree { 
- 
+object BinaryTree {
+
   sealed abstract class Tree
   case class Leaf() extends Tree
   case class Node(left: Tree, value: Int, right: Tree) extends Tree
@@ -81,7 +81,7 @@ object BinaryTree {
         else search(left, x)
     }
   } ensuring(res => res == content(t).contains(x))
-  
+
   def searchImp(t: Tree, x: Int): Boolean = {
     require(binaryTreeProp(t))
     var res = false
@@ -90,7 +90,7 @@ object BinaryTree {
       val Node(left, value, right) = t2
       if(value == x)
         res = true
-      else if(value < x) 
+      else if(value < x)
         t2 = right
       else
         t2 = left

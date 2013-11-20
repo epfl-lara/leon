@@ -24,7 +24,7 @@ object BinaryTree {
   def noDup(l:List): Boolean = noDupWith(l,Set.empty[Int])
 
   // removing duplicates from l1 gives l2
-  def removeDupGives(l1:List,l2:List) : Boolean = 
+  def removeDupGives(l1:List,l2:List) : Boolean =
     l2s(l1)==l2s(l2) && noDup(l2)
 
   def removeDupAnd(l:List,s0:Set[Int]) : List = (l match {
@@ -44,8 +44,8 @@ object BinaryTree {
     l match {
       case Nil() => l0
       case Cons(h,l1) => {
-	if (s0.contains(h)) revRemoveDupAnd(l1,s0,l0)
-	else revRemoveDupAnd(l1,Set(h)++s0,Cons(h,l0))
+    if (s0.contains(h)) revRemoveDupAnd(l1,s0,l0)
+    else revRemoveDupAnd(l1,Set(h)++s0,Cons(h,l0))
       }
     }
   }) ensuring (res => noDupWith(res,s0) && l2s(l) ++l2s(l0) ++ s0 == l2s(res) ++ s0)
@@ -82,9 +82,9 @@ object BinaryTree {
     t match {
       case Leaf() => (l0,s0)
       case Node(l, v, r) => {
-	val (rl,rs) = seqNoDup(r,l0,s0)
-	val (l1,s1) = if (rs.contains(v)) (rl,rs) else (Cons(v,rl),Set(v)++rs)
-	seqNoDup(l,l1,s1)
+    val (rl,rs) = seqNoDup(r,l0,s0)
+    val (l1,s1) = if (rs.contains(v)) (rl,rs) else (Cons(v,rl),Set(v)++rs)
+    seqNoDup(l,l1,s1)
       }
     }
   }) ensuring (res => {
