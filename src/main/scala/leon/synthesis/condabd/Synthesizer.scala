@@ -68,13 +68,18 @@ class SynthesizerForRuleExamples(
   numberOfCheckInIteration: Int = 5,
   exampleRunnerSteps: Int = 4000) extends HasLogger {
 
-  reporter.info("Synthesizer:")
-  reporter.info("numberOfBooleanSnippets: %d".format(numberOfBooleanSnippets))
-  reporter.info("numberOfCounterExamplesToGenerate: %d".format(numberOfCounterExamplesToGenerate))
-//  reporter.info("leonTimeout: %d".format(leonTimeout))
+  def info(message: String) = {
+    reporter.info(message)
+    super.info(message)
+  }
+  
+  info("Synthesizer:")
+  info("numberOfBooleanSnippets: %d".format(numberOfBooleanSnippets))
+  info("numberOfCounterExamplesToGenerate: %d".format(numberOfCounterExamplesToGenerate))
+//  info("leonTimeout: %d".format(leonTimeout))
 
-  reporter.info("holeFunDef: %s".format(holeFunDef))
-  reporter.info("problem: %s".format(problem.toString))
+  info("holeFunDef: %s".format(holeFunDef))
+  info("problem: %s".format(problem.toString))
   
   // flag denoting if a correct body has been synthesized
   private var found = false
@@ -116,24 +121,24 @@ class SynthesizerForRuleExamples(
   import verifier._
 
   def synthesize: Report = {
-    reporter.info("Synthesis called on files: " + synthesisContext.context.files)
+    info("Synthesis called on files: " + synthesisContext.context.files)
 
     // profile
     synthInfo start Synthesis
 
-    reporter.info("Initializing synthesizer: ")
-    reporter.info("numberOfBooleanSnippets: %d".format(numberOfBooleanSnippets))
-    reporter.info("numberOfCounterExamplesToGenerate: %d".format(numberOfCounterExamplesToGenerate))
-//    reporter.info("leonTimeout: %d".format(leonTimeout))
+    info("Initializing synthesizer: ")
+    info("numberOfBooleanSnippets: %d".format(numberOfBooleanSnippets))
+    info("numberOfCounterExamplesToGenerate: %d".format(numberOfCounterExamplesToGenerate))
+//    info("leonTimeout: %d".format(leonTimeout))
     initialize
-    reporter.info("Synthesizer initialized")
+    info("Synthesizer initialized")
 
     // keeps status of validity
     var keepGoing = true
     // update flag in case of time limit overdue
     def checkTimeout =
       if (synthesisContext.context.interruptManager.isInterrupted()) {
-        reporter.info("Timeout occured, stopping this synthesis rules")
+        info("Timeout occured, stopping this synthesis rules")
         keepGoing = false
         true
       } else
@@ -157,18 +162,18 @@ class SynthesizerForRuleExamples(
         // next iteration
         iteration += 1
         noBranchFoundIteration += 1
-        reporter.info("####################################")
-        reporter.info("######Iteration #" + iteration + " ###############")
-        reporter.info("####################################")
-        reporter.info("# precondition is: " + holeFunDef.precondition.getOrElse(BooleanLiteral(true)))
-        reporter.info("# accumulatingCondition is: " + accumulatingCondition)
-        reporter.info("# accumulatingExpression(Unit) is: " + accumulatingExpression(UnitLiteral))
-        reporter.info("####################################")
+        info("####################################")
+        info("######Iteration #" + iteration + " ###############")
+        info("####################################")
+        info("# precondition is: " + holeFunDef.precondition.getOrElse(BooleanLiteral(true)))
+        info("# accumulatingCondition is: " + accumulatingCondition)
+        info("# accumulatingExpression(Unit) is: " + accumulatingExpression(UnitLiteral))
+        info("####################################")
         interactivePause
 
         var numberOfTested = 0
 
-        reporter.info("Going into a enumeration/testing phase.")
+        info("Going into a enumeration/testing phase.")
         fine("evaluating examples: " + gatheredExamples.mkString("\n"))
 
         breakable {
@@ -176,7 +181,7 @@ class SynthesizerForRuleExamples(
             if (checkTimeout) break
             val batchSize = numberOfTestsInIteration * (1 << noBranchFoundIteration)
 
-            reporter.info("numberOfTested: " + numberOfTested)
+            info("numberOfTested: " + numberOfTested)
             // ranking of candidates        
             val candidates = {
               val (it1, it2) = snippetsIterator.duplicate
@@ -193,9 +198,9 @@ class SynthesizerForRuleExamples(
 		              successfulCandidates
             }
             
-//            reporter.info("Got candidates of size: " + candidates.size +
+//            info("Got candidates of size: " + candidates.size +
 //              " , first 10 of them are: " + candidates.take(10).map(_.getSnippet.toString).mkString(",\t"))
-            reporter.info("Got candidates of size: " + candidates.size)            
+            info("Got candidates of size: " + candidates.size)            
             fine("Got candidates: " + candidates.map(_.getSnippet.toString).mkString(",\n"))
             interactivePause
 
@@ -209,7 +214,7 @@ class SynthesizerForRuleExamples(
               val ranker = evaluationStrategy.getRanker(candidates, accumulatingExpression, gatheredExamples)
               exampleRunner = evaluationStrategy.getExampleRunner
               
-              reporter.info("Ranking candidates...")
+              info("Ranking candidates...")
               synthInfo.start(Action.Evaluation)
               val (maxCandidate, maxCandidateInd) = ranker.getMax
               val (passed, failedModulo) = ranker.fullyEvaluate(maxCandidateInd)
@@ -239,7 +244,7 @@ class SynthesizerForRuleExamples(
               // check for timeouts
               if (!keepGoing) break
 
-              reporter.info("candidate with the most successfull evaluations is: " + maxCandidate.getExpr +
+              info("candidate with the most successfull evaluations is: " + maxCandidate.getExpr +
                 " with pass count " + passed + " out of " + gatheredExamples.size)
               interactivePause
               numberOfTested += batchSize
@@ -274,12 +279,12 @@ class SynthesizerForRuleExamples(
           synthInfo end Synthesis
           synthInfo.iterations = iteration
           synthInfo.numberOfEnumeratedExpressions = numberOfTested
-          reporter.info("We are done, in time: " + synthInfo.last)
+          info("We are done, in time: " + synthInfo.last)
           return new FullReport(holeFunDef, synthInfo)
         }
 
         if (variableRefinedBranch) {
-          reporter.info("Variable refined, doing branch synthesis again")
+          info("Variable refined, doing branch synthesis again")
           // get new snippets
           snippets = synthesizeBranchExpressions
           snippetsIterator = snippets.iterator
@@ -291,7 +296,7 @@ class SynthesizerForRuleExamples(
           // reseting iterator needed because we may have some expressions that previously did not work
           snippetsIterator = snippets.iterator
 
-        reporter.info("Filtering based on precondition: " + And(initialPrecondition, accumulatingCondition))
+        info("Filtering based on precondition: " + And(initialPrecondition, accumulatingCondition))
         fine("counterexamples before filter: " + gatheredExamples.size)
         exampleRunner.filter(And(initialPrecondition, accumulatingCondition))
         gatheredExamples = exampleRunner.examples
@@ -304,7 +309,7 @@ class SynthesizerForRuleExamples(
   }
 
   def generateCounterexamples(program: Program, funDef: FunDef, number: Int): (Seq[Map[Identifier, Expr]], Expr) = {
-    reporter.info("Generate counter examples with precondition " + funDef.precondition.getOrElse(BooleanLiteral(true)))
+    info("Generate counter examples with precondition " + funDef.precondition.getOrElse(BooleanLiteral(true)))
 
     // save current precondition
     var precondition = funDef.precondition.getOrElse(BooleanLiteral(true))
@@ -321,7 +326,7 @@ class SynthesizerForRuleExamples(
 
       // check if solver could solved this instance
       if (solved == false && !map.isEmpty) {
-        reporter.info("Found counterexample: " + map)
+        info("Found counterexample: " + map)
         // add current counterexample
         maps :+= map
 
@@ -347,19 +352,18 @@ class SynthesizerForRuleExamples(
   def getCurrentBuilder = new InitialEnvironmentBuilder(allDeclarations)
 
   def synthesizeBranchExpressions = {
-    reporter.info("Invoking synthesis for branch expressions")
+    info("Invoking synthesis for branch expressions")
     synthInfo.profile(Generation) { inSynth.getExpressions(getCurrentBuilder).distinct }
   }
 
   def synthesizeBooleanExpressions = {
-    reporter.info("Invoking synthesis for condition expressions")
+    info("Invoking synthesis for condition expressions")
     synthInfo.start(Generation)
     if (variableRefinedCondition) {
       // store for later fetch (will memoize values)
       fine("Going into boolean synthesis")
       val stream = inSynthBoolean.getExpressions(getCurrentBuilder)
       fine("Out of boolean synthesis")
-      println("stream is here!")
       booleanExpressionsSaved =
         stream.distinct.take(numberOfBooleanSnippets).
           filterNot(expr => refiner.isAvoidable(expr.getSnippet, problem.as))
@@ -407,16 +411,20 @@ class SynthesizerForRuleExamples(
 	      case _ => None
 	    }
 	    
-	    import TreeOps._
-      matchToIfThenElse(searchAndReplace(replaceChoose)(holeFunDefBody))
+	    //import TreeOps._
+      //matchToIfThenElse(searchAndReplace(replaceChoose)(holeFunDefBody))
+	    TreeOps.searchAndReplace(replaceChoose)(TreeOps.matchToIfThenElse(holeFunDefBody))
     }
     //accumulatingExpressionMatch = accumulatingExpression
 
     // each variable of super type can actually have a subtype
     // get sine declaration maps to be able to refine them  
-    variableRefiner =
-  		new VariableRefiner(loader.directSubclassesMap,
-				loader.variableDeclarations, loader.classMap, reporter)
+    variableRefiner = new VariableRefinerCompose add
+      // refiner on structure
+  		new VariableRefinerStructure(loader.directSubclassesMap,
+				loader.variableDeclarations, loader.classMap, reporter) add
+			// refiner that uses execution
+			new VariableRefinerExecution(loader.variableDeclarations, loader.classMap)
 //  		new VariableSolverRefiner(loader.directSubclassesMap,
 //				loader.variableDeclarations, loader.classMap, mainSolver, reporter)
 
@@ -440,23 +448,23 @@ class SynthesizerForRuleExamples(
 
     snippetTree.setType(desiredType)
     //holeFunDef.getBody.setType(hole.desiredType)
-    reporter.info("Current candidate solution is:\n" + holeFunDef)
+    info("Current candidate solution is:\n" + holeFunDef)
 
     if (failedExamples.isEmpty) {
     	// check if solver could solved this instance
     	fine("Analyzing program for funDef:" + holeFunDef)
     	val (result, map) = analyzeFunction(holeFunDef)
-			reporter.info("Solver returned: " + result + " with CE " + map)
+			info("Solver returned: " + result + " with CE " + map)
     	
 	    if (result) {
 	      // mark the branch found
 	      found = true
 	
-	      reporter.info("Wooooooow we have a winner!")
-	      reporter.info("************************************")
-	      reporter.info("*********And the winner is**********")
-	      reporter.info(accumulatingExpression(snippetTree).toString)
-	      reporter.info("************************************")
+	      info("Wooooooow we have a winner!")
+	      info("************************************")
+	      info("*********And the winner is**********")
+	      info(accumulatingExpression(snippetTree).toString)
+	      info("************************************")
 	
 	      return true
 	    } else {
@@ -503,28 +511,53 @@ class SynthesizerForRuleExamples(
             })
         ) {
           fine("boolean snippet is: " + innerSnippetTree)
-          reporter.info("Trying: " + innerSnippetTree + " as a condition.")
-          val (innerFound, innerPrec) = tryToSynthesizeBooleanCondition(
+          info("Trying: " + innerSnippetTree + " as a condition.")
+          val innerPrecFound = tryToSynthesizeBooleanCondition(
             snippetTree, innerSnippetTree,
             // counter examples represent those for which candidate fails
             (failedExamples.map(_.map) ++ maps), succeededExamples.map(_.map)
           )
 
-          // if precondition found
-          if (innerFound) {
-            reporter.info("Precondition " + innerPrec + " found for " + snippetTree)
-
-            innerPrec match {
-              case s @ Some(_) =>
-                // new precondition (restore in finally)
-                preconditionToRestore = s
-              case _ =>
+          info("tryToSynthesizeBooleanCondition returned " + innerPrecFound + " for " + snippetTree)
+          if ( innerPrecFound ) {
+            // update accumulating expression
+            val oldAccumulatingExpression = accumulatingExpression
+            val newAccumulatingExpression =
+              (finalExpr: Expr) =>
+                oldAccumulatingExpression({
+                  val innerIf = IfExpr(innerSnippetTree, snippetTree, finalExpr)
+                  innerIf.setType(snippetTree.getType)
+                  innerIf
+                })
+  
+            accumulatingExpression = newAccumulatingExpression
+  
+            // update accumulating precondition
+            fine("updating accumulatingPrecondition")
+            accumulatingCondition = And(Seq(accumulatingCondition, Not(innerSnippetTree)))
+            fine("updating hole fun precondition and body (to be hole)")
+            // new precondition (restore in finally)
+            preconditionToRestore = Some(accumulatingCondition)
+  
+            val currentBranchCondition = And(Seq(accumulatingCondition, innerSnippetTree))
+            val variableRefinementResult = variableRefiner.refine(innerSnippetTree,
+              currentBranchCondition, allDeclarations, exampleRunner.getEvaluator)
+  
+            if (variableRefinementResult._1) {
+              info("Variable is refined.")
+              allDeclarations = variableRefinementResult._2
+  
+              // the reason for two flags is for easier management of re-syntheses only if needed 
+              variableRefinedBranch = true
+              variableRefinedCondition = true
             }
+            
             return true
           }
+
         } // iterating over all boolean solutions
 
-        reporter.info("No precondition found for branch expression: " + snippetTree)
+        info("No precondition found for branch expression: " + snippetTree)
         return false
 
       } // if ( !maps.isEmpty ) {
@@ -539,8 +572,17 @@ class SynthesizerForRuleExamples(
     }
   }
 
+  /**
+   * tries to abduce a new branch
+   * @param snippetTree expression candidate
+   * @param innerSnippetTree condition candidate
+   * @param counterExamples failed examples 
+   * @param succExamples successful examples
+   * @return whether branch condition is found
+   */
   def tryToSynthesizeBooleanCondition(snippetTree: Expr, innerSnippetTree: Expr,
-    counterExamples: Seq[Map[Identifier, Expr]], succExamples: Seq[Map[Identifier, Expr]]): (Boolean, Option[Expr]) = {
+    counterExamples: Seq[Map[Identifier, Expr]], succExamples: Seq[Map[Identifier, Expr]]):
+      Boolean = {
     // new condition together with existing precondition
     val newPrecondition = And(Seq(initialPrecondition, accumulatingCondition, innerSnippetTree))
     val newPathCondition = And(Seq(problem.pc, accumulatingCondition, innerSnippetTree))
@@ -560,6 +602,7 @@ class SynthesizerForRuleExamples(
           exampleRunner.evaluateToResult(newPrecondition, exMapping) match {
             case EvaluationResults.Successful(BooleanLiteral(false)) => false
             case r =>
+//          throw new RuntimeException("should not go here")
               
              // TODO take care of this mess 
 				    val newFunId = FreshIdentifier("tempIntroducedFunction22")
@@ -593,8 +636,10 @@ class SynthesizerForRuleExamples(
 
               val newCandidate = 
 				    Let(resFresh2, newBody,
-				      matchToIfThenElse(replace(Map(LeonVariable(id) -> LeonVariable(resFresh2)),
-				        post)))
+//				      matchToIfThenElse(replace(Map(LeonVariable(id) -> LeonVariable(resFresh2)),
+//				        post)))
+				        replace(Map(LeonVariable(id) -> LeonVariable(resFresh2)),
+                       matchToIfThenElse(post)))
 				    finest("New fun for Error evaluation: " + newFun)
 //				    println("new candidate: " + newBody)
 	
@@ -603,10 +648,10 @@ class SynthesizerForRuleExamples(
 //				    println("new program: " + newProgram)
 			          
 		          val _evaluator = new CodeGenEvaluator(synthesisContext.context, newProgram		              
-		              /* TODO:, _root_.leon.codegen.CodeGenEvalParams(maxFunctionInvocations = 500, checkContracts = true) */)
+		              , _root_.leon.codegen.CodeGenParams(maxFunctionInvocations = 500, checkContracts = true))
 	
 				    	val res = _evaluator.eval(newCandidate, exMapping)
-				    	println(res)
+//				    	println(res)
 //				    	if (newCandidate.toString contains "tree.value < value")
 //				    		interactivePause
 				    		
@@ -619,7 +664,7 @@ class SynthesizerForRuleExamples(
 				    	  case _ =>
 				    	    // TODO think about this
 				    	    // I put condition into precondition so some examples will be violated?
-				    	    println("new evalution got: " + res + " for " + newCandidate + " and " + exMapping + " newFun is " + newFun)
+				    	    finest("new evalution got: " + res + " for " + newCandidate + " and " + exMapping + " newFun is " + newFun)
 				    	    true
 				    	}
 				    		
@@ -633,6 +678,7 @@ class SynthesizerForRuleExamples(
       
       val implyCounterExamples = if (!implyCounterExamplesPre && hadRuntimeError) {
         ! succExamples.exists( exMapping => {
+//          throw new RuntimeException("should not go here")
              // TODO take care of this mess 
 				    val newFunId = FreshIdentifier("tempIntroducedFunction22")
 				    val newFun = new FunDef(newFunId, holeFunDef.returnType, holeFunDef.args)
@@ -663,8 +709,10 @@ class SynthesizerForRuleExamples(
 
               val newCandidate = 
 				    Let(resFresh2, newBody,
-				      matchToIfThenElse(replace(Map(LeonVariable(id) -> LeonVariable(resFresh2)),
-				        post)))
+//				      matchToIfThenElse(replace(Map(LeonVariable(id) -> LeonVariable(resFresh2)),
+//				        post)))				        
+				        replace(Map(LeonVariable(id) -> LeonVariable(resFresh2)),
+                       matchToIfThenElse(post)))
 				    finest("New fun for Error evaluation: " + newFun)
 //				    println("new candidate: " + newBody)
 	
@@ -672,11 +720,11 @@ class SynthesizerForRuleExamples(
 			          program.mainObject.copy(defs = newFun +: program.mainObject.defs ))
 //				    println("new program: " + newProgram)
 			          
-		          val _evaluator = new CodeGenEvaluator(synthesisContext.context, newProgram /* TODO: ,		              
-		              _root_.leon.codegen.CodeGenEvalParams(maxFunctionInvocations = 500, checkContracts = true) */)
+		          val _evaluator = new CodeGenEvaluator(synthesisContext.context, newProgram,		              
+		              _root_.leon.codegen.CodeGenParams(maxFunctionInvocations = 500, checkContracts = true))
 	
 				    	val res = _evaluator.eval(newCandidate, exMapping)
-				    	println("for mapping: " + exMapping + "res is: " + res)
+				    	finest("for mapping: " + exMapping + "res is: " + res)
 //				    	if (newCandidate.toString contains "tree.value < value")
 //				    		interactivePause
 				    		
@@ -686,7 +734,7 @@ class SynthesizerForRuleExamples(
 				    	    false
 				    	  case EvaluationResults.Successful(BooleanLiteral(innerRes)) => innerRes
 				    	  case _ =>
-				    	    println("new evalution got: " + res + " for " + newCandidate + " and " + exMapping)
+				    	    finest("new evalution got: " + res + " for " + newCandidate + " and " + exMapping)
 				    	    false
 				    	}
       	})
@@ -706,57 +754,25 @@ class SynthesizerForRuleExamples(
         // program is valid, we have a branch
         if (valid) {
           // we found a branch
-          reporter.info("We found a branch, for expression %s, with condition %s.".format(snippetTree, innerSnippetTree))
-
-          // update accumulating expression
-          val oldAccumulatingExpression = accumulatingExpression
-          val newAccumulatingExpression =
-            (finalExpr: Expr) =>
-              oldAccumulatingExpression({
-                val innerIf = IfExpr(innerSnippetTree, snippetTree, finalExpr)
-                innerIf.setType(snippetTree.getType)
-                innerIf
-              })
-
-          accumulatingExpression = newAccumulatingExpression
-          val currentBranchCondition = And(Seq(accumulatingCondition, innerSnippetTree))
-
-          // update accumulating precondition
-          fine("updating accumulatingPrecondition")
-          accumulatingCondition = And(Seq(accumulatingCondition, Not(innerSnippetTree)))
-          fine("updating hole fun precondition and body (to be hole)")
-
-          // set to set new precondition
-          val preconditionToRestore = Some(accumulatingCondition)
-
-          val variableRefinementResult = variableRefiner.checkRefinements(innerSnippetTree, currentBranchCondition, allDeclarations)
-          if (variableRefinementResult._1) {
-            reporter.info("Variable is refined.")
-            allDeclarations = variableRefinementResult._2
-
-            // the reason for two flags is for easier management of re-syntheses only if needed 
-            variableRefinedBranch = true
-            variableRefinedCondition = true
-          }
-
+          info("We found a branch, for expression %s, with condition %s.".format(snippetTree, innerSnippetTree))
+          
           // found a boolean snippet, break
-          (true, preconditionToRestore)
+          true
         } else {
 			    // collect (add) counterexamples from leon
 			    if (collectCounterExamplesFromLeon && !map.isEmpty)
 			      gatheredExamples ++= (map :: Nil).map(Example(_))            
           
           // reset funDef and continue with next boolean snippet
-          val preconditionToRestore = Some(accumulatingCondition)
-          (false, preconditionToRestore)
+			    false
         }
       } else {
         fine("Solver filtered out the precondition (does not imply counterexamples)")
-        (false, None)
+        false
       }
     } else {// if (!isItAContradiction)
       fine("Solver filtered out the precondition (is not sound)")
-      (false, None)      
+      false      
     }
   }
 

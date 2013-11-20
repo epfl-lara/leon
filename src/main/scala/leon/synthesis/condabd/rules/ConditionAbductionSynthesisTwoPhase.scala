@@ -64,8 +64,8 @@ case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abductio
                 synthesizer.synthesize match {
                   case EmptyReport => RuleApplicationImpossible
                   case fr@FullReport(resFunDef, _) =>
-                    println(fr.summaryString)
-                    println("Compilation time: " + StopwatchCollections.get("Compilation").getMillis)
+                    reporter.info(fr.summaryString)
+                    reporter.info("Compilation time: " + StopwatchCollections.get("Compilation").getMillis)
                     RuleSuccess(
                       Solution(BooleanLiteral(true), Set.empty, Tuple(Seq(resFunDef.body.get))),
                             isTrusted = !synthesizer.verifier.isTimeoutUsed
