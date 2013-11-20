@@ -29,7 +29,7 @@ object SmtlibToLeon {
     
     var expr = p.parse    
     while(expr != null) {
-      
+            
       expr match {
         case SList(List(SSymbol("SET-LOGIC"), SSymbol(logic))) => {}     
         case SList(SSymbol("SET-INFO") :: attr) => {}          

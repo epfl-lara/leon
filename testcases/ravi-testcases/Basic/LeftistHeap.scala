@@ -5,37 +5,31 @@ object LeftistHeap {
   case class Leaf() extends Heap
   case class Node(rk : Int, value: Int, left: Heap, right: Heap) extends Heap
 
-  private def rightHeight(h: Heap) : Int = h match {
+  private def rightHeight(h: Heap) : Int = {h match {
     case Leaf() => 0
     case Node(_,_,_,r) => rightHeight(r) + 1
-  }
+  }} ensuring(_ >= 0)
   
-  private def rank(h: Heap) : Int = h match {
-    case Leaf() => 0
-    case Node(rk,_,_,_) => rk
-  }
-
   private def hasLeftistProperty(h: Heap) : Boolean = (h match {
     case Leaf() => true
-    case Node(_,_,l,r) => hasLeftistProperty(l) && hasLeftistProperty(r) && rightHeight(l) >= rightHeight(r) && (rank(h) == rightHeight(h)) 
+    case Node(_,_,l,r) => hasLeftistProperty(l) && hasLeftistProperty(r) && rightHeight(l) >= rightHeight(r)
   })
-
-
-  def twopower(x: Int) : Int = {
-    require(x >= 0)
-    if(x < 1) 1    
-    else      
-      2* twopower(x - 1)
-  } 
-
+  
   def size(t: Heap): Int = {
-    require(hasLeftistProperty(t))  
     (t match {
       case Leaf() => 0
       case Node(_,v, l, r) => size(l) + 1 + size(r)
     })
-  } ensuring (res => true template((a,b) => twopower(rightHeight(t)) <= a*res + b))
+  }
 
+  def removeMax(h: Heap) : Heap = {
+    require(hasLeftistProperty(h))
+    h match {
+      case Node(_,_,l,r) => merge(l, r)
+      case l @ Leaf() => l
+    }
+  } ensuring(res => size(res) >= size(h) - 1) 
+  
   private def merge(h1: Heap, h2: Heap) : Heap = {
     require(hasLeftistProperty(h1) && hasLeftistProperty(h2))
     h1 match {
@@ -49,30 +43,19 @@ object LeftistHeap {
             makeT(v2, l2, merge(h1, r2))
       }
     }
-  } ensuring(res => true template((a,b,c) => time <= a*rightHeight(h1) + b*rightHeight(h2) + c))
+  } ensuring(res => size(res) == size(h1) + size(h2))    
 
   private def makeT(value: Int, left: Heap, right: Heap) : Heap = {
-    if(rank(left) >= rank(right))
-      Node(rank(right) + 1, value, left, right)
+    if(rightHeight(left) >= rightHeight(right))
+      Node(rightHeight(right) + 1, value, left, right)
     else
-      Node(rank(left) + 1, value, right, left)
+      Node(rightHeight(left) + 1, value, right, left)
   }
-
- def insert(element: Int, heap: Heap) : Heap = {
+  
+  def insert(element: Int, heap: Heap) : Heap = {
    require(hasLeftistProperty(heap))
    
     merge(Node(1, element, Leaf(), Leaf()), heap)
     
-  } ensuring(res => true template((a,b,c) => time <= a*rightHeight(heap) + c))
-
-  /*def main(args: Array[String]) : Unit = {
-    val h1 = emptyHeap()
-    val h2 = insert(8, insert(0, insert(8, insert(24, insert(41, insert(13, h1))))))
-    var h3 = h2
-    while(!isHeapEmpty(h3)) {
-      println(h3)
-      println(findMax(h3))
-      h3 = removeMax(h3)
-    }
-  }*/
+  }ensuring(res => size(res) == size(heap) + 1)
 }

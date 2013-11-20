@@ -1,5 +1,15 @@
 * Invalidate entire paths instead of blocking inputs.
 * Incorporate CEGIS into the tool
 * Incorporate CEGAR using template based interpolant into the tool
+* Perform modular analysis
+
+Solve callees in isolation using templates. If the callee templates are not strong enough (i.e, if the caller verification did not succeed)
+Try to find a stonger invariant belonging to the template for the callee, i.e, VC condition + (I_{new} ^ ~I_{old}) is unsat. But this may 
+have a trivial solution which is I_{old}. Hence, we want (I_{old} ^ ~I_{new}) satisfiable. This can be added directly to the Farkas constraints.
+Note that this has program variables which are integers. To solve this we can actually treat integers as reals. However, we may not be 
+guaranteed to find stronger one. But will we eventually find one ? (unless the invariant polygon is bounded, finding a real is equivalent to finding an integer.)
+If its a bounded polygon all that we need to do is check if its diameter is atleast one (this enforces an integer to be present in the polygon).
+
+* Perform targetted unrolling. Find which functions to unroll, by using the  ocunter -example disjunct, any othre hueristic ?.
 * Infer templates using quantifier elimination and abduction
 

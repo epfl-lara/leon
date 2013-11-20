@@ -13,7 +13,7 @@ object HeapSort {
   private def rightHeight(h: Heap) : Int = {h match {
     case Leaf() => 0
     case Node(_,_,_,r) => rightHeight(r) + 1
-  }} 
+  }} ensuring(_ >= 0)
   
   private def rank(h: Heap) : Int = h match {
     case Leaf() => 0
@@ -31,7 +31,7 @@ object HeapSort {
       case Leaf() => 0
       case Node(_,v, l, r) => heapSize(l) + 1 + heapSize(r)
     })
-  }
+  } ensuring(_ >= 0)
 
   private def merge(h1: Heap, h2: Heap) : Heap = {
     require(hasLeftistProperty(h1) && hasLeftistProperty(h2))
@@ -46,7 +46,7 @@ object HeapSort {
             makeT(v2, l2, merge(h1, r2))
       }
     }
-  } ensuring(res => hasLeftistProperty(res) template((a,b,c,d) => a*heapSize(h1) + b*heapSize(h2) + c*heapSize(res) + d == 0))
+  } ensuring(res => hasLeftistProperty(res) && heapSize(h1) + heapSize(h2) == heapSize(res))
   
 
   private def makeT(value: Int, left: Heap, right: Heap) : Heap = {
@@ -60,7 +60,8 @@ object HeapSort {
    require(hasLeftistProperty(heap))
    
     merge(Node(1, element, Leaf(), Leaf()), heap)    
-  } //ensuring(res => heapSize(res) == heapSize(heap) + 1)
+    
+  } ensuring(res => heapSize(res) == heapSize(heap) + 1)
  
    def findMax(h: Heap) : Int = {
     require(hasLeftistProperty(h))
@@ -81,7 +82,7 @@ object HeapSort {
   def listSize(l : List) : Int = (l match {
     case Nil() => 0
     case Cons(_, xs) => 1 + listSize(xs)
-  }) 
+  }) ensuring(_ >= 0)
   
   def removeElements(h : Heap, l : List) : List = {
           require(hasLeftistProperty(h))
@@ -89,7 +90,7 @@ object HeapSort {
     case Leaf() => l
     case _ => removeElements(removeMax(h),Cons(findMax(h),l)) 
     
-  }} ensuring(res => true template((a,b,c,d) => a*heapSize(h) + b*listSize(l) + c*listSize(res) + d  == 0))
+  }} ensuring(res => heapSize(h) + listSize(l) == listSize(res))
     
   def buildHeap(l : List, h: Heap) : Heap = {
           require(hasLeftistProperty(h))
@@ -97,7 +98,7 @@ object HeapSort {
     case Nil() => h
     case Cons(x,xs) => buildHeap(xs, insert(x, h))
     
-  }} ensuring(res => hasLeftistProperty(res) template((a,b,c,d) => a*heapSize(h) + b*listSize(l) + c*heapSize(res)  == 0))
+  }} ensuring(res => hasLeftistProperty(res) && heapSize(h) + listSize(l) == heapSize(res))
  
   def sort(l: List): List = ({
     
