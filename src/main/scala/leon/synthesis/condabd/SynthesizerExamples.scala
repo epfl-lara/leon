@@ -652,7 +652,6 @@ class SynthesizerForRuleExamples(
 		              , _root_.leon.codegen.CodeGenParams(maxFunctionInvocations = 500, checkContracts = true))
 	
 				    	val res = _evaluator.eval(newCandidate, exMapping)
-				    	println(res)
 //				    	if (newCandidate.toString contains "tree.value < value")
 //				    		interactivePause
 				    		

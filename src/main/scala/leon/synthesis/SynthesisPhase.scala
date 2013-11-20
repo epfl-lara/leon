@@ -99,7 +99,11 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     }
 
     if (options.manualSearch) {
-      options = options.copy(rules = rules.AsChoose +: options.rules)
+      options = options.copy(
+        rules = rules.AsChoose +:
+                condabd.rules.ConditionAbductionSynthesisTwoPhase +:
+                options.rules
+      )
     }
 
     options
