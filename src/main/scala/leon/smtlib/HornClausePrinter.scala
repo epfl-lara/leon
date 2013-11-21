@@ -178,7 +178,14 @@ class HornClausePrinter(pgm: Program) {
         }        
       }      
       //convert leon implications to SExprs
-      implications.map(exp2sexp _)      
+      implications.map((imp) => {
+        //convert implication to sexpr
+        val impbody = exp2sexp(imp)
+        //quantify over all free variables in 'imp'
+        val freesyms = variablesOf(imp).map((id) => SList(List(id2sym(id), tpe2sort(id.getType)))).toList        
+        SList(SSymbol("forall"), SList(freesyms), impbody)
+      })
+      
     } else {
       //no body
       throw new IllegalArgumentException("Warning no body found for : "+fd.id)
