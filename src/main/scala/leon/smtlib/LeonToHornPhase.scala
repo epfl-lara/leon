@@ -66,7 +66,7 @@ object LeonToHornPhase extends UnitPhase[Program] {
     }
 
     val t1 = System.currentTimeMillis()
-    val smtlibstr = HornClausePrinter(program)
+    val smtlibstr = new HornClausePrinter(program).toSmtLib
     outfile.print(smtlibstr)
     outfile.flush()
     outfile.close()

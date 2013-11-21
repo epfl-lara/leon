@@ -48,9 +48,10 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
   //TODO: there is serious bug in using incremental solving. Report this to z3 community
   val debugIncremental = false  
   val debugElimination = false
-  val printPaths = false
+  val printPathToConsole = false
+  val dumpPathAsSMTLIB = true
   val printCallConstriants = false
-  val printReducedFormula = false
+  val printReducedFormula = false  
   val dumpNLFormula = false
   val dumpInstantiatedVC = false 
   val debugAxioms = false    
@@ -319,7 +320,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         FileCountGUID.fileCount += 1
         val filename = "z3formula-" + FileCountGUID.fileCount + ".smt"
         val pwr = new PrintWriter(filename)
-        pwr.println(solverWithCtrs.ctrsToString)
+        pwr.println(solverWithCtrs.ctrsToString("QF_NRA"))
         pwr.flush()
         pwr.close()
         println("Formula printed to File: " + filename)
@@ -431,7 +432,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
 
             val fn2 = "z3formula-withModel-" + FileCountGUID.fileCount + ".smt"
             val pwr = new PrintWriter(fn2)
-            pwr.println(solverWithCtrs.ctrsToString)
+            pwr.println(solverWithCtrs.ctrsToString("QF_NRA"))
             pwr.flush()
             pwr.close()
             println("Formula & Model printed to File: " + fn2)
@@ -759,7 +760,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           //solver.pop()          
           resExpr
         }
-        case CtrLeaf() => {
+        case CtrLeaf() => {          
           //pipe to the uif constraint generator           
           uifsConstraintsGen(ants, antTemps, antAuxs, currUIFs, adtCons, conseqs, currTemps, currAuxs, depth + 1)
         }
@@ -805,15 +806,29 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       val pathctr = constraintsToExpr(ants ++ conseqs, calls, adtCons ++ antAuxs ++ conseqAuxs)
       val uifexprs = calls.map((call) => Equals(call.retexpr, call.fi)).toSeq
       //for debugging
-      if (this.printPaths) {
+      if (this.printPathToConsole || this.dumpPathAsSMTLIB) {
         val pathexprsWithTemplate = (ants ++ antTemps ++ conseqs ++ conseqTemps).map(_.template)
         val plainFormula = And(antAuxs ++ conseqAuxs ++ adtCons ++ uifexprs ++ pathexprsWithTemplate)
-        val formula = simplifyArithmetic(plainFormula)
-        println("Full-path: " + formula)
+        val pathcond = simplifyArithmetic(plainFormula)
+        
+        if(this.printPathToConsole)
+          println("Full-path: " + pathcond)
         /*val wr = new PrintWriter(new File("full-path-"+formula.hashCode()+".txt"))
           ExpressionTransformer.PrintWithIndentation(wr, formula)
           wr.flush()
           wr.close()*/
+        
+        if(this.dumpPathAsSMTLIB) {
+         //create new solver, assert constraints and print
+          val printSol = new UIFZ3Solver(context, program)
+          printSol.assertCnstr(pathcond)
+          val filename = "pathcond"+ FileCountGUID.getID 
+          val writer = new PrintWriter(filename)
+          writer.println(printSol.ctrsToString("QF_NIA"))
+          printSol.free()
+          writer.flush()
+          writer.close()
+        }
       }
       
       val uifCtrs = constraintsForUIFs(uifexprs ++ adtCons, pathctr, doesAlias, generateAxiom)
@@ -932,8 +947,9 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         //TODO: one idea: use the dependence chains in the formulas to identify what to assertionize 
         // and what can never be implied by solving for the templates
         
-        if(this.printReducedFormula)
-        	println("Final Path Constraints: "+(newLnctrs ++ temps))
+        if(this.printReducedFormula){
+          println("Final Path Constraints: "+(newLnctrs ++ temps))          
+        }                
         
         val implCtrs = implicationSolver.constraintsForUnsat(newLnctrs, temps)        
         implCtrs

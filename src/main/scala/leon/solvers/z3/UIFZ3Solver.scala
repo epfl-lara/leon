@@ -117,11 +117,11 @@ class UIFZ3Solver(val context : LeonContext, val program: Program, autoComplete 
       model.context.getBoolValue(res.get)
    }
   
-  def ctrsToString : String = {    
+  def ctrsToString(logic : String) : String = {        
     z3.setAstPrintMode(Z3Context.AstPrintMode.Z3_PRINT_SMTLIB2_COMPLIANT)
     var i = 0
     var smtstr = solver.getAssertions().toSeq.foldLeft("")((acc, asser) => {      
-      val str = z3.benchmarkToSMTLIBString("benchmark", "QF_NRA", "unknown", "", Seq(), asser)
+      val str = z3.benchmarkToSMTLIBString("benchmark", logic, "unknown", "", Seq(), asser)
 
       val newstr = if (i > 0) {
         //remove from the string the headers and also redeclaration of template variables
