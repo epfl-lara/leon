@@ -42,7 +42,7 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
     
     //create new function declarations 
     //More functions may be added while processing functions
-    pgm.definedFunctions.foreach((fd) => {
+    pgm.definedFunctions.foreach((fd) => {      
       if(fd.returnType == BooleanType) funs += (fd -> fd)
       else {
        if(fd.returnType == UnitType) 
@@ -127,7 +127,13 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
     case BooleanType => SSymbol("Bool")
     case ArrayType(baseTpe) => SList(SSymbol("Array"), SSymbol("Int"), tpe2sort(baseTpe))
     case AbstractClassType(abs) => id2sym(abs.id)
-    case CaseClassType(cc) => id2sym(cc.id)
+    case CaseClassType(cc) => {
+      if(cc.parent.isDefined){
+        //use the parent        
+        id2sym(cc.parent.get.id)
+      } else
+        id2sym(cc.id)
+    }
     case tt@TupleType(_) => {
       val cc = tupleTypeToCaseClassDef(tt)
       id2sym(cc.id)
@@ -149,7 +155,10 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
       val (hornBody, imps) = leonToHorn(Equals(resvar, fd.body.get))
       implications ++= imps      
       //create an implication that (hornBody => fdRel)
-      val bodyRel = FunctionInvocation(funs(fd), paramsRes.map(_.toVariable))
+      
+      val bodyRel = if(fd.returnType == BooleanType) FunctionInvocation(funs(fd), params.map(_.toVariable)) 
+      else FunctionInvocation(funs(fd), paramsRes.map(_.toVariable))
+      
       implications :+= Implies(hornBody, bodyRel)
       
       if(fd.hasPostcondition) {
@@ -212,7 +221,7 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
     val flatExpr = ExpressionTransformer.TransformNot(ExpressionTransformer.normalizeExpr(simpExpr))
     //replace all the function calls by predicates given by 'funs'
     val rel = simplePostTransform((e: Expr) => e match {
-      case Equals(r @ Variable(_), fi @ FunctionInvocation(fd, args)) => FunctionInvocation(funs(fd), args :+ r)
+      case Equals(r @ Variable(_), fi @ FunctionInvocation(fd, args)) => FunctionInvocation(funs(fd), args :+ r)      
       //case Iff(r @ Variable(_), fi @ FunctionInvocation(fd, args)) => FunctionInvocation(funs(fd), args :+ r)
       case _ => e
     })(flatExpr)
