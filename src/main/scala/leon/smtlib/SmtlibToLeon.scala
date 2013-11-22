@@ -13,6 +13,8 @@ import leon.purescala.TypeTrees._
 
 object SmtlibToLeon {
 
+  var typemap = Map[SSymbol,TypeTree]()
+  
   def main(args : Array[String]) {
     val  inputFilename = args(0)
     println("Parsing file : "+ inputFilename)
@@ -28,17 +30,58 @@ object SmtlibToLeon {
     var binderMap = Map[SSymbol,Expr]() 
     //var lambdaCtr  = 0
     //var varCtr  = 0
-    var currentTree : Expr = null
+    var assertTrees = Seq[Expr]() 
     
     var expr = p.parse    
     while(expr != null) {
-      println("Expr: "+expr)      
+      //println("Expr: "+expr)
       expr match {
-        case SList(List(SSymbol("SET-LOGIC"), SSymbol(logic))) => {}     
-        case SList(SSymbol("SET-INFO") :: attr) => {}          
-        case SList(List(SSymbol("DECLARE-SORT"), SSymbol(sort), SInt(arity))) => { }
-        case SList(SSymbol("DECLARE-DATATYPES") :: body) => {
-          //not handling data types as of now
+        case SList(List(SSymbol("SET-LOGIC"), SSymbol(logic))) => {}
+        case SList(SSymbol("SET-INFO") :: attr) => {}
+        case SList(List(SSymbol("DECLARE-SORT"), SSymbol(sort), SInt(arity))) => {}
+        case SList(List(SSymbol("DECLARE-DATATYPES"), empty, SList(body))) => {
+          body.foreach((adtdec) => adtdec match {
+            case SList(abs :: subtypes) if abs.isInstanceOf[SSymbol] => {
+              
+              //create a new abstract type, here 
+              val abstype = AbstractClassType(new AbstractClassDef(FreshIdentifier(abs.asInstanceOf[SSymbol].s, false)))
+              typemap += (abs.asInstanceOf[SSymbol] -> abstype) 
+              
+              subtypes.foreach((dtdec) => dtdec match {
+                case SList(List(sym @ SSymbol(name))) => {
+                  //create a new case class type here
+                  val clstype = CaseClassType(new CaseClassDef(FreshIdentifier(name, false),Some(abstype.classDef)))
+                  typemap += (sym -> clstype)
+                }
+                case SList(clssym :: fields) if clssym.isInstanceOf[SSymbol] => {
+                  
+                  //create a new case class type here
+                  val clstype = CaseClassType(new CaseClassDef(
+                      FreshIdentifier(clssym.asInstanceOf[SSymbol].s, false),
+                      Some(abstype.classDef)
+                      ))
+                  typemap += (clssym.asInstanceOf[SSymbol] -> clstype)
+                  
+                  //fields are converted to functions
+                  fields.foreach((field) => field match {
+                    case SList(List(fsym@SSymbol(_), ftype@SSymbol(_))) => {
+                       if(!funMap.contains(fsym)){
+                         val rettype = getType(ftype)                         
+                         val argDecls = Seq(VarDecl(FreshIdentifier("arg",true).setType(abstype), abstype))
+                         val fd = new FunDef(FreshIdentifier(fsym.s, false), rettype,  argDecls) 
+                         funMap += (fsym -> fd)
+                       }                      
+                    }
+                    case _ => throw new IllegalStateException("Datatype declaration malformed")
+                  })
+                }
+                case _ => throw new IllegalStateException("Datatype declaration malformed")
+              })
+            }
+            case _ => throw new IllegalStateException("Datatype declaration malformed")
+          })
+
+          //consider each field a function  
         }
         case SList(List(SSymbol("DECLARE-FUN"), fun@SSymbol(fname), SList(sorts), rsort)) => {
           if(!funMap.contains(fun)) {
@@ -62,9 +105,7 @@ object SmtlibToLeon {
         }
         case SList(List(SSymbol("ASSERT"), body)) => {
           //println(body)                
-          val newtree = createTree(body)          
-          if(currentTree == null) currentTree = newtree
-          else currentTree = And(Seq(currentTree, newtree))          
+          assertTrees :+= createTree(body)                              
           //solver.assertCnstr(newtree)
         }          
         case SList(List(SSymbol("CHECK-SAT"))) => { 
@@ -117,6 +158,11 @@ object SmtlibToLeon {
             case SSymbol(">=") => GreaterEquals(exprs(0), exprs(1))
             case SSymbol(">") => GreaterThan(exprs(0), exprs(1))
             case sym@SSymbol(_) if(funMap.contains(sym)) => FunctionInvocation(funMap(sym), exprs)
+            case SSymbol(str) if(str.startsWith("IS-")) => {
+              val typename = str.substring(3)
+              val cct = getType(SSymbol(typename)).asInstanceOf[CaseClassType]              
+              CaseClassInstanceOf(cct.classDef, exprs(0))
+            }            
             case _ => throw new IllegalStateException("Unknown operator: " + op)
           }
         }
@@ -134,7 +180,8 @@ object SmtlibToLeon {
       }
     }
         
-    println("Expr: "+currentTree)
+    println("Horn Clauses: ")
+    println(assertTrees.map(_.toString).mkString("\n"))
     /*val res = solver.innerCheck
     if(res == Some(true)){
       println("Found Model: "+solver.getModel)
@@ -143,12 +190,13 @@ object SmtlibToLeon {
     //dump output
     //LatexPrinter.dumpOutput(currentTree, args(1))    
   }
-  
+    
   def getType(sym : SSymbol) : TypeTree = {
     sym.s match {
       case "INT" => Int32Type
       case "BOOL" => BooleanType
       case "DOUBLE" => RealType
+      case _  if(typemap.contains(sym)) => typemap(sym)
       case _ => throw IllegalStateException("Type not supported: "+sym)
     }
   }
