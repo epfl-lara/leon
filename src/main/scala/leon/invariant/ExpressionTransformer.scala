@@ -309,6 +309,8 @@ object ExpressionTransformer {
   /**
    * The following procedure converts the formula into negated normal form by pushing all not's inside.
    * It also handles disequality constraints.
+   * Assumption:
+   *  (a) the formula does not have match constructs
    * Some important features.
    * (a) For a strict inequality with real variables/constants, the following produces a strict inequality
    * (b) Strict inequalities with only integer variables/constants are reduced to non-strict inequalities 
@@ -350,7 +352,10 @@ object ExpressionTransformer {
         }                
         case Iff(lhs,rhs) => {
           nnf(And(Implies(lhs,rhs),Implies(rhs,lhs)))
-        }                
+        }
+        case Not(IfExpr(cond, thn, elze)) => IfExpr(nnf(cond), nnf(Not(thn)), nnf(Not(elze)))
+        case Not(Let(i, v, e)) => Let(i, nnf(v), nnf(Not(e)))
+        //note that Not(LetTuple) is not possible 
         case t: Terminal => t
         case u @ UnaryOperator(e1, op) => op(nnf(e1))
         case b @ BinaryOperator(e1, e2, op) => op(nnf(e1), nnf(e2))

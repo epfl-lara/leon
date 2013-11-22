@@ -43,7 +43,8 @@ object LeonToHornPhase extends UnitPhase[Program] {
   
   override val definedOptions: Set[LeonOptionDef] = Set(      
     LeonValueOptionDef("outfilename", "--outfilename=<filename>", "name of the output file to dump horn clauses"),
-    LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,...")
+    LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
+    LeonValueOptionDef("removeOrs", "--removeOrs", "Removes disjunctions from the generated horn clauses")
   )
 
   def apply(ctx: LeonContext, program: Program) = {
@@ -53,6 +54,7 @@ object LeonToHornPhase extends UnitPhase[Program] {
 
     //val functionsToAnalyse: MutableSet[String] = MutableSet.empty
     var outfile = new PrintWriter("horn-clauses.smt")
+    var removeOrs = true
 
     for (opt <- ctx.options) opt match {
 //      case LeonValueOption("functions", ListValue(fs)) =>
@@ -60,13 +62,16 @@ object LeonToHornPhase extends UnitPhase[Program] {
 
       case LeonValueOption("outfilename", ListValue(fs)) => {
         val name = fs(0)
-        outfile = new PrintWriter("horn-clauses.smt")
+        outfile = new PrintWriter(name)
+      }
+      case v@LeonValueOption("removeOrs", value) => {        
+        removeOrs = value.toBoolean
       }      
       case _ =>
     }
 
-    val t1 = System.currentTimeMillis()
-    val smtlibstr = new HornClausePrinter(program).toSmtLib
+    val t1 = System.currentTimeMillis()    
+    val smtlibstr = new HornClausePrinter(program, removeOrs).toSmtLib
     outfile.print(smtlibstr)
     outfile.flush()
     outfile.close()

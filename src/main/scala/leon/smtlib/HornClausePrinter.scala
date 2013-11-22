@@ -12,7 +12,7 @@ import SExprs._
 import leon.invariant.ExpressionTransformer
 
 /** This pretty-printer prints an SMTLIB2 representation of the Purescala program */
-class HornClausePrinter(pgm: Program) {
+class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
 
   private var errorConstants: Set[(SSymbol, SExpr)] = Set()
   private var classDecls = Seq[SExpr]()  
@@ -69,9 +69,9 @@ class HornClausePrinter(pgm: Program) {
       ( sortDecls ++
         funDecls ++
         sortErrors ++
-        convertedFunDefs //++
-        /*Seq(SList(SSymbol("check-sat-using"), SList(SSymbol("with horn :engine tab"))),
-            SList(SSymbol("get-model")))*/
+        convertedFunDefs ++
+        Seq(SList(SSymbol("check-sat-using"), SList(SSymbol("with horn :engine tab"))))
+            /*SList(SSymbol("get-model")))*/
       )
     ).map(SExprs.toString(_)).mkString("\n")
 
@@ -162,7 +162,7 @@ class HornClausePrinter(pgm: Program) {
         //create an implication that (hornPost => postRel)
         val postFd = createNewRelation(funs(fd).args.map(_.tpe))
         val postRel = FunctionInvocation(postFd, paramsRes.map(_.toVariable))
-        implications :+= Implies(hornPost, postRel)
+        implications :+= Implies(postRel, hornPost)
         
         if(fd.hasPrecondition) {
           //do the same as body and post          
@@ -190,8 +190,7 @@ class HornClausePrinter(pgm: Program) {
         
         //assert the formula
         SList(SSymbol("assert"), quantFormula)
-      })
-      
+      })                 
     } else {
       //no body
       throw new IllegalArgumentException("Warning no body found for : "+fd.id)
@@ -209,14 +208,16 @@ class HornClausePrinter(pgm: Program) {
   //converts an arbitrary leon expression to a horn clause
   private def leonToHorn(expr: Expr) : (Expr, Seq[Expr]) = {
     val simpExpr = matchToIfThenElse(expr)
-    //here we are again pushing nots introduced by the normalizeExpr call inside.
+    //Here, there can be Iff constructs because of the flattening of functions and isInstanceOf, so pushing nots inside again
     val flatExpr = ExpressionTransformer.TransformNot(ExpressionTransformer.normalizeExpr(simpExpr))
     //replace all the function calls by predicates given by 'funs'
     val rel = simplePostTransform((e: Expr) => e match {
       case Equals(r @ Variable(_), fi @ FunctionInvocation(fd, args)) => FunctionInvocation(funs(fd), args :+ r)
+      //case Iff(r @ Variable(_), fi @ FunctionInvocation(fd, args)) => FunctionInvocation(funs(fd), args :+ r)
       case _ => e
-    })(flatExpr)    
-    formulaToHorn(rel)
+    })(flatExpr)
+    if(removeOrs) formulaToHorn(rel) 
+    else (rel, Seq())
   }
   
   /**
@@ -226,6 +227,21 @@ class HornClausePrinter(pgm: Program) {
     
     var implications = Seq[Expr]() 
     val hornBody = simplePostTransform((e: Expr) => e match {
+      /*case Or(args) if(args.size == 2) => {
+        val arg1 = args(0)
+        val arg2 = args(1)
+        val freevars1 = variablesOf(arg1).toSeq
+        val freevars2 = variablesOf(arg2).toSeq
+        
+        //create a new relation for arg1 and arg2 if arg1 and arg1 are not relations
+        val narg1 = if(arg1.isInstanceOf[FunctionInvocation]) arg1 
+        	        else {        	                  	         
+        	          val rel1 = createNewRelation(freevars1.map(_.getType))
+        	          
+        	        } 
+        val freevars = (variablesOf(arg1) ++ variablesOf(arg2)).toSeq
+        val newRel = createNewRelation(freevars.map(_.getType))       
+      }*/
       case Or(args) => {
         //get variables common to all args
         val freeVars = args.foldLeft(Set[Identifier]())((acc,arg) => {
@@ -239,6 +255,11 @@ class HornClausePrinter(pgm: Program) {
         implications ++= args.map((arg) => Implies(arg, relApp))                
         relApp
       }
+      /*case Iff(v@Variable(_), inst@CaseClassInstanceOf(_,_)) => {
+        implications ++= Seq(Implies(v, inst), Implies(inst, v))
+        BooleanLiteral(true)
+      }*/
+      case Iff(_,_) | Implies(_,_) => throw new IllegalStateException("Implies encountered in the formula: "+e)      
       case _ => e
     })(expr)
     (hornBody, implications)

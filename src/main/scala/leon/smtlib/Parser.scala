@@ -40,7 +40,7 @@ Throw an EOFException if EOF is reached at an unexpected moment (incomplete SExp
       case IntLit(d) => SInt(d)
       case StringLit(s) => SString(s)
       case SymbolLit(s) => SSymbol(s)
-      //case QualifiedSymbol(o, s) => SQualifiedSymbol(o.map(SSymbol), SSymbol(s))
+      case QualifiedSymbol(o, s) => SQualifiedSymbol(o.map(SSymbol), SSymbol(s))
       case DoubleLit(d) => SDouble(d)
       case CParen => sys.error("Unexpected token: " + CParen)
     }

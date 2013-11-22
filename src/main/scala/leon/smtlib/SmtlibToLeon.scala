@@ -109,6 +109,8 @@ object SmtlibToLeon {
           //solver.assertCnstr(newtree)
         }          
         case SList(List(SSymbol("CHECK-SAT"))) => { 
+        }
+        case SList(SSymbol("CHECK-SAT-USING") :: _) => { 
         }          
         case SList(List(SSymbol("EXIT"))) => {}        
         case SList(List(SSymbol("PUSH"), SInt(n))) => { }           
