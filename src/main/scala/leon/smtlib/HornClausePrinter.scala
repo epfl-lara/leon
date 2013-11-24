@@ -361,8 +361,7 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
       else {
         //in this case, create a function application
         SList(id2sym(ccd.id) :: args.map(exp2sexp(_)).toList)  
-      }
-      
+      }      
     } 
     case tp@Tuple(args) => {
       val ccd = tupleTypeToCaseClassDef(tp.getType.asInstanceOf[TupleType])

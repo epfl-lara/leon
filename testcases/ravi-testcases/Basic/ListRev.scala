@@ -12,12 +12,15 @@ object ListWithSize {
 
     def reverse(l: List) : List = { 
       reverse0(l, Nil())  
-    }ensuring(res => true template((p,q,r) => time <= p*size(l) + q))     
-    //ensuring(res => size(res) == size(l))
+      
+    } ensuring(res => size(res) == size(l))
+    //ensuring(res => true template((p,q,r) => time <= p*size(l) + q))        
     
     def reverse0(l1: List, l2: List) : List = (l1 match { 
       case Nil() => l2
       case Cons(x, xs) => reverse0(xs, Cons(x, l2))
-    }) ensuring(res => true template((p,q,r) => time <= p*size(l1) + q))     
+      
+    })  ensuring(res => size(l1) + size(l2) + size(res) == 0)
+    //ensuring(res => true template((p,q,r) => time <= p*size(l1) + q))     
     //ensuring(res => true template((p,q,r) => p*size(l1) + q*size(l2) + r*size(res) == 0))
 }

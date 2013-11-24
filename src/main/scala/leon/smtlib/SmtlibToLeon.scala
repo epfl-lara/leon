@@ -52,16 +52,22 @@ object SmtlibToLeon {
                   //create a new case class type here
                   val clstype = CaseClassType(new CaseClassDef(FreshIdentifier(name, false),Some(abstype.classDef)))
                   typemap += (sym -> clstype)
-                }
-                case SList(clssym :: fields) if clssym.isInstanceOf[SSymbol] => {
                   
+                  //create a case class constructor function with zero arguments
+                  val ccCons = new FunDef(FreshIdentifier(sym.s, false), abstype,Seq())
+                  funMap += (sym -> ccCons)
+                }
+                case SList(head :: fields) if head.isInstanceOf[SSymbol] => {
+                  
+                  val clssym = head.asInstanceOf[SSymbol]
                   //create a new case class type here
                   val clstype = CaseClassType(new CaseClassDef(
-                      FreshIdentifier(clssym.asInstanceOf[SSymbol].s, false),
+                      FreshIdentifier(clssym.s, false),
                       Some(abstype.classDef)
                       ))
-                  typemap += (clssym.asInstanceOf[SSymbol] -> clstype)
+                  typemap += (clssym -> clstype)
                   
+                  var fieldTypes = Seq[TypeTree]()
                   //fields are converted to functions
                   fields.foreach((field) => field match {
                     case SList(List(fsym@SSymbol(_), ftype@SSymbol(_))) => {
@@ -70,15 +76,22 @@ object SmtlibToLeon {
                          val argDecls = Seq(VarDecl(FreshIdentifier("arg",true).setType(abstype), abstype))
                          val fd = new FunDef(FreshIdentifier(fsym.s, false), rettype,  argDecls) 
                          funMap += (fsym -> fd)
+                                                  
+                         fieldTypes :+= rettype
                        }                      
                     }
-                    case _ => throw new IllegalStateException("Datatype declaration malformed")
+                    case _ => throw new IllegalStateException("Field declaration malformed")
                   })
+                  
+                  //create a case class constructor function
+                  val ccCons = new FunDef(FreshIdentifier(clssym.s, false), abstype, 
+                		  					fieldTypes.map((ft) => VarDecl(FreshIdentifier("fld",true).setType(ft), ft)))
+                  funMap += (clssym -> ccCons)
                 }
-                case _ => throw new IllegalStateException("Datatype declaration malformed")
+                case _ => throw new IllegalStateException("Subtype declaration malformed")
               })
             }
-            case _ => throw new IllegalStateException("Datatype declaration malformed")
+            case _ => throw new IllegalStateException("abstract type declaration malformed")
           })
 
           //consider each field a function  
@@ -173,7 +186,8 @@ object SmtlibToLeon {
           else if (binderMap.contains(s)) binderMap(s)
           else if (idname == "FALSE") BooleanLiteral(false)
           else if (idname == "TRUE") BooleanLiteral(true)          
-          else if (idname.startsWith("-")) IntLiteral(idname.toInt)            
+          else if (idname.startsWith("-")) IntLiteral(idname.toInt)
+          else if (funMap.contains(s)) FunctionInvocation(funMap(s), Seq()) //this could be a constant function
           else throw new IllegalStateException("Cannot find mapping for symbol: " + idname)
         }
         case SInt(i) => IntLiteral(i.toInt)
