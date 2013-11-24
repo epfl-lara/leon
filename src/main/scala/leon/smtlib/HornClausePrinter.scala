@@ -165,15 +165,15 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
         val (r,pexpr) = fd.postcondition.get
         val postExpr = replace(Map(r.toVariable -> resvar), pexpr)
         
-        //create relations for post-conditon as in the case of body        
-        val (hornPost, imps) = leonToHorn(postExpr)
+        //create relations for post-condition as in the case of body  (but use negation of post-condition)     
+        val (hornPost, imps) = leonToHorn(Not(postExpr))
         implications ++= imps      
         
-        //create an implication that (postRel => HornPost)
+        //create an implication that (postRel ^ HornPost => false)
         val postArgs = variablesOf(postExpr).toSeq.map(_.toVariable)
         val postFd = createNewRelation(postArgs.map(_.getType))
         val postRel = FunctionInvocation(postFd, postArgs)
-        implications :+= Implies(postRel, hornPost)
+        implications :+= Implies(And(postRel, hornPost), BooleanLiteral(false))
         
         if(fd.hasPrecondition) {
           //do the same as body and post       
