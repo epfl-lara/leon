@@ -11,6 +11,12 @@ object Size
 	  	case Node(l,x,r) => size(l) + size(r) + 1
 	  }
 	} ensuring(res => res >= 0)
-	//ensuring(res => true template((a,b) => time <= a*res + b))
-	//inductive invariant res >= 0
+	
+//	def deepCopy(t: Tree) : Tree = {
+//	  t match {
+//	  	case Leaf() => Leaf()
+//	  	case Node(l,x,r) => Node(deepCopy(l),x,deepCopy(r))
+//	  	}
+//	} ensuring(res => res == t)
+	//ensuring(res => true template((a,b) => time <= a*res + b))	
 } 

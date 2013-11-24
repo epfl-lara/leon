@@ -20,7 +20,7 @@ object LeftistHeap {
       case Leaf() => 0
       case Node(_,v, l, r) => size(l) + 1 + size(r)
     })
-  }
+  } ensuring(_ >= 0)
 
   def removeMax(h: Heap) : Heap = {
     require(hasLeftistProperty(h))
