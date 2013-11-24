@@ -5,10 +5,13 @@ import scala.io._
 import java.io._
 import SExprs._
 import scala.collection._
-import purescala.Trees._
-import purescala.Common._
-import leon.purescala.Definitions._
-import leon.purescala.TypeTrees._
+import purescala._
+import Common._
+import Trees._
+import Extractors._
+import TreeOps._
+import TypeTrees._
+import Definitions._
 //import Trees._
 
 object SmtlibToLeon {
@@ -197,7 +200,7 @@ object SmtlibToLeon {
     }
         
     println("Horn Clauses: ")
-    println(assertTrees.map(_.toString).mkString("\n"))
+    println(assertTrees.map(ScalaPrinter.apply _).mkString("\n"))
     /*val res = solver.innerCheck
     if(res == Some(true)){
       println("Found Model: "+solver.getModel)

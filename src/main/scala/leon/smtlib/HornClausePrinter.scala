@@ -282,6 +282,7 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
     var implications = Seq[Expr]() 
     val hornBody = simplePostTransform((e: Expr) => e match {     
       case Or(args) => {
+        //println("subexp: "+ScalaPrinter(e))
         //get variables common to all args
         val freeVars = args.foldLeft(Set[Identifier]())((acc,arg) => {
           acc ++ variablesOf(arg)
