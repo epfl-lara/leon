@@ -243,7 +243,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     val solution = if(!useCEGIS) {
       recSolveForTemplatesIncr(simplestModel, solverWithCtrs, funcExprs, tru)
     } else {
-      cegis(simplestModel, funcExprs)
+      cegis(simplestModel, funcExprs, And(tempIds.map((id) => Not(Equals(id.toVariable, IntLiteral(0)))).toSeq))
     }
     solverWithCtrs.free()
     solution
@@ -251,33 +251,46 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     //Some(getAllInvariants(simplestModel))
   }
   
-  def cegis(model: Map[Identifier, Expr], funcExprs: Map[FunDef,Expr]): Option[Map[FunDef, Expr]] = {
+  def cegis(model: Map[Identifier, Expr], funcExprs: Map[FunDef,Expr], inputCtr : Expr): Option[Map[FunDef, Expr]] = {
     println("candidate Invariants")
     val candInvs = getAllInvariants(model)
     candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))
     
     val funcs = funcExprs.keys           
-    val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap        
-    
-    val compVCs = funcs.foldLeft(Seq[Expr]())((acc, fd) => {
-      val instVC = simplifyArithmetic(instantiateTemplate(funcExprs(fd), tempVarMap))
-      acc :+ instVC     	  
-    })
+    val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap            
+    val instVC = And(funcs.foldLeft(Seq[Expr]())((acc, fd) => {
+      acc :+  simplifyArithmetic(instantiateTemplate(funcExprs(fd), tempVarMap))         	  
+    }))
+    val spuriousTempIds = variablesOf(instVC).intersect(TemplateIdFactory.getTemplateIds)
+    if(!spuriousTempIds.isEmpty)
+      throw IllegalStateException("Found a template variable in instvc: "+spuriousTempIds)
     
     val solver = SimpleSolverAPI(
             new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), 
             timeout * 1000))           
     println("solving instantiated vcs...")
     val t1 = System.currentTimeMillis()
-    val (res, progModel) = solver.solveSAT(And(compVCs))
+    val (res, progModel) = solver.solveSAT(instVC)
     val t2 = System.currentTimeMillis()
-    if (res.isDefined && res.get == true) {
+    if (res.isDefined && res.get == true) {      
       println("solved... in " + (t2 - t1) / 1000.0 + "s")
-      //instantiate vcs with newmodel 
-      val vc = And(funcs.map(funcExprs.apply _).toSeq)
+      //instantiate vcs with newmodel
       val progVarMap: Map[Expr, Expr] = progModel.map((elem) => (elem._1.toVariable, elem._2)).toMap
-      val modelToExpr = InvariantUtil.modelToExpr(model)
-      val tempconstr = And(replace(progVarMap, vc),Not(modelToExpr))
+      val tempvc = replace(progVarMap, Not(And(funcs.map(funcExprs.apply _).toSeq)))      
+      
+      val tempctrs = simplePostTransform((e) => e match {
+        case Equals(_, FunctionInvocation(_,_)) => tru
+        case Iff(_, FunctionInvocation(_,_)) => tru
+        case _ => e
+      })(tempvc)      
+      //println("Tempctrs: "+tempvc)
+      
+      val spuriousProgIds = variablesOf(tempctrs).filterNot(TemplateIdFactory.IsTemplateIdentifier _)
+      if(!spuriousProgIds.isEmpty)
+        throw IllegalStateException("Found a progam variable in tempctrs: "+spuriousProgIds)
+      
+      //val modelToExpr = InvariantUtil.modelToExpr(model)
+      val newctr = And(tempctrs,inputCtr)
       
       /*println("vc: "+vc)
       println("Prog Model: "+ progModel)      
@@ -285,14 +298,15 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
 
       println("solving template constriants...")
       val t3 = System.currentTimeMillis()
-      val (res1, newModel) = solver.solveSAT(tempconstr)
+      val (res1, newModel) = solver.solveSAT(newctr)
       val t4 = System.currentTimeMillis()
       if (res1.isDefined) {
         //try with the new model
         if(res1.get == false) {
           None //cannot solve templates
         } else {
-          cegis(newModel, funcExprs)
+          println("New model: "+newModel)
+          cegis(newModel, funcExprs, newctr)
         }                    
       } else
         throw IllegalStateException("timed out... in " + (t2 - t1) / 1000.0 + "s")
