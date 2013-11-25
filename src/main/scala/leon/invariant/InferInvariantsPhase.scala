@@ -42,6 +42,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   val description = "Invariant Inference"
   val fls = BooleanLiteral(false)
   
+  //control printing of statisticcs
+  val dumpStats = false
+  
   override val definedOptions: Set[LeonOptionDef] = Set(
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
     LeonValueOptionDef("monotones", "--monotones=f1:f2", "Monotonic functions f1,f2,..."),
@@ -404,10 +407,13 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       }
     })
     val t2 = System.currentTimeMillis()
-    Stats.totalTime = t2 - t1     
+    Stats.totalTime = t2 - t1
     //dump stats 
-    reporter.info("- Dumping statistics")
-    Stats.dumpStats(new PrintWriter("stats"+FileCountGUID.getID))
+    if (dumpStats) {
+      reporter.info("- Dumping statistics")
+      Stats.dumpStats(new PrintWriter("stats" + FileCountGUID.getID))
+    }
+    
     VerificationReport.emptyReport
   }
 }

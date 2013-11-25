@@ -55,6 +55,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
   val dumpNLFormula = false
   val dumpInstantiatedVC = false 
   val debugAxioms = false    
+  val useCEGIS = true
 
   /**
    * Completes a model by adding mapping to new template variables
@@ -181,7 +182,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     val linearCtr = new LinearConstraint(linearTemp.op, intCoeffMap, intConst)
     linearCtr.expr
   }
-  
+
   /**
    * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
@@ -203,18 +204,20 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       //apply (instantiate) the axioms of functions in the verification condition
       val formulaWithAxioms = instantiateAxioms(formula)
       
-      //stats
-      val plainVCsize = InvariantUtil.atomNum(formula)
-      val vcsize = InvariantUtil.atomNum(formulaWithAxioms)
-      
-      val (cum, max) = Stats.cumMax(Stats.cumVCsize, Stats.maxVCsize, vcsize)
-      Stats.cumVCsize = cum; Stats.maxVCsize = max
+      //stats      
+      if (InferInvariantsPhase.dumpStats) {
+        val plainVCsize = InvariantUtil.atomNum(formula)
+        val vcsize = InvariantUtil.atomNum(formulaWithAxioms)
+        val (cum, max) = Stats.cumMax(Stats.cumVCsize, Stats.maxVCsize, vcsize)
+        Stats.cumVCsize = cum; Stats.maxVCsize = max
+
+        val (cum2, max2) = Stats.cumMax(Stats.cumUIFADTs, Stats.maxUIFADTs, InvariantUtil.numUIFADT(formula))
+        Stats.cumUIFADTs = cum2; Stats.maxUIFADTs = max2
+
+        val (cum1, max1) = Stats.cumMax(Stats.cumLemmaApps, Stats.maxLemmaApps, vcsize - plainVCsize)
+        Stats.cumLemmaApps = cum1; Stats.maxLemmaApps = max1
+      }
             
-      val (cum2, max2) = Stats.cumMax(Stats.cumUIFADTs, Stats.maxUIFADTs, InvariantUtil.numUIFADT(formula))
-      Stats.cumUIFADTs = cum2; Stats.maxUIFADTs = max2
-      
-      val (cum1, max1) = Stats.cumMax(Stats.cumLemmaApps, Stats.maxLemmaApps, vcsize - plainVCsize)
-      Stats.cumLemmaApps = cum1; Stats.maxLemmaApps = max1      
       
       (fd -> formulaWithAxioms)
     }).toMap  
@@ -227,46 +230,80 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     })
     val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
 
-    //stats      
-    val (cum3, max3) = Stats.cumMax(Stats.cumTempVars, Stats.maxTempVars, tempIds.size)
-    Stats.cumTempVars = cum3; Stats.maxTempVars = max3
-      
+    //stats
+    if (InferInvariantsPhase.dumpStats) {
+      val (cum3, max3) = Stats.cumMax(Stats.cumTempVars, Stats.maxTempVars, tempIds.size)
+      Stats.cumTempVars = cum3; Stats.maxTempVars = max3
+    }      
     //create a new solver 
     val solverWithCtrs = new UIFZ3Solver(this.context, program)
     //solverWithCtrs.push()
-    //solverWithCtrs.assertCnstr(tru)
+    //solverWithCtrs.assertCnstr(tru)   
    
-    val solution = recSolveForTemplatesIncr(simplestModel, solverWithCtrs, funcExprs, tru)
+    val solution = if(!useCEGIS) {
+      recSolveForTemplatesIncr(simplestModel, solverWithCtrs, funcExprs, tru)
+    } else {
+      cegis(simplestModel, funcExprs)
+    }
     solverWithCtrs.free()
     solution
     //uncomment the following if you want to skip solving but are find with any arbitrary choice
     //Some(getAllInvariants(simplestModel))
   }
-
-  //not deleting since I find the logic used here interesting
-  /*
-      if(program.isRecursive(fd)) {
-        //try pick paths without function calls if any      
-        println("Choosing constraints without calls (that are satisfiable)")
-        ctr = generateCtrsForTree(btree, ptree, noRecursiveCallSelector(fd), true)
-        println("Found Some: " + (ctr != tru))
-      }
-            
-      if (ctr == tru) {        
-        //this is going over many iterations in rare scenarios.
-        //what if all the paths in the program are infeasible ? may be we should time out after sometime and have some random assignment
-        //of values to the terms.
-        println("Randomly choosing constraints (that are satisfiable) ...")
-        while (ctr == tru) {
-          println("Looping...")
-          ctr = generateCtrsForTree(btree, ptree, randomSelector, false)
-        }
-        println("Found one!")
-      }      
+  
+  def cegis(model: Map[Identifier, Expr], funcExprs: Map[FunDef,Expr]): Option[Map[FunDef, Expr]] = {
+    println("candidate Invariants")
+    val candInvs = getAllInvariants(model)
+    candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))
+    
+    val funcs = funcExprs.keys           
+    val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap        
+    
+    val compVCs = funcs.foldLeft(Seq[Expr]())((acc, fd) => {
+      val instVC = simplifyArithmetic(instantiateTemplate(funcExprs(fd), tempVarMap))
+      acc :+ instVC     	  
+    })
+    
+    val solver = SimpleSolverAPI(
+            new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), 
+            timeout * 1000))           
+    println("solving instantiated vcs...")
+    val t1 = System.currentTimeMillis()
+    val (res, progModel) = solver.solveSAT(And(compVCs))
+    val t2 = System.currentTimeMillis()
+    if (res.isDefined && res.get == true) {
+      println("solved... in " + (t2 - t1) / 1000.0 + "s")
+      //instantiate vcs with newmodel 
+      val vc = And(funcs.map(funcExprs.apply _).toSeq)
+      val progVarMap: Map[Expr, Expr] = progModel.map((elem) => (elem._1.toVariable, elem._2)).toMap
+      val modelToExpr = InvariantUtil.modelToExpr(model)
+      val tempconstr = And(replace(progVarMap, vc),Not(modelToExpr))
       
-      (acc :+ ctr)
-    })      
-*/  
+      /*println("vc: "+vc)
+      println("Prog Model: "+ progModel)      
+      println("tempctr: "+tempconstr)*/
+
+      println("solving template constriants...")
+      val t3 = System.currentTimeMillis()
+      val (res1, newModel) = solver.solveSAT(tempconstr)
+      val t4 = System.currentTimeMillis()
+      if (res1.isDefined) {
+        //try with the new model
+        if(res1.get == false) {
+          None //cannot solve templates
+        } else {
+          cegis(newModel, funcExprs)
+        }                    
+      } else
+        throw IllegalStateException("timed out... in " + (t2 - t1) / 1000.0 + "s")
+      
+    } else if(res.isDefined && res.get == false) {
+      //found inductive invariant
+      Some(getAllInvariants(model))
+    }      
+    else
+      throw IllegalStateException("timed out... in " + (t2 - t1) / 1000.0 + "s")
+  }
   
   def recSolveForTemplatesIncr(model: Map[Identifier, Expr], solverWithCtrs: UIFZ3Solver, funcExprs: Map[FunDef, Expr],
       inputCtr : Expr) : Option[Map[FunDef, Expr]] = {    
@@ -340,8 +377,11 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
                 
         //for stats and debugging               
         val farkasSize =  InvariantUtil.atomNum(newPart) 
-        val (cum, max) = Stats.cumMax(Stats.cumFarkaSize, Stats.maxFarkaSize, farkasSize + InvariantUtil.atomNum(easyPart))
-        Stats.cumFarkaSize = cum; Stats.maxFarkaSize = max
+        
+        if(InferInvariantsPhase.dumpStats) {
+          val (cum, max) = Stats.cumMax(Stats.cumFarkaSize, Stats.maxFarkaSize, farkasSize + InvariantUtil.atomNum(easyPart))
+          Stats.cumFarkaSize = cum; Stats.maxFarkaSize = max  
+        }        
         println("# of atomic predicates: " + farkasSize)
                 
         val solver = SimpleSolverAPI(
@@ -356,10 +396,12 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           println("solved... in " + (t2 - t1) / 1000.0 + "s")
         else
           println("timed out... in " + (t2 - t1) / 1000.0 + "s")
-          
-        //for stats       
-       val (cum2, max2) = Stats.cumMax(Stats.cumFarkaTime, Stats.maxFarkaTime, (t2 - t1))
-       Stats.cumFarkaTime = cum2; Stats.maxFarkaTime = max2          
+
+        //for stats
+        if (InferInvariantsPhase.dumpStats) {
+          val (cum2, max2) = Stats.cumMax(Stats.cumFarkaTime, Stats.maxFarkaTime, (t2 - t1))
+          Stats.cumFarkaTime = cum2; Stats.maxFarkaTime = max2
+        }
 
         //for debugging
         if (debugIncremental) {
@@ -394,10 +436,12 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
               reporter.info("- Number of remaining hard paths: " + hardCE.values.foldLeft(0)((acc, elem) => acc + elem.size))
               (None, Map(), tru)
               
-            } else {   
+            } else {
               //for stats
-              Stats.innerIterations += 1
-              Stats.retries += 1
+              if (InferInvariantsPhase.dumpStats) {
+                Stats.innerIterations += 1
+                Stats.retries += 1
+              }
               
               //try this new path, this might be easy to solve
               solveNLConstraints(easyPart, And(newctrs))
@@ -924,19 +968,21 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           //println("Elim vars: "+elimVars)
           println("Path constriants (after elimination): " + elimLnctrs)                  
         }
-        
-         //for stats
-        val (cum1,max1) = Stats.cumMax(Stats.cumElimVars, Stats.maxElimVars, (elimVars.size - elimRems.size))
-        Stats.cumElimVars = cum1; Stats.maxElimVars = max1;     
-        
-        val (cum2,max2) = Stats.cumMax(Stats.cumElimAtoms, Stats.maxElimAtoms, (lnctrs.size - elimLnctrs.size))
-        Stats.cumElimAtoms = cum2; Stats.maxElimAtoms = max2;
-        
-        val (cum3,max3) = Stats.cumMax(Stats.cumNLsize, Stats.maxNLsize, temps.size)
-        Stats.cumNLsize = cum3; Stats.maxNLsize = max3;        
-        
-        val (cum4,max4) = Stats.cumMax(Stats.cumDijsize, Stats.maxDijsize, lnctrs.size)
-        Stats.cumDijsize = cum4; Stats.maxDijsize = max4; 
+
+        //for stats
+        if (InferInvariantsPhase.dumpStats) {
+          val (cum1, max1) = Stats.cumMax(Stats.cumElimVars, Stats.maxElimVars, (elimVars.size - elimRems.size))
+          Stats.cumElimVars = cum1; Stats.maxElimVars = max1;
+
+          val (cum2, max2) = Stats.cumMax(Stats.cumElimAtoms, Stats.maxElimAtoms, (lnctrs.size - elimLnctrs.size))
+          Stats.cumElimAtoms = cum2; Stats.maxElimAtoms = max2;
+
+          val (cum3, max3) = Stats.cumMax(Stats.cumNLsize, Stats.maxNLsize, temps.size)
+          Stats.cumNLsize = cum3; Stats.maxNLsize = max3;
+
+          val (cum4, max4) = Stats.cumMax(Stats.cumDijsize, Stats.maxDijsize, lnctrs.size)
+          Stats.cumDijsize = cum4; Stats.maxDijsize = max4;
+        }         
         
         //(b) drop all constraints with dummys from 'elimLnctrs' they aren't useful (this is because of the reason we introduce the identifiers)
         val newLnctrs = elimLnctrs.filterNot((ln) => variablesOf(ln.expr).exists(TempIdFactory.isDummy _))
