@@ -43,6 +43,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
   //some constants
   private val fls = BooleanLiteral(false)
   private val tru = BooleanLiteral(true)    
+  private val zero = IntLiteral(0)
   
   //flags controlling debugging and statistics generation
   //TODO: there is serious bug in using incremental solving. Report this to z3 community
@@ -56,7 +57,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
   val dumpInstantiatedVC = false 
   val debugAxioms = false    
   val useCEGIS = true
-
+  val CEGISBound = 1     
   /**
    * Completes a model by adding mapping to new template variables
    */
@@ -122,7 +123,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     inv
   }
   
-  def validateRealLiteral(e : Expr) = e match {
+  def validateLiteral(e : Expr) = e match {
     case RealLiteral(num, denom) => {
       if (denom == 0)
         throw new IllegalStateException("Denominator is zero !! " +e)
@@ -130,6 +131,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         throw new IllegalStateException("Denominator is negative: " + denom)
       true
     }
+    case IntLiteral(_) => true
     case _ => throw new IllegalStateException("Not a real literal: " + e)
   }
 
@@ -139,7 +141,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       val coeffE = replace(tempVarMap, coeffTemp)
       val coeff = RealValuedExprInterpreter.evaluate(coeffE)
 
-      validateRealLiteral(coeff)
+      validateLiteral(coeff)
       
       (term -> coeff)
     })
@@ -147,7 +149,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       val constE = replace(tempVarMap, linearTemp.constTemplate.get)
       val constV = RealValuedExprInterpreter.evaluate(constE)
       
-      validateRealLiteral(constV)      
+      validateLiteral(constV)      
       Some(constV)
     }      
     else None
@@ -242,8 +244,15 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
    
     val solution = if(!useCEGIS) {
       recSolveForTemplatesIncr(simplestModel, solverWithCtrs, funcExprs, tru)
-    } else {
-      cegis(simplestModel, funcExprs, And(tempIds.map((id) => Not(Equals(id.toVariable, IntLiteral(0)))).toSeq))
+    } else {      
+      //And(tempIds.map((id) => Not(Equals(id.toVariable, IntLiteral(0)))).toSeq) //this makes coefficients non-zero
+      //use a predefined bound on the template variables                 
+      val boundExpr = And(tempIds.map((id) => {
+        val idvar = id.toVariable
+        And(Implies(LessThan(idvar,zero), GreaterEquals(idvar,IntLiteral(-CEGISBound))),
+            Implies(GreaterEquals(idvar,zero), LessEquals(idvar,IntLiteral(CEGISBound))))        
+      }).toSeq)
+      cegis(simplestModel, funcExprs, boundExpr)
     }
     solverWithCtrs.free()
     solution
@@ -251,16 +260,19 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     //Some(getAllInvariants(simplestModel))
   }
   
+  
+  
   def cegis(model: Map[Identifier, Expr], funcExprs: Map[FunDef,Expr], inputCtr : Expr): Option[Map[FunDef, Expr]] = {
-    println("candidate Invariants")
+    /*println("candidate Invariants")
     val candInvs = getAllInvariants(model)
-    candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))
+    candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))*/
     
     val funcs = funcExprs.keys           
     val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap            
-    val instVC = And(funcs.foldLeft(Seq[Expr]())((acc, fd) => {
+    val instVC = Or(funcs.foldLeft(Seq[Expr]())((acc, fd) => {
       acc :+  simplifyArithmetic(instantiateTemplate(funcExprs(fd), tempVarMap))         	  
     }))
+    //println("instvc: "+instVC)
     val spuriousTempIds = variablesOf(instVC).intersect(TemplateIdFactory.getTemplateIds)
     if(!spuriousTempIds.isEmpty)
       throw IllegalStateException("Found a template variable in instvc: "+spuriousTempIds)
@@ -268,21 +280,21 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     val solver = SimpleSolverAPI(
             new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), 
             timeout * 1000))           
-    println("solving instantiated vcs...")
-    val t1 = System.currentTimeMillis()
-    val (res, progModel) = solver.solveSAT(instVC)
+    //println("solving instantiated vcs...")
+    val t1 = System.currentTimeMillis()        
+    val (res, progModel) = solver.solveSAT((new RealToInt()).mapRealToInt(instVC))
     val t2 = System.currentTimeMillis()
     if (res.isDefined && res.get == true) {      
       println("solved... in " + (t2 - t1) / 1000.0 + "s")
       //instantiate vcs with newmodel
       val progVarMap: Map[Expr, Expr] = progModel.map((elem) => (elem._1.toVariable, elem._2)).toMap
-      val tempvc = replace(progVarMap, Not(And(funcs.map(funcExprs.apply _).toSeq)))      
+      val tempvc = replace(progVarMap, Not(Or(funcs.map(funcExprs.apply _).toSeq)))      
       
       val tempctrs = simplePostTransform((e) => e match {
         case Equals(_, FunctionInvocation(_,_)) => tru
         case Iff(_, FunctionInvocation(_,_)) => tru
         case _ => e
-      })(tempvc)      
+      })(tempvc)
       //println("Tempctrs: "+tempvc)
       
       val spuriousProgIds = variablesOf(tempctrs).filterNot(TemplateIdFactory.IsTemplateIdentifier _)
@@ -296,9 +308,13 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       println("Prog Model: "+ progModel)      
       println("tempctr: "+tempconstr)*/
 
-      println("solving template constriants...")
+      //println("solving template constriants...")
       val t3 = System.currentTimeMillis()
-      val (res1, newModel) = solver.solveSAT(newctr)
+      //convert templates to integers and solve
+      val realToInt = new RealToInt()
+      val (res1, intModel) = solver.solveSAT(realToInt.mapRealToInt(newctr))
+      //reconvert integer models for templates to real models
+      val newModel = realToInt.unmapModel(intModel)      
       val t4 = System.currentTimeMillis()
       if (res1.isDefined) {
         //try with the new model

@@ -25,32 +25,32 @@ object RealValuedExprInterpreter {
      RealLiteral(num/divisor, denom/divisor)
   }
 
-  def plainEvaluate(expr : Expr) : (Int,Int) = expr match{
-    
+  def plainEvaluate(expr: Expr): (Int, Int) = expr match {
+
     case UMinus(e) => {
-        val (num,denom) = plainEvaluate(e)
-        (-num,denom)
+      val (num, denom) = plainEvaluate(e)
+      (-num, denom)
     }
-    case Minus(lhs,rhs) => {
-        plainEvaluate(Plus(lhs,UMinus(rhs)))
+    case Minus(lhs, rhs) => {
+      plainEvaluate(Plus(lhs, UMinus(rhs)))
     }
-    case Plus(lhs,rhs) =>  {
-        val (lnum,ldenom) = plainEvaluate(lhs)
-	val (rnum,rdenom) = plainEvaluate(rhs)        
-        ((lnum * rdenom + rnum * ldenom),(ldenom * rdenom))
+    case Plus(lhs, rhs) => {
+      val (lnum, ldenom) = plainEvaluate(lhs)
+      val (rnum, rdenom) = plainEvaluate(rhs)
+      ((lnum * rdenom + rnum * ldenom), (ldenom * rdenom))
     }
-    case Times(lhs,rhs) =>  {
-        val (lnum,ldenom) = plainEvaluate(lhs)
-	val (rnum,rdenom) = plainEvaluate(rhs)
-        ((lnum * rnum),(ldenom * rdenom))
+    case Times(lhs, rhs) => {
+      val (lnum, ldenom) = plainEvaluate(lhs)
+      val (rnum, rdenom) = plainEvaluate(rhs)
+      ((lnum * rnum), (ldenom * rdenom))
     }
-    case Division(lhs,rhs) => {
-        val (lnum,ldenom) = plainEvaluate(lhs)
-	val (rnum,rdenom) = plainEvaluate(rhs)
-	plainEvaluate(Times(RealLiteral(lnum,ldenom),RealLiteral(rdenom,rnum)))
+    case Division(lhs, rhs) => {
+      val (lnum, ldenom) = plainEvaluate(lhs)
+      val (rnum, rdenom) = plainEvaluate(rhs)
+      plainEvaluate(Times(RealLiteral(lnum, ldenom), RealLiteral(rdenom, rnum)))
     }
-    case il @ IntLiteral(v) => (v,1)
-    case RealLiteral(num,denom) => (num,denom)
-    case _ => throw IllegalStateException("Not a real valued expression: "+expr)
+    case il @ IntLiteral(v) => (v, 1)
+    case RealLiteral(num, denom) => (num, denom)
+    case _ => throw IllegalStateException("Not a real valued expression: " + expr)
   }
 }

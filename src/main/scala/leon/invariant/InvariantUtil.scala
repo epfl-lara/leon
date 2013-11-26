@@ -294,5 +294,48 @@ object InvariantUtil {
     require(x >=0 && y >= 0)    
     if(x == 0) y 
     else gcd(y % x, x)
+  }  
+}
+
+/**
+ * maps all real valued variables and literals to new integer variables/literals and
+ * performs the reverse mapping 
+ * 
+ */
+class RealToInt {
+  
+  var realToIntId = Map[Identifier, Identifier]()
+  var intToRealId = Map[Identifier, Identifier]()
+  
+  def mapRealToInt(inexpr: Expr): Expr = {   
+    val transformer = (e: Expr) => e match {
+      case RealLiteral(num,1) => IntLiteral(num)
+      case RealLiteral(_,_) => throw IllegalStateException("Real literal with non-unit denominator")
+      case v @ Variable(realId) if (v.getType == RealType) => {
+        val newId = realToIntId.getOrElse(realId, {
+          val freshId = FreshIdentifier(realId.name, true).setType(Int32Type)
+          realToIntId += (realId -> freshId)
+          intToRealId += (freshId -> realId)
+          freshId
+        })
+        Variable(newId)
+      }      
+      case _ => e
+    }
+    simplePostTransform(transformer)(inexpr)
   }
+  
+  def unmapModel(model: Map[Identifier, Expr]) : Map[Identifier, Expr] = {
+     model.map((pair) => {
+       val (key,value) = if(intToRealId.contains(pair._1)) {
+         (intToRealId(pair._1),
+             pair._2 match {
+    		   	  case IntLiteral(v) => RealLiteral(v,1)
+    		   	  case _ => pair._2
+    		   	})            
+       } 
+       else pair
+       (key -> value)
+     })
+  }  
 }
