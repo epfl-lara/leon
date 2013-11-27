@@ -27,7 +27,7 @@ import leon.verification.Tactic
 import leon.verification.VerificationReport
 import leon.solvers.SimpleSolverAPI
 
-class LinearImplicationSolver {
+class FarkasLemmaSolver {
   private val zero = IntLiteral(0)
   private val one = IntLiteral(1)
   //for debugging 
@@ -202,7 +202,7 @@ class LinearImplicationSolver {
   }
 
   /**
-   * converts all integer valued variables and literals to RealType
+   * converts all integer constants to real constants
    */
   def convertIntLiteralToReal(inexpr: Expr): Expr = {
     //var intIdToRealId = Map[Identifier, Identifier]()

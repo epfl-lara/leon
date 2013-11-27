@@ -33,17 +33,13 @@ import leon.purescala.UndirectedGraph
 import scala.util.control.Breaks._
 import leon.solvers._
 
-class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: TemplateFactory,
-    context : LeonContext, program : Program, timeout: Int) {
+class NLTemplateSolver(context : LeonContext, 
+    program : Program,
+    ctrTracker : ConstraintTracker, 
+    tempFactory: TemplateFactory,    
+    timeout: Int) extends TemplateSolver(context, program, ctrTracker, tempFactory, timeout) {
   
-  private val reporter = context.reporter
-  private val implicationSolver = new LinearImplicationSolver()
-  private val cg = CallGraphUtil.constructCallGraph(program)
-  
-  //some constants
-  private val fls = BooleanLiteral(false)
-  private val tru = BooleanLiteral(true)    
-  private val zero = IntLiteral(0)
+  private val implicationSolver = new FarkasLemmaSolver()  
   
   //flags controlling debugging and statistics generation
   //TODO: there is serious bug in using incremental solving. Report this to z3 community
@@ -55,288 +51,29 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
   val printReducedFormula = false  
   val dumpNLFormula = false
   val dumpInstantiatedVC = false 
-  val debugAxioms = false    
-  val useCEGIS = true
-  val CEGISBound = 1     
-  /**
-   * Completes a model by adding mapping to new template variables
-   */
-  def completeModel(model: Map[Identifier, Expr], tempIds: Set[Identifier]): Map[Identifier, Expr] = {
-    tempIds.map((id) => {
-      if (!model.contains(id)) {        
-        (id, simplestValue(id.getType))
-      } else (id, model(id))
-    }).toMap
-  }
-
-  /**
-   * Computes the invariant for all the procedures given a mapping for the
-   * template variables.
-   * (Undone) If the mapping does not have a value for an id, then the id is bound to the simplest value
-   */
-  def getAllInvariants(model: Map[Identifier, Expr]): Map[FunDef, Expr] = {
-    val invs = ctrTracker.getFuncs.foldLeft(Seq[(FunDef, Expr)]())((acc, fd) => {
-
-      val tempOption = tempFactory.getTemplate(fd)
-      if (!tempOption.isDefined)
-        acc
-      else {
-        //here flatten the template
-        val t = tempOption.get
-        val freevars = variablesOf(t)
-        val template = ExpressionTransformer.FlattenFunction(t)
-
-        val tempvars = InvariantUtil.getTemplateVars(template)
-        val tempVarMap: Map[Expr, Expr] = tempvars.map((v) => {
-          (v, model(v.id))
-        }).toMap
-
-        val instTemplate = instantiateTemplate(template, tempVarMap)
-        //now unflatten it
-        val comprTemp = ExpressionTransformer.unFlatten(instTemplate, freevars)
-
-        acc :+ (fd, comprTemp)
-      }
-    })
-    invs.toMap
-  }
-
-  /**
-   * Instantiates templated subexpressions of the given expression (expr) using the given mapping for the template variables.
-   * The instantiation also takes care of converting the rational coefficients to integer coefficients.
-   */
-  def instantiateTemplate(expr: Expr, tempVarMap: Map[Expr, Expr]): Expr = {
-    //do a simple post transform and replace the template vars by their values
-    val inv = simplePostTransform((tempExpr: Expr) => tempExpr match {
-      case e @ BinaryOperator(lhs, rhs, op) if ((e.isInstanceOf[Equals] || e.isInstanceOf[LessThan]
-        || e.isInstanceOf[LessEquals] || e.isInstanceOf[GreaterThan]
-        || e.isInstanceOf[GreaterEquals]) 
-        && 
-        !InvariantUtil.getTemplateVars(tempExpr).isEmpty) => {
-
-        //println("Template Expression: "+tempExpr)
-        val linearTemp = LinearConstraintUtil.exprToTemplate(tempExpr)
-        instantiateTemplate(linearTemp, tempVarMap)
-      }
-      case _ => tempExpr
-    })(expr)
-    inv
-  }
-  
-  def validateLiteral(e : Expr) = e match {
-    case RealLiteral(num, denom) => {
-      if (denom == 0)
-        throw new IllegalStateException("Denominator is zero !! " +e)
-      if (denom < 0)
-        throw new IllegalStateException("Denominator is negative: " + denom)
-      true
-    }
-    case IntLiteral(_) => true
-    case _ => throw new IllegalStateException("Not a real literal: " + e)
-  }
-
-  def instantiateTemplate(linearTemp: LinearTemplate, tempVarMap: Map[Expr, Expr]): Expr = {
-    val coeffMap = linearTemp.coeffTemplate.map((entry) => {
-      val (term, coeffTemp) = entry
-      val coeffE = replace(tempVarMap, coeffTemp)
-      val coeff = RealValuedExprInterpreter.evaluate(coeffE)
-
-      validateLiteral(coeff)
-      
-      (term -> coeff)
-    })
-    val const = if (linearTemp.constTemplate.isDefined){
-      val constE = replace(tempVarMap, linearTemp.constTemplate.get)
-      val constV = RealValuedExprInterpreter.evaluate(constE)
-      
-      validateLiteral(constV)      
-      Some(constV)
-    }      
-    else None
-
-    val realValues: Seq[Expr] = coeffMap.values.toSeq ++ { if (const.isDefined) Seq(const.get) else Seq() }
-    //the coefficients could be fractions ,so collect all the denominators
-    val getDenom = (t: Expr) => t match {
-      case RealLiteral(num, denum) => denum
-      case _ => 1
-    }
-
-    val denoms = realValues.foldLeft(Set[Int]())((acc, entry) => { acc + getDenom(entry) })
-    
-    //compute the LCM of the denominators
-    val gcd = denoms.foldLeft(1)((acc, d) => InvariantUtil.gcd(acc,d))        
-    val lcm = denoms.foldLeft(1)((acc, d) => {
-      val product = (acc * d)
-      if(product % gcd == 0) 
-        product/ gcd 
-      else product 
-    })
-
-    //scale the numerator by lcm
-    val scaleNum = (t: Expr) => t match {
-      case RealLiteral(num, denum) => IntLiteral(num * (lcm / denum))
-      case IntLiteral(n) => IntLiteral(n * lcm)
-      case _ => throw IllegalStateException("Coefficient not assigned to any value")
-    }
-    val intCoeffMap = coeffMap.map((entry) => (entry._1, scaleNum(entry._2)))
-    val intConst = if (const.isDefined) Some(scaleNum(const.get)) else None
-
-    val linearCtr = new LinearConstraint(linearTemp.op, intCoeffMap, intConst)
-    linearCtr.expr
-  }
+  val debugAxioms = false      
 
   /**
    * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
    */  
-  def solveForTemplatesIncr(): Option[Map[FunDef, Expr]] = {
-        
-    //for stats
-    Stats.outerIterations += 1
+  override def solve(tempIds : Set[Identifier], funcVCs: Map[FunDef, Expr]) : Option[Map[FunDef, Expr]] = {
     
-    //traverse each of the functions and collect the VCs
-    val funcs = ctrTracker.getFuncs
-    val funcExprs = funcs.map((fd) => {
-      val (btree, ptree) = ctrTracker.getVC(fd)
-      val bexpr = TreeUtil.toExpr(btree)
-      val pexpr = TreeUtil.toExpr(ptree)
-      
-      val formula = And(bexpr, pexpr)
-      
-      //apply (instantiate) the axioms of functions in the verification condition
-      val formulaWithAxioms = instantiateAxioms(formula)
-      
-      //stats      
-      if (InferInvariantsPhase.dumpStats) {
-        val plainVCsize = InvariantUtil.atomNum(formula)
-        val vcsize = InvariantUtil.atomNum(formulaWithAxioms)
-        val (cum, max) = Stats.cumMax(Stats.cumVCsize, Stats.maxVCsize, vcsize)
-        Stats.cumVCsize = cum; Stats.maxVCsize = max
-
-        val (cum2, max2) = Stats.cumMax(Stats.cumUIFADTs, Stats.maxUIFADTs, InvariantUtil.numUIFADT(formula))
-        Stats.cumUIFADTs = cum2; Stats.maxUIFADTs = max2
-
-        val (cum1, max1) = Stats.cumMax(Stats.cumLemmaApps, Stats.maxLemmaApps, vcsize - plainVCsize)
-        Stats.cumLemmaApps = cum1; Stats.maxLemmaApps = max1
-      }
-            
-      
-      (fd -> formulaWithAxioms)
-    }).toMap  
+    val solverWithCtr = new UIFZ3Solver(this.context, program)
+    solverWithCtr.assertCnstr(tru)
     
-    //Assign some values for the template variables at random (actually use the simplest value for the type)
-    val tempIds = funcs.foldLeft(Set[Identifier]())((acc, fd) => {
-      val tempOption = tempFactory.getTemplate(fd)
-      if (!tempOption.isDefined) acc
-      else acc ++ variablesOf(tempOption.get).filter(TemplateIdFactory.IsTemplateIdentifier _)      
-    })
-    val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
-
-    //stats
-    if (InferInvariantsPhase.dumpStats) {
-      val (cum3, max3) = Stats.cumMax(Stats.cumTempVars, Stats.maxTempVars, tempIds.size)
-      Stats.cumTempVars = cum3; Stats.maxTempVars = max3
-    }      
-    //create a new solver 
-    val solverWithCtrs = new UIFZ3Solver(this.context, program)
-    //solverWithCtrs.push()
-    //solverWithCtrs.assertCnstr(tru)   
+    val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap    
+    val sol = recSolve(simplestModel, funcVCs, tru, solverWithCtr)
+    
+    solverWithCtr.free()
+    sol
+  }
    
-    val solution = if(!useCEGIS) {
-      recSolveForTemplatesIncr(simplestModel, solverWithCtrs, funcExprs, tru)
-    } else {      
-      //And(tempIds.map((id) => Not(Equals(id.toVariable, IntLiteral(0)))).toSeq) //this makes coefficients non-zero
-      //use a predefined bound on the template variables                 
-      val boundExpr = And(tempIds.map((id) => {
-        val idvar = id.toVariable
-        And(Implies(LessThan(idvar,zero), GreaterEquals(idvar,IntLiteral(-CEGISBound))),
-            Implies(GreaterEquals(idvar,zero), LessEquals(idvar,IntLiteral(CEGISBound))))        
-      }).toSeq)
-      cegis(simplestModel, funcExprs, boundExpr)
-    }
-    solverWithCtrs.free()
-    solution
-    //uncomment the following if you want to skip solving but are find with any arbitrary choice
-    //Some(getAllInvariants(simplestModel))
-  }
-  
-  
-  
-  def cegis(model: Map[Identifier, Expr], funcExprs: Map[FunDef,Expr], inputCtr : Expr): Option[Map[FunDef, Expr]] = {
-    /*println("candidate Invariants")
-    val candInvs = getAllInvariants(model)
-    candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))*/
-    
-    val funcs = funcExprs.keys           
-    val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap            
-    val instVC = Or(funcs.foldLeft(Seq[Expr]())((acc, fd) => {
-      acc :+  simplifyArithmetic(instantiateTemplate(funcExprs(fd), tempVarMap))         	  
-    }))
-    //println("instvc: "+instVC)
-    val spuriousTempIds = variablesOf(instVC).intersect(TemplateIdFactory.getTemplateIds)
-    if(!spuriousTempIds.isEmpty)
-      throw IllegalStateException("Found a template variable in instvc: "+spuriousTempIds)
-    
-    val solver = SimpleSolverAPI(
-            new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), 
-            timeout * 1000))           
-    //println("solving instantiated vcs...")
-    val t1 = System.currentTimeMillis()        
-    val (res, progModel) = solver.solveSAT((new RealToInt()).mapRealToInt(instVC))
-    val t2 = System.currentTimeMillis()
-    if (res.isDefined && res.get == true) {      
-      println("solved... in " + (t2 - t1) / 1000.0 + "s")
-      //instantiate vcs with newmodel
-      val progVarMap: Map[Expr, Expr] = progModel.map((elem) => (elem._1.toVariable, elem._2)).toMap
-      val tempvc = replace(progVarMap, Not(Or(funcs.map(funcExprs.apply _).toSeq)))      
-      
-      val tempctrs = simplePostTransform((e) => e match {
-        case Equals(_, FunctionInvocation(_,_)) => tru
-        case Iff(_, FunctionInvocation(_,_)) => tru
-        case _ => e
-      })(tempvc)
-      //println("Tempctrs: "+tempvc)
-      
-      val spuriousProgIds = variablesOf(tempctrs).filterNot(TemplateIdFactory.IsTemplateIdentifier _)
-      if(!spuriousProgIds.isEmpty)
-        throw IllegalStateException("Found a progam variable in tempctrs: "+spuriousProgIds)
-      
-      //val modelToExpr = InvariantUtil.modelToExpr(model)
-      val newctr = And(tempctrs,inputCtr)
-      
-      /*println("vc: "+vc)
-      println("Prog Model: "+ progModel)      
-      println("tempctr: "+tempconstr)*/
-
-      //println("solving template constriants...")
-      val t3 = System.currentTimeMillis()
-      //convert templates to integers and solve
-      val realToInt = new RealToInt()
-      val (res1, intModel) = solver.solveSAT(realToInt.mapRealToInt(newctr))
-      //reconvert integer models for templates to real models
-      val newModel = realToInt.unmapModel(intModel)      
-      val t4 = System.currentTimeMillis()
-      if (res1.isDefined) {
-        //try with the new model
-        if(res1.get == false) {
-          None //cannot solve templates
-        } else {
-          println("New model: "+newModel)
-          cegis(newModel, funcExprs, newctr)
-        }                    
-      } else
-        throw IllegalStateException("timed out... in " + (t2 - t1) / 1000.0 + "s")
-      
-    } else if(res.isDefined && res.get == false) {
-      //found inductive invariant
-      Some(getAllInvariants(model))
-    }      
-    else
-      throw IllegalStateException("timed out... in " + (t2 - t1) / 1000.0 + "s")
-  }
-  
-  def recSolveForTemplatesIncr(model: Map[Identifier, Expr], solverWithCtrs: UIFZ3Solver, funcExprs: Map[FunDef, Expr],
-      inputCtr : Expr) : Option[Map[FunDef, Expr]] = {    
+  def recSolve(model : Map[Identifier, Expr],
+      funcVCs: Map[FunDef, Expr],
+      inputCtr : Expr, 
+      solverWithCtr: UIFZ3Solver) 
+  	: Option[Map[FunDef, Expr]] = {    
     
     //for stats
     Stats.innerIterations += 1
@@ -348,7 +85,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     val candInvs = getAllInvariants(model)
     candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))
     
-    val funcs = funcExprs.keys           
+    val funcs = funcVCs.keys           
     val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap    
     var conflictingFuns = Set[FunDef]()
     //mapping from the functions to the counter-example (in the form expressions) that result in hard NL constraints
@@ -356,7 +93,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         
     val initialctrs = funcs.foldLeft(Seq[Expr]())((acc, fd) => {
 
-      val instVC = simplifyArithmetic(instantiateTemplate(funcExprs(fd), tempVarMap))
+      val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), tempVarMap))
       //find new non-linear constraints based on models to instVC (which are counter examples)
       val (ctrsForFun, counterExample) = getNLConstraints(fd, instVC, tempVarMap)
       if(!ctrsForFun.isEmpty) {
@@ -383,11 +120,11 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
       //TODO: There is a serious bug here, report the bug to z3 if it happens again      
       //For debugging
       if (this.dumpNLFormula) {
-        solverWithCtrs.assertCnstr(initialctr)
+        solverWithCtr.assertCnstr(initialctr)
         FileCountGUID.fileCount += 1
         val filename = "z3formula-" + FileCountGUID.fileCount + ".smt"
         val pwr = new PrintWriter(filename)
-        pwr.println(solverWithCtrs.ctrsToString("QF_NRA"))
+        pwr.println(solverWithCtr.ctrsToString("QF_NRA"))
         pwr.flush()
         pwr.close()
         println("Formula printed to File: " + filename)
@@ -435,7 +172,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
 
         //for debugging
         if (debugIncremental) {
-          solverWithCtrs.innerCheck
+          solverWithCtr.innerCheck
         }
         //important reset res to none if the model we found has denominator as zero
         /*val finalRes = if (res == Some(true)) {
@@ -453,7 +190,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
             //here, we might have timed out, so block current counter-example and get a new one
             val newctrs = conflictingFuns.foldLeft(Seq[Expr]())((acc, fd) => {
 
-              val instVC = simplifyArithmetic(instantiateTemplate(funcExprs(fd), tempVarMap))
+              val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), tempVarMap))
               val disableCounterExs = Not(Or(hardCE(fd)))
               val instVCmodCE = And(instVC, disableCounterExs)
               val (ctrsForFun, counterExample) = getNLConstraints(fd, instVCmodCE, tempVarMap)              
@@ -499,19 +236,19 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
           //For debugging
           if (debugIncremental) {
             println("Found a model1: "+newModel)
-            val model2 = solverWithCtrs.getModel
+            val model2 = solverWithCtr.getModel
             println("Found a model2: " + model2)
-            solverWithCtrs.push()
-            solverWithCtrs.assertCnstr(InvariantUtil.modelToExpr(model2))
+            solverWithCtr.push()
+            solverWithCtr.assertCnstr(InvariantUtil.modelToExpr(model2))
 
             val fn2 = "z3formula-withModel-" + FileCountGUID.fileCount + ".smt"
             val pwr = new PrintWriter(fn2)
-            pwr.println(solverWithCtrs.ctrsToString("QF_NRA"))
+            pwr.println(solverWithCtr.ctrsToString("QF_NRA"))
             pwr.flush()
             pwr.close()
             println("Formula & Model printed to File: " + fn2)
 
-            solverWithCtrs.pop()
+            solverWithCtr.pop()
           }
           //new model may not have mappings for all the template variables,
           //use the mappings from earlier models if they exist
@@ -523,7 +260,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
               (id -> model(id))            
           }).toMap            
           //println("New model: "+ newModel + " Completed Model: "+compModel)
-          recSolveForTemplatesIncr(compModel, solverWithCtrs, funcExprs, And(inputCtr, newPart))
+          recSolve(compModel, funcVCs, And(inputCtr, newPart), solverWithCtr)
         }
       }             
     }
@@ -579,7 +316,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
               //note the expr may have template variables so replace them with the candidate values
               val nodeExpr = if (!cn.templates.isEmpty) {
                 //the node has templates
-                instantiateTemplate(cn.toExpr, tempVarMap)
+                TemplateInstantiator.instantiate(cn.toExpr, tempVarMap)
               } else cn.toExpr
 
               //throw an exception if the expression has reals
@@ -1015,7 +752,7 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
         }         
         
         //(b) drop all constraints with dummys from 'elimLnctrs' they aren't useful (this is because of the reason we introduce the identifiers)
-        val newLnctrs = elimLnctrs.filterNot((ln) => variablesOf(ln.expr).exists(TempIdFactory.isDummy _))
+        val newLnctrs = elimLnctrs.filterNot((ln) => variablesOf(ln.expr).exists(TVarFactory.isDummy _))
         
         //TODO: investigate why eliminating variables in not good for constraint solvings
         //val newLnctrs = lnctrs
@@ -1251,58 +988,5 @@ class LinearSystemAnalyzer(ctrTracker : ConstraintTracker, tempFactory: Template
     })
     val conseq = Equals(v1, v2)
     (ants, conseq)
-  }
-
-  def monotonizeCalls(call1: Expr, call2: Expr): (Seq[Expr], Expr) = {
-    val BinaryOperator(r1 @ Variable(_), fi1 @ FunctionInvocation(fd1, args1), _) = call1
-    val BinaryOperator(r2 @ Variable(_), fi2 @ FunctionInvocation(fd2, args2), _) = call2
-    //here implicitly assumed that fd1 == fd2 and fd1 has a monotonicity axiom, 
-    //TODO: in general we need to assert this here
-    val ant = (args1 zip args2).foldLeft(Seq[Expr]())((acc, pair) => {
-      val lesse = LessEquals(pair._1, pair._2)
-      lesse +: acc
-    })
-    val conseq = LessEquals(r1, r2)
-    (ant, conseq)
-  }
-
-  //this is populated lazily by instantiateAxioms
-  private var callsWithAxioms = Set[Expr]()
-
-  def instantiateAxioms(formula: Expr): Expr = {    
-    var axiomCallsInFormula = Set[Expr]()
-    
-    //collect all calls with axioms    
-    simplePostTransform((e: Expr) => e match {
-      case call @ _ if (InvariantUtil.isCallExpr(e)) => {
-        val BinaryOperator(_, FunctionInvocation(fd, _), _) = call
-        if (FunctionInfoFactory.isMonotonic(fd)) {
-          callsWithAxioms += call
-          axiomCallsInFormula += call
-        }
-          
-        call
-      }
-      case _ => e
-    })(formula)    
-        
-    var product = Seq[(Expr,Expr)]() 
-    axiomCallsInFormula.foreach((call1) =>{
-      axiomCallsInFormula.foreach((call2) => {
-        if(call1 != call2)
-          product = (call1, call2) +: product
-      })
-    })    
-    val axiomInstances = product.foldLeft(Seq[Expr]())((acc, pair) => {      
-      val (ants, conseq) = monotonizeCalls(pair._1, pair._2)
-      acc :+ Implies(And(ants), conseq)
-    })
-    
-    //for debugging
-    reporter.info("Number of axiom instances: "+2 * axiomCallsInFormula.size * axiomCallsInFormula.size)
-    //println("Axioms: "+axiomInstances)
-    
-    val axiomInst = ExpressionTransformer.TransformNot(And(axiomInstances))
-    And(formula, axiomInst)
-  }
+  }    
 }

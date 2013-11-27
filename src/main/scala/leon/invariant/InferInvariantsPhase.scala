@@ -42,20 +42,33 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   val description = "Invariant Inference"
   val fls = BooleanLiteral(false)
   
-  //control printing of statisticcs
-  val dumpStats = false
+  var timeout: Int = 10  //default timeout is 10s
+  var enumerationRelation : (Expr,Expr) => Expr = LessEquals
+  var useCegis = false
+  
+  //control printing of statistics
+  val dumpStats = true
   
   override val definedOptions: Set[LeonOptionDef] = Set(
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
     LeonValueOptionDef("monotones", "--monotones=f1:f2", "Monotonic functions f1,f2,..."),
     LeonValueOptionDef("modularize", "--modularize=f1:f2", "Perform modular analysis on f1,f2,..."),
     LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."),
-    LeonValueOptionDef("enumrel", "--enumrel=T", "The realtion that would be used for enumeration"))
+    LeonValueOptionDef("enumrel", "--enumrel=True/false", "The relation that would be used for enumeration"),
+    LeonValueOptionDef("cegis", "--cegis=True/false", "use cegis instead of farkas"))  
 
   //TODO: handle direct equality and inequality on ADTs
   //TODO: Do we need to also assert that time is >= 0
   class InferenceEngineGenerator(reporter: Reporter, program: Program, context: LeonContext) {
-
+    
+    def getTemplateSolver(constTracker : ConstraintTracker, 
+        tempFactory : TemplateFactory) : TemplateSolver = {
+      
+      if(useCegis) new CegisSolver(context, program, constTracker,  tempFactory, timeout)
+      else new NLTemplateSolver(context, program, constTracker,  tempFactory, timeout)
+      
+    }
+    
     def getInferenceEngine(funDef: FunDef, tempFactory : TemplateFactory)
     	: (() => (Option[Boolean],Option[Expr])) = {
 
@@ -108,7 +121,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       constTracker.addPostConstraints(funDef, fullPost)      
 
       //create entities that uses the constraint tracker
-      val lsAnalyzer = new LinearSystemAnalyzer(constTracker,  tempFactory, context, program, timeout)
+      val tempSolver = getTemplateSolver(constTracker,  tempFactory)
       val vcRefiner = new RefinementEngine(program, constTracker, tempFactory, reporter)
       vcRefiner.initialize()
 
@@ -133,7 +146,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         if (!refined) (Some(false),None)
         else {
           //solve for the templates in this unroll step          
-          val res = lsAnalyzer.solveForTemplatesIncr()
+          val res = tempSolver.solveTemplates()
 
           if (res.isDefined) {
 
@@ -266,9 +279,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   }
   
 
-  //TODO provide options
-  var timeout: Int = 10  //default timeout is 10s
-  var enumerationRelation : (Expr,Expr) => Expr = LessEquals
+  //TODO provide options  
   def run(ctx: LeonContext)(program: Program): VerificationReport = {
 
     val reporter = ctx.reporter                 
@@ -308,6 +319,10 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         if(op.equals("equals")) enumerationRelation = Equals.apply _
         else if(op.equals("lessequals")) enumerationRelation = LessEquals
         else throw IllegalStateException("Unknown Enumeration Operation")        
+      }
+      
+      case v @ LeonValueOption("cegis", _) => {                
+        useCegis = true        
       }
         
       case v @ LeonValueOption("timeout", _) =>

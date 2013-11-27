@@ -181,7 +181,7 @@ object ADTConstraint {
       if (fld == ccfld) r
       else {
         //create a dummy identifier there
-        TempIdFactory.createDummy.setType(fld.getType).toVariable
+        TVarFactory.createDummy.setType(fld.getType).toVariable
       }
     })
     val ccExpr = Equals(ccvar, CaseClass(cd, args))
@@ -195,7 +195,7 @@ object ADTConstraint {
       if (i == index) r
       else {
         //create a dummy identifier there (note that here we have to use i-1)
-        TempIdFactory.createDummy.setType(tupleType.bases(i - 1)).toVariable
+        TVarFactory.createDummy.setType(tupleType.bases(i - 1)).toVariable
       }
     })
     val tpExpr = Equals(tpvar, Tuple(args))

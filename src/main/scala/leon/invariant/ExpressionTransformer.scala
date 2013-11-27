@@ -115,7 +115,7 @@ object ExpressionTransformer {
           }
         }
         case IfExpr(cond, thn, elze) => {
-          val freshvar = TempIdFactory.createTemp("ifres").setType(e.getType).toVariable          
+          val freshvar = TVarFactory.createTemp("ifres").setType(e.getType).toVariable          
           val newexpr = Or(And(cond,Equals(freshvar,thn)),And(Not(cond),Equals(freshvar,elze)))
           
           val resset = transform(newexpr)
@@ -158,7 +158,7 @@ object ExpressionTransformer {
               val (resvalue2, cjs) = resvalue match {
                 case t: Terminal => (t, Seq())
                 case _ => {
-                  val freshres = TempIdFactory.createTemp("tres").setType(resvalue.getType).toVariable
+                  val freshres = TVarFactory.createTemp("tres").setType(resvalue.getType).toVariable
                   (freshres, Seq(Equals(freshres, resvalue)))
                 }
               }
@@ -206,7 +206,7 @@ object ExpressionTransformer {
           //create a new equality in UIFs
           val newfi = FunctionInvocation(fd,newargs)
           //create a new variable to represent the function
-          val freshResVar = Variable(TempIdFactory.createTemp("r").setType(fi.getType))                    
+          val freshResVar = Variable(TVarFactory.createTemp("r").setType(fi.getType))                    
           val res = (freshResVar, newConjuncts + Equals(freshResVar, newfi))                        
           res          
         }
@@ -217,7 +217,7 @@ object ExpressionTransformer {
 
           val freshArg = newargs(0)            
           val newInst = CaseClassInstanceOf(cd,freshArg)
-          val freshResVar = Variable(TempIdFactory.createTemp("ci").setType(inst.getType))
+          val freshResVar = Variable(TVarFactory.createTemp("ci").setType(inst.getType))
           newConjuncts += Iff(freshResVar, newInst) 
           (freshResVar, newConjuncts)
         }
@@ -227,7 +227,7 @@ object ExpressionTransformer {
 
           val freshArg = newargs(0)
           val newCS = CaseClassSelector(cd, freshArg, sel)
-          val freshResVar = Variable(TempIdFactory.createTemp("cs").setType(cs.getType))
+          val freshResVar = Variable(TVarFactory.createTemp("cs").setType(cs.getType))
           newConjuncts += Equals(freshResVar, newCS)           
 
           (freshResVar, newConjuncts) 
@@ -238,7 +238,7 @@ object ExpressionTransformer {
 
           val freshArg = newargs(0)
           val newTS = TupleSelect(freshArg, index)
-          val freshResVar = Variable(TempIdFactory.createTemp("ts").setType(ts.getType))
+          val freshResVar = Variable(TVarFactory.createTemp("ts").setType(ts.getType))
           newConjuncts += Equals(freshResVar, newTS)           
 
           (freshResVar, newConjuncts) 
@@ -249,7 +249,7 @@ object ExpressionTransformer {
           var newConjuncts = newcjs
 
           val newCC = CaseClass(cd, newargs)
-          val freshResVar = Variable(TempIdFactory.createTemp("cc").setType(cc.getType))
+          val freshResVar = Variable(TVarFactory.createTemp("cc").setType(cc.getType))
           newConjuncts += Equals(freshResVar, newCC)
 
           (freshResVar, newConjuncts)  
@@ -259,7 +259,7 @@ object ExpressionTransformer {
           var newConjuncts = newcjs
 
           val newTP = Tuple(newargs)
-          val freshResVar = Variable(TempIdFactory.createTemp("tp").setType(tp.getType))
+          val freshResVar = Variable(TVarFactory.createTemp("tp").setType(tp.getType))
           newConjuncts += Equals(freshResVar, newTP)
 
           (freshResVar, newConjuncts)  
@@ -283,7 +283,7 @@ object ExpressionTransformer {
               case v : Variable => v
               case r : ResultVariable => r
               case _ => {
-                val freshArgVar = Variable(TempIdFactory.createTemp("arg").setType(arg.getType))                                           
+                val freshArgVar = Variable(TVarFactory.createTemp("arg").setType(arg.getType))                                           
                   newConjuncts += Equals(freshArgVar, nexpr) 
                   freshArgVar
               }
