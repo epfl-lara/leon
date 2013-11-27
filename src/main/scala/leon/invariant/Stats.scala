@@ -40,7 +40,7 @@ object Stats {
   var cumTempVars : Long = 0
   var maxTempVars : Long= 0
   
-  //per inner iteration stats    
+  //non-linear solver stats    
   var cumFarkaSize : Long = 0
   var maxFarkaSize : Long = 0
   var cumFarkaTime : Long = 0
@@ -60,8 +60,12 @@ object Stats {
   var cumLemmaApps: Long = 0
   var maxLemmaApps: Long  = 0
   
-  var output : String = ""
-    
+  //cegis solver stats
+  var cegisIterations : Long = 0
+  var cumTemplateCtrSize : Long = 0  
+  var maxTemplateCtrSize : Long = 0
+  
+  var output : String = ""    
   def addOutput(out : String) = {
     output += out + "\n"
   }
@@ -82,7 +86,16 @@ object Stats {
     pr.println("avgTempVars : "+(cumTempVars.toDouble / outerIterations))
     pr.println("maxTempVars : "+maxTempVars)
     pr.println("Total retries: "+retries)    
-    
+  }
+  
+  def dumpOutputs(pr : PrintWriter) {
+    pr.println("########## Outputs ############")
+    pr.println(output)
+    pr.flush()
+  }
+  
+  def dumpFarkasStats(pr : PrintWriter) ={
+    pr.println("### Farkas solver stats ####")
     //inner iteration statistics
     pr.println("avgFarkaSize : "+(cumFarkaSize.toDouble / innerIterations))
     pr.println("maxFarkaSize : "+maxFarkaSize)
@@ -101,10 +114,14 @@ object Stats {
     pr.println("avgCompatCalls : "+(cumCompatCalls.toDouble / innerIterations))
     pr.println("maxCompatCalls : "+maxCompatCalls)
     pr.println("avgLemmaApps : "+(cumLemmaApps.toDouble / innerIterations))
-    pr.println("maxLemmaApps : "+maxLemmaApps)
-    
-    pr.println("########## Outputs ############")
-    pr.println(output)
-    pr.flush()    
+    pr.println("maxLemmaApps : "+maxLemmaApps)            
+  }
+  
+  def dumpCegisStats(pr : PrintWriter) ={
+    pr.println("### Cegis solver stats #### ")
+    //inner iteration statistics
+    pr.println("cegis iterations : "+(cumTemplateCtrSize.toDouble / cegisIterations))
+    pr.println("avgTemplateCtrSize : "+(cumTemplateCtrSize.toDouble / cegisIterations))
+    pr.println("maxTemplateCtrSize : "+maxTemplateCtrSize)               
   }
 }

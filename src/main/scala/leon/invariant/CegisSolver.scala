@@ -37,18 +37,28 @@ class CegisSolver(context : LeonContext,
     program : Program,
     ctrTracker : ConstraintTracker, 
     tempFactory: TemplateFactory,    
-    timeout: Int) extends TemplateSolver(context, program, ctrTracker, tempFactory, timeout) {
-    
-  val CEGISBound = 1     
-    
+    timeout: Int,
+    bound: Option[Int] = None) extends TemplateSolver(context, program, ctrTracker, tempFactory, timeout) {
+        
   override def solve(tempIds: Set[Identifier], funcVCs: Map[FunDef, Expr]): Option[Map[FunDef, Expr]] = {
 
-    //use a predefined bound on the template variables                 
-    val boundExpr = And(tempIds.map((id) => {
-      val idvar = id.toVariable
-      And(Implies(LessThan(idvar, zero), GreaterEquals(idvar, IntLiteral(-CEGISBound))),
-        Implies(GreaterEquals(idvar, zero), LessEquals(idvar, IntLiteral(CEGISBound))))
-    }).toSeq)
+    val initCtr = if (bound.isDefined) {
+      //use a predefined bound on the template variables                 
+      And(tempIds.map((id) => {
+        val idvar = id.toVariable
+        And(Implies(LessThan(idvar, zero), GreaterEquals(idvar, IntLiteral(-bound.get))),
+          Implies(GreaterEquals(idvar, zero), LessEquals(idvar, IntLiteral(bound.get))))
+      }).toSeq)
+      
+    } else tru
+    
+    solve(tempIds,funcVCs, initCtr)
+  }
+  
+  def solve(tempIds: Set[Identifier], funcVCs: Map[FunDef, Expr], initCtr : Expr)
+  : Option[Map[FunDef, Expr]] = {
+    //for stats
+    Stats.cegisIterations += 1    
 
     val funcs = funcVCs.keys
     val solver = SimpleSolverAPI(
@@ -102,6 +112,9 @@ class CegisSolver(context : LeonContext,
 
         //val modelToExpr = InvariantUtil.modelToExpr(model)
         val newctr = And(tempctrs, inputCtr)
+        //for stats
+        val (cum, max) = Stats.cumMax(Stats.cumTemplateCtrSize, Stats.maxTemplateCtrSize, InvariantUtil.atomNum(newctr))
+        Stats.cumTemplateCtrSize = cum; Stats.maxTemplateCtrSize = max;
 
         /*println("vc: "+vc)
       println("Prog Model: "+ progModel)      
@@ -135,6 +148,6 @@ class CegisSolver(context : LeonContext,
         throw IllegalStateException("1: timed out... in " + (t2 - t1) / 1000.0 + "s")
     }
 
-    cegisRec(simplestModel, boundExpr)
+    cegisRec(simplestModel, initCtr)
   }
  }

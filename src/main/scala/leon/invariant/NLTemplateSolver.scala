@@ -46,7 +46,7 @@ class NLTemplateSolver(context : LeonContext,
   val debugIncremental = false  
   val debugElimination = false
   val printPathToConsole = false
-  val dumpPathAsSMTLIB = true
+  val dumpPathAsSMTLIB = false
   val printCallConstriants = false
   val printReducedFormula = false  
   val dumpNLFormula = false
