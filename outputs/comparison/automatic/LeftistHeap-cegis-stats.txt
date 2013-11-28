@@ -1,0 +1,27 @@
+Total Time: 241.173s
+VC refinements : 13
+Avg VC size : 2342.3076923076924
+Max VC size : 4304
+Avg UIF-ADT size : 638.9230769230769
+Max UIF-ADT size : 1149
+avgTempVars : 7.615384615384615
+maxTempVars : 15
+### Cegis solver stats #### 
+# of bounds tried: 1
+cegis iterations: 462
+avgTemplateCtrSize : 15993.950216450217
+maxTemplateCtrSize : 82665
+########## Outputs ############
+Invariants for Function: removeMax1
+hasLeftistProperty1 --> ((((0 * rightHeight1(h)) + (0 * size1(h))) + 0) == 0)
+rightHeight1 --> (((0 * #res) + 0) == 0)
+size1 --> ((((0 * #res) + (0 * rightHeight1(t))) + 0) == 0)
+merge1 --> ((((((((0 * rightHeight1(#res)) + (1 * size1(h2))) + (1 * size1(h1))) + (-1 * size1(#res))) + (0 * rightHeight1(h1))) + (0 * rightHeight1(h2))) + 0) == 0)
+
+Invariants for Function: insert1
+hasLeftistProperty1 --> ((((0 * rightHeight1(h)) + (0 * size1(h))) + 0) == 0)
+rightHeight1 --> (((0 * #res) + 0) == 0)
+size1 --> ((((0 * rightHeight1(t)) + (0 * #res)) + 0) == 0)
+merge1 --> ((((((((0 * rightHeight1(h1)) + (-1 * size1(h2))) + (0 * rightHeight1(h2))) + (0 * rightHeight1(#res))) + (-1 * size1(h1))) + (1 * size1(#res))) + 0) == 0)
+
+

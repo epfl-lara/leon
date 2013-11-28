@@ -61,9 +61,10 @@ object Stats {
   var maxLemmaApps: Long  = 0
   
   //cegis solver stats
-  var cegisIterations : Long = 0
+  var cegisIterations = 0
   var cumTemplateCtrSize : Long = 0  
   var maxTemplateCtrSize : Long = 0
+  var boundsTried = 0
   
   var output : String = ""    
   def addOutput(out : String) = {
@@ -77,15 +78,13 @@ object Stats {
   def dumpStats(pr : PrintWriter) ={
     //outer iteration statistics
     pr.println("Total Time: "+(totalTime/1000.0)+"s")
-    pr.println("VC refinements : "+outerIterations)
-    pr.println("Disjunct Explorations : "+innerIterations)
+    pr.println("VC refinements : "+outerIterations)    
     pr.println("Avg VC size : "+ (cumVCsize.toDouble / outerIterations))
     pr.println("Max VC size : "+maxVCsize)
     pr.println("Avg UIF-ADT size : "+ (cumUIFADTs.toDouble / outerIterations))
     pr.println("Max UIF-ADT size : "+ maxUIFADTs)        
     pr.println("avgTempVars : "+(cumTempVars.toDouble / outerIterations))
-    pr.println("maxTempVars : "+maxTempVars)
-    pr.println("Total retries: "+retries)    
+    pr.println("maxTempVars : "+maxTempVars)    
   }
   
   def dumpOutputs(pr : PrintWriter) {
@@ -96,6 +95,8 @@ object Stats {
   
   def dumpFarkasStats(pr : PrintWriter) ={
     pr.println("### Farkas solver stats ####")
+    pr.println("Disjunct Explorations : "+innerIterations)
+    pr.println("Total retries: "+retries)    
     //inner iteration statistics
     pr.println("avgFarkaSize : "+(cumFarkaSize.toDouble / innerIterations))
     pr.println("maxFarkaSize : "+maxFarkaSize)
@@ -120,7 +121,8 @@ object Stats {
   def dumpCegisStats(pr : PrintWriter) ={
     pr.println("### Cegis solver stats #### ")
     //inner iteration statistics
-    pr.println("cegis iterations : "+(cumTemplateCtrSize.toDouble / cegisIterations))
+    pr.println("# of bounds tried: "+boundsTried)
+    pr.println("cegis iterations: "+cegisIterations)
     pr.println("avgTemplateCtrSize : "+(cumTemplateCtrSize.toDouble / cegisIterations))
     pr.println("maxTemplateCtrSize : "+maxTemplateCtrSize)               
   }

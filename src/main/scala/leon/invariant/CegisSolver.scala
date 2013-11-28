@@ -56,9 +56,7 @@ class CegisSolver(context : LeonContext,
   }
   
   def solve(tempIds: Set[Identifier], funcVCs: Map[FunDef, Expr], initCtr : Expr)
-  : Option[Map[FunDef, Expr]] = {
-    //for stats
-    Stats.cegisIterations += 1    
+  : Option[Map[FunDef, Expr]] = {        
 
     val funcs = funcVCs.keys
     val solver = SimpleSolverAPI(
@@ -82,7 +80,10 @@ class CegisSolver(context : LeonContext,
     val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
     addModel(simplestModel)
     
-    def cegisRec(model: Map[Identifier, Expr], inputCtr: Expr): Option[Map[FunDef, Expr]] = {      
+    def cegisRec(model: Map[Identifier, Expr], inputCtr: Expr): Option[Map[FunDef, Expr]] = {
+      //for stats
+      Stats.cegisIterations += 1
+      
       /*println("candidate Invariants")
     val candInvs = getAllInvariants(model)
     candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))*/

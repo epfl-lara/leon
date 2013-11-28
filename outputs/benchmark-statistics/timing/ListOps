@@ -1,0 +1,63 @@
+Total Time: 14.689s
+VC refinements : 19
+Disjunct Explorations : 64
+Avg VC size : 282.6842105263158
+Max VC size : 829
+Avg UIF-ADT size : 71.94736842105263
+Max UIF-ADT size : 189
+avgTempVars : 5.052631578947368
+maxTempVars : 10
+Total retries: 0
+avgFarkaSize : 120.421875
+maxFarkaSize : 626
+avgFarkaTime : 0.092546875s
+maxFarkaTime : 1.204s
+avgNLSize : 12.015625
+maxNLSize : 70
+avgDijSize : 37.515625
+maxDijSize : 197
+avgElimvars : 18.046875
+maxElimvars : 96
+avgElimAtoms : 17.546875
+maxElimAtoms : 89
+avgExploreTime : 0.097265625s
+maxExploreTime : 0.854s
+avgCompatCalls : 269.53125
+maxCompatCalls : 3429
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+########## Outputs ############
+Invariants for Function: reverseRec1
+reverseRec1 --> ((((3 * res12._2) + (-29 * size1(l1))) + -12) ≤ 0)
+size1 --> (((0 * #res) + -1) ≤ 0)
+
+Invariants for Function: reverse1
+reverse1 --> ((((1 * res8._2) + (-6 * size1(l))) + -4) ≤ 0)
+size1 --> (((-1 * #res) + -1) ≤ 0)
+reverseRec1 --> ((((1 * res12._2) + (-6 * size1(l1))) + -2) ≤ 0)
+
+Invariants for Function: append1
+append1 --> ((((-13 * size1(l1)) + (1 * res9._2)) + -2) ≤ 0)
+size1 --> (((0 * #res) + -1) ≤ 0)
+
+Invariants for Function: reverse21
+reverse21 --> ((((-6 * mult1(size1(l), size1(l))) + (1 * res13._2)) + -4) ≤ 0)
+size1 --> (((-1 * #res) + -1) ≤ 0)
+mult1 --> (((((0 * x) + (0 * y)) + (0 * #res)) + -1) ≤ 0)
+append1 --> ((((1 * res9._2) + (-5 * size1(l1))) + -2) ≤ 0)
+
+Invariants for Function: contains1
+contains1 --> ((((-76 * size1(list)) + (1 * res7._2)) + -4) ≤ 0)
+size1 --> (((0 * #res) + -1) ≤ 0)
+
+Invariants for Function: remove1
+remove1 --> ((((1 * res10._2) + (-11 * size1(l))) + -5) ≤ 0)
+size1 --> (((0 * #res) + -1) ≤ 0)
+
+Invariants for Function: distinct1
+distinct1 --> ((((-10 * mult1(size1(l), size1(l))) + (1 * res11._2)) + -7) ≤ 0)
+contains1 --> ((((-7 * size1(list)) + (1 * res7._2)) + -2) ≤ 0)
+size1 --> (((-1 * #res) + -1) ≤ 0)
+mult1 --> (((((0 * x) + (0 * y)) + (0 * #res)) + -1) ≤ 0)
+
+

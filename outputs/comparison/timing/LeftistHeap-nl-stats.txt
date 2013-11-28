@@ -1,0 +1,48 @@
+Total Time: 37.075s
+VC refinements : 9
+Avg VC size : 1279.7777777777778
+Max VC size : 2176
+Avg UIF-ADT size : 367.1111111111111
+Max UIF-ADT size : 575
+avgTempVars : 5.666666666666667
+maxTempVars : 8
+### Farkas solver stats ####
+Disjunct Explorations : 28
+Total retries: 0
+avgFarkaSize : 180.89285714285714
+maxFarkaSize : 833
+avgFarkaTime : 0.07728571428571429s
+maxFarkaTime : 0.928s
+avgNLSize : 18.964285714285715
+maxNLSize : 57
+avgDijSize : 138.67857142857142
+maxDijSize : 480
+avgElimvars : 73.5
+maxElimvars : 226
+avgElimAtoms : 103.07142857142857
+maxElimAtoms : 384
+avgExploreTime : 0.9162857142857144s
+maxExploreTime : 3.599s
+avgCompatCalls : 795.5
+maxCompatCalls : 3139
+avgLemmaApps : 6.642857142857143
+maxLemmaApps : 168
+########## Outputs ############
+Invariants for Function: merge1
+merge1 --> (((((-38 * rightHeight1(h2)) + (1 * res5._2)) + (-39 * rightHeight1(h1))) + -6) ≤ 0)
+rightHeight1 --> (((-2 * #res) + -1) ≤ 0)
+hasLeftistProperty1 --> (-1 ≤ 0)
+
+Invariants for Function: insert1
+insert1 --> ((((2 * res4._2) + (-69 * rightHeight1(heap))) + -14) ≤ 0)
+hasLeftistProperty1 --> (-1 ≤ 0)
+merge1 --> (((((1 * res5._2) + (-23 * rightHeight1(h2))) + (-23 * rightHeight1(h1))) + -1) ≤ 0)
+rightHeight1 --> (((-1 * #res) + -1) ≤ 0)
+
+Invariants for Function: size1
+size1 --> ((((1 * twopower1(rightHeight1(t))) + (-129 * res3)) + -2) ≤ 0)
+hasLeftistProperty1 --> (-1 ≤ 0)
+twopower1 --> ((((8 * x) + (-256 * #res)) + 16) ≤ 0)
+rightHeight1 --> (((-1 * #res) + -2) ≤ 0)
+
+

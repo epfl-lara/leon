@@ -1,0 +1,36 @@
+Total Time: 3.135s
+VC refinements : 7
+Avg VC size : 260.2857142857143
+Max VC size : 473
+Avg UIF-ADT size : 68.28571428571429
+Max UIF-ADT size : 113
+avgTempVars : 5.285714285714286
+maxTempVars : 9
+### Farkas solver stats ####
+Disjunct Explorations : 37
+Total retries: 0
+avgFarkaSize : 57.21621621621622
+maxFarkaSize : 153
+avgFarkaTime : 0.013135135135135135s
+maxFarkaTime : 0.03s
+avgNLSize : 5.648648648648648
+maxNLSize : 34
+avgDijSize : 7.513513513513513
+maxDijSize : 60
+avgElimvars : 2.675675675675676
+maxElimvars : 21
+avgElimAtoms : 2.6486486486486487
+maxElimAtoms : 21
+avgExploreTime : 0.03597297297297298s
+maxExploreTime : 0.199s
+avgCompatCalls : 52.891891891891895
+maxCompatCalls : 820
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+########## Outputs ############
+Invariants for Function: sort1
+sort1 --> ((((-1 * size1(l)) + (1 * size1(res1))) + 0) == 0)
+size1 --> (((0 * #res) + 0) == 0)
+sortedIns1 --> (((((0 * e) + (-1 * size1(l))) + (1 * size1(#res))) + -1) == 0)
+
+

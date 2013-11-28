@@ -1,0 +1,26 @@
+Total Time: 5.868s
+VC refinements : 18
+Avg VC size : 318.3888888888889
+Max VC size : 703
+Avg UIF-ADT size : 81.55555555555556
+Max UIF-ADT size : 159
+avgTempVars : 2.888888888888889
+maxTempVars : 10
+### Cegis solver stats #### 
+# of bounds tried: 1
+cegis iterations: 96
+avgTemplateCtrSize : 779.1770833333334
+maxTemplateCtrSize : 3090
+########## Outputs ############
+Invariants for Function: amortizedQueue1
+
+Invariants for Function: enqueue1
+size1 --> (((0 * #res) + 0) == 0)
+concat1 --> (((((-1 * size1(l2)) + (1 * size1(#res))) + (-1 * size1(l1))) + 0) == 0)
+reverseRec1 --> (((((-1 * size1(l2)) + (1 * size1(#res))) + (-1 * size1(l1))) + 0) == 0)
+
+Invariants for Function: pop1
+removeLast1 --> ((((-1 * size1(l)) + (1 * size1(#res))) + 1) == 0)
+size1 --> (((0 * #res) + 0) == 0)
+
+

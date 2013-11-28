@@ -1,0 +1,25 @@
+Total Time: 899.741s
+VC refinements : 41
+Avg VC size : 1394.2926829268292
+Max VC size : 3818
+Avg UIF-ADT size : 208.4390243902439
+Max UIF-ADT size : 457
+avgTempVars : 7.317073170731708
+maxTempVars : 11
+### Cegis solver stats #### 
+# of bounds tried: 3
+cegis iterations: 1172
+avgTemplateCtrSize : 59924.69880546075
+maxTemplateCtrSize : 407295
+########## Outputs ############
+Invariants for Function: sortedIns1
+sortedIns1 --> ((((-7 * size1(l)) + (1 * res2._2)) + -3) ≤ 0)
+size1 --> (((-1 * #res) + 0) ≤ 0)
+
+Invariants for Function: sort1
+sort1 --> ((((-6 * mult1(size1(l), size1(l))) + (1 * res3._2)) + -4) ≤ 0)
+size1 --> (((-2 * #res) + -1) ≤ 0)
+mult1 --> (((((-1 * y) + (-1 * x)) + (-11 * #res)) + 0) ≤ 0)
+sortedIns1 --> ((((-7 * size1(l)) + (1 * res2._2)) + -3) ≤ 0)
+
+

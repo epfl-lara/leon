@@ -1,0 +1,43 @@
+Total Time: 4.077s
+VC refinements : 6
+Avg VC size : 393.0
+Max VC size : 1147
+Avg UIF-ADT size : 130.33333333333334
+Max UIF-ADT size : 411
+avgTempVars : 3.0
+maxTempVars : 4
+### Farkas solver stats ####
+Disjunct Explorations : 18
+Total retries: 0
+avgFarkaSize : 51.72222222222222
+maxFarkaSize : 182
+avgFarkaTime : 0.010666666666666666s
+maxFarkaTime : 0.035s
+avgNLSize : 2.5555555555555554
+maxNLSize : 9
+avgDijSize : 31.666666666666668
+maxDijSize : 239
+avgElimvars : 15.5
+maxElimvars : 84
+avgElimAtoms : 20.666666666666668
+maxElimAtoms : 119
+avgExploreTime : 0.11888888888888889s
+maxExploreTime : 0.756s
+avgCompatCalls : 92.72222222222223
+maxCompatCalls : 941
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+########## Outputs ############
+Invariants for Function: insert1
+insert1 --> ((((-20 * height1(t)) + (1 * res5._2)) + -7) ≤ 0)
+height1 --> (((0 * #res) + -1) ≤ 0)
+
+Invariants for Function: remove1
+remove1 --> ((((-30 * height1(t)) + (1 * res3._2)) + -15) ≤ 0)
+height1 --> (((-1 * #res) + -1) ≤ 0)
+
+Invariants for Function: contains1
+contains1 --> ((((1 * res4._2) + (-8 * height1(t))) + -4) ≤ 0)
+height1 --> (((-1 * #res) + -1) ≤ 0)
+
+

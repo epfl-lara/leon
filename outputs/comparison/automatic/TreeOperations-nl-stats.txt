@@ -1,0 +1,43 @@
+Total Time: 1488.284s
+VC refinements : 14
+Avg VC size : 644.7857142857143
+Max VC size : 1453
+Avg UIF-ADT size : 222.85714285714286
+Max UIF-ADT size : 490
+avgTempVars : 6.285714285714286
+maxTempVars : 12
+### Farkas solver stats ####
+Disjunct Explorations : 121
+Total retries: 69
+avgFarkaSize : 244.58677685950414
+maxFarkaSize : 580
+avgFarkaTime : 11.697694214876034s
+maxFarkaTime : 20.492s
+avgNLSize : 15.900826446280991
+maxNLSize : 60
+avgDijSize : 27.785123966942148
+maxDijSize : 122
+avgElimvars : 13.363636363636363
+maxElimvars : 58
+avgElimAtoms : 12.884297520661157
+maxElimAtoms : 56
+avgExploreTime : 0.5645289256198347s
+maxExploreTime : 3.438s
+avgCompatCalls : 313.60330578512395
+maxCompatCalls : 3140
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+########## Outputs ############
+Invariants for Function: removeAll1
+removeAll1 --> (((((-1 * listSize1(l)) + (-1 * size1(t))) + (0 * size1(res3))) + -2) ≤ 0)
+remove1 --> (((((-4 * size1(t)) + (0 * elem)) + (4 * size1(#res))) + -1) ≤ 0)
+size1 --> (((-1 * #res) + -1) ≤ 0)
+listSize1 --> (((-1 * #res) + -8) ≤ 0)
+
+Invariants for Function: addAll1
+addAll1 --> (((((-2 * size1(res2)) + (-1 * listSize1(l))) + (-1 * size1(t))) + -4) ≤ 0)
+size1 --> (((-1 * #res) + -1) ≤ 0)
+insert1 --> (((((-1 * size1(#res)) + (0 * elem)) + (1 * size1(t))) + 0) ≤ 0)
+listSize1 --> (((-1 * #res) + -1) ≤ 0)
+
+

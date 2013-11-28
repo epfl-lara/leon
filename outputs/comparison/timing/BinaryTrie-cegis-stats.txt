@@ -1,0 +1,28 @@
+Total Time: 421.621s
+VC refinements : 64
+Avg VC size : 1026.40625
+Max VC size : 1326
+Avg UIF-ADT size : 331.0
+Max UIF-ADT size : 405
+avgTempVars : 4.1875
+maxTempVars : 6
+### Cegis solver stats #### 
+# of bounds tried: 6
+cegis iterations: 1520
+avgTemplateCtrSize : 7254.122368421053
+maxTemplateCtrSize : 33905
+########## Outputs ############
+Invariants for Function: find1
+find1 --> ((((1 * res4._2) + (-16 * listSize1(inp))) + -13) ≤ 0)
+listSize1 --> (((-2 * #res) + -1) ≤ 0)
+
+Invariants for Function: insert1
+insert1 --> ((((-23 * listSize1(inp)) + (1 * res3._2)) + -18) ≤ 0)
+listSize1 --> (((-1 * #res) + -1) ≤ 0)
+
+Invariants for Function: create1
+create1 --> ((((1 * res5._2) + (-23 * listSize1(inp))) + -4) ≤ 0)
+insert1 --> ((((-23 * listSize1(inp)) + (1 * res3._2)) + -2) ≤ 0)
+listSize1 --> (((-1 * #res) + 0) ≤ 0)
+
+

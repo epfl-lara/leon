@@ -1,0 +1,36 @@
+Total Time: 167.988s
+VC refinements : 7
+Avg VC size : 1080.7142857142858
+Max VC size : 1907
+Avg UIF-ADT size : 272.0
+Max UIF-ADT size : 417
+avgTempVars : 4.857142857142857
+maxTempVars : 8
+### Farkas solver stats ####
+Disjunct Explorations : 35
+Total retries: 6
+avgFarkaSize : 176.31428571428572
+maxFarkaSize : 526
+avgFarkaTime : 4.226914285714286s
+maxFarkaTime : 20.32s
+avgNLSize : 14.371428571428572
+maxNLSize : 45
+avgDijSize : 35.91428571428571
+maxDijSize : 145
+avgElimvars : 20.485714285714284
+maxElimvars : 95
+avgElimAtoms : 19.02857142857143
+maxElimAtoms : 90
+avgExploreTime : 0.4728857142857143s
+maxExploreTime : 2.685s
+avgCompatCalls : 181.68571428571428
+maxCompatCalls : 1391
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+########## Outputs ############
+Invariants for Function: create1
+insert1 --> (((((2 * listSize1(inp)) + (0 * height1(t))) + (-2 * height1(#res))) + -1) ≤ 0)
+height1 --> (((-1 * #res) + -1) ≤ 0)
+listSize1 --> (((-1 * #res) + -2) ≤ 0)
+
+

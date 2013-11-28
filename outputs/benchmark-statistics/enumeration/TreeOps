@@ -1,0 +1,42 @@
+Total Time: 73.906s
+VC refinements : 14
+Disjunct Explorations : 52
+Avg VC size : 644.7857142857143
+Max VC size : 1453
+Avg UIF-ADT size : 222.85714285714286
+Max UIF-ADT size : 490
+avgTempVars : 6.285714285714286
+maxTempVars : 12
+Total retries: 2
+avgFarkaSize : 116.5576923076923
+maxFarkaSize : 427
+avgFarkaTime : 1.0292692307692308s
+maxFarkaTime : 20.378s
+avgNLSize : 15.923076923076923
+maxNLSize : 60
+avgDijSize : 28.71153846153846
+maxDijSize : 110
+avgElimvars : 14.942307692307692
+maxElimvars : 53
+avgElimAtoms : 14.01923076923077
+maxElimAtoms : 51
+avgExploreTime : 0.32046153846153846s
+maxExploreTime : 2.997s
+avgCompatCalls : 383.8076923076923
+maxCompatCalls : 2448
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+########## Outputs ############
+Invariants for Function: addAll1
+addAll1 --> (((((0 * size1(res2)) + (-2 * listSize1(l))) + (-1 * size1(t))) + -2) ≤ 0)
+size1 --> (((-1 * #res) + -1) ≤ 0)
+listSize1 --> (((-1 * #res) + -1) ≤ 0)
+insert1 --> (((((0 * elem) + (1 * size1(t))) + (-1 * size1(#res))) + 0) ≤ 0)
+
+Invariants for Function: removeAll1
+removeAll1 --> (((((-8 * listSize1(l)) + (-1 * size1(t))) + (0 * size1(res3))) + -8) ≤ 0)
+size1 --> (((-1 * #res) + -1) ≤ 0)
+listSize1 --> (((-1 * #res) + -1) ≤ 0)
+remove1 --> (((((0 * elem) + (-1 * size1(t))) + (1 * size1(#res))) + 0) ≤ 0)
+
+

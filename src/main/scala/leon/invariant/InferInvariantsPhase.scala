@@ -31,6 +31,7 @@ import leon.solvers.SimpleSolverAPI
 import leon.solvers.SolverFactory
 import leon.solvers.z3.UIFZ3Solver
 import leon.verification.VerificationReport
+import scala.util.control.Breaks._
 
 /**
  * @author ravi
@@ -45,7 +46,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   var program : Program = null
   var context : LeonContext = null
   var reporter : Reporter = null
-  var timeout: Int = 10  //default timeout is 10s
+  var timeout: Int = 20  //default timeout is 10s
   var enumerationRelation : (Expr,Expr) => Expr = LessEquals
   var modularFunctions = Set[FunDef]()
   var useCegis = false
@@ -61,7 +62,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     LeonValueOptionDef("modularize", "--modularize=f1:f2", "Perform modular analysis on f1,f2,..."),
     LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."),
     LeonValueOptionDef("inferTemp", "--inferTemp=True/false", "Infer templates by enumeration"),
-    LeonValueOptionDef("cegis", "--cegis=True/false", "use cegis instead of farkas"))
+    LeonValueOptionDef("cegis", "--cegis=True/false", "use cegis instead of farkas"),
+    LeonValueOptionDef("stats-suffix", "--stats-suffix=<suffix string>", "the suffix of the statistics file"))
 
   //TODO provide options  
   def run(ctx: LeonContext)(prog: Program): VerificationReport = {
@@ -71,8 +73,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     program = prog
     reporter.info("Running Invariant Inference Phase...")
 
-    //val functionsToAnalyse: MutableSet[String] = MutableSet.empty    
-
+    
+    var statsSuff = "-stats" + FileCountGUID.getID
     for (opt <- ctx.options) opt match {
       //      case LeonValueOption("functions", ListValue(fs)) =>
       //        functionsToAnalyse ++= fs
@@ -125,6 +127,10 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       case v @ LeonValueOption("timeout", _) =>
         timeout = v.asInt(ctx).get
 
+      case v @ LeonValueOption("stats-suffix", ListValue(fs)) => {
+        statsSuff = fs(0)
+      }
+        
       case _ =>
     }
 
@@ -147,23 +153,29 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       }
       val succeededFuncs = analyseProgram(functionsToAnalyze, templateSolverFactory)
       
-      println("Inferrence succeeded for functions: "+succeededFuncs.map(_.id))      
-    } else {      
+      println("Inferrence did not succeeded for functions: "+functionsToAnalyze.filterNot(succeededFuncs.contains _).map(_.id))      
+    } else {
       //here iterate on a bound
       var remFuncs = functionsToAnalyze
       //increment cegis bound iteratively
-      for (b <- 1 to maxCegisBound) {
-        if (!remFuncs.isEmpty) {
-
+      var b = 1
+      breakable {
+        while (b <= maxCegisBound) {
+          //for stats          
+          Stats.boundsTried += 1
           //create a solver factory
           val templateSolverFactory = (constTracker: ConstraintTracker, tempFactory: TemplateFactory) => {
             new CegisSolver(context, program, constTracker, tempFactory, timeout, Some(b))
           }
           val succeededFuncs = analyseProgram(remFuncs, templateSolverFactory)
           remFuncs = remFuncs.filterNot(succeededFuncs.contains _)
+
+          if (remFuncs.isEmpty) break;
+          //increase bounds in steps of 5
+          b += 5
         }
+        println("Inferrence did not succeeded for functions: " + remFuncs.map(_.id))
       }
-      println("Inferrence succeeded for functions: "+remFuncs.map(_.id))
     }
    
     val t2 = System.currentTimeMillis()
@@ -171,7 +183,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     //dump stats 
     if (dumpStats) {
       reporter.info("- Dumping statistics")
-      val pw = new PrintWriter("stats" + FileCountGUID.getID)
+      val pw = new PrintWriter(program.mainObject.id +statsSuff+".txt")
       Stats.dumpStats(pw)
       if (useCegis) {
         Stats.dumpCegisStats(pw)
@@ -227,7 +239,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
               Some(true)
             }
             case Some(false) => {
-              reporter.info("- Template not solvable!!")
+              reporter.info("- Template not solvable!!")              
               //refine the templates here
               val refined = tempFactory.refineTemplates()
               if (refined) None
@@ -239,7 +251,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         
         if(solved.get) acc + funDef
         else  {
-          reporter.info("- Exhausted all templates, cannot infer invariants")
+          reporter.info("- Exhausted all templates, cannot infer invariants")          
           acc
         }
       } else acc + funDef

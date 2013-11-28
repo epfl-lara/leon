@@ -1,0 +1,38 @@
+Total Time: 1.979s
+VC refinements : 5
+Disjunct Explorations : 16
+Avg VC size : 208.4
+Max VC size : 346
+Avg UIF-ADT size : 69.4
+Max UIF-ADT size : 136
+avgTempVars : 3.2
+maxTempVars : 4
+Total retries: 0
+avgFarkaSize : 33.0625
+maxFarkaSize : 86
+avgFarkaTime : 0.015s
+maxFarkaTime : 0.084s
+avgNLSize : 4.5
+maxNLSize : 15
+avgDijSize : 10.875
+maxDijSize : 40
+avgElimvars : 7.5625
+maxElimvars : 35
+avgElimAtoms : 7.0
+maxElimAtoms : 34
+avgExploreTime : 0.054625s
+maxExploreTime : 0.261s
+avgCompatCalls : 53.0
+maxCompatCalls : 273
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+########## Outputs ############
+Invariants for Function: partition1
+partition1 --> ((((1 * res2._2) + (-20 * size1(l))) + -8) ≤ 0)
+size1 --> (((0 * #res) + -1) ≤ 0)
+
+Invariants for Function: rev_append1
+rev_append1 --> ((((-6 * size1(aList)) + (1 * res3._2)) + -4) ≤ 0)
+size1 --> (((-1 * #res) + -2) ≤ 0)
+
+

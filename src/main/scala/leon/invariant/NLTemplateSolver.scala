@@ -39,7 +39,7 @@ class NLTemplateSolver(context : LeonContext,
     tempFactory: TemplateFactory,    
     timeout: Int) extends TemplateSolver(context, program, ctrTracker, tempFactory, timeout) {
   
-  private val implicationSolver = new FarkasLemmaSolver()  
+  private val farkasSolver = new FarkasLemmaSolver()  
   
   //flags controlling debugging and statistics generation
   //TODO: there is serious bug in using incremental solving. Report this to z3 community
@@ -89,18 +89,31 @@ class NLTemplateSolver(context : LeonContext,
     val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap    
     var conflictingFuns = Set[FunDef]()
     //mapping from the functions to the counter-example (in the form expressions) that result in hard NL constraints
-    var hardCE = MutableMap[FunDef,Seq[Expr]]()
+    var seenPaths = MutableMap[FunDef,Seq[Expr]]()
+    def updateSeenPaths(fd: FunDef, cePath: Expr): Unit = {
+      if (seenPaths.contains(fd)) {
+        seenPaths.update(fd, cePath +: seenPaths(fd))
+      } else {
+        seenPaths += (fd -> Seq(cePath))
+      }
+    }
         
     val initialctrs = funcs.foldLeft(Seq[Expr]())((acc, fd) => {
 
       val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), tempVarMap))
       //find new non-linear constraints based on models to instVC (which are counter examples)
-      val (ctrsForFun, counterExample) = getNLConstraints(fd, instVC, tempVarMap)
-      if(!ctrsForFun.isEmpty) {
+      val (disjunct, ctrsForFun) = getNLConstraints(fd, instVC, tempVarMap)
+      //instantiate path
+      val cePath = simplifyArithmetic(TemplateInstantiator.instantiate(disjunct, tempVarMap))
+      
+      //sanity check
+      if (variablesOf(cePath).exists(TemplateIdFactory.IsTemplateIdentifier _))
+        throw IllegalStateException("Found template identifier in counter-example disjunct: " + cePath)
+      
+      if(ctrsForFun != tru) {
         conflictingFuns += fd
-        hardCE += (fd -> Seq(InvariantUtil.modelToExpr(counterExample)))
-        
-        acc ++ ctrsForFun        
+        updateSeenPaths(fd, cePath)        
+        acc :+ ctrsForFun        
       } else acc    	  
     })
 
@@ -129,15 +142,6 @@ class NLTemplateSolver(context : LeonContext,
         pwr.close()
         println("Formula printed to File: " + filename)
       }                                   
-            
-      def updateHardCE(fd: FunDef, counterExample : Map[Identifier,Expr]) : Unit = {
-        val ceExpr = InvariantUtil.modelToExpr(counterExample)
-        if(hardCE.contains(fd)) {
-          hardCE.update(fd, ceExpr +: hardCE(fd) )
-        } else {
-          hardCE += (fd -> Seq(ceExpr))
-        }        			   
-      }
 
       //solve the new set of non-linear constraints
       def solveNLConstraints(easyPart: Expr, newPart: Expr): (Option[Boolean], Map[Identifier, Expr], Expr) = {
@@ -191,16 +195,23 @@ class NLTemplateSolver(context : LeonContext,
             val newctrs = conflictingFuns.foldLeft(Seq[Expr]())((acc, fd) => {
 
               val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), tempVarMap))
-              val disableCounterExs = Not(Or(hardCE(fd)))
+              val disableCounterExs = Not(Or(seenPaths(fd)))
               val instVCmodCE = And(instVC, disableCounterExs)
-              val (ctrsForFun, counterExample) = getNLConstraints(fd, instVCmodCE, tempVarMap)              
-              updateHardCE(fd, counterExample)
-              acc ++ ctrsForFun
+              val (disjunct, ctrsForFun) = getNLConstraints(fd, instVCmodCE, tempVarMap)                                                      
+              //instantiate the disjunct
+              val cePath = simplifyArithmetic(TemplateInstantiator.instantiate(disjunct, tempVarMap))
+              
+              //some sanity checks
+              if(variablesOf(cePath).exists(TemplateIdFactory.IsTemplateIdentifier _))
+                throw IllegalStateException("Found template identifier in counter-example disjunct: "+cePath)
+              
+              updateSeenPaths(fd, cePath)
+              acc :+ ctrsForFun
             })
             if (newctrs.isEmpty) {              
               //give up, only hard paths remaining
               reporter.info("- Exhausted all easy paths !!")
-              reporter.info("- Number of remaining hard paths: " + hardCE.values.foldLeft(0)((acc, elem) => acc + elem.size))
+              reporter.info("- Number of remaining hard paths: " + seenPaths.values.foldLeft(0)((acc, elem) => acc + elem.size))
               (None, Map(), tru)
               
             } else {
@@ -264,10 +275,12 @@ class NLTemplateSolver(context : LeonContext,
         }
       }             
     }
-  }   
-	  
+  }   	  
   
-  def getNLConstraints(fd: FunDef, instVC : Expr, tempVarMap: Map[Expr,Expr]) : (Seq[Expr], Map[Identifier,Expr]) = {
+  /**
+   * Returns the counter example disjunct
+   */
+  def getNLConstraints(fd: FunDef, instVC : Expr, tempVarMap: Map[Expr,Expr]) : (Expr, Expr) = {
     //For debugging
     if (this.dumpInstantiatedVC) {
       val wr = new PrintWriter(new File("formula-dump.txt"))
@@ -299,16 +312,16 @@ class NLTemplateSolver(context : LeonContext,
       case Some(false) => {
         solEval.free()
         //do not generate any constraints
-        (Seq(), Map())
+        (fls, tru)
       }
       case Some(true) => {
         //For debugging purposes.
         println("Function: " + fd.id + "--Found candidate invariant is not a real invariant! ")
-        val counterExample = solEval.getModel
+        //val counterExample = solEval.getModel
         //println("Counter-example: "+counterExample)
 
         //try to get the paths that lead to the error 
-        val satChooser = (parent: CtrNode, ch: Iterable[CtrTree], d: Int) => {
+        val satChooser = (parent: CtrNode, ch: Iterable[CtrTree]) => {
           ch.filter((child) => child match {
             case CtrLeaf() => true
             case cn @ CtrNode(_) => {
@@ -411,8 +424,8 @@ class NLTemplateSolver(context : LeonContext,
         }
 
         val (btree, ptree) = ctrTracker.getVC(fd)
-        val newctr = generateCtrsForTree(btree, ptree, satChooser, doesAlias, generateAxiom,
-          true, /**Not used but kept around for debugging**/ solEval)
+        val (newdisjunct, newctr) = generateCtrsForTree(btree, ptree, satChooser, doesAlias, generateAxiom,
+        													/**Not used but kept around for debugging**/ solEval)
         if (newctr == tru)
           throw IllegalStateException("cannot find a counter-example path!!")
 
@@ -424,23 +437,22 @@ class NLTemplateSolver(context : LeonContext,
         val (cum,max) = Stats.cumMax(Stats.cumExploreTime, Stats.maxExploreTime, (t2 - t1))
         Stats.cumExploreTime = cum; Stats.maxExploreTime = max
         
-        (Seq(newctr), counterExample)
+        (newdisjunct, newctr)
       }
 	}        
   }
       
   /**
-   * Returns a set of non linear constraints for the given constraint tree.
+   * Returns a disjunct and a set of non linear constraints whose solution will invalidate the disjunct.
    * This is parametrized by two closure 
    * (a) a child selector function that decides which children to consider.
-   * (b) a mayAlias function that decides which function / ADT constructor calls to consider.
+   * (b) a mayAlias function that decides which function / ADT constructor calls to consider.   
    */
-  def generateCtrsForTree(bodyRoot: CtrNode, postRoot : CtrNode, 
-      selector : (CtrNode, Iterable[CtrTree], Int) => Iterable[CtrTree],
+  private def generateCtrsForTree(bodyRoot: CtrNode, postRoot : CtrNode, 
+      selector : (CtrNode, Iterable[CtrTree]) => Iterable[CtrTree],
       doesAlias: (Expr, Expr) => Boolean, 
-      generateAxiom : (Expr,Expr) => Option[Expr],
-      exploreOnePath : Boolean,
-      /**Kept around for debugging **/evalSolver: UIFZ3Solver) : Expr = {
+      generateAxiom : (Expr,Expr) => Option[Expr],      
+      /**Kept around for debugging **/evalSolver: UIFZ3Solver) : (Expr, Expr) = {
     
     //create an incremental solver, the solver is pushed and popped constraints as the paths in the DNFTree are explored
     //val solver = new UIFZ3Solver(context, program)    
@@ -453,37 +465,30 @@ class NLTemplateSolver(context : LeonContext,
       val pathExpr = And(ctrs.foldLeft(Seq[Expr]())((acc, ctr) => (acc :+ ctr.expr)))
       val uifExpr = And(calls.map((call) => Equals(call.retexpr,call.fi)).toSeq)
       And(Seq(pathExpr, uifExpr) ++ auxConjuncts)
-    }    
+    }
 
     /**
-     * A helper function that composes a sequence of CtrTrees using the user-provided operation 
-     * and "AND" as the join operation.          
+     * Traverses the children until one child with a non-true constraint is found
      */
-    def foldAND(parent: CtrNode, childTrees : Iterable[CtrTree], pred: CtrTree => Expr, depth: Int): Expr = {            
-      val trees = selector(parent, childTrees, depth)
-      var expr: Expr = tru
+    def traverseChildren(parent: CtrNode, childTrees: Iterable[CtrTree], pred: CtrTree => (Expr, Expr)): (Expr, Expr) = {
+      val trees = selector(parent, childTrees)
+      var ctr: Expr = tru
+      var disjunct: Expr = fls
+
       breakable {
         trees.foreach((tree) => {
           val res = pred(tree)
           res match {
-            case BooleanLiteral(false) => {
-              expr = fls;
+            case (_, BooleanLiteral(true)) => ;
+            case (dis, nlctr) => {
+              disjunct = dis
+              ctr = nlctr
               break;
-            }
-            case BooleanLiteral(true) => ;
-            case _ => {
-              if (expr == tru) {
-                expr = res
-                //break if explore one path is set
-                if (exploreOnePath) {
-                  break;
-                }
-              } else expr = And(expr, res)
             }
           }
         })
       }
-      expr
+      (disjunct, ctr)
     } 
 
     /**
@@ -496,8 +501,7 @@ class NLTemplateSolver(context : LeonContext,
         currentUIFs: Set[Call], 
         currentTemps: Seq[LinearTemplate],
         adtCons : Seq[Expr],
-        auxCtrs : Seq[Expr],         
-        depth : Int): Expr = {
+        auxCtrs : Seq[Expr]): (Expr, Expr) = {
 
       tree match {
         case n @ CtrNode(_) => {
@@ -518,17 +522,12 @@ class NLTemplateSolver(context : LeonContext,
           val newUIFs = currentUIFs ++ addCalls 
           val cons = adtCons ++ addCons          
           val newAuxs = auxCtrs ++ addAuxs                   
-          val resExpr = foldAND(n, n.Children, (child : CtrTree) => 
-            traverseBodyTree(child, newCtrs, newUIFs, newTemps, cons, newAuxs, depth + 1), depth)
-          
-          //pop the nodeExpr 
-          //solver.pop()
-          
-          resExpr
+          traverseChildren(n, n.Children, (child : CtrTree) =>
+            traverseBodyTree(child, newCtrs, newUIFs, newTemps, cons, newAuxs))                             
         }
         case CtrLeaf() => {
           //pipe this to the post tree           
-          traversePostTree(postRoot, currentCtrs, currentTemps, auxCtrs, currentUIFs, adtCons, Seq(), Seq(), Seq(), depth + 1)
+          traversePostTree(postRoot, currentCtrs, currentTemps, auxCtrs, currentUIFs, adtCons, Seq(), Seq(), Seq())
         }
       }
     }
@@ -542,7 +541,7 @@ class NLTemplateSolver(context : LeonContext,
         adtCons : Seq[Expr],
         conseqs: Seq[LinearConstraint], 
         currTemps: Seq[LinearTemplate],        
-        currAuxs: Seq[Expr], depth: Int): Expr = {
+        currAuxs: Seq[Expr]): (Expr, Expr) = {
           						
       tree match {
         case n @ CtrNode(_) => {          
@@ -563,9 +562,8 @@ class NLTemplateSolver(context : LeonContext,
           val newtemps = currTemps ++ n.templates
           val newCons = adtCons ++  addCons
           val newAuxs = currAuxs ++ addAuxs
-          val resExpr = foldAND(n, n.Children, (child : CtrTree) => 
-            traversePostTree(child, ants, antTemps, antAuxs, newuifs, newCons, newconstrs, newtemps, newAuxs, depth + 1), 
-            depth)
+          val resExpr = traverseChildren(n, n.Children, (child : CtrTree) => 
+            traversePostTree(child, ants, antTemps, antAuxs, newuifs, newCons, newconstrs, newtemps, newAuxs))
           
           //pop the nodeExpr 
           //solver.pop()          
@@ -573,7 +571,7 @@ class NLTemplateSolver(context : LeonContext,
         }
         case CtrLeaf() => {          
           //pipe to the uif constraint generator           
-          uifsConstraintsGen(ants, antTemps, antAuxs, currUIFs, adtCons, conseqs, currTemps, currAuxs, depth + 1)
+          uifsConstraintsGen(ants, antTemps, antAuxs, currUIFs, adtCons, conseqs, currTemps, currAuxs)
         }
       }
     }
@@ -589,13 +587,12 @@ class NLTemplateSolver(context : LeonContext,
         adtCons: Seq[Expr], 
         conseqs: Seq[LinearConstraint], 
         conseqTemps: Seq[LinearTemplate], 
-        conseqAuxs: Seq[Expr], depth: Int) : Expr = {
+        conseqAuxs: Seq[Expr]) : (Expr, Expr) = {
       
       def traverseTree(tree: CtrTree, 
          ants: Seq[LinearConstraint], antTemps: Seq[LinearTemplate], 
          conseqs: Seq[LinearConstraint], conseqTemps: Seq[LinearTemplate],
-         boolCtrs : Seq[Expr],
-         dep: Int): Expr = {
+         boolCtrs : Seq[Expr]): (Expr, Expr) = {
         
         tree match {
           case n @ CtrNode(_) => {
@@ -605,7 +602,8 @@ class NLTemplateSolver(context : LeonContext,
             //note: other constraints are  possible
             
             //recurse into children
-            foldAND(n, n.Children, (child : CtrTree) => traverseTree(child, newants, antTemps, conseqs, conseqTemps, newBools, dep + 1), dep)
+            traverseChildren(n, n.Children, (child : CtrTree) => 
+              traverseTree(child, newants, antTemps, conseqs, conseqTemps, newBools))
           }
           case CtrLeaf() => {
             //pipe to the end point that invokes the constraint solver
@@ -672,7 +670,7 @@ class NLTemplateSolver(context : LeonContext,
 
       } else CtrLeaf()
       
-      traverseTree(uifroot, ants, antTemps, conseqs, conseqTemps, Seq(), depth)           
+      traverseTree(uifroot, ants, antTemps, conseqs, conseqTemps, Seq())           
     }
 
     /**
@@ -681,12 +679,11 @@ class NLTemplateSolver(context : LeonContext,
     def endpoint(ants: Seq[LinearConstraint], 
         antTemps: Seq[LinearTemplate],
         conseqs: Seq[LinearConstraint], 
-        conseqTemps: Seq[LinearTemplate]): Expr = {      
-      //here we are solving A^~(B)      
-      if (conseqs.isEmpty && conseqTemps.isEmpty) tru
-      else if (antTemps.isEmpty && conseqTemps.isEmpty) {
+        conseqTemps: Seq[LinearTemplate]): (Expr, Expr) = {      
+      //here we are invalidating A^~(B)            
+      if (antTemps.isEmpty && conseqTemps.isEmpty) {
         //here ants ^ conseq is sat (otherwise we wouldn't reach here) and there is no way to falsify this path
-        fls        
+        (And((ants ++ conseqs).map(_.template)), fls)        
       }
       else {        
         
@@ -762,26 +759,23 @@ class NLTemplateSolver(context : LeonContext,
         
         if(this.printReducedFormula){
           println("Final Path Constraints: "+(newLnctrs ++ temps))          
-        }                
+        }
         
-        val implCtrs = implicationSolver.constraintsForUnsat(newLnctrs, temps)        
-        implCtrs
+        val disjunct = And((newLnctrs ++ temps).map(_.template))        
+        val implCtrs = farkasSolver.constraintsForUnsat(newLnctrs, temps)
+        
+        (disjunct, implCtrs)
       }
     }              
     //print the body and the post tree    
-    val nonLinearCtr = traverseBodyTree(bodyRoot, Seq(), Set(), Seq(), Seq(), Seq(), 0)    
-    nonLinearCtr match {
-      case BooleanLiteral(true) => tru       
-      case _ => {
-        //for debugging
+    val (disjunct, nlctr) = traverseBodyTree(bodyRoot, Seq(), Set(), Seq(), Seq(), Seq())
+    //for debugging
         /*println("NOn linear Ctr: "+nonLinearCtr)
         val (res, model, unsatCore) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)
               if(res.isDefined && res.get == true){
                 println("Found solution for constraints: "+model)
               }*/
-        nonLinearCtr
-      }
-    }    
+    (disjunct, nlctr)    
   }
   
   /**

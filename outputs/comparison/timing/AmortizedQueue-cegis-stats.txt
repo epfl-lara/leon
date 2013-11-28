@@ -1,0 +1,56 @@
+Total Time: 1317.556s
+VC refinements : 112
+Avg VC size : 632.0892857142857
+Max VC size : 1705
+Avg UIF-ADT size : 162.9375
+Max UIF-ADT size : 402
+avgTempVars : 5.982142857142857
+maxTempVars : 10
+### Cegis solver stats #### 
+# of bounds tried: 6
+cegis iterations: 3956
+avgTemplateCtrSize : 17316.90546006067
+maxTemplateCtrSize : 87822
+########## Outputs ############
+Invariants for Function: sizeList1
+sizeList1 --> ((((1 * res15._2) + (-4 * size1(list))) + -1) ≤ 0)
+size1 --> (((0 * #res) + 0) ≤ 0)
+
+Invariants for Function: concat1
+concat1 --> ((((1 * res14._2) + (-5 * size1(l1))) + -1) ≤ 0)
+size1 --> (((-1 * #res) + -1) ≤ 0)
+
+Invariants for Function: reverseRec1
+reverseRec1 --> ((((-5 * size1(l1)) + (1 * res9._2)) + -1) ≤ 0)
+size1 --> (((-2 * #res) + -1) ≤ 0)
+
+Invariants for Function: reverse1
+reverse1 --> ((((1 * res11._2) + (-5 * size1(l))) + -3) ≤ 0)
+size1 --> (((-1 * #res) + 0) ≤ 0)
+reverseRec1 --> ((((1 * res9._2) + (-5 * size1(l1))) + -1) ≤ 0)
+
+Invariants for Function: removeLast1
+removeLast1 --> ((((-9 * size1(l)) + (1 * res8._2)) + 4) ≤ 0)
+size1 --> (((-2 * #res) + -1) ≤ 0)
+
+Invariants for Function: dequeue1
+size1 --> (((-2 * #res) + -1) ≤ 0)
+concat1 --> ((((-5 * size1(l1)) + (1 * res14._2)) + -1) ≤ 0)
+dequeue1 --> ((((-10 * qsize1(q)) + (1 * res13._2)) + -11) ≤ 0)
+sizeList1 --> ((((1 * res15._2) + (-4 * size1(list))) + -1) ≤ 0)
+reverseRec1 --> ((((1 * res9._2) + (-5 * size1(l1))) + -3) ≤ 0)
+
+Invariants for Function: pop1
+pop1 --> ((((-11 * size1(q.front)) + (1 * res12._2)) + -3) ≤ 0)
+removeLast1 --> ((((1 * res8._2) + (-9 * size1(l))) + 4) ≤ 0)
+size1 --> (((-1 * #res) + 0) ≤ 0)
+sizeList1 --> ((((-5 * size1(list)) + (1 * res15._2)) + -4) ≤ 0)
+
+Invariants for Function: enqueue1
+size1 --> (((-2 * #res) + -1) ≤ 0)
+concat1 --> ((((-5 * size1(l1)) + (1 * res14._2)) + -1) ≤ 0)
+enqueue1 --> ((((-19 * qsize1(q)) + (1 * res10._2)) + -26) ≤ 0)
+sizeList1 --> ((((1 * res15._2) + (-4 * size1(list))) + -11) ≤ 0)
+reverseRec1 --> ((((-5 * size1(l1)) + (1 * res9._2)) + -11) ≤ 0)
+
+
