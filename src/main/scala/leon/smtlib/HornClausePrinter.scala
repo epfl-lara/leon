@@ -10,6 +10,7 @@ import TypeTrees._
 import Definitions._
 import SExprs._
 import leon.invariant.ExpressionTransformer
+import leon.invariant.TVarFactory
 
 /** This pretty-printer prints an SMTLIB2 representation of the Purescala program */
 class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
@@ -22,6 +23,11 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
   private var tts = Map[TupleType, CaseClassDef]()
   //a mapping from functions to relational version of the function
   private var funs = Map[FunDef, FunDef]()
+  //new created horn predicates
+  var hornRels = Set[FunDef]()
+  
+  val tru = BooleanLiteral(true)
+  val fls = BooleanLiteral(false)
 
   def toSmtLib: String = {
     errorConstants = Set()
@@ -39,19 +45,18 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
     }
     //create a smtlib class decl for each parent-children pair
     partition.foreach{ case (parent, children) => classDeclToSmtlibDecl(parent, children)}
-    
+
     //create new function declarations 
     //More functions may be added while processing functions
-    pgm.definedFunctions.foreach((fd) => {      
-      if(fd.returnType == BooleanType) funs += (fd -> fd)
-      else {
-       if(fd.returnType == UnitType) 
-         throw new IllegalStateException("Return Type of function is unit: "+fd.id)
-       
-       val newfd = new FunDef(FreshIdentifier(fd.id.name,true),BooleanType, 
-           fd.args :+ VarDecl(FreshIdentifier("res", true).setType(fd.returnType), fd.returnType))
-       funs += (fd -> newfd)
-      }
+    pgm.definedFunctions.foreach((fd) => {
+      if (fd.returnType == UnitType)
+        throw new IllegalStateException("Return Type of function is unit: " + fd.id)
+
+      val newfd = new FunDef(FreshIdentifier(fd.id.name, true), BooleanType,
+        fd.args :+ VarDecl(FreshIdentifier("res", true).setType(fd.returnType), fd.returnType))
+      
+      hornRels += newfd
+      funs += (fd -> newfd)
     })  
         
     //new tuple types could be discovered in the program while processing functions    
@@ -70,6 +75,7 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
         funDecls ++
         sortErrors ++
         convertedFunDefs ++
+        //Seq(SSymbol("check-sat"))
         Seq(SList(SSymbol("check-sat-using"), SList(SSymbol("with horn :engine tab"))))
             /*SList(SSymbol("get-model")))*/
       )
@@ -156,9 +162,7 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
       implications ++= imps      
       //create an implication that (hornBody => fdRel)
       
-      val bodyRel = if(fd.returnType == BooleanType) FunctionInvocation(funs(fd), params.map(_.toVariable)) 
-      				else FunctionInvocation(funs(fd), paramsRes.map(_.toVariable))
-      
+      val bodyRel = FunctionInvocation(funs(fd), paramsRes.map(_.toVariable))      
       implications :+= Implies(hornBody, bodyRel)
       
       if(fd.hasPostcondition && fd.postcondition.get._2 != BooleanLiteral(true)) {
@@ -214,6 +218,8 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
   private def createNewRelation(types : Seq[TypeTree]) : FunDef = {
     val newRel = new FunDef(FreshIdentifier("P",true), BooleanType, 
         types.map((tpe) => VarDecl(FreshIdentifier("arg",true).setType(tpe),tpe)))
+    
+    hornRels += newRel
     funs += (newRel -> newRel)
     newRel
   }
@@ -243,7 +249,7 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
     
     def isHornPred(p : Expr) : Boolean = {
       p match {
-        case FunctionInvocation(_, args) => args.forall(_.isInstanceOf[Terminal])
+        case FunctionInvocation(fd, _) => hornRels.contains(fd)
         case _ => false
       }      
     }
@@ -261,17 +267,80 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
       }      
     }
        
-    //flatten constraints (note this may introduce iff operation, however it is treated as '=' in smtlib)
+    //flatten constraints (note this may introduce iff operation, however these are handled specially)
     val flatCtr = ExpressionTransformer.FlattenFunction(And(constraints))
     
-    //replace functions by predicates
-    val hornCtr = simplePostTransform((e: Expr) => e match {
-      case Equals(r @ Variable(_), fi @ FunctionInvocation(fd, args)) => FunctionInvocation(funs(fd), args :+ r)   
-      //ignoring iff on purpose
+    //Create a mapping for each boolean valued function/instance-of check, from the return value to the call
+    var boolResMap = Map[Variable,Expr]()
+    simplePostTransform((e: Expr) => e match {
+      case Iff(r @ Variable(_), fi @ FunctionInvocation(fd, _)) => {
+        if(!hornRels.contains(fd)) 
+          boolResMap += (r -> fi)
+        e
+      }          
+      case Iff(r@Variable(_), ins@CaseClassInstanceOf(_, _)) => {
+    	 boolResMap += (r -> ins)
+    	 e
+      }
       case _ => e
-    })(flatCtr) 
+    })(flatCtr)       
     
-    ExpressionTransformer.pullAndOrs(And(preds :+ hornCtr))
+    //reduce terms in expressions
+    val redctr = simplePostTransform((e) => e match {
+      //convert case-class-selectors and tuple-selectors to constructors
+      case Equals(Variable(_), CaseClassSelector(_, _, _)) | Iff(Variable(_), CaseClassSelector(_, _, _)) => {
+        ExpressionTransformer.classSelToCons(e)
+      }
+      case Equals(Variable(_), TupleSelect(_, _)) | Iff(Variable(_), TupleSelect(_, _)) => {
+        ExpressionTransformer.tupleSelToCons(e)
+      }
+      //retain Iff only if fd is a horn relations
+      case Iff(Variable(_), FunctionInvocation(fd, _)) => {        
+        if(hornRels.contains(fd)) e
+        else tru
+      }
+      //remove all case-class-instance-of
+      case Iff(Variable(_), CaseClassInstanceOf(_, _)) => tru
+      case _ => e
+    })(flatCtr)    
+       
+    val hornctr = simplePreTransform((e: Expr) => e match {
+      //replace functions calls by predicates 
+      case Equals(r @ Variable(_), fi @ FunctionInvocation(fd, args)) => FunctionInvocation(funs(fd), args :+ r)    
+      //if 'r' is a return value of a boolean function then replace 'r' by a predicate
+      case Not(r @ Variable(_)) => {        
+        if (boolResMap.contains(r)) {
+          val boolExpr = boolResMap(r)
+          boolExpr match {
+            case FunctionInvocation(fd, args) => FunctionInvocation(funs(fd), args :+ fls)
+            case CaseClassInstanceOf(cd, arg) => {
+              //make ~(args = ccd(dummy*))
+              val ccArgs = cd.fieldsIds.map((fld) => TVarFactory.createDummy.setType(fld.getType).toVariable)
+              Not(Equals(arg, CaseClass(cd, ccArgs)))
+            }
+            case _ => throw IllegalStateException("boolExpr mismatch: "+boolExpr)
+          }
+        } else e
+      }
+      case r@Variable(_) => {        
+        if (boolResMap.contains(r)) {
+          val boolExpr = boolResMap(r)
+          boolExpr match {
+            case FunctionInvocation(fd, args) => FunctionInvocation(funs(fd), args :+ tru)
+            case CaseClassInstanceOf(cd, arg) => {
+              //make args = ccd(dummy*)
+              val ccArgs = cd.fieldsIds.map((fld) => TVarFactory.createDummy.setType(fld.getType).toVariable)
+              Equals(arg, CaseClass(cd, ccArgs))
+            }
+            case _ => throw IllegalStateException("boolExpr mismatch: "+boolExpr)
+          }
+        } else e
+      }
+      case _ => e
+    })(redctr)    
+    
+    //println("hornctr: "+hornctr)
+    ExpressionTransformer.pullAndOrs(And(preds :+ hornctr))
   }
   
   /**
@@ -301,7 +370,8 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
     (hornBody, implications)
   }
   
-  def exp2sexp(tree: Expr): SExpr = tree match {
+  def exp2sexp(tree: Expr): SExpr = tree match {    
+         
     case Variable(id) => id2sym(id)
     case LetTuple(ids,d,e) => {
       //convert LetTuple to Lets
@@ -367,22 +437,25 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
     case tp@Tuple(args) => {
       val ccd = tupleTypeToCaseClassDef(tp.getType.asInstanceOf[TupleType])
       SList(id2sym(ccd.id) :: args.map(exp2sexp(_)).toList)
-    }
+    }       
     
-    case CaseClassSelector(_, arg, field) => SList(id2sym(field), exp2sexp(arg))
+    case CaseClassSelector(_, arg, field) => {
+      //SList(id2sym(field), exp2sexp(arg))
+      throw IllegalStateException("Encountered CaseClassSelector in exp2sexpr: "+tree)
+    }
     case TupleSelect(arg, index) => {
-      val ccd = tupleTypeToCaseClassDef(arg.getType.asInstanceOf[TupleType])
+      /*val ccd = tupleTypeToCaseClassDef(arg.getType.asInstanceOf[TupleType])
       //get field at index 'index'
       val field = ccd.fieldsIds(index - 1)
-      SList(id2sym(field), exp2sexp(arg)) 
+      SList(id2sym(field), exp2sexp(arg))*/      
+      throw IllegalStateException("Encountered TupleSelector in exp2sexpr: "+tree)
     }
-
     case CaseClassInstanceOf(ccd, arg) => {
-      val name = id2sym(ccd.id)
+      /*val name = id2sym(ccd.id)
       val testerName = SSymbol("is-" + name.s)
-      SList(testerName, exp2sexp(arg))
+      SList(testerName, exp2sexp(arg))*/
+      throw IllegalStateException("Encountered InstanceOf in exp2sexpr: "+tree)
     }
-
     case er@Error(_) => {
       val id = id2sym(FreshIdentifier("error_value").setType(er.getType))
       errorConstants += ((id, tpe2sort(er.getType)))

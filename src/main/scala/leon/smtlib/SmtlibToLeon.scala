@@ -119,6 +119,10 @@ object SmtlibToLeon {
             //}                          
           }          
         }
+        case SList(List(SSymbol("DECLARE-CONST"), id@SSymbol(idname), sort@SSymbol(_))) => {
+          val varid = FreshIdentifier(idname, true).setType(getType(sort))  
+          symbolMap += (id -> Variable(varid))
+        }
         case SList(List(SSymbol("ASSERT"), body)) => {
           //println(body)                
           assertTrees :+= createTree(body)                              

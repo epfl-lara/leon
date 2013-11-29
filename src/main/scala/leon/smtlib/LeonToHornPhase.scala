@@ -53,7 +53,7 @@ object LeonToHornPhase extends UnitPhase[Program] {
     reporter.info("Running Horn clause generation Phase...")
 
     //val functionsToAnalyse: MutableSet[String] = MutableSet.empty
-    var outfile = new PrintWriter("horn-clauses.smt")
+    var outfile = new PrintWriter("horn-clauses.smt2")
     var removeOrs = true
 
     for (opt <- ctx.options) opt match {

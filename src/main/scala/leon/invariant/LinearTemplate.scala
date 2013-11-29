@@ -175,7 +175,7 @@ class BoolConstraint(e : Expr) extends Template {
 
 object ADTConstraint {
   
-  def handleClassSelector(r: Expr, cd: CaseClassDef, ccvar: Expr, ccfld: Identifier): ADTConstraint = {
+/*  def handleClassSelector(r: Expr, cd: CaseClassDef, ccvar: Expr, ccfld: Identifier): ADTConstraint = {
     //convert this to a cons by creating dummy variables        
     val args = cd.fieldsIds.map((fld) => {
       if (fld == ccfld) r
@@ -200,23 +200,19 @@ object ADTConstraint {
     })
     val tpExpr = Equals(tpvar, Tuple(args))
     new ADTConstraint(tpExpr, Some(tpExpr))
-  }
+  }*/
   
   def apply(e: Expr): ADTConstraint = e match {
 
     //is this a tuple or case class select ?
-    case Equals(r @ Variable(_), CaseClassSelector(cd, ccvar, ccfld)) => {
-    	handleClassSelector(r,cd,ccvar,ccfld)
-    }
-    case Iff(r @ Variable(_), CaseClassSelector(cd, ccvar, ccfld)) => {
-    	handleClassSelector(r,cd,ccvar,ccfld)
-    }
-    case Equals(r @ Variable(_), TupleSelect(tpvar, index)) => {
-      handleTupleSelect(r,tpvar,index)
-    }
-    case Iff(r @ Variable(_), TupleSelect(tpvar, index)) => {
-      handleTupleSelect(r,tpvar,index)
-    }
+    case Equals(Variable(_), CaseClassSelector(_, _, _)) | Iff(Variable(_), CaseClassSelector(_, _, _)) => {
+      val ccExpr = ExpressionTransformer.classSelToCons(e)
+      new ADTConstraint(ccExpr, Some(ccExpr))
+    }    
+    case Equals(Variable(_),TupleSelect(_,_)) | Iff(Variable(_),TupleSelect(_,_)) => {
+      val tpExpr = ExpressionTransformer.tupleSelToCons(e)
+      new ADTConstraint(tpExpr, Some(tpExpr))
+    }    
     //is this a tuple or case class def ?
     case Equals(Variable(_), CaseClass(_, _)) | Equals(Variable(_), Tuple(_)) => {
       new ADTConstraint(e, Some(e))

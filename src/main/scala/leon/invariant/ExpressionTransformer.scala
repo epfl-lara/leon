@@ -393,6 +393,43 @@ object ExpressionTransformer {
     })(expr)
   }
   
+  
+  def classSelToCons(e: Expr) : Expr = {
+    val (r,cd,ccvar,ccfld) = e match {
+      case Equals(r0 @ Variable(_), CaseClassSelector(cd0, ccvar0, ccfld0)) => (r0, cd0, ccvar0, ccfld0)
+      case Iff(r0 @ Variable(_), CaseClassSelector(cd0, ccvar0, ccfld0)) => (r0, cd0, ccvar0, ccfld0)
+      case _ => throw IllegalStateException("Not a case-class-selector call")
+    }
+    //convert this to a cons by creating dummy variables        
+    val args = cd.fieldsIds.map((fld) => {
+      if (fld == ccfld) r
+      else {
+        //create a dummy identifier there
+        TVarFactory.createDummy.setType(fld.getType).toVariable
+      }
+    })
+    Equals(ccvar, CaseClass(cd, args))    
+  }
+  
+  def tupleSelToCons(e: Expr) : Expr = {
+    val (r,tpvar,index) = e match {
+      case Equals(r0 @ Variable(_), TupleSelect(tpvar0, index0)) => (r0, tpvar0, index0)
+      case Iff(r0 @ Variable(_), TupleSelect(tpvar0, index0)) => (r0, tpvar0, index0)
+      case _ => throw IllegalStateException("Not a tuple-selector call")
+    }
+    //convert this to a Tuple by creating dummy variables        
+    val tupleType = tpvar.getType.asInstanceOf[TupleType]
+    val args = (1 until tupleType.dimension + 1).map((i) => {
+      if (i == index) r
+      else {
+        //create a dummy identifier there (note that here we have to use i-1)
+        TVarFactory.createDummy.setType(tupleType.bases(i - 1)).toVariable
+      }
+    })
+    Equals(tpvar, Tuple(args))   
+  }
+  
+  
   /**
    * Normalizes the expressions
    */
@@ -409,7 +446,7 @@ object ExpressionTransformer {
     val simpExpr = pullAndOrs(flatExpr)
     simpExpr
   }
-
+  
   /**
    * This is the inverse operation of flattening, this is mostly
    * used to produce a readable formula.
@@ -465,53 +502,7 @@ object ExpressionTransformer {
     })(expr)    
   }
     
-   /**
-    * The following may have some bugs
-    * TODO: we may consider this later if there is a need
-    */
-   //the input is assumed to be in nnf form
-  /*def apply1PRule(ine : Expr, vars: Set[Identifier]) : Expr = {
-    
-    def apply1PRuleRec(e : Expr) : Expr = e match { 
-    	case And(args) => {
-    	  //get all args that are not Ors
-    	  val disjunct = And(args.collect{ case arg@_ if !arg.isInstanceOf[Or] => arg })    	  
-    	  
-    	  val valMap = apply1PRuleOnDisjunct(disjunct, vars)    	  
-    	  //combine init and val map
-    	  val combMap : Map[Expr,Expr] = valMap.map((elem) => (elem._1.toVariable,elem._2)).toMap
-    	  //replace in expression
-    	  val newExpr = replace(combMap, e)
-    	  val And(newargs) = newExpr
-    	  
-    	  //now recurse into arguments that has Ors
-    	  And(newargs.map((newarg) => {
-    	    if(newarg.isInstanceOf[Or]) apply1PRuleRec(newarg)
-    	    else newarg
-    	  }))    	  
-    	}
-    	case Or(args) => {
-    	  Or(args.map(apply1PRuleRec _))
-    	}
-    	case _ => e    	
-    }
-    
-    val sexpr = pullAndOrs(ine)
-    val substExpr = simplify(apply1PRuleRec(sexpr))
-    
-    //replace expressions involving 'vars' (variables to be eliminated) by fresh variables
-    simplePreTransform((e : Expr) => e match {           
-      case And(args) => e
-      case Or(args) => e
-      case _ => {        
-        if(variablesOf(e).intersect(vars).isEmpty) e
-        else {
-          //replace them by a fresh variable 
-          TempIdFactory.createTemp("b").setType(BooleanType).toVariable
-        }
-      }
-    })(substExpr)
-  }*/
+  
 
   /**
    * Input expression is assumed to be in nnf form
@@ -534,6 +525,7 @@ object ExpressionTransformer {
     case And(_) | Implies(_,_) | Iff(_,_) | Not(_)  => false
     case _ => true
   }
+  
   
   def PrintWithIndentation(wr : PrintWriter, expr: Expr) : Unit = {
         
