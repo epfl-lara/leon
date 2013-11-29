@@ -9,7 +9,7 @@ object QuickSort {
   def size(l:List): Int = {l match {
     case Nil() => 0
     case Cons(x,xs) => 1 + size(xs)
-  }} //ensuring(_ >= 0)
+  }} ensuring(_ >= 0)
   
   /*def contents(l: List): Set[Int] = l match {
     case Nil() => Set.empty
@@ -24,19 +24,19 @@ object QuickSort {
   
   case class Triple(fst:List,snd:List, trd: List)
   
-  def mult(x : Int, y : Int) : Int = {
+  /*def mult(x : Int, y : Int) : Int = {
     require(x >= 0 && y >= 0)
       if(x == 0 || y == 0) 0
       else
     	  mult(x-1,y-1) +  x + y - 1    	  
-  } //ensuring(_ >= 0)
+  }*/ //ensuring(_ >= 0)
   //ensuring(res => true template((e,f) => e*res + f <= 0))
 
   def rev_append(aList:List,bList:List): List = {aList match {
     case Nil() => bList
     case Cons(x,xs) => rev_append(xs,Cons(x,bList))
     
-  }} ensuring(res => size(res) == size(aList) + size(bList) template((a,b) => time <= a*size(aList) +b))
+  }} ensuring(res => size(res) == size(aList) + size(bList))
   //ensuring(res => size(res) == size(aList) + size(bList) && time <= 10*size(aList) +4) 
   //ensuring(res => size(res) == size(aList) + size(bList) template((a,b) => time <= a*size(aList) +b))
 
@@ -79,7 +79,7 @@ object QuickSort {
       else if(n == x) Triple(t.fst, Cons(x,t.snd), t.trd)
       else Triple(Cons(x,t.fst), t.snd, t.trd)
     }    
- }) ensuring(res => (size(l) == size(res.fst) + size(res.snd) + size(res.trd)) template((a,b) => time <= a*size(l) +b))     
+ }) ensuring(res => size(l) == size(res.fst) + size(res.snd) + size(res.trd))     
 
   def quickSort(l:List): List = (l match {
     case Nil() => Nil()

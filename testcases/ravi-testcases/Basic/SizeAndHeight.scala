@@ -13,7 +13,7 @@ object SizeAndHeight
 	  	  size(l) + size(r) +1
 	  	}
 	  }	  
-	} 
+	} ensuring(res => res >= height(t) && res  >= 0)
 	//ensuring(res => res != height(t) - 1)
 	//ensuring(res => res != height(t) - 1 template((a,b) => (a*res + b*height(t) >= 0 ))) 
 	//ensuring(res => res >= height(t) && res  >= 0)	
@@ -27,6 +27,7 @@ object SizeAndHeight
 	      if(hl > hr) hl + 1 else hr + 1	    
 	    }
 	  }
-	} ensuring(res => true template((a,b) => time <= a*size(t) +b)) 
+	} 
+	//ensuring(res => true template((a,b) => time <= a*size(t) +b)) 
 	//ensuring(res => 0*size())	
 } 

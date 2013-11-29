@@ -19,14 +19,14 @@ object PropositionalLogic {
     case _ => 1    
   }) 
 
-  def simplify(f: Formula): Formula = (f match {
+  /*def simplify(f: Formula): Formula = (f match {
     case And(lhs, rhs) => And(simplify(lhs), simplify(rhs))
     case Or(lhs, rhs) => Or(simplify(lhs), simplify(rhs))
     case Implies(lhs, rhs) => Or(Not(simplify(lhs)), simplify(rhs))
     case Not(f) => Not(simplify(f))
     case _ => f
     
-  }) 
+  })*/ 
 
 
   def nnf(formula: Formula): Formula = (formula match {
@@ -42,9 +42,9 @@ object PropositionalLogic {
     case _ => formula
   }) ensuring((res) => size(res) <= 2*size(formula) - 1)
 
-  def nnfSimplify(f: Formula): Formula = { 
+  /*def nnfSimplify(f: Formula): Formula = { 
 	 simplify(nnf(f)) 
-  } //ensuring((res) => size(res) <= 2*size(f) - 1)
+  }*/ //ensuring((res) => size(res) <= 2*size(f) - 1)
 
 //  def vars(f: Formula): Set[Int] = {
 //    require(isNNF(f))

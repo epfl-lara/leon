@@ -8,22 +8,23 @@ object RedBlackTree {
  
   sealed abstract class Tree
   case class Empty() extends Tree
-  case class Node(color: Color, left: Tree, value: Int, right: Tree) extends Tree
+  case class Node(co: Color, left: Tree, value: Int, right: Tree) extends Tree
      
-  def twopower(x: Int) : Int = {
+  /*def twopower(x: Int) : Int = {
     require(x >= 0)
     if(x < 1) 1    
     else      
       2* twopower(x - 1)
-  } 
+  } */
 
   def size(t: Tree): Int = {
-    require(blackBalanced(t))  
+    //require(blackBalanced(t))  
     (t match {
-      case Empty() => 1
+      case Empty() => 0
       case Node(_, l, v, r) => size(l) + 1 + size(r)
     })
-  } ensuring (res => true template((a,b) => twopower(blackHeight(t)) <= a*res + b))
+  } ensuring(_ >= 0)
+  //ensuring (res => true template((a,b) => twopower(blackHeight(t)) <= a*res + b))
   //ensuring (res => true template((a,b) => res <= a*twopower(blackHeight(t)) + b)) 
   //ensuring (res => res != (twopower(blackHeight(t)) - 2) template((a,b,c) => a*res + b*twopower(blackHeight(t)) + c < 0))   
     
@@ -33,7 +34,7 @@ object RedBlackTree {
     case Node(Black(), l, _, _) => blackHeight(l) + 1
     case Node(Red(), l, _, _) => blackHeight(l)
    	}
-  }
+  } ensuring(_ >= 1)
   
    //We consider leaves to be black by definition 
   def isBlack(t: Tree) : Boolean = t match {
@@ -78,7 +79,7 @@ object RedBlackTree {
           balance(c,a,y,t1)
         } 
     }
-  } ensuring(res => true template((a,b) => time <= a*blackHeight(t) + b))  
+  } ensuring(res => redDescHaveBlackChildren(res) && blackBalanced(res) && size(res) <= size(t) + 1 && size(t) <= size(res))  
 
   def makeBlack(n: Tree): Tree = {
     n match {
@@ -91,8 +92,7 @@ object RedBlackTree {
     require(redNodesHaveBlackChildren(t) && blackBalanced(t) )
     val t1 =  ins(x, t)
     makeBlack(t1)
-  } //ensuring (res => res._2 <= 2 * blackHeight(t))                
-  //size(t) >= (twopower(blackHeight(t)) - 1) &&
+  } ensuring (res => redNodesHaveBlackChildren(res) && blackBalanced(res) && size(res) <= size(t) + 1 && size(t) <= size(res))                  
   
   def balance(co: Color, l: Tree, x: Int, r: Tree): Tree = {        
     Node(co,l,x,r)

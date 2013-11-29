@@ -9,7 +9,7 @@ object AVLTree  {
   case class Leaf() extends Tree
   case class Node(left : Tree, value : Int, right: Tree, rank : Int) extends Tree
 
-  sealed abstract class OptionInt
+/*  sealed abstract class OptionInt
   case class None() extends OptionInt
   case class Some(i:Int) extends OptionInt
 
@@ -37,11 +37,11 @@ object AVLTree  {
       case (_, Some(_)) => o2
       case _ => None()
     }
-  )
+  )*/
 
   def min(i1:Int, i2:Int) : Int = if (i1<=i2) i1 else i2
   def max(i1:Int, i2:Int) : Int = if (i1>=i2) i1 else i2
-
+  
   def rank(t: Tree) : Int = {
     t match {
       case Leaf() => 0
@@ -67,7 +67,7 @@ object AVLTree  {
     }
   } ensuring(_ >= 0)
 
-  def treeMax(t:Tree) : OptionInt = {
+  /*def treeMax(t:Tree) : OptionInt = {
     t match {
       case Leaf()      => None()
       case Node(l,v,r,_) => maxOption(Some(v), maxOption (treeMax(l), treeMax(r)))
@@ -80,9 +80,9 @@ object AVLTree  {
       case Node(l,v,r,_) => minOption(Some(v), minOption (treeMin(l), treeMin(r)))
     }
   }
-
+*/
   
-  def isBST(t:Tree) : Boolean = {
+  /*def isBST(t:Tree) : Boolean = {
     t match {
       case Leaf() => true
       case Node(l,v,r,_) => 
@@ -92,7 +92,7 @@ object AVLTree  {
         }
         else false 
     }
-  }
+  }*/
 
   def rankHeight(t: Tree) : Boolean = t match {
     case Leaf() => true 
@@ -113,7 +113,7 @@ object AVLTree  {
       }    
   } 
 
- def bstMax(t:Tree) : OptionInt = {
+/* def bstMax(t:Tree) : OptionInt = {
     require(isBST(t))
     t match {
       case Leaf() => None() 
@@ -129,7 +129,7 @@ object AVLTree  {
       case Node(Leaf(),v,_,_) => Some(v) 
       case Node(l, _ ,_ ,_) => bstMin(l)
     }
-  } ensuring (res => res == treeMin(t))
+  } ensuring (res => res == treeMin(t))*/
   
   def offByOne(t : Tree) : Boolean = {
     t match {

@@ -315,7 +315,7 @@ object ExpressionTransformer {
    * (a) For a strict inequality with real variables/constants, the following produces a strict inequality
    * (b) Strict inequalities with only integer variables/constants are reduced to non-strict inequalities 
    */
-  def TransformNot(expr: Expr): Expr = {
+  def TransformNot(expr: Expr, retainNEQ : Boolean = false): Expr = { // retainIff : Boolean = false
     def nnf(inExpr: Expr): Expr = {
       if(inExpr.getType != BooleanType) inExpr
       else inExpr match {
@@ -323,7 +323,10 @@ object ExpressionTransformer {
         case Not(e @ BinaryOperator(e1, e2, op)) => {
           if (e1.getType == BooleanType || e1.getType == Int32Type || e1.getType == RealType) {          
             e match {
-              case e: Equals => Or(nnf(LessThan(e1, e2)), nnf(GreaterThan(e1, e2)))            
+              case e: Equals => {
+                if(retainNEQ) Not(Equals(e1,e2))
+                else Or(nnf(LessThan(e1, e2)), nnf(GreaterThan(e1, e2)))
+              }
               case e: LessThan => GreaterEquals(nnf(e1), nnf(e2))
               case e: LessEquals => GreaterThan(nnf(e1), nnf(e2))
               case e: GreaterThan => LessEquals(nnf(e1), nnf(e2))
@@ -351,6 +354,7 @@ object ExpressionTransformer {
           nnf(Or(Not(lhs),rhs))
         }                
         case Iff(lhs,rhs) => {
+          //if(retainIff) Iff(nnf(lhs),nnf(rhs)) 
           nnf(And(Implies(lhs,rhs),Implies(rhs,lhs)))
         }
         case Not(IfExpr(cond, thn, elze)) => IfExpr(nnf(cond), nnf(Not(thn)), nnf(Not(elze)))

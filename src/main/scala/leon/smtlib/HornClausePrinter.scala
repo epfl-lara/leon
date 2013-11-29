@@ -34,6 +34,7 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
 
     //get all user defined classes
     val defs: Seq[ClassTypeDef] = pgm.definedClasses
+    //println("Classes: "+defs.map(_.id))
     
     //partition them into parent, children
     val partition: Seq[(ClassTypeDef, Seq[CaseClassDef])] = {
@@ -75,7 +76,7 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
         funDecls ++
         sortErrors ++
         convertedFunDefs ++
-        //Seq(SSymbol("check-sat"))
+        //Seq(SList(SSymbol("check-sat")))
         Seq(SList(SSymbol("check-sat-using"), SList(SSymbol("with horn :engine tab"))))
             /*SList(SSymbol("get-model")))*/
       )
@@ -196,8 +197,14 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
           //add body => post
           implications :+= Implies(bodyRel, postRel)
         }        
-      }      
-      //convert leon implications to SExprs
+      }
+      //add determinism constraints
+      //create a new relation for body
+      val resvar2 = FreshIdentifier("res", true).setType(fd.returnType).toVariable
+      val bodyRel2 = replace(Map(resvar -> resvar2), bodyRel)
+      implications :+= Implies(And(bodyRel, bodyRel2), Equals(resvar, resvar2))
+
+       //convert leon implications to SExprs
       implications.map((imp) => {
         //convert implication to sexpr
         val impbody = exp2sexp(imp)
@@ -232,7 +239,7 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
     val nnfExpr = {
       ExpressionTransformer.pullAndOrs(
     	ExpressionTransformer.TransformNot(
-          ExpressionTransformer.reduceLangBlocks(simpExpr)
+          ExpressionTransformer.reduceLangBlocks(simpExpr), retainNEQ = true //, retainIff = true
           )
        )
     }
@@ -364,7 +371,7 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
         implications ++= args.map((arg) => Implies(toHorn(arg),relApp))                
         relApp
       }
-      case Iff(_,_) | Implies(_,_) => throw new IllegalStateException("Implies encountered in the formula: "+e)      
+      case Implies(_,_) => throw new IllegalStateException("Implies encountered in the formula: "+e)      
       case _ => e
     })(expr)
     (hornBody, implications)

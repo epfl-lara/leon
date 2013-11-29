@@ -204,7 +204,8 @@ object SmtlibToLeon {
     }
         
     println("Horn Clauses: ")
-    println(assertTrees.map(ScalaPrinter.apply _).mkString("\n"))
+    //println(assertTrees.map(ScalaPrinter.apply _).mkString("\n"))
+    println(assertTrees.map(_.toString).mkString("\n"))
     /*val res = solver.innerCheck
     if(res == Some(true)){
       println("Found Model: "+solver.getModel)
