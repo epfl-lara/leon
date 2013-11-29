@@ -3,6 +3,8 @@
 package leon
 package purescala
 
+import utils._
+
 /** AST definitions for Pure Scala. */
 object Trees {
   import Common._
@@ -10,8 +12,8 @@ object Trees {
   import Definitions._
   import Extractors._
 
-  /* EXPRESSIONS */
 
+  /* EXPRESSIONS */
   abstract class Expr extends Tree with Typed with Serializable {
     override def toString: String = PrettyPrinter(this)
   }
@@ -23,16 +25,16 @@ object Trees {
   /* This describes computational errors (unmatched case, taking min of an
    * empty set, division by zero, etc.). It should always be typed according to
    * the expected type. */
-  case class Error(description: String) extends Expr with Terminal with ScalacPositional
+  case class Error(description: String) extends Expr with Terminal
 
-  case class Choose(vars: List[Identifier], pred: Expr) extends Expr with FixedType with ScalacPositional with UnaryExtractable {
+  case class Choose(vars: List[Identifier], pred: Expr) extends Expr with FixedType with UnaryExtractable {
 
     assert(!vars.isEmpty)
 
     val fixedType = if (vars.size > 1) TupleType(vars.map(_.getType)) else vars.head.getType
 
     def extract = {
-      Some((pred, (e: Expr) => Choose(vars, e).setPosInfo(this)))
+      Some((pred, (e: Expr) => Choose(vars, e).setPos(this)))
     }
   }
 
@@ -60,7 +62,7 @@ object Trees {
 
 
   /* Control flow */
-  case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr with FixedType with ScalacPositional {
+  case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr with FixedType {
     val fixedType = funDef.returnType
 
     funDef.args.zip(args).foreach {
@@ -127,7 +129,7 @@ object Trees {
     def unapply(me: MatchExpr) : Option[(Expr,Seq[MatchCase])] = if (me == null) None else Some((me.scrutinee, me.cases))
   }
 
-  class MatchExpr(val scrutinee: Expr, val cases: Seq[MatchCase]) extends Expr with ScalacPositional with FixedType {
+  class MatchExpr(val scrutinee: Expr, val cases: Seq[MatchCase]) extends Expr with FixedType {
 
     val fixedType = leastUpperBound(cases.map(_.rhs.getType)).getOrElse(AnyType)
 
@@ -519,7 +521,7 @@ object Trees {
   /* Map operations. */
   case class FiniteMap(singletons: Seq[(Expr, Expr)]) extends Expr 
 
-  case class MapGet(map: Expr, key: Expr) extends Expr with ScalacPositional
+  case class MapGet(map: Expr, key: Expr) extends Expr
   case class MapUnion(map1: Expr, map2: Expr) extends Expr 
   case class MapDifference(map: Expr, keys: Expr) extends Expr 
   case class MapIsDefinedAt(map: Expr, key: Expr) extends Expr with FixedType {
@@ -535,7 +537,7 @@ object Trees {
     val fixedType = ArrayType(defaultValue.getType)
   }
 
-  case class ArraySelect(array: Expr, index: Expr) extends Expr with ScalacPositional with FixedType {
+  case class ArraySelect(array: Expr, index: Expr) extends Expr with FixedType {
     assert(array.getType.isInstanceOf[ArrayType],
            "The array value in ArraySelect must of of array type; yet we got [%s]. In expr: \n%s".format(array.getType, array))
 
@@ -548,7 +550,7 @@ object Trees {
 
   }
 
-  case class ArrayUpdated(array: Expr, index: Expr, newValue: Expr) extends Expr with ScalacPositional with FixedType {
+  case class ArrayUpdated(array: Expr, index: Expr, newValue: Expr) extends Expr with FixedType {
     assert(array.getType.isInstanceOf[ArrayType],
            "The array value in ArrayUpdated must of of array type; yet we got [%s]. In expr: \n%s".format(array.getType, array))
 

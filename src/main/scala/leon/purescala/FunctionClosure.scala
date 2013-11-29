@@ -56,7 +56,7 @@ object FunctionClosure extends TransformationPhase {
       val newBindedVars: Set[Identifier] = bindedVars ++ fd.args.map(_.id)
       val newFunId = FreshIdentifier(fd.id.uniqueName) //since we hoist this at the top level, we need to make it a unique name
 
-      val newFunDef = new FunDef(newFunId, fd.returnType, newVarDecls).setPosInfo(fd)
+      val newFunDef = new FunDef(newFunId, fd.returnType, newVarDecls).setPos(fd)
       topLevelFuns += newFunDef
       newFunDef.addAnnotation(fd.annotations.toSeq:_*) //TODO: this is still some dangerous side effects
       newFunDef.parent = Some(parent)
@@ -116,10 +116,10 @@ object FunctionClosure extends TransformationPhase {
       IfExpr(rCond, rThen, rElze).setType(i.getType)
     }
     case fi @ FunctionInvocation(fd, args) => fd2FreshFd.get(fd) match {
-      case None => FunctionInvocation(fd, args.map(arg => functionClosure(arg, bindedVars, id2freshId, fd2FreshFd))).setPosInfo(fi)
+      case None => FunctionInvocation(fd, args.map(arg => functionClosure(arg, bindedVars, id2freshId, fd2FreshFd))).setPos(fi)
       case Some((nfd, extraArgs)) => 
         FunctionInvocation(nfd, args.map(arg => functionClosure(arg, bindedVars, id2freshId, fd2FreshFd)) ++ 
-                                extraArgs.map(v => replace(id2freshId.map(p => (p._1.toVariable, p._2.toVariable)), v))).setPosInfo(fi)
+                                extraArgs.map(v => replace(id2freshId.map(p => (p._1.toVariable, p._2.toVariable)), v))).setPos(fi)
     }
     case n @ NAryOperator(args, recons) => {
       val rargs = args.map(a => functionClosure(a, bindedVars, id2freshId, fd2FreshFd))
@@ -156,7 +156,7 @@ object FunctionClosure extends TransformationPhase {
         }
       }
       val tpe = csesRec.head.rhs.getType
-      MatchExpr(scrutRec, csesRec).setType(tpe).setPosInfo(m)
+      MatchExpr(scrutRec, csesRec).setType(tpe).setPos(m)
     }
     case v @ Variable(id) => id2freshId.get(id) match {
       case None => v

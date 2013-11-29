@@ -63,7 +63,7 @@ object Extractors {
       case MultisetUnion(t1,t2) => Some((t1,t2,MultisetUnion))
       case MultisetPlus(t1,t2) => Some((t1,t2,MultisetPlus))
       case MultisetDifference(t1,t2) => Some((t1,t2,MultisetDifference))
-      case mg@MapGet(t1,t2) => Some((t1,t2, (t1, t2) => MapGet(t1, t2).setPosInfo(mg)))
+      case mg@MapGet(t1,t2) => Some((t1,t2, (t1, t2) => MapGet(t1, t2).setPos(mg)))
       case MapUnion(t1,t2) => Some((t1,t2,MapUnion))
       case MapDifference(t1,t2) => Some((t1,t2,MapDifference))
       case MapIsDefinedAt(t1,t2) => Some((t1,t2, MapIsDefinedAt))
@@ -84,7 +84,7 @@ object Extractors {
 
   object NAryOperator {
     def unapply(expr: Expr) : Option[(Seq[Expr],(Seq[Expr])=>Expr)] = expr match {
-      case fi @ FunctionInvocation(fd, args) => Some((args, (as => FunctionInvocation(fd, as).setPosInfo(fi))))
+      case fi @ FunctionInvocation(fd, args) => Some((args, (as => FunctionInvocation(fd, as).setPos(fi))))
       case CaseClass(cd, args) => Some((args, CaseClass(cd, _)))
       case And(args) => Some((args, And.apply))
       case Or(args) => Some((args, Or.apply))

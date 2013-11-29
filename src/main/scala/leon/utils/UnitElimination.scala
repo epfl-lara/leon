@@ -25,7 +25,7 @@ object UnitElimination extends TransformationPhase {
     //first introduce new signatures without Unit parameters
     allFuns.foreach(fd => {
       if(fd.returnType != UnitType && fd.args.exists(vd => vd.tpe == UnitType)) {
-        val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.returnType, fd.args.filterNot(vd => vd.tpe == UnitType)).setPosInfo(fd)
+        val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.returnType, fd.args.filterNot(vd => vd.tpe == UnitType)).setPos(fd)
         freshFunDef.precondition = fd.precondition //TODO: maybe removing unit from the conditions as well..
         freshFunDef.postcondition = fd.postcondition//TODO: maybe removing unit from the conditions as well..
         freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
@@ -63,7 +63,7 @@ object UnitElimination extends TransformationPhase {
     expr match {
       case fi@FunctionInvocation(fd, args) => {
         val newArgs = args.filterNot(arg => arg.getType == UnitType)
-        FunctionInvocation(fun2FreshFun(fd), newArgs).setPosInfo(fi)
+        FunctionInvocation(fun2FreshFun(fd), newArgs).setPos(fi)
       }
       case t@Tuple(args) => {
         val TupleType(tpes) = t.getType
@@ -101,7 +101,7 @@ object UnitElimination extends TransformationPhase {
           removeUnit(b)
         else {
           val (newFd, rest) = if(fd.args.exists(vd => vd.tpe == UnitType)) {
-            val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.returnType, fd.args.filterNot(vd => vd.tpe == UnitType)).setPosInfo(fd)
+            val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.returnType, fd.args.filterNot(vd => vd.tpe == UnitType)).setPos(fd)
             freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
             freshFunDef.precondition = fd.precondition //TODO: maybe removing unit from the conditions as well..
             freshFunDef.postcondition = fd.postcondition//TODO: maybe removing unit from the conditions as well..
@@ -143,7 +143,7 @@ object UnitElimination extends TransformationPhase {
           case GuardedCase(pat, guard, rhs) => GuardedCase(pat, removeUnit(guard), removeUnit(rhs))
         }
         val tpe = csesRec.head.rhs.getType
-        MatchExpr(scrutRec, csesRec).setType(tpe).setPosInfo(m)
+        MatchExpr(scrutRec, csesRec).setType(tpe).setPos(m)
       }
       case _ => sys.error("not supported: " + expr)
     }

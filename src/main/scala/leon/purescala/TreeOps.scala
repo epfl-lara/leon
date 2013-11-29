@@ -118,7 +118,7 @@ object TreeOps {
           else
             i
         }
-        case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut), cses.map(inCase(_))).setType(m.getType).setPosInfo(m)
+        case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut), cses.map(inCase(_))).setType(m.getType).setPos(m)
 
         case c @ Choose(args, body) =>
           val body2 = rec(body)
@@ -236,7 +236,7 @@ object TreeOps {
         val rscrut = rec(scrut)
         val (newCses,changes) = cses.map(inCase(_)).unzip
         applySubst(if(rscrut != scrut || changes.exists(res=>res)) {
-          MatchExpr(rscrut, newCses).setType(m.getType).setPosInfo(m)
+          MatchExpr(rscrut, newCses).setType(m.getType).setPos(m)
         } else {
           m
         })
@@ -246,7 +246,7 @@ object TreeOps {
         val body2 = rec(body)
 
         applySubst(if (body != body2) {
-          Choose(args, body2).setType(c.getType).setPosInfo(c)
+          Choose(args, body2).setType(c.getType).setPos(c)
         } else {
           c
         })
@@ -300,7 +300,7 @@ object TreeOps {
     }
 
     def applyToTree(e : Expr) : Option[Expr] = e match {
-      case m @ MatchExpr(s, cses) => Some(MatchExpr(s, cses.map(freshenCase(_))).setType(m.getType).setPosInfo(m))
+      case m @ MatchExpr(s, cses) => Some(MatchExpr(s, cses.map(freshenCase(_))).setType(m.getType).setPos(m))
       case l @ Let(i,e,b) => {
         val newID = FreshIdentifier(i.name, true).setType(i.getType)
         Some(Let(newID, e, replace(Map(Variable(i) -> Variable(newID)), b)))
@@ -619,7 +619,7 @@ object TreeOps {
       case v @ Variable(id) if s.isDefinedAt(id) => rec(s(id), s)
       case l @ Let(i,e,b) => rec(b, s + (i -> rec(e, s)))
       case i @ IfExpr(t1,t2,t3) => IfExpr(rec(t1, s),rec(t2, s),rec(t3, s)).setType(i.getType)
-      case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut, s), cses.map(inCase(_, s))).setType(m.getType).setPosInfo(m)
+      case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut, s), cses.map(inCase(_, s))).setType(m.getType).setPos(m)
       case n @ NAryOperator(args, recons) => {
         var change = false
         val rargs = args.map(a => {
@@ -762,7 +762,7 @@ object TreeOps {
           (realCond, newRhs)
         }
 
-        val bigIte = condsAndRhs.foldRight[Expr](Error("non-exhaustive match").setType(bestRealType(m.getType)).setPosInfo(m))((p1, ex) => {
+        val bigIte = condsAndRhs.foldRight[Expr](Error("non-exhaustive match").setType(bestRealType(m.getType)).setPos(m))((p1, ex) => {
           if(p1._1 == BooleanLiteral(true)) {
             p1._2
           } else {
@@ -796,7 +796,7 @@ object TreeOps {
     def rewriteMapGet(e: Expr) : Option[Expr] = e match {
       case mg @ MapGet(m,k) => 
         val ida = MapIsDefinedAt(m, k)
-        Some(IfExpr(ida, mg, Error("key not found for map access").setType(mg.getType).setPosInfo(mg)).setType(mg.getType))
+        Some(IfExpr(ida, mg, Error("key not found for map access").setType(mg.getType).setPos(mg)).setType(mg.getType))
       case _ => None
     }
 

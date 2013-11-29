@@ -72,7 +72,7 @@ object XlangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
           funDef.parent.getOrElse(funDef), 
           if(vc.kind == VCKind.Postcondition) VCKind.InvariantPost else if(vc.kind == VCKind.Precondition) VCKind.InvariantInd else vc.kind,
           vc.tactic,
-          vc.info).setPosInfo(funDef)
+          vc.info).setPos(funDef)
         freshVc.value = vc.value
         freshVc.solvedWith = vc.solvedWith
         freshVc.time = vc.time

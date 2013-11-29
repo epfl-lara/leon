@@ -1,14 +1,14 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
-
 package leon
 package xlang
 
-import leon.purescala.Common._
-import leon.purescala.TypeTrees._
-import leon.purescala.Trees._
-import leon.purescala.Definitions._
-import leon.purescala.Extractors._
-import leon.purescala.{PrettyPrinter, PrettyPrintable, ScalaPrinter}
+import purescala.Common._
+import purescala.TypeTrees._
+import purescala.Trees._
+import purescala.Definitions._
+import purescala.Extractors._
+import purescala.{PrettyPrinter, PrettyPrintable, ScalaPrinter}
+import utils._
 
 object Trees {
 
@@ -53,7 +53,7 @@ object Trees {
     }
   }
 
-  case class While(cond: Expr, body: Expr) extends Expr with FixedType with ScalacPositional with BinaryExtractable with PrettyPrintable {
+  case class While(cond: Expr, body: Expr) extends Expr with FixedType with BinaryExtractable with PrettyPrintable {
     val fixedType = UnitType
     var invariant: Option[Expr] = None
 
@@ -62,7 +62,7 @@ object Trees {
     def setInvariant(inv: Option[Expr]) = { invariant = inv; this }
 
     def extract: Option[(Expr, Expr, (Expr, Expr)=>Expr)] = {
-      Some((cond, body, (t1, t2) => While(t1, t2).setInvariant(this.invariant).setPosInfo(this)))
+      Some((cond, body, (t1, t2) => While(t1, t2).setInvariant(this.invariant).setPos(this)))
     }
 
     def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
@@ -86,9 +86,9 @@ object Trees {
     }
   }
 
-  case class Epsilon(pred: Expr) extends Expr with ScalacPositional with UnaryExtractable with PrettyPrintable {
+  case class Epsilon(pred: Expr) extends Expr with UnaryExtractable with PrettyPrintable {
     def extract: Option[(Expr, (Expr)=>Expr)] = {
-      Some((pred, (expr: Expr) => Epsilon(expr).setType(this.getType).setPosInfo(this)))
+      Some((pred, (expr: Expr) => Epsilon(expr).setType(this.getType).setPos(this)))
     }
 
     def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
@@ -97,18 +97,17 @@ object Trees {
           sys.error("Not Scala Code")
 
         case _ =>
-          printer.append("epsilon(x" + this.posIntInfo._1 + "_" + this.posIntInfo._2 + ". ")
+          printer.append("epsilon(x" + this.getPos.line + "_" + this.getPos.col + ". ")
           printer.pp(pred, Some(this))
           printer.append(")")
       }
     }
   }
 
-  case class EpsilonVariable(pos: (Int, Int)) extends Expr with Terminal with PrettyPrintable{
+  case class EpsilonVariable(pos: Position) extends Expr with Terminal with PrettyPrintable{
 
     def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
-      val (row, col) = pos
-      printer.append("x" + row + "_" + col)
+      printer.append("x" + pos.line + "_" + pos.col)
     }
   }
 
@@ -171,7 +170,7 @@ object Trees {
 
   //the difference between ArrayUpdate and ArrayUpdated is that the former has a side effect while the latter is the functional version
   //ArrayUpdate should be eliminated soon in the analysis while ArrayUpdated is kept all the way to the backend
-  case class ArrayUpdate(array: Expr, index: Expr, newValue: Expr) extends Expr with ScalacPositional with FixedType with NAryExtractable with PrettyPrintable {
+  case class ArrayUpdate(array: Expr, index: Expr, newValue: Expr) extends Expr with FixedType with NAryExtractable with PrettyPrintable {
     val fixedType = UnitType
 
     def extract: Option[(Seq[Expr], (Seq[Expr])=>Expr)] = {

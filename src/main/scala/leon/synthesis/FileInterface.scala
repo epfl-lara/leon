@@ -5,7 +5,10 @@ package synthesis
 
 import purescala.Trees._
 import purescala.Common.Tree
+import purescala.Definitions.FunDef
 import purescala.ScalaPrinter
+
+import leon.utils.Position
 
 import java.io.File
 class FileInterface(reporter: Reporter) {
@@ -41,10 +44,11 @@ class FileInterface(reporter: Reporter) {
     }
   }
 
-  case class CodePattern(startWith: String, posIntInfo: (Int, Int), blocks: Int)
+  case class CodePattern(startWith: String, pos: Position, blocks: Int)
 
   object CodePattern {
-    def forChoose(ci: ChooseInfo) = CodePattern("choose", ci.ch.posIntInfo, 1)
+    def forChoose(ci: ChooseInfo) = CodePattern("choose", ci.ch.getPos, 1)
+    def forFunDef(fd: FunDef) = CodePattern("def", fd.getPos, 2)
   }
 
   def substitute(str: String, pattern: CodePattern, subst: Tree): String = {
@@ -106,7 +110,7 @@ class FileInterface(reporter: Reporter) {
 
         val indent = getLineIndentation(lastFound)
 
-        if (pattern.posIntInfo == (lineno, scalaOffset)) {
+        if (pattern.pos.line == lineno && pattern.pos.col == scalaOffset) {
           var lvl      = 0;
           var i        = lastFound + 6;
           var continue = true;
