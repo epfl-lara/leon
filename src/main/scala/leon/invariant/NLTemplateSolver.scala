@@ -103,17 +103,17 @@ class NLTemplateSolver(context : LeonContext,
       val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), tempVarMap))
       //find new non-linear constraints based on models to instVC (which are counter examples)
       val (disjunct, ctrsForFun) = getNLConstraints(fd, instVC, tempVarMap)
-      //instantiate path
-      val cePath = simplifyArithmetic(TemplateInstantiator.instantiate(disjunct, tempVarMap))
-      
-      //sanity check
-      if (variablesOf(cePath).exists(TemplateIdFactory.IsTemplateIdentifier _))
-        throw IllegalStateException("Found template identifier in counter-example disjunct: " + cePath)
-      
-      if(ctrsForFun != tru) {
+      if (ctrsForFun != tru) {
+        //instantiate path
+        val cePath = simplifyArithmetic(TemplateInstantiator.instantiate(disjunct, tempVarMap))
+
+        //sanity check
+        if (variablesOf(cePath).exists(TemplateIdFactory.IsTemplateIdentifier _))
+          throw IllegalStateException("Found template identifier in counter-example disjunct: " + cePath)
+        
         conflictingFuns += fd
-        updateSeenPaths(fd, cePath)        
-        acc :+ ctrsForFun        
+        updateSeenPaths(fd, cePath)
+        acc :+ ctrsForFun
       } else acc    	  
     })
 
@@ -197,16 +197,19 @@ class NLTemplateSolver(context : LeonContext,
               val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), tempVarMap))
               val disableCounterExs = Not(Or(seenPaths(fd)))
               val instVCmodCE = And(instVC, disableCounterExs)
-              val (disjunct, ctrsForFun) = getNLConstraints(fd, instVCmodCE, tempVarMap)                                                      
-              //instantiate the disjunct
-              val cePath = simplifyArithmetic(TemplateInstantiator.instantiate(disjunct, tempVarMap))
-              
-              //some sanity checks
-              if(variablesOf(cePath).exists(TemplateIdFactory.IsTemplateIdentifier _))
-                throw IllegalStateException("Found template identifier in counter-example disjunct: "+cePath)
-              
-              updateSeenPaths(fd, cePath)
-              acc :+ ctrsForFun
+              val (disjunct, ctrsForFun) = getNLConstraints(fd, instVCmodCE, tempVarMap)
+              if(ctrsForFun == tru) acc
+              else {
+                //instantiate the disjunct
+                val cePath = simplifyArithmetic(TemplateInstantiator.instantiate(disjunct, tempVarMap))
+
+                //some sanity checks
+                if (variablesOf(cePath).exists(TemplateIdFactory.IsTemplateIdentifier _))
+                  throw IllegalStateException("Found template identifier in counter-example disjunct: " + cePath)
+
+                updateSeenPaths(fd, cePath)
+                acc :+ ctrsForFun
+              }
             })
             if (newctrs.isEmpty) {              
               //give up, only hard paths remaining
