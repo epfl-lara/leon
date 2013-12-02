@@ -55,9 +55,8 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     //println("Head-Calls: "+headCallPtrs.keys.toSeq)
     //System.exit(0)
     
-    //This procedure has side-effects on many fields.
-    //We are consciously ignoring the return value of the procedure
-    assumePostConditions()
+    //This procedure has side-effects on many fields.   
+    headCalls ++= assumePostConditions()
   }
 
   private def findAllHeads(ctrTracker: ConstraintTracker) : Set[Call] ={  

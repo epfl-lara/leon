@@ -56,13 +56,13 @@ class CegisSolver(context : LeonContext,
   }
   
   def solve(tempIds: Set[Identifier], funcVCs: Map[FunDef, Expr], initCtr : Expr)
-  : Option[Map[FunDef, Expr]] = {        
-
+  : Option[Map[FunDef, Expr]] = {
+    
     val funcs = funcVCs.keys
     val solver = SimpleSolverAPI(
       new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)),
-        timeout * 1000))
-        
+        timeout * 1000))           
+
     val notVC = simplePostTransform((e) => e match {
       case Equals(_, FunctionInvocation(_, _)) => tru
       case Iff(_, FunctionInvocation(_, _)) => tru
@@ -83,10 +83,11 @@ class CegisSolver(context : LeonContext,
     def cegisRec(model: Map[Identifier, Expr], inputCtr: Expr): Option[Map[FunDef, Expr]] = {
       //for stats
       Stats.cegisIterations += 1
-      
+
       /*println("candidate Invariants")
-    val candInvs = getAllInvariants(model)
-    candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))*/
+      val candInvs = getAllInvariants(model)
+      candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))*/
+    
       val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap
       val instVC = Or(funcs.foldLeft(Seq[Expr]())((acc, fd) => {
         acc :+ simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), tempVarMap))
@@ -103,7 +104,7 @@ class CegisSolver(context : LeonContext,
       if (res.isDefined && res.get == true) {
         println("1: solved... in " + (t2 - t1) / 1000.0 + "s")
         //instantiate vcs with newmodel
-        val progVarMap: Map[Expr, Expr] = progModel.map((elem) => (elem._1.toVariable, elem._2)).toMap
+        val progVarMap: Map[Expr, Expr] = progModel.map((elem) => (elem._1.toVariable, elem._2)).toMap                       
         val tempctrs = replace(progVarMap, notVC)
         //println("Tempctrs: "+Not(Or(funcs.map(funcExprs.apply _).toSeq)))
 

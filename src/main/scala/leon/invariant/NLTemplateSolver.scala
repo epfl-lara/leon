@@ -59,6 +59,40 @@ class NLTemplateSolver(context : LeonContext,
    */  
   override def solve(tempIds : Set[Identifier], funcVCs: Map[FunDef, Expr]) : Option[Map[FunDef, Expr]] = {
     
+    /*For debugging*/
+    /*var tempMap = Map[Expr,Expr]()
+    funcVCs.foreach((pair)=> {
+      val (fd, vc)=pair      
+      if(fd.id.name.contains("size")) {
+        variablesOf(vc).foreach((id) => 
+          if(TemplateIdFactory.IsTemplateIdentifier(id) && id.name.contains("d"))
+            tempMap += (id.toVariable -> RealLiteral(0,1))
+          )          
+      }
+      else if(fd.id.name.contains("nnf")) {
+        variablesOf(vc).foreach((id) => 
+          if(TemplateIdFactory.IsTemplateIdentifier(id)){
+            if(id.name == "a?") tempMap += (id.toVariable -> RealLiteral(2,1))
+            if(id.name == "b?") tempMap += (id.toVariable -> RealLiteral(-1,1))
+          })
+      }
+    })
+    funcVCs.keys.foreach((fd) => {
+      val ivc = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), tempMap))
+      val tsolver = new UIFZ3Solver(context, program, autoComplete = false)
+      tsolver.assertCnstr(ivc)
+      if (!(tsolver.check == Some(false))) {
+        println("verification condition is not inductive for: " + fd.id)
+        val (dis, _) = getNLConstraints(fd, ivc, tempMap)
+        val disj = simplifyArithmetic(dis)
+        println("disjunct: " + disj)
+        println("inst-disjunct: " + simplifyArithmetic(TemplateInstantiator.instantiate(disj, tempMap)))      
+        System.console.readLine()
+      }      
+      tsolver.free()
+    })*/
+    
+    
     val solverWithCtr = new UIFZ3Solver(this.context, program)
     solverWithCtr.assertCnstr(tru)
     
@@ -623,12 +657,16 @@ class NLTemplateSolver(context : LeonContext,
         val plainFormula = And(antAuxs ++ conseqAuxs ++ adtCons ++ uifexprs ++ pathexprsWithTemplate)
         val pathcond = simplifyArithmetic(plainFormula)
         
-        if(this.printPathToConsole)
-          println("Full-path: " + pathcond)
-        /*val wr = new PrintWriter(new File("full-path-"+formula.hashCode()+".txt"))
-          ExpressionTransformer.PrintWithIndentation(wr, formula)
+        if(this.printPathToConsole){
+          val simpcond = ExpressionTransformer.unFlatten(pathcond, variablesOf(pathcond).filterNot(TVarFactory.isTemporary _)) 
+          println("Full-path: " + simpcond)
+          val filename = "full-path-"+FileCountGUID.getID+".txt"
+          val wr = new PrintWriter(new File(filename))
+          ExpressionTransformer.PrintWithIndentation(wr, simpcond)
+          println("Printed to file: "+filename)
           wr.flush()
-          wr.close()*/
+          wr.close()
+        }
         
         if(this.dumpPathAsSMTLIB) {
          //create new solver, assert constraints and print
