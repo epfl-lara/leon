@@ -4,7 +4,8 @@ package leon.test
 package purescala
 
 import leon._
-import leon.plugin.{TemporaryInputPhase,ExtractionPhase}
+import leon.utils.TemporaryInputPhase
+import leon.frontends.scalac.ExtractionPhase
 
 import leon.purescala.ScalaPrinter
 import leon.purescala.Common._
@@ -15,7 +16,7 @@ import leon.purescala.TypeTrees._
 
 class TransformationTests extends LeonTestSuite {
 
-  val pipeline = leon.plugin.ExtractionPhase andThen leon.utils.SubtypingPhase
+  val pipeline = ExtractionPhase andThen leon.utils.SubtypingPhase
 
   filesInResourceDir("regression/transformations").foreach { file =>
     val ctx = testContext.copy(

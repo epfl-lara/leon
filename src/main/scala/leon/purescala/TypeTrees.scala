@@ -56,7 +56,7 @@ object TypeTrees {
   }
     
 
-  sealed abstract class TypeTree extends Serializable {
+  sealed abstract class TypeTree extends Tree {
     override def toString: String = PrettyPrinter(this)
   }
 

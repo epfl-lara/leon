@@ -123,7 +123,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
         val matchExpr = MatchExpr(scrutRes, cses.zip(newRhs).map{
           case (SimpleCase(pat, _), newRhs) => SimpleCase(pat, newRhs)
           case (GuardedCase(pat, guard, _), newRhs) => GuardedCase(pat, replaceNames(scrutFun, guard), newRhs)
-        }).setType(matchType).setPosInfo(m)
+        }).setType(matchType).setPos(m)
 
         val scope = ((body: Expr) => {
           val tupleId = FreshIdentifier("t").setType(matchType)
@@ -155,12 +155,12 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
           val modifiedVars2WhileFunVars = modifiedVars.zip(whileFunVars).toMap
           val whileFunVarDecls = whileFunVars.map(id => VarDecl(id, id.getType))
           val whileFunReturnType = if(whileFunVars.size == 1) whileFunVars.head.getType else TupleType(whileFunVars.map(_.getType))
-          val whileFunDef = new FunDef(FreshIdentifier(parent.id.name), whileFunReturnType, whileFunVarDecls).setPosInfo(wh)
+          val whileFunDef = new FunDef(FreshIdentifier(parent.id.name), whileFunReturnType, whileFunVarDecls).setPos(wh)
           wasLoop += whileFunDef
           
           val whileFunCond = condRes
           val whileFunRecursiveCall = replaceNames(condFun,
-            bodyScope(FunctionInvocation(whileFunDef, modifiedVars.map(id => condBodyFun(id).toVariable)).setPosInfo(wh)))
+            bodyScope(FunctionInvocation(whileFunDef, modifiedVars.map(id => condBodyFun(id).toVariable)).setPos(wh)))
           val whileFunBaseCase =
             (if(whileFunVars.size == 1) 
                 condFun.get(modifiedVars.head).getOrElse(whileFunVars.head).toVariable
@@ -199,7 +199,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
             LetDef(
               whileFunDef,
               Let(tupleId, 
-                  FunctionInvocation(whileFunDef, modifiedVars.map(_.toVariable)).setPosInfo(wh), 
+                  FunctionInvocation(whileFunDef, modifiedVars.map(_.toVariable)).setPos(wh), 
                   if(finalVars.size == 1)
                     Let(finalVars.head, tupleId.toVariable, body)
                   else
@@ -252,7 +252,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
       case c @ Choose(ids, b) => {
         //Recall that Choose cannot mutate variables from the scope
         val (bodyRes, bodyScope, bodyFun) = toFunction(b)
-        (bodyRes, (b2: Expr) => Choose(ids, bodyScope(b2)).setPosInfo(c), bodyFun)
+        (bodyRes, (b2: Expr) => Choose(ids, bodyScope(b2)).setPos(c), bodyFun)
       }
       case n @ NAryOperator(Seq(), recons) => (n, (body: Expr) => body, Map())
       case n @ NAryOperator(args, recons) => {

@@ -33,7 +33,7 @@ class SynthesisRegressionSuite extends LeonTestSuite {
 
     val opts = SynthesisOptions(searchBound = Some(bound))
 
-    val pipeline = plugin.ExtractionPhase andThen leon.utils.SubtypingPhase
+    val pipeline = frontends.scalac.ExtractionPhase andThen leon.utils.SubtypingPhase
 
     val program = pipeline.run(ctx)(f.getAbsolutePath :: Nil)
 

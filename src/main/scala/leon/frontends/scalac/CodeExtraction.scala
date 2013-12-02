@@ -1,22 +1,25 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
 
 package leon
-package plugin
+package frontends.scalac
 
 import scala.tools.nsc._
 import scala.tools.nsc.plugins._
 
 import scala.language.implicitConversions
 
+import purescala._
 import purescala.Definitions._
 import purescala.Trees.{Expr => LeonExpr, _}
-import xlang.Trees.{Block => LeonBlock, _}
-import xlang.TreeOps._
 import purescala.TypeTrees.{TypeTree => LeonType, _}
 import purescala.Common._
 import purescala.TreeOps._
+import xlang.Trees.{Block => LeonBlock, _}
+import xlang.TreeOps._
 
-trait CodeExtraction extends Extractors {
+import utils.{Position => LeonPosition, OffsetPosition => LeonOffsetPosition, RangePosition => LeonRangePosition}
+
+trait CodeExtraction extends ASTExtractors {
   self: LeonExtraction =>
 
   import global._
@@ -25,12 +28,14 @@ trait CodeExtraction extends Extractors {
   import ExpressionExtractors._
   import ExtractorHelpers._
 
-  class ScalaPos(p: global.Position) extends ScalacPositional {
-    setPosInfo(p.line, p.column)
-  }
-
-  implicit def scalaPosToLeonPos(p: global.Position): ScalacPositional = {
-    new ScalaPos(p)
+  implicit def scalaPosToLeonPos(p: global.Position): LeonPosition = {
+    if (p.isRange) {
+      val start = p.focusStart
+      val end   = p.focusEnd
+      LeonRangePosition(start.line, start.column, end.line, end.column, p.source.file.file)
+    } else {
+      LeonOffsetPosition(p.line, p.column, p.source.file.file)
+    }
   }
 
   private val mutableVarSubsts: scala.collection.mutable.Map[Symbol,Function0[LeonExpr]] =
@@ -177,7 +182,7 @@ trait CodeExtraction extends Extractors {
           // we ignore the main function
 
         case dd @ ExFunctionDef(name, params, tpe, body) =>
-          val funDef = extractFunSig(name, params, tpe).setPosInfo(dd.pos)
+          val funDef = extractFunSig(name, params, tpe).setPos(dd.pos)
 
           if (dd.mods.isPrivate) {
             funDef.addAnnotation("private")
@@ -474,7 +479,7 @@ trait CodeExtraction extends Extractors {
          */
 
         case dd @ ExFunctionDef(n, p, t, b) =>
-          val funDef = extractFunSig(n, p, t).setPosInfo(dd.pos.line, dd.pos.column)
+          val funDef = extractFunSig(n, p, t)
           defsToDefs += (dd.symbol -> funDef)
           val oldMutableVarSubst = mutableVarSubsts.toMap //take an immutable snapshot of the map
           val oldCurrentFunDef = currentFunDef
@@ -535,21 +540,21 @@ trait CodeExtraction extends Extractors {
         case wh @ ExWhile(cond, body) =>
           val condTree = extractTree(cond)
           val bodyTree = extractTree(body)
-          While(condTree, bodyTree).setPosInfo(wh.pos)
+          While(condTree, bodyTree)
 
         case wh @ ExWhileWithInvariant(cond, body, inv) =>
           val condTree = extractTree(cond)
           val bodyTree = extractTree(body)
           val invTree = extractTree(inv)
 
-          val w = While(condTree, bodyTree).setPosInfo(wh.pos)
+          val w = While(condTree, bodyTree)
           w.invariant = Some(invTree)
           w
 
         case epsi @ ExEpsilonExpression(tpe, varSym, predBody) =>
           val pstpe = extractType(tpe)
           val previousVarSubst: Option[Function0[LeonExpr]] = varSubsts.get(varSym) //save the previous in case of nested epsilon
-          varSubsts(varSym) = (() => EpsilonVariable((epsi.pos.line, epsi.pos.column)).setType(pstpe))
+          varSubsts(varSym) = (() => EpsilonVariable(epsi.pos).setType(pstpe))
           val c1 = extractTree(predBody)
           previousVarSubst match {
             case Some(f) => varSubsts(varSym) = f
@@ -558,7 +563,7 @@ trait CodeExtraction extends Extractors {
           if(containsEpsilon(c1)) {
             unsupported(epsi, "Usage of nested epsilon is not allowed")
           }
-          Epsilon(c1).setType(pstpe).setPosInfo(epsi.pos.line, epsi.pos.column)
+          Epsilon(c1).setType(pstpe)
 
         case ExWaypointExpression(tpe, i, tree) =>
           val pstpe = extractType(tpe)
@@ -587,7 +592,7 @@ trait CodeExtraction extends Extractors {
 
           val indexRec = extractTree(index)
           val newValueRec = extractTree(newValue)
-          ArrayUpdate(lhsRec, indexRec, newValueRec).setPosInfo(update.pos)
+          ArrayUpdate(lhsRec, indexRec, newValueRec)
 
         case ExInt32Literal(v) =>
           IntLiteral(v)
@@ -627,7 +632,7 @@ trait CodeExtraction extends Extractors {
 
           val cBody = extractTree(body)
 
-          Choose(vars, cBody).setPosInfo(select.pos)
+          Choose(vars, cBody)
 
         case ExCaseClassConstruction(tpt, args) =>
           extractType(tpt.tpe) match {
@@ -834,7 +839,7 @@ trait CodeExtraction extends Extractors {
               MapUnion(rm, FiniteMap(Seq((rf, rt))).setType(t)).setType(t)
 
             case t @ ArrayType(bt) =>
-              ArrayUpdated(rm, rf, rt).setType(t).setPosInfo(up.pos)
+              ArrayUpdated(rm, rf, rt).setType(t)
 
             case _ =>
               unsupported(tr, "updated can only be applied to maps.")
@@ -857,11 +862,11 @@ trait CodeExtraction extends Extractors {
           rlhs.getType match {
             case MapType(_,tt) =>
               assert(rargs.size == 1)
-              MapGet(rlhs, rargs.head).setType(tt).setPosInfo(app.pos.line, app.pos.column)
+              MapGet(rlhs, rargs.head).setType(tt)
 
             case ArrayType(bt) =>
               assert(rargs.size == 1)
-              ArraySelect(rlhs, rargs.head).setType(bt).setPosInfo(app.pos.line, app.pos.column)
+              ArraySelect(rlhs, rargs.head).setType(bt)
 
             case _ =>
               unsupported(tr, "apply on unexpected type")
@@ -931,20 +936,22 @@ trait CodeExtraction extends Extractors {
             throw ImpureCodeEncounteredException(tr)
           }
           val fd = defsToDefs(sy)
-          FunctionInvocation(fd, ar.map(extractTree(_))).setType(fd.returnType).setPosInfo(lc.pos.line,lc.pos.column)
+          FunctionInvocation(fd, ar.map(extractTree(_))).setType(fd.returnType)
         }
 
         case pm @ ExPatternMatching(sel, cses) =>
           val rs = extractTree(sel)
           val rc = cses.map(extractMatchCase(_))
           val rt: LeonType = rc.map(_.rhs.getType).reduceLeft(leastUpperBound(_,_).get)
-          MatchExpr(rs, rc).setType(rt).setPosInfo(pm.pos.line,pm.pos.column)
+          MatchExpr(rs, rc).setType(rt)
 
 
         // default behaviour is to complain :)
         case _ =>
           unsupported(tr, "Could not extract as PureScala")
       }
+
+      res.setPos(current.pos)
 
       rest match {
         case Some(r) =>

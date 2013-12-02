@@ -39,8 +39,8 @@ object ArrayTransformation extends TransformationPhase {
       val length = ArrayLength(ra)
       val res = IfExpr(
         And(LessEquals(IntLiteral(0), ri), LessThan(ri, length)),
-        ArraySelect(ra, ri).setType(sel.getType).setPosInfo(sel),
-        Error("Index out of bound").setType(sel.getType).setPosInfo(sel)
+        ArraySelect(ra, ri).setType(sel.getType).setPos(sel),
+        Error("Index out of bound").setType(sel.getType).setPos(sel)
       ).setType(sel.getType)
       res
     }
@@ -52,8 +52,8 @@ object ArrayTransformation extends TransformationPhase {
       val length = ArrayLength(ra)
       val res = IfExpr(
         And(LessEquals(IntLiteral(0), ri), LessThan(ri, length)),
-        Assignment(id, ArrayUpdated(ra, ri, rv).setType(ra.getType).setPosInfo(up)),
-        Error("Index out of bound").setType(UnitType).setPosInfo(up)
+        Assignment(id, ArrayUpdated(ra, ri, rv).setType(ra.getType).setPos(up)),
+        Error("Index out of bound").setType(UnitType).setPos(up)
       ).setType(UnitType)
       res
     }
@@ -64,8 +64,8 @@ object ArrayTransformation extends TransformationPhase {
       val length = ArrayLength(ra)
       val res = IfExpr(
         And(LessEquals(IntLiteral(0), ri), LessThan(ri, length)),
-        ArrayUpdated(ra, ri, rv).setType(ra.getType).setPosInfo(up),
-        Error("Index out of bound").setType(ra.getType).setPosInfo(up)
+        ArrayUpdated(ra, ri, rv).setType(ra.getType).setPos(up),
+        Error("Index out of bound").setType(ra.getType).setPos(up)
       ).setType(ra.getType)
       res
     }
@@ -96,7 +96,7 @@ object ArrayTransformation extends TransformationPhase {
     case wh@While(c, e) => {
       val newWh = While(transform(c), transform(e))
       newWh.invariant = wh.invariant.map(i => transform(i))
-      newWh.setPosInfo(wh)
+      newWh.setPos(wh)
       newWh
     }
 
@@ -114,7 +114,7 @@ object ArrayTransformation extends TransformationPhase {
         case GuardedCase(pat, guard, rhs) => GuardedCase(pat, transform(guard), transform(rhs))
       }
       val tpe = csesRec.head.rhs.getType
-      MatchExpr(scrutRec, csesRec).setType(tpe).setPosInfo(m)
+      MatchExpr(scrutRec, csesRec).setType(tpe).setPos(m)
     }
     case LetDef(fd, b) => {
       fd.precondition = fd.precondition.map(transform)

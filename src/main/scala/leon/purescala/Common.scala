@@ -1,14 +1,17 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
-
 package leon
 package purescala
+
+import utils._
 
 object Common {
   import Trees.Variable
   import TypeTrees.Typed
 
+  abstract class Tree extends Positioned with Serializable
+
   // the type is left blank (Untyped) for Identifiers that are not variables
-  class Identifier private[Common](val name: String, private val globalId: Int, val id: Int, alwaysShowUniqueID: Boolean = false) extends Typed {
+  class Identifier private[Common](val name: String, private val globalId: Int, val id: Int, alwaysShowUniqueID: Boolean = false) extends Tree with Typed {
     self : Serializable =>
 
     override def equals(other: Any): Boolean = {
@@ -61,32 +64,4 @@ object Common {
 
   }
 
-  trait ScalacPositional {
-    self =>
-
-    private var prow: Int = -1078
-    private var pcol: Int = -1078
-
-    def setPosInfo(row: Int, col: Int) : self.type = {
-      prow = row
-      pcol = col
-      this
-    }
-
-    def setPosInfo(from: ScalacPositional) : self.type = { 
-      val (or,oc) = from.posIntInfo
-      prow = or
-      pcol = oc
-      this
-    }
-
-    def posIntInfo : (Int,Int) = (prow,pcol)
-
-    def posInfo : String = if(prow != -1078) "(" + prow + "," + pcol + ")" else ""
-
-    def <(other: ScalacPositional) : Boolean = {
-      val (orow,ocol) = other.posIntInfo
-      prow < orow || (prow == orow && pcol < ocol)
-    }
-  }
 }

@@ -1,14 +1,14 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
 
 package leon
-package plugin
+package utils
 
 import java.io.{File, BufferedWriter, FileWriter}
 
 object TemporaryInputPhase extends LeonPhase[(String, List[String]), List[String]] {
 
   val name = "Temporary Input"
-  val description = "Feed the compiler with a temporary input file"
+  val description = "Create source files from string content"
 
   def run(ctx: LeonContext)(data: (String, List[String])): List[String] = {
     val (content, opts) = data

@@ -17,7 +17,7 @@ class TerminationRegression extends LeonTestSuite {
   private case class Output(report : TerminationReport, reporter : Reporter)
 
   private def mkPipeline : Pipeline[List[String],TerminationReport] =
-    leon.plugin.ExtractionPhase andThen leon.utils.SubtypingPhase andThen leon.termination.TerminationPhase
+    leon.frontends.scalac.ExtractionPhase andThen leon.utils.SubtypingPhase andThen leon.termination.TerminationPhase
 
   private def mkTest(file : File, leonOptions: Seq[LeonOption], forError: Boolean)(block: Output=>Unit) = {
     val fullName = file.getPath()

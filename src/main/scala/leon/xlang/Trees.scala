@@ -1,14 +1,14 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
-
 package leon
 package xlang
 
-import leon.purescala.Common._
-import leon.purescala.TypeTrees._
-import leon.purescala.Trees._
-import leon.purescala.Definitions._
-import leon.purescala.Extractors._
-import leon.purescala.{PrettyPrinter, PrettyPrintable, ScalaPrinter}
+import purescala.Common._
+import purescala.TypeTrees._
+import purescala.Trees._
+import purescala.Definitions._
+import purescala.Extractors._
+import purescala.{PrettyPrinter, PrettyPrintable, ScalaPrinter}
+import utils._
 
 object Trees {
 
@@ -23,11 +23,11 @@ object Trees {
       Some((args :+ rest, exprs => Block(exprs.init, exprs.last)))
     }
 
-    def printWith(lvl: Int, printer: PrettyPrinter) {
+    def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
       printer.append("{\n")
       (exprs :+ last).foreach(e => {
         printer.ind(lvl+1)
-        printer.pp(e, lvl+1)
+        printer.pp(e, Some(this))(lvl+1)
         printer.append("\n")
       })
       printer.ind(lvl)
@@ -44,16 +44,16 @@ object Trees {
       Some((expr, Assignment(varId, _)))
     }
 
-    def printWith(lvl: Int, printer: PrettyPrinter) {
+    def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
       printer.append("(")
       printer.append(varId.name)
       printer.append(" = ")
-      printer.pp(expr,lvl)
+      printer.pp(expr, Some(this))
       printer.append(")")
     }
   }
 
-  case class While(cond: Expr, body: Expr) extends Expr with FixedType with ScalacPositional with BinaryExtractable with PrettyPrintable {
+  case class While(cond: Expr, body: Expr) extends Expr with FixedType with BinaryExtractable with PrettyPrintable {
     val fixedType = UnitType
     var invariant: Option[Expr] = None
 
@@ -62,53 +62,52 @@ object Trees {
     def setInvariant(inv: Option[Expr]) = { invariant = inv; this }
 
     def extract: Option[(Expr, Expr, (Expr, Expr)=>Expr)] = {
-      Some((cond, body, (t1, t2) => While(t1, t2).setInvariant(this.invariant).setPosInfo(this)))
+      Some((cond, body, (t1, t2) => While(t1, t2).setInvariant(this.invariant).setPos(this)))
     }
 
-    def printWith(lvl: Int, printer: PrettyPrinter) {
+    def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
       invariant match {
         case Some(inv) => {
           printer.append("\n")
-          printer.ind(lvl)
+          printer.ind
           printer.append("@invariant: ")
-          printer.pp(inv, lvl)
+          printer.pp(inv, Some(this))
           printer.append("\n")
-          printer.ind(lvl)
+          printer.ind
         }
         case None =>
       }
       printer.append("while(")
-      printer.pp(cond, lvl)
+      printer.pp(cond, Some(this))
       printer.append(")\n")
       printer.ind(lvl+1)
-      printer.pp(body, lvl+1)
+      printer.pp(body, Some(this))(lvl+1)
       printer.append("\n")
     }
   }
 
-  case class Epsilon(pred: Expr) extends Expr with ScalacPositional with UnaryExtractable with PrettyPrintable {
+  case class Epsilon(pred: Expr) extends Expr with UnaryExtractable with PrettyPrintable {
     def extract: Option[(Expr, (Expr)=>Expr)] = {
-      Some((pred, (expr: Expr) => Epsilon(expr).setType(this.getType).setPosInfo(this)))
+      Some((pred, (expr: Expr) => Epsilon(expr).setType(this.getType).setPos(this)))
     }
 
-    def printWith(lvl: Int, printer: PrettyPrinter) {
+    def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
       printer match {
         case _: ScalaPrinter =>
           sys.error("Not Scala Code")
 
         case _ =>
-          printer.append("epsilon(x" + this.posIntInfo._1 + "_" + this.posIntInfo._2 + ". ")
-          printer.pp(pred, lvl)
+          printer.append("epsilon(x" + this.getPos.line + "_" + this.getPos.col + ". ")
+          printer.pp(pred, Some(this))
           printer.append(")")
       }
     }
   }
 
-  case class EpsilonVariable(pos: (Int, Int)) extends Expr with Terminal with PrettyPrintable{
+  case class EpsilonVariable(pos: Position) extends Expr with Terminal with PrettyPrintable{
 
-    def printWith(lvl: Int, printer: PrettyPrinter) {
-      val (row, col) = pos
-      printer.append("x" + row + "_" + col)
+    def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
+      printer.append("x" + pos.line + "_" + pos.col)
     }
   }
 
@@ -124,29 +123,28 @@ object Trees {
       Some((expr, body, (e: Expr, b: Expr) => LetVar(binders, e, b)))
     }
 
-    def printWith(lvl: Int, printer: PrettyPrinter) {
+    def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
       printer match {
         case _: ScalaPrinter =>
           val LetVar(b,d,e) = this
           printer.append("locally {\n")
           printer.ind(lvl+1)
           printer.append("var " + b + " = ")
-          printer.pp(d, lvl+1)
+          printer.pp(d, Some(this))(lvl+1)
           printer.append("\n")
           printer.ind(lvl+1)
-          printer.pp(e, lvl+1)
-          printer.append("\n")
-          printer.ind(lvl)
-          printer.append("}\n")
-          printer.ind(lvl)
+          printer.pp(e, Some(this))(lvl+1)
+          printer.nl
+          printer.append("}")
+          printer.nl
 
         case _ =>
           val LetVar(b,d,e) = this
           printer.append("(letvar (" + b + " := ");
-          printer.pp(d, lvl)
+          printer.pp(d, Some(this))
           printer.append(") in\n")
           printer.ind(lvl+1)
-          printer.pp(e, lvl+1)
+          printer.pp(e, Some(this))(lvl+1)
           printer.append(")")
       }
     }
@@ -157,14 +155,14 @@ object Trees {
       Some((expr, (e: Expr) => Waypoint(i, e)))
     }
 
-    def printWith(lvl: Int, printer: PrettyPrinter) {
+    def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
       printer match {
         case _: ScalaPrinter =>
           sys.error("Not Scala Code")
 
         case _ =>
           printer.append("waypoint_" + i + "(")
-          printer.pp(expr, lvl)
+          printer.pp(expr, Some(this))
           printer.append(")")
       }
     }
@@ -172,7 +170,7 @@ object Trees {
 
   //the difference between ArrayUpdate and ArrayUpdated is that the former has a side effect while the latter is the functional version
   //ArrayUpdate should be eliminated soon in the analysis while ArrayUpdated is kept all the way to the backend
-  case class ArrayUpdate(array: Expr, index: Expr, newValue: Expr) extends Expr with ScalacPositional with FixedType with NAryExtractable with PrettyPrintable {
+  case class ArrayUpdate(array: Expr, index: Expr, newValue: Expr) extends Expr with FixedType with NAryExtractable with PrettyPrintable {
     val fixedType = UnitType
 
     def extract: Option[(Seq[Expr], (Seq[Expr])=>Expr)] = {
@@ -180,12 +178,12 @@ object Trees {
       Some((Seq(t1,t2,t3), (as: Seq[Expr]) => ArrayUpdate(as(0), as(1), as(2))))
     }
 
-    def printWith(lvl: Int, printer: PrettyPrinter) {
-      printer.pp(array, lvl)
+    def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
+      printer.pp(array, Some(this))
       printer.append("(")
-      printer.pp(index, lvl)
+      printer.pp(index, Some(this))
       printer.append(") = ")
-      printer.pp(newValue, lvl)
+      printer.pp(newValue, Some(this))
     }
   }
 

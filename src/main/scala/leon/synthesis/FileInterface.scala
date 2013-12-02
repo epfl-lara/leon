@@ -4,12 +4,16 @@ package leon
 package synthesis
 
 import purescala.Trees._
+import purescala.Common.Tree
+import purescala.Definitions.FunDef
 import purescala.ScalaPrinter
+
+import leon.utils.Position
 
 import java.io.File
 class FileInterface(reporter: Reporter) {
 
-  def updateFile(origFile: File, solutions: Map[ChooseInfo, Expr], ignoreMissing: Boolean = false) {
+  def updateFile(origFile: File, solutions: Map[ChooseInfo, Expr]) {
     import java.io.{File, BufferedWriter, FileWriter}
     val FileExt = """^(.+)\.([^.]+)$""".r
 
@@ -17,6 +21,7 @@ class FileInterface(reporter: Reporter) {
       case FileExt(path, "scala") =>
         var i = 0
         def savePath = path+".scala."+i
+
         while (new File(savePath).isFile()) {
           i += 1
         }
@@ -26,8 +31,10 @@ class FileInterface(reporter: Reporter) {
         val newFile  = new File(origFile.getAbsolutePath())
         origFile.renameTo(backup)
 
-
-        val newCode = substitueChooses(origCode, solutions, ignoreMissing)
+        var newCode = origCode
+        for ( (ci, e) <- solutions) {
+          newCode = substitute(newCode, CodePattern.forChoose(ci), e)
+        }
 
         val out = new BufferedWriter(new FileWriter(newFile))
         out.write(newCode)
@@ -37,7 +44,14 @@ class FileInterface(reporter: Reporter) {
     }
   }
 
-  def substitueChooses(str: String, solutions: Map[ChooseInfo, Expr], ignoreMissing: Boolean = false): String = {
+  case class CodePattern(startWith: String, pos: Position, blocks: Int)
+
+  object CodePattern {
+    def forChoose(ci: ChooseInfo) = CodePattern("choose", ci.ch.getPos, 1)
+    def forFunDef(fd: FunDef) = CodePattern("def", fd.getPos, 2)
+  }
+
+  def substitute(str: String, pattern: CodePattern, subst: Tree): String = {
     var lines = List[Int]()
 
     // Compute line positions
@@ -87,7 +101,7 @@ class FileInterface(reporter: Reporter) {
     var newStrOffset = 0
 
     do {
-      lastFound = str.indexOf("choose", lastFound+1)
+      lastFound = str.indexOf(pattern.startWith, lastFound+1)
 
       if (lastFound > -1) {
         val (lineno, lineoffset) = lineOf(lastFound)
@@ -96,33 +110,31 @@ class FileInterface(reporter: Reporter) {
 
         val indent = getLineIndentation(lastFound)
 
-        solutions.find(_._1.ch.posIntInfo == (lineno, scalaOffset)) match {
-          case Some((choose, solution)) =>
-            var lvl      = 0;
-            var i        = lastFound + 6;
-            var continue = true;
-            do {
-              val c = str.charAt(i)
-              if (c == '(' || c == '{') {
-                lvl += 1
-              } else if (c == ')' || c == '}') {
-                lvl -= 1
-                if (lvl == 0) {
+        if (pattern.pos.line == lineno && pattern.pos.col == scalaOffset) {
+          var lvl      = 0;
+          var i        = lastFound + 6;
+          var continue = true;
+          do {
+            var blocksRemaining = pattern.blocks
+            val c = str.charAt(i)
+            if (c == '(' || c == '{') {
+              lvl += 1
+            } else if (c == ')' || c == '}') {
+              lvl -= 1
+              if (lvl == 0) {
+                blocksRemaining -= 1
+                if (blocksRemaining == 0) {
                   continue = false
                 }
               }
-              i += 1
-            } while(continue)
-
-            val newCode = ScalaPrinter(solution, indent/2)
-            newStr = (newStr.substring(0, lastFound+newStrOffset))+newCode+(newStr.substring(i+newStrOffset, newStr.length))
-
-            newStrOffset += -(i-lastFound)+newCode.length
-
-          case _ =>
-            if (!ignoreMissing) {
-              reporter.warning("Could not find solution corresponding to choose at "+lineno+":"+scalaOffset)
             }
+            i += 1
+          } while(continue)
+
+          val newCode = ScalaPrinter(subst, indent/2)
+          newStr = (newStr.substring(0, lastFound+newStrOffset))+newCode+(newStr.substring(i+newStrOffset, newStr.length))
+
+          newStrOffset += -(i-lastFound)+newCode.length
         }
       }
     } while(lastFound> 0)

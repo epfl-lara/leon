@@ -10,7 +10,7 @@ object Definitions {
   import Extractors._
   import TypeTrees._
 
-  sealed abstract class Definition extends Serializable {
+  sealed abstract class Definition extends Tree {
     val id: Identifier
     override def toString: String = PrettyPrinter(this)
     override def hashCode : Int = id.hashCode
@@ -21,7 +21,7 @@ object Definitions {
   }
 
   /** A VarDecl declares a new identifier to be of a certain type. */
-  case class VarDecl(id: Identifier, tpe: TypeTree) extends Typed {
+  case class VarDecl(id: Identifier, tpe: TypeTree) extends Definition with Typed {
     self: Serializable =>
 
     override def getType = tpe
@@ -275,7 +275,7 @@ object Definitions {
   }
 
   /** Functions (= 'methods' of objects) */
-  class FunDef(val id: Identifier, val returnType: TypeTree, val args: VarDecls) extends Definition with ScalacPositional {
+  class FunDef(val id: Identifier, val returnType: TypeTree, val args: VarDecls) extends Definition {
     var body: Option[Expr] = None
     def implementation : Option[Expr] = body
     var precondition: Option[Expr] = None

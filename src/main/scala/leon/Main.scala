@@ -8,7 +8,7 @@ object Main {
 
   lazy val allPhases: List[LeonPhase[_, _]] = {
     List(
-      plugin.ExtractionPhase,
+      frontends.scalac.ExtractionPhase,
       SubtypingPhase,
       xlang.ArrayTransformation,
       xlang.EpsilonElimination,
@@ -187,7 +187,7 @@ object Main {
   def computePipeline(settings: Settings): Pipeline[List[String], Any] = {
     import purescala.Definitions.Program
 
-    val pipeBegin : Pipeline[List[String],Program] = plugin.ExtractionPhase andThen SubtypingPhase
+    val pipeBegin : Pipeline[List[String],Program] = frontends.scalac.ExtractionPhase andThen SubtypingPhase
 
     val pipeProcess: Pipeline[Program, Any] =
       if (settings.synthesis) {
