@@ -17,7 +17,7 @@ object PropositionalLogic {
     case Implies(lhs, rhs) => size(lhs) + size(rhs) + 1
     case Not(f) => size(f) + 1
     case _ => 1    
-  }) ensuring(res => true template((d)  => d <= 0))
+  }) 
 
   /*def simplify(f: Formula): Formula = (f match {
     case And(lhs, rhs) => And(simplify(lhs), simplify(rhs))
@@ -40,17 +40,9 @@ object PropositionalLogic {
     case Not(Literal(_)) => formula
     case Literal(_) => formula
     case _ => formula
-  }) 
+  })ensuring((res) => true template((a,b) => size(res) <= a*size(formula) + b))
   //ensuring((res) => size(res) <= 2*size(formula) - 1)
-  //ensuring((res) => true template((a,b) => size(res) <= a*size(formula) + b))
-  //ensuring((res) => size(res) <= 2*size(formula) - 1) 
-  //ensuring((res) => true template((a,b) => size(res) <= a*size(formula) + b)) 
-  //ensuring((res) => size(res) <= 2*size(formula) - 1)
-  //
-  //ensuring((res) => size(res) <= 2*size(formula) - 1)
-  //ensuring((res) => true template((a,b) => size(res) <= a*size(formula) + b)) 
-  
-  //ensuring((res) => size(res) <= 2*size(formula) - 1)
+  //ensuring((res) => true template((a,b) => size(res) <= a*size(formula) + b))   
 
   /*def nnfSimplify(f: Formula): Formula = { 
 	 simplify(nnf(f)) 
