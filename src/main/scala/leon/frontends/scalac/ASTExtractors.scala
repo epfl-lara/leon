@@ -1,12 +1,12 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
 
 package leon
-package plugin
+package frontends.scalac
 
 import scala.tools.nsc._
 
 /** Contains extractors to pull-out interesting parts of the Scala ASTs. */
-trait Extractors {
+trait ASTExtractors {
   val global: Global
 
   import global._

@@ -1,7 +1,7 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
 
 package leon
-package plugin
+package frontends.scalac
 
 import scala.tools.nsc.Settings
 import scala.tools.nsc.reporters.AbstractReporter

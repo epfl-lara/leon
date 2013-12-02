@@ -1,7 +1,7 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
 
 package leon
-package plugin
+package frontends.scalac
 
 import scala.tools.nsc._
 import scala.tools.nsc.plugins._
@@ -11,15 +11,15 @@ import scala.language.implicitConversions
 import purescala._
 import purescala.Definitions._
 import purescala.Trees.{Expr => LeonExpr, _}
-import xlang.Trees.{Block => LeonBlock, _}
-import xlang.TreeOps._
 import purescala.TypeTrees.{TypeTree => LeonType, _}
 import purescala.Common._
 import purescala.TreeOps._
+import xlang.Trees.{Block => LeonBlock, _}
+import xlang.TreeOps._
 
-import utils.{Position => LeonPosition, OffsetPosition => LeonOffsetPosition}
+import utils.{Position => LeonPosition, OffsetPosition => LeonOffsetPosition, RangePosition => LeonRangePosition}
 
-trait CodeExtraction extends Extractors {
+trait CodeExtraction extends ASTExtractors {
   self: LeonExtraction =>
 
   import global._
@@ -29,7 +29,13 @@ trait CodeExtraction extends Extractors {
   import ExtractorHelpers._
 
   implicit def scalaPosToLeonPos(p: global.Position): LeonPosition = {
-    LeonOffsetPosition(p.line, p.column, null)
+    if (p.isRange) {
+      val start = p.focusStart
+      val end   = p.focusEnd
+      LeonRangePosition(start.line, start.column, end.line, end.column, p.source.file.file)
+    } else {
+      LeonOffsetPosition(p.line, p.column, p.source.file.file)
+    }
   }
 
   private val mutableVarSubsts: scala.collection.mutable.Map[Symbol,Function0[LeonExpr]] =

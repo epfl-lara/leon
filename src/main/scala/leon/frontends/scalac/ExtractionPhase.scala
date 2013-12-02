@@ -1,7 +1,7 @@
 /* Copyright 2009-2013 EPFL, Lausanne */
 
 package leon
-package plugin
+package frontends.scalac
 
 import purescala.Definitions.Program
 
@@ -9,7 +9,7 @@ import scala.tools.nsc.{Settings=>NSCSettings,CompilerCommand}
 
 object ExtractionPhase extends LeonPhase[List[String], Program] {
 
-  val name = "Extraction"
+  val name = "Scalc Extraction"
   val description = "Extraction of trees from the Scala Compiler"
 
   def run(ctx: LeonContext)(args: List[String]): Program = {
