@@ -8,6 +8,7 @@ import java.io.{BufferedWriter, FileWriter, File}
 
 import leon._
 import leon.test._
+import leon.frontends._
 import leon.utils._
 import leon.purescala.Definitions._
 import leon.purescala.Trees._
@@ -36,7 +37,7 @@ object Scaffold {
     )
 //    Settings.showIDs = true
 
-    val pipeline = leon.plugin.TemporaryInputPhase andThen leon.plugin.ExtractionPhase andThen SynthesisProblemExtractionPhase
+    val pipeline = TemporaryInputPhase andThen scalac.ExtractionPhase andThen SynthesisProblemExtractionPhase
 
     val (program, results) = try {
       pipeline.run(ctx)((content, Nil))
@@ -63,7 +64,7 @@ object Scaffold {
       interruptManager = new InterruptManager(forProgramReporter)
     )
 
-    val pipeline = leon.plugin.ExtractionPhase andThen SynthesisProblemExtractionPhase
+    val pipeline = scalac.ExtractionPhase andThen SynthesisProblemExtractionPhase
 
     val (program, results) = try {
       pipeline.run(ctx)(file :: Nil)

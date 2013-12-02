@@ -8,7 +8,6 @@ import leon.purescala.TypeTrees._
 import leon.purescala.Definitions._
 import leon.purescala.Common.{ Identifier, FreshIdentifier }
 import leon.purescala.TreeOps
-import leon.plugin.ExtractionPhase
 
 import condabd.insynth.leon.loader.LeonLoader
 import insynth.util.logging.HasLogger

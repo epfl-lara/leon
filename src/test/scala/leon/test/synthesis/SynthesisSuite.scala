@@ -33,7 +33,7 @@ class SynthesisSuite extends LeonTestSuite {
 
     val opts = SynthesisOptions()
 
-    val pipeline = leon.plugin.TemporaryInputPhase andThen leon.plugin.ExtractionPhase andThen SynthesisProblemExtractionPhase
+    val pipeline = leon.utils.TemporaryInputPhase andThen leon.frontends.scalac.ExtractionPhase andThen SynthesisProblemExtractionPhase
 
     val (program, results) = pipeline.run(ctx)((content, Nil))
 

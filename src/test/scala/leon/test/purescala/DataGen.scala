@@ -4,7 +4,8 @@ package leon.test
 package purescala
 
 import leon._
-import leon.plugin.{TemporaryInputPhase,ExtractionPhase}
+import leon.utils.TemporaryInputPhase
+import leon.frontends.scalac.ExtractionPhase
 
 import leon.purescala.Common._
 import leon.purescala.Trees._

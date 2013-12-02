@@ -479,7 +479,7 @@ trait CodeExtraction extends ASTExtractors {
          */
 
         case dd @ ExFunctionDef(n, p, t, b) =>
-          val funDef = extractFunSig(n, p, t).setPos(dd.pos)
+          val funDef = extractFunSig(n, p, t)
           defsToDefs += (dd.symbol -> funDef)
           val oldMutableVarSubst = mutableVarSubsts.toMap //take an immutable snapshot of the map
           val oldCurrentFunDef = currentFunDef
@@ -540,14 +540,14 @@ trait CodeExtraction extends ASTExtractors {
         case wh @ ExWhile(cond, body) =>
           val condTree = extractTree(cond)
           val bodyTree = extractTree(body)
-          While(condTree, bodyTree).setPos(wh.pos)
+          While(condTree, bodyTree)
 
         case wh @ ExWhileWithInvariant(cond, body, inv) =>
           val condTree = extractTree(cond)
           val bodyTree = extractTree(body)
           val invTree = extractTree(inv)
 
-          val w = While(condTree, bodyTree).setPos(wh.pos)
+          val w = While(condTree, bodyTree)
           w.invariant = Some(invTree)
           w
 
@@ -563,7 +563,7 @@ trait CodeExtraction extends ASTExtractors {
           if(containsEpsilon(c1)) {
             unsupported(epsi, "Usage of nested epsilon is not allowed")
           }
-          Epsilon(c1).setType(pstpe).setPos(epsi.pos)
+          Epsilon(c1).setType(pstpe)
 
         case ExWaypointExpression(tpe, i, tree) =>
           val pstpe = extractType(tpe)
@@ -592,7 +592,7 @@ trait CodeExtraction extends ASTExtractors {
 
           val indexRec = extractTree(index)
           val newValueRec = extractTree(newValue)
-          ArrayUpdate(lhsRec, indexRec, newValueRec).setPos(update.pos)
+          ArrayUpdate(lhsRec, indexRec, newValueRec)
 
         case ExInt32Literal(v) =>
           IntLiteral(v)
@@ -632,7 +632,7 @@ trait CodeExtraction extends ASTExtractors {
 
           val cBody = extractTree(body)
 
-          Choose(vars, cBody).setPos(select.pos)
+          Choose(vars, cBody)
 
         case ExCaseClassConstruction(tpt, args) =>
           extractType(tpt.tpe) match {
@@ -839,7 +839,7 @@ trait CodeExtraction extends ASTExtractors {
               MapUnion(rm, FiniteMap(Seq((rf, rt))).setType(t)).setType(t)
 
             case t @ ArrayType(bt) =>
-              ArrayUpdated(rm, rf, rt).setType(t).setPos(up.pos)
+              ArrayUpdated(rm, rf, rt).setType(t)
 
             case _ =>
               unsupported(tr, "updated can only be applied to maps.")
@@ -862,11 +862,11 @@ trait CodeExtraction extends ASTExtractors {
           rlhs.getType match {
             case MapType(_,tt) =>
               assert(rargs.size == 1)
-              MapGet(rlhs, rargs.head).setType(tt).setPos(app.pos)
+              MapGet(rlhs, rargs.head).setType(tt)
 
             case ArrayType(bt) =>
               assert(rargs.size == 1)
-              ArraySelect(rlhs, rargs.head).setType(bt).setPos(app.pos)
+              ArraySelect(rlhs, rargs.head).setType(bt)
 
             case _ =>
               unsupported(tr, "apply on unexpected type")
@@ -936,20 +936,22 @@ trait CodeExtraction extends ASTExtractors {
             throw ImpureCodeEncounteredException(tr)
           }
           val fd = defsToDefs(sy)
-          FunctionInvocation(fd, ar.map(extractTree(_))).setType(fd.returnType).setPos(lc.pos)
+          FunctionInvocation(fd, ar.map(extractTree(_))).setType(fd.returnType)
         }
 
         case pm @ ExPatternMatching(sel, cses) =>
           val rs = extractTree(sel)
           val rc = cses.map(extractMatchCase(_))
           val rt: LeonType = rc.map(_.rhs.getType).reduceLeft(leastUpperBound(_,_).get)
-          MatchExpr(rs, rc).setType(rt).setPos(pm.pos)
+          MatchExpr(rs, rc).setType(rt)
 
 
         // default behaviour is to complain :)
         case _ =>
           unsupported(tr, "Could not extract as PureScala")
       }
+
+      res.setPos(current.pos)
 
       rest match {
         case Some(r) =>
