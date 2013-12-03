@@ -47,7 +47,8 @@ object PropositionalLogic {
     case Not(Not(f)) => nnf(f)
     case Not(Literal(_)) => formula
     case Literal(_) => formula
-  }) //ensuring(isNNF(_) && )
+    case _ => formula
+  }) ensuring((res) => true template((a,b) => time <= a*size(formula) + b))
 
   def isNNF(f: Formula): Boolean = { f match {
     case And(lhs, rhs) => isNNF(lhs) && isNNF(rhs)

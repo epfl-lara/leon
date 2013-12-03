@@ -1,0 +1,44 @@
+Total Time: 5.14s
+VC refinements : 7
+Avg VC size : 639.5714285714286
+Max VC size : 1053
+Avg UIF-ADT size : 216.85714285714286
+Max UIF-ADT size : 361
+avgTempVars : 3.7142857142857144
+maxTempVars : 6
+### Farkas solver stats ####
+Disjunct Explorations : 23
+Total retries: 0
+avgFarkaSize : 39.47826086956522
+maxFarkaSize : 106
+avgFarkaTime : 0.008913043478260869s
+maxFarkaTime : 0.02s
+avgNLSize : 3.652173913043478
+maxNLSize : 11
+avgDijSize : 27.695652173913043
+maxDijSize : 93
+avgElimvars : 25.217391304347824
+maxElimvars : 88
+avgElimAtoms : 24.695652173913043
+maxElimAtoms : 87
+avgExploreTime : 0.12682608695652173s
+maxExploreTime : 0.642s
+avgCompatCalls : 178.56521739130434
+maxCompatCalls : 900
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+########## Outputs ############
+Invariants for Function: insert1
+insert1 --> ((((2 * res3._2) + (-47 * listSize1(inp))) + -64) ≤ 0)
+listSize1 --> (((-1 * #res) + -2) ≤ 0)
+
+Invariants for Function: create1
+create1 --> ((((-1516729 * listSize1(inp)) + (65536 * res5._2)) + -9699328) ≤ 0)
+insert1 --> ((((-185 * listSize1(inp)) + (8 * res3._2)) + -1344) ≤ 0)
+listSize1 --> (((-1 * #res) + -8) ≤ 0)
+
+Invariants for Function: find1
+find1 --> ((((1 * res4._2) + (-17 * listSize1(inp))) + -11) ≤ 0)
+listSize1 --> (((-1 * #res) + -1) ≤ 0)
+
+

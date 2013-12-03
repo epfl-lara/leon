@@ -1,0 +1,72 @@
+Total Time: 629.139s
+VC refinements : 27
+Avg VC size : 460.962962962963
+Max VC size : 1657
+Avg UIF-ADT size : 124.85185185185185
+Max UIF-ADT size : 394
+avgTempVars : 5.185185185185185
+maxTempVars : 10
+### Farkas solver stats ####
+Disjunct Explorations : 96
+Total retries: 11
+avgFarkaSize : 460.40625
+maxFarkaSize : 2325
+avgFarkaTime : 5.230145833333333s
+maxFarkaTime : 44.389s
+avgNLSize : 29.791666666666668
+maxNLSize : 115
+avgDijSize : 382.6458333333333
+maxDijSize : 1485
+avgElimvars : 80.11458333333333
+maxElimvars : 274
+avgElimAtoms : 235.375
+maxElimAtoms : 1234
+avgExploreTime : 1.2806041666666668s
+maxExploreTime : 6.854s
+avgCompatCalls : 1605.9479166666667
+maxCompatCalls : 9742
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+########## Outputs ############
+Invariants for Function: sizeList1
+sizeList1 --> ((((1 * res15._2) + (-4 * size1(list))) + -2) ≤ 0)
+size1 --> (((-1 * #res) + -1) ≤ 0)
+
+Invariants for Function: reverseRec1
+reverseRec1 --> ((((3 * res9._2) + (-47 * size1(l1))) + -12) ≤ 0)
+size1 --> (((0 * #res) + -1) ≤ 0)
+
+Invariants for Function: concat1
+concat1 --> ((((-11 * size1(l1)) + (1 * res14._2)) + -4) ≤ 0)
+size1 --> (((0 * #res) + -1) ≤ 0)
+
+Invariants for Function: reverse1
+reverse1 --> ((((1 * res11._2) + (-21 * size1(l))) + -4) ≤ 0)
+size1 --> (((-1 * #res) + -1) ≤ 0)
+reverseRec1 --> ((((-6 * size1(l1)) + (1 * res9._2)) + -2) ≤ 0)
+
+Invariants for Function: enqueue1
+size1 --> (((-1 * #res) + -4) ≤ 0)
+enqueue1 --> ((((4 * res10._2) + (-45 * qsize1(q))) + -128) ≤ 0)
+reverseRec1 --> ((((-6 * size1(l1)) + (1 * res9._2)) + -2) ≤ 0)
+concat1 --> ((((1 * res14._2) + (-6 * size1(l1))) + -2) ≤ 0)
+sizeList1 --> ((((1 * res15._2) + (-5 * size1(list))) + -1) ≤ 0)
+
+Invariants for Function: dequeue1
+size1 --> (((-1 * #res) + -1) ≤ 0)
+reverseRec1 --> ((((-5 * size1(l1)) + (1 * res9._2)) + -2) ≤ 0)
+dequeue1 --> ((((1 * res13._2) + (-11 * qsize1(q))) + -9) ≤ 0)
+concat1 --> ((((1 * res14._2) + (-5 * size1(l1))) + -2) ≤ 0)
+sizeList1 --> ((((-5 * size1(list)) + (1 * res15._2)) + -2) ≤ 0)
+
+Invariants for Function: removeLast1
+removeLast1 --> ((((1 * res8._2) + (-10 * size1(l))) + -6) ≤ 0)
+size1 --> (((-1 * #res) + -1) ≤ 0)
+
+Invariants for Function: pop1
+pop1 --> ((((-11 * size1(q.front)) + (1 * res12._2)) + -10) ≤ 0)
+removeLast1 --> ((((-10 * size1(l)) + (1 * res8._2)) + 0) ≤ 0)
+size1 --> (((-1 * #res) + -1) ≤ 0)
+sizeList1 --> ((((1 * res15._2) + (-5 * size1(list))) + -4) ≤ 0)
+
+

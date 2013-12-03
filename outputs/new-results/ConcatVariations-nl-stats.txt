@@ -1,0 +1,53 @@
+Total Time: 47.825s
+VC refinements : 10
+Avg VC size : 777.0
+Max VC size : 2963
+Avg UIF-ADT size : 78.7
+Max UIF-ADT size : 159
+avgTempVars : 7.6
+maxTempVars : 14
+### Farkas solver stats ####
+Disjunct Explorations : 35
+Total retries: 0
+avgFarkaSize : 168.74285714285713
+maxFarkaSize : 755
+avgFarkaTime : 1.0577142857142858s
+maxFarkaTime : 12.628s
+avgNLSize : 9.057142857142857
+maxNLSize : 55
+avgDijSize : 49.77142857142857
+maxDijSize : 586
+avgElimvars : 15.685714285714285
+maxElimvars : 91
+avgElimAtoms : 15.485714285714286
+maxElimAtoms : 89
+avgExploreTime : 0.09234285714285714s
+maxExploreTime : 0.812s
+avgCompatCalls : 177.37142857142857
+maxCompatCalls : 2015
+avgLemmaApps : 130.05714285714285
+maxLemmaApps : 2208
+########## Outputs ############
+Invariants for Function: append1
+append1 --> ((((-13 * size1(l1)) + (1 * res6._2)) + -2) ≤ 0)
+size1 --> (((0 * #res) + -1) ≤ 0)
+
+Invariants for Function: genL1
+genL1 --> ((((1 * res7._2) + (-7 * n)) + -3) ≤ 0)
+size1 --> (((-2 * #res) + -1) ≤ 0)
+
+Invariants for Function: f_good1
+append1 --> ((((1 * res6._2) + (-6 * size1(l1))) + -2) ≤ 0)
+f_good1 --> ((((((-9 * m) + (1 * res5._2)) + (-1 * n)) + (-12 * mult1(n, m))) + -3) ≤ 0)
+genL1 --> ((((1 * res7._2) + (-5 * n)) + -3) ≤ 0)
+mult1 --> (((((0 * x) + (0 * y)) + (0 * #res)) + -1) ≤ 0)
+size1 --> (((-1 * #res) + -1) ≤ 0)
+
+Invariants for Function: f_worst1
+append1 --> ((((-6 * size1(l1)) + (1 * res6._2)) + -2) ≤ 0)
+f_worst1 --> ((((((-5 * n) + (-27 * m)) + (-13 * mult1(mult1(n, m), (m + 1)))) + (1 * res4._2)) + -3) ≤ 0)
+genL1 --> ((((-5 * n) + (1 * res7._2)) + -3) ≤ 0)
+mult1 --> (((((0 * x) + (0 * y)) + (0 * #res)) + -1) ≤ 0)
+size1 --> (((-1 * #res) + -1) ≤ 0)
+
+
