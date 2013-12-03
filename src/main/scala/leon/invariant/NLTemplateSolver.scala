@@ -59,7 +59,10 @@ class NLTemplateSolver(context : LeonContext,
    */  
   override def solve(tempIds : Set[Identifier], funcVCs: Map[FunDef, Expr]) : Option[Map[FunDef, Expr]] = {
     
-    /*For debugging*/
+    /*For debugging:
+     * here we can plug-in the desired invariant and check if it falsifies 
+     * the verification condition      
+     * */
     /*var tempMap = Map[Expr,Expr]()
     funcVCs.foreach((pair)=> {
       val (fd, vc)=pair      
@@ -102,28 +105,24 @@ class NLTemplateSolver(context : LeonContext,
     solverWithCtr.free()
     sol
   }
-   
-  def recSolve(model : Map[Identifier, Expr],
-      funcVCs: Map[FunDef, Expr],
-      inputCtr : Expr, 
-      solverWithCtr: UIFZ3Solver) 
-  	: Option[Map[FunDef, Expr]] = {    
-    
-    //for stats
-    Stats.innerIterations += 1
-    //the following does not seem to be necessary as z3 updates the model on demand
-    //val compModel = completeModel(model, TemplateIdFactory.getTemplateIds)
-    
-    //For debugging: printing the candidate invariants found at this step
+
+  def recSolve(model: Map[Identifier, Expr],
+    funcVCs: Map[FunDef, Expr],
+    inputCtr: Expr,
+    solverWithCtr: UIFZ3Solver): Option[Map[FunDef, Expr]] = {
+
+    //Information: printing the candidate invariants found at this step
     println("candidate Invariants")
     val candInvs = getAllInvariants(model)
     candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))
-    
-    val funcs = funcVCs.keys           
-    val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap    
-    var conflictingFuns = Set[FunDef]()
-    //mapping from the functions to the counter-example (in the form expressions) that result in hard NL constraints
-    var seenPaths = MutableMap[FunDef,Seq[Expr]]()
+
+    val funcs = funcVCs.keys
+    val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap
+    val inputSize = InvariantUtil.atomNum(inputCtr)
+
+    var conflictingFuns = funcs.toSet
+    //mapping from the functions to the counter-example paths that were seen
+    var seenPaths = MutableMap[FunDef, Seq[Expr]]()
     def updateSeenPaths(fd: FunDef, cePath: Expr): Unit = {
       if (seenPaths.contains(fd)) {
         seenPaths.update(fd, cePath +: seenPaths(fd))
@@ -131,71 +130,79 @@ class NLTemplateSolver(context : LeonContext,
         seenPaths += (fd -> Seq(cePath))
       }
     }
+
+    //TODO: There is a serious bug in z3 in incremental solving. The following code is for reproducing the bug            
+    if (this.dumpNLFormula) {
+      solverWithCtr.assertCnstr(inputCtr)
+    }
+
+    def disableADisjunct(): (Option[Boolean], Expr, Map[Identifier, Expr]) = {
+
+      if (InferInvariantsPhase.dumpStats)
+        Stats.innerIterations += 1
+
+      var blockedCEs = false
+      var newconflicts = Set[FunDef]()
+      val newctrs = conflictingFuns.foldLeft(Seq[Expr]())((acc, fd) => {
+
+        val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), tempVarMap))
+        //here, block the counter-examples seen thus far for the function
+        val disableCounterExs = if (seenPaths.contains(fd)) {
+          blockedCEs = true
+          Not(Or(seenPaths(fd)))
+        } else tru
+        val instVCmodCE = And(instVC, disableCounterExs)
+        val (disjunct, ctrsForFun) = getNLConstraints(fd, instVCmodCE, tempVarMap)
+        if (ctrsForFun == tru) acc
+        else {
+          newconflicts += fd
+          //instantiate the disjunct
+          val cePath = simplifyArithmetic(TemplateInstantiator.instantiate(disjunct, tempVarMap))
+
+          //some sanity checks
+          if (variablesOf(cePath).exists(TemplateIdFactory.IsTemplateIdentifier _))
+            throw IllegalStateException("Found template identifier in counter-example disjunct: " + cePath)
+
+          updateSeenPaths(fd, cePath)
+          acc :+ ctrsForFun
+        }
+      })
+      //update conflicting functions
+      conflictingFuns = newconflicts
+      if (newctrs.isEmpty) {
+
+        if (!blockedCEs) {
+          //yes, hurray,found an inductive invariant
+          (Some(false), inputCtr, model)
+        } else {
+          //give up, only hard paths remaining
+          reporter.info("- Exhausted all easy paths !!")
+          reporter.info("- Number of remaining hard paths: " + seenPaths.values.foldLeft(0)((acc, elem) => acc + elem.size))
+          (None, tru, Map())
+        }
+      } else {
+
+        val newPart = And(newctrs)
+        val newSize = InvariantUtil.atomNum(newPart)
         
-    val initialctrs = funcs.foldLeft(Seq[Expr]())((acc, fd) => {
+        if (this.dumpNLFormula)
+          solverWithCtr.assertCnstr(newPart)
 
-      val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), tempVarMap))
-      //find new non-linear constraints based on models to instVC (which are counter examples)
-      val (disjunct, ctrsForFun) = getNLConstraints(fd, instVC, tempVarMap)
-      if (ctrsForFun != tru) {
-        //instantiate path
-        val cePath = simplifyArithmetic(TemplateInstantiator.instantiate(disjunct, tempVarMap))
+        //here we need to solve for the newctrs + inputCtrs                       
+        if (InferInvariantsPhase.dumpStats) {
+          val (cum, max) = Stats.cumMax(Stats.cumFarkaSize, Stats.maxFarkaSize, (newSize + inputSize))
+          Stats.cumFarkaSize = cum; Stats.maxFarkaSize = max
+        }
+        println("# of atomic predicates: " + newSize + " + " + inputSize)
+        val combCtr = And(inputCtr, newPart)
 
-        //sanity check
-        if (variablesOf(cePath).exists(TemplateIdFactory.IsTemplateIdentifier _))
-          throw IllegalStateException("Found template identifier in counter-example disjunct: " + cePath)
-        
-        conflictingFuns += fd
-        updateSeenPaths(fd, cePath)
-        acc :+ ctrsForFun
-      } else acc    	  
-    })
-
-    //have we found a real invariant ?
-    if (initialctrs.isEmpty) {
-      //yes, hurray
-      //print some statistics 
-      //reporter.info("- Number of explored paths (of the DAG) in this unroll step: " + exploredPaths)
-      Some(getAllInvariants(model))
-    } else {
-      //For statistics.
-      //reporter.info("- Number of new Constraints: " + newctrs.size)          
-      //call the procedure recursively
-      val initialctr = And(initialctrs)            
-
-      //add the new constraints      
-      //TODO: There is a serious bug here, report the bug to z3 if it happens again      
-      //For debugging
-      if (this.dumpNLFormula) {
-        solverWithCtr.assertCnstr(initialctr)
-        FileCountGUID.fileCount += 1
-        val filename = "z3formula-" + FileCountGUID.fileCount + ".smt"
-        val pwr = new PrintWriter(filename)
-        pwr.println(solverWithCtr.ctrsToString("QF_NRA"))
-        pwr.flush()
-        pwr.close()
-        println("Formula printed to File: " + filename)
-      }                                   
-
-      //solve the new set of non-linear constraints
-      def solveNLConstraints(easyPart: Expr, newPart: Expr): (Option[Boolean], Map[Identifier, Expr], Expr) = {
-                
-        //for stats and debugging               
-        val farkasSize =  InvariantUtil.atomNum(newPart) 
-        
-        if(InferInvariantsPhase.dumpStats) {
-          val (cum, max) = Stats.cumMax(Stats.cumFarkaSize, Stats.maxFarkaSize, farkasSize + InvariantUtil.atomNum(easyPart))
-          Stats.cumFarkaSize = cum; Stats.maxFarkaSize = max  
-        }        
-        println("# of atomic predicates: " + farkasSize)
-                
         val solver = SimpleSolverAPI(
-            new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), 
+          new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)),
             timeout * 1000))
 
         println("solving...")
         val t1 = System.currentTimeMillis()
-        val (res, newModel) = solver.solveSAT(And(easyPart, newPart))
+        val (res, newModel) = solver.solveSAT(combCtr)
         val t2 = System.currentTimeMillis()
         if (res.isDefined)
           println("solved... in " + (t2 - t1) / 1000.0 + "s")
@@ -207,110 +214,82 @@ class NLTemplateSolver(context : LeonContext,
           val (cum2, max2) = Stats.cumMax(Stats.cumFarkaTime, Stats.maxFarkaTime, (t2 - t1))
           Stats.cumFarkaTime = cum2; Stats.maxFarkaTime = max2
         }
-
-        //for debugging
-        if (debugIncremental) {
-          solverWithCtr.innerCheck
-        }
-        //important reset res to none if the model we found has denominator as zero
-        /*val finalRes = if (res == Some(true)) {
-          val denomZero = newModel.values.exists((e: Expr) => e match {
-            case RealLiteral(_, 0) => true
-            case _ => false
-          })
-          if (denomZero){
-            reporter.info("The model has a divide by zero")
-            throw IllegalStateException("")
-          } else res
-        } else res*/
         res match {
           case None => {
-            //here, we might have timed out, so block current counter-example and get a new one
-            val newctrs = conflictingFuns.foldLeft(Seq[Expr]())((acc, fd) => {
-
-              val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), tempVarMap))
-              val disableCounterExs = Not(Or(seenPaths(fd)))
-              val instVCmodCE = And(instVC, disableCounterExs)
-              val (disjunct, ctrsForFun) = getNLConstraints(fd, instVCmodCE, tempVarMap)
-              if(ctrsForFun == tru) acc
-              else {
-                //instantiate the disjunct
-                val cePath = simplifyArithmetic(TemplateInstantiator.instantiate(disjunct, tempVarMap))
-
-                //some sanity checks
-                if (variablesOf(cePath).exists(TemplateIdFactory.IsTemplateIdentifier _))
-                  throw IllegalStateException("Found template identifier in counter-example disjunct: " + cePath)
-
-                updateSeenPaths(fd, cePath)
-                acc :+ ctrsForFun
-              }
-            })
-            if (newctrs.isEmpty) {              
-              //give up, only hard paths remaining
-              reporter.info("- Exhausted all easy paths !!")
-              reporter.info("- Number of remaining hard paths: " + seenPaths.values.foldLeft(0)((acc, elem) => acc + elem.size))
-              (None, Map(), tru)
-              
-            } else {
-              //for stats
-              if (InferInvariantsPhase.dumpStats) {
-                Stats.innerIterations += 1
-                Stats.retries += 1
-              }
-              
-              //try this new path, this might be easy to solve
-              solveNLConstraints(easyPart, And(newctrs))
+            //here we have timed out 
+            
+            //apply cegis to disable these disjuncts until a timeout
+            //cegis returns a new set of constraints (that are satisfiable ) and says if it succeeded on the disjunct.
+            //val (cegisRes, newctr) = getCEGISCtrs(Or(disjuncts), timeout)
+            
+            //cegis also failed here so, retry
+            if (InferInvariantsPhase.dumpStats) {
+              Stats.retries += 1
             }
+            disableADisjunct()
           }
-          case _ => {            
-            (res, newModel, newPart)
+          case Some(false) => {
+            //reporter.info("- Number of explored paths (of the DAG) in this unroll step: " + exploredPaths)
+            (None, tru, Map())
+          }
+          case Some(true) => {
+
+            /* val denomZero = newModel.values.exists((e: Expr) => e match {
+              case RealLiteral(_, 0) => true
+              case _ => false
+            })
+            if (denomZero){
+              reporter.info("The model has a divide by zero")
+              throw IllegalStateException("")
+            }
+          */
+            //TODO: There is a serious bug in z3 in incremental solving. The following code is for reproducing the bug            
+            if (debugIncremental) {
+              println("Found a model1: " + newModel)
+              val model2 = solverWithCtr.getModel
+              println("Found a model2: " + model2)
+              solverWithCtr.push()
+              solverWithCtr.assertCnstr(InvariantUtil.modelToExpr(model2))
+
+              val fn2 = "z3formula-withModel-" + FileCountGUID.fileCount + ".smt"
+              val pwr = new PrintWriter(fn2)
+              pwr.println(solverWithCtr.ctrsToString("QF_NRA"))
+              pwr.flush()
+              pwr.close()
+              println("Formula & Model printed to File: " + fn2)
+
+              solverWithCtr.pop()
+            }
+            //new model may not have mappings for all the template variables, hence, use the mappings from earlier models if they exist
+            //otherwise, complete them using simplest values
+            val compModel = model.keys.map((id) => {
+              if (newModel.contains(id))
+                (id -> newModel(id))
+              else
+                (id -> model(id))
+            }).toMap
+
+            //println("New model: "+ newModel + " Completed Model: "+compModel)
+            (Some(true), combCtr, compModel)
           }
         }
-      }               
-      
-      val (res, newModel, newPart) = solveNLConstraints(inputCtr, initialctr)                      
-      res  match {
-        case None => {
-          //here, there are only hard cases remaining 
-          None
-        }
-        case Some(false) => {
-          //print some statistics 
-          //reporter.info("- Number of explored paths (of the DAG) in this unroll step: " + exploredPaths)
-          None
-        }
-        case Some(true) => {      
+      }
+    }
 
-          //For debugging
-          if (debugIncremental) {
-            println("Found a model1: "+newModel)
-            val model2 = solverWithCtr.getModel
-            println("Found a model2: " + model2)
-            solverWithCtr.push()
-            solverWithCtr.assertCnstr(InvariantUtil.modelToExpr(model2))
-
-            val fn2 = "z3formula-withModel-" + FileCountGUID.fileCount + ".smt"
-            val pwr = new PrintWriter(fn2)
-            pwr.println(solverWithCtr.ctrsToString("QF_NRA"))
-            pwr.flush()
-            pwr.close()
-            println("Formula & Model printed to File: " + fn2)
-
-            solverWithCtr.pop()
-          }
-          //new model may not have mappings for all the template variables,
-          //use the mappings from earlier models if they exist
-          //otherwise, complete them using simplest values
-          val compModel = model.keys.map((id) => {
-            if (newModel.contains(id))
-              (id -> newModel(id))
-            else 
-              (id -> model(id))            
-          }).toMap            
-          //println("New model: "+ newModel + " Completed Model: "+compModel)
-          recSolve(compModel, funcVCs, And(inputCtr, newPart), solverWithCtr)
-        }
-      }             
+    val (res, newCtr, newModel) = disableADisjunct()
+    res match {
+      case None => {
+        //here, we cannot proceed and have to return unknown 
+        None
+      }
+      case Some(false) => {
+        //here, the vcs are unsatisfiable when instantiated with the invariant
+        Some(getAllInvariants(model))
+      }
+      case Some(true) => {
+        //here, we have found a new candidate invariant. Hence, the above process needs to be repeated
+        recSolve(newModel, funcVCs, newCtr, solverWithCtr)
+      }
     }
   }   	  
   
@@ -468,12 +447,13 @@ class NLTemplateSolver(context : LeonContext,
 
         //free the solver here
         solEval.free()
-        
-        //for stats
+                
         val t2 = System.currentTimeMillis()
-        val (cum,max) = Stats.cumMax(Stats.cumExploreTime, Stats.maxExploreTime, (t2 - t1))
-        Stats.cumExploreTime = cum; Stats.maxExploreTime = max
         
+        if (InferInvariantsPhase.dumpStats) {
+          val (cum, max) = Stats.cumMax(Stats.cumExploreTime, Stats.maxExploreTime, (t2 - t1))
+          Stats.cumExploreTime = cum; Stats.maxExploreTime = max
+        }
         (newdisjunct, newctr)
       }
 	}        

@@ -154,18 +154,18 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       val succeededFuncs = analyseProgram(functionsToAnalyze, templateSolverFactory)
       
       println("Inferrence did not succeeded for functions: "+functionsToAnalyze.filterNot(succeededFuncs.contains _).map(_.id))      
-    } else {
+    } else {      
       //here iterate on a bound
       var remFuncs = functionsToAnalyze
       //increment cegis bound iteratively
-      var b = 2
+      var b = 1
       breakable {
         while (b <= maxCegisBound) {
           //for stats          
-          Stats.boundsTried += 1
-          //create a solver factory
+          Stats.boundsTried += 1                    
+          //create a solver factory, ignoring timeouts here                   
           val templateSolverFactory = (constTracker: ConstraintTracker, tempFactory: TemplateFactory) => {
-            new CegisSolver(context, program, constTracker, tempFactory, timeout, Some(b))
+            new CegisSolver(context, program, constTracker, tempFactory, 10000, Some(b))
           }
           val succeededFuncs = analyseProgram(remFuncs, templateSolverFactory)
           remFuncs = remFuncs.filterNot(succeededFuncs.contains _)

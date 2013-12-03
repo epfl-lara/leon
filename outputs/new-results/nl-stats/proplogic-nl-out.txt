@@ -1,0 +1,1473 @@
+New Prog: 
+object PropositionalLogic {
+  case class Not(f: Formula) extends Formula
+
+  sealed abstract class Formula
+
+  case class Implies(lhs: Formula, rhs: Formula) extends Formula
+
+  case class Or(lhs: Formula, rhs: Formula) extends Formula
+
+  case class And(lhs: Formula, rhs: Formula) extends Formula
+
+  case class Literal(id: Int) extends Formula
+
+  def nnf1(formula : Formula) : (Formula, Int) = {locally {
+    val t = 1
+    if (formula.isInstanceOf[And]) {
+      locally {
+        val (e1: And, t1: Int) = locally {
+          val (e2: Formula, t2: Int) = locally {
+            val (e8: Formula, t8: Int) = nnf1(formula.lhs)
+            (e8, (1 + (1 + t8)))
+          }
+          
+          locally {
+            val (e3: Formula, t3: Int) = locally {
+              val (e5: Formula, t5: Int) = nnf1(formula.rhs)
+              (e5, (1 + (1 + t5)))
+            }
+            
+            (And(e2, e3), (t3 + (t2 + 1)))
+          }
+          
+        }
+        
+        (e1, (t + t1))
+      }
+      
+    } else {
+      locally {
+        val (e10: Formula, t10: Int) = locally {
+          val t11 = 1
+          if (formula.isInstanceOf[Or]) {
+            locally {
+              val (e12: Or, t12: Int) = locally {
+                val (e13: Formula, t13: Int) = locally {
+                  val (e19: Formula, t19: Int) = nnf1(formula.lhs)
+                  (e19, (1 + (1 + t19)))
+                }
+                
+                locally {
+                  val (e14: Formula, t14: Int) = locally {
+                    val (e16: Formula, t16: Int) = nnf1(formula.rhs)
+                    (e16, (1 + (1 + t16)))
+                  }
+                  
+                  (Or(e13, e14), (t14 + (t13 + 1)))
+                }
+                
+              }
+              
+              (e12, (t11 + t12))
+            }
+            
+          } else {
+            locally {
+              val (e21: Formula, t21: Int) = locally {
+                val t22 = 1
+                if (formula.isInstanceOf[Implies]) {
+                  locally {
+                    val (e23: Implies, t23: Int) = locally {
+                      val (e24: Formula, t24: Int) = locally {
+                        val (e30: Formula, t30: Int) = nnf1(formula.lhs)
+                        (e30, (1 + (1 + t30)))
+                      }
+                      
+                      locally {
+                        val (e25: Formula, t25: Int) = locally {
+                          val (e27: Formula, t27: Int) = nnf1(formula.rhs)
+                          (e27, (1 + (1 + t27)))
+                        }
+                        
+                        (Implies(e24, e25), (t25 + (t24 + 1)))
+                      }
+                      
+                    }
+                    
+                    (e23, (t22 + t23))
+                  }
+                  
+                } else {
+                  locally {
+                    val (e32: Formula, t32: Int) = locally {
+                      val t33 = 4
+                      if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[And])) {
+                        locally {
+                          val (e34: Or, t34: Int) = locally {
+                            val (e35: Formula, t35: Int) = locally {
+                              val (e43: Formula, t43: Int) = nnf1(Not(formula.f.lhs))
+                              (e43, (3 + (1 + t43)))
+                            }
+                            
+                            locally {
+                              val (e36: Formula, t36: Int) = locally {
+                                val (e38: Formula, t38: Int) = nnf1(Not(formula.f.rhs))
+                                (e38, (3 + (1 + t38)))
+                              }
+                              
+                              (Or(e35, e36), (t36 + (t35 + 1)))
+                            }
+                            
+                          }
+                          
+                          (e34, (t33 + t34))
+                        }
+                        
+                      } else {
+                        locally {
+                          val (e47: Formula, t47: Int) = locally {
+                            val t48 = 4
+                            if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[Or])) {
+                              locally {
+                                val (e49: And, t49: Int) = locally {
+                                  val (e50: Formula, t50: Int) = locally {
+                                    val (e58: Formula, t58: Int) = nnf1(Not(formula.f.lhs))
+                                    (e58, (3 + (1 + t58)))
+                                  }
+                                  
+                                  locally {
+                                    val (e51: Formula, t51: Int) = locally {
+                                      val (e53: Formula, t53: Int) = nnf1(Not(formula.f.rhs))
+                                      (e53, (3 + (1 + t53)))
+                                    }
+                                    
+                                    (And(e50, e51), (t51 + (t50 + 1)))
+                                  }
+                                  
+                                }
+                                
+                                (e49, (t48 + t49))
+                              }
+                              
+                            } else {
+                              locally {
+                                val (e62: Formula, t62: Int) = locally {
+                                  val t63 = 4
+                                  if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[Implies])) {
+                                    locally {
+                                      val (e64: And, t64: Int) = locally {
+                                        val (e65: Formula, t65: Int) = locally {
+                                          val (e73: Formula, t73: Int) = nnf1(formula.f.lhs)
+                                          (e73, (2 + (1 + t73)))
+                                        }
+                                        
+                                        locally {
+                                          val (e66: Formula, t66: Int) = locally {
+                                            val (e68: Formula, t68: Int) = nnf1(Not(formula.f.rhs))
+                                            (e68, (3 + (1 + t68)))
+                                          }
+                                          
+                                          (And(e65, e66), (t66 + (t65 + 1)))
+                                        }
+                                        
+                                      }
+                                      
+                                      (e64, (t63 + t64))
+                                    }
+                                    
+                                  } else {
+                                    locally {
+                                      val (e76: Formula, t76: Int) = locally {
+                                        val t77 = 4
+                                        if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[Not])) {
+                                          locally {
+                                            val (e78: Formula, t78: Int) = locally {
+                                              val (e80: Formula, t80: Int) = nnf1(formula.f.f)
+                                              (e80, (2 + (1 + t80)))
+                                            }
+                                            
+                                            (e78, (t77 + t78))
+                                          }
+                                          
+                                        } else {
+                                          locally {
+                                            val (e83: Formula, t83: Int) = locally {
+                                              val t84 = 4
+                                              if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[Literal])) {
+                                                (formula, t84)
+                                              } else {
+                                                locally {
+                                                  val (e86: Formula, t86: Int) = locally {
+                                                    val t87 = 1
+                                                    if (formula.isInstanceOf[Literal]) {
+                                                      (formula, t87)
+                                                    } else {
+                                                      (formula, t87)
+                                                    }
+                                                  }
+                                                  
+                                                  (e86, (t84 + t86))
+                                                }
+                                                
+                                              }
+                                            }
+                                            
+                                            (e83, (t77 + t83))
+                                          }
+                                          
+                                        }
+                                      }
+                                      
+                                      (e76, (t63 + t76))
+                                    }
+                                    
+                                  }
+                                }
+                                
+                                (e62, (t48 + t62))
+                              }
+                              
+                            }
+                          }
+                          
+                          (e47, (t33 + t47))
+                        }
+                        
+                      }
+                    }
+                    
+                    (e32, (t22 + t32))
+                  }
+                  
+                }
+              }
+              
+              (e21, (t11 + t21))
+            }
+            
+          }
+        }
+        
+        (e10, (t + t10))
+      }
+      
+    }
+  }
+  } ensuring(res4 => true)
+
+  def isSimplified1(f : Formula) : (Boolean, Int) = {locally {
+    val t216 = 1
+    if (f.isInstanceOf[And]) {
+      locally {
+        val (e217: Boolean, t217: Int) = locally {
+          val (e218: Boolean, t218: Int) = locally {
+            val (e224: Boolean, t224: Int) = isSimplified1(f.lhs)
+            (e224, (1 + (1 + t224)))
+          }
+          
+          locally {
+            val (e219: Boolean, t219: Int) = locally {
+              val (e221: Boolean, t221: Int) = isSimplified1(f.rhs)
+              (e221, (1 + (1 + t221)))
+            }
+            
+            ((e218 && e219), (t219 + (t218 + 1)))
+          }
+          
+        }
+        
+        (e217, (t216 + t217))
+      }
+      
+    } else {
+      locally {
+        val (e226: Boolean, t226: Int) = locally {
+          val t227 = 1
+          if (f.isInstanceOf[Or]) {
+            locally {
+              val (e228: Boolean, t228: Int) = locally {
+                val (e229: Boolean, t229: Int) = locally {
+                  val (e235: Boolean, t235: Int) = isSimplified1(f.lhs)
+                  (e235, (1 + (1 + t235)))
+                }
+                
+                locally {
+                  val (e230: Boolean, t230: Int) = locally {
+                    val (e232: Boolean, t232: Int) = isSimplified1(f.rhs)
+                    (e232, (1 + (1 + t232)))
+                  }
+                  
+                  ((e229 && e230), (t230 + (t229 + 1)))
+                }
+                
+              }
+              
+              (e228, (t227 + t228))
+            }
+            
+          } else {
+            locally {
+              val (e237: Boolean, t237: Int) = locally {
+                val t238 = 1
+                if (f.isInstanceOf[Implies]) {
+                  (false, t238)
+                } else {
+                  locally {
+                    val (e240: Boolean, t240: Int) = locally {
+                      val t241 = 1
+                      if (f.isInstanceOf[Not]) {
+                        locally {
+                          val (e242: Boolean, t242: Int) = locally {
+                            val (e244: Boolean, t244: Int) = isSimplified1(f.f)
+                            (e244, (1 + (1 + t244)))
+                          }
+                          
+                          (e242, (t241 + t242))
+                        }
+                        
+                      } else {
+                        (true, t241)
+                      }
+                    }
+                    
+                    (e240, (t238 + t240))
+                  }
+                  
+                }
+              }
+              
+              (e237, (t227 + t237))
+            }
+            
+          }
+        }
+        
+        (e226, (t216 + t226))
+      }
+      
+    }
+  }
+  } ensuring(res7 => true)
+
+  def simplify1(f : Formula) : (Formula, Int) = {locally {
+    val t119 = 1
+    if (f.isInstanceOf[And]) {
+      locally {
+        val (e120: And, t120: Int) = locally {
+          val (e121: Formula, t121: Int) = locally {
+            val (e127: Formula, t127: Int) = simplify1(f.lhs)
+            (e127, (1 + (1 + t127)))
+          }
+          
+          locally {
+            val (e122: Formula, t122: Int) = locally {
+              val (e124: Formula, t124: Int) = simplify1(f.rhs)
+              (e124, (1 + (1 + t124)))
+            }
+            
+            (And(e121, e122), (t122 + (t121 + 1)))
+          }
+          
+        }
+        
+        (e120, (t119 + t120))
+      }
+      
+    } else {
+      locally {
+        val (e129: Formula, t129: Int) = locally {
+          val t130 = 1
+          if (f.isInstanceOf[Or]) {
+            locally {
+              val (e131: Or, t131: Int) = locally {
+                val (e132: Formula, t132: Int) = locally {
+                  val (e138: Formula, t138: Int) = simplify1(f.lhs)
+                  (e138, (1 + (1 + t138)))
+                }
+                
+                locally {
+                  val (e133: Formula, t133: Int) = locally {
+                    val (e135: Formula, t135: Int) = simplify1(f.rhs)
+                    (e135, (1 + (1 + t135)))
+                  }
+                  
+                  (Or(e132, e133), (t133 + (t132 + 1)))
+                }
+                
+              }
+              
+              (e131, (t130 + t131))
+            }
+            
+          } else {
+            locally {
+              val (e140: Formula, t140: Int) = locally {
+                val t141 = 1
+                if (f.isInstanceOf[Implies]) {
+                  locally {
+                    val (e142: Or, t142: Int) = locally {
+                      val (e143: Not, t143: Int) = locally {
+                        val (e148: Formula, t148: Int) = locally {
+                          val (e150: Formula, t150: Int) = simplify1(f.lhs)
+                          (e150, (1 + (1 + t150)))
+                        }
+                        
+                        (Not(e148), (t148 + 1))
+                      }
+                      
+                      locally {
+                        val (e144: Formula, t144: Int) = locally {
+                          val (e146: Formula, t146: Int) = simplify1(f.rhs)
+                          (e146, (1 + (1 + t146)))
+                        }
+                        
+                        (Or(e143, e144), (t144 + (t143 + 1)))
+                      }
+                      
+                    }
+                    
+                    (e142, (t141 + t142))
+                  }
+                  
+                } else {
+                  locally {
+                    val (e152: Formula, t152: Int) = locally {
+                      val t153 = 1
+                      if (f.isInstanceOf[Not]) {
+                        locally {
+                          val (e154: Not, t154: Int) = locally {
+                            val (e155: Formula, t155: Int) = locally {
+                              val (e157: Formula, t157: Int) = simplify1(f.f)
+                              (e157, (1 + (1 + t157)))
+                            }
+                            
+                            (Not(e155), (t155 + 1))
+                          }
+                          
+                          (e154, (t153 + t154))
+                        }
+                        
+                      } else {
+                        (f, t153)
+                      }
+                    }
+                    
+                    (e152, (t141 + t152))
+                  }
+                  
+                }
+              }
+              
+              (e140, (t130 + t140))
+            }
+            
+          }
+        }
+        
+        (e129, (t119 + t129))
+      }
+      
+    }
+  }
+  } ensuring(res5 => true)
+
+  def size1(f : Formula) : Int = {(f match {
+    case And(lhs, rhs) =>
+      ((size1(lhs) + size1(rhs)) + 1)
+    case Or(lhs, rhs) =>
+      ((size1(lhs) + size1(rhs)) + 1)
+    case Implies(lhs, rhs) =>
+      ((size1(lhs) + size1(rhs)) + 1)
+    case Not(f) =>
+      (size1(f) + 1)
+    case Literal(_) =>
+      1
+  })}
+
+  def isNNF1(f : Formula) : (Boolean, Int) = {locally {
+    val t164 = 1
+    if (f.isInstanceOf[And]) {
+      locally {
+        val (e165: Boolean, t165: Int) = locally {
+          val (e166: Boolean, t166: Int) = locally {
+            val (e172: Boolean, t172: Int) = isNNF1(f.lhs)
+            (e172, (1 + (1 + t172)))
+          }
+          
+          locally {
+            val (e167: Boolean, t167: Int) = locally {
+              val (e169: Boolean, t169: Int) = isNNF1(f.rhs)
+              (e169, (1 + (1 + t169)))
+            }
+            
+            ((e166 && e167), (t167 + (t166 + 1)))
+          }
+          
+        }
+        
+        (e165, (t164 + t165))
+      }
+      
+    } else {
+      locally {
+        val (e174: Boolean, t174: Int) = locally {
+          val t175 = 1
+          if (f.isInstanceOf[Or]) {
+            locally {
+              val (e176: Boolean, t176: Int) = locally {
+                val (e177: Boolean, t177: Int) = locally {
+                  val (e183: Boolean, t183: Int) = isNNF1(f.lhs)
+                  (e183, (1 + (1 + t183)))
+                }
+                
+                locally {
+                  val (e178: Boolean, t178: Int) = locally {
+                    val (e180: Boolean, t180: Int) = isNNF1(f.rhs)
+                    (e180, (1 + (1 + t180)))
+                  }
+                  
+                  ((e177 && e178), (t178 + (t177 + 1)))
+                }
+                
+              }
+              
+              (e176, (t175 + t176))
+            }
+            
+          } else {
+            locally {
+              val (e185: Boolean, t185: Int) = locally {
+                val t186 = 1
+                if (f.isInstanceOf[Implies]) {
+                  locally {
+                    val (e187: Boolean, t187: Int) = locally {
+                      val (e188: Boolean, t188: Int) = locally {
+                        val (e194: Boolean, t194: Int) = isNNF1(f.lhs)
+                        (e194, (1 + (1 + t194)))
+                      }
+                      
+                      locally {
+                        val (e189: Boolean, t189: Int) = locally {
+                          val (e191: Boolean, t191: Int) = isNNF1(f.rhs)
+                          (e191, (1 + (1 + t191)))
+                        }
+                        
+                        ((e188 && e189), (t189 + (t188 + 1)))
+                      }
+                      
+                    }
+                    
+                    (e187, (t186 + t187))
+                  }
+                  
+                } else {
+                  locally {
+                    val (e196: Boolean, t196: Int) = locally {
+                      val t197 = 4
+                      if ((f.isInstanceOf[Not] && f.f.isInstanceOf[Literal])) {
+                        (true, t197)
+                      } else {
+                        locally {
+                          val (e199: Boolean, t199: Int) = locally {
+                            val t200 = 1
+                            if (f.isInstanceOf[Not]) {
+                              (false, t200)
+                            } else {
+                              locally {
+                                val (e202: Boolean, t202: Int) = locally {
+                                  val t203 = 1
+                                  if (f.isInstanceOf[Literal]) {
+                                    (true, t203)
+                                  } else {
+                                    (false, t203)
+                                  }
+                                }
+                                
+                                (e202, (t200 + t202))
+                              }
+                              
+                            }
+                          }
+                          
+                          (e199, (t197 + t199))
+                        }
+                        
+                      }
+                    }
+                    
+                    (e196, (t186 + t196))
+                  }
+                  
+                }
+              }
+              
+              (e185, (t175 + t185))
+            }
+            
+          }
+        }
+        
+        (e174, (t164 + t174))
+      }
+      
+    }
+  }
+  } ensuring(res6 => true)
+}
+
+[[34m Info  [0m] Running Invariant Inference Phase...
+[[34m Info  [0m] Analysis Order: List(size1, simplify1, isSimplified1, nnf1, isNNF1)
+[[34m Info  [0m] - considering function simplify1...
+[[34m Info  [0m] Body: if (f.isInstanceOf[And])
+            (let (e120,t120 := (let (e121,t121 := (let (e127,t127 := simplify1(f.lhs)) in
+              (e127, (1 + (1 + t127))))) in
+              (let (e122,t122 := (let (e124,t124 := simplify1(f.rhs)) in
+                (e124, (1 + (1 + t124))))) in
+                (And(e121, e122), (t122 + (t121 + 1)))))) in
+              (e120, (1 + t120)))
+          else
+            (let (e129,t129 := if (f.isInstanceOf[Or])
+              (let (e131,t131 := (let (e132,t132 := (let (e138,t138 := simplify1(f.lhs)) in
+                (e138, (1 + (1 + t138))))) in
+                (let (e133,t133 := (let (e135,t135 := simplify1(f.rhs)) in
+                  (e135, (1 + (1 + t135))))) in
+                  (Or(e132, e133), (t133 + (t132 + 1)))))) in
+                (e131, (1 + t131)))
+            else
+              (let (e140,t140 := if (f.isInstanceOf[Implies])
+                (let (e142,t142 := (let (e143,t143 := (let (e148,t148 := (let (e150,t150 := simplify1(f.lhs)) in
+                  (e150, (1 + (1 + t150))))) in
+                  (Not(e148), (t148 + 1)))) in
+                  (let (e144,t144 := (let (e146,t146 := simplify1(f.rhs)) in
+                    (e146, (1 + (1 + t146))))) in
+                    (Or(e143, e144), (t144 + (t143 + 1)))))) in
+                  (e142, (1 + t142)))
+              else
+                (let (e152,t152 := if (f.isInstanceOf[Not])
+                  (let (e154,t154 := (let (e155,t155 := (let (e157,t157 := simplify1(f.f)) in
+                    (e157, (1 + (1 + t157))))) in
+                    (Not(e155), (t155 + 1)))) in
+                    (e154, (1 + t154)))
+                else
+                  (f, 1)) in
+                  (e152, (1 + t152)))) in
+                (e140, (1 + t140)))) in
+              (e129, (1 + t129)))
+[[34m Info  [0m] Post: true
+falttened Body: ((res5 == ifres) ∧ (t119 == 1) ∧ ((ci ∧ (ci <=> f.isInstanceOf[And]) ∧ (ifres == tp) ∧ (arg == (t119 + t120)) ∧ (tp == (e120, arg)) ∧ (t127 == ts) ∧ (ts == tres1._2) ∧ (e121 == e127) ∧ (t120 == (t122 + (t121 + 1))) ∧ (t121 == (1 + (1 + t127))) ∧ (e127 == ts1) ∧ (ts1 == tres1._1) ∧ (tres1 == r) ∧ (cs == f.lhs) ∧ (r == simplify1(cs)) ∧ (tres == r1) ∧ (cs1 == f.rhs) ∧ (r1 == simplify1(cs1)) ∧ (e120 == cc) ∧ (cc == And(e121, e122)) ∧ (e124 == ts2) ∧ (ts2 == tres._1) ∧ (t122 == (1 + (1 + t124))) ∧ (t124 == ts3) ∧ (ts3 == tres._2) ∧ (e122 == e124)) ∨ (¬(ci1) ∧ (ci1 <=> f.isInstanceOf[And]) ∧ (ifres == tp1) ∧ (arg1 == (t119 + t129)) ∧ (tp1 == (e129, arg1)) ∧ (t130 == 1) ∧ ((ci2 ∧ (ci2 <=> f.isInstanceOf[Or]) ∧ (ifres1 == tp2) ∧ (arg2 == (t130 + t131)) ∧ (tp2 == (e131, arg2)) ∧ (t133 == (1 + (1 + t135))) ∧ (e133 == e135) ∧ (e135 == ts4) ∧ (ts4 == tres2._1) ∧ (tres3 == r2) ∧ (cs2 == f.lhs) ∧ (r2 == simplify1(cs2)) ∧ (t132 == (1 + (1 + t138))) ∧ (t138 == ts5) ∧ (ts5 == tres3._2) ∧ (e138 == ts6) ∧ (ts6 == tres3._1) ∧ (tres2 == r3) ∧ (cs3 == f.rhs) ∧ (r3 == simplify1(cs3)) ∧ (e131 == cc1) ∧ (cc1 == Or(e132, e133)) ∧ (t135 == ts7) ∧ (ts7 == tres2._2) ∧ (t131 == (t133 + (t132 + 1))) ∧ (e132 == e138)) ∨ (¬(ci3) ∧ (ci3 <=> f.isInstanceOf[Or]) ∧ (ifres1 == tp3) ∧ (arg3 == (t130 + t140)) ∧ (tp3 == (e140, arg3)) ∧ (t141 == 1) ∧ ((ci4 ∧ (ci4 <=> f.isInstanceOf[Implies]) ∧ (ifres2 == tp4) ∧ (arg4 == (t141 + t142)) ∧ (tp4 == (e142, arg4)) ∧ (e142 == cc2) ∧ (cc2 == Or(e143, e144)) ∧ (t143 == (t148 + 1)) ∧ (e144 == e146) ∧ (tres5 == r4) ∧ (cs4 == f.lhs) ∧ (r4 == simplify1(cs4)) ∧ (t146 == ts8) ∧ (ts8 == tres4._2) ∧ (e150 == ts9) ∧ (ts9 == tres5._1) ∧ (t150 == ts10) ∧ (ts10 == tres5._2) ∧ (t142 == (t144 + (t143 + 1))) ∧ (e143 == cc3) ∧ (cc3 == Not(e148)) ∧ (t148 == (1 + (1 + t150))) ∧ (e146 == ts11) ∧ (ts11 == tres4._1) ∧ (tres4 == r5) ∧ (cs5 == f.rhs) ∧ (r5 == simplify1(cs5)) ∧ (e148 == e150) ∧ (t144 == (1 + (1 + t146)))) ∨ (¬(ci5) ∧ (ci5 <=> f.isInstanceOf[Implies]) ∧ (ifres2 == tp5) ∧ (arg5 == (t141 + t152)) ∧ (tp5 == (e152, arg5)) ∧ (t153 == 1) ∧ ((ci6 ∧ (ci6 <=> f.isInstanceOf[Not]) ∧ (ifres3 == tp6) ∧ (arg6 == (t153 + t154)) ∧ (tp6 == (e154, arg6)) ∧ (tres6 == r6) ∧ (cs6 == f.f) ∧ (r6 == simplify1(cs6)) ∧ (t155 == (1 + (1 + t157))) ∧ (e154 == cc4) ∧ (cc4 == Not(e155)) ∧ (t157 == ts12) ∧ (ts12 == tres6._2) ∧ (e155 == e157) ∧ (e157 == ts13) ∧ (ts13 == tres6._1) ∧ (t154 == (t155 + 1))) ∨ (¬(ci7) ∧ (ci7 <=> f.isInstanceOf[Not]) ∧ (ifres3 == tp7) ∧ (tp7 == (f, t153)))) ∧ (e152 == ts14) ∧ (ts14 == ifres3._1) ∧ (t152 == ts15) ∧ (ts15 == ifres3._2))) ∧ (e140 == ts16) ∧ (ts16 == ifres2._1) ∧ (t140 == ts17) ∧ (ts17 == ifres2._2))) ∧ (e129 == ts18) ∧ (ts18 == ifres1._1) ∧ (t129 == ts19) ∧ (ts19 == ifres1._2))))
+Flattened Post: ((ts20 > ((a? * r7) + b?)) ∧ (ts20 == res5._2) ∧ (r7 == size1(f)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+simplify1-->((((0 * size1(f)) + (1 * res5._2)) + 0) ≤ 0)
+Function: simplify1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 96
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 15
+solving...
+solved... in 0.016s
+candidate Invariants
+simplify1-->((((0 * size1(f)) + (1 * res5._2)) + 11) ≤ 0)
+Function: simplify1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 7
+# of atomic predicates: 9
+solving...
+solved... in 0.008s
+[[34m Info  [0m] - More unrollings for invariant inference
+Creating VC for size1
+[[34m Info  [0m] - Number of new terms enumerated: 2
+[[34m Info  [0m] - Template generated for function size1 : (((a?5 * #res) + a?4) ≤ 0)
+Unrolling (r10 == size1(cs3))
+Unrolling (r12 == size1(cs5))
+Unrolling (r11 == size1(cs2))
+Unrolling (r4 == simplify1(cs4))
+Unrolling (r14 == size1(cs6))
+Unrolling (r == simplify1(cs))
+Unrolling (r3 == simplify1(cs3))
+Unrolling (r2 == simplify1(cs2))
+Unrolling (r1 == simplify1(cs1))
+Unrolling (r8 == size1(cs1))
+Unrolling (r5 == simplify1(cs5))
+Unrolling (r7 == size1(f))
+Unrolling (r6 == simplify1(cs6))
+Unrolling (r9 == size1(cs))
+Unrolling (r13 == size1(cs4))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+simplify1-->((((1 * res5._2) + (0 * size1(f))) + 0) ≤ 0)
+size1-->(((0 * #res) + 0) ≤ 0)
+Function: simplify1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 7
+# of atomic predicates: 10
+solving...
+solved... in 0.006s
+candidate Invariants
+simplify1-->((((-2 * size1(f)) + (16 * res5._2)) + 8) ≤ 0)
+size1-->(((8 * #res) + 94) ≤ 0)
+Function: simplify1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 377
+[[34m Info  [0m] Number of equal calls: 22
+Function: size1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 31
+solving...
+solved... in 0.011s
+candidate Invariants
+simplify1-->((((2 * res5._2) + (-16 * size1(f))) + 1) ≤ 0)
+size1-->(((-2 * #res) + -1) ≤ 0)
+[[34m Info  [0m] - Found inductive invariant: simplify1 --> ((((-16 * size1(f)) + (2 * res5._2)) + 1) ≤ 0)
+[[34m Info  [0m] - Found inductive invariant: size1 --> (((-2 * #res) + -1) ≤ 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function isSimplified1...
+[[34m Info  [0m] Body: if (f.isInstanceOf[And])
+            (let (e217,t217 := (let (e218,t218 := (let (e224,t224 := isSimplified1(f.lhs)) in
+              (e224, (1 + (1 + t224))))) in
+              (let (e219,t219 := (let (e221,t221 := isSimplified1(f.rhs)) in
+                (e221, (1 + (1 + t221))))) in
+                ((e218 ∧ e219), (t219 + (t218 + 1)))))) in
+              (e217, (1 + t217)))
+          else
+            (let (e226,t226 := if (f.isInstanceOf[Or])
+              (let (e228,t228 := (let (e229,t229 := (let (e235,t235 := isSimplified1(f.lhs)) in
+                (e235, (1 + (1 + t235))))) in
+                (let (e230,t230 := (let (e232,t232 := isSimplified1(f.rhs)) in
+                  (e232, (1 + (1 + t232))))) in
+                  ((e229 ∧ e230), (t230 + (t229 + 1)))))) in
+                (e228, (1 + t228)))
+            else
+              (let (e237,t237 := if (f.isInstanceOf[Implies])
+                (false, 1)
+              else
+                (let (e240,t240 := if (f.isInstanceOf[Not])
+                  (let (e242,t242 := (let (e244,t244 := isSimplified1(f.f)) in
+                    (e244, (1 + (1 + t244))))) in
+                    (e242, (1 + t242)))
+                else
+                  (true, 1)) in
+                  (e240, (1 + t240)))) in
+                (e237, (1 + t237)))) in
+              (e226, (1 + t226)))
+[[34m Info  [0m] Post: true
+falttened Body: ((res7 == ifres32) ∧ (t216 == 1) ∧ ((ci136 ∧ (ci136 <=> f.isInstanceOf[And]) ∧ (ifres32 == tp64) ∧ (arg56 == (t216 + t217)) ∧ (tp64 == (e217, arg56)) ∧ (t221 == ts223) ∧ (ts223 == tres56._2) ∧ (¬(e224) ∨ (ts224 ∧ (ts224 <=> tres57._1))) ∧ ((¬(ts225) ∧ (ts225 <=> tres57._1)) ∨ e224) ∧ (tres56 == r182) ∧ (cs119 == f.rhs) ∧ (r182 == isSimplified1(cs119)) ∧ (t218 == (1 + (1 + t224))) ∧ (tres57 == r183) ∧ (cs120 == f.lhs) ∧ (r183 == isSimplified1(cs120)) ∧ (t219 == (1 + (1 + t221))) ∧ (¬(e219) ∨ e221) ∧ (¬(e221) ∨ e219) ∧ (¬(e221) ∨ (ts226 ∧ (ts226 <=> tres56._1))) ∧ ((¬(ts227) ∧ (ts227 <=> tres56._1)) ∨ e221) ∧ (t217 == (t219 + (t218 + 1))) ∧ (t224 == ts228) ∧ (ts228 == tres57._2) ∧ (¬(e217) ∨ (e218 ∧ e219)) ∧ (¬(e218) ∨ ¬(e219) ∨ e217) ∧ (¬(e218) ∨ e224) ∧ (¬(e224) ∨ e218)) ∨ (¬(ci137) ∧ (ci137 <=> f.isInstanceOf[And]) ∧ (ifres32 == tp65) ∧ (arg57 == (t216 + t226)) ∧ (tp65 == (e226, arg57)) ∧ (t227 == 1) ∧ ((ci138 ∧ (ci138 <=> f.isInstanceOf[Or]) ∧ (ifres33 == tp66) ∧ (arg58 == (t227 + t228)) ∧ (tp66 == (e228, arg58)) ∧ (¬(e235) ∨ (ts229 ∧ (ts229 <=> tres59._1))) ∧ ((¬(ts230) ∧ (ts230 <=> tres59._1)) ∨ e235) ∧ (¬(e230) ∨ e232) ∧ (¬(e232) ∨ e230) ∧ (t230 == (1 + (1 + t232))) ∧ (t232 == ts231) ∧ (ts231 == tres58._2) ∧ (t228 == (t230 + (t229 + 1))) ∧ (¬(e228) ∨ (e229 ∧ e230)) ∧ (¬(e229) ∨ ¬(e230) ∨ e228) ∧ (tres58 == r184) ∧ (cs121 == f.rhs) ∧ (r184 == isSimplified1(cs121)) ∧ (tres59 == r185) ∧ (cs122 == f.lhs) ∧ (r185 == isSimplified1(cs122)) ∧ (t229 == (1 + (1 + t235))) ∧ (¬(e232) ∨ (ts232 ∧ (ts232 <=> tres58._1))) ∧ ((¬(ts233) ∧ (ts233 <=> tres58._1)) ∨ e232) ∧ (t235 == ts234) ∧ (ts234 == tres59._2) ∧ (¬(e229) ∨ e235) ∧ (¬(e235) ∨ e229)) ∨ (¬(ci139) ∧ (ci139 <=> f.isInstanceOf[Or]) ∧ (ifres33 == tp67) ∧ (arg59 == (t227 + t237)) ∧ (tp67 == (e237, arg59)) ∧ (t238 == 1) ∧ ((ci140 ∧ (ci140 <=> f.isInstanceOf[Implies]) ∧ (ifres34 == tp68) ∧ ¬(arg60) ∧ (tp68 == (arg60, t238))) ∨ (¬(ci141) ∧ (ci141 <=> f.isInstanceOf[Implies]) ∧ (ifres34 == tp69) ∧ (arg61 == (t238 + t240)) ∧ (tp69 == (e240, arg61)) ∧ (t241 == 1) ∧ ((ci142 ∧ (ci142 <=> f.isInstanceOf[Not]) ∧ (ifres35 == tp70) ∧ (arg62 == (t241 + t242)) ∧ (tp70 == (e242, arg62)) ∧ (t244 == ts235) ∧ (ts235 == tres60._2) ∧ (t242 == (1 + (1 + t244))) ∧ (tres60 == r186) ∧ (cs123 == f.f) ∧ (r186 == isSimplified1(cs123)) ∧ (¬(e244) ∨ (ts236 ∧ (ts236 <=> tres60._1))) ∧ ((¬(ts237) ∧ (ts237 <=> tres60._1)) ∨ e244) ∧ (¬(e242) ∨ e244) ∧ (¬(e244) ∨ e242)) ∨ (¬(ci143) ∧ (ci143 <=> f.isInstanceOf[Not]) ∧ (ifres35 == tp71) ∧ arg63 ∧ (tp71 == (arg63, t241)))) ∧ (¬(e240) ∨ (ts238 ∧ (ts238 <=> ifres35._1))) ∧ ((¬(ts239) ∧ (ts239 <=> ifres35._1)) ∨ e240) ∧ (t240 == ts240) ∧ (ts240 == ifres35._2))) ∧ (¬(e237) ∨ (ts241 ∧ (ts241 <=> ifres34._1))) ∧ ((¬(ts242) ∧ (ts242 <=> ifres34._1)) ∨ e237) ∧ (t237 == ts243) ∧ (ts243 == ifres34._2))) ∧ (¬(e226) ∨ (ts244 ∧ (ts244 <=> ifres33._1))) ∧ ((¬(ts245) ∧ (ts245 <=> ifres33._1)) ∨ e226) ∧ (t226 == ts246) ∧ (ts246 == ifres33._2))))
+Flattened Post: ((ts247 > ((a?1 * r187) + b?1)) ∧ (ts247 == res7._2) ∧ (r187 == size1(f)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isSimplified1-->((((1 * res7._2) + (0 * size1(f))) + 0) ≤ 0)
+Function: isSimplified1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 92
+[[34m Info  [0m] Number of equal calls: 9
+# of atomic predicates: 36
+solving...
+solved... in 0.008s
+[[34m Info  [0m] - More unrollings for invariant inference
+Creating VC for size1
+Unrolling (r188 == size1(cs120))
+Unrolling (r185 == isSimplified1(cs122))
+Unrolling (r190 == size1(cs122))
+Unrolling (r191 == size1(cs121))
+Unrolling (r186 == isSimplified1(cs123))
+Unrolling (r183 == isSimplified1(cs120))
+Unrolling (r189 == size1(cs119))
+Unrolling (r192 == size1(cs123))
+Unrolling (r187 == size1(f))
+Unrolling (r184 == isSimplified1(cs121))
+Unrolling (r182 == isSimplified1(cs119))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isSimplified1-->((((0 * size1(f)) + (1 * res7._2)) + 0) ≤ 0)
+size1-->(((0 * #res) + 0) ≤ 0)
+Function: isSimplified1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 720
+[[34m Info  [0m] Number of equal calls: 34
+# of atomic predicates: 214
+solving...
+solved... in 0.015s
+candidate Invariants
+isSimplified1-->((((-1 * size1(f)) + (1 * res7._2)) + 1) ≤ 0)
+size1-->(((0 * #res) + 137) ≤ 0)
+Function: size1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8
+solving...
+solved... in 0.016s
+candidate Invariants
+isSimplified1-->((((2 * size1(f)) + (2 * res7._2)) + 147) ≤ 0)
+size1-->(((1 * #res) + -16) ≤ 0)
+Function: isSimplified1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 368
+[[34m Info  [0m] Number of equal calls: 22
+Function: size1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 147
+solving...
+solved... in 0.031s
+candidate Invariants
+isSimplified1-->((((2 * res7._2) + (-14 * size1(f))) + 115) ≤ 0)
+size1-->(((-1 * #res) + 0) ≤ 0)
+Function: isSimplified1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 7
+# of atomic predicates: 28
+solving...
+solved... in 0.058s
+candidate Invariants
+isSimplified1-->((((-7 * size1(f)) + (1 * res7._2)) + 2) ≤ 0)
+size1-->(((-1 * #res) + 0) ≤ 0)
+[[34m Info  [0m] - Found inductive invariant: isSimplified1 --> ((((-7 * size1(f)) + (1 * res7._2)) + 2) ≤ 0)
+[[34m Info  [0m] - Found inductive invariant: size1 --> (((-1 * #res) + 0) ≤ 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function nnf1...
+[[34m Info  [0m] Body: if (formula.isInstanceOf[And])
+            (let (e1,t1 := (let (e2,t2 := (let (e8,t8 := nnf1(formula.lhs)) in
+              (e8, (1 + (1 + t8))))) in
+              (let (e3,t3 := (let (e5,t5 := nnf1(formula.rhs)) in
+                (e5, (1 + (1 + t5))))) in
+                (And(e2, e3), (t3 + (t2 + 1)))))) in
+              (e1, (1 + t1)))
+          else
+            (let (e10,t10 := if (formula.isInstanceOf[Or])
+              (let (e12,t12 := (let (e13,t13 := (let (e19,t19 := nnf1(formula.lhs)) in
+                (e19, (1 + (1 + t19))))) in
+                (let (e14,t14 := (let (e16,t16 := nnf1(formula.rhs)) in
+                  (e16, (1 + (1 + t16))))) in
+                  (Or(e13, e14), (t14 + (t13 + 1)))))) in
+                (e12, (1 + t12)))
+            else
+              (let (e21,t21 := if (formula.isInstanceOf[Implies])
+                (let (e23,t23 := (let (e24,t24 := (let (e30,t30 := nnf1(formula.lhs)) in
+                  (e30, (1 + (1 + t30))))) in
+                  (let (e25,t25 := (let (e27,t27 := nnf1(formula.rhs)) in
+                    (e27, (1 + (1 + t27))))) in
+                    (Implies(e24, e25), (t25 + (t24 + 1)))))) in
+                  (e23, (1 + t23)))
+              else
+                (let (e32,t32 := if ((formula.isInstanceOf[Not] ∧ formula.f.isInstanceOf[And]))
+                  (let (e34,t34 := (let (e35,t35 := (let (e43,t43 := nnf1(Not(formula.f.lhs))) in
+                    (e43, (3 + (1 + t43))))) in
+                    (let (e36,t36 := (let (e38,t38 := nnf1(Not(formula.f.rhs))) in
+                      (e38, (3 + (1 + t38))))) in
+                      (Or(e35, e36), (t36 + (t35 + 1)))))) in
+                    (e34, (4 + t34)))
+                else
+                  (let (e47,t47 := if ((formula.isInstanceOf[Not] ∧ formula.f.isInstanceOf[Or]))
+                    (let (e49,t49 := (let (e50,t50 := (let (e58,t58 := nnf1(Not(formula.f.lhs))) in
+                      (e58, (3 + (1 + t58))))) in
+                      (let (e51,t51 := (let (e53,t53 := nnf1(Not(formula.f.rhs))) in
+                        (e53, (3 + (1 + t53))))) in
+                        (And(e50, e51), (t51 + (t50 + 1)))))) in
+                      (e49, (4 + t49)))
+                  else
+                    (let (e62,t62 := if ((formula.isInstanceOf[Not] ∧ formula.f.isInstanceOf[Implies]))
+                      (let (e64,t64 := (let (e65,t65 := (let (e73,t73 := nnf1(formula.f.lhs)) in
+                        (e73, (2 + (1 + t73))))) in
+                        (let (e66,t66 := (let (e68,t68 := nnf1(Not(formula.f.rhs))) in
+                          (e68, (3 + (1 + t68))))) in
+                          (And(e65, e66), (t66 + (t65 + 1)))))) in
+                        (e64, (4 + t64)))
+                    else
+                      (let (e76,t76 := if ((formula.isInstanceOf[Not] ∧ formula.f.isInstanceOf[Not]))
+                        (let (e78,t78 := (let (e80,t80 := nnf1(formula.f.f)) in
+                          (e80, (2 + (1 + t80))))) in
+                          (e78, (4 + t78)))
+                      else
+                        (let (e83,t83 := if ((formula.isInstanceOf[Not] ∧ formula.f.isInstanceOf[Literal]))
+                          (formula, 4)
+                        else
+                          (let (e86,t86 := if (formula.isInstanceOf[Literal])
+                            (formula, 1)
+                          else
+                            (formula, 1)) in
+                            (e86, (4 + t86)))) in
+                          (e83, (4 + t83)))) in
+                        (e76, (4 + t76)))) in
+                      (e62, (4 + t62)))) in
+                    (e47, (4 + t47)))) in
+                  (e32, (1 + t32)))) in
+                (e21, (1 + t21)))) in
+              (e10, (1 + t10)))
+[[34m Info  [0m] Post: true
+falttened Body: ((res4 == ifres56) ∧ (t == 1) ∧ ((ci240 ∧ (ci240 <=> formula.isInstanceOf[And]) ∧ (ifres56 == tp112) ∧ (arg104 == (t + t1)) ∧ (tp112 == (e1, arg104)) ∧ (e8 == ts405) ∧ (ts405 == tres87._1) ∧ (e5 == ts406) ∧ (ts406 == tres86._1) ∧ (tres87 == r299) ∧ (cs198 == formula.lhs) ∧ (r299 == nnf1(cs198)) ∧ (t1 == (t3 + (t2 + 1))) ∧ (tres86 == r300) ∧ (cs199 == formula.rhs) ∧ (r300 == nnf1(cs199)) ∧ (e1 == cc40) ∧ (cc40 == And(e2, e3)) ∧ (t5 == ts407) ∧ (ts407 == tres86._2) ∧ (e3 == e5) ∧ (t2 == (1 + (1 + t8))) ∧ (t3 == (1 + (1 + t5))) ∧ (t8 == ts408) ∧ (ts408 == tres87._2) ∧ (e2 == e8)) ∨ (¬(ci241) ∧ (ci241 <=> formula.isInstanceOf[And]) ∧ (ifres56 == tp113) ∧ (arg105 == (t + t10)) ∧ (tp113 == (e10, arg105)) ∧ (t11 == 1) ∧ ((ci242 ∧ (ci242 <=> formula.isInstanceOf[Or]) ∧ (ifres57 == tp114) ∧ (arg106 == (t11 + t12)) ∧ (tp114 == (e12, arg106)) ∧ (e19 == ts409) ∧ (ts409 == tres89._1) ∧ (t14 == (1 + (1 + t16))) ∧ (e13 == e19) ∧ (tres88 == r301) ∧ (cs200 == formula.rhs) ∧ (r301 == nnf1(cs200)) ∧ (e16 == ts410) ∧ (ts410 == tres88._1) ∧ (e14 == e16) ∧ (t16 == ts411) ∧ (ts411 == tres88._2) ∧ (e12 == cc41) ∧ (cc41 == Or(e13, e14)) ∧ (t12 == (t14 + (t13 + 1))) ∧ (tres89 == r302) ∧ (cs201 == formula.lhs) ∧ (r302 == nnf1(cs201)) ∧ (t19 == ts412) ∧ (ts412 == tres89._2) ∧ (t13 == (1 + (1 + t19)))) ∨ (¬(ci243) ∧ (ci243 <=> formula.isInstanceOf[Or]) ∧ (ifres57 == tp115) ∧ (arg107 == (t11 + t21)) ∧ (tp115 == (e21, arg107)) ∧ (t22 == 1) ∧ ((ci244 ∧ (ci244 <=> formula.isInstanceOf[Implies]) ∧ (ifres58 == tp116) ∧ (arg108 == (t22 + t23)) ∧ (tp116 == (e23, arg108)) ∧ (e27 == ts413) ∧ (ts413 == tres90._1) ∧ (t23 == (t25 + (t24 + 1))) ∧ (t25 == (1 + (1 + t27))) ∧ (e25 == e27) ∧ (tres91 == r303) ∧ (cs202 == formula.lhs) ∧ (r303 == nnf1(cs202)) ∧ (e23 == cc42) ∧ (cc42 == Implies(e24, e25)) ∧ (e30 == ts414) ∧ (ts414 == tres91._1) ∧ (tres90 == r304) ∧ (cs203 == formula.rhs) ∧ (r304 == nnf1(cs203)) ∧ (t24 == (1 + (1 + t30))) ∧ (e24 == e30) ∧ (t27 == ts415) ∧ (ts415 == tres90._2) ∧ (t30 == ts416) ∧ (ts416 == tres91._2)) ∨ (¬(ci245) ∧ (ci245 <=> formula.isInstanceOf[Implies]) ∧ (ifres58 == tp117) ∧ (arg109 == (t22 + t32)) ∧ (tp117 == (e32, arg109)) ∧ (t33 == 4) ∧ ((ci246 ∧ (ci246 <=> formula.isInstanceOf[Not]) ∧ ci247 ∧ (cs204 == formula.f) ∧ (ci247 <=> cs204.isInstanceOf[And]) ∧ (ifres59 == tp118) ∧ (arg110 == (t33 + t34)) ∧ (tp118 == (e34, arg110)) ∧ (e36 == e38) ∧ (e35 == e43) ∧ (t38 == ts417) ∧ (ts417 == tres92._2) ∧ (tres93 == r305) ∧ (cs205 == formula.f) ∧ (cs206 == cs205.lhs) ∧ (cc43 == Not(cs206)) ∧ (r305 == nnf1(cc43)) ∧ (t36 == (3 + (1 + t38))) ∧ (tres92 == r306) ∧ (cs207 == formula.f) ∧ (cs208 == cs207.rhs) ∧ (cc44 == Not(cs208)) ∧ (r306 == nnf1(cc44)) ∧ (t43 == ts418) ∧ (ts418 == tres93._2) ∧ (t35 == (3 + (1 + t43))) ∧ (e38 == ts419) ∧ (ts419 == tres92._1) ∧ (e34 == cc45) ∧ (cc45 == Or(e35, e36)) ∧ (t34 == (t36 + (t35 + 1))) ∧ (e43 == ts420) ∧ (ts420 == tres93._1)) ∨ (((¬(ci248) ∧ (ci248 <=> formula.isInstanceOf[Not])) ∨ (¬(ci249) ∧ (cs209 == formula.f) ∧ (ci249 <=> cs209.isInstanceOf[And]))) ∧ (ifres59 == tp119) ∧ (arg111 == (t33 + t47)) ∧ (tp119 == (e47, arg111)) ∧ (t48 == 4) ∧ ((ci250 ∧ (ci250 <=> formula.isInstanceOf[Not]) ∧ ci251 ∧ (cs210 == formula.f) ∧ (ci251 <=> cs210.isInstanceOf[Or]) ∧ (ifres60 == tp120) ∧ (arg112 == (t48 + t49)) ∧ (tp120 == (e49, arg112)) ∧ (t51 == (3 + (1 + t53))) ∧ (t50 == (3 + (1 + t58))) ∧ (t49 == (t51 + (t50 + 1))) ∧ (t53 == ts421) ∧ (ts421 == tres94._2) ∧ (e51 == e53) ∧ (e49 == cc46) ∧ (cc46 == And(e50, e51)) ∧ (t58 == ts422) ∧ (ts422 == tres95._2) ∧ (tres94 == r307) ∧ (cs211 == formula.f) ∧ (cs212 == cs211.rhs) ∧ (cc47 == Not(cs212)) ∧ (r307 == nnf1(cc47)) ∧ (e50 == e58) ∧ (tres95 == r308) ∧ (cs213 == formula.f) ∧ (cs214 == cs213.lhs) ∧ (cc48 == Not(cs214)) ∧ (r308 == nnf1(cc48)) ∧ (e58 == ts423) ∧ (ts423 == tres95._1) ∧ (e53 == ts424) ∧ (ts424 == tres94._1)) ∨ (((¬(ci252) ∧ (ci252 <=> formula.isInstanceOf[Not])) ∨ (¬(ci253) ∧ (cs215 == formula.f) ∧ (ci253 <=> cs215.isInstanceOf[Or]))) ∧ (ifres60 == tp121) ∧ (arg113 == (t48 + t62)) ∧ (tp121 == (e62, arg113)) ∧ (t63 == 4) ∧ ((ci254 ∧ (ci254 <=> formula.isInstanceOf[Not]) ∧ ci255 ∧ (cs216 == formula.f) ∧ (ci255 <=> cs216.isInstanceOf[Implies]) ∧ (ifres61 == tp122) ∧ (arg114 == (t63 + t64)) ∧ (tp122 == (e64, arg114)) ∧ (e65 == e73) ∧ (tres96 == r309) ∧ (cs217 == formula.f) ∧ (cs218 == cs217.rhs) ∧ (cc49 == Not(cs218)) ∧ (r309 == nnf1(cc49)) ∧ (t73 == ts425) ∧ (ts425 == tres97._2) ∧ (t68 == ts426) ∧ (ts426 == tres96._2) ∧ (t65 == (2 + (1 + t73))) ∧ (e73 == ts427) ∧ (ts427 == tres97._1) ∧ (t66 == (3 + (1 + t68))) ∧ (t64 == (t66 + (t65 + 1))) ∧ (tres97 == r310) ∧ (cs219 == formula.f) ∧ (cs220 == cs219.lhs) ∧ (r310 == nnf1(cs220)) ∧ (e68 == ts428) ∧ (ts428 == tres96._1) ∧ (e66 == e68) ∧ (e64 == cc50) ∧ (cc50 == And(e65, e66))) ∨ (((¬(ci256) ∧ (ci256 <=> formula.isInstanceOf[Not])) ∨ (¬(ci257) ∧ (cs221 == formula.f) ∧ (ci257 <=> cs221.isInstanceOf[Implies]))) ∧ (ifres61 == tp123) ∧ (arg115 == (t63 + t76)) ∧ (tp123 == (e76, arg115)) ∧ (t77 == 4) ∧ ((ci258 ∧ (ci258 <=> formula.isInstanceOf[Not]) ∧ ci259 ∧ (cs222 == formula.f) ∧ (ci259 <=> cs222.isInstanceOf[Not]) ∧ (ifres62 == tp124) ∧ (arg116 == (t77 + t78)) ∧ (tp124 == (e78, arg116)) ∧ (e80 == ts429) ∧ (ts429 == tres98._1) ∧ (t80 == ts430) ∧ (ts430 == tres98._2) ∧ (e78 == e80) ∧ (t78 == (2 + (1 + t80))) ∧ (tres98 == r311) ∧ (cs223 == formula.f) ∧ (cs224 == cs223.f) ∧ (r311 == nnf1(cs224))) ∨ (((¬(ci260) ∧ (ci260 <=> formula.isInstanceOf[Not])) ∨ (¬(ci261) ∧ (cs225 == formula.f) ∧ (ci261 <=> cs225.isInstanceOf[Not]))) ∧ (ifres62 == tp125) ∧ (arg117 == (t77 + t83)) ∧ (tp125 == (e83, arg117)) ∧ (t84 == 4) ∧ ((ci262 ∧ (ci262 <=> formula.isInstanceOf[Not]) ∧ ci263 ∧ (cs226 == formula.f) ∧ (ci263 <=> cs226.isInstanceOf[Literal]) ∧ (ifres63 == tp126) ∧ (tp126 == (formula, t84))) ∨ (((¬(ci264) ∧ (ci264 <=> formula.isInstanceOf[Not])) ∨ (¬(ci265) ∧ (cs227 == formula.f) ∧ (ci265 <=> cs227.isInstanceOf[Literal]))) ∧ (ifres63 == tp127) ∧ (arg118 == (t84 + t86)) ∧ (tp127 == (e86, arg118)) ∧ (t87 == 1) ∧ ((ci266 ∧ (ci266 <=> formula.isInstanceOf[Literal]) ∧ (ifres64 == tp128) ∧ (tp128 == (formula, t87))) ∨ (¬(ci267) ∧ (ci267 <=> formula.isInstanceOf[Literal]) ∧ (ifres64 == tp129) ∧ (tp129 == (formula, t87)))) ∧ (e86 == ts431) ∧ (ts431 == ifres64._1) ∧ (t86 == ts432) ∧ (ts432 == ifres64._2))) ∧ (e83 == ts433) ∧ (ts433 == ifres63._1) ∧ (t83 == ts434) ∧ (ts434 == ifres63._2))) ∧ (e76 == ts435) ∧ (ts435 == ifres62._1) ∧ (t76 == ts436) ∧ (ts436 == ifres62._2))) ∧ (e62 == ts437) ∧ (ts437 == ifres61._1) ∧ (t62 == ts438) ∧ (ts438 == ifres61._2))) ∧ (e47 == ts439) ∧ (ts439 == ifres60._1) ∧ (t47 == ts440) ∧ (ts440 == ifres60._2))) ∧ (e32 == ts441) ∧ (ts441 == ifres59._1) ∧ (t32 == ts442) ∧ (ts442 == ifres59._2))) ∧ (e21 == ts443) ∧ (ts443 == ifres58._1) ∧ (t21 == ts444) ∧ (ts444 == ifres58._2))) ∧ (e10 == ts445) ∧ (ts445 == ifres57._1) ∧ (t10 == ts446) ∧ (ts446 == ifres57._2))))
+Flattened Post: ((ts447 > ((a?2 * r312) + b?2)) ∧ (ts447 == res4._2) ∧ (r312 == size1(formula)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+nnf1-->((((0 * size1(formula)) + (1 * res4._2)) + 0) ≤ 0)
+Function: nnf1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 35
+[[34m Info  [0m] Number of equal calls: 6
+# of atomic predicates: 15
+solving...
+solved... in 0.005s
+candidate Invariants
+nnf1-->((((0 * size1(formula)) + (1 * res4._2)) + 8) ≤ 0)
+Function: nnf1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 151
+[[34m Info  [0m] Number of equal calls: 14
+# of atomic predicates: 15
+solving...
+solved... in 0.007s
+candidate Invariants
+nnf1-->((((0 * size1(formula)) + (1 * res4._2)) + 17) ≤ 0)
+Function: nnf1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 210
+[[34m Info  [0m] Number of equal calls: 17
+# of atomic predicates: 15
+solving...
+solved... in 0.008s
+candidate Invariants
+nnf1-->((((1 * res4._2) + (0 * size1(formula))) + 21) ≤ 0)
+Function: nnf1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 273
+[[34m Info  [0m] Number of equal calls: 20
+# of atomic predicates: 15
+solving...
+solved... in 0.007s
+candidate Invariants
+nnf1-->((((0 * size1(formula)) + (1 * res4._2)) + 24) ≤ 0)
+Function: nnf1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 325
+[[34m Info  [0m] Number of equal calls: 17
+# of atomic predicates: 9
+solving...
+solved... in 0.008s
+[[34m Info  [0m] - More unrollings for invariant inference
+Creating VC for size1
+Unrolling (r318 == size1(cs202))
+Unrolling (r317 == size1(cs203))
+Unrolling (r325 == size1(cs224))
+Unrolling (r319 == size1(cc44))
+Unrolling (r324 == size1(cc49))
+Unrolling (r316 == size1(cs200))
+Unrolling (r323 == size1(cs220))
+Unrolling (r303 == nnf1(cs202))
+Unrolling (r308 == nnf1(cc48))
+Unrolling (r320 == size1(cc43))
+Unrolling (r306 == nnf1(cc44))
+Unrolling (r300 == nnf1(cs199))
+Unrolling (r304 == nnf1(cs203))
+Unrolling (r307 == nnf1(cc47))
+Unrolling (r321 == size1(cc48))
+Unrolling (r315 == size1(cs201))
+Unrolling (r305 == nnf1(cc43))
+Unrolling (r311 == nnf1(cs224))
+Unrolling (r299 == nnf1(cs198))
+Unrolling (r309 == nnf1(cc49))
+Unrolling (r322 == size1(cc47))
+Unrolling (r313 == size1(cs199))
+Unrolling (r301 == nnf1(cs200))
+Unrolling (r312 == size1(formula))
+Unrolling (r302 == nnf1(cs201))
+Unrolling (r314 == size1(cs198))
+Unrolling (r310 == nnf1(cs220))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+nnf1-->((((1 * res4._2) + (0 * size1(formula))) + 0) ≤ 0)
+size1-->(((0 * #res) + 0) ≤ 0)
+Function: nnf1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 325
+[[34m Info  [0m] Number of equal calls: 17
+# of atomic predicates: 10
+solving...
+solved... in 0.006s
+candidate Invariants
+nnf1-->((((16 * res4._2) + (-2 * size1(formula))) + 8) ≤ 0)
+size1-->(((8 * #res) + 414) ≤ 0)
+Function: nnf1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2070
+[[34m Info  [0m] Number of equal calls: 57
+Function: size1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 43
+solving...
+solved... in 0.023s
+candidate Invariants
+nnf1-->((((0 * size1(formula)) + (1 * res4._2)) + 29) ≤ 0)
+size1-->(((-1 * #res) + 2) ≤ 0)
+Function: nnf1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 269
+[[34m Info  [0m] Number of equal calls: 20
+Function: size1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 20
+solving...
+solved... in 0.028s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling (r362 == size1(cs259))
+Unrolling (r616 == size1(cs401))
+Unrolling (r346 == size1(cs243))
+Unrolling (r341 == size1(cs238))
+Unrolling (r657 == size1(cs412))
+Unrolling (r677 == size1(cc54))
+Unrolling (r550 == size1(cs617))
+Unrolling (r639 == size1(cc179))
+Unrolling (r345 == size1(cs242))
+Unrolling (r660 == size1(cs413))
+Unrolling (r551 == size1(cs618))
+Unrolling (r418 == size1(cs349))
+Unrolling (r479 == size1(cs478))
+Unrolling (r756 == size1(cc158))
+Unrolling (r724 == size1(cs444))
+Unrolling (r672 == size1(cs287))
+Unrolling (r419 == size1(cs350))
+Unrolling (r543 == size1(cs610))
+Unrolling (r480 == size1(cs479))
+Unrolling (r386 == size1(cs283))
+Unrolling (r619 == size1(cs545))
+Unrolling (r608 == size1(cs383))
+Unrolling (r746 == size1(cc193))
+Unrolling (r676 == size1(cc56))
+Unrolling (r567 == size1(cs651))
+Unrolling (r363 == size1(cs260))
+Unrolling (r742 == size1(cc187))
+Unrolling (r683 == size1(cs352))
+Unrolling (r772 == size1(cc137))
+Unrolling (r682 == size1(cs310))
+Unrolling (r611 == size1(cc89))
+Unrolling (r661 == size1(cs416))
+Unrolling (r348 == size1(cs245))
+Unrolling (r549 == size1(cs616))
+Unrolling (r670 == size1(cs285))
+Unrolling (r674 == size1(cs289))
+Unrolling (r731 == size1(cc113))
+Unrolling (r569 == size1(cs653))
+Unrolling (r748 == size1(cs576))
+Unrolling (r477 == size1(cs476))
+Unrolling (r698 == size1(cs488))
+Unrolling (r374 == size1(cs271))
+Unrolling (r413 == size1(cs344))
+Unrolling (r663 == size1(cc99))
+Unrolling (r620 == size1(cs548))
+Unrolling (r685 == size1(cs354))
+Unrolling (r694 == size1(cs371))
+Unrolling (r417 == size1(cs348))
+Unrolling (r770 == size1(cc134))
+Unrolling (r687 == size1(cs356))
+Unrolling (r540 == size1(cs607))
+Unrolling (r666 == size1(cc102))
+Unrolling (r681 == size1(cs304))
+Unrolling (r344 == size1(cs241))
+Unrolling (r733 == size1(cc115))
+Unrolling (r585 == size1(cs686))
+Unrolling (r693 == size1(cc83))
+Unrolling (r642 == size1(cc182))
+Unrolling (r752 == size1(cs580))
+Unrolling (r356 == size1(cs253))
+Unrolling (r381 == size1(cs278))
+Unrolling (r699 == size1(cs487))
+Unrolling (r343 == size1(cs240))
+Unrolling (r641 == size1(cs678))
+Unrolling (r650 == size1(cc166))
+Unrolling (r762 == size1(cs515))
+Unrolling (r612 == size1(cc88))
+Unrolling (r566 == size1(cs650))
+Unrolling (r671 == size1(cs284))
+Unrolling (r628 == size1(cc148))
+Unrolling (r614 == size1(cc90))
+Unrolling (r737 == size1(cs696))
+Unrolling (r354 == size1(cs251))
+Unrolling (r740 == size1(cs697))
+Unrolling (r589 == size1(cs690))
+Unrolling (r673 == size1(cs286))
+Unrolling (r729 == size1(cc109))
+Unrolling (r668 == size1(cc104))
+Unrolling (r769 == size1(cc135))
+Unrolling (r545 == size1(cs612))
+Unrolling (r350 == size1(cs247))
+Unrolling (r716 == size1(cc65))
+Unrolling (r361 == size1(cs258))
+Unrolling (r707 == size1(cc126))
+Unrolling (r340 == size1(cs237))
+Unrolling (r721 == size1(cs340))
+Unrolling (r476 == size1(cs475))
+Unrolling (r743 == size1(cc191))
+Unrolling (r771 == size1(cs537))
+Unrolling (r365 == size1(cs262))
+Unrolling (r706 == size1(cs507))
+Unrolling (r725 == size1(cs443))
+Unrolling (r697 == size1(cs485))
+Unrolling (r571 == size1(cs655))
+Unrolling (r634 == size1(cs658))
+Unrolling (r655 == size1(cc170))
+Unrolling (r624 == size1(cc144))
+Unrolling (r654 == size1(cs641))
+Unrolling (r664 == size1(cc98))
+Unrolling (r385 == size1(cs282))
+Unrolling (r635 == size1(cs661))
+Unrolling (r587 == size1(cs688))
+Unrolling (r415 == size1(cs346))
+Unrolling (r337 == size1(cs234))
+Unrolling (r478 == size1(cs477))
+Unrolling (r353 == size1(cs250))
+Unrolling (r355 == size1(cs252))
+Unrolling (r334 == size1(cs231))
+Unrolling (r711 == size1(cs317))
+Unrolling (r738 == size1(cs695))
+Unrolling (r383 == size1(cs280))
+Unrolling (r618 == size1(cs546))
+Unrolling (r765 == size1(cs520))
+Unrolling (r760 == size1(cs601))
+Unrolling (r647 == size1(cs621))
+Unrolling (r764 == size1(cs517))
+Unrolling (r690 == size1(cc77))
+Unrolling (r688 == size1(cs355))
+Unrolling (r669 == size1(cs437))
+Unrolling (r414 == size1(cs345))
+Unrolling (r568 == size1(cs652))
+Unrolling (r368 == size1(cs265))
+Unrolling (r590 == size1(cs691))
+Unrolling (r622 == size1(cs550))
+Unrolling (r684 == size1(cs351))
+Unrolling (r338 == size1(cs235))
+Unrolling (r719 == size1(cc72))
+Unrolling (r712 == size1(cs316))
+Unrolling (r382 == size1(cs279))
+Unrolling (r749 == size1(cs575))
+Unrolling (r357 == size1(cs254))
+Unrolling (r773 == size1(cs541))
+Unrolling (r473 == size1(cs472))
+Unrolling (r485 == size1(cs484))
+Unrolling (r475 == size1(cs474))
+Unrolling (r652 == size1(cc168))
+Unrolling (r375 == size1(cs272))
+Unrolling (r373 == size1(cs270))
+Unrolling (r718 == size1(cc69))
+Unrolling (r709 == size1(cs315))
+Unrolling (r703 == size1(cc120))
+Unrolling (r662 == size1(cs415))
+Unrolling (r751 == size1(cs577))
+Unrolling (r380 == size1(cs277))
+Unrolling (r755 == size1(cc153))
+Unrolling (r658 == size1(cs411))
+Unrolling (r539 == size1(cs606))
+Unrolling (r679 == size1(cc57))
+Unrolling (r347 == size1(cs244))
+Unrolling (r759 == size1(cs595))
+Unrolling (r701 == size1(cs489))
+Unrolling (r364 == size1(cs261))
+Unrolling (r646 == size1(cs622))
+Unrolling (r675 == size1(cs288))
+Unrolling (r336 == size1(cs233))
+Unrolling (r692 == size1(cc79))
+Unrolling (r705 == size1(cc123))
+Unrolling (r586 == size1(cs687))
+Unrolling (r615 == size1(cc93))
+Unrolling (r648 == size1(cs624))
+Unrolling (r472 == size1(cs471))
+Unrolling (r645 == size1(cs619))
+Unrolling (r640 == size1(cc178))
+Unrolling (r547 == size1(cs614))
+Unrolling (r378 == size1(cs275))
+Unrolling (r732 == size1(cs463))
+Unrolling (r631 == size1(cs657))
+Unrolling (r691 == size1(cc80))
+Unrolling (r379 == size1(cs276))
+Unrolling (r667 == size1(cs433))
+Unrolling (r717 == size1(cc70))
+Unrolling (r613 == size1(cc92))
+Unrolling (r570 == size1(cs654))
+Unrolling (r750 == size1(cs578))
+Unrolling (r637 == size1(cc177))
+Unrolling (r702 == size1(cc121))
+Unrolling (r335 == size1(cs232))
+Unrolling (r713 == size1(cs319))
+Unrolling (r625 == size1(cc142))
+Unrolling (r633 == size1(cs659))
+Unrolling (r332 == size1(cs229))
+Unrolling (r696 == size1(cs486))
+Unrolling (r482 == size1(cs481))
+Unrolling (r358 == size1(cs255))
+Unrolling (r349 == size1(cs246))
+Unrolling (r376 == size1(cs273))
+Unrolling (r728 == size1(cc111))
+Unrolling (r565 == size1(cs649))
+Unrolling (r606 == size1(cs381))
+Unrolling (r369 == size1(cs266))
+Unrolling (r723 == size1(cs441))
+Unrolling (r627 == size1(cc145))
+Unrolling (r544 == size1(cs611))
+Unrolling (r371 == size1(cs268))
+Unrolling (r638 == size1(cc176))
+Unrolling (r339 == size1(cs236))
+Unrolling (r333 == size1(cs230))
+Unrolling (r623 == size1(cs549))
+Unrolling (r722 == size1(cs442))
+Unrolling (r359 == size1(cs256))
+Unrolling (r607 == size1(cs384))
+Unrolling (r710 == size1(cs314))
+Unrolling (r367 == size1(cs264))
+Unrolling (r384 == size1(cs281))
+Unrolling (r686 == size1(cs353))
+Unrolling (r747 == size1(cs719))
+Unrolling (r754 == size1(cc155))
+Unrolling (r605 == size1(cs382))
+Unrolling (r538 == size1(cs605))
+Unrolling (r653 == size1(cc167))
+Unrolling (r741 == size1(cc188))
+Unrolling (r680 == size1(cc61))
+Unrolling (r632 == size1(cs656))
+Unrolling (r370 == size1(cs267))
+Unrolling (r609 == size1(cs386))
+Unrolling (r372 == size1(cs269))
+Unrolling (r610 == size1(cs385))
+Unrolling (r626 == size1(cc147))
+Unrolling (r541 == size1(cs608))
+Unrolling (r720 == size1(cs334))
+Unrolling (r643 == size1(cs682))
+Unrolling (r767 == size1(cc133))
+Unrolling (r644 == size1(cs620))
+Unrolling (r726 == size1(cs446))
+Unrolling (r546 == size1(cs613))
+Unrolling (r651 == size1(cc164))
+Unrolling (r763 == size1(cs518))
+Unrolling (r758 == size1(cc160))
+Unrolling (r351 == size1(cs248))
+Unrolling (r656 == size1(cs645))
+Unrolling (r377 == size1(cs274))
+Unrolling (r617 == size1(cs407))
+Unrolling (r629 == size1(cs565))
+Unrolling (r366 == size1(cs263))
+Unrolling (r689 == size1(cc78))
+Unrolling (r352 == size1(cs249))
+Unrolling (r715 == size1(cc66))
+Unrolling (r484 == size1(cs483))
+Unrolling (r542 == size1(cs609))
+Unrolling (r730 == size1(cc114))
+Unrolling (r739 == size1(cs698))
+Unrolling (r483 == size1(cs482))
+Unrolling (r621 == size1(cs547))
+Unrolling (r736 == size1(cs693))
+Unrolling (r416 == size1(cs347))
+Unrolling (r548 == size1(cs615))
+Unrolling (r659 == size1(cs414))
+Unrolling (r753 == size1(cs579))
+Unrolling (r636 == size1(cs660))
+Unrolling (r708 == size1(cs511))
+Unrolling (r630 == size1(cs571))
+Unrolling (r474 == size1(cs473))
+Unrolling (r745 == size1(cs715))
+Unrolling (r649 == size1(cs623))
+Unrolling (r331 == size1(cs228))
+Unrolling (r704 == size1(cc124))
+Unrolling (r757 == size1(cc157))
+Unrolling (r695 == size1(cs377))
+Unrolling (r678 == size1(cc59))
+Unrolling (r744 == size1(cc190))
+Unrolling (r761 == size1(cs516))
+Unrolling (r588 == size1(cs689))
+Unrolling (r342 == size1(cs239))
+Unrolling (r481 == size1(cs480))
+Unrolling (r700 == size1(cs490))
+Unrolling (r768 == size1(cc132))
+Unrolling (r734 == size1(cs467))
+Unrolling (r735 == size1(cs694))
+Unrolling (r665 == size1(cc103))
+Unrolling (r766 == size1(cs519))
+Unrolling (r714 == size1(cs318))
+Unrolling (r360 == size1(cs257))
+Unrolling (r591 == size1(cs692))
+Unrolling (r727 == size1(cs445))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+nnf1-->((((0 * size1(formula)) + (1 * res4._2)) + 0) ≤ 0)
+size1-->(((0 * #res) + 0) ≤ 0)
+Function: nnf1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 325
+[[34m Info  [0m] Number of equal calls: 17
+# of atomic predicates: 10
+solving...
+solved... in 0.005s
+candidate Invariants
+nnf1-->((((-2 * size1(formula)) + (16 * res4._2)) + 8) ≤ 0)
+size1-->(((8 * #res) + 414) ≤ 0)
+Function: nnf1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1155
+[[34m Info  [0m] Number of equal calls: 44
+Function: size1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 36
+solving...
+solved... in 0.01s
+candidate Invariants
+nnf1-->((((8 * res4._2) + (-96 * size1(formula))) + -127) ≤ 0)
+size1-->(((1 * #res) + -16) ≤ 0)
+Function: nnf1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1183
+[[34m Info  [0m] Number of equal calls: 50
+Function: size1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 58
+solving...
+solved... in 0.027s
+candidate Invariants
+nnf1-->((((-17 * size1(formula)) + (1 * res4._2)) + -8) ≤ 0)
+size1-->(((-1 * #res) + 0) ≤ 0)
+Function: nnf1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1835
+[[34m Info  [0m] Number of equal calls: 66
+# of atomic predicates: 60
+solving...
+solved... in 0.038s
+candidate Invariants
+nnf1-->((((1 * res4._2) + (-43 * size1(formula))) + 18) ≤ 0)
+size1-->(((-1 * #res) + 0) ≤ 0)
+Function: nnf1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2227
+[[34m Info  [0m] Number of equal calls: 72
+# of atomic predicates: 60
+solving...
+solved... in 0.039s
+candidate Invariants
+nnf1-->((((-46 * size1(formula)) + (1 * res4._2)) + 21) ≤ 0)
+size1-->(((-1 * #res) + 0) ≤ 0)
+[[34m Info  [0m] - Found inductive invariant: nnf1 --> ((((1 * res4._2) + (-46 * size1(formula))) + 21) ≤ 0)
+[[34m Info  [0m] - Found inductive invariant: size1 --> (((-1 * #res) + 0) ≤ 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function isNNF1...
+[[34m Info  [0m] Body: if (f.isInstanceOf[And])
+            (let (e165,t165 := (let (e166,t166 := (let (e172,t172 := isNNF1(f.lhs)) in
+              (e172, (1 + (1 + t172))))) in
+              (let (e167,t167 := (let (e169,t169 := isNNF1(f.rhs)) in
+                (e169, (1 + (1 + t169))))) in
+                ((e166 ∧ e167), (t167 + (t166 + 1)))))) in
+              (e165, (1 + t165)))
+          else
+            (let (e174,t174 := if (f.isInstanceOf[Or])
+              (let (e176,t176 := (let (e177,t177 := (let (e183,t183 := isNNF1(f.lhs)) in
+                (e183, (1 + (1 + t183))))) in
+                (let (e178,t178 := (let (e180,t180 := isNNF1(f.rhs)) in
+                  (e180, (1 + (1 + t180))))) in
+                  ((e177 ∧ e178), (t178 + (t177 + 1)))))) in
+                (e176, (1 + t176)))
+            else
+              (let (e185,t185 := if (f.isInstanceOf[Implies])
+                (let (e187,t187 := (let (e188,t188 := (let (e194,t194 := isNNF1(f.lhs)) in
+                  (e194, (1 + (1 + t194))))) in
+                  (let (e189,t189 := (let (e191,t191 := isNNF1(f.rhs)) in
+                    (e191, (1 + (1 + t191))))) in
+                    ((e188 ∧ e189), (t189 + (t188 + 1)))))) in
+                  (e187, (1 + t187)))
+              else
+                (let (e196,t196 := if ((f.isInstanceOf[Not] ∧ f.f.isInstanceOf[Literal]))
+                  (true, 4)
+                else
+                  (let (e199,t199 := if (f.isInstanceOf[Not])
+                    (false, 1)
+                  else
+                    (let (e202,t202 := if (f.isInstanceOf[Literal])
+                      (true, 1)
+                    else
+                      (false, 1)) in
+                      (e202, (1 + t202)))) in
+                    (e199, (4 + t199)))) in
+                  (e196, (1 + t196)))) in
+                (e185, (1 + t185)))) in
+              (e174, (1 + t174)))
+[[34m Info  [0m] Post: true
+falttened Body: ((res6 == ifres182) ∧ (t164 == 1) ∧ ((ci2944 ∧ (ci2944 <=> f.isInstanceOf[And]) ∧ (ifres182 == tp364) ∧ (arg314 == (t164 + t165)) ∧ (tp364 == (e165, arg314)) ∧ (t167 == (1 + (1 + t169))) ∧ (t172 == ts1191) ∧ (ts1191 == tres269._2) ∧ (t165 == (t167 + (t166 + 1))) ∧ (¬(e167) ∨ e169) ∧ (¬(e169) ∨ e167) ∧ (t169 == ts1192) ∧ (ts1192 == tres268._2) ∧ (tres268 == r2702) ∧ (cs2641 == f.rhs) ∧ (r2702 == isNNF1(cs2641)) ∧ (¬(e166) ∨ e172) ∧ (¬(e172) ∨ e166) ∧ (tres269 == r2703) ∧ (cs2642 == f.lhs) ∧ (r2703 == isNNF1(cs2642)) ∧ (t166 == (1 + (1 + t172))) ∧ (¬(e169) ∨ (ts1193 ∧ (ts1193 <=> tres268._1))) ∧ ((¬(ts1194) ∧ (ts1194 <=> tres268._1)) ∨ e169) ∧ (¬(e172) ∨ (ts1195 ∧ (ts1195 <=> tres269._1))) ∧ ((¬(ts1196) ∧ (ts1196 <=> tres269._1)) ∨ e172) ∧ (¬(e165) ∨ (e166 ∧ e167)) ∧ (¬(e166) ∨ ¬(e167) ∨ e165)) ∨ (¬(ci2945) ∧ (ci2945 <=> f.isInstanceOf[And]) ∧ (ifres182 == tp365) ∧ (arg315 == (t164 + t174)) ∧ (tp365 == (e174, arg315)) ∧ (t175 == 1) ∧ ((ci2946 ∧ (ci2946 <=> f.isInstanceOf[Or]) ∧ (ifres183 == tp366) ∧ (arg316 == (t175 + t176)) ∧ (tp366 == (e176, arg316)) ∧ (t180 == ts1197) ∧ (ts1197 == tres270._2) ∧ (¬(e178) ∨ e180) ∧ (¬(e180) ∨ e178) ∧ (¬(e183) ∨ (ts1198 ∧ (ts1198 <=> tres271._1))) ∧ ((¬(ts1199) ∧ (ts1199 <=> tres271._1)) ∨ e183) ∧ (¬(e180) ∨ (ts1200 ∧ (ts1200 <=> tres270._1))) ∧ ((¬(ts1201) ∧ (ts1201 <=> tres270._1)) ∨ e180) ∧ (t176 == (t178 + (t177 + 1))) ∧ (¬(e177) ∨ e183) ∧ (¬(e183) ∨ e177) ∧ (tres270 == r2704) ∧ (cs2643 == f.rhs) ∧ (r2704 == isNNF1(cs2643)) ∧ (t178 == (1 + (1 + t180))) ∧ (tres271 == r2705) ∧ (cs2644 == f.lhs) ∧ (r2705 == isNNF1(cs2644)) ∧ (t183 == ts1202) ∧ (ts1202 == tres271._2) ∧ (t177 == (1 + (1 + t183))) ∧ (¬(e176) ∨ (e177 ∧ e178)) ∧ (¬(e177) ∨ ¬(e178) ∨ e176)) ∨ (¬(ci2947) ∧ (ci2947 <=> f.isInstanceOf[Or]) ∧ (ifres183 == tp367) ∧ (arg317 == (t175 + t185)) ∧ (tp367 == (e185, arg317)) ∧ (t186 == 1) ∧ ((ci2948 ∧ (ci2948 <=> f.isInstanceOf[Implies]) ∧ (ifres184 == tp368) ∧ (arg318 == (t186 + t187)) ∧ (tp368 == (e187, arg318)) ∧ (t187 == (t189 + (t188 + 1))) ∧ (tres273 == r2706) ∧ (cs2645 == f.lhs) ∧ (r2706 == isNNF1(cs2645)) ∧ (¬(e194) ∨ (ts1203 ∧ (ts1203 <=> tres273._1))) ∧ ((¬(ts1204) ∧ (ts1204 <=> tres273._1)) ∨ e194) ∧ (tres272 == r2707) ∧ (cs2646 == f.rhs) ∧ (r2707 == isNNF1(cs2646)) ∧ (¬(e187) ∨ (e188 ∧ e189)) ∧ (¬(e188) ∨ ¬(e189) ∨ e187) ∧ (¬(e189) ∨ e191) ∧ (¬(e191) ∨ e189) ∧ (t188 == (1 + (1 + t194))) ∧ (t191 == ts1205) ∧ (ts1205 == tres272._2) ∧ (¬(e188) ∨ e194) ∧ (¬(e194) ∨ e188) ∧ (t189 == (1 + (1 + t191))) ∧ (t194 == ts1206) ∧ (ts1206 == tres273._2) ∧ (¬(e191) ∨ (ts1207 ∧ (ts1207 <=> tres272._1))) ∧ ((¬(ts1208) ∧ (ts1208 <=> tres272._1)) ∨ e191)) ∨ (¬(ci2949) ∧ (ci2949 <=> f.isInstanceOf[Implies]) ∧ (ifres184 == tp369) ∧ (arg319 == (t186 + t196)) ∧ (tp369 == (e196, arg319)) ∧ (t197 == 4) ∧ ((ci2950 ∧ (ci2950 <=> f.isInstanceOf[Not]) ∧ ci2951 ∧ (cs2647 == f.f) ∧ (ci2951 <=> cs2647.isInstanceOf[Literal]) ∧ (ifres185 == tp370) ∧ arg320 ∧ (tp370 == (arg320, t197))) ∨ (((¬(ci2952) ∧ (ci2952 <=> f.isInstanceOf[Not])) ∨ (¬(ci2953) ∧ (cs2648 == f.f) ∧ (ci2953 <=> cs2648.isInstanceOf[Literal]))) ∧ (ifres185 == tp371) ∧ (arg321 == (t197 + t199)) ∧ (tp371 == (e199, arg321)) ∧ (t200 == 1) ∧ ((ci2954 ∧ (ci2954 <=> f.isInstanceOf[Not]) ∧ (ifres186 == tp372) ∧ ¬(arg322) ∧ (tp372 == (arg322, t200))) ∨ (¬(ci2955) ∧ (ci2955 <=> f.isInstanceOf[Not]) ∧ (ifres186 == tp373) ∧ (arg323 == (t200 + t202)) ∧ (tp373 == (e202, arg323)) ∧ (t203 == 1) ∧ ((ci2956 ∧ (ci2956 <=> f.isInstanceOf[Literal]) ∧ (ifres187 == tp374) ∧ arg324 ∧ (tp374 == (arg324, t203))) ∨ (¬(ci2957) ∧ (ci2957 <=> f.isInstanceOf[Literal]) ∧ (ifres187 == tp375) ∧ ¬(arg325) ∧ (tp375 == (arg325, t203)))) ∧ (¬(e202) ∨ (ts1209 ∧ (ts1209 <=> ifres187._1))) ∧ ((¬(ts1210) ∧ (ts1210 <=> ifres187._1)) ∨ e202) ∧ (t202 == ts1211) ∧ (ts1211 == ifres187._2))) ∧ (¬(e199) ∨ (ts1212 ∧ (ts1212 <=> ifres186._1))) ∧ ((¬(ts1213) ∧ (ts1213 <=> ifres186._1)) ∨ e199) ∧ (t199 == ts1214) ∧ (ts1214 == ifres186._2))) ∧ (¬(e196) ∨ (ts1215 ∧ (ts1215 <=> ifres185._1))) ∧ ((¬(ts1216) ∧ (ts1216 <=> ifres185._1)) ∨ e196) ∧ (t196 == ts1217) ∧ (ts1217 == ifres185._2))) ∧ (¬(e185) ∨ (ts1218 ∧ (ts1218 <=> ifres184._1))) ∧ ((¬(ts1219) ∧ (ts1219 <=> ifres184._1)) ∨ e185) ∧ (t185 == ts1220) ∧ (ts1220 == ifres184._2))) ∧ (¬(e174) ∨ (ts1221 ∧ (ts1221 <=> ifres183._1))) ∧ ((¬(ts1222) ∧ (ts1222 <=> ifres183._1)) ∨ e174) ∧ (t174 == ts1223) ∧ (ts1223 == ifres183._2))))
+Flattened Post: ((ts1224 > ((a?3 * r2708) + b?3)) ∧ (ts1224 == res6._2) ∧ (r2708 == size1(f)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isNNF1-->((((0 * size1(f)) + (1 * res6._2)) + 0) ≤ 0)
+Function: isNNF1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 91
+[[34m Info  [0m] Number of equal calls: 9
+# of atomic predicates: 20
+solving...
+solved... in 0.006s
+candidate Invariants
+isNNF1-->((((0 * size1(f)) + (1 * res6._2)) + -52) ≤ 0)
+Function: isNNF1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 96
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 72
+solving...
+solved... in 0.011s
+[[34m Info  [0m] - More unrollings for invariant inference
+Creating VC for size1
+Unrolling (r2711 == size1(cs2644))
+Unrolling (r2705 == isNNF1(cs2644))
+Unrolling (r2702 == isNNF1(cs2641))
+Unrolling (r2714 == size1(cs2645))
+Unrolling (r2704 == isNNF1(cs2643))
+Unrolling (r2703 == isNNF1(cs2642))
+Unrolling (r2710 == size1(cs2641))
+Unrolling (r2708 == size1(f))
+Unrolling (r2706 == isNNF1(cs2645))
+Unrolling (r2709 == size1(cs2642))
+Unrolling (r2712 == size1(cs2643))
+Unrolling (r2713 == size1(cs2646))
+Unrolling (r2707 == isNNF1(cs2646))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isNNF1-->((((1 * res6._2) + (0 * size1(f))) + 0) ≤ 0)
+size1-->(((0 * #res) + 0) ≤ 0)
+Function: isNNF1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 793
+[[34m Info  [0m] Number of equal calls: 43
+# of atomic predicates: 539
+solving...
+solved... in 0.031s
+candidate Invariants
+isNNF1-->((((-1 * size1(f)) + (8 * res6._2)) + -8) ≤ 0)
+size1-->(((0 * #res) + 0) ≤ 0)
+Function: isNNF1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 793
+[[34m Info  [0m] Number of equal calls: 46
+# of atomic predicates: 442
+solving...
+solved... in 0.227s
+candidate Invariants
+isNNF1-->((((8 * res6._2) + (-1 * size1(f))) + -8) ≤ 0)
+size1-->(((1 * #res) + 74) ≤ 0)
+Function: isNNF1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 93
+[[34m Info  [0m] Number of equal calls: 10
+Function: size1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 33
+solving...
+solved... in 0.257s
+candidate Invariants
+isNNF1-->((((-1 * size1(f)) + (1 * res6._2)) + -3) ≤ 0)
+size1-->(((-1 * #res) + 5) ≤ 0)
+Function: isNNF1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 499
+[[34m Info  [0m] Number of equal calls: 32
+Function: size1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 218
+solving...
+solved... in 0.316s
+candidate Invariants
+isNNF1-->((((-28 * size1(f)) + (2 * res6._2)) + 39) ≤ 0)
+size1-->(((-1 * #res) + 1) ≤ 0)
+Function: isNNF1--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 136
+[[34m Info  [0m] Number of equal calls: 11
+# of atomic predicates: 40
+solving...
+solved... in 0.341s
+candidate Invariants
+isNNF1-->((((-14 * size1(f)) + (1 * res6._2)) + 4) ≤ 0)
+size1-->(((-1 * #res) + 1) ≤ 0)
+[[34m Info  [0m] - Found inductive invariant: isNNF1 --> ((((1 * res6._2) + (-14 * size1(f))) + 4) ≤ 0)
+[[34m Info  [0m] - Found inductive invariant: size1 --> (((-1 * #res) + 1) ≤ 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+Inferrence did not succeeded for functions: List()
+[[34m Info  [0m] - Dumping statistics
+[[34m Info  [0m] . ┌─────────┐
+          ╔═╡ Summary ╞═══════════════════════════════════════════════════════════════════════╗
+          ║ └─────────┘                                                                       ║
+          
+          ╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+          ║ total: 0      valid: 0      invalid: 0      unknown 0                       0.000 ║
+          ╚═══════════════════════════════════════════════════════════════════════════════════╝

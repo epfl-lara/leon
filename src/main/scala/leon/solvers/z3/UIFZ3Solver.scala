@@ -105,6 +105,16 @@ class UIFZ3Solver(val context : LeonContext, val program: Program, autoComplete 
       case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
     }).toSet
   }
+
+  def evalExpr(expr: Expr): Option[Expr] = {    
+    val ast = toZ3Formula(expr).get
+    //println("Evaluating: "+ast+" using: "+solver.getModel+" Result: "+solver.getModel.eval(ast, true))
+    val model = solver.getModel
+    val res = model.eval(ast, true)
+    if (res.isDefined)
+      Some(fromZ3Formula(model, res.get, Some(expr.getType)))
+    else None
+  }
   
   /**
    * Evaluates the given boolean expression using the model

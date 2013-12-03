@@ -2,32 +2,32 @@ LEON_HOME="/home/kandhada/leon/leon"
 
 #Insertion Sort
 #runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/InsertionSort.scala  --stats-suffix=-nl-stats" > inssort-nl-out.txt
-#runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/InsertionSort.scala  --cegis=true --stats-suffix=-cegis-stats" > inssort-cegis-out.txt
+runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/InsertionSort.scala  --cegis=true --stats-suffix=-cegis-stats" > inssort-cegis-out.txt
 
 #List operations
 #runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/ListOperations.scala --stats-suffix=-nl-stats" > listoperations-nl-out.txt
-#runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/ListOperations.scala  --cegis=true --stats-suffix=-cegis-stats" > listoperations-cegis-out.txt
+runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/ListOperations.scala  --cegis=true --stats-suffix=-cegis-stats" > listoperations-cegis-out.txt
 
 #Tree operations
 #runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/TreeOperations.scala --stats-suffix=-nl-stats" > treeoperations-nl-out.txt
-#runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/TreeOperations.scala --cegis=true --stats-suffix=-cegis-stats" > treeoperations-cegis-out.txt
+runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/TreeOperations.scala --cegis=true --stats-suffix=-cegis-stats" > treeoperations-cegis-out.txt
 
 #Amortized queue
 #runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/AmortizedQueue.scala --stats-suffix=-nl-stats" > amortizedqueue-nl-out.txt
-#runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/AmortizedQueue.scala --cegis=true --stats-suffix=-cegis-stats" > amortizedqueue-cegis-out.txt
+runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/AmortizedQueue.scala --cegis=true --stats-suffix=-cegis-stats" > amortizedqueue-cegis-out.txt
 
 #Binary trie
-runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/BinaryTrie.scala --stats-suffix=-nl-stats" > binarytrie-nl-out.txt
+#runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/BinaryTrie.scala --stats-suffix=-nl-stats" > binarytrie-nl-out.txt
 runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/BinaryTrie.scala --cegis=true --stats-suffix=-cegis-stats" > binarytrie-cegis-out.txt
 
 #Leftist heap
 #runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/LeftistHeap.scala --stats-suffix=-nl-stats --monotones=twopower" > leftistheap-nl-out.txt
-#runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/LeftistHeap.scala --cegis=true --stats-suffix=-cegis-stats --monotones=twopower" > leftistheap-cegis-out.txt
+runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/LeftistHeap.scala --cegis=true --stats-suffix=-cegis-stats --monotones=twopower" > leftistheap-cegis-out.txt
 
 #concat variations
-runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/ConcatVariations.scala --stats-suffix=-nl-stats --monotones=mult" > concatvars-nl-out.txt
+#runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/ConcatVariations.scala --stats-suffix=-nl-stats --monotones=mult" > concatvars-nl-out.txt
 runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/ConcatVariations.scala --cegis=true --stats-suffix=-cegis-stats --monotones=mult" > concatvars-cegis-out.txt
 
 #Redblack  tree
-runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/RedBlackTree.scala --stats-suffix=-nl-stats" > rbt-nl-out.txt
+#runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/RedBlackTree.scala --stats-suffix=-nl-stats" > rbt-nl-out.txt
 runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/RedBlackTree.scala --cegis=true --stats-suffix=-cegis-stats" > rbt-cegis-out.txt
