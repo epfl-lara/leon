@@ -32,9 +32,12 @@ trait CodeExtraction extends ASTExtractors {
     if (p.isRange) {
       val start = p.focusStart
       val end   = p.focusEnd
-      LeonRangePosition(start.line, start.column, end.line, end.column, p.source.file.file)
+      LeonRangePosition(start.line, start.column, start.point,
+                        end.line, end.column, end.point,
+                        p.source.file.file)
     } else {
-      LeonOffsetPosition(p.line, p.column, p.source.file.file)
+      LeonOffsetPosition(p.line, p.column, p.point,
+                         p.source.file.file)
     }
   }
 

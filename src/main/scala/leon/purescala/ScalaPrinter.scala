@@ -341,7 +341,7 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
 
         fd.args.foreach(arg => {
           sb.append(idToString(arg.id))
-          sb.append(" : ")
+          sb.append(": ")
           pp(arg.tpe, p)
 
           if(c < sz - 1) {
@@ -350,7 +350,7 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
           c = c + 1
         })
 
-        sb.append(") : ")
+        sb.append("): ")
         pp(fd.returnType, p)
         sb.append(" = {\n")
         ind(lvl+1)

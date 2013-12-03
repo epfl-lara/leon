@@ -8,7 +8,7 @@ import purescala.Common.Tree
 import purescala.Definitions.FunDef
 import purescala.ScalaPrinter
 
-import leon.utils.Position
+import leon.utils.RangePosition
 
 import java.io.File
 class FileInterface(reporter: Reporter) {
@@ -33,7 +33,7 @@ class FileInterface(reporter: Reporter) {
 
         var newCode = origCode
         for ( (ci, e) <- solutions) {
-          newCode = substitute(newCode, CodePattern.forChoose(ci), e)
+          newCode = substitute(newCode, ci.ch, e)
         }
 
         val out = new BufferedWriter(new FileWriter(newFile))
@@ -44,102 +44,23 @@ class FileInterface(reporter: Reporter) {
     }
   }
 
-  case class CodePattern(startWith: String, pos: Position, blocks: Int)
+  def substitute(str: String, fromTree: Tree, toTree: Tree): String = {
 
-  object CodePattern {
-    def forChoose(ci: ChooseInfo) = CodePattern("choose", ci.ch.getPos, 1)
-    def forFunDef(fd: FunDef) = CodePattern("def", fd.getPos, 2)
-  }
+    fromTree.getPos match {
+      case rp: RangePosition =>
+        val from = rp.pointFrom
+        val to   = rp.pointTo
 
-  def substitute(str: String, pattern: CodePattern, subst: Tree): String = {
-    var lines = List[Int]()
+        val before = str.substring(0, from)
+        val after  = str.substring(to, str.length)
 
-    // Compute line positions
-    var lastFound = -1
-    do {
-      lastFound = str.indexOf('\n', lastFound+1)
+        val newCode = ScalaPrinter(toTree, fromTree.getPos.col/2)
 
-      if (lastFound > -1) {
-        lines = lastFound :: lines
-      }
-    } while(lastFound> 0)
-    lines = lines.reverse;
+        before + newCode + after
 
-    def lineOf(offset: Int): (Int, Int) = {
-      lines.zipWithIndex.find(_._1 > offset) match {
-        case Some((off, no)) =>
-          (no+1, if (no > 0) lines(no-1) else 0)
-        case None =>
-          (lines.size+1, lines.lastOption.getOrElse(0))
-      }
+      case _ =>
+        sys.error("Substitution requires RangePos on the input tree: "+fromTree)
     }
-
-    def getLineIndentation(offset: Int): Int = {
-      var i = str.lastIndexOf('\n', offset)+1
-
-      var res = 0;
-
-      while (i < str.length) {
-        val c = str.charAt(i)
-        i += 1
-
-        if (c == ' ') {
-          res += 1
-        } else if (c == '\t') {
-          res += 4
-        } else {
-          i = str.length
-        }
-      }
-
-      res
-    }
-
-    lastFound = -1
-
-    var newStr = str
-    var newStrOffset = 0
-
-    do {
-      lastFound = str.indexOf(pattern.startWith, lastFound+1)
-
-      if (lastFound > -1) {
-        val (lineno, lineoffset) = lineOf(lastFound)
-        // compute scala equivalent of the position:
-        val scalaOffset = str.substring(lineoffset, lastFound).replaceAll("\t", " "*8).length
-
-        val indent = getLineIndentation(lastFound)
-
-        if (pattern.pos.line == lineno && pattern.pos.col == scalaOffset) {
-          var lvl      = 0;
-          var i        = lastFound + 6;
-          var continue = true;
-          do {
-            var blocksRemaining = pattern.blocks
-            val c = str.charAt(i)
-            if (c == '(' || c == '{') {
-              lvl += 1
-            } else if (c == ')' || c == '}') {
-              lvl -= 1
-              if (lvl == 0) {
-                blocksRemaining -= 1
-                if (blocksRemaining == 0) {
-                  continue = false
-                }
-              }
-            }
-            i += 1
-          } while(continue)
-
-          val newCode = ScalaPrinter(subst, indent/2)
-          newStr = (newStr.substring(0, lastFound+newStrOffset))+newCode+(newStr.substring(i+newStrOffset, newStr.length))
-
-          newStrOffset += -(i-lastFound)+newCode.length
-        }
-      }
-    } while(lastFound> 0)
-
-    newStr
   }
 
   def readFile(file: File): String = {

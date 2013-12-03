@@ -2142,4 +2142,62 @@ object TreeOps {
     areExaustive(Seq((m.scrutinee.getType, patterns)))
   }
 
+  def flattenFunctions(fdOuter: FunDef): FunDef = {
+    fdOuter.body match {
+      case Some(LetDef(fdInner, FunctionInvocation(fdInner2, args))) if fdInner == fdInner2 =>
+        val argsDef  = fdOuter.args.map(_.id)
+        val argsCall = args.collect { case Variable(id) => id }
+
+        if (argsDef.toSet == argsCall.toSet) {
+          val defMap = argsDef.zipWithIndex.toMap
+          val rewriteMap = argsCall.map(defMap)
+
+          val innerIdsToOuterIds = (fdInner.args.map(_.id) zip argsCall).toMap
+
+          def pre(e: Expr) = e match {
+            case FunctionInvocation(fd, args) if fd == fdInner =>
+              val newArgs = (args zip rewriteMap).sortBy(_._2)
+              FunctionInvocation(fdOuter, newArgs.map(_._1))
+            case Variable(id) =>
+              Variable(innerIdsToOuterIds.getOrElse(id, id))
+            case _ =>
+              e
+          }
+
+          def mergePre(outer: Option[Expr], inner: Option[Expr]): Option[Expr] = (outer, inner) match {
+            case (None, Some(ie)) =>
+              Some(simplePreTransform(pre)(ie))
+            case (Some(oe), None) =>
+              Some(oe)
+            case (None, None) =>
+              None
+            case (Some(oe), Some(ie)) =>
+              Some(And(oe, simplePreTransform(pre)(ie)))
+          }
+
+          def mergePost(outer: Option[(Identifier, Expr)], inner: Option[(Identifier, Expr)]): Option[(Identifier, Expr)] = (outer, inner) match {
+            case (None, Some((iid, ie))) =>
+              Some((iid, simplePreTransform(pre)(ie)))
+            case (Some(oe), None) =>
+              Some(oe)
+            case (None, None) =>
+              None
+            case (Some((oid, oe)), Some((iid, ie))) =>
+              Some((oid, And(oe, replaceFromIDs(Map(iid -> Variable(oid)), simplePreTransform(pre)(ie)))))
+          }
+
+          val newFd = fdOuter.duplicate
+
+          newFd.body          = fdInner.body.map(b => simplePreTransform(pre)(b))
+          newFd.precondition  = mergePre(fdOuter.precondition, fdInner.precondition)
+          newFd.postcondition = mergePost(fdOuter.postcondition, fdInner.postcondition)
+
+          newFd
+        } else {
+          fdOuter
+        }
+      case _ =>
+        fdOuter
+    }
+  }
 }

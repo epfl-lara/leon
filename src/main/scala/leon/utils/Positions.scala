@@ -16,9 +16,11 @@ abstract class Position {
   def isDefined = true
 }
 
-case class OffsetPosition(line: Int, col: Int, file: File) extends Position
+case class OffsetPosition(line: Int, col: Int, point: Int, file: File) extends Position
 
-case class RangePosition(lineFrom: Int, colFrom: Int, lineTo: Int, colTo: Int, file: File) extends Position {
+case class RangePosition(lineFrom: Int, colFrom: Int, pointFrom: Int,
+                         lineTo: Int, colTo: Int, pointTo: Int,
+                         file: File) extends Position {
   val line = lineFrom
   val col  = colFrom
 
