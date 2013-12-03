@@ -254,7 +254,7 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
           pp(pat, p)
           sb.append(" =>\n")
           ind(lvl+1)
-          pp(rhs, p)(lvl+2)
+          pp(rhs, p)(lvl+1)
       case GuardedCase(pat, guard, rhs) =>
           sb.append("case ")
           pp(pat, p)
@@ -262,7 +262,7 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
           pp(guard, p)
           sb.append(" =>\n")
           ind(lvl+1)
-          pp(rhs, p)(lvl+2)
+          pp(rhs, p)(lvl+1)
 
       // Patterns
       case CaseClassPattern(bndr, ccd, subps) =>

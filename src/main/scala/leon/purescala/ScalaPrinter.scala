@@ -393,7 +393,7 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
   private def requiresBraces(ex: Tree, within: Option[Tree]): Boolean = (ex, within) match {
     case (_, None) => false
     case (_, Some(_: Definition)) => false
-    case (_, Some(_: MatchExpr | _: Let | _: LetTuple | _: LetDef)) => false
+    case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetTuple | _: LetDef)) => false
     case (_, _) => true
   }
 
@@ -411,7 +411,7 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
   private def requiresParentheses(ex: Tree, within: Option[Tree]): Boolean = (ex, within) match {
     case (_, None) => false
     case (_, Some(_: Definition)) => false
-    case (_, Some(_: MatchExpr | _: Let | _: LetTuple | _: LetDef | _: IfExpr)) => false
+    case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetTuple | _: LetDef | _: IfExpr)) => false
     case (_, Some(_: FunctionInvocation)) => false
     case (ie: IfExpr, _) => true
     case (e1: Expr, Some(e2: Expr)) if precedence(e1) > precedence(e2) => false
