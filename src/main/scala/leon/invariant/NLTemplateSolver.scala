@@ -117,6 +117,7 @@ class NLTemplateSolver(context : LeonContext,
     candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))
 
     val funcs = funcVCs.keys
+    val tempIds = model.keys
     val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap
     val inputSize = InvariantUtil.atomNum(inputCtr)
 
@@ -136,13 +137,15 @@ class NLTemplateSolver(context : LeonContext,
       solverWithCtr.assertCnstr(inputCtr)
     }
 
-    def disableADisjunct(): (Option[Boolean], Expr, Map[Identifier, Expr]) = {
+    def disableADisjunct(prevCtr : Expr): (Option[Boolean], Expr, Map[Identifier, Expr]) = {
 
       if (InferInvariantsPhase.dumpStats)
         Stats.innerIterations += 1
 
       var blockedCEs = false
-      var newconflicts = Set[FunDef]()
+      var confFunctions = Set[FunDef]()
+      var confDisjuncts = Seq[Expr]()
+      
       val newctrs = conflictingFuns.foldLeft(Seq[Expr]())((acc, fd) => {
 
         val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), tempVarMap))
@@ -155,7 +158,8 @@ class NLTemplateSolver(context : LeonContext,
         val (disjunct, ctrsForFun) = getNLConstraints(fd, instVCmodCE, tempVarMap)
         if (ctrsForFun == tru) acc
         else {
-          newconflicts += fd
+          confFunctions += fd
+          confDisjuncts :+= disjunct
           //instantiate the disjunct
           val cePath = simplifyArithmetic(TemplateInstantiator.instantiate(disjunct, tempVarMap))
 
@@ -168,12 +172,12 @@ class NLTemplateSolver(context : LeonContext,
         }
       })
       //update conflicting functions
-      conflictingFuns = newconflicts
+      conflictingFuns = confFunctions
       if (newctrs.isEmpty) {
 
         if (!blockedCEs) {
           //yes, hurray,found an inductive invariant
-          (Some(false), inputCtr, model)
+          (Some(false), prevCtr, model)
         } else {
           //give up, only hard paths remaining
           reporter.info("- Exhausted all easy paths !!")
@@ -194,7 +198,7 @@ class NLTemplateSolver(context : LeonContext,
           Stats.cumFarkaSize = cum; Stats.maxFarkaSize = max
         }
         println("# of atomic predicates: " + newSize + " + " + inputSize)
-        val combCtr = And(inputCtr, newPart)
+        val combCtr = And(prevCtr, newPart)
 
         val solver = SimpleSolverAPI(
           new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)),
@@ -204,10 +208,8 @@ class NLTemplateSolver(context : LeonContext,
         val t1 = System.currentTimeMillis()
         val (res, newModel) = solver.solveSAT(combCtr)
         val t2 = System.currentTimeMillis()
-        if (res.isDefined)
-          println("solved... in " + (t2 - t1) / 1000.0 + "s")
-        else
-          println("timed out... in " + (t2 - t1) / 1000.0 + "s")
+        println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
+        
 
         //for stats
         if (InferInvariantsPhase.dumpStats) {
@@ -216,17 +218,29 @@ class NLTemplateSolver(context : LeonContext,
         }
         res match {
           case None => {
-            //here we have timed out 
+            //here we have timed out while solving the non-linear constraints 
             
             //apply cegis to disable these disjuncts until a timeout
             //cegis returns a new set of constraints (that are satisfiable ) and says if it succeeded on the disjunct.
-            //val (cegisRes, newctr) = getCEGISCtrs(Or(disjuncts), timeout)
-            
-            //cegis also failed here so, retry
-            if (InferInvariantsPhase.dumpStats) {
-              Stats.retries += 1
+            reporter.info("Timed-out on the disjunct... starting cegis...")
+            val cegisSolver = new CegisCore(context, program, timeout)
+            val (cegisRes, cegisCtr, cegisModel) =  cegisSolver.solve(tempIds.toSet, Or(confDisjuncts), inputCtr, solveAsInt = false)
+            cegisRes match {
+              //cegis found a model ??
+              case Some(true) => {
+                (Some(true), cegisCtr, cegisModel)
+              }
+              //there exists no model ??
+              case Some(false) => (None, tru, Map())
+              //cegis timedout??
+              case _ => {
+                //disable this disjunct and retry but use the cegisCtrs from the next iteration
+                if (InferInvariantsPhase.dumpStats) {
+                  Stats.retries += 1
+                }
+                disableADisjunct(cegisCtr)    
+              }
             }
-            disableADisjunct()
           }
           case Some(false) => {
             //reporter.info("- Number of explored paths (of the DAG) in this unroll step: " + exploredPaths)
@@ -260,9 +274,8 @@ class NLTemplateSolver(context : LeonContext,
 
               solverWithCtr.pop()
             }
-            //new model may not have mappings for all the template variables, hence, use the mappings from earlier models if they exist
-            //otherwise, complete them using simplest values
-            val compModel = model.keys.map((id) => {
+            //new model may not have mappings for all the template variables, hence, use the mappings from earlier models            
+            val compModel = tempIds.map((id) => {
               if (newModel.contains(id))
                 (id -> newModel(id))
               else
@@ -276,7 +289,7 @@ class NLTemplateSolver(context : LeonContext,
       }
     }
 
-    val (res, newCtr, newModel) = disableADisjunct()
+    val (res, newCtr, newModel) = disableADisjunct(inputCtr)
     res match {
       case None => {
         //here, we cannot proceed and have to return unknown 

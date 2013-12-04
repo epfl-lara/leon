@@ -55,7 +55,8 @@ class CegisSolver(context : LeonContext,
     val funcs = funcVCs.keys
     val formula = Or(funcs.map(funcVCs.apply _).toSeq)
     
-    val (res, _, model) = (new CegisCore(context, program, timeout)).solve(tempIds, formula, initCtr)
+    //using reals with bounds does not converge and also results in overflow
+    val (res, _, model) = (new CegisCore(context, program, timeout)).solve(tempIds, formula, initCtr, solveAsInt = true)
     res match {
       case Some(true) => Some(getAllInvariants(model))
       case Some(false) => None //no solution exists 
@@ -125,7 +126,12 @@ class CegisCore(context : LeonContext,
     }    
   }
   */
-  def solve(tempIds: Set[Identifier], formula: Expr, initCtr: Expr): (Option[Boolean], Expr, Map[Identifier, Expr]) = {
+  /**
+   * The parameter solveAsInt when set to true will convert the template constraints 
+   * to integer constraints and solve. This should be enabled when bounds are used to constrain the variables   
+   */
+  def solve(tempIds: Set[Identifier], formula: Expr, initCtr: Expr, solveAsInt : Boolean)
+  	: (Option[Boolean], Expr, Map[Identifier, Expr]) = {
     
     //start a timer
     val startTime = System.currentTimeMillis()
@@ -142,6 +148,11 @@ class CegisCore(context : LeonContext,
     //add the initial model    
     val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
     addModel(simplestModel)
+    
+    //convert initCtr to a real-constraint
+    val initRealCtr = ExpressionTransformer.convertIntLiteralToReal(initCtr)
+    if(InvariantUtil.hasInts(initRealCtr)) 
+      throw IllegalStateException("Initial constraints have integer terms: " + initRealCtr)
 
     def cegisRec(model: Map[Identifier, Expr], prevctr: Expr): (Option[Boolean], Expr, Map[Identifier, Expr]) = {
       
@@ -162,9 +173,13 @@ class CegisCore(context : LeonContext,
         val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap
         val instFormula = simplifyArithmetic(TemplateInstantiator.instantiate(formula, tempVarMap))
 
+        //sanity checks
         val spuriousTempIds = variablesOf(instFormula).intersect(TemplateIdFactory.getTemplateIds)
         if (!spuriousTempIds.isEmpty)
-          throw IllegalStateException("Found a template variable in instFormula: " + spuriousTempIds)
+          throw IllegalStateException("Found a template variable in instFormula: " + spuriousTempIds)              
+        if (InvariantUtil.hasReals(instFormula))
+          throw IllegalStateException("Reals in instFormula: " + instFormula)
+
 
         //println("solving instantiated vcs...")
         val t1 = System.currentTimeMillis()                
@@ -183,7 +198,8 @@ class CegisCore(context : LeonContext,
 
             //simplify the tempctrs, evaluate every atom that does not involve a template variable
             //this should get rid of all functions
-            val tempctrs = simplePreTransform((e) => e match {
+            val tempctrs = ExpressionTransformer.convertIntLiteralToReal(
+                simplePreTransform((e) => e match {
               //is 'e' free of template variables ? 
               case _ if (variablesOf(e).filter(TemplateIdFactory.IsTemplateIdentifier _).isEmpty) => {
                 //evaluate the term
@@ -192,17 +208,21 @@ class CegisCore(context : LeonContext,
                 else throw IllegalStateException("Cannot evaluate expression: " + e)
               }
               case _ => e
-            })(Not(formula))
+            })(Not(formula)))
 
             //free the solver
             solver1.free()
 
-            //sanity check
+            //sanity checks
             val spuriousProgIds = variablesOf(tempctrs).filterNot(TemplateIdFactory.IsTemplateIdentifier _)
             if (!spuriousProgIds.isEmpty)
               throw IllegalStateException("Found a progam variable in tempctrs: " + spuriousProgIds)
+            if(InvariantUtil.hasInts(tempctrs)) 
+            	throw IllegalStateException("Template constraints have integer terms: " + tempctrs)
+            
 
             val newctr = And(tempctrs, prevctr)
+            //println("Newctr: " +newctr)
 
             if (InferInvariantsPhase.dumpStats) {
               val (cum, max) = Stats.cumMax(Stats.cumTemplateCtrSize, Stats.maxTemplateCtrSize, InvariantUtil.atomNum(newctr))
@@ -216,10 +236,15 @@ class CegisCore(context : LeonContext,
               SolverFactory(() => new UIFZ3Solver(context, program)),
               timeoutMillis - elapsedTime))
 
-            //convert templates to integers and solve. Finally, re-convert integer models for templates to real models
-            val realToInt = new RealToInt()
-            val (res1, intModel) = solver2.solveSAT(realToInt.mapRealToInt(newctr))
-            val newModel = realToInt.unmapModel(intModel)
+            val (res1, newModel) = if (solveAsInt) {
+              //convert templates to integers and solve. Finally, re-convert integer models for templates to real models
+              val rti = new RealToInt()
+              val (res1, intModel) = solver2.solveSAT(rti.mapRealToInt(newctr))
+              (res1, rti.unmapModel(intModel))
+            } else {
+              solver2.solveSAT(newctr)
+            } 
+            
             val t4 = System.currentTimeMillis()
             println("2: " + (if (res.isDefined) "solved" else "timedout") + "... in " + (t4 - t3) / 1000.0 + "s")
 
@@ -250,6 +275,6 @@ class CegisCore(context : LeonContext,
         }
       }
     }
-    cegisRec(simplestModel, initCtr)
+    cegisRec(simplestModel, initRealCtr)
   }
 }

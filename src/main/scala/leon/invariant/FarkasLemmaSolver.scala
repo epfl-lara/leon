@@ -198,26 +198,6 @@ class FarkasLemmaSolver {
       val nonLinearCtrs = tail.foldLeft(createCtrs(Some(head)))((acc, conseq) => And(acc, createCtrs(Some(conseq))))
       nonLinearCtrs
     }
-    convertIntLiteralToReal(ctrs)
-  }
-
-  /**
-   * converts all integer constants to real constants
-   */
-  def convertIntLiteralToReal(inexpr: Expr): Expr = {
-    //var intIdToRealId = Map[Identifier, Identifier]()
-    val transformer = (e: Expr) => e match {
-      case IntLiteral(v) => RealLiteral(v, 1)
-      /*case v @ Variable(intId) if (v.getType == Int32Type) => {
-        val realId = intIdToRealId.getOrElse(intId, {
-          val freshId = FreshIdentifier(intId.name, true).setType(RealType)
-          intIdToRealId += (intId -> freshId)
-          freshId
-        })
-        Variable(realId)
-      }*/
-      case _ => e
-    }
-    simplePostTransform(transformer)(inexpr)
+    ExpressionTransformer.convertIntLiteralToReal(ctrs)
   }
 }

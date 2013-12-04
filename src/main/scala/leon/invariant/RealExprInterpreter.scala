@@ -22,7 +22,12 @@ object RealValuedExprInterpreter {
      val modNum = if(num < 0) -num else num
      val modDenom = if(denom < 0) -denom else denom     
      val divisor = InvariantUtil.gcd(modNum, modDenom)
-     RealLiteral(num/divisor, denom/divisor)
+     val simpNum = num/divisor
+     val simpDenom = denom/divisor
+     if(simpDenom < 0)
+       RealLiteral(-simpNum, -simpDenom)
+     else
+       RealLiteral(simpNum, simpDenom)
   }
 
   def plainEvaluate(expr: Expr): (Int, Int) = expr match {

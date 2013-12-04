@@ -149,6 +149,24 @@ object InvariantUtil {
     foundReal
   }
   
+  /**
+   * Checks if the expression has real valued sub-expressions.
+   * Note: important, <, <=, > etc have be default int type.
+   * However, they can also be applied over real arguments
+   * So check only if all terminals are real
+   */
+  def hasInts(expr : Expr) : Boolean = {
+    var foundInt = false
+    simplePostTransform((e :Expr) => e match {
+      case e : Terminal if(e.getType == Int32Type) => {          
+        foundInt = true;
+        e      
+      } 
+      case _ => e
+    })(expr)
+    foundInt
+  }
+  
   
   def fix[A](f: (A) => A)(a: A): A = {
       val na = f(a)
