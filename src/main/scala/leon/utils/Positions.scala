@@ -21,10 +21,12 @@ case class OffsetPosition(line: Int, col: Int, point: Int, file: File) extends P
 case class RangePosition(lineFrom: Int, colFrom: Int, pointFrom: Int,
                          lineTo: Int, colTo: Int, pointTo: Int,
                          file: File) extends Position {
+
+  def focusEnd = OffsetPosition(lineTo, colTo, pointTo, file)
+  def focusBegin = OffsetPosition(lineFrom, colFrom, pointFrom, file)
+
   val line = lineFrom
   val col  = colFrom
-
-  override def toString = lineFrom+":"+colFrom+"->"+lineTo+":"+colTo
 }
 
 case object NoPosition extends Position {

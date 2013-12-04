@@ -22,6 +22,22 @@ class TreeOpsTests extends LeonTestSuite {
     assert(true)
   }
 
+  /**
+   * If the formula consist of some top level AND, find a top level
+   * Equals and extract it, return the remaining formula as well
+   */
+  def extractEquals(expr: Expr): (Option[Equals], Expr) = expr match {
+    case And(es) =>
+      // OK now I'm just messing with you.
+      val (r, nes) = es.foldLeft[(Option[Equals],Seq[Expr])]((None, Seq())) {
+        case ((None, nes), eq @ Equals(_,_)) => (Some(eq), nes)
+        case ((o, nes), e) => (o, e +: nes)
+      }
+      (r, And(nes.reverse))
+
+    case e => (None, e)
+  }
+
 
   def i(x: Int) = IntLiteral(x)
 

@@ -7,6 +7,7 @@ import purescala.Trees._
 import purescala.TypeTrees.{TypeTree,TupleType}
 import purescala.Definitions._
 import purescala.TreeOps._
+import purescala.ScopeSimplifier
 import solvers.z3._
 import solvers._
 

@@ -18,12 +18,10 @@ class CodeGenEvaluator(ctx : LeonContext, val unit : CompilationUnit) extends Ev
 
   /** Another constructor to make it look more like other `Evaluator`s. */
   def this(ctx : LeonContext, prog : Program, params: CodeGenParams = CodeGenParams()) {
-    this(ctx, CompilationUnit.compileProgram(prog, params).get) // this .get is dubious...
+    this(ctx, new CompilationUnit(ctx, prog, params))
   }
 
   def eval(expression : Expr, mapping : Map[Identifier,Expr]) : EvaluationResult = {
-    // ctx.reporter.warning("Using `eval` in CodeGenEvaluator is discouraged. Use `compile` whenever applicable.")
-
     val toPairs = mapping.toSeq
     compile(expression, toPairs.map(_._1)).map(e => e(toPairs.map(_._2))).getOrElse(EvaluationResults.EvaluatorError("Couldn't compile expression."))
   }

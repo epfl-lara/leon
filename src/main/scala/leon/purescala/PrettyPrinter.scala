@@ -8,11 +8,13 @@ import Trees._
 import TypeTrees._
 import Definitions._
 
+import utils._
+
 import java.lang.StringBuffer
 
 /** This pretty-printer uses Unicode for some operators, to make sure we
  * distinguish PureScala from "real" Scala (and also because it's cute). */
-class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
+class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
   override def toString = sb.toString
 
   def append(str: String) {
@@ -55,14 +57,19 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
     sb.append(post)
   }
 
-  def idToString(id: Identifier): String = id.toString
+  def idToString(id: Identifier): String = {
+    if (opts.printUniqueIds) {
+      id.uniqueName
+    } else {
+      id.toString
+    }
+  }
 
   def pp(tree: Tree, parent: Option[Tree])(implicit lvl: Int): Unit = {
     implicit val p = Some(tree)
 
     tree match {
       case Variable(id) => sb.append(idToString(id))
-      case DeBruijnIndex(idx) => sb.append("_" + idx)
       case LetTuple(bs,d,e) =>
         sb.append("(let (" + bs.map(idToString _).mkString(",") + " := ");
         pp(d, p)
@@ -438,6 +445,17 @@ class PrettyPrinter(sb: StringBuffer = new StringBuffer) {
 
       case _ => sb.append("Tree? (" + tree.getClass + ")")
     }
+    if (opts.printPositions) {
+      ppos(tree.getPos)
+    }
+  }
+
+  def ppos(p: Position) = p match {
+    case op: OffsetPosition =>
+      sb.append("@"+op.toString)
+    case rp: RangePosition =>
+      sb.append("@"+rp.focusBegin.toString+"--"+rp.focusEnd.toString)
+    case _ =>
   }
 }
 
@@ -447,24 +465,24 @@ trait PrettyPrintable {
   def printWith(printer: PrettyPrinter)(implicit lvl: Int): Unit
 }
 
-class EquivalencePrettyPrinter() extends PrettyPrinter() {
+class EquivalencePrettyPrinter(opts: PrinterOptions) extends PrettyPrinter(opts) {
   override def idToString(id: Identifier) = id.name
 }
 
 abstract class PrettyPrinterFactory {
-  def create: PrettyPrinter
+  def create(opts: PrinterOptions): PrettyPrinter
 
-  def apply(tree: Tree, ind: Int = 0): String = {
-    val printer = create
-    printer.pp(tree, None)(ind)
+  def apply(tree: Tree, opts: PrinterOptions = PrinterOptions()): String = {
+    val printer = create(opts)
+    printer.pp(tree, None)(opts.baseIndent)
     printer.toString
   }
 }
 
 object PrettyPrinter extends PrettyPrinterFactory {
-  def create = new PrettyPrinter()
+  def create(opts: PrinterOptions) = new PrettyPrinter(opts)
 }
 
 object EquivalencePrettyPrinter extends PrettyPrinterFactory {
-  def create = new EquivalencePrettyPrinter()
+  def create(opts: PrinterOptions) = new EquivalencePrettyPrinter(opts)
 }
