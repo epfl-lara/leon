@@ -9,7 +9,7 @@ object QuickSort {
   def size(l:List): Int = {l match {
     case Nil() => 0
     case Cons(x,xs) => 1 + size(xs)
-  }} ensuring(_ >= 0)
+  }} //ensuring(_ >= 0)
   
   /*def contents(l: List): Set[Int] = l match {
     case Nil() => Set.empty
@@ -36,7 +36,7 @@ object QuickSort {
     case Nil() => bList
     case Cons(x,xs) => rev_append(xs,Cons(x,bList))
     
-  }} ensuring(res => size(res) == size(aList) + size(bList))
+  }} //ensuring(res => size(res) == size(aList) + size(bList))
   //ensuring(res => size(res) == size(aList) + size(bList) && time <= 10*size(aList) +4) 
   //ensuring(res => size(res) == size(aList) + size(bList) template((a,b) => time <= a*size(aList) +b))
 
@@ -79,7 +79,7 @@ object QuickSort {
       else if(n == x) Triple(t.fst, Cons(x,t.snd), t.trd)
       else Triple(Cons(x,t.fst), t.snd, t.trd)
     }    
- }) ensuring(res => size(l) == size(res.fst) + size(res.snd) + size(res.trd))     
+ }) //ensuring(res => size(l) == size(res.fst) + size(res.snd) + size(res.trd))     
 
   def quickSort(l:List): List = (l match {
     case Nil() => Nil()

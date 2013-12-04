@@ -63,70 +63,22 @@ class CegisSolver(context : LeonContext,
       case _ => //timed out
         throw IllegalStateException("Timeout!!")
     }
-  }
-    
-  /**
-   * Finds a model for the template variables in the 'formula' so that 'formula' is falsified
-   * subject to the constraints on the template variables given by the 'envCtrs'
-   */
-  
+  }  
  }
 
 class CegisCore(context : LeonContext, 
     program : Program,
-    timeout: Int,
-    incrStep : Int = 5) {
+    timeout: Int) {
   
   val fls = BooleanLiteral(false)
   val tru = BooleanLiteral(true)
   val zero = IntLiteral(0)
   val timeoutMillis = timeout.toLong * 1000
-
-  /*def solveInSteps(tempIds: Set[Identifier], formula: Expr, initCtr: Expr): (Option[Boolean], Expr, Map[Identifier, Expr]) = {
-    //start with a bound of |1| and increase in steps given by incrStep
-    var bound = 1
-    var timeout = false
-    var solved = false
-    var currCtr : Expr = tru
-    var currModel = Map[Identifier, Expr]()    
-    
-    while(!solved && !timeout) {
-      
-      val boundctr = And(tempIds.map((id) => {
-        val idvar = id.toVariable
-        And(Implies(LessThan(idvar, zero), GreaterEquals(idvar, IntLiteral(-bound))),
-          Implies(GreaterEquals(idvar, zero), LessEquals(idvar, IntLiteral(bound))))
-      }).toSeq)
-      
-      val (res, ctr, model) = solve(tempIds, formula, And(initCtr, boundctr))
-      res match {
-        case None => {
-          //time out
-          timeout = true
-          currCtr = ctr
-          currModel = model
-        }
-        case Some(true) => {
-          solved = true
-          currCtr = ctr
-          currModel = model
-        }
-        case Some(false) => {
-          //increase the bound here
-          bound += incrStep
-        }
-      }
-    }
-    
-    //this can never return Some(false) as this will never know
-    if(solved) {
-      (Some(true), currCtr, currModel)
-    } else {
-      (None, currCtr, currModel)
-    }    
-  }
-  */
+  
   /**
+   * Finds a model for the template variables in the 'formula' so that 'formula' is falsified
+   * subject to the constraints on the template variables given by the 'envCtrs'
+   *
    * The parameter solveAsInt when set to true will convert the template constraints 
    * to integer constraints and solve. This should be enabled when bounds are used to constrain the variables   
    */
@@ -198,29 +150,25 @@ class CegisCore(context : LeonContext,
 
             //simplify the tempctrs, evaluate every atom that does not involve a template variable
             //this should get rid of all functions
-            val tempctrs = ExpressionTransformer.convertIntLiteralToReal(
-                simplePreTransform((e) => e match {
-              //is 'e' free of template variables ? 
-              case _ if (variablesOf(e).filter(TemplateIdFactory.IsTemplateIdentifier _).isEmpty) => {
-                //evaluate the term
-                val value = solver1.evalExpr(e)
-                if (value.isDefined) value.get
-                else throw IllegalStateException("Cannot evaluate expression: " + e)
-              }
-              case _ => e
-            })(Not(formula)))
-
-            //free the solver
+            val satctrs =
+              simplePreTransform((e) => e match {
+                //is 'e' free of template variables ? 
+                case _ if (variablesOf(e).filter(TemplateIdFactory.IsTemplateIdentifier _).isEmpty) => {
+                  //evaluate the term
+                  val value = solver1.evalExpr(e)
+                  if (value.isDefined) value.get
+                  else throw IllegalStateException("Cannot evaluate expression: " + e)
+                }
+                case _ => e
+              })(Not(formula))
             solver1.free()
-
-            //sanity checks
-            val spuriousProgIds = variablesOf(tempctrs).filterNot(TemplateIdFactory.IsTemplateIdentifier _)
-            if (!spuriousProgIds.isEmpty)
-              throw IllegalStateException("Found a progam variable in tempctrs: " + spuriousProgIds)
-            if(InvariantUtil.hasInts(tempctrs)) 
-            	throw IllegalStateException("Template constraints have integer terms: " + tempctrs)
             
-
+            //sanity checks
+            val spuriousProgIds = variablesOf(satctrs).filterNot(TemplateIdFactory.IsTemplateIdentifier _)
+            if (!spuriousProgIds.isEmpty)
+              throw IllegalStateException("Found a progam variable in tempctrs: " + spuriousProgIds)            
+            
+            val tempctrs = if(!solveAsInt) ExpressionTransformer.convertIntLiteralToReal(satctrs) else satctrs
             val newctr = And(tempctrs, prevctr)
             //println("Newctr: " +newctr)
 
@@ -239,14 +187,17 @@ class CegisCore(context : LeonContext,
             val (res1, newModel) = if (solveAsInt) {
               //convert templates to integers and solve. Finally, re-convert integer models for templates to real models
               val rti = new RealToInt()
-              val (res1, intModel) = solver2.solveSAT(rti.mapRealToInt(newctr))
+              val (res1, intModel) = solver2.solveSAT(rti.mapRealToInt(And(newctr, initRealCtr)))
               (res1, rti.unmapModel(intModel))
             } else {
-              solver2.solveSAT(newctr)
+              
+              /*if(InvariantUtil.hasInts(tempctrs)) 
+            	throw IllegalStateException("Template constraints have integer terms: " + tempctrs)*/
+              solver2.solveSAT(And(newctr, initRealCtr))
             } 
             
             val t4 = System.currentTimeMillis()
-            println("2: " + (if (res.isDefined) "solved" else "timedout") + "... in " + (t4 - t3) / 1000.0 + "s")
+            println("2: " + (if (res1.isDefined) "solved" else "timed out") + "... in " + (t4 - t3) / 1000.0 + "s")
 
             if (res1.isDefined) {
               if (res1.get == false) {
@@ -275,6 +226,79 @@ class CegisCore(context : LeonContext,
         }
       }
     }
-    cegisRec(simplestModel, initRealCtr)
+    //note: initRealCtr is used inside 'cegisRec'
+    cegisRec(simplestModel, tru)
+  }
+}
+
+/**
+ * TODO: Can we optimize timeout cases ?
+ * That is, if we know we are going to timeout, we can return None immediately
+ */
+class CegisIncrSolver(context : LeonContext, 
+    program : Program,
+    timeout: Int,
+    incrStep : Int = 5, 
+    initBound : Int = 1) {
+  
+  val fls = BooleanLiteral(false)
+  val tru = BooleanLiteral(true)
+  val zero = IntLiteral(0)
+  val timeoutMillis = timeout.toLong * 1000
+  
+  var currentCtr : Expr = tru
+  var bound = initBound
+  
+  /**
+   * The following procedure can never prove unsat.
+   * It can only be used to prove sat quickly.
+   */
+  def solveInSteps(tempIds: Set[Identifier], formula: Expr)
+    : (Option[Boolean], Expr, Map[Identifier, Expr]) = {    
+    
+    //start with a bound of initial bound  and increase in steps given by incrStep    
+    var timedout = false
+    var solved = false  
+    var currModel = Map[Identifier, Expr]()
+    
+    //start a timer
+    val startTime = System.currentTimeMillis()
+    
+    while(!solved && !timedout) {
+      
+      val boundctr = And(tempIds.map((id) => {
+        val idvar = id.toVariable
+        And(Implies(LessThan(idvar, zero), GreaterEquals(idvar, IntLiteral(-bound))),
+          Implies(GreaterEquals(idvar, zero), LessEquals(idvar, IntLiteral(bound))))
+      }).toSeq)
+      
+      val elapsedTime = System.currentTimeMillis() - startTime
+      val remTime = (timeoutMillis - elapsedTime)/1000
+      val cegisCore = new CegisCore(context, program, remTime.toInt)
+      val (res, ctr, model) = cegisCore.solve(tempIds, formula, And(currentCtr, boundctr), solveAsInt = true)
+      currentCtr = And(ctr, currentCtr)
+      res match {
+        case None => {
+          //time out
+          timedout = true          
+          currModel = model
+        }
+        case Some(true) => {
+          solved = true          
+          currModel = model
+        }
+        case Some(false) => {
+          //increase the bounds here
+          bound += incrStep
+        }
+      }
+    }
+    
+    //this can never return Some(false) as this will never know
+    if(solved) {
+      (Some(true), currentCtr, currModel)
+    } else {
+      (None, currentCtr, currModel)
+    }    
   }
 }

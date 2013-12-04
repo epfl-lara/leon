@@ -94,13 +94,15 @@ class NLTemplateSolver(context : LeonContext,
       }      
       tsolver.free()
     })*/
-    
-    
+        
     val solverWithCtr = new UIFZ3Solver(this.context, program)
     solverWithCtr.assertCnstr(tru)
     
-    val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap    
-    val sol = recSolve(simplestModel, funcVCs, tru, solverWithCtr)
+    //create a new incremental cegis solver for running cegis 
+    val cegisIncrSolver = new CegisIncrSolver(context, program, timeout)    
+    
+    val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap       
+    val sol = recSolve(simplestModel, funcVCs, tru, Seq(), cegisIncrSolver, solverWithCtr)
     
     solverWithCtr.free()
     sol
@@ -109,6 +111,8 @@ class NLTemplateSolver(context : LeonContext,
   def recSolve(model: Map[Identifier, Expr],
     funcVCs: Map[FunDef, Expr],
     inputCtr: Expr,
+    solvedDisjs: Seq[Expr],
+    cegisIncrSolver : CegisIncrSolver,
     solverWithCtr: UIFZ3Solver): Option[Map[FunDef, Expr]] = {
 
     //Information: printing the candidate invariants found at this step
@@ -121,6 +125,7 @@ class NLTemplateSolver(context : LeonContext,
     val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap
     val inputSize = InvariantUtil.atomNum(inputCtr)
 
+    var disjsSolvedInIter = Seq[Expr]() 
     var conflictingFuns = funcs.toSet
     //mapping from the functions to the counter-example paths that were seen
     var seenPaths = MutableMap[FunDef, Seq[Expr]]()
@@ -210,7 +215,6 @@ class NLTemplateSolver(context : LeonContext,
         val t2 = System.currentTimeMillis()
         println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
         
-
         //for stats
         if (InferInvariantsPhase.dumpStats) {
           val (cum2, max2) = Stats.cumMax(Stats.cumFarkaTime, Stats.maxFarkaTime, (t2 - t1))
@@ -218,33 +222,49 @@ class NLTemplateSolver(context : LeonContext,
         }
         res match {
           case None => {
-            //here we have timed out while solving the non-linear constraints 
+            //here we have timed out while solving the non-linear constraints             
+            reporter.info("NLsolver timed-out on the disjunct... starting cegis phase...")
             
-            //apply cegis to disable these disjuncts until a timeout
-            //cegis returns a new set of constraints (that are satisfiable ) and says if it succeeded on the disjunct.
-            reporter.info("Timed-out on the disjunct... starting cegis...")
-            val cegisSolver = new CegisCore(context, program, timeout)
-            val (cegisRes, cegisCtr, cegisModel) =  cegisSolver.solve(tempIds.toSet, Or(confDisjuncts), inputCtr, solveAsInt = false)
-            cegisRes match {
+            //run cegis on all the disjuncts collected thus far.            
+            //This phase can only look for sat. It cannot prove unsat
+            val (cgRes, _, cgModel) =  cegisIncrSolver.solveInSteps(tempIds.toSet, Or(solvedDisjs ++ confDisjuncts))
+            cgRes match {
               //cegis found a model ??
               case Some(true) => {
-                (Some(true), cegisCtr, cegisModel)
-              }
-              //there exists no model ??
-              case Some(false) => (None, tru, Map())
-              //cegis timedout??
+                //note we have the cegisCtr stored in the 'cegisIncr' solver
+                (Some(true), inputCtr, cgModel)
+              }                            
+              //cegis timed out?? note that 'cgRes' can never be false. 
               case _ => {
-                //disable this disjunct and retry but use the cegisCtrs from the next iteration
-                if (InferInvariantsPhase.dumpStats) {
-                  Stats.retries += 1
-                }
-                disableADisjunct(cegisCtr)    
-              }
+                reporter.info("Plain cegis timed-out on the disjunct... starting combined phase...")
+                
+                //here, both cegis and farkas timed out, hence, construct a new combined cegis and farkas constraints
+                val cegisSolver = new CegisCore(context, program, timeout)
+                val (cegisRes2, cegisCtr2, cegisModel2) = cegisSolver.solve(tempIds.toSet, Or(confDisjuncts), inputCtr, solveAsInt = false)
+                cegisRes2 match {
+                  //found a model ??
+                  case Some(true) => {
+                    (Some(true), And(inputCtr, cegisCtr2), cegisModel2)
+                  }
+                  //there exists no model ??
+                  case Some(false) => (None, fls, Map())
+                  //timed out??
+                  case _ => {
+                    reporter.info("Plain cegis timed-out on the disjunct... starting combined phase...")
+                    //disable this disjunct and retry but, use the inputCtrs + the constraints generated by cegis from the next iteration
+                    if (InferInvariantsPhase.dumpStats) {
+                      Stats.retries += 1
+                    }
+                    disableADisjunct(And(inputCtr, cegisCtr2))
+                  }
+                }                
+              } 
             }
           }
           case Some(false) => {
             //reporter.info("- Number of explored paths (of the DAG) in this unroll step: " + exploredPaths)
-            (None, tru, Map())
+            disjsSolvedInIter ++= confDisjuncts 
+            (None, fls, Map())
           }
           case Some(true) => {
 
@@ -274,6 +294,8 @@ class NLTemplateSolver(context : LeonContext,
 
               solverWithCtr.pop()
             }
+            
+            disjsSolvedInIter ++= confDisjuncts
             //new model may not have mappings for all the template variables, hence, use the mappings from earlier models            
             val compModel = tempIds.map((id) => {
               if (newModel.contains(id))
@@ -301,7 +323,7 @@ class NLTemplateSolver(context : LeonContext,
       }
       case Some(true) => {
         //here, we have found a new candidate invariant. Hence, the above process needs to be repeated
-        recSolve(newModel, funcVCs, newCtr, solverWithCtr)
+        recSolve(newModel, funcVCs, newCtr, solvedDisjs ++ disjsSolvedInIter, cegisIncrSolver, solverWithCtr)
       }
     }
   }   	  
