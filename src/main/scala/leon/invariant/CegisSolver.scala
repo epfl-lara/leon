@@ -235,7 +235,7 @@ class CegisCore(context : LeonContext,
  * TODO: Can we optimize timeout cases ?
  * That is, if we know we are going to timeout, we can return None immediately
  */
-class CegisIncrSolver(context : LeonContext, 
+class CegisCoreIncr(context : LeonContext, 
     program : Program,
     timeout: Int,
     incrStep : Int = 5, 
@@ -302,3 +302,26 @@ class CegisIncrSolver(context : LeonContext,
     }    
   }
 }
+
+class CegisSolverIncr(context : LeonContext, 
+    program : Program,
+    ctrTracker : ConstraintTracker, 
+    tempFactory: TemplateFactory,    
+    timeout: Int,
+    bound: Option[Int] = None) extends TemplateSolver(context, program, ctrTracker, tempFactory, timeout) {
+        
+  override def solve(tempIds: Set[Identifier], funcVCs: Map[FunDef, Expr]): Option[Map[FunDef, Expr]] = {
+    
+    val funcs = funcVCs.keys
+    val formula = Or(funcs.map(funcVCs.apply _).toSeq)
+    
+    //using reals with bounds does not converge and also results in overflow
+    val (res, _, model) = (new CegisCoreIncr(context, program, timeout)).solveInSteps(tempIds, formula)
+    res match {
+      case Some(true) => Some(getAllInvariants(model))
+      case Some(false) => None //no solution exists 
+      case _ => //timed out
+        throw IllegalStateException("Timeout!!")
+    }
+  }  
+ }

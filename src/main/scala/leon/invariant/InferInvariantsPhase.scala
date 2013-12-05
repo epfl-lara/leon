@@ -151,6 +151,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       val templateSolverFactory = (constTracker: ConstraintTracker, tempFactory: TemplateFactory) => {
         new NLTemplateSolver(context, program, constTracker, tempFactory, timeout)
       }
+      /*val templateSolverFactory = (constTracker: ConstraintTracker, tempFactory: TemplateFactory) => {
+        new ParallelTemplateSolver(context, program, constTracker, tempFactory, timeout)
+      }*/
       val succeededFuncs = analyseProgram(functionsToAnalyze, templateSolverFactory)
       
       println("Inferrence did not succeeded for functions: "+functionsToAnalyze.filterNot(succeededFuncs.contains _).map(_.id))      

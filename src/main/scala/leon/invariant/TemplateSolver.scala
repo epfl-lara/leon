@@ -187,3 +187,29 @@ abstract class TemplateSolver (
     And(formula, axiomInst)
   }
 }
+
+import scala.concurrent._
+import scala.concurrent.duration._
+import ExecutionContext.Implicits.global
+
+class ParallelTemplateSolver(
+    context : LeonContext, 
+    program : Program,
+    ctrTracker : ConstraintTracker, 
+    tempFactory: TemplateFactory,    
+    timeout: Int) extends TemplateSolver(context, program, ctrTracker, tempFactory, timeout) {
+  
+  override def solveTemplates() : Option[Map[FunDef, Expr]] = {     
+    val tsol1 = new NLTemplateSolver(context, program, ctrTracker, tempFactory, timeout)
+    //TODO: change this later
+    //fixing a timeout of 100 seconds
+    val tsol2 = new CegisSolverIncr(context, program, ctrTracker, tempFactory, 100)
+    
+    val parFuture = Future.firstCompletedOf(Seq(future {tsol1.solveTemplates()}, future {tsol2.solveTemplates()}))    
+    Await.result(parFuture, Duration.Inf)
+  }
+  
+  override def solve(tempIds : Set[Identifier], funcVCs : Map[FunDef,Expr]) : Option[Map[FunDef,Expr]] = {
+    throw IllegalStateException("This is not supposed to be called")
+  }
+}

@@ -93,16 +93,16 @@ class NLTemplateSolver(context : LeonContext,
         System.console.readLine()
       }      
       tsolver.free()
-    })*/
-        
+    })*/               
     val solverWithCtr = new UIFZ3Solver(this.context, program)
     solverWithCtr.assertCnstr(tru)
     
     //create a new incremental cegis solver for running cegis 
-    val cegisIncrSolver = new CegisIncrSolver(context, program, timeout)    
+    //val cegisIncrSolver = new CegisIncrSolver(context, program, timeout)
+    //cegisIncrSolver,
     
     val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap       
-    val sol = recSolve(simplestModel, funcVCs, tru, Seq(), cegisIncrSolver, solverWithCtr)
+    val sol = recSolve(simplestModel, funcVCs, tru, Seq(), solverWithCtr)
     
     solverWithCtr.free()
     sol
@@ -112,7 +112,7 @@ class NLTemplateSolver(context : LeonContext,
     funcVCs: Map[FunDef, Expr],
     inputCtr: Expr,
     solvedDisjs: Seq[Expr],
-    cegisIncrSolver : CegisIncrSolver,
+    //cegisIncrSolver : CegisIncrSolver,
     solverWithCtr: UIFZ3Solver): Option[Map[FunDef, Expr]] = {
 
     //Information: printing the candidate invariants found at this step
@@ -227,7 +227,7 @@ class NLTemplateSolver(context : LeonContext,
             
             //run cegis on all the disjuncts collected thus far.            
             //This phase can only look for sat. It cannot prove unsat
-            val (cgRes, _, cgModel) =  cegisIncrSolver.solveInSteps(tempIds.toSet, Or(solvedDisjs ++ confDisjuncts))
+            /*val (cgRes, _, cgModel) =  cegisIncrSolver.solveInSteps(tempIds.toSet, Or(solvedDisjs ++ confDisjuncts))
             cgRes match {
               //cegis found a model ??
               case Some(true) => {
@@ -236,7 +236,7 @@ class NLTemplateSolver(context : LeonContext,
               }                            
               //cegis timed out?? note that 'cgRes' can never be false. 
               case _ => {
-                reporter.info("Plain cegis timed-out on the disjunct... starting combined phase...")
+                reporter.info("Plain cegis timed-out on the disjunct... starting combined phase...")*/
                 
                 //here, both cegis and farkas timed out, hence, construct a new combined cegis and farkas constraints
                 val cegisSolver = new CegisCore(context, program, timeout)
@@ -244,10 +244,14 @@ class NLTemplateSolver(context : LeonContext,
                 cegisRes2 match {
                   //found a model ??
                   case Some(true) => {
+                    disjsSolvedInIter ++= confDisjuncts 
                     (Some(true), And(inputCtr, cegisCtr2), cegisModel2)
                   }
                   //there exists no model ??
-                  case Some(false) => (None, fls, Map())
+                  case Some(false) =>{                    
+                    disjsSolvedInIter ++= confDisjuncts
+                    (None, fls, Map())
+                  } 
                   //timed out??
                   case _ => {
                     reporter.info("Plain cegis timed-out on the disjunct... starting combined phase...")
@@ -258,8 +262,8 @@ class NLTemplateSolver(context : LeonContext,
                     disableADisjunct(And(inputCtr, cegisCtr2))
                   }
                 }                
-              } 
-            }
+              //} 
+            //}
           }
           case Some(false) => {
             //reporter.info("- Number of explored paths (of the DAG) in this unroll step: " + exploredPaths)
@@ -323,7 +327,7 @@ class NLTemplateSolver(context : LeonContext,
       }
       case Some(true) => {
         //here, we have found a new candidate invariant. Hence, the above process needs to be repeated
-        recSolve(newModel, funcVCs, newCtr, solvedDisjs ++ disjsSolvedInIter, cegisIncrSolver, solverWithCtr)
+        recSolve(newModel, funcVCs, newCtr, solvedDisjs ++ disjsSolvedInIter, solverWithCtr)
       }
     }
   }   	  
@@ -750,8 +754,6 @@ class NLTemplateSolver(context : LeonContext,
         	println("Path Constraints (before elim): "+(lnctrs ++ temps))
         
         //TODO: try some optimizations here to reduce the number of constraints to be considered
-        //(a) we can eliminate all variables that do not occur in the templates from the lnctrs
-        // which are in the theory of presburger arithmetic (we apply only one point rule which is efficient)        
         // Note: this uses the interpolation property of arithmetics        
         
         //compute variables to be eliminated
@@ -806,9 +808,6 @@ class NLTemplateSolver(context : LeonContext,
         
         //(b) drop all constraints with dummys from 'elimLnctrs' they aren't useful (this is because of the reason we introduce the identifiers)
         val newLnctrs = elimLnctrs.filterNot((ln) => variablesOf(ln.expr).exists(TVarFactory.isDummy _))
-        
-        //TODO: investigate why eliminating variables in not good for constraint solvings
-        //val newLnctrs = lnctrs
         
         //TODO: one idea: use the dependence chains in the formulas to identify what to assertionize 
         // and what can never be implied by solving for the templates
