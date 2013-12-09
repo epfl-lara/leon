@@ -144,6 +144,20 @@ trait ASTExtractors {
         case _ => false
       }
     }
+    
+    /**
+     * Extracts nondet constructs
+     */
+    object ExNondetExpression {
+      def unapply(tree: TypeApply) : Option[Type] = tree match {
+        case a @ TypeApply(ExSelected("leon", "Utils", "nondet"), List(tpe)) =>{
+          //println("Found nondet, type: "+tpe.tpe)
+          Some(tpe.tpe)
+        }
+        case _ =>
+          None
+      }
+    }
 
     object ExEnsuredExpression {
       /** Extracts the 'ensuring' contract from an expression. */

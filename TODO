@@ -12,4 +12,5 @@ If its a bounded polygon all that we need to do is check if its diameter is atle
 
 * Perform targeted unrolling. Find which functions to unroll, by using the  counter -example disjunct, any other hueristic ?.
 * Infer templates using quantifier elimination and abduction
+* Extend the approach to graph algorithms
 

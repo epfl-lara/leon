@@ -52,7 +52,7 @@ class InferenceEngineGenerator(program: Program,
     val constTracker = new ConstraintTracker(funDef)
 
     //create a body and post of the function
-    val body = funDef.body.get
+    val body = funDef.nondetBody.get
     val (resid, post) = funDef.postcondition.get
     val resvar = resid.toVariable
 
@@ -193,7 +193,7 @@ class InferenceEngineGenerator(program: Program,
         else None
 
       //add a new body
-      newfd.body = if (fd.body.isDefined)
+      newfd.body = if (fd.hasBody)
         Some(searchAndReplaceDFS(replaceFun)(fd.body.get))
       else None
 

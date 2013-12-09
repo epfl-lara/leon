@@ -185,6 +185,21 @@ object Definitions {
     def implementation : Option[Expr] = body
     var precondition: Option[Expr] = None
     var postcondition: Option[(Identifier, Expr)] = None
+    
+    /**
+     * newly added procedures for handling non-determinism
+     */
+    def nondetBody : Option[Expr] ={
+      body.map(NonDeterminismExtension.makeUniqueNondetIds _)
+    }
+    
+    /*def nondetPost : Option[(Identifier,Expr)] ={
+     postcondition.map((pair) => (pair._1, NonDeterminismExtension.makeUniqueNondetIds(pair._2)))
+    }
+    
+    def nondetPre : Option[Expr] ={
+      precondition.map(NonDeterminismExtension.makeUniqueNondetIds _)
+    }*/
 
     // Metadata kept here after transformations
     var parent: Option[FunDef] = None

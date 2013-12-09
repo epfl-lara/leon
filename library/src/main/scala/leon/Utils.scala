@@ -33,6 +33,8 @@ object Utils {
   def choose[A, B, C, D, E](predicate: (A, B, C, D, E) => Boolean): (A, B, C, D, E) = noChoose
 
   def error[T](reason: String): T = sys.error(reason)
+  
+  def nondet[T]: T =  throw new RuntimeException("Implementation not supported")
       
   //the following class represents a template definition
   class TemplateCons(val postcond : Boolean) {

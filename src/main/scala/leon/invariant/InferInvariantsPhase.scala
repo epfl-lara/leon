@@ -212,8 +212,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     
     functionsToAnalyze.foldLeft(Set[FunDef]())((acc, funDef) => {      
 
-      if (funDef.body.isDefined && funDef.postcondition.isDefined) {
-        val body = funDef.body.get
+      if (funDef.hasBody && funDef.hasPostcondition) {
+        val body = funDef.nondetBody.get
         val (resvar, post) = funDef.postcondition.get
 
         reporter.info("- considering function " + funDef.id + "...")

@@ -355,7 +355,6 @@ object FunctionTemplate {
         val finalPred2 : Expr = rec(activatingBool,  postHolds)
         storeGuarded(activatingBool, finalPred2)
       case None =>
-
     }
 
     new FunctionTemplate(solver, tfd, activatingBool, Set(condVars.toSeq : _*), Set(exprVars.toSeq : _*), Map(guardedExprs.toSeq : _*),

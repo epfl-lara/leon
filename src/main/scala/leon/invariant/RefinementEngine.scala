@@ -163,7 +163,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
           /**
            * create a new verification condition for this recursive function
            */          
-          val freshBody = matchToIfThenElse(freshenLocals(recFun.body.get))
+          val freshBody = matchToIfThenElse(freshenLocals(recFun.nondetBody.get))
           val resvar = if (recFun.hasPostcondition) {
             //create a new result variable here for the same reason as freshening the locals,
             //which is to avoid variable capturing during unrolling            
@@ -217,7 +217,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     val post = callee.postcondition
     
     //Important: make sure we use a fresh body expression here
-    val freshBody = matchToIfThenElse(freshenLocals(callee.body.get))    
+    val freshBody = matchToIfThenElse(freshenLocals(callee.nondetBody.get))    
     val calleeSummary = if (post.isDefined) {
       val (resvar, poste) = post.get
       val freshPost = matchToIfThenElse(freshenLocals(poste))
