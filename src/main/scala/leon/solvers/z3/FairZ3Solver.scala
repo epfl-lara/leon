@@ -444,7 +444,11 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
               foundAnswer(None, model)
             }
           } else {
-            val model = modelToMap(z3model, varsInVC)
+            //here, also consider the non-det variables as inputs. Note that the ones with higher numbers are generated 
+            //after the ones with lower numbers
+            val model = modelToMap(z3model, varsInVC ++ (exprToZ3Id.keys.collect {
+              case Variable(id) if NonDeterminismExtension.isNonDetId(id) => id              
+            }))
 
             //lazy val modelAsString = model.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
             //reporter.debug("- Found a model:")

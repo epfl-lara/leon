@@ -9,12 +9,10 @@ import purescala.Extractors._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
-
 import evaluators._
-
 import z3.scala._
-
 import scala.collection.mutable.{Set=>MutableSet,Map=>MutableMap}
+import leon.purescala.NonDeterminismExtension
 
 case class Z3FunctionInvocation(tfd: TypedFunDef, args: Seq[Z3AST]) {
   override def toString = tfd.signature + args.mkString("(", ",", ")")
@@ -37,9 +35,17 @@ class FunctionTemplate private(
 
   private val z3 = solver.z3
 
-  private val asClauses : Seq[Expr] = {
+  /**
+   * This code is changed to handle non-determinism
+   * @author: ravi 
+   */
+  private def asClauses : Seq[Expr] = {
     (for((b,es) <- guardedExprs; e <- es) yield {
-      Implies(Variable(b), e)
+      
+      //replaces every non-det variable by a unique variable
+      val finale = NonDeterminismExtension.makeUniqueNondetIds(e)           
+      
+      Implies(Variable(b), finale)
     }).toSeq
   }
 

@@ -8,7 +8,11 @@ import TreeOps._
 object NonDeterminismExtension {
   
   val nondetIdName = "nondet"
+  //do not make this def a val as we need avoid certain accidental optimizations from being
+  //applied to the nondetIds
   def nondetId : Identifier = FreshIdentifier(nondetIdName,false)
+  
+  def isNonDetId(id: Identifier) = (id.name == nondetIdName) 
   
   def hasNondet(e: Expr) : Boolean = {
     variablesOf(e).exists((id: Identifier) => id.name == nondetIdName)
