@@ -17,7 +17,7 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
   val description = "Expose runtime steps for each function"  
 
   def run(ctx: LeonContext)(program: Program) : Program = {
-            
+                
     // Map from old fundefs to new fundefs
 	var funMap = Map[FunDef, FunDef]()
   
@@ -63,7 +63,8 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
           if (callees.contains(fd)) {
             TupleSelect(FunctionInvocation(funMap(fd), args), 1)
           } else {
-            FunctionInvocation(funMap(fd), args)
+            val fi = FunctionInvocation(funMap(fd), args)           
+            fi
           }
 
         case _ => e
@@ -101,7 +102,10 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
       //instrument the bodies of all 'callees' only for tracking time
       to.body = if (callees.contains(from)) {
         from.body.map(new ExposeTimes(ctx, getCostModel, funMap).apply _)
-      } else from.body.map(mapCalls _)
+      } else{        
+        val newbody = from.body.map(mapCalls _)        
+        newbody
+      } 
     }
 
     val newDefs = program.mainObject.defs.map {

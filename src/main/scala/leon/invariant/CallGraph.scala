@@ -104,7 +104,7 @@ object CallGraphUtil {
 
   def getCallees(expr: Expr): Set[FunDef] = {
     var callees = Set[FunDef]()
-    simplePreTransform((expr) => expr match {
+    simplePostTransform((expr) => expr match {
       case FunctionInvocation(callee, args) => {
         callees += callee
         expr
