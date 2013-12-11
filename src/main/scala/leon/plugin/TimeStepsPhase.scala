@@ -12,6 +12,9 @@ import leon.LeonContext
 import leon.LeonPhase
 import leon.invariant._
 
+/**
+ * TODO: is it necessary to create new functions even if it does not use time 
+ */
 object TimeStepsPhase extends LeonPhase[Program,Program] {
   val name = "Expose Time Phase"
   val description = "Expose runtime steps for each function"  
