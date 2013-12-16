@@ -16,7 +16,7 @@ import vanuatoo.{Pattern => VPattern, _}
 import evaluators._
 
 class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
-  val unit = CompilationUnit.compileProgram(p).get
+  val unit = new CompilationUnit(ctx, p)
 
   val ints = (for (i <- Set(0, 1, 2, 3)) yield {
     i -> Constructor[Expr, TypeTree](List(), Int32Type, s => IntLiteral(i), ""+i)
@@ -86,7 +86,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     case (cc: codegen.runtime.CaseClass, ct: ClassType) =>
       val r = cc.__getRead()
 
-      unit.jvmClassToDef.get(cc.getClass.getName) match {
+      unit.jvmClassToLeonClass(cc.getClass.getName) match {
         case Some(ccd: CaseClassDef) =>
           val c = ct match {
             case act : AbstractClassType =>

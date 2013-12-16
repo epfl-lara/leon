@@ -32,7 +32,7 @@ object ArrayTransformation extends TransformationPhase {
   }
 
 
-  def transform(expr: Expr): Expr = expr match {
+  def transform(expr: Expr): Expr = (expr match {
     case sel@ArraySelect(a, i) => {
       val ra = transform(a)
       val ri = transform(i)
@@ -129,6 +129,6 @@ object ArrayTransformation extends TransformationPhase {
 
     case (t: Terminal) => t
     case unhandled => scala.sys.error("Non-terminal case should be handled in ArrayTransformation: " + unhandled)
-  }
+  }).setPos(expr)
 
 }

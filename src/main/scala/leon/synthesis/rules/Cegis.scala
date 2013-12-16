@@ -108,7 +108,7 @@ case object CEGIS extends Rule("CEGIS") {
 
           val isNotSynthesizable = fd.body match {
             case Some(b) =>
-              collectChooses(b).isEmpty
+              !containsChoose(b)
 
             case None =>
               false

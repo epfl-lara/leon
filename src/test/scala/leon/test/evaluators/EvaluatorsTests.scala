@@ -420,11 +420,11 @@ class EvaluatorsTests extends LeonTestSuite {
     }
   }
 
-  test("Misc") {
+  test("Executing Chooses") {
     val p = """|object Program {
                |  import leon.Utils._
                |
-               |  def c(i : Int) : Int = choose { (j : Int) => j > i }
+               |  def c(i : Int) : Int = choose { (j : Int) => j > i && j < i + 2 }
                |}
                |""".stripMargin
 
@@ -432,7 +432,7 @@ class EvaluatorsTests extends LeonTestSuite {
     val evaluators = prepareEvaluators
 
     for(e <- evaluators) {
-      checkEvaluatorError(e, mkCall("c", IL(42)))
+      checkComp(e, mkCall("c", IL(42)), IL(43))
     }
   }
 

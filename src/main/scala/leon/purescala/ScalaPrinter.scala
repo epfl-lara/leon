@@ -8,7 +8,7 @@ import TypeTrees._
 import Definitions._
 
 /** This pretty-printer only print valid scala syntax */
-class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb) {
+class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) extends PrettyPrinter(opts, sb) {
   import Common._
   import Trees._
   import TypeTrees._
@@ -50,9 +50,10 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
       }
     }
 
+    var printPos = opts.printPositions
+
     tree match {
       case Variable(id) => sb.append(idToString(id))
-      case DeBruijnIndex(idx) => sys.error("Not Valid Scala")
       case LetTuple(ids,d,e) =>
         optBraces { implicit lvl =>
           sb.append("val (" )
@@ -386,7 +387,14 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
             sb.append(" }")
         }
 
-      case _ => super.pp(tree, parent)(lvl)
+      case _ =>
+        super.pp(tree, parent)(lvl)
+        // Parent will already print
+        printPos = false
+    }
+
+    if (printPos) {
+      ppos(tree.getPos)
     }
   }
 
@@ -420,5 +428,5 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
 }
 
 object ScalaPrinter extends PrettyPrinterFactory {
-  def create = new ScalaPrinter()
+  def create(opts: PrinterOptions) = new ScalaPrinter(opts)
 }

@@ -23,7 +23,6 @@ object FunctionClosure extends TransformationPhase {
   private var parent: FunDef = null //refers to the current toplevel parent
 
   def apply(ctx: LeonContext, program: Program): Program = {
-
     pathConstraints = Nil
     enclosingLets  = Nil
     newFunDefs  = Map()
@@ -46,7 +45,7 @@ object FunctionClosure extends TransformationPhase {
       val capturedVars: Set[Identifier] = bindedVars.diff(enclosingLets.map(_._1).toSet)
       val capturedConstraints: Set[Expr] = pathConstraints.toSet
 
-      val freshIds: Map[Identifier, Identifier] = capturedVars.map(id => (id, FreshIdentifier(id.name).setType(id.getType))).toMap
+      val freshIds: Map[Identifier, Identifier] = capturedVars.map(id => (id, FreshIdentifier(id.name).copiedFrom(id))).toMap
       val freshVars: Map[Expr, Expr] = freshIds.map(p => (p._1.toVariable, p._2.toVariable))
       
       val extraVarDeclOldIds: Seq[Identifier] = capturedVars.toSeq
@@ -56,7 +55,7 @@ object FunctionClosure extends TransformationPhase {
       val newBindedVars: Set[Identifier] = bindedVars ++ fd.args.map(_.id)
       val newFunId = FreshIdentifier(fd.id.uniqueName) //since we hoist this at the top level, we need to make it a unique name
 
-      val newFunDef = new FunDef(newFunId, fd.returnType, newVarDecls).setPos(fd)
+      val newFunDef = new FunDef(newFunId, fd.returnType, newVarDecls).copiedFrom(fd)
       topLevelFuns += newFunDef
       newFunDef.addAnnotation(fd.annotations.toSeq:_*) //TODO: this is still some dangerous side effects
       newFunDef.parent = Some(parent)
@@ -65,7 +64,7 @@ object FunctionClosure extends TransformationPhase {
 
       def introduceLets(expr: Expr, fd2FreshFd: Map[FunDef, (FunDef, Seq[Variable])]): Expr = {
         val (newExpr, _) = enclosingLets.foldLeft((expr, Map[Identifier, Identifier]()))((acc, p) => {
-          val newId = FreshIdentifier(p._1.name).setType(p._1.getType)
+          val newId = FreshIdentifier(p._1.name).copiedFrom(p._1)
           val newMap = acc._2 + (p._1 -> newId)
           val newBody = functionClosure(acc._1, newBindedVars, freshIds ++ newMap, fd2FreshFd)
           (Let(newId, p._2, newBody), newMap)
@@ -89,7 +88,7 @@ object FunctionClosure extends TransformationPhase {
       //val freshRest = functionClosure(rest, bindedVars, id2freshId, fd2FreshFd + (fd -> 
       //                  ((newFunDef, extraVarDeclOldIds.map(id => id2freshId.get(id).getOrElse(id).toVariable)))))
       val freshRest = functionClosure(rest, bindedVars, id2freshId, fd2FreshFd + (fd -> ((newFunDef, extraVarDeclOldIds.map(_.toVariable)))))
-      freshRest.setType(l.getType)
+      freshRest.copiedFrom(l)
     }
     case l @ Let(i,e,b) => {
       val re = functionClosure(e, bindedVars, id2freshId, fd2FreshFd)
@@ -99,7 +98,7 @@ object FunctionClosure extends TransformationPhase {
       val rb = functionClosure(b, bindedVars + i, id2freshId, fd2FreshFd)
       enclosingLets = enclosingLets.tail
       //pathConstraints = pathConstraints.tail
-      Let(i, re, rb).setType(l.getType)
+      Let(i, re, rb).copiedFrom(l)
     }
     case i @ IfExpr(cond,thenn,elze) => {
       /*
@@ -113,26 +112,29 @@ object FunctionClosure extends TransformationPhase {
       pathConstraints ::= Not(cond)//Not(rCond)
       val rElze = functionClosure(elze, bindedVars, id2freshId, fd2FreshFd)
       pathConstraints = pathConstraints.tail
-      IfExpr(rCond, rThen, rElze).setType(i.getType)
+      IfExpr(rCond, rThen, rElze).copiedFrom(i)
     }
     case fi @ FunctionInvocation(fd, args) => fd2FreshFd.get(fd) match {
-      case None => FunctionInvocation(fd, args.map(arg => functionClosure(arg, bindedVars, id2freshId, fd2FreshFd))).setPos(fi)
+      case None =>
+        FunctionInvocation(fd,
+                           args.map(arg => functionClosure(arg, bindedVars, id2freshId, fd2FreshFd))).copiedFrom(fi)
       case Some((nfd, extraArgs)) => 
-        FunctionInvocation(nfd, args.map(arg => functionClosure(arg, bindedVars, id2freshId, fd2FreshFd)) ++ 
-                                extraArgs.map(v => replace(id2freshId.map(p => (p._1.toVariable, p._2.toVariable)), v))).setPos(fi)
+        FunctionInvocation(nfd,
+                           args.map(arg => functionClosure(arg, bindedVars, id2freshId, fd2FreshFd)) ++ 
+                           extraArgs.map(v => replace(id2freshId.map(p => (p._1.toVariable, p._2.toVariable)), v))).copiedFrom(fi)
     }
     case n @ NAryOperator(args, recons) => {
       val rargs = args.map(a => functionClosure(a, bindedVars, id2freshId, fd2FreshFd))
-      recons(rargs).setType(n.getType)
+      recons(rargs).copiedFrom(n)
     }
     case b @ BinaryOperator(t1,t2,recons) => {
       val r1 = functionClosure(t1, bindedVars, id2freshId, fd2FreshFd)
       val r2 = functionClosure(t2, bindedVars, id2freshId, fd2FreshFd)
-      recons(r1,r2).setType(b.getType)
+      recons(r1,r2).copiedFrom(b)
     }
     case u @ UnaryOperator(t,recons) => {
       val r = functionClosure(t, bindedVars, id2freshId, fd2FreshFd)
-      recons(r).setType(u.getType)
+      recons(r).copiedFrom(u)
     }
     case m @ MatchExpr(scrut,cses) => {
       val scrutRec = functionClosure(scrut, bindedVars, id2freshId, fd2FreshFd)
@@ -156,7 +158,7 @@ object FunctionClosure extends TransformationPhase {
         }
       }
       val tpe = csesRec.head.rhs.getType
-      MatchExpr(scrutRec, csesRec).setType(tpe).setPos(m)
+      MatchExpr(scrutRec, csesRec).copiedFrom(m).setType(tpe)
     }
     case v @ Variable(id) => id2freshId.get(id) match {
       case None => v

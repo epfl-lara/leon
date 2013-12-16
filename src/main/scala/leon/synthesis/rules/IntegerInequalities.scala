@@ -19,6 +19,9 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
   def instantiateOn(sctx: SynthesisContext, problem: Problem): Traversable[RuleInstantiation] = {
     val TopLevelAnds(exprs) = problem.phi
 
+
+
+
     //assume that we only have inequalities
     var lhsSides: List[Expr] = Nil
     var exprNotUsed: List[Expr] = Nil

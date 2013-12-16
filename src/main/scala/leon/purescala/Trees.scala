@@ -382,8 +382,6 @@ object Trees {
     override def setType(tt: TypeTree) = { id.setType(tt); this }
   }
 
-  case class DeBruijnIndex(index: Int) extends Expr with Terminal
-
   /* Literals */
   sealed abstract class Literal[T] extends Expr with Terminal {
     val value: T

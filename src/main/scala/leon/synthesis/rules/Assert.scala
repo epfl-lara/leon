@@ -18,7 +18,7 @@ case object Assert extends NormalizingRule("Assert") {
 
         if (!exprsA.isEmpty) {
           if (others.isEmpty) {
-            List(RuleInstantiation.immediateSuccess(p, this, Solution(And(exprsA), Set(), Tuple(p.xs.map(id => simplestValue(Variable(id)))))))
+            List(RuleInstantiation.immediateSuccess(p, this, Solution(And(exprsA), Set(), Tuple(p.xs.map(id => simplestValue(id.getType))))))
           } else {
             val sub = p.copy(pc = And(p.pc +: exprsA), phi = And(others))
 

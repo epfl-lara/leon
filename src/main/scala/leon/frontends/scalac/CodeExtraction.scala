@@ -58,7 +58,7 @@ trait CodeExtraction extends ASTExtractors {
 
   //This is a bit missleading, if an expr is not mapped then it has no owner, if it is mapped to None it means
   //that it can have any owner
-  private var owners: Map[LeonExpr, Option[FunDef]] = Map() 
+  private var owners: Map[Identifier, Option[FunDef]] = Map() 
 
 
   class Extraction(unit: CompilationUnit) {
@@ -170,7 +170,7 @@ trait CodeExtraction extends ASTExtractors {
 
             ccd.fields = scalaClassArgs(sym).map{ case (name, asym) =>
               val tpe = toPureScalaType(asym.tpe)
-              VarDecl(FreshIdentifier(name).setType(tpe), tpe)
+              VarDecl(FreshIdentifier(name).setType(tpe).setPos(asym.pos), tpe).setPos(asym.pos)
             }
           case _ =>
             // no fields to set
@@ -234,10 +234,10 @@ trait CodeExtraction extends ASTExtractors {
     private def extractFunSig(nameStr: String, params: Seq[ValDef], tpt: Tree): FunDef = {
       val newParams = params.map(p => {
         val ptpe = toPureScalaType(p.tpt.tpe)
-        val newID = FreshIdentifier(p.name.toString).setType(ptpe)
-        owners += (Variable(newID) -> None)
+        val newID = FreshIdentifier(p.name.toString).setType(ptpe).setPos(p.pos)
+        owners += (newID -> None)
         varSubsts(p.symbol) = (() => Variable(newID))
-        VarDecl(newID, ptpe)
+        VarDecl(newID, ptpe).setPos(p.pos)
       })
       new FunDef(FreshIdentifier(nameStr), toPureScalaType(tpt.tpe), newParams)
     }
@@ -247,7 +247,7 @@ trait CodeExtraction extends ASTExtractors {
 
       val (body2, ensuring) = body match {
         case ExEnsuredExpression(body2, resSym, contract) =>
-          val resId = FreshIdentifier(resSym.name.toString).setType(funDef.returnType)
+          val resId = FreshIdentifier(resSym.name.toString).setType(funDef.returnType).setPos(resSym.pos)
           varSubsts(resSym) = (() => Variable(resId))
           (body2, toPureScala(contract).map(r => (resId, r)))
 
@@ -326,29 +326,29 @@ trait CodeExtraction extends ASTExtractors {
 
     private def extractPattern(p: Tree, binder: Option[Identifier] = None): Pattern = p match {
       case b @ Bind(name, t @ Typed(pat, tpe)) =>
-        val newID = FreshIdentifier(name.toString).setType(extractType(tpe.tpe))
+        val newID = FreshIdentifier(name.toString).setType(extractType(tpe.tpe)).setPos(b.pos)
         varSubsts(b.symbol) = (() => Variable(newID))
         extractPattern(t, Some(newID))
 
       case b @ Bind(name, pat) =>
-        val newID = FreshIdentifier(name.toString).setType(extractType(b.symbol.tpe))
+        val newID = FreshIdentifier(name.toString).setType(extractType(b.symbol.tpe)).setPos(b.pos)
         varSubsts(b.symbol) = (() => Variable(newID))
         extractPattern(pat, Some(newID))
 
       case t @ Typed(Ident(nme.WILDCARD), tpe) if t.tpe.typeSymbol.isCase &&
                                                   classesToClasses.contains(t.tpe.typeSymbol) =>
         val cd = classesToClasses(t.tpe.typeSymbol).asInstanceOf[CaseClassDef]
-        InstanceOfPattern(binder, cd)
+        InstanceOfPattern(binder, cd).setPos(p.pos)
 
       case Ident(nme.WILDCARD) =>
-        WildcardPattern(binder)
+        WildcardPattern(binder).setPos(p.pos)
 
       case s @ Select(This(_), b) if s.tpe.typeSymbol.isCase &&
                                      classesToClasses.contains(s.tpe.typeSymbol) =>
         // case Obj =>
         val cd = classesToClasses(s.tpe.typeSymbol).asInstanceOf[CaseClassDef]
         assert(cd.fields.size == 0)
-        CaseClassPattern(binder, cd, Seq())
+        CaseClassPattern(binder, cd, Seq()).setPos(p.pos)
 
       case a @ Apply(fn, args) if fn.isType &&
                                   a.tpe.typeSymbol.isCase &&
@@ -356,12 +356,12 @@ trait CodeExtraction extends ASTExtractors {
 
         val cd = classesToClasses(a.tpe.typeSymbol).asInstanceOf[CaseClassDef]
         assert(args.size == cd.fields.size)
-        CaseClassPattern(binder, cd, args.map(extractPattern(_)))
+        CaseClassPattern(binder, cd, args.map(extractPattern(_))).setPos(p.pos)
 
       case a @ Apply(fn, args) =>
         extractType(a.tpe) match {
           case TupleType(argsTpes) =>
-            TuplePattern(binder, args.map(extractPattern(_)))
+            TuplePattern(binder, args.map(extractPattern(_))).setPos(p.pos)
           case _ =>
             unsupported(p, "Unsupported pattern")
         }
@@ -375,7 +375,7 @@ trait CodeExtraction extends ASTExtractors {
       val recBody    = extractTree(cd.body)
 
       if(cd.guard == EmptyTree) {
-        SimpleCase(recPattern, recBody)
+        SimpleCase(recPattern, recBody).setPos(cd.pos)
       } else {
         val recGuard = extractTree(cd.guard)
 
@@ -384,7 +384,7 @@ trait CodeExtraction extends ASTExtractors {
           throw ImpureCodeEncounteredException(cd)
         }
 
-        GuardedCase(recPattern, recGuard, recBody)
+        GuardedCase(recPattern, recGuard, recBody).setPos(cd.pos)
       }
     }
 
@@ -458,7 +458,7 @@ trait CodeExtraction extends ASTExtractors {
           if(valTree.getType.isInstanceOf[ArrayType]) {
             getOwner(valTree) match {
               case None =>
-                owners += (Variable(newID) -> Some(currentFunDef))
+                owners += (newID -> Some(currentFunDef))
               case _ =>
                 unsupported(tr, "Cannot alias array")
             }
@@ -507,7 +507,7 @@ trait CodeExtraction extends ASTExtractors {
           if(valTree.getType.isInstanceOf[ArrayType]) {
             getOwner(valTree) match {
               case None =>
-                owners += (Variable(newID) -> Some(currentFunDef))
+                owners += (newID -> Some(currentFunDef))
               case Some(_) =>
                 unsupported(tr, "Cannot alias array")
             }
@@ -613,10 +613,10 @@ trait CodeExtraction extends ASTExtractors {
           // TODO: refine type here?
           extractTree(e)
 
-        case ExIdentifier(sym,tpt) => varSubsts.get(sym) match {
-          case Some(fun) => fun()
+        case ex @ ExIdentifier(sym,tpt) => varSubsts.get(sym) match {
+          case Some(fun) => fun().setPos(ex.pos)
           case None => mutableVarSubsts.get(sym) match {
-            case Some(fun) => fun()
+            case Some(fun) => fun().setPos(ex.pos)
             case None =>
               unsupported(tr, "Unidentified variable.")
           }
@@ -628,7 +628,7 @@ trait CodeExtraction extends ASTExtractors {
           val vars = args map { case (tpe, sym) =>
             val aTpe  = extractType(tpe)
             val newID = FreshIdentifier(sym.name.toString).setType(aTpe)
-            owners += (Variable(newID) -> None)
+            owners += (newID -> None)
             varSubsts(sym) = (() => Variable(newID))
             newID
           }
@@ -1024,7 +1024,13 @@ trait CodeExtraction extends ASTExtractors {
     }
 
     def getOwner(exprs: Seq[LeonExpr]): Option[Option[FunDef]] = {
-      val exprOwners: Seq[Option[Option[FunDef]]] = exprs.map(owners.get(_))
+      val exprOwners: Seq[Option[Option[FunDef]]] = exprs.map {
+        case Variable(id) =>
+          owners.get(id)
+        case _ =>
+          None
+      }
+
       if(exprOwners.exists(_ == None))
         None
       else if(exprOwners.exists(_ == Some(None)))
@@ -1037,17 +1043,28 @@ trait CodeExtraction extends ASTExtractors {
 
     def getOwner(expr: LeonExpr): Option[Option[FunDef]] = getOwner(getReturnedExpr(expr))
 
-      def extractProgram: Option[Program] = {
-        val topLevelObjDef = extractTopLevelDef
+    def extractProgram: Option[Program] = {
+      val topLevelObjDef = extractTopLevelDef
 
-        val programName: Identifier = unit.body match {
-          case PackageDef(name, _) => FreshIdentifier(name.toString)
-          case _                   => FreshIdentifier("<program>")
-        }
-
-        topLevelObjDef.map(obj => Program(programName, obj))
+      val programName: Identifier = unit.body match {
+        case PackageDef(name, _) => FreshIdentifier(name.toString)
+        case _                   => FreshIdentifier("<program>")
       }
+
+      topLevelObjDef.map(obj => Program(programName, obj))
     }
+  }
 
-
+  def containsLetDef(expr: LeonExpr): Boolean = {
+    def convert(t : LeonExpr) : Boolean = t match {
+      case (l : LetDef) => true
+      case _ => false
+    }
+    def combine(c1 : Boolean, c2 : Boolean) : Boolean = c1 || c2
+    def compute(t : LeonExpr, c : Boolean) = t match {
+      case (l : LetDef) => true
+      case _ => c
+    }
+    treeCatamorphism(convert, combine, compute, expr)
+  }
 }
