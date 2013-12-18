@@ -81,7 +81,7 @@ abstract class AbstractVerifier(solverf: SolverFactory[Solver with IncrementalSo
       case _ => None
     }
     
-    val newBody = searchAndReplace(replaceRecursiveCalls)(body)
+    val newBody = postMap(replaceRecursiveCalls)(body)
        
     // build the verification condition
     val resFresh = FreshIdentifier("result", true).setType(newBody.getType)

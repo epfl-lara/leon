@@ -20,8 +20,8 @@ object EpsilonElimination extends TransformationPhase {
 
     val allFuns = pgm.definedFunctions
     allFuns.foreach(fd => fd.body.map(body => {
-      val newBody = searchAndReplaceDFS{
-        case eps@Epsilon(pred) => {
+      val newBody = postMap{
+        case eps@Epsilon(pred) =>
           val freshName = FreshIdentifier("epsilon")
           val newFunDef = new FunDef(freshName, eps.getType, Seq())
           val epsilonVar = EpsilonVariable(eps.getPos)
@@ -29,8 +29,9 @@ object EpsilonElimination extends TransformationPhase {
           val postcondition = replace(Map(epsilonVar -> Variable(resId)), pred)
           newFunDef.postcondition = Some((resId, postcondition))
           Some(LetDef(newFunDef, FunctionInvocation(newFunDef, Seq())))
-        }
-        case _ => None
+
+        case _ =>
+          None
       }(body)
       fd.body = Some(newBody)
     }))

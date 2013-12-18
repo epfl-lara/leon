@@ -152,11 +152,11 @@ class EvaluationTest extends FunSuite {
       }
 
       val body1 =
-        searchAndReplace(replaceFun)(
+        postMap(replaceFun)(
           program.definedFunctions.find(_.id.name == "testFun1").get.body.get)
 
       val body2 =
-        searchAndReplace(replaceFun)(
+        postMap(replaceFun)(
           program.definedFunctions.find(_.id.name == "testFun2").get.body.get)
 
       val evaluationStrategy = new CodeGenEvaluationStrategy(program, funDef, sctx.context, 500)
@@ -206,10 +206,10 @@ class EvaluationTest extends FunSuite {
       }
 
       val body1 =
-        searchAndReplace(replaceFun)(
+        postMap(replaceFun)(
           program.definedFunctions.find(_.id.name == "testFun1").get.body.get)
       val body2 =
-        searchAndReplace(replaceFun)(
+        postMap(replaceFun)(
           program.definedFunctions.find(_.id.name == "testFun2").get.body.get)
 
       // evaluate expressions with let
@@ -228,7 +228,7 @@ class EvaluationTest extends FunSuite {
               Some(FunctionInvocation(newFun, args))
             case _ => None
           }
-          val newBody = searchAndReplace(replaceFunDef)(expr)
+          val newBody = postMap(replaceFunDef)(expr)
 
           newFun.body = Some(newBody)
 
@@ -287,7 +287,7 @@ class EvaluationTest extends FunSuite {
               Some(FunctionInvocation(newFun, args))
             case _ => None
           }
-          val newBody = searchAndReplace(replaceFunDef)(expr)
+          val newBody = postMap(replaceFunDef)(expr)
 
           newFun.body = Some(newBody)
 

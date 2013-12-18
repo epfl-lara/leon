@@ -91,7 +91,7 @@ case class CodeGenCandidate(expr: Expr, bodyExpr: Expr, weight: Weight, holeFunD
         Some(FunctionInvocation(newFun, args))
       case _ => None
     }
-    val newBody = searchAndReplace(replaceFunDef)(bodyExpr)
+    val newBody = postMap(replaceFunDef)(bodyExpr)
     
     newFun.body = Some(newBody)
     

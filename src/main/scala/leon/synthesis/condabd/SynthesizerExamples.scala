@@ -414,7 +414,7 @@ class SynthesizerForRuleExamples(
 	    
 	    //import TreeOps._
       //matchToIfThenElse(searchAndReplace(replaceChoose)(holeFunDefBody))
-	    TreeOps.searchAndReplace(replaceChoose)(TreeOps.matchToIfThenElse(holeFunDefBody))
+	    TreeOps.postMap(replaceChoose)(TreeOps.matchToIfThenElse(holeFunDefBody))
     }
     //accumulatingExpressionMatch = accumulatingExpression
 
@@ -626,7 +626,7 @@ class SynthesizerForRuleExamples(
 				    import TreeOps._
 //				    println("ifInInnermostElse " + ifInInnermostElse)
 //				    println("acc expr before replace: " + accumulatingExpression(ifInInnermostElse))
-				    val newBody = searchAndReplace(replaceFunDef)(accumulatingExpression(ifInInnermostElse))
+				    val newBody = postMap(replaceFunDef)(accumulatingExpression(ifInInnermostElse))
 				    
 				    newFun.body = Some(newBody)
 				    
@@ -698,7 +698,7 @@ class SynthesizerForRuleExamples(
 				      IfExpr(innerSnippetTree, snippetTree, error)
 				    
 				    import TreeOps._
-				    val newBody = searchAndReplace(replaceFunDef)(accumulatingExpression(ifInInnermostElse))
+				    val newBody = postMap(replaceFunDef)(accumulatingExpression(ifInInnermostElse))
 				    
 				    newFun.body = Some(newBody)
 				    
