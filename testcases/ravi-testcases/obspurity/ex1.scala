@@ -40,7 +40,7 @@ object ObsPure {
 
   def purityChecker(): (Int, Int) = {
     
-    val some_state = havoc(init())
+    val some_state = havoc(init())    
     val (res1, next_state) = g(some_state)
     val later_state = havoc(next_state)
     val (res2, _) = g(later_state)

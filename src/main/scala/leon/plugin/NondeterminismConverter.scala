@@ -66,12 +66,14 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
       simplePostTransform((e: Expr) => e match {
         case fi@FunctionInvocation(fd, args) =>
           if (callers.contains(fd)) {
-            //return the expression { assume(newfd(args, r)); r} which is realized as let _ = assume(newfd(args, r)) in r,
+            //return the expression { val r = *; assume(newfd(args, r)); r} which is realized as
+            //let r = nondet in let _ = assume(newfd(args, r)) in r,
             //where 'r' is a fresh variable
-            val cres = FreshIdentifier("ires",true).setType(fi.getType).toVariable
-            //TODO: need to introduce assumes
-            val newexpr = Let(FreshIdentifier("dum",true).setType(BooleanType), FunctionInvocation(funMap(fd),args :+ cres), cres)            
-            newexpr
+            val cres = FreshIdentifier("ires",true).setType(fi.getType).toVariable           
+            val newexpr = Let(FreshIdentifier("$x",true).setType(BooleanType), 
+                Assume(FunctionInvocation(funMap(fd),args :+ cres)), cres)
+            val finale = Let(cres.id,NonDeterminismExtension.nondetId.setType(cres.getType).toVariable, newexpr)
+            finale
           } else {
             val newfi = FunctionInvocation(funMap(fd), args)           
             newfi

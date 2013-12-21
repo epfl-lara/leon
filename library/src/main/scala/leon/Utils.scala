@@ -35,6 +35,8 @@ object Utils {
   def error[T](reason: String): T = sys.error(reason)
   
   def nondet[T]: T =  throw new RuntimeException("Implementation not supported")
+  
+  //def assume(cond: Boolean) : Unit = throw new RuntimeException("Implementation not supported")
       
   //the following class represents a template definition
   class TemplateCons(val postcond : Boolean) {

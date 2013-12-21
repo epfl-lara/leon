@@ -199,13 +199,21 @@ object FunctionTemplate {
 
     def rec(pathVar : Identifier, expr : Expr) : Expr = {
       expr match {
+        //special case for handling lets with assumes
+        case Let(i, Assume(c), b) => { 
+          val re = rec(pathVar, c)
+          storeGuarded(pathVar, re)
+          val rb = rec(pathVar, b)
+          rb
+        }
+          
         case l @ Let(i, e, b) =>
           val newExpr : Identifier = FreshIdentifier("lt", true).setType(i.getType)
           exprVars += newExpr
           val re = rec(pathVar, e)
           storeGuarded(pathVar, Equals(Variable(newExpr), re))
           val rb = rec(pathVar, replace(Map(Variable(i) -> Variable(newExpr)), b))
-          rb
+          rb                 
 
         case l @ LetTuple(is, e, b) =>
           val tuple : Identifier = FreshIdentifier("t", true).setType(TupleType(is.map(_.getType)))
@@ -225,7 +233,7 @@ object FunctionTemplate {
           rb
 
         case m : MatchExpr => sys.error("MatchExpr's should have been eliminated.")
-
+              
         case i @ Implies(lhs, rhs) =>
           if (splitAndOrImplies) {
             if (containsFunctionCalls(i)) {

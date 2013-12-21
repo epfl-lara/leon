@@ -93,7 +93,11 @@ object Trees {
       Untyped
     }
   }
-
+  /* a construct for assuming a condition at a specific point in the body*/
+  case class Assume(cond: Expr) extends Expr with FixedType {
+    val fixedType = UnitType
+  }
+  
   case class Tuple(exprs: Seq[Expr]) extends Expr with FixedType {
     val fixedType = TupleType(exprs.map(_.getType))
   }
