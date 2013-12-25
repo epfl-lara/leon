@@ -20,7 +20,7 @@ object TypeTrees {
     }
 
     def setType(tt: TypeTree): self.type = _type match {
-      case None => _type = Some(tt); this
+      case None => _type = Some(tt); this      
       case Some(o) if o != tt => scala.sys.error("Resetting type information! Type [" + o + "] is modified to [" + tt)
       case _ => this
     }

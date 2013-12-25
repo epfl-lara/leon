@@ -28,22 +28,24 @@ object ObsPure {
     require(!instate.isDefinedAt(x) || instate(x) == g(x))
     
     if (nondet[Boolean]) {      
-      val (_, next_state) = f(nondet[Int], instate)
-      havoc(x, next_state)
+//      val (_, next_state) = f(nondet[Int], instate)
+//      havoc(x, next_state)
+//      next_state
+      instate
     } else {
       instate
     }
   } ensuring(res => !res.isDefinedAt(x) || res(x) == g(x))
   
   def init() : Map[Int, Int] = {
-    Map.empty
+    scala.Predef.Map[Int,Int](0 -> 1)
   }
-
-  def purityChecker(initst: Map[Int,Int]): (Int, Int) = {
+ 
+  def purityChecker(): (Int, Int) = {
     
     val x = nondet[Int]
     val some_state = havoc(x, init())
-    val (res1, next_state) = f(x, initst)
+    val (res1, next_state) = f(x, some_state)
     val later_state = havoc(x, next_state)
     val (res2, _) = f(x, later_state)
     (res1, res2)

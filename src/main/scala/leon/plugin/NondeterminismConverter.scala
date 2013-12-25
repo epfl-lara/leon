@@ -30,8 +30,8 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
   
 	//find functions that use nondet in the body or are transitively called from such functions
 	var rootFuncs = Set[FunDef]()
-	program.definedFunctions.foreach((fd) => { 
-	  if(fd.hasBody && NonDeterminismExtension.hasNondet(fd.body.get)) {
+	program.definedFunctions.foreach((fd) => { 	  
+	  if(fd.hasBody && NonDeterminismExtension.hasNondet(fd.body.get)) {	    
 	    rootFuncs += fd
 	  } 
 	})
@@ -42,6 +42,7 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
 	      acc + fd
 	      else acc
 	})
+	println("Callers: "+callers)
 
     //create new functions.  change a function to a predicate iff it uses nondet or if it transitively calls
 	//something that uses nondet    

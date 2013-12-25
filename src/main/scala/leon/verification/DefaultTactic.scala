@@ -8,8 +8,8 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.Definitions._
-
 import scala.collection.mutable.{Map => MutableMap}
+import leon.purescala.NonDeterminismExtension
 
 class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
     val description = "Default verification condition generation approach"

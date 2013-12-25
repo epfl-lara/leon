@@ -42,7 +42,8 @@ class DirectedGraph[T] {
       }
     }
 
-    BFSReachRecur(src)
+    if(src == dest) true
+    else BFSReachRecur(src)
   }
   
   def BFSReachables(src: T): Set[T] = {
