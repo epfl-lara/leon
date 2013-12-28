@@ -29,8 +29,7 @@ object ObsPure {
     
     if (nondet[Boolean]) {      
       val (_, next_state) = f(nondet[Int], instate)
-      havoc(x, next_state)
-      next_state
+      havoc(x, next_state)      
     } else {
       instate
     }
