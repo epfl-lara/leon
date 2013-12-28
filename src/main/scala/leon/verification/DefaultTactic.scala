@@ -68,8 +68,8 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
           Not(And(And(path), Not(shouldHold)))
         }
 
-        allPathConds.map(pc => {
-          val path : Seq[Expr] = pc._1
+        allPathConds.map(pc => {         
+          val path : Seq[Expr] = pc._1          
           val fi = pc._2.asInstanceOf[FunctionInvocation]
           val FunctionInvocation(tfd, args) = fi
           val prec : Expr = freshenLocals(matchToIfThenElse(tfd.precondition.get))
@@ -79,7 +79,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
           val newCall : Expr = (newLetIDs zip args).foldRight(newBody)((iap, e) => Let(iap._1, iap._2, e))
 
             new VerificationCondition(
-              withPrecIfDefined(path, newCall),
+              withpre,
               function,
               VCKind.Precondition,
               this.asInstanceOf[DefaultTactic]).setPos(fi)

@@ -64,7 +64,8 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
 	//println("FunMap: "+funMap.map((elem) => (elem._1.id, elem._2.id)))
 
     def mapCalls(ine: Expr): Expr = {
-      simplePostTransform((e: Expr) => e match {
+      
+      val callToAssume = (e: Expr) => e match {
         case fi@FunctionInvocation(fd, args) =>
           if (callers.contains(fd)) {
             //return the expression { val r = *; assume(newfd(args, r)); r} which is realized as
@@ -79,8 +80,39 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
             val newfi = FunctionInvocation(funMap(fd), args)           
             newfi
           }
-
         case _ => e
+      }
+      
+      //replaces all nondet expressions in the arguments by let statements
+      val liftNondetsInArgs = (e: Expr) => e match {
+        case fi@FunctionInvocation(fd, args) =>
+          var foundNondet = false          
+          var argmap = Map[Expr,Expr]()
+          args.foreach((arg) => {
+            if(NonDeterminismExtension.hasNondet(arg)) {                          
+              foundNondet = true
+              val newarg = FreshIdentifier("arg",true).setType(arg.getType).toVariable
+              argmap += (arg -> newarg)              
+            } else {
+              argmap += (arg -> arg)
+            }                         
+          })
+          if(!foundNondet) fi
+          else {
+            val newfi = FunctionInvocation(fd, args.map(argmap.apply _))
+            argmap.foldLeft(newfi.asInstanceOf[Expr])((acc, curre) => {
+              val (arg,newarg) = curre
+              if(arg == newarg) acc
+              else {
+               Let(newarg.asInstanceOf[Variable].id, arg, acc) 
+              }                
+            })
+          }          
+        case _ => e
+      } 
+      simplePostTransform((e: Expr) => {
+        //first convert calls to assumes and then lift nondets
+        liftNondetsInArgs(callToAssume(e))
       })(ine)
     } 
     

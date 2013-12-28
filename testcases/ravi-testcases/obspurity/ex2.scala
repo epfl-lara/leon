@@ -28,10 +28,9 @@ object ObsPure {
     require(!instate.isDefinedAt(x) || instate(x) == g(x))
     
     if (nondet[Boolean]) {      
-//      val (_, next_state) = f(nondet[Int], instate)
-//      havoc(x, next_state)
-//      next_state
-      instate
+      val (_, next_state) = f(nondet[Int], instate)
+      havoc(x, next_state)
+      next_state
     } else {
       instate
     }
