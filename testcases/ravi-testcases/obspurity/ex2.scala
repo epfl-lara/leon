@@ -13,19 +13,19 @@ object ObsPure {
       (y, instate)
     }
     else {
-      val res = g(x)
+      val res = fact(x)
       (res, instate.updated(x, res))
     }
   }
   
-  def g(x: Int): Int = {    
+  def fact(x: Int): Int = {    
     if(x <= 0) 1
-    else x * g(x-1)
+    else x * fact(x-1)
   }
   
   //havocs the state. Asserts that the cache consistency is preserved
   def havoc(x : Int, instate: Map[Int,Int]): Map[Int,Int] = {    
-    require(!instate.isDefinedAt(x) || instate(x) == g(x))
+    require(!instate.isDefinedAt(x) || instate(x) == fact(x))
     
     if (nondet[Boolean]) {      
       val (_, next_state) = f(nondet[Int], instate)
@@ -33,7 +33,7 @@ object ObsPure {
     } else {
       instate
     }
-  } ensuring(res => !res.isDefinedAt(x) || res(x) == g(x))
+  } ensuring(res => !res.isDefinedAt(x) || res(x) == fact(x))
   
   def init() : Map[Int, Int] = {
     scala.Predef.Map[Int,Int](0 -> 1)
