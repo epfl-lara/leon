@@ -20,7 +20,7 @@ object ListWithSize {
       case Nil() => l2
       case Cons(x, xs) => reverse0(xs, Cons(x, l2))
       
-    })  ensuring(res => size(l1) + size(l2) == size(res))
+    })ensuring(res => size(l1) + size(l2) == size(res))
     //ensuring(res => true template((p,q,r) => time <= p*size(l1) + q))     
     //ensuring(res => true template((p,q,r) => p*size(l1) + q*size(l2) + r*size(res) == 0))
 }
