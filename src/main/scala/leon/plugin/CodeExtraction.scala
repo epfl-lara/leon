@@ -12,7 +12,7 @@ import purescala.TypeTrees._
 import purescala.Common._
 import purescala.TreeOps._
 import invariant._
-import leon.purescala.NonDeterminismExtension
+import leon.purescala.NondeterminismExtension
 
 trait CodeExtraction extends Extractors {
   self: AnalysisComponent =>

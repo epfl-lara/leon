@@ -11,7 +11,7 @@ import purescala.TypeTrees._
 import leon.LeonContext
 import leon.LeonPhase
 import leon.invariant._
-import leon.purescala.NonDeterminismExtension
+import leon.purescala.NondeterminismExtension
 
 /**
  * TODO: statically enforce that the pre/post conditions do not involve functions 
@@ -22,6 +22,29 @@ import leon.purescala.NonDeterminismExtension
 object NondeterminismConverter extends LeonPhase[Program,Program] {
   val name = "Nondeterminism Converter Phase"
   val description = "Handles non-determinism in programs"  
+    
+  //a mapping from programs to nondeterministic procedures (this comprises all callers of nondet[T])
+  var nondetProcs : Set[FunDef] = null  
+  /**  
+   * Returns true if the experssion uses nondet or if it calls a procedure that 
+   * uses nondet
+   */
+  def nondetBehavior(expr: Expr): Boolean = {
+    if (nondetProcs == null) {
+      throw IllegalStateException("nondetProcs not initialized yet!!")
+    }
+    NondeterminismExtension.hasNondet(expr) || {
+      var found = false
+      simplePostTransform((e: Expr) => e match {
+        case FunctionInvocation(fd, _) if nondetProcs.contains(fd) => {
+          found = true
+          e
+        }
+        case _ => e
+      })(expr)
+      found
+    }
+  }
 
   def run(ctx: LeonContext)(program: Program) : Program = {
                 
@@ -31,7 +54,7 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
 	//find functions that use nondet in the body or are transitively called from such functions
 	var rootFuncs = Set[FunDef]()
 	program.definedFunctions.foreach((fd) => { 	  
-	  if(fd.hasBody && NonDeterminismExtension.hasNondet(fd.body.get)) {	    
+	  if(fd.hasBody && NondeterminismExtension.hasNondet(fd.body.get)) {	    
 	    rootFuncs += fd
 	  } 
 	})
@@ -43,6 +66,9 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
 	      else acc
 	})
 	println("Callers: "+callers)
+	if(nondetProcs != null)
+	  throw new IllegalStateException("nondetProcs alreadt initialized!!")
+	nondetProcs = callers    
 
     //create new functions.  change a function to a predicate iff it uses nondet or if it transitively calls
 	//something that uses nondet    
@@ -74,7 +100,7 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
             val cres = FreshIdentifier("ires",true).setType(fi.getType).toVariable           
             val newexpr = Let(FreshIdentifier("$x",true).setType(BooleanType), 
                 Assume(FunctionInvocation(funMap(fd),args :+ cres)), cres)
-            val finale = Let(cres.id,NonDeterminismExtension.nondetId.setType(cres.getType).toVariable, newexpr)
+            val finale = Let(cres.id,NondeterminismExtension.nondetId.setType(cres.getType).toVariable, newexpr)
             finale
           } else {
             val newfi = FunctionInvocation(funMap(fd), args)           
@@ -89,7 +115,7 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
           var foundNondet = false          
           var argmap = Map[Expr,Expr]()
           args.foreach((arg) => {
-            if(NonDeterminismExtension.hasNondet(arg)) {                          
+            if(nondetBehavior(arg)) {                          
               foundNondet = true
               val newarg = FreshIdentifier("arg",true).setType(arg.getType).toVariable
               argmap += (arg -> newarg)              

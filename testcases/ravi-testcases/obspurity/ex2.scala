@@ -3,10 +3,7 @@ import scala.collection.immutable.Map
 
 object ObsPure {
   
-  //An example with caching  
-  /**
-   * This procedure produces no result
-   */
+  //An example with caching    
   def f(x : Int, instate: Map[Int,Int]): (Int, Map[Int,Int]) = {
     if(instate.isDefinedAt(x)) {
       val y = instate(x)

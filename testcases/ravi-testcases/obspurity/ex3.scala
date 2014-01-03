@@ -10,8 +10,7 @@ object ObsPure {
     case Nil() => Set.empty[Int]
     case Cons(x, xs) => Set(x) ++ content(xs)
   }
-    
-  //Move to front
+      
   def findAndRemove(key: Int, l: List) : (Boolean, List) = {l match {
     case Nil() => (false, l)
     case Cons(x, tail) => {

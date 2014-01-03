@@ -4,8 +4,10 @@ package purescala
 import Trees._
 import Common._
 import TreeOps._
+import leon.plugin.NondeterminismConverter
+import Definitions._
 
-object NonDeterminismExtension {
+object NondeterminismExtension {
   
   val nondetIdName = "nondet"
   //do not make this def a val as we need avoid certain accidental optimizations from being
@@ -29,4 +31,4 @@ object NonDeterminismExtension {
       case _ => e
     })(expr)
   }
- }
+}

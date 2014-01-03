@@ -4,8 +4,8 @@ package leon
 package purescala
 
 import leon.solvers._
-
 import scala.collection.concurrent.TrieMap
+import leon.plugin.NondeterminismConverter
 
 object TreeOps {
   import Common._

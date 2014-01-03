@@ -12,7 +12,6 @@ import solvers._
 import solvers.z3._
 import solvers.combinators._
 import scala.collection.mutable.{Set => MutableSet}
-import leon.purescala.NonDeterminismExtension
 
 object AnalysisPhase extends LeonPhase[Program,VerificationReport] {
   val name = "Analysis"
