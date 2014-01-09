@@ -58,20 +58,21 @@ class InferenceEngineGenerator(program: Program,
 
     //val resFresh = Variable(FreshIdentifier("result", true).setType(body.getType))      
     val simpBody = matchToIfThenElse(body)
-    val plainBody = Equals(resvar, simpBody)
+    val plainBody = Equals(resvar, simpBody)    
     val bodyExpr = if (funDef.hasPrecondition) {
       And(matchToIfThenElse(funDef.precondition.get), plainBody)
     } else plainBody
-    val postExpr = matchToIfThenElse(post)
-    val npost = ExpressionTransformer.normalizeExpr(Not(postExpr))
-
+    //println("BOdyExpr: "+bodyExpr)    
     //flatten the functions in the body           
     val flatBody = ExpressionTransformer.normalizeExpr(bodyExpr)
+    //System.exit(0)
     //for debugging
     println("falttened Body: " + flatBody)
     constTracker.addBodyConstraints(funDef, flatBody)
 
-    //create a postcondition template if the function is recursive or if a template is provided for the function      
+    //create a postcondition template if the function is recursive or if a template is provided for the function
+    val postExpr = matchToIfThenElse(post)
+    val npost = ExpressionTransformer.normalizeExpr(Not(postExpr))
     val npostTemp = if (program.isRecursive(funDef) || FunctionInfoFactory.hasTemplate(funDef)) {
 
       //this is a way to create an idenitity map :-))

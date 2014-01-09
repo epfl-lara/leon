@@ -25,6 +25,7 @@ import leon.invariant._
 import scala.collection.mutable.{Set => MutableSet}
 import scala.collection.mutable.{Map => MutableMap}
 import java.io._
+import leon.purescala.ScalaPrinter
 
 /**
  * A collection of transformation on expressions and some utility methods.
@@ -97,22 +98,14 @@ object ExpressionTransformer {
    * converting if-then-else and let into a logical formula
    */
   def reduceLangBlocks(inexpr: Expr) : Expr = {
-        
-    def transform(e: Expr) : (Expr,Set[Expr]) = {      
-      e match {        
-        case Equals(lhs, rhs) => {
-          rhs match {
-            //this is an optimization
-            case IfExpr(cond, thn, elze) => {
-              val newexpr = Or(And(cond, Equals(lhs, thn)), And(Not(cond), Equals(lhs, elze)))
-              transform(newexpr)
-            }
-            case _ => {
-              val (nexp1, ncjs1) = transform(lhs)
-              val (nexp2, ncjs2) = transform(rhs)
-              (Equals(nexp1, nexp2), ncjs1 ++ ncjs2)
-            }
-          }
+    
+    def transform(e: Expr) : (Expr,Set[Expr]) = {     
+      e match {
+        case Equals(_, _) | Iff(_, _) => {
+          val BinaryOperator(lhs, rhs, _) = e
+          val (nexp1, ncjs1) = transform(lhs)
+          val (nexp2, ncjs2) = transform(rhs)
+          (Equals(nexp1, nexp2), ncjs1 ++ ncjs2)
         }
         case IfExpr(cond, thn, elze) => {
           val freshvar = TVarFactory.createTemp("ifres").setType(e.getType).toVariable          
@@ -121,6 +114,14 @@ object ExpressionTransformer {
           val resset = transform(newexpr)
           
           (freshvar, resset._2 + resset._1) 
+        }
+        //handle assumes specifically
+        case Let(_, Assume(cond), body) => {
+               
+          val (resbody, bodycjs) = transform(body)          
+          val (rescond, condcjs) = transform(cond) 
+          
+          (resbody, (condcjs + rescond) ++ bodycjs)          
         }
         case Let(binder,value,body) => {
           //TODO: do we have to consider reuse of let variables ?
@@ -173,7 +174,9 @@ object ExpressionTransformer {
            
           (resbody, (valuecjs ++ newConjuncts) ++ bodycjs)          
         }
-        case _ =>  conjoinWithinClause(e, transform)
+        case _ => {
+          conjoinWithinClause(e, transform)
+        } 
       }
     }
     val (nexp,ncjs) = transform(inexpr)
@@ -182,8 +185,7 @@ object ExpressionTransformer {
     }
     else nexp
   }
-
- 
+  
   /**   
    * Requires: The expression has to be in NNF form and without if-then-else and let constructs
    * Assumed that that given expression has boolean type   
@@ -442,9 +444,12 @@ object ExpressionTransformer {
     //convert to negated normal form         
     //val nnfExpr = TransformNot(expr)    
     //reduce the language before applying flatten function
-    val redExpr = TransformNot(reduceLangBlocks(expr))
+    val redex = reduceLangBlocks(expr)
+    println("Redex: "+ScalaPrinter(redex))
+    val nnfExpr = TransformNot(redex)
+    println("NNFexpr: "+ScalaPrinter(nnfExpr))
     //flatten all function calls
-    val flatExpr = FlattenFunction(redExpr)
+    val flatExpr = FlattenFunction(nnfExpr)
     
     //perform additional simplification
     val simpExpr = pullAndOrs(flatExpr)
@@ -591,4 +596,5 @@ object ExpressionTransformer {
     }    
     printRec(expr,0)
   }
+  
 }
