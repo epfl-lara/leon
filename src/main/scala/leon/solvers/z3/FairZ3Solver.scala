@@ -7,14 +7,16 @@ import leon.utils._
 
 import z3.scala._
 
-import leon.solvers.{Solver, IncrementalSolver}
+import leon.solvers._
 
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
+import purescala.TypeTrees._
 import purescala.Extractors._
 import purescala.TreeOps._
-import purescala.TypeTrees._
+import purescala.HOTreeOps._
+import purescala.TypeTreeOps._
 
 import evaluators._
 
@@ -23,7 +25,17 @@ import termination._
 import scala.collection.mutable.{Map => MutableMap}
 import scala.collection.mutable.{Set => MutableSet}
 
-class FairZ3Solver(val context : LeonContext, val program: Program)
+object FairZ3Solver {
+  def factory(ctx: LeonContext, prog: Program): SolverFactory[FairZ3Solver] = {
+    SolverFactory(cond => new FairZ3Solver(ctx, prog, cond))
+  }
+
+  def factory(ctx: LeonContext, prog: Program, timeout: Long): SolverFactory[FairZ3Solver] = {
+    SolverFactory(cond => new FairZ3Solver(ctx, prog, cond).setTimeout(timeout))
+  }
+}
+
+class FairZ3Solver(val context : LeonContext, val program: Program, val precondition: Expr)
   extends AbstractZ3Solver
      with Z3ModelReconstruction
      with FairZ3Component {
@@ -49,20 +61,6 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
     (lucky, check, codegen, evalground, unrollUnsatCores)
   }
 
-  private val evaluator : Evaluator = if(useCodeGen) {
-      // TODO If somehow we could not recompile each time we create a solver,
-      // that would be good?
-      new CodeGenEvaluator(context, program)
-    } else {
-      new DefaultEvaluator(context, program)
-    }
-
-  protected[z3] def getEvaluator : Evaluator = evaluator
-
-  private val terminator : TerminationChecker = new SimpleTerminationChecker(context, program)
-
-  protected[z3] def getTerminator : TerminationChecker = terminator
-
   // This is fixed.
   protected[leon] val z3cfg = new Z3Config(
     "MODEL" -> true,
@@ -71,57 +69,30 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
   )
   toggleWarningMessages(true)
 
-  def isKnownDef(funDef: FunDef) : Boolean = functionMap.isDefinedAt(funDef)
-  
-  def functionDefToDecl(funDef: FunDef) : Z3FuncDecl = 
-      functionMap.getOrElse(funDef, scala.sys.error("No Z3 definition found for function symbol " + funDef.id.name + "."))
-
-  def isKnownDecl(decl: Z3FuncDecl) : Boolean = reverseFunctionMap.isDefinedAt(decl)
-  
-  def functionDeclToDef(decl: Z3FuncDecl) : FunDef = 
-      reverseFunctionMap.getOrElse(decl, scala.sys.error("No FunDef corresponds to Z3 definition " + decl + "."))
-
-  private var functionMap: Map[FunDef, Z3FuncDecl] = Map.empty
-  private var reverseFunctionMap: Map[Z3FuncDecl, FunDef] = Map.empty
-  private var axiomatizedFunctions : Set[FunDef] = Set.empty
-
-  protected[leon] def prepareFunctions: Unit = {
-    functionMap = Map.empty
-    reverseFunctionMap = Map.empty
-    for (funDef <- program.definedFunctions) {
-      val sortSeq = funDef.args.map(vd => typeToSort(vd.tpe))
-      val returnSort = typeToSort(funDef.returnType)
-
-      val z3Decl = z3.mkFreshFuncDecl(funDef.id.name, sortSeq, returnSort)
-      functionMap = functionMap + (funDef -> z3Decl)
-      reverseFunctionMap = reverseFunctionMap + (z3Decl -> funDef)
-    }
-  }
-
   private def validateModel(model: Z3Model, formula: Expr, variables: Set[Identifier], silenceErrors: Boolean) : (Boolean, Map[Identifier,Expr]) = {
     if(!interrupted) {
 
       val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
       val functionsAsMap: Map[Identifier, Expr] = functionsModel.flatMap(p => {
         if(isKnownDecl(p._1)) {
-          val fd = functionDeclToDef(p._1)
-          if(!fd.hasImplementation) {
+          val tfd = functionDeclToDef(p._1)
+          if(!tfd.hasImplementation) {
             val (cses, default) = p._2 
-            val ite = cses.foldLeft(fromZ3Formula(model, default, Some(fd.returnType)))((expr, q) => IfExpr(
+            val ite = cses.foldLeft(fromZ3Formula(model, default, Some(tfd.returnType)))((expr, q) => IfExpr(
                             And(
-                              q._1.zip(fd.args).map(a12 => Equals(fromZ3Formula(model, a12._1, Some(a12._2.tpe)), Variable(a12._2.id)))
+                              q._1.zip(tfd.args).map(a12 => Equals(fromZ3Formula(model, a12._1, Some(a12._2.tpe)), Variable(a12._2.id)))
                             ),
-                            fromZ3Formula(model, q._2, Some(fd.returnType)),
+                            fromZ3Formula(model, q._2, Some(tfd.returnType)),
                             expr))
-            Seq((fd.id, ite))
+            Seq((tfd.id, ite))
           } else Seq()
         } else Seq()
       }).toMap
       val constantFunctionsAsMap: Map[Identifier, Expr] = model.getModelConstantInterpretations.flatMap(p => {
         if(isKnownDecl(p._1)) {
-          val fd = functionDeclToDef(p._1)
-          if(!fd.hasImplementation) {
-            Seq((fd.id, fromZ3Formula(model, p._2, Some(fd.returnType))))
+          val tfd = functionDeclToDef(p._1)
+          if(!tfd.hasImplementation) {
+            Seq((tfd.id, fromZ3Formula(model, p._2, Some(tfd.returnType))))
           } else Seq()
         } else Seq()
       }).toMap
@@ -157,33 +128,60 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
     }
   }
 
-  private val funDefTemplateCache : MutableMap[FunDef, FunctionTemplate] = MutableMap.empty
-  private val exprTemplateCache   : MutableMap[Expr  , FunctionTemplate] = MutableMap.empty
+  initZ3()
 
-  private def getTemplate(funDef: FunDef): FunctionTemplate = {
-    funDefTemplateCache.getOrElse(funDef, {
-      val res = FunctionTemplate.mkTemplate(this, funDef, true)
-      funDefTemplateCache += funDef -> res
-      res
-    })
+  private val evaluator : Evaluator = if(useCodeGen) {
+      new CodeGenEvaluator(context, program)
+    } else {
+      new DefaultEvaluator(context, program)
+    }
+
+  protected val grounder : Option[GroundEvaluator[Z3AST]] = if (!evalGroundApps) None else Some(new GroundEvaluator[Z3AST] {
+    def eval(funDef : TypedFunDef, args : Seq[Z3AST]) : Option[Z3AST] = {
+      val ga = args.view.map(asGround)
+      if (ga.exists(!_.isDefined)) None else {
+        val leonArgs = ga.map(_.get).force
+        val (fdArgs, appArgs) = leonArgs.splitAt(funDef.args.size)
+        val expr = buildApplication(FunctionInvocation(funDef.fd, fdArgs), appArgs)
+        evaluator.eval(expr) match {
+          case EvaluationResults.Successful(result) =>
+            def application(ast : Z3AST, tpe: TypeTree, args: Seq[Z3AST]): Z3AST = tpe match {
+              case FunctionType(argTypes, retType) =>
+                val tupleType = TupleType(argTypes)
+                typeToSort(tupleType) // make sure tuple type exists
+                val constructor = tupleConstructors(tupleType)
+                val (appArgs, restArgs) = args.splitAt(argTypes.size)
+                application(z3.mkSelect(ast, constructor(appArgs : _*)), retType, restArgs)
+              case _ => ast
+            }
+            val (z3FdArgs, z3AppArgs) = args.splitAt(funDef.args.size)
+            val z3Invocation = application(z3.mkApp(functionDefToDecl(funDef), z3FdArgs : _*), funDef.returnType, z3AppArgs)
+            val z3Value = toZ3Formula(result).get
+            Some(z3.mkEq(z3Invocation, z3Value))
+          case _ => throw new Exception("Ground term evaluation should succeed.")
+        }
+      }
+    }
+  })
+
+  override protected[leon] def restartZ3(asserted: Seq[Expr]) {
+    unrollingBank.reset()
+
+    varsInVC = Set.empty
+    frameExpressions = List(Nil)
+    
+    super.restartZ3(asserted)
   }
 
-  private def getTemplate(body: Expr): FunctionTemplate = {
-    exprTemplateCache.getOrElse(body, {
-      val fakeFunDef = new FunDef(FreshIdentifier("fake", true), body.getType, variablesOf(body).toSeq.map(id => VarDecl(id, id.getType)))
-      fakeFunDef.body = Some(body)
-
-      val res = FunctionTemplate.mkTemplate(this, fakeFunDef, false)
-      exprTemplateCache += body -> res
-      res
-    })
-  }
-
-  class UnrollingBank {
+  class UnrollingBank() {
     // Keep which function invocation is guarded by which guard,
     // also specify the generation of the blocker.
 
-    private var blockersInfoStack : List[MutableMap[Z3AST,(Int,Int,Z3AST,Set[Z3FunctionInvocation])]] = List(MutableMap())
+    private var blockersInfoStack : List[MutableMap[Z3AST,(Int,Int,Z3AST,Set[Invocation[Z3AST]])]] = List(MutableMap())
+
+    def reset() {
+      blockersInfoStack = List(MutableMap())
+    }
 
     def blockersInfo = blockersInfoStack.head
 
@@ -209,7 +207,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
         reporter.debug("--- "+gen)
 
         for (((bast), (gen, origGen, ast, fis)) <- entries) {
-          reporter.debug(".     "+bast +" ~> "+fis.map(_.funDef.id))
+          reporter.debug(".     "+bast +" ~> "+fis.map(_.fd))
         }
       }
     }
@@ -226,7 +224,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
       }
     }
 
-    private def registerBlocker(gen: Int, id: Z3AST, fis: Set[Z3FunctionInvocation]) {
+    private def registerBlocker(gen: Int, id: Z3AST, fis: Set[Invocation[Z3AST]]) {
       if (!wasUnlocked(id)) {
         val z3ast = z3.mkNot(id)
         blockersInfo.get(id) match {
@@ -248,14 +246,14 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
       // OK, now this is subtle. This `getTemplate` will return
       // a template for a "fake" function. Now, this template will
       // define an activating boolean...
-      val template = getTemplate(expr)
+      val template = templates.getTemplate(expr)
 
       val z3args = for (vd <- template.funDef.args) yield {
         exprToZ3Id.get(Variable(vd.id)) match {
           case Some(ast) =>
             ast
           case None =>
-            val ast = idToFreshZ3Id(vd.id)
+            val ast = templates.encode(vd.id)
             exprToZ3Id += Variable(vd.id) -> ast
             z3IdToExpr += ast -> Variable(vd.id)
             ast
@@ -265,15 +263,16 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
       // ...now this template defines clauses that are all guarded
       // by that activating boolean. If that activating boolean is 
       // undefined (or false) these clauses have no effect...
-      val (newClauses, newBlocks) =
-        template.instantiate(template.z3ActivatingBool, z3args)
+      val (newClauses, newBlocks) = template.instantiate(template.fActivatingBool, z3args)
+
+      //println(newClauses.mkString("\n"))
 
       for((i, fis) <- newBlocks) {
         registerBlocker(nextGeneration(0), i, fis)
       }
       
       // ...so we must force it to true!
-      template.z3ActivatingBool +: newClauses
+      template.fActivatingBool +: newClauses
     }
 
     def nextGeneration(gen: Int) = gen + 3
@@ -305,7 +304,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
       var reintroducedSelf : Boolean = false
 
       for(fi <- fis) {
-        val template              = getTemplate(fi.funDef)
+        val template              = templates.getTemplate(fi.fd)
         val (newExprs, newBlocks) = template.instantiate(id, fi.args)
 
         for((i, fis2) <- newBlocks) {
@@ -322,19 +321,18 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
         unlockedSet += id
       }
 
+      //println(newClauses.mkString("\n"))
       newClauses
     }
   }
 
-  initZ3
-
-  val solver = z3.mkSolver
-
-  for(funDef <- program.definedFunctions) {
-    if (funDef.annotations.contains("axiomatize") && !axiomatizedFunctions(funDef)) {
+  /*
+  for(funDef <- program.functions) {
+    if (funDef.fd.annotations.contains("axiomatize") && !axiomatizedFunctions(funDef.fd)) {
       reporter.warning("Function " + funDef.id + " was marked for axiomatization but could not be handled.")
     }
   }
+  */
 
   private var varsInVC = Set[Identifier]()
 
@@ -367,7 +365,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
   var definitiveModel  : Map[Identifier,Expr] = Map.empty
   var definitiveCore   : Set[Expr] = Set.empty
 
-  def assertCnstr(expression: Expr) {
+  protected def assertZ3Cnstr(expression: Expr) {
     varsInVC ++= variablesOf(expression)
 
     frameExpressions = (expression :: frameExpressions.head) :: frameExpressions.tail
@@ -418,9 +416,12 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
       reporter.debug(" - Running Z3 search...")
 
-      // reporter.debug("Searching in:\n"+solver.getAssertions.toSeq.mkString("\nAND\n"))
-      // reporter.debug("Unroll.  Assumptions:\n"+unrollingBank.z3CurrentZ3Blockers.mkString("  &&  "))
-      // reporter.debug("Userland Assumptions:\n"+assumptionsAsZ3.mkString("  &&  "))
+      reporter.debug("Searching in:\n"+solver.getAssertions.toSeq.mkString("\nAND\n"))
+      reporter.debug("Unroll.  Assumptions:\n"+unrollingBank.z3CurrentZ3Blockers.mkString("  &&  "))
+      reporter.debug("Userland Assumptions:\n"+assumptionsAsZ3.mkString("  &&  "))
+
+      // println(solver.getAssertions.mkString("\n"))
+      // println()
 
       solver.push() // FIXME: remove when z3 bug is fixed
       val res = solver.checkAssumptions((assumptionsAsZ3 ++ unrollingBank.z3CurrentZ3Blockers) :_*)
@@ -552,10 +553,11 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
               for(ncl <- newClauses) {
                 solver.assertCnstr(ncl)
               }
+
+              reporter.debug(" - finished unrolling")
             }
 
-            reporter.debug(" - finished unrolling")
-          }
+        }
       }
     }
 

@@ -30,12 +30,12 @@ class VariableRefinerTest extends FunSpec with GivenWhenThen {
       )
       
       Then("it should return appropriate id And class def")
-      expectResult(Some((listVal.id, nilAbstractClassDef))) {
-      	variableRefiner.getIdAndClassDef(CaseClassInstanceOf(nilAbstractClassDef, listVal))
+      expectResult(Some((listVal.id, nilAbstractClass))) {
+      	variableRefiner.getIdAndClassType(CaseClassInstanceOf(nilAbstractClass, listVal))
       }
       And("return None for some unknown expression")
       expectResult(None) {
-      	variableRefiner.getIdAndClassDef(listVal)
+      	variableRefiner.getIdAndClassType(listVal)
       }
       
       Then("declarations should be updated accordingly")
@@ -43,14 +43,14 @@ class VariableRefinerTest extends FunSpec with GivenWhenThen {
 	    expectResult((true,
         LeonDeclaration(
 					ImmediateExpression( listVal + "." + headId,
-            CaseClassSelector(consAbstractClassDef, listVal, headId) ), 
+            CaseClassSelector(consAbstractClass, listVal, headId) ), 
 					  TypeTransformer(Int32Type), Int32Type
 				) :: 
 				LeonDeclaration(
 					listLeonDeclaration.expression, TypeTransformer(consAbstractClass), consAbstractClass
 				) :: Nil
   		)) {
-        variableRefiner.refine(CaseClassInstanceOf(nilAbstractClassDef, listVal),
+        variableRefiner.refine(CaseClassInstanceOf(nilAbstractClass, listVal),
 	        BooleanLiteral(true),
 	        allDeclarations
         )
@@ -58,7 +58,7 @@ class VariableRefinerTest extends FunSpec with GivenWhenThen {
 	    
       And("after 2nd consequtive call, nothing should happen")   
 	    expectResult((false, allDeclarations)) {
-        variableRefiner.refine(CaseClassInstanceOf(nilAbstractClassDef, listVal),
+        variableRefiner.refine(CaseClassInstanceOf(nilAbstractClass, listVal),
         BooleanLiteral(true),
         allDeclarations)
       } 

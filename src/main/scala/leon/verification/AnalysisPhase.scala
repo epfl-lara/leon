@@ -76,7 +76,7 @@ object AnalysisPhase extends LeonPhase[Program,VerificationReport] {
 
       // try all solvers until one returns a meaningful answer
       solvers.find(sf => {
-        val s = sf.getNewSolver
+        val s = sf.getNewSolver(funDef.precondition)
         try {
           reporter.debug("Trying with solver: " + s.name)
           val t1 = System.nanoTime
@@ -150,9 +150,7 @@ object AnalysisPhase extends LeonPhase[Program,VerificationReport] {
 
     val reporter = ctx.reporter
 
-    val baseFactories = Seq(
-      SolverFactory(() => new FairZ3Solver(ctx, program))
-    )
+    val baseFactories = Seq(SolverFactory(cond => new FairZ3Solver(ctx, program, cond)))
 
     val solverFactories = timeout match {
       case Some(sec) =>

@@ -6,6 +6,7 @@ package verification
 import purescala.Common._
 import purescala.Trees._
 import purescala.TreeOps._
+import purescala.HOTreeOps._
 import purescala.Extractors._
 import purescala.Definitions._
 
@@ -29,6 +30,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
       assert(functionDefinition.body.isDefined)
       val prec = functionDefinition.precondition
       val optPost = functionDefinition.postcondition
+
       val body = matchToIfThenElse(functionDefinition.body.get)
 
       optPost match {
@@ -43,7 +45,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
             val withPrec = if(prec.isEmpty) {
               bodyAndPost
             } else {
-              Implies(matchToIfThenElse(prec.get), bodyAndPost)
+              Implies(killForallExpressions(matchToIfThenElse(prec.get)), bodyAndPost)
             }
 
             withPrec
@@ -62,7 +64,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
         }), cleanBody)
 
         def withPrecIfDefined(path: Seq[Expr], shouldHold: Expr) : Expr = if(function.hasPrecondition) {
-          Not(And(And(matchToIfThenElse(function.precondition.get) +: path), Not(shouldHold)))
+          Not(And(And(killForallExpressions(matchToIfThenElse(function.precondition.get)) +: path), Not(shouldHold)))
         } else {
           Not(And(And(path), Not(shouldHold)))
         }
@@ -110,7 +112,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
         }), cleanBody)
   
         def withPrecIfDefined(conds: Seq[Expr]) : Expr = if(function.hasPrecondition) {
-          Not(And(matchToIfThenElse(function.precondition.get), And(conds)))
+          Not(And(killForallExpressions(matchToIfThenElse(function.precondition.get)), And(conds)))
         } else {
           Not(And(conds))
         }
@@ -142,7 +144,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
         }), cleanBody)
 
         def withPrecIfDefined(conds: Seq[Expr]) : Expr = if (function.hasPrecondition) {
-          Not(And(mapGetWithChecks(matchToIfThenElse(function.precondition.get)), And(conds)))
+          Not(And(mapGetWithChecks(killForallExpressions(matchToIfThenElse(function.precondition.get))), And(conds)))
         } else {
           Not(And(conds))
         }
@@ -171,7 +173,7 @@ class DefaultTactic(reporter: Reporter) extends Tactic(reporter) {
         }), cleanBody)
 
         def withPrecIfDefined(conds: Seq[Expr]) : Expr = if (function.hasPrecondition) {
-          Not(And(mapGetWithChecks(matchToIfThenElse(function.precondition.get)), And(conds)))
+          Not(And(mapGetWithChecks(killForallExpressions(matchToIfThenElse(function.precondition.get))), And(conds)))
         } else {
           Not(And(conds))
         }

@@ -97,7 +97,7 @@ class EnumeratorTest extends JUnitSuite {
     
     val (refined, newDeclarations) = 
       variableRefiner.refine(
-        CaseClassInstanceOf(nilAbstractClassDef, listVal), BooleanLiteral(true), allDeclarations)
+        CaseClassInstanceOf(CaseClassType(nilAbstractClassDef, Seq()), listVal), BooleanLiteral(true), allDeclarations)
     assertTrue(refined)
     assert(allDeclarations.size + 2 == newDeclarations.size)
     

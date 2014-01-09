@@ -16,18 +16,18 @@ import leon.synthesis.condabd.refinement._
 object RefinementExamples {   
   
   val listClassId = FreshIdentifier("List")
-  val listAbstractClassDef = new AbstractClassDef(listClassId)
-  val listAbstractClass = new AbstractClassType(listAbstractClassDef)
+  val listAbstractClassDef = new AbstractClassDef(listClassId, Seq())
+  val listAbstractClass = new AbstractClassType(listAbstractClassDef, Seq())
   
   val nilClassId = FreshIdentifier("Nil")
-  val nilAbstractClassDef = new CaseClassDef(nilClassId).setParent(listAbstractClassDef)
-  val nilAbstractClass = new CaseClassType(nilAbstractClassDef)
+  val nilAbstractClassDef = new CaseClassDef(nilClassId, Seq()).setParent(listAbstractClass)
+  val nilAbstractClass = new CaseClassType(nilAbstractClassDef, Seq())
   
   val consClassId = FreshIdentifier("Cons")
-  val consAbstractClassDef = new CaseClassDef(consClassId).setParent(listAbstractClassDef)
+  val consAbstractClassDef = new CaseClassDef(consClassId, Seq()).setParent(listAbstractClass)
   val headId = FreshIdentifier("head").setType(Int32Type)
   consAbstractClassDef.fields = Seq(VarDecl(headId, Int32Type))
-  val consAbstractClass = new CaseClassType(consAbstractClassDef)
+  val consAbstractClass = new CaseClassType(consAbstractClassDef, Seq())
   
   val directSubclassMap: Map[ClassType, Set[ClassType]] = Map(
     listAbstractClass -> Set(nilAbstractClass, consAbstractClass)
@@ -56,17 +56,17 @@ object RefinementExamples {
       get.asInstanceOf[CaseClassDef]
         
     val directSubclassMap: Map[ClassType, Set[ClassType]] = Map(
-      AbstractClassType(listAbstractClassDef) ->
-        Set(CaseClassType(nilAbstractClassDef), CaseClassType(consAbstractClassDef))
+      AbstractClassType(listAbstractClassDef, Seq()) ->
+        Set(CaseClassType(nilAbstractClassDef, Seq()), CaseClassType(consAbstractClassDef, Seq()))
     )
   
     val classMap: Map[Identifier, ClassType] = Map(
-      listAbstractClassDef.id -> AbstractClassType(listAbstractClassDef),
-      nilAbstractClassDef.id -> CaseClassType(nilAbstractClassDef),
-      consAbstractClassDef.id -> CaseClassType(consAbstractClassDef)
+      listAbstractClassDef.id -> AbstractClassType(listAbstractClassDef, Seq()),
+      nilAbstractClassDef.id -> CaseClassType(nilAbstractClassDef, Seq()),
+      consAbstractClassDef.id -> CaseClassType(consAbstractClassDef, Seq())
     )
     
-    (directSubclassMap, AbstractClassType(listAbstractClassDef), classMap)
+    (directSubclassMap, AbstractClassType(listAbstractClassDef, Seq()), classMap)
   }
 
 }

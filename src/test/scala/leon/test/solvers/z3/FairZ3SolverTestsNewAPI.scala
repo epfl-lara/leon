@@ -18,7 +18,7 @@ class FairZ3SolverTestsNewAPI extends LeonTestSuite {
     testCounter += 1
 
     test("Solver test #" + testCounter) {
-      val sub = solver.getNewSolver
+      val sub = solver.getNewSolver(None)
 
       try {
         sub.assertCnstr(Not(expr))
@@ -61,7 +61,7 @@ class FairZ3SolverTestsNewAPI extends LeonTestSuite {
   private val y : Expr = Variable(FreshIdentifier("y").setType(Int32Type))
   private def f(e : Expr) : Expr = FunctionInvocation(fDef, e :: Nil)
 
-  private val solver = SolverFactory(() => new FairZ3Solver(testContext, minimalProgram))
+  private val solver = FairZ3Solver.factory(testContext, minimalProgram)
 
   private val tautology1 : Expr = BooleanLiteral(true)
   assertValid(solver, tautology1)
@@ -94,7 +94,7 @@ class FairZ3SolverTestsNewAPI extends LeonTestSuite {
     val f = And(b1, Not(b2))
 
     locally {
-      val sub = solver.getNewSolver
+      val sub = solver.getNewSolver(None)
       try {
         sub.assertCnstr(f)
         assert(sub.check === Some(true))
@@ -104,7 +104,7 @@ class FairZ3SolverTestsNewAPI extends LeonTestSuite {
     }
 
     locally {
-      val sub = solver.getNewSolver
+      val sub = solver.getNewSolver(None)
       try {
         sub.assertCnstr(f)
         val result = sub.checkAssumptions(Set(b1))
@@ -117,7 +117,7 @@ class FairZ3SolverTestsNewAPI extends LeonTestSuite {
     }
 
     locally {
-      val sub = solver.getNewSolver
+      val sub = solver.getNewSolver(None)
       try {
         sub.assertCnstr(f)
 

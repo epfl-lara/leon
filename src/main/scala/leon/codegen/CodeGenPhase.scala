@@ -1,5 +1,3 @@
-/* Copyright 2009-2013 EPFL, Lausanne */
-
 package leon
 package codegen
 
@@ -18,12 +16,11 @@ object CodeGenPhase extends LeonPhase[Program,CompilationResult] {
 
   def run(ctx : LeonContext)(p : Program) : CompilationResult = {
     try {
-      val unit = new CompilationUnit(ctx, p);
+      val unit = new CompilationUnit(ctx, p)
       unit.writeClassFiles()
       CompilationResult(successful = true)
     } catch {
       case NonFatal(e) => CompilationResult(successful = false)
     }
-
   } 
 }

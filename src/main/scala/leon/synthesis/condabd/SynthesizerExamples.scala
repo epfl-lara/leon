@@ -607,7 +607,7 @@ class SynthesizerForRuleExamples(
               
              // TODO take care of this mess 
 				    val newFunId = FreshIdentifier("tempIntroducedFunction22")
-				    val newFun = new FunDef(newFunId, holeFunDef.returnType, holeFunDef.args)
+				    val newFun = new FunDef(newFunId, holeFunDef.tparams, holeFunDef.returnType, holeFunDef.args)
 //				    newFun.precondition = Some(newCondition)
 				    newFun.precondition = Some(initialPrecondition)
 				    newFun.postcondition = holeFunDef.postcondition
@@ -650,7 +650,7 @@ class SynthesizerForRuleExamples(
 			          
 		          val _evaluator = new CodeGenEvaluator(synthesisContext.context, newProgram		              
 		              , _root_.leon.codegen.CodeGenParams(maxFunctionInvocations = 500, checkContracts = true))
-	
+
 				    	val res = _evaluator.eval(newCandidate, exMapping)
 //				    	if (newCandidate.toString contains "tree.value < value")
 //				    		interactivePause
@@ -681,7 +681,7 @@ class SynthesizerForRuleExamples(
 //          throw new RuntimeException("should not go here")
              // TODO take care of this mess 
 				    val newFunId = FreshIdentifier("tempIntroducedFunction22")
-				    val newFun = new FunDef(newFunId, holeFunDef.returnType, holeFunDef.args)
+				    val newFun = new FunDef(newFunId, holeFunDef.tparams, holeFunDef.returnType, holeFunDef.args)
 //				    newFun.precondition = Some(newCondition)
 				    newFun.precondition = Some(initialPrecondition)
 				    newFun.postcondition = holeFunDef.postcondition

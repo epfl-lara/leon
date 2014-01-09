@@ -18,6 +18,7 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
 
     settings.classpath.value = ctx.settings.classPath.mkString(":")
     settings.skip.value      = List("patmat")
+//    settings.log.value       = List("all")
 
     val compilerOpts = args.filterNot(_.startsWith("--"))
 

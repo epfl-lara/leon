@@ -15,13 +15,12 @@ import purescala.Definitions._
 case object ADTInduction extends Rule("ADT Induction") with Heuristic {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     val candidates = p.as.collect {
-        case IsTyped(origId, AbstractClassType(cd)) if isInductiveOn(sctx.solverFactory)(p.pc, origId) => (origId, cd)
+      case IsTyped(origId, act @ AbstractClassType(_, _)) if isInductiveOn(sctx.solverFactory)(p.pc, origId) => (origId, act)
     }
 
     val instances = for (candidate <- candidates) yield {
-      val (origId, cd) = candidate
+      val (origId, act) = candidate
       val oas = p.as.filterNot(_ == origId)
-
 
       val resType = TupleType(p.xs.map(_.getType))
 
@@ -30,12 +29,12 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
       val residualMap  = (oas zip residualArgs).map{ case (id, id2) => id -> Variable(id2) }.toMap
       val residualArgDefs = residualArgs.map(a => VarDecl(a, a.getType))
 
-      def isAlternativeRecursive(cd: CaseClassDef): Boolean = {
-        cd.fieldsIds.exists(_.getType == origId.getType)
+      def isAlternativeRecursive(cct: CaseClassType): Boolean = {
+        cct.fieldsIds.exists(id => id.getType == origId.getType)
       }
 
-      val isRecursive = cd.knownDescendents.exists {
-        case ccd: CaseClassDef => isAlternativeRecursive(ccd)
+      val isRecursive = act.knownDescendents.exists {
+        case cct: CaseClassType => isAlternativeRecursive(cct)
         case _ => false
       }
 
@@ -47,12 +46,12 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
         val innerPhi = substAll(substMap, p.phi)
         val innerPC  = substAll(substMap, p.pc)
 
-        val subProblemsInfo = for (dcd <- cd.knownDescendents.sortBy(_.id.name)) yield dcd match {
-          case ccd : CaseClassDef =>
+        val subProblemsInfo = for (dct <- act.knownDescendents.sortBy(_.classDef.id.name)) yield dct match {
+          case cct @ CaseClassType(_, _) =>
             var recCalls = Map[List[Identifier], List[Expr]]()
             var postFs   = List[Expr]()
 
-            val newIds = ccd.fieldsIds.map(id => FreshIdentifier(id.name, true).setType(id.getType)).toList
+            val newIds = cct.fieldsIds.map(id => FreshIdentifier(id.name, true).setType(id.getType)).toList
 
             val inputs = (for (id <- newIds) yield {
               if (id.getType == origId.getType) {
@@ -68,14 +67,14 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
               }
             }).flatten
 
-            val subPhi = substAll(Map(inductOn -> CaseClass(ccd, newIds.map(Variable(_)))), innerPhi)
-            val subPC  = substAll(Map(inductOn -> CaseClass(ccd, newIds.map(Variable(_)))), innerPC)
+            val subPhi = substAll(Map(inductOn -> CaseClass(cct, newIds.map(Variable(_)))), innerPhi)
+            val subPC  = substAll(Map(inductOn -> CaseClass(cct, newIds.map(Variable(_)))), innerPC)
 
-            val subPre = CaseClassInstanceOf(ccd, Variable(origId))
+            val subPre = CaseClassInstanceOf(cct, Variable(origId))
 
             val subProblem = Problem(inputs ::: residualArgs, And(subPC :: postFs), subPhi, p.xs)
 
-            (subProblem, subPre, ccd, newIds, recCalls)
+            (subProblem, subPre, cct, newIds, recCalls)
           case _ =>
             sys.error("Woops, non case-class as descendent")
         }
@@ -86,10 +85,10 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
 
             val newFun = new FunDef(FreshIdentifier("rec", true), resType, VarDecl(inductOn, inductOn.getType) +: residualArgDefs)
 
-            val cases = for ((sol, (problem, pre, ccd, ids, calls)) <- (sols zip subProblemsInfo)) yield {
+            val cases = for ((sol, (problem, pre, cct, ids, calls)) <- (sols zip subProblemsInfo)) yield {
               globalPre ::= And(pre, sol.pre)
 
-              val caze = CaseClassPattern(None, ccd, ids.map(id => WildcardPattern(Some(id))))
+              val caze = CaseClassPattern(None, cct, ids.map(id => WildcardPattern(Some(id))))
               SimpleCase(caze, calls.foldLeft(sol.term){ case (t, (binders, callargs)) => LetTuple(binders, FunctionInvocation(newFun, callargs), t) })
             }
 

@@ -5,7 +5,7 @@ import purescala.TreeOps._
 import purescala.Definitions._
 import scala.collection.mutable.{Map => MutableMap}
 
-class ComponentProcessor(checker: TerminationChecker) extends Processor(checker) {
+class ComponentProcessor(val checker: TerminationChecker with ComponentBuilder) extends Processor {
 
   val name: String = "Component Processor"
 
@@ -14,7 +14,7 @@ class ComponentProcessor(checker: TerminationChecker) extends Processor(checker)
       case (fd1, fd2) => problem.funDefs(fd1) && problem.funDefs(fd2)
     })
     val callGraph  : Map[FunDef,Set[FunDef]]  = pairs.groupBy(_._1).mapValues(_.map(_._2))
-    val components : List[Set[FunDef]]        = ComponentBuilder.run(callGraph)
+    val components : List[Set[FunDef]]        = checker.getComponents(callGraph)
     val fdToSCC    : Map[FunDef, Set[FunDef]] = components.map(set => set.map(fd => fd -> set)).flatten.toMap
 
     val terminationCache : MutableMap[FunDef, Boolean] = MutableMap()

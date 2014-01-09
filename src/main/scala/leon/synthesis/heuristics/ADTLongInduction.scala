@@ -15,11 +15,11 @@ import purescala.Definitions._
 case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     val candidates = p.as.collect {
-        case IsTyped(origId, AbstractClassType(cd)) if isInductiveOn(sctx.solverFactory)(p.pc, origId) => (origId, cd)
+        case IsTyped(origId, act @ AbstractClassType(_, _)) if isInductiveOn(sctx.solverFactory)(p.pc, origId) => (origId, act)
     }
 
     val instances = for (candidate <- candidates) yield {
-      val (origId, cd) = candidate
+      val (origId, act) = candidate
       val oas = p.as.filterNot(_ == origId)
 
 
@@ -30,25 +30,24 @@ case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
       val residualMap  = (oas zip residualArgs).map{ case (id, id2) => id -> Variable(id2) }.toMap
       val residualArgDefs = residualArgs.map(a => VarDecl(a, a.getType))
 
-      def isAlternativeRecursive(cd: CaseClassDef): Boolean = {
-        cd.fieldsIds.exists(_.getType == origId.getType)
+      def isAlternativeRecursive(cct: CaseClassType) : Boolean = {
+        cct.fieldsIds.exists(id => id.getType == origId.getType)
       }
 
-      val isRecursive = cd.knownDescendents.exists {
-        case ccd: CaseClassDef => isAlternativeRecursive(ccd)
+      val isRecursive = act.knownDescendents.exists {
+        case cct: CaseClassType => isAlternativeRecursive(cct)
         case _ => false
       }
 
-      def childsOf(cd: AbstractClassDef): List[CaseClassDef] = {
-        cd.knownDescendents.sortBy(_.id.name).toList.collect {
-          case ccd: CaseClassDef =>
-            ccd
+      def childsOf(act: AbstractClassType): List[CaseClassType] = {
+        act.knownDescendents.sortBy(_.classDef.id.name).toList.collect {
+          case cct: CaseClassType =>
+            cct
         }
       }
 
       // Map for getting a formula in the context of within the recursive function
       val substMap = residualMap + (origId -> Variable(inductOn))
-
 
       if (isRecursive) {
         case class InductCase(ids: List[Identifier],
@@ -61,12 +60,12 @@ case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
 
         def isRec(id: Identifier) = id.getType == origId.getType
 
-        def unrollPattern(id: Identifier, ccd: CaseClassDef, withIds: List[Identifier])(on: Pattern): Pattern = on match {
+        def unrollPattern(id: Identifier, cct: CaseClassType, withIds: List[Identifier])(on: Pattern): Pattern = on match {
           case WildcardPattern(Some(pid)) if pid == id =>
-            CaseClassPattern(None, ccd, withIds.map(id => WildcardPattern(Some(id))))
+            CaseClassPattern(None, cct, withIds.map(id => WildcardPattern(Some(id))))
 
-          case CaseClassPattern(binder, sccd, sub) =>
-            CaseClassPattern(binder, sccd, sub.map(unrollPattern(id, ccd, withIds) _))
+          case CaseClassPattern(binder, scct, sub) =>
+            CaseClassPattern(binder, scct, sub.map(unrollPattern(id, cct, withIds) _))
 
           case _ => on
         }
@@ -76,8 +75,8 @@ case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
             val InductCase(ids, calls, pat, pc, trMap) = ic
 
             (for (id <- ids if isRec(id)) yield {
-              for (ccd <- childsOf(cd)) yield {
-                val subIds = ccd.fieldsIds.map(id => FreshIdentifier(id.name, true).setType(id.getType)).toList
+              for (cct <- childsOf(act)) yield {
+                val subIds = cct.fieldsIds.map(id => FreshIdentifier(id.name, true).setType(id.getType)).toList
 
                 val newIds = ids.filterNot(_ == id) ++ subIds
                 val newCalls = if (!subIds.isEmpty) {
@@ -88,11 +87,11 @@ case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
 
                 //println(ccd)
                 //println(subIds)
-                val newPattern = unrollPattern(id, ccd, subIds)(pat)
+                val newPattern = unrollPattern(id, cct, subIds)(pat)
 
-                val newMap = trMap.mapValues(v => substAll(Map(id -> CaseClass(ccd, subIds.map(Variable(_)))), v))
+                val newMap = trMap.mapValues(v => substAll(Map(id -> CaseClass(cct, subIds.map(Variable(_)))), v))
 
-                InductCase(newIds, newCalls, newPattern, And(pc, CaseClassInstanceOf(ccd, Variable(id))), newMap)
+                InductCase(newIds, newCalls, newPattern, And(pc, CaseClassInstanceOf(cct, Variable(id))), newMap)
               }
             }).flatten
           } else {

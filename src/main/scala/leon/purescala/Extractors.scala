@@ -13,6 +13,16 @@ object Extractors {
   import TreeOps._
 
   object UnaryOperator {
+    def unapply(expr: Expr) : Option[(Expr, Expr => Expr)] = UnaryOperatorUntyped.unapply(expr) match {
+      case Some((arg, recons)) => Some((arg, (e: Expr) => {
+        val ne = recons(e)
+        if (ne.getType == Untyped) ne.setType(expr.getType) else ne
+      }))
+      case _ => None
+    }
+  }
+
+  object UnaryOperatorUntyped {
     def unapply(expr: Expr) : Option[(Expr,(Expr)=>Expr)] = expr match {
       case Not(t) => Some((t,Not(_)))
       case UMinus(t) => Some((t,UMinus))
@@ -29,6 +39,8 @@ object Extractors {
       case ArrayLength(a) => Some((a, ArrayLength))
       case ArrayClone(a) => Some((a, ArrayClone))
       case ArrayMake(t) => Some((t, ArrayMake))
+      case AnonymousFunction(args, e) => Some((e, AnonymousFunction(args, _)))
+      case ForallExpression(args, e) => Some((e, ForallExpression(args, _)))
       case (ue: UnaryExtractable) => ue.extract
       case _ => None
     }
@@ -39,6 +51,16 @@ object Extractors {
   }
 
   object BinaryOperator {
+    def unapply(expr: Expr) : Option[(Expr,Expr,(Expr,Expr)=>Expr)] = BinaryOperatorUntyped.unapply(expr) match {
+      case Some((arg1, arg2, recons)) => Some((arg1, arg2, (e1: Expr, e2: Expr) => {
+        val ne = recons(e1, e2)
+        if (ne.getType == Untyped) ne.setType(expr.getType) else ne
+      }))
+      case _ => None
+    }
+  }
+
+  object BinaryOperatorUntyped {
     def unapply(expr: Expr) : Option[(Expr,Expr,(Expr,Expr)=>Expr)] = expr match {
       case Equals(t1,t2) => Some((t1,t2,Equals.apply))
       case Iff(t1,t2) => Some((t1,t2,Iff(_,_)))
@@ -83,21 +105,22 @@ object Extractors {
   }
 
   object NAryOperator {
+    def unapply(expr: Expr) : Option[(Seq[Expr],(Seq[Expr])=>Expr)] = NAryOperatorUntyped.unapply(expr) match {
+      case Some((seq, recons)) => Some((seq, (es: Seq[Expr]) => {
+        val ne = recons(es)
+        if (ne.getType == Untyped) ne.setType(expr.getType) else ne
+      }))
+      case _ => None
+    }
+  }
+
+  object NAryOperatorUntyped {
     def unapply(expr: Expr) : Option[(Seq[Expr],(Seq[Expr])=>Expr)] = expr match {
       case fi @ FunctionInvocation(fd, args) => Some((args, (as => FunctionInvocation(fd, as).setPos(fi))))
       case CaseClass(cd, args) => Some((args, CaseClass(cd, _)))
       case And(args) => Some((args, And.apply))
       case Or(args) => Some((args, Or.apply))
-      case FiniteSet(args) =>
-        Some((args,
-              { newargs =>
-                if (newargs.isEmpty) {
-                  FiniteSet(Seq()).setType(expr.getType)
-                } else {
-                  FiniteSet(newargs)
-                }
-              }
-            ))
+      case FiniteSet(args) => Some((args, FiniteSet))
       case FiniteMap(args) => {
         val subArgs = args.flatMap{case (k, v) => Seq(k, v)}
         val builder: (Seq[Expr]) => Expr = (as: Seq[Expr]) => {
@@ -109,24 +132,48 @@ object Extractors {
         }
         Some((subArgs, builder))
       }
+      case FiniteFunction(args) => {
+        val subArgs = args.flatMap{case (k, v) => Seq(k, v)}
+        val builder: (Seq[Expr]) => Expr = (as: Seq[Expr]) => {
+          val (keys, values, isKey) = as.foldLeft[(List[Expr], List[Expr], Boolean)]((Nil, Nil, true)){
+            case ((keys, values, isKey), rExpr) => if(isKey) (rExpr::keys, values, false) else (keys, rExpr::values, true)
+          }
+          assert(isKey)
+          FiniteFunction(keys.zip(values))
+        }
+        Some((subArgs, builder))
+      }
       case FiniteMultiset(args) => Some((args, FiniteMultiset))
       case ArrayUpdated(t1, t2, t3) => Some((Seq(t1,t2,t3), (as: Seq[Expr]) => ArrayUpdated(as(0), as(1), as(2))))
       case FiniteArray(args) => Some((args, FiniteArray))
       case Distinct(args) => Some((args, Distinct))
       case Tuple(args) => Some((args, Tuple))
-      case IfExpr(cond, thenn, elze) => Some((Seq(cond, thenn, elze), (as: Seq[Expr]) => IfExpr(as(0), as(1), as(2))))
-      case MatchExpr(scrut, cases) =>
-        Some((scrut +: cases.flatMap{ case SimpleCase(_, e) => Seq(e)
-                                     case GuardedCase(_, e1, e2) => Seq(e1, e2) }
-             , { es: Seq[Expr] =>
-            var i = 1;
-            val newcases = for (caze <- cases) yield caze match {
-              case SimpleCase(b, _) => i+=1; SimpleCase(b, es(i-1)) 
-              case GuardedCase(b, _, _) => i+=2; GuardedCase(b, es(i-2), es(i-1)) 
-            }
+      case IfExpr(cond, thenn, elze) => Some((Seq(cond, thenn, elze), (as: Seq[Expr]) => {
+        val res = IfExpr(as(0), as(1), as(2))
+        if (res.getType != Untyped) {
+          if (res.thenn.getType == Untyped) res.thenn.setType(res.getType)
+          if (res.elze.getType == Untyped) res.elze.setType(res.getType)
+        }
+        res
+      }))
+      case MatchExpr(scrut, cases) => Some((scrut +: cases.flatMap{
+          case SimpleCase(_, e) => Seq(e)
+          case GuardedCase(_, e1, e2) => Seq(e1, e2)
+        }, { es: Seq[Expr] =>
+           var i = 1;
+           val newcases = for (caze <- cases) yield caze match {
+             case SimpleCase(b, _) => i+=1; SimpleCase(b, es(i-1)) 
+             case GuardedCase(b, _, _) => i+=2; GuardedCase(b, es(i-2), es(i-1)) 
+           }
 
-           MatchExpr(es(0), newcases)
-           }))
+          val res = MatchExpr(es(0), newcases)
+          if (res.getType != Untyped) newcases.foreach {
+            c => if (c.rhs.getType == Untyped) c.rhs.setType(res.getType)
+          }
+          res
+        }))
+      case FunctionApplication(caller, args) =>
+        Some((caller  +: args, (as => FunctionApplication(as.head, as.tail))))
       case LetDef(fd, body) =>
         fd.body match {
           case Some(b) =>
@@ -188,6 +235,83 @@ object Extractors {
 
   trait NAryExtractable {
     def extract: Option[(Seq[Expr], (Seq[Expr])=>Expr)];
+  }
+
+  object SimplePatternMatching {
+    def isSimple(me: MatchExpr) : Boolean = unapply(me).isDefined
+
+    // (scrutinee, classtype, list((caseclassdef, variable, list(variable), rhs)))
+    def unapply(e: MatchExpr) : Option[(Expr,ClassType,Seq[(CaseClassType,Identifier,Seq[Identifier],Expr)])] = {
+      val MatchExpr(scrutinee, cases) = e
+      val sType = scrutinee.getType
+
+      if(sType.isInstanceOf[TupleType]) {
+        None
+      } else if(sType.isInstanceOf[AbstractClassType]) {
+        val act = sType.asInstanceOf[AbstractClassType]
+        if(cases.size == act.knownChildren.size && cases.forall(!_.hasGuard)) {
+          var seen = Set.empty[ClassType]
+          
+          var lle : List[(CaseClassType,Identifier,List[Identifier],Expr)] = Nil
+          for(cse <- cases) {
+            cse match {
+              case SimpleCase(CaseClassPattern(binder, cct, subPats), rhs) if subPats.forall(_.isInstanceOf[WildcardPattern]) => {
+                seen = seen + cct
+
+                val patID : Identifier = if(binder.isDefined) {
+                  binder.get
+                } else {
+                  FreshIdentifier("cse", true).setType(cct)
+                }
+
+                val argIDs : List[Identifier] = (cct.fields zip subPats.map(_.asInstanceOf[WildcardPattern])).map(p => if(p._2.binder.isDefined) {
+                  p._2.binder.get
+                } else {
+                  FreshIdentifier("pat", true).setType(p._1.tpe)
+                }).toList
+
+                lle = (cct, patID, argIDs, rhs) :: lle
+              }
+              case _ => ;
+            }
+          }
+          lle = lle.reverse
+
+          if(seen.size == cases.size) {
+            Some((scrutinee, sType.asInstanceOf[AbstractClassType], lle))
+          } else {
+            None
+          }
+        } else {
+          None
+        }
+      } else {
+        val cCT = sType.asInstanceOf[CaseClassType]
+        if(cases.size == 1 && !cases(0).hasGuard) {
+          val SimpleCase(pat,rhs) = cases(0).asInstanceOf[SimpleCase]
+          pat match {
+            case CaseClassPattern(binder, cct, subPats) if (cct == cCT && subPats.forall(_.isInstanceOf[WildcardPattern])) => {
+              val patID : Identifier = if(binder.isDefined) {
+                binder.get
+              } else {
+                FreshIdentifier("cse", true).setType(cct)
+              }
+
+              val argIDs : List[Identifier] = (cct.fields zip subPats.map(_.asInstanceOf[WildcardPattern])).map(p => if(p._2.binder.isDefined) {
+                p._2.binder.get
+              } else {
+                FreshIdentifier("pat", true).setType(p._1.tpe)
+              }).toList
+
+              Some((scrutinee, cct, List((cCT, patID, argIDs, rhs))))
+            }
+            case _ => None
+          }
+        } else {
+          None
+        }
+      }
+    }
   }
 
   object TopLevelOrs { // expr1 AND (expr2 AND (expr3 AND ..)) => List(expr1, expr2, expr3)

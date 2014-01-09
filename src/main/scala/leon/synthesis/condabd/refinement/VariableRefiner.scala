@@ -47,21 +47,23 @@ trait VariableRefiner extends HasLogger {
   def refineDeclarations(id: Identifier, newType: ClassType, allDeclarations: List[Declaration]) =
     (for (dec <- allDeclarations)
       yield dec match {
-      case Declaration(inSynthType, _, decClassType, imex @ ImmediateExpression(_, Variable(`id`))) =>
-        ((
-          newType.classDef match {
-            case newTypeCaseClassDef @ CaseClassDef(_, parent, fields) =>
-              fine("matched case class def for refinement " + newTypeCaseClassDef)
-              for (field <- fields)
-                yield Declaration(
-                ImmediateExpression(id.name + "." + field.id.name,
-                CaseClassSelector(newTypeCaseClassDef, imex.expr, field.id)),
-                TypeTransformer(field.id.getType), field.id.getType)
-            case _ =>
-              Seq.empty
-          }): Seq[Declaration]) :+ Declaration(imex, TypeTransformer(newType), newType)
-      case _ =>
-        Seq(dec)
-    }).flatten
-
+        case Declaration(inSynthType, _, decClassType, imex @ ImmediateExpression(_, Variable(`id`))) =>	              
+	        ((
+            newType match {
+              case cct: CaseClassType =>
+                fine("matched case class type for refinement " + cct)
+		            for (field <- cct.fields)
+				          yield Declaration(
+						        ImmediateExpression(id.name + "." + field.id.name,
+					            CaseClassSelector(cct, imex.expr, field.id) ), 
+						        TypeTransformer(field.id.getType), field.id.getType
+					        )
+              case _ =>
+                Seq.empty
+            }
+	        ): Seq[Declaration]) :+ Declaration(imex, TypeTransformer(newType), newType)
+        case _ =>
+          Seq(dec)
+      }
+    ).flatten
 }

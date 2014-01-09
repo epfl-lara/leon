@@ -37,7 +37,7 @@ object TypeTransformer extends ( LeonType => SuccinctType ) {
       case SetType(baseType) => Instance("Set", this(baseType) )
       case MultisetType(baseType) => Instance("MultiSet", this(baseType) )
       case MapType(from, to) => Instance("Map", List( this(from), this(to) ))
-      case FunctionType(froms, to) => transformFunction(to, froms)
+      case FunctionType(froms, to) => transformFunction(to, froms.toList)
       case c: ClassType => Const(c.id.name)
     }
   }

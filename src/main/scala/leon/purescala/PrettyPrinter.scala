@@ -97,8 +97,9 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
       case And(exprs) => ppNary(exprs, "(", " \u2227 ", ")")            // \land
       case Or(exprs) => ppNary(exprs, "(", " \u2228 ", ")")             // \lor
       case Not(Equals(l, r)) => ppBinary(l, r, " \u2260 ")    // \neq
-      case Iff(l,r) => ppBinary(l, r, " <=> ")              
-      case Implies(l,r) => ppBinary(l, r, " ==> ")              
+      case Iff(l,r) => ppBinary(l, r, " <=> ")
+      case GenericValue(tpe, id) => sb.append(idToString(tpe.id)+"#"+id)
+      case Implies(l,r) => ppBinary(l, r, " ==> ")
       case UMinus(expr) => ppUnary(expr, "-(", ")")
       case Equals(l,r) => ppBinary(l, r, " == ")
       case IntLiteral(v) => sb.append(v)
@@ -115,17 +116,19 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
         pp(pred, p)
         sb.append(")")
 
-      case CaseClass(cd, args) =>
-        sb.append(idToString(cd.id))
-        if (cd.isCaseObject) {
+      case CaseClass(cct, args) =>
+        sb.append(idToString(cct.id))
+        if (cct.classDef.isCaseObject) {
           ppNary(args, "", "", "")
         } else {
           ppNary(args, "(", ", ", ")")
         }
 
-      case CaseClassInstanceOf(cd, e) =>
+      case CaseClassInstanceOf(cct, e) =>
         pp(e, p)
-        sb.append(".isInstanceOf[" + idToString(cd.id) + "]")
+        sb.append(".isInstanceOf[")
+        pp(cct, p)
+        sb.append("]")
 
       case CaseClassSelector(_, cc, id) =>
         pp(cc, p)
@@ -134,6 +137,48 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
       case FunctionInvocation(fd, args) =>
         sb.append(idToString(fd.id))
         ppNary(args, "(", ", ", ")")
+
+      case FunctionApplication(expr, args) =>
+        pp(expr, p)
+        ppNary(args, "(", ",", ")")
+
+      case AnonymousFunction(args, body) =>
+        var c = 0
+        sb.append("(")
+        val sz = args.size
+        args.foreach(arg => {
+          sb.append(arg.id)
+          sb.append(" : ")
+          pp(arg.tpe, p)
+          if(c < sz - 1) {
+            sb.append(", ")
+          }
+          c = c + 1
+        })
+        sb.append(") => ")
+        pp(body, p)
+      
+      case ForallExpression(args, body) =>
+        val (pre,post) = parent match {
+          case Some(_: Implies) | Some(_: Iff) | None => ("", "")
+          case _ => ("(", ")")
+        }
+        sb.append(pre)
+        sb.append("\u2200")
+        var c = 0
+        val sz = args.size
+        args.foreach(arg => {
+          sb.append(arg.id)
+          sb.append(" : ")
+          pp(arg.tpe, p)
+          if(c < sz - 1) {
+            sb.append(", ")
+          }
+          c = c + 1
+        })
+        sb.append(".")
+        pp(body, p)
+        sb.append(post)
 
       case Plus(l,r) => ppBinary(l, r, " + ")
       case Minus(l,r) => ppBinary(l, r, " - ")
@@ -172,6 +217,15 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
           pp(k, p); sb.append(" -> "); pp(v, p); c += 1 ; if(c < sz) sb.append(", ")
         }}
         sb.append("}")
+
+      case FiniteFunction(rs) =>
+        sb.append("function { ")
+        val sz = rs.size
+        var c = 0
+        rs.foreach{case (k, v) => {
+          pp(k, p); sb.append(" => "); pp(v, p); c += 1 ; if(c < sz) sb.append(",\n")
+        }}
+        sb.append(" }")
 
       case MapGet(m,k) =>
         pp(m, p)
@@ -327,15 +381,19 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
         sb.append("]")
       case TupleType(tpes) => ppNary(tpes, "(", ", ", ")")
       case FunctionType(fts, tt) =>
-        if (fts.size > 1) {
+        if (fts.size > 1 || (fts.size == 1 && fts.head.isInstanceOf[FunctionType]))
           ppNary(fts, "(", ", ", ")")
-        } else if (fts.size == 1) {
+        else if (fts.size == 1)
           pp(fts.head, p)
-        }
         sb.append(" => ")
         pp(tt, p)
-      case c: ClassType => sb.append(idToString(c.classDef.id))
+      case c: ClassType =>
+        sb.append(idToString(c.classDef.id))
+        if (c.tparams.nonEmpty) {
+          ppNary(c.tparams, "[", ",", "]")
+        }
 
+      case TypeParameter(id) => sb.append(idToString(id))
 
       // Definitions
       case Program(id, mainObj) =>
@@ -366,16 +424,23 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
         nl
         sb.append("}\n")
 
-      case AbstractClassDef(id, parent) =>
+      case AbstractClassDef(id, tparams, parent) =>
         nl
         sb.append("sealed abstract class ")
         sb.append(idToString(id))
-        parent.foreach(p => sb.append(" extends " + idToString(p.id)))
+        if (tparams.nonEmpty)
+          sb.append(tparams.map(tp => idToString(tp.id)).mkString("[", ",", "]"))
+        parent.foreach { parent =>
+          sb.append(" extends ")
+          pp(parent, p)
+        }
 
-      case CaseClassDef(id, parent, varDecls) =>
+      case CaseClassDef(id, tparams, parent, varDecls) =>
         nl
         sb.append("case class ")
         sb.append(idToString(id))
+        if (tparams.nonEmpty)
+          sb.append(tparams.map(tp => idToString(tp.id)).mkString("[", ",", "]"))
         sb.append("(")
         var c = 0
         val sz = varDecls.size
@@ -389,8 +454,12 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
           }
           c = c + 1
         })
+
         sb.append(")")
-        parent.foreach(p => sb.append(" extends " + idToString(p.id)))
+        parent.foreach { parent =>
+          sb.append(" extends ")
+          pp(parent, p)
+        }
 
       case fd: FunDef =>
         for(a <- fd.annotations) {

@@ -58,7 +58,7 @@ class UninterpretedZ3SolverTests extends LeonTestSuite {
   private def f(e : Expr) : Expr = FunctionInvocation(fDef, e :: Nil)
   private def g(e : Expr) : Expr = FunctionInvocation(gDef, e :: Nil)
 
-  private val solver = SimpleSolverAPI(SolverFactory(() => new UninterpretedZ3Solver(testContext, minimalProgram)))
+  private val solver = SimpleSolverAPI(SolverFactory(init => new UninterpretedZ3Solver(testContext, minimalProgram)))
 
   private val tautology1 : Expr = BooleanLiteral(true)
   assertValid(solver, tautology1)

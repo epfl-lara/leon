@@ -7,8 +7,9 @@ object Definitions {
   import Common._
   import Trees._
   import TreeOps._
-  import Extractors._
   import TypeTrees._
+  import TypeTreeOps._
+  import Extractors._
 
   sealed abstract class Definition extends Tree {
     val id: Identifier
@@ -56,6 +57,8 @@ object Definitions {
     def transitiveCallees(f1: FunDef) = mainObject.transitiveCallees.getOrElse(f1, Set())
     def isRecursive(f1: FunDef) = mainObject.isRecursive(f1)
     def caseClassDef(name: String) = mainObject.caseClassDef(name)
+    def classes = mainObject.classes
+    def roots = mainObject.roots
 
     def writeScalaFile(filename: String) {
       import java.io.FileWriter
@@ -88,9 +91,9 @@ object Definitions {
   /** Objects work as containers for class definitions, functions (def's) and
    * val's. */
   case class ObjectDef(id: Identifier, defs : Seq[Definition], invariants: Seq[Expr]) extends Definition {
-    lazy val definedFunctions : Seq[FunDef] = defs.filter(_.isInstanceOf[FunDef]).map(_.asInstanceOf[FunDef])
+    lazy val definedFunctions : Seq[FunDef] = defs.filter(_.isInstanceOf[FunDef]).map(_.asInstanceOf[FunDef]).sortBy(_.id.uniqueName)
 
-    lazy val definedClasses : Seq[ClassTypeDef] = defs.filter(_.isInstanceOf[ClassTypeDef]).map(_.asInstanceOf[ClassTypeDef])
+    lazy val definedClasses : Seq[ClassTypeDef] = defs.filter(_.isInstanceOf[ClassTypeDef]).map(_.asInstanceOf[ClassTypeDef]).sortBy(_.id.uniqueName)
 
     def caseClassDef(caseClassName : String) : CaseClassDef =
     definedClasses.find(ctd => ctd.id.name == caseClassName).getOrElse(scala.sys.error("Asking for non-existent case class def: " + caseClassName)).asInstanceOf[CaseClassDef]
@@ -98,11 +101,11 @@ object Definitions {
     lazy val classHierarchyRoots : Seq[ClassTypeDef] = defs.filter(_.isInstanceOf[ClassTypeDef]).map(_.asInstanceOf[ClassTypeDef]).filter(!_.hasParent)
 
     lazy val algebraicDataTypes : Map[AbstractClassDef,Seq[CaseClassDef]] = (defs.collect {
-      case c @ CaseClassDef(_, Some(_), _) => c
-    }).groupBy(_.parent.get)
+      case c @ CaseClassDef(_, _, Some(_), _) => c
+    }).groupBy(_.parent.get.classDef)
 
     lazy val singleCaseClasses : Seq[CaseClassDef] = defs.collect {
-      case c @ CaseClassDef(_, None, _) => c
+      case c @ CaseClassDef(_, _, None, _) => c
     }
 
     lazy val (callGraph, callers, callees) = {
@@ -165,6 +168,38 @@ object Definitions {
     def transitivelyCalls(f1: FunDef, f2: FunDef) : Boolean = transitiveCallGraph((f1,f2))
 
     def isRecursive(f: FunDef) = transitivelyCalls(f, f)
+
+    def isCatamorphism(f : FunDef) : Boolean = {
+      val c = callees(f)
+      if(f.hasImplementation && f.args.size == 1 && c.size == 1 && c.head == f) f.body.get match {
+        case SimplePatternMatching(scrut, _, _) if (scrut == f.args.head.toVariable) => true
+        case _ => false
+      } else {
+        false
+      }
+    }
+
+    lazy val types = {
+      val exprs = definedFunctions.flatMap { funDef =>
+        funDef.args.map(_.toVariable) ++
+        funDef.precondition ++
+        funDef.body ++
+        funDef.postcondition.map(_._2)
+      }
+
+      exprs.flatMap(transitiveTypes(_)).toSet
+    }
+
+    lazy val roots : Seq[ClassType] = types.collect { case (ct : ClassType) if !ct.classDef.hasParent => ct }.toSeq
+
+    lazy val classes : Seq[ClassType] = roots.flatMap(_ match {
+      case (act : AbstractClassType) => Seq(act) ++ act.knownChildren
+      case (cct : CaseClassType) => Seq(cct)
+    })
+  }
+
+  sealed case class TypeParameterDef(id: Identifier) {
+    def toType: TypeParameter = TypeParameter(id)
   }
 
   /** Useful because case classes and classes are somewhat unified in some
@@ -173,11 +208,11 @@ object Definitions {
     self =>
 
     val id: Identifier
-    def parent: Option[AbstractClassDef]
-    def setParent(parent: AbstractClassDef) : self.type
+    val tparams: Seq[TypeParameterDef]
+    def parent: Option[AbstractClassType]
+    def setParent(parent: AbstractClassType) : self.type
     def hasParent: Boolean = parent.isDefined
     val isAbstract: Boolean
-
   }
 
   /** Will be used at some point as a common ground for case classes (which
@@ -186,11 +221,11 @@ object Definitions {
 
   /** Abstract classes. */
   object AbstractClassDef {
-    def unapply(acd: AbstractClassDef): Option[(Identifier,Option[AbstractClassDef])] = {
-      if(acd == null) None else Some((acd.id, acd.parent))
+    def unapply(acd: AbstractClassDef): Option[(Identifier,Seq[TypeParameterDef],Option[AbstractClassType])] = {
+      if(acd == null) None else Some((acd.id, acd.tparams, acd.parent))
     }
   }
-  class AbstractClassDef(val id: Identifier, prnt: Option[AbstractClassDef] = None) extends ClassTypeDef {
+  class AbstractClassDef(val id: Identifier, val tparams: Seq[TypeParameterDef], prnt: Option[AbstractClassType] = None) extends ClassTypeDef {
     private var parent_ = prnt
     var fields: VarDecls = Nil
     val isAbstract = true
@@ -212,11 +247,11 @@ object Definitions {
       }).reduceLeft(_ ++ _))
     }
 
-    def setParent(newParent: AbstractClassDef) = {
+    def setParent(newParent: AbstractClassType) = {
       if(parent_.isDefined) {
         scala.sys.error("Resetting parent is forbidden.")
       }
-      newParent.registerChild(this)
+      newParent.classDef.registerChild(this)
       parent_ = Some(newParent)
       this
     }
@@ -225,22 +260,22 @@ object Definitions {
 
   /** Case classes. */
   object CaseClassDef {
-    def unapply(ccd: CaseClassDef): Option[(Identifier,Option[AbstractClassDef],VarDecls)] =  {
-      if(ccd == null) None else Some((ccd.id, ccd.parent, ccd.fields))
+    def unapply(ccd: CaseClassDef): Option[(Identifier,Seq[TypeParameterDef],Option[AbstractClassType],VarDecls)] =  {
+      if(ccd == null) None else Some((ccd.id, ccd.tparams, ccd.parent, ccd.fields))
     }
   }
 
-  class CaseClassDef(val id: Identifier, prnt: Option[AbstractClassDef] = None) extends ClassTypeDef with ExtractorTypeDef {
+  class CaseClassDef(val id: Identifier, val tparams: Seq[TypeParameterDef], prnt: Option[AbstractClassType] = None) extends ClassTypeDef with ExtractorTypeDef {
     private var parent_ = prnt
     var fields: VarDecls = Nil
     var isCaseObject = false
     val isAbstract = false
 
-    def setParent(newParent: AbstractClassDef) = {
+    def setParent(newParent: AbstractClassType) = {
       if(parent_.isDefined) {
         scala.sys.error("Resetting parent is forbidden.")
       }
-      newParent.registerChild(this)
+      newParent.classDef.registerChild(this)
       parent_ = Some(newParent)
       this
     }
@@ -273,7 +308,12 @@ object Definitions {
   }
 
   /** Functions (= 'methods' of objects) */
-  class FunDef(val id: Identifier, val returnType: TypeTree, val args: VarDecls) extends Definition {
+  class FunDef(val id: Identifier, val tparams: Seq[TypeParameterDef], val returnType: TypeTree, val args: VarDecls) extends Definition {
+    def this(id: Identifier, returnType: TypeTree, args: VarDecls) = this(id,
+      (returnType +: args.map(_.tpe)).flatMap(collectParametricTypes).toSeq.map(TypeParameterDef(_)),
+      returnType,
+      args)
+
     var body: Option[Expr] = None
     def implementation : Option[Expr] = body
     var precondition: Option[Expr] = None
@@ -306,5 +346,66 @@ object Definitions {
     def annotations : Set[String] = annots
 
     def isPrivate : Boolean = annots.contains("private")
+  }
+
+  object TypedFunDef {
+    private def typed(fd: FunDef, tparams: Seq[TypeTree], isRealFunDef: Boolean): TypedFunDef = {
+      assert(fd.tparams.size == tparams.size)
+      val hoistedParams = tparams.map(tp => searchAndReplaceTypesDFS({
+        case cct @ CaseClassType(_, _) => cct.parent
+        case _ => None
+      })(tp))
+
+      new TypedFunDef(fd, hoistedParams, isRealFunDef)
+    }
+
+    def apply(fd: FunDef, tparams: Seq[TypeTree]): TypedFunDef = typed(fd, tparams, true)
+
+    def apply(fd: FunDef, isRealFunDef: Boolean = true): TypedFunDef = typed(fd, fd.tparams.map(_.toType), isRealFunDef)
+
+    def unapply(tfd: TypedFunDef): Option[(FunDef, Seq[TypeTree])] = {
+      if (tfd == null) None else Some((tfd.fd, tfd.tparams))
+    }
+  }
+
+  class TypedFunDef private(val fd: FunDef, val tparams: Seq[TypeTree], isRealFunDef: Boolean = true) {
+    private val typeMapping : Map[TypeParameter, TypeTree] = Map(fd.tparams.map(_.toType) zip tparams : _*)
+
+    private val id2typed : Map[Identifier, Identifier] = if (isRealFunDef) {
+      fd.args.map { case VarDecl(id, tpe) => id -> id.freshenWithType(replaceTypesFromTPs(typeMapping.get _, tpe)) }.toMap
+    } else {
+      fd.args.map(vd => vd.id -> vd.id).toMap
+    }
+
+    private val id2var : Map[Identifier, Expr] = id2typed.mapValues(_.toVariable)
+
+    val id : Identifier = fd.id
+    val args : VarDecls = fd.args.map { case VarDecl(id, tpe) =>
+      val newID = id2typed(id)
+      VarDecl(newID, newID.getType)
+    }
+
+    val returnType : TypeTree = replaceTypesFromTPs(typeMapping.get _, fd.returnType)
+
+    def hasImplementation = fd.hasImplementation
+    def hasPrecondition = fd.hasPrecondition
+    def hasPostcondition = fd.hasPostcondition
+    def hasBody = fd.hasBody
+
+    def precondition : Option[Expr] = fd.precondition.map(prec => replaceTypesInExpr(typeMapping, id2var, prec))
+    def body : Option[Expr] = fd.body.map(body => replaceTypesInExpr(typeMapping, id2var, body))
+    def postcondition : Option[(Identifier,Expr)] = fd.postcondition.map { case (id, post) =>
+      val newID = id.freshenWithType(replaceTypesFromTPs(typeMapping.get _, id.getType))
+      newID -> replaceTypesInExpr(typeMapping, id2var + (id -> newID.toVariable), post)
+    }
+
+    override def equals(obj: Any): Boolean = obj match {
+      case (tfd: TypedFunDef) => (tfd.fd, tfd.tparams) == (fd, tparams)
+      case _ => false
+    }
+    
+    override def hashCode : Int = (fd, tparams).hashCode
+
+    override def toString : String = fd.id + tparams.mkString("[",",","]")
   }
 }

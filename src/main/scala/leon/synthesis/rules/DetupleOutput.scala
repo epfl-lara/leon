@@ -15,7 +15,7 @@ case object DetupleOutput extends Rule("Detuple Out") {
 
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     def isDecomposable(id: Identifier) = id.getType match {
-      case CaseClassType(t) if !t.isAbstract => true
+      case CaseClassType(t, _) if !t.isAbstract => true
       case _ => false
     }
 
@@ -24,11 +24,11 @@ case object DetupleOutput extends Rule("Detuple Out") {
 
       val (subOuts, outerOuts) = p.xs.map { x =>
         if (isDecomposable(x)) {
-          val CaseClassType(ccd @ CaseClassDef(name, _, fields)) = x.getType
+          val cct @ CaseClassType(_, _) = x.getType
 
-          val newIds = fields.map(vd => FreshIdentifier(vd.id.name, true).setType(vd.getType))
+          val newIds = cct.fields.map(vd => FreshIdentifier(vd.id.name, true).setType(vd.getType))
 
-          val newCC = CaseClass(ccd, newIds.map(Variable(_)))
+          val newCC = CaseClass(cct, newIds.map(Variable(_)))
 
           subProblem = subst(x -> newCC, subProblem)
 

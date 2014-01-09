@@ -18,26 +18,36 @@ import cafebabe.Flags._
 trait CodeGeneration {
   self: CompilationUnit =>
 
-  case class Locals(vars: Map[Identifier, Int]) {
+  case class Locals(
+    vars     : Map[Identifier, Int],
+    args     : Map[Identifier, Int],
+    closures : Map[Identifier, (String,String,String)]
+  ) {
+
     def varToLocal(v: Identifier): Option[Int] = vars.get(v)
 
-    def withVars(newVars: Map[Identifier, Int]) = {
-      Locals(vars ++ newVars)
-    }
+    def varToArg(v: Identifier): Option[Int] = args.get(v)
 
-    def withVar(nv: (Identifier, Int)) = {
-      Locals(vars + nv)
-    }
+    def varToClosure(v: Identifier): Option[(String,String,String)] = closures.get(v)
+
+    def withVars(newVars: Map[Identifier, Int]) = Locals(vars ++ newVars, args, closures)
+    def withVar(nv: (Identifier, Int)) = Locals(vars + nv, args, closures)
+
+    def withArgs(newArgs: Map[Identifier, Int]) = Locals(vars, args ++ newArgs, closures)
+
+    def withClosures(newClosures: Map[Identifier, (String,String,String)]) = Locals(vars, args, closures ++ newClosures)
   }
 
-  object NoLocals extends Locals(Map())
+  object NoLocals extends Locals(Map.empty, Map.empty, Map.empty)
 
   private[codegen] val BoxedIntClass             = "java/lang/Integer"
   private[codegen] val BoxedBoolClass            = "java/lang/Boolean"
   private[codegen] val TupleClass                = "leon/codegen/runtime/Tuple"
+  private[codegen] val ArrayClass                = "leon/codegen/runtime/Array"
   private[codegen] val SetClass                  = "leon/codegen/runtime/Set"
   private[codegen] val MapClass                  = "leon/codegen/runtime/Map"
   private[codegen] val CaseClassClass            = "leon/codegen/runtime/CaseClass"
+  private[codegen] val AnonymousFunctionClass    = "leon/codegen/runtime/AnonymousFunction"
   private[codegen] val ErrorClass                = "leon/codegen/runtime/LeonCodeGenRuntimeException"
   private[codegen] val ImpossibleEvaluationClass = "leon/codegen/runtime/LeonCodeGenEvaluationException"
   private[codegen] val HashingClass              = "leon/codegen/runtime/LeonCodeGenRuntimeHashing"
@@ -54,7 +64,12 @@ trait CodeGeneration {
     case UnitType => "Z"
 
     case c : ClassType =>
-      leonClassToJVMClass(c.classDef).map(n => "L" + n + ";").getOrElse("Unsupported class " + c.id)
+      leonClassToJVMClass(c.classDef).map(n => "L" + n + ";").getOrElse {
+        "Unsupported class " + c.id
+      }
+
+    case a : ArrayType =>
+      "L" + ArrayClass + ";"
 
     case _ : TupleType =>
       "L" + TupleClass + ";"
@@ -65,67 +80,18 @@ trait CodeGeneration {
     case _ : MapType =>
       "L" + MapClass + ";"
 
-    case ArrayType(base) =>
-      "[" + typeToJVM(base)
+    case _ : FunctionType =>
+      "L" + AnonymousFunctionClass + ";"
+
+    case _: TypeParameter =>
+      "Ljava/lang/Object;"
 
     case _ => throw CompilationException("Unsupported type : " + tpe)
   }
 
-  // Assumes the CodeHandler has never received any bytecode.
-  // Generates method body, and freezes the handler at the end.
-  def compileFunDef(funDef : FunDef, ch : CodeHandler) {
-    val newMapping = if (params.requireMonitor) {
-        funDef.args.map(_.id).zipWithIndex.toMap.mapValues(_ + 1)
-      } else {
-        funDef.args.map(_.id).zipWithIndex.toMap
-      }
-
-    val body = funDef.body.getOrElse(throw CompilationException("Can't compile a FunDef without body"))
-
-    val bodyWithPre = if(funDef.hasPrecondition && params.checkContracts) {
-      IfExpr(funDef.precondition.get, body, Error("Precondition failed"))
-    } else {
-      body
-    }
-
-    val bodyWithPost = if(funDef.hasPostcondition && params.checkContracts) {
-      val Some((id, post)) = funDef.postcondition
-      Let(id, bodyWithPre, IfExpr(post, Variable(id), Error("Postcondition failed")) )
-    } else {
-      bodyWithPre
-    }
-
-    val exprToCompile = purescala.TreeOps.matchToIfThenElse(bodyWithPost)
-
-    if (params.recordInvocations) {
-      ch << ALoad(0) << InvokeVirtual(MonitorClass, "onInvoke", "()V")
-    }
-
-    mkExpr(exprToCompile, ch)(Locals(newMapping))
-
-    funDef.returnType match {
-      case Int32Type | BooleanType | UnitType =>
-        ch << IRETURN
-
-      case _ : ClassType | _ : TupleType | _ : SetType | _ : MapType | _ : ArrayType =>
-        ch << ARETURN
-
-      case other =>
-        throw CompilationException("Unsupported return type : " + other.getClass)
-    }
-
-    ch.freeze
-  }
-
   private[codegen] def mkExpr(e: Expr, ch: CodeHandler, canDelegateToMkBranch: Boolean = true)(implicit locals: Locals) {
     e match {
-      case Variable(id) =>
-        val slot = slotFor(id)
-        val instr = id.getType match {
-          case Int32Type | BooleanType | UnitType => ILoad(slot)
-          case _ => ALoad(slot)
-        }
-        ch << instr
+      case Variable(id) => load(id, ch)
 
       case Let(i,d,b) =>
         mkExpr(d, ch)
@@ -165,33 +131,34 @@ trait CodeGeneration {
       case UnitLiteral =>
         ch << Ldc(1)
 
-      // Case classes
-      case CaseClass(ccd, as) =>
+      case CaseClass(CaseClassType(ccd, _), as) =>
         val ccName = leonClassToJVMClass(ccd).getOrElse {
           throw CompilationException("Unknown class : " + ccd.id)
         }
-        // TODO FIXME It's a little ugly that we do it each time. Could be in env.
-        val consSig = "(" + ccd.fields.map(f => typeToJVM(f.tpe)).mkString("") + ")V"
+        val consSig = leonClassToJVMInfo(ccd).getOrElse {
+          throw new CompilationException("Unknown constructor : " + ccd.id)
+        }
         ch << New(ccName) << DUP
-        for(a <- as) {
-          mkExpr(a, ch)
+        for((a, vd) <- as zip ccd.fields) vd.tpe match {
+          case (_ : TypeParameter) => mkBoxedExpr(a, ch)
+          case _ => mkExpr(a, ch)
         }
         ch << InvokeSpecial(ccName, constructorName, consSig)
 
-      case CaseClassInstanceOf(ccd, e) =>
-        val ccName = leonClassToJVMClass(ccd).getOrElse {
-          throw CompilationException("Unknown class : " + ccd.id)
+      case CaseClassInstanceOf(cct, e) =>
+        val ccName = leonClassToJVMClass(cct.classDef).getOrElse {
+          throw CompilationException("Unknown class : " + cct.id)
         }
         mkExpr(e, ch)
         ch << InstanceOf(ccName)
 
-      case CaseClassSelector(ccd, e, sid) =>
+      case CaseClassSelector(cct @ CaseClassType(ccd, _), e, sid) =>
         mkExpr(e, ch)
         val ccName = leonClassToJVMClass(ccd).getOrElse {
           throw CompilationException("Unknown class : " + ccd.id)
         }
         ch << CheckCast(ccName)
-        instrumentedGetField(ch, ccd, sid)
+        instrumentedGetField(ch, ccd, sid, Some(cct))
 
       // Tuples (note that instanceOf checks are in mkBranch)
       case Tuple(es) =>
@@ -208,7 +175,7 @@ trait CodeGeneration {
 
       case TupleSelect(t, i) =>
         val TupleType(bs) = t.getType
-        mkExpr(t,ch)
+        mkExpr(t, ch)
         ch << Ldc(i - 1)
         ch << InvokeVirtual(TupleClass, "get", "(I)Ljava/lang/Object;")
         mkUnbox(bs(i - 1), ch)
@@ -290,17 +257,110 @@ trait CodeGeneration {
         mkExpr(e, ch)
         ch << Label(al)
 
-      case FunctionInvocation(fd, as) =>
+      case fi @ FunctionInvocation(fd, as) =>
         val (cn, mn, ms) = leonFunDefToJVMInfo(fd).getOrElse {
           throw CompilationException("Unknown method : " + fd.id)
         }
         if (params.requireMonitor) {
           ch << ALoad(0)
         }
-        for(a <- as) {
-          mkExpr(a, ch)
+        for ((arg, a) <- fd.args zip as) arg.tpe match {
+          case (_ : TypeParameter) => mkBoxedExpr(a, ch)
+          case _ => mkExpr(a, ch)
         }
         ch << InvokeStatic(cn, mn, ms)
+        if (fd.returnType.isInstanceOf[TypeParameter]) {
+          mkUnbox(fi.getType, ch)
+        }
+
+      case fa @ FunctionApplication(caller, as) =>
+        mkExpr(caller, ch)
+        ch << Ldc(as.size) << NewArray("java/lang/Object")
+        for((a,i) <- as.zipWithIndex) {
+          ch << DUP << Ldc(i)
+          mkBoxedExpr(a, ch)
+          ch << AASTORE
+        }
+        ch << InvokeVirtual(AnonymousFunctionClass, "apply", "([Ljava/lang/Object;)Ljava/lang/Object;")
+        mkUnbox(fa.getType, ch)
+
+      case af @ AnonymousFunction(args, body) =>
+        val afName = "Leon$CodeGen$Anon$" + nextAnonId
+
+        val cf = new ClassFile(afName, Some(AnonymousFunctionClass))
+
+        cf.setFlags((
+          CLASS_ACC_SUPER |
+          CLASS_ACC_PUBLIC |
+          CLASS_ACC_FINAL
+        ).asInstanceOf[U2])
+
+        val closures = purescala.TreeOps.variablesOf(af).toSeq.sortBy(_.uniqueName)
+        val closureTypes = closures.map(id => (id.name, typeToJVM(id.getType)))
+
+        // definition of the constructor
+        if(closureTypes.isEmpty) {
+          cf.addDefaultConstructor
+        } else {
+          for ((nme, jvmt) <- closureTypes) {
+            val fh = cf.addField(jvmt, nme)
+            fh.setFlags((
+              FIELD_ACC_PUBLIC |
+              FIELD_ACC_FINAL
+            ).asInstanceOf[U2])
+          }
+
+          val cch = cf.addConstructor(closureTypes.map(_._2).toList).codeHandler
+
+          cch << ALoad(0)
+          cch << InvokeSpecial(AnonymousFunctionClass, constructorName, "()V")
+
+          var c = 1
+          for ((nme, jvmt) <- closureTypes) {
+            cch << ALoad(0)
+            cch << (jvmt match {
+              case "I" | "Z" => ILoad(c)
+              case _ => ALoad(c)
+            })
+            cch << PutField(afName, nme, jvmt)
+            c += 1
+          }
+          cch << RETURN
+          cch.freeze
+        }
+
+        locally {
+          val argTypes = af.args.map(a => typeToJVM(a.tpe))
+
+          val apm = cf.addMethod("Ljava/lang/Object;", "apply", "[Ljava/lang/Object;")
+
+          apm.setFlags((
+            METHOD_ACC_PUBLIC |
+            METHOD_ACC_FINAL
+          ).asInstanceOf[U2])
+
+          val argMapping = af.args.map(_.id).zipWithIndex.toMap
+          val closureMapping = (closures zip closureTypes).map { case (id, (name, tpe)) => id -> (afName, name, tpe) }.toMap
+          val newLocals = locals.withArgs(argMapping).withClosures(closureMapping)
+
+          val apch = apm.codeHandler
+
+          mkBoxedExpr(af.body, apch)(newLocals)
+
+          apch << ARETURN
+
+          apch.freeze
+        }
+
+        loader.register(cf)
+
+        val consSig = "(" + closures.map(id => typeToJVM(id.getType)).mkString("") + ")V"
+
+        ch << New(afName) << DUP
+        for (a <- closures) {
+          mkExpr(Variable(a), ch)
+        }
+        ch << InvokeSpecial(afName, constructorName, consSig)
 
       // Arithmetic
       case Plus(l, r) =>
@@ -334,31 +394,22 @@ trait CodeGeneration {
 
       case ArrayLength(a) =>
         mkExpr(a, ch)
-        ch << ARRAYLENGTH
+        ch << InvokeVirtual(ArrayClass, "getLength", "()I")
 
       case as @ ArraySelect(a,i) =>
         mkExpr(a, ch)
         mkExpr(i, ch)
-        ch << (as.getType match {
-          case Untyped => throw CompilationException("Cannot compile untyped array access.")
-          case Int32Type => IALOAD
-          case BooleanType => BALOAD
-          case _ => AALOAD
-        })
+        ch << InvokeVirtual(ArrayClass, "get", "(I)Ljava/lang/Object;")
+        mkUnbox(as.getType, ch)
 
       case a @ FiniteArray(es) =>
-        ch << Ldc(es.size)
-        val storeInstr = a.getType match {
-          case ArrayType(Int32Type) => ch << NewArray.primitive("T_INT"); IASTORE
-          case ArrayType(BooleanType) => ch << NewArray.primitive("T_BOOLEAN"); BASTORE
-          case ArrayType(other) => ch << NewArray(typeToJVM(other)); AASTORE
-          case other => throw CompilationException("Cannot compile finite array expression whose type is %s.".format(other))
-        }
+        ch << New(ArrayClass) << DUP << Ldc(es.size) << NewArray("java/lang/Object")
         for((e,i) <- es.zipWithIndex) {
           ch << DUP << Ldc(i)
-          mkExpr(e, ch) 
-          ch << storeInstr
+          mkBoxedExpr(e, ch)
+          ch << AASTORE
         }
+        ch << InvokeSpecial(ArrayClass, constructorName, "([Ljava/lang/Object;)V")
 
       // Misc and boolean tests
       case Error(desc) =>
@@ -396,7 +447,7 @@ trait CodeGeneration {
         mkBranch(b, al, fl, ch, canDelegateToMkExpr = false)
         ch << Label(fl) << POP << Ldc(0) << Label(al)
 
-      case _ => throw CompilationException("Unsupported expr. : " + e) 
+      case expr => throw CompilationException("Unsupported expr. : " + e) 
     }
   }
 
@@ -456,6 +507,8 @@ trait CodeGeneration {
       case mt : MapType =>
         ch << CheckCast(MapClass)
 
+      case _ : TypeParameter =>
+
       case _ =>
         throw new CompilationException("Unsupported type in unboxing : " + tpe)
     }
@@ -488,7 +541,9 @@ trait CodeGeneration {
         mkBranch(c, elze, thenn, ch)
 
       case Variable(b) =>
-        ch << ILoad(slotFor(b)) << IfEq(elze) << Goto(thenn)
+        assert(b.getType == BooleanType)
+        load(b, ch)
+        ch << IfEq(elze) << Goto(thenn)
 
       case Equals(l,r) =>
         mkExpr(l, ch)
@@ -535,16 +590,88 @@ trait CodeGeneration {
     }
   }
 
-  private[codegen] def slotFor(id: Identifier)(implicit locals: Locals) : Int = {
-    locals.varToLocal(id).getOrElse {
-      throw CompilationException("Unknown variable: " + id)
+  private def load(id : Identifier, ch : CodeHandler)(implicit locals : Locals) {
+    locals.varToArg(id) match {
+      case Some(slot) =>
+        ch << ALoad(1) << Ldc(slot) << AALOAD
+        mkUnbox(id.getType, ch)
+      case None => locals.varToClosure(id) match {
+        case Some((afName, nme, tpe)) => ch << ALoad(0) << GetField(afName, nme, tpe)
+        case None => locals.varToLocal(id) match {
+          case Some(slot) => 
+            val instr = id.getType match {
+              case Int32Type | BooleanType | UnitType => ILoad(slot)
+              case _ => ALoad(slot)
+            }
+            ch << instr
+          case None => throw CompilationException("Unknown variable : " + id)
+        }
+      }
     }
   }
 
-  def compileAbstractClassDef(acd : AbstractClassDef) {
-    val cName = defToJVMName(acd)
+  // Assumes the CodeHandler has never received any bytecode.
+  // Generates method body, and freezes the handler at the end.
+  def compileFunDef(funDef : FunDef, mn : String, cf : ClassFile) {
+    val argsTypes = funDef.args.map(a => typeToJVM(a.tpe))
+    val realArgs = if (params.requireMonitor) {
+      ("L" + MonitorClass + ";") +: argsTypes
+    } else {
+      argsTypes
+    }
 
-    val cf  = classes(acd)
+    val mapping = funDef.args.map(_.id).zipWithIndex.toMap
+    val newMapping = if (params.requireMonitor) mapping.mapValues(_ + 1) else mapping
+
+    val body = funDef.body.getOrElse(throw CompilationException("Can't compile a FunDef without body"))
+
+    val bodyWithPre = if (!funDef.hasPrecondition || !params.checkContracts) body else {
+      IfExpr(funDef.precondition.get, body, Error("Precondition failed"))
+    }
+
+    val bodyWithPost = if (!funDef.hasPostcondition || !params.checkContracts) bodyWithPre else {
+      val Some((id, post)) = funDef.postcondition
+      Let(id, bodyWithPre, IfExpr(post, Variable(id), Error("Postcondition failed")))
+    }
+
+    val exprToCompile = purescala.TreeOps.matchToIfThenElse(bodyWithPost)
+
+    val m = cf.addMethod(
+      typeToJVM(funDef.returnType),
+      mn,
+      realArgs : _*
+    )
+
+    m.setFlags((
+      METHOD_ACC_PUBLIC |
+      METHOD_ACC_FINAL |
+      METHOD_ACC_STATIC
+    ).asInstanceOf[U2])
+
+    val ch = m.codeHandler
+
+    if (params.recordInvocations) {
+      ch << ALoad(0) << InvokeVirtual(MonitorClass, "onInvoke", "()V")
+    }
+
+    mkExpr(exprToCompile, ch)(Locals(newMapping, Map.empty, Map.empty))
+
+    exprToCompile.getType match {
+      case Int32Type | BooleanType | UnitType =>
+        ch << IRETURN
+
+      case _ : ClassType | _ : TupleType | _ : SetType | _ : MapType | _ : ArrayType | _ : FunctionType | _ : TypeParameter =>
+        ch << ARETURN
+
+      case other =>
+        throw CompilationException("Unsupported return type : " + other.getClass)
+    }
+
+    ch.freeze
+  }
+
+  def compileAbstractClassDef(acd : AbstractClassDef) {
+    val cf  = defToClass(acd)
 
     cf.setFlags((
       CLASS_ACC_SUPER |
@@ -562,7 +689,7 @@ trait CodeGeneration {
    */
   val instrumentedField = "__read"
 
-  def instrumentedGetField(ch: CodeHandler, ccd: CaseClassDef, id: Identifier)(implicit locals: Locals): Unit = {
+  def instrumentedGetField(ch: CodeHandler, ccd: CaseClassDef, id: Identifier, occt : Option[CaseClassType] = None)(implicit locals : Locals): Unit = {
     ccd.fields.zipWithIndex.find(_._1.id == id) match {
       case Some((f, i)) =>
         val cName = defToJVMName(ccd)
@@ -576,17 +703,18 @@ trait CodeGeneration {
           ch << PutField(cName, instrumentedField, "I")
         }
         ch << GetField(cName, f.id.name, typeToJVM(f.tpe))
+        for (vd <- occt.map(cct => cct.fields(i))) {
+          if (f.tpe.isInstanceOf[TypeParameter]) mkUnbox(vd.tpe, ch)
+        }
       case None =>
         throw CompilationException("Unknown field: "+ccd.id.name+"."+id)
     }
   }
 
   def compileCaseClassDef(ccd: CaseClassDef) {
-
-    val cName = defToJVMName(ccd)
-    val pName = ccd.parent.map(parent => defToJVMName(parent))
-
-    val cf = classes(ccd)
+    val cf = defToClass(ccd)
+    val cName = cf.className
+    val pName = ccd.parent.map(p => leonClassToJVMClass(p.classDef)).flatten
 
     cf.setFlags((
       CLASS_ACC_SUPER |
@@ -750,7 +878,7 @@ trait CodeGeneration {
       ).asInstanceOf[U2])
 
       val hch = hmh.codeHandler
-      
+
       val wasNotCached = hch.getFreshLabel("wasNotCached")
 
       hch << ALoad(0) << GetField(cName, hashFieldName, "I") << DUP
@@ -761,9 +889,9 @@ trait CodeGeneration {
       hch << ALoad(0) << InvokeVirtual(cName, "productName", "()Ljava/lang/String;")
       hch << InvokeVirtual("java/lang/String", "hashCode", "()I")
       hch << InvokeStatic(HashingClass, "seqHash", "([Ljava/lang/Object;I)I") << DUP
-      hch << ALoad(0) << SWAP << PutField(cName, hashFieldName, "I") 
+      hch << ALoad(0) << SWAP << PutField(cName, hashFieldName, "I")
       hch << IRETURN
-      
+
       hch.freeze
     }
 

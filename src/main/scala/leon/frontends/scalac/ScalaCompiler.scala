@@ -20,7 +20,7 @@ class ScalaCompiler(settings : NSCSettings, ctx: LeonContext) extends Global(set
       syntaxAnalyzer          -> "parse source into ASTs, perform simple desugaring",
       analyzer.namerFactory   -> "resolve names, attach symbols to named trees",
       analyzer.packageObjects -> "load package objects",
-      analyzer.typerFactory   -> "the meat and potatoes: type the trees",
+      analyzer.typerFactory   -> "extensive scala type checking",
       patmat                  -> "translate match expressions",
       superAccessors          -> "add super accessors in traits and nested classes",
       extensionMethods        -> "add extension methods for inline classes",

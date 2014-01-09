@@ -27,6 +27,8 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
 
   val name = "Z3-u"
   val description = "Uninterpreted Z3 Solver"
+  val precondition = BooleanLiteral(true)
+  val grounder = None
 
   // this is fixed
   protected[leon] val z3cfg = new Z3Config(
@@ -36,32 +38,11 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
   )
   toggleWarningMessages(true)
 
-  private var functionMap: Map[FunDef, Z3FuncDecl] = Map.empty
-  private var reverseFunctionMap: Map[Z3FuncDecl, FunDef] = Map.empty
-  protected[leon] def prepareFunctions : Unit = {
-    functionMap        = Map.empty
-    reverseFunctionMap = Map.empty
-    for(funDef <- program.definedFunctions) {
-      val sortSeq = funDef.args.map(vd => typeToSort(vd.tpe))
-      val returnSort = typeToSort(funDef.returnType)
-
-      val z3Decl = z3.mkFreshFuncDecl(funDef.id.name, sortSeq, returnSort)
-      functionMap = functionMap + (funDef -> z3Decl)
-      reverseFunctionMap = reverseFunctionMap + (z3Decl -> funDef)
-    }
-  }
-  protected[leon] def functionDefToDecl(funDef: FunDef) : Z3FuncDecl = functionMap(funDef)
-  protected[leon] def functionDeclToDef(decl: Z3FuncDecl) : FunDef = reverseFunctionMap(decl)
-  protected[leon] def isKnownDecl(decl: Z3FuncDecl) : Boolean = reverseFunctionMap.isDefinedAt(decl)
-
-  initZ3
-
-  val solver = z3.mkSolver
+  initZ3()
 
   def push() {
     solver.push
   }
-
 
   def pop(lvl: Int = 1) {
     solver.pop(lvl)
@@ -70,7 +51,13 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
   private var variables = Set[Identifier]()
   private var containsFunCalls = false
 
-  def assertCnstr(expression: Expr) {
+  override protected[leon] def restartZ3(asserted: Seq[Expr]) {
+    variables = Set.empty
+    containsFunCalls = false
+    super.restartZ3(asserted)
+  }
+
+  protected def assertZ3Cnstr(expression: Expr) {
     variables ++= variablesOf(expression)
     containsFunCalls ||= containsFunctionCalls(expression)
     solver.assertCnstr(toZ3Formula(expression).get)

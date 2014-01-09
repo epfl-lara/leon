@@ -219,7 +219,7 @@ class FilterTest extends JUnitSuite {
     val arguments = funDef.args.map(_.id).toList
     
     val tpe = cons(List(Error("temp"))).getType match {
-      case cct: CaseClassType => cct.classDef
+      case cct: CaseClassType => cct
       case _ =>
         fail(arg1 + " should have a class type")
         null
@@ -227,7 +227,7 @@ class FilterTest extends JUnitSuite {
     
     assertEquals(false, isAvoidable(CaseClassInstanceOf(tpe, arg1), arguments))
 	  assertEquals(false, isAvoidable(CaseClassInstanceOf(tpe, arg2), arguments))
-	  assertEquals(false, isAvoidable(CaseClassInstanceOf(tpe, cons(List(arg1, nil))), arguments))
+	  assertEquals(true, isAvoidable(CaseClassInstanceOf(tpe, cons(List(arg1, nil))), arguments))
 	  assertEquals(true, isAvoidable(CaseClassInstanceOf(tpe, tail(arg1)), arguments))
 	  assertEquals(true, isAvoidable(CaseClassInstanceOf(tpe, tail(tail(arg1))), arguments))
 	  assertEquals(true, isAvoidable(CaseClassInstanceOf(tpe, tail(tail(tail(tail(arg1))))), arguments))

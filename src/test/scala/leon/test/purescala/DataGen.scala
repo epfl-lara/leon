@@ -67,7 +67,7 @@ class DataGen extends LeonTestSuite {
     generator.generate(BooleanType).toSet.size === 2
     generator.generate(TupleType(Seq(BooleanType,BooleanType))).toSet.size === 4
 
-    val listType : TypeTree = classDefToClassType(prog.mainObject.classHierarchyRoots.head)
+    val listType : TypeTree = classDefToClassType(prog.mainObject.classHierarchyRoots.head, Seq())
     val sizeDef    : FunDef = prog.definedFunctions.find(_.id.name == "size").get
     val sortedDef  : FunDef = prog.definedFunctions.find(_.id.name == "isSorted").get
     val contentDef : FunDef = prog.definedFunctions.find(_.id.name == "content").get
@@ -115,7 +115,7 @@ class DataGen extends LeonTestSuite {
       Seq(x.id, y.id, b.id, a.id),
       And(Seq(
         LessThan(a, b),
-        FunctionInvocation(sortedDef, Seq(CaseClass(consDef, Seq(a, x)))),
+        FunctionInvocation(sortedDef, Seq(CaseClass(CaseClassType(consDef, Seq()), Seq(a, x)))),
         FunctionInvocation(insSpecDef, Seq(b, x, y))
       )),
       10,

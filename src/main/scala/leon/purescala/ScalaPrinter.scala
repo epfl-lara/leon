@@ -111,17 +111,21 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
         pp(t, p)
         sb.append("._" + i)
 
-      case CaseClass(cd, args)  =>
-        sb.append(idToString(cd.id))
-        if (cd.isCaseObject) {
+      case CaseClass(cct, args)  =>
+        sb.append(idToString(cct.id))
+        if (cct.classDef.isCaseObject) {
           ppNary(args, "", "", "")
         } else {
           ppNary(args, "(", ", ", ")")
         }
 
-      case CaseClassInstanceOf(cd, e) =>
+      case CaseClassInstanceOf(cct, e) =>
         pp(e, p)
-        sb.append(".isInstanceOf[" + idToString(cd.id) + "]")
+        sb.append(".isInstanceOf[" + idToString(cct.id))
+        if (cct.tparams.nonEmpty) {
+          ppNary(cct.tparams, "/* [", ",", "] */")
+        }
+        sb.append("]")
 
       case CaseClassSelector(_, cc, id) =>
         pp(cc, p)
@@ -130,6 +134,45 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
       case FunctionInvocation(fd, args) =>
         sb.append(idToString(fd.id))
         ppNary(args, "(", ", ", ")")
+
+      case FunctionApplication(e, args) =>
+        pp(e, p)
+        ppNary(args, "(", ",", ")")
+
+      case AnonymousFunction(args, body) =>
+        val sz = args.size
+        var c = 0
+
+        sb.append("(")
+        args.foreach(arg => {
+          sb.append(idToString(arg.id))
+          sb.append(" : ")
+          pp(arg.tpe, p)
+          if(c < sz - 1) {
+            sb.append(", ")
+          }
+          c = c + 1
+        })
+        sb.append(") => ")
+        pp(body, p)
+
+      case ForallExpression(args, body) =>
+        val sz = args.size
+        var c = 0
+
+        sb.append("forall((")
+        args.foreach(arg => {
+          sb.append(idToString(arg.id))
+          sb.append(" : ")
+          pp(arg.tpe, p)
+          if(c < sz - 1) {
+            sb.append(", ")
+          }
+          c = c + 1
+        })
+        sb.append(") => ")
+        pp(body, p)
+        sb.append(")")
 
       case Plus(l,r)            => optParentheses { ppBinary(l, r, " + ") }
       case Minus(l,r)           => optParentheses { ppBinary(l, r, " - ") }
@@ -167,6 +210,14 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
         sb.append(".max")
       case SetCardinality(t) => ppUnary(t, "", ".size")
       case FiniteMap(rs) =>
+        sb.append("{")
+        val sz = rs.size
+        var c = 0
+        rs.foreach{case (k, v) => {
+          pp(k, p); sb.append(" -> "); pp(v, p); c += 1 ; if(c < sz) sb.append(", ")
+        }}
+        sb.append("}")
+      case FiniteFunction(rs) =>
         sb.append("{")
         val sz = rs.size
         var c = 0
@@ -308,14 +359,21 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
         ind(lvl)
         sb.append("}\n")
 
-      case AbstractClassDef(id, parent) =>
+      case AbstractClassDef(id, tparams, parent) =>
         sb.append("sealed abstract class ")
         sb.append(idToString(id))
-        parent.foreach(p => sb.append(" extends " + idToString(p.id)))
+        if (tparams.nonEmpty)
+          sb.append(tparams.map(tp => idToString(tp.id)).mkString("[", ",", "]"))
+        parent.foreach { parent =>
+          sb.append(" extends ")
+          pp(parent, p)
+        }
 
-      case CaseClassDef(id, parent, varDecls) =>
+      case CaseClassDef(id, tparams, parent, varDecls) =>
         sb.append("case class ")
         sb.append(idToString(id))
+        if (tparams.nonEmpty)
+          sb.append(tparams.map(tp => idToString(tp.id)).mkString("[", ",", "]"))
         sb.append("(")
         var c = 0
         val sz = varDecls.size
@@ -329,8 +387,12 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
           }
           c = c + 1
         })
+
         sb.append(")")
-        parent.foreach(p => sb.append(" extends " + idToString(p.id)))
+        parent.foreach { parent =>
+          sb.append(" extends ")
+          pp(parent, p)
+        }
 
       case fd: FunDef =>
         sb.append("def ")

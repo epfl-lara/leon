@@ -12,9 +12,10 @@ import purescala.TypeTrees._
 
 import scala.collection.mutable.{Map=>MutableMap}
 
-class UnrollingSolver(val context: LeonContext,
-                      underlyings: SolverFactory[Solver],
-                      maxUnrollings: Int = 3) extends Solver {
+class UnrollingSolver(val context   : LeonContext,
+                      underlyings   : SolverFactory[Solver],
+                      precondition  : Expr,
+                      maxUnrollings : Int = 3) extends Solver {
 
   private var theConstraint : Option[Expr] = None
   private var theModel : Option[Map[Identifier,Expr]] = None
@@ -24,6 +25,8 @@ class UnrollingSolver(val context: LeonContext,
   def free {}
 
   import context.reporter._
+
+  val templateFactory = new SimpleTemplateFactory(precondition)
 
   def assertCnstr(expression : Expr) {
     if(!theConstraint.isEmpty) {
@@ -37,11 +40,11 @@ class UnrollingSolver(val context: LeonContext,
 
     debugS("Check called on " + expr + "...")
 
-    val template = getTemplate(expr)
+    val template = templateFactory.getTemplate(expr)
 
     val aVar : Identifier = template.activatingBool
     var allClauses : Seq[Expr] = Nil
-    var allBlockers : Map[Identifier,Set[FunctionInvocation]] = Map.empty
+    var allBlockers : Map[Identifier,Set[Invocation[Expr]]] = Map.empty
 
     def fullOpenExpr : Expr = {
       // And(Variable(aVar), And(allClauses.reverse))
@@ -63,22 +66,22 @@ class UnrollingSolver(val context: LeonContext,
       val blockersBefore = allBlockers
 
       var newClauses : List[Seq[Expr]] = Nil
-      var newBlockers : Map[Identifier,Set[FunctionInvocation]] = Map.empty
+      var newBlockers : Map[Identifier,Set[Invocation[Expr]]] = Map.empty
 
-      for(blocker <- allBlockers.keySet; FunctionInvocation(funDef, args) <- allBlockers(blocker)) {
-        val (nc, nb) = getTemplate(funDef).instantiate(blocker, args)
+      for(blocker <- allBlockers.keySet; Invocation(funDef, args) <- allBlockers(blocker)) {
+        val (nc, nb) = templateFactory.getTemplate(funDef).instantiate(Variable(blocker), args)
+        newBlockers = newBlockers ++ nb.map({ case (Variable(id), i) => id -> i })
         newClauses = nc :: newClauses
-        newBlockers = newBlockers ++ nb
       }
 
       allClauses = newClauses.flatten ++ allClauses
       allBlockers = newBlockers
     }
 
-    val (nc, nb) = template.instantiate(aVar, template.funDef.args.map(a => Variable(a.id)))
+    val (nc, nb) = template.instantiate(Variable(aVar), template.funDef.args.map(a => templateFactory.encode(a.id)))
 
     allClauses = nc.reverse
-    allBlockers = nb
+    allBlockers = nb.map({ case (Variable(id), i) => id -> i })
 
     var unrollingCount : Int = 0
     var done : Boolean = false
@@ -129,27 +132,5 @@ class UnrollingSolver(val context: LeonContext,
   def getModel : Map[Identifier,Expr] = {
     val vs : Set[Identifier] = theConstraint.map(variablesOf(_)).getOrElse(Set.empty)
     theModel.getOrElse(Map.empty).filter(p => vs(p._1))
-  }
-
-  private val funDefTemplateCache : MutableMap[FunDef, FunctionTemplate] = MutableMap.empty
-  private val exprTemplateCache : MutableMap[Expr, FunctionTemplate] = MutableMap.empty
-
-  private def getTemplate(funDef: FunDef): FunctionTemplate = {
-    funDefTemplateCache.getOrElse(funDef, {
-      val res = FunctionTemplate.mkTemplate(funDef, true)
-      funDefTemplateCache += funDef -> res
-      res
-    })
-  }
-
-  private def getTemplate(body: Expr): FunctionTemplate = {
-    exprTemplateCache.getOrElse(body, {
-      val fakeFunDef = new FunDef(FreshIdentifier("fake", true), body.getType, variablesOf(body).toSeq.map(id => VarDecl(id, id.getType)))
-      fakeFunDef.body = Some(body)
-
-      val res = FunctionTemplate.mkTemplate(fakeFunDef, false)
-      exprTemplateCache += body -> res
-      res
-    })
   }
 }

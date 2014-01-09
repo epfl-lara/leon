@@ -7,22 +7,21 @@ import purescala.TypeTrees._
 import purescala.Definitions._
 import purescala.Common._
 
-class ChainComparator(structuralSize: StructuralSize) {
-  import structuralSize.size
+trait ChainComparator { self : StructuralSize with TerminationChecker =>
 
   private object ContainerType {
-    def unapply(c: ClassType): Option[(CaseClassDef, Seq[(Identifier, TypeTree)])] = c match {
-      case CaseClassType(classDef) =>
-        if (classDef.fields.exists(arg => isSubtypeOf(arg.tpe, classDef.parent.map(AbstractClassType(_)).getOrElse(c)))) None
-        else if (classDef.hasParent && classDef.parent.get.knownChildren.size > 1) None
-        else Some((classDef, classDef.fields.map(arg => arg.id -> arg.tpe)))
+    def unapply(c: ClassType): Option[(CaseClassType, Seq[(Identifier, TypeTree)])] = c match {
+      case cct @ CaseClassType(ccd, _) =>
+        if (cct.fields.exists(arg => isSubtypeOf(arg.tpe, cct.parent.getOrElse(c)))) None
+        else if (ccd.hasParent && ccd.parent.get.knownChildren.size > 1) None
+        else Some((cct, cct.fields.map(arg => arg.id -> arg.tpe)))
       case _ => None
     }
   }
 
-  def sizeDecreasing(e1: Expr, e2s: Seq[(Seq[Expr], Expr)]) : Expr = e1.getType match {
+  def structuralDecreasing(e1: Expr, e2s: Seq[(Seq[Expr], Expr)]) : Expr = e1.getType match {
     case ContainerType(def1, fields1) => Or(fields1.zipWithIndex map { case ((id1, type1), index) =>
-      sizeDecreasing(CaseClassSelector(def1, e1, id1), e2s.map { case (path, e2) =>
+      structuralDecreasing(CaseClassSelector(def1, e1, id1), e2s.map { case (path, e2) =>
         e2.getType match {
           case ContainerType(def2, fields2) => (path, CaseClassSelector(def2, e2, fields2(index)._1))
           case _ => scala.sys.error("Unexpected input combinations: " + e1 + " " + e2)
@@ -30,7 +29,7 @@ class ChainComparator(structuralSize: StructuralSize) {
       })
     })
     case TupleType(types1) => Or((0 until types1.length) map { case index =>
-      sizeDecreasing(TupleSelect(e1, index + 1), e2s.map { case (path, e2) =>
+      structuralDecreasing(TupleSelect(e1, index + 1), e2s.map { case (path, e2) =>
         e2.getType match {
           case TupleType(_) => (path, TupleSelect(e2, index + 1))
           case _ => scala.sys.error("Unexpected input combination: " + e1 + " " + e2)
@@ -39,13 +38,11 @@ class ChainComparator(structuralSize: StructuralSize) {
     })
     case c: ClassType => And(e2s map { case (path, e2) =>
       e2.getType match {
-        case c2: ClassType => Implies(And(path), GreaterThan(size(e1), size(e2)))
+        case c2: ClassType => Implies(And(path), GreaterThan(self.size(e1), self.size(e2)))
         case _ => scala.sys.error("Unexpected input combination: " + e1 + " " + e2)
       }
     })
-    case BooleanType => BooleanLiteral(false)
-    case Int32Type => BooleanLiteral(false)
-    case tpe => scala.sys.error("Unexpected type " + tpe)
+    case _ => BooleanLiteral(false)
   }
 
   private sealed abstract class NumericEndpoint {
@@ -87,7 +84,7 @@ class ChainComparator(structuralSize: StructuralSize) {
   private case object AnyEndpoint extends NumericEndpoint
   private case object NoEndpoint extends NumericEndpoint
 
-  private def numericEndpoint(value: Expr, cluster: Set[Chain], checker: TerminationChecker) = {
+  private def numericEndpoint(value: Expr, cluster: Set[Chain]) = {
 
     object Value {
       val vars = variablesOf(value)
@@ -128,8 +125,8 @@ class ChainComparator(structuralSize: StructuralSize) {
         case NoEndpoint =>
           endpoint(thenn) min endpoint(elze)
         case ep =>
-          val terminatingThen = functionCallsOf(thenn).forall(fi => checker.terminates(fi.funDef).isGuaranteed)
-          val terminatingElze = functionCallsOf(elze).forall(fi => checker.terminates(fi.funDef).isGuaranteed)
+          val terminatingThen = functionCallsOf(thenn).forall(fi => self.terminates(fi.funDef).isGuaranteed)
+          val terminatingElze = functionCallsOf(elze).forall(fi => self.terminates(fi.funDef).isGuaranteed)
           val thenEndpoint = if (terminatingThen) ep max endpoint(thenn) else endpoint(thenn)
           val elzeEndpoint = if (terminatingElze) ep.inverse max endpoint(elze) else endpoint(elze)
           thenEndpoint max elzeEndpoint
@@ -142,14 +139,14 @@ class ChainComparator(structuralSize: StructuralSize) {
     })
   }
 
-  def numericConverging(e1: Expr, e2s: Seq[(Seq[Expr], Expr)], cluster: Set[Chain], checker: TerminationChecker) : Expr = e1.getType match {
+  def numericConverging(e1: Expr, e2s: Seq[(Seq[Expr], Expr)], cluster: Set[Chain]) : Expr = e1.getType match {
     case ContainerType(def1, fields1) => Or(fields1.zipWithIndex map { case ((id1, type1), index) =>
       numericConverging(CaseClassSelector(def1, e1, id1), e2s.map { case (path, e2) =>
         e2.getType match {
           case ContainerType(def2, fields2) => (path, CaseClassSelector(def2, e2, fields2(index)._1))
           case _ => scala.sys.error("Unexpected input combination: " + e1 + " " + e2)
         }
-      }, cluster, checker)
+      }, cluster)
     })
     case TupleType(types) => Or((0 until types.length) map { case index =>
       numericConverging(TupleSelect(e1, index + 1), e2s.map { case (path, e2) =>
@@ -157,9 +154,9 @@ class ChainComparator(structuralSize: StructuralSize) {
           case TupleType(_) => (path, TupleSelect(e2, index + 1))
           case _ => scala.sys.error("Unexpected input combination: " + e1 + " " + e2)
         }
-      }, cluster, checker)
+      }, cluster)
     })
-    case Int32Type => numericEndpoint(e1, cluster, checker) match {
+    case Int32Type => numericEndpoint(e1, cluster) match {
       case UpperBoundEndpoint => And(e2s map {
         case (path, e2) if e2.getType == Int32Type => Implies(And(path), GreaterThan(e1, e2))
         case (_, e2) => scala.sys.error("Unexpected input combinations: " + e1 + " " + e2)
@@ -178,9 +175,7 @@ class ChainComparator(structuralSize: StructuralSize) {
       case InnerEndpoint => BooleanLiteral(false)
       case NoEndpoint => BooleanLiteral(false)
     }
-    case _: ClassType => BooleanLiteral(false)
-    case BooleanType => BooleanLiteral(false)
-    case tpe => scala.sys.error("Unexpected type " + tpe)
+    case _ => BooleanLiteral(false)
   }
 }
 

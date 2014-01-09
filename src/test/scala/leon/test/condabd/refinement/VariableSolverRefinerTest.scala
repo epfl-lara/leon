@@ -207,5 +207,4 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
     }
     
   }
-  
 }

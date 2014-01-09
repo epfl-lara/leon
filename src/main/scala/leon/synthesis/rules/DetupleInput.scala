@@ -15,19 +15,18 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
 
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     def isDecomposable(id: Identifier) = id.getType match {
-      case CaseClassType(t) if !t.isAbstract => true
+      case CaseClassType(t, _) if !t.isAbstract => true
       case TupleType(ts) => true
       case _ => false
     }
 
     def decompose(id: Identifier): (List[Identifier], Expr, Map[Identifier, Expr]) = id.getType match {
-      case CaseClassType(ccd) if !ccd.isAbstract =>
-        val CaseClassDef(name, _, fields) = ccd
-        val newIds = fields.map(vd => FreshIdentifier(vd.id.name, true).setType(vd.getType))
+      case cct @ CaseClassType(ccd, _) if !ccd.isAbstract =>
+        val newIds = cct.fields.map(vd => FreshIdentifier(vd.id.name, true).setType(vd.getType))
 
-        val map = (fields zip newIds).map{ case (f, nid) => nid -> CaseClassSelector(ccd, Variable(id), f.id) }.toMap
+        val map = (cct.fields zip newIds).map{ case (f, nid) => nid -> CaseClassSelector(cct, Variable(id), f.id) }.toMap
 
-        (newIds.toList, CaseClass(ccd, newIds.map(Variable(_))), map)
+        (newIds.toList, CaseClass(cct, newIds.map(Variable(_))), map)
 
       case TupleType(ts) =>
         val newIds = ts.zipWithIndex.map{ case (t, i) => FreshIdentifier(id.name+"_"+(i+1), true).setType(t) }

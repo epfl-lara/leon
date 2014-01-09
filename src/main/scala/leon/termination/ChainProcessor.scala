@@ -8,46 +8,76 @@ import purescala.Common._
 import purescala.Extractors._
 import purescala.Definitions._
 
-class ChainProcessor(checker: TerminationChecker,
-                     chainBuilder: ChainBuilder,
-                     val structuralSize: StructuralSize,
-                     val strengthener: Strengthener) extends Processor(checker) with Solvable {
+import scala.collection.mutable.{Map => MutableMap}
+
+class ChainProcessor(val checker: TerminationChecker with ChainBuilder with ChainComparator with Strengthener with StructuralSize) extends Processor with Solvable {
 
   val name: String = "Chain Processor"
 
-  val chainComparator = new ChainComparator(structuralSize)
+  def run(problem: Problem) = {
+    reporter.debug("- Strengthening postconditions")
+    checker.strengthenPostconditions(problem.funDefs)(this)
 
-  def run(problem: Problem): (TraversableOnce[Result], TraversableOnce[Problem]) = {
-    implicit val debugSection = DebugSectionTermination
+    reporter.debug("- Strengthening applications")
+    checker.strengthenApplications(problem.funDefs)(this)
 
-    reporter.debug("- Running ChainProcessor")
-    val allChainMap       : Map[FunDef, Set[Chain]] = problem.funDefs.map(funDef => funDef -> chainBuilder.run(funDef)).toMap
-    reporter.debug("- Computing all possible Chains")
-    var counter = 0
-    val possibleChainMap  : Map[FunDef, Set[Chain]] = allChainMap.mapValues(chains => chains.filter(chain => isWeakSAT(And(chain.loop()))))
-    reporter.debug("- Collecting re-entrant Chains")
-    val reentrantChainMap : Map[FunDef, Set[Chain]] = possibleChainMap.mapValues(chains => chains.filter(chain => isWeakSAT(And(chain reentrant chain))))
+    reporter.debug("- Running ChainBuilder")
+    val allChains : Map[FunDef, Set[Chain]] = problem.funDefs.map { funDef =>
+      funDef -> checker.getChains(funDef)(this)
+    }.toMap
+
+    def buildLoops(fd: FunDef, cluster: Set[Chain]): (Expr, Seq[(Seq[Expr], Expr)]) = {
+      val e1 = Tuple(fd.args.map(_.toVariable))
+      val e2s = cluster.toSeq.map({ chain =>
+        val freshArgs : Seq[Expr] = fd.args.map(arg => arg.id.freshen.toVariable)
+        val finalBindings = (fd.args.map(_.id) zip freshArgs).toMap
+        val path = chain.loop(finalSubst = finalBindings)
+        path -> Tuple(freshArgs)
+      })
+
+      (e1, e2s)
+    }
+
+    reporter.debug("- Trying for all chains at once")
+    reporter.debug("  +> Searching for structural size decrease")
+    val sizeClearedChains : Map[FunDef, Set[Chain]] = allChains.map { case (fd, chains) =>
+      val (e1, e2s) = buildLoops(fd, chains)
+      fd -> (if (definitiveALL(checker.structuralDecreasing(e1, e2s), fd.precondition)) Set.empty[Chain] else chains)
+    }
+
+    reporter.debug("  +> Searching for numeric decrease")
+    val possibleChainMap : Map[FunDef, Set[Chain]] = sizeClearedChains.map { case (fd, chains) =>
+      val (e1, e2s) = buildLoops(fd, chains)
+      fd -> (if (definitiveALL(checker.numericConverging(e1, e2s, chains), fd.precondition)) Set.empty[Chain] else chains)
+    }
+
+    reporter.debug("- Trying for chain clusters")
+    reporter.debug("  +> Collecting re-entrant Chains")
+    val reentrantChainMap : Map[FunDef, Set[Chain]] = possibleChainMap.map { case (fd, chains) =>
+      fd -> chains.filter(chain => maybeSAT(And(chain reentrant chain), chain.funDef.precondition))
+    }
 
     // We build a cross-chain map that determines which chains can reenter into another one after a loop.
-    // Note: We are also checking reentrance SAT here, so again, we negate the formula!
-    reporter.debug("- Computing cross-chain map")
-    val crossChains       : Map[Chain, Set[Chain]]  = possibleChainMap.toSeq.map({ case (funDef, chains) =>
+    reporter.debug("  +> Computing cross-chain map")
+    val crossChains       : Map[(FunDef, Chain), Set[Chain]]  = possibleChainMap.toSeq.map({ case (funDef, chains) =>
       val reentrant = reentrantChainMap(funDef)
-      chains.map(chain => chain -> {
-        val cross = (reentrant - chain).filter(other => isWeakSAT(And(chain reentrant other)))
+      chains.map(chain => (funDef, chain) -> {
+        val cross = (reentrant - chain).filter(other => maybeSAT(And(chain reentrant other), chain.funDef.precondition))
         val self = if (reentrant(chain)) Set(chain) else Set()
         cross ++ self
       })
     }).flatten.toMap
 
-    val validChainMap     : Map[FunDef, Set[Chain]] = possibleChainMap.map({ case (funDef, chains) => funDef -> chains.filter(crossChains(_).nonEmpty) }).toMap
+    val validChainMap     : Map[FunDef, Set[Chain]] = possibleChainMap.map({
+      case (funDef, chains) => funDef -> chains.filter(c => crossChains(c.funDef, c).nonEmpty)
+    }).toMap
 
     // We use the cross-chains to build chain clusters. For each cluster, we must prove that the SAME argument
     // decreases in each of the chains in the cluster!
-    reporter.debug("- Building cluster estimation by fix-point iteration")
+    reporter.debug("  +> Building cluster estimation by fix-point iteration")
     val clusters          : Map[FunDef, Set[Set[Chain]]] = {
       def cluster(set: Set[Chain]): Set[Chain] = {
-        set ++ set.map(crossChains(_)).flatten
+        set ++ set.map(c => crossChains(c.funDef, c)).flatten
       }
 
       def fix[A](f: A => A, a: A): A = {
@@ -79,21 +109,6 @@ class ChainProcessor(checker: TerminationChecker,
       validChainMap.map({ case (funDef, chains) => funDef -> build(chains) })
     }
 
-    reporter.debug("- Strengthening postconditions")
-    strengthenPostconditions(problem.funDefs)
-
-    def buildLoops(fd: FunDef, cluster: Set[Chain]): (Expr, Seq[(Seq[Expr], Expr)]) = {
-      val e1 = Tuple(fd.args.map(_.toVariable))
-      val e2s = cluster.toSeq.map({ chain =>
-        val freshArgs : Seq[Expr] = fd.args.map(arg => arg.id.freshen.toVariable)
-        val finalBindings = (fd.args.map(_.id) zip freshArgs).toMap
-        val path = chain.loop(finalSubst = finalBindings)
-        path -> Tuple(freshArgs)
-      })
-
-      (e1, e2s)
-    }
-
     type ClusterMap = Map[FunDef, Set[Set[Chain]]]
     type FormulaGenerator = (FunDef, Set[Chain]) => Expr
 
@@ -103,20 +118,20 @@ class ChainProcessor(checker: TerminationChecker,
       })
 
       formulas.map({ case (fd, clustersWithFormulas) =>
-        fd -> clustersWithFormulas.filter({ case (cluster, formula) => !isAlwaysSAT(formula) }).map(_._1)
+        fd -> clustersWithFormulas.filter({ case (cluster, formula) => !definitiveALL(formula, fd.precondition) }).map(_._1)
       })
     }
 
-    reporter.debug("- Searching for structural size decrease")
+    reporter.debug("  +> Searching for structural size decrease")
     val sizeCleared : ClusterMap = clear(clusters, (fd, cluster) => {
       val (e1, e2s) = buildLoops(fd, cluster)
-      chainComparator.sizeDecreasing(e1, e2s)
+      checker.structuralDecreasing(e1, e2s)
     })
 
-    reporter.debug("- Searching for numeric convergence")
+    reporter.debug("  +> Searching for numeric convergence")
     val numericCleared : ClusterMap = clear(sizeCleared, (fd, cluster) => {
       val (e1, e2s) = buildLoops(fd, cluster)
-      chainComparator.numericConverging(e1, e2s, cluster, checker)
+      checker.numericConverging(e1, e2s, cluster)
     })
 
     val (okPairs, nokPairs) = numericCleared.partition(_._2.isEmpty)

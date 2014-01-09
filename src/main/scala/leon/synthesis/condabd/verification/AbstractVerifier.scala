@@ -16,7 +16,7 @@ import _root_.insynth.util.logging._
 abstract class AbstractVerifier(solverf: SolverFactory[Solver with IncrementalSolver with TimeoutSolver], p: Problem, synthInfo: SynthesisInfo)
 	extends HasLogger {
     
-  val solver = solverf.getNewSolver
+  val solver = solverf.getNewSolver(None)
 
   import SynthesisInfo.Action._
   

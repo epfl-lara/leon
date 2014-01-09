@@ -50,11 +50,7 @@ class CompiledExpression(unit: CompilationUnit, cf: ClassFile, expression : Expr
   // We also need to reattach a type in some cases (sets, maps).
   def evalFromJVM(args: Seq[AnyRef]) : Expr = {
     try {
-      val result = unit.jvmToExpr(evalToJVM(args))
-      if(!result.isTyped) {
-        result.setType(exprType)
-      }
-      result
+      unit.jvmToExpr(evalToJVM(args), exprType)
     } catch {
       case ite : InvocationTargetException => throw ite.getCause()
     }

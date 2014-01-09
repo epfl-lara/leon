@@ -5,10 +5,16 @@ package solvers
 
 import purescala.Common._
 import purescala.Trees._
+import purescala.Definitions._
 
 class SimpleSolverAPI(sf: SolverFactory[Solver]) {
-  def solveVALID(expression: Expr): Option[Boolean] = {
-    val s = sf.getNewSolver
+  def solveVALID(expression: Expr, cond: Option[Expr]): Option[Boolean] = cond match {
+    case Some(expr) => solveVALID(expression, expr)
+    case None => solveVALID(expression)
+  }
+
+  def solveVALID(expression: Expr, cond: Expr = BooleanLiteral(true)): Option[Boolean] = {
+    val s = sf.getNewSolver(cond)
     try {
       s.assertCnstr(Not(expression))
       s.check.map(r => !r)
@@ -17,8 +23,13 @@ class SimpleSolverAPI(sf: SolverFactory[Solver]) {
     }
   }
 
-  def solveSAT(expression: Expr): (Option[Boolean], Map[Identifier, Expr]) = {
-    val s = sf.getNewSolver
+  def solveSAT(expression: Expr, cond: Option[Expr]): (Option[Boolean], Map[Identifier, Expr]) = cond match {
+    case Some(expr) => solveSAT(expression, expr)
+    case None => solveSAT(expression)
+  }
+
+  def solveSAT(expression: Expr, cond: Expr = BooleanLiteral(true)): (Option[Boolean], Map[Identifier, Expr]) = {
+    val s = sf.getNewSolver(cond)
     try {
       s.assertCnstr(expression)
       s.check match {

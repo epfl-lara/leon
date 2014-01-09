@@ -35,7 +35,7 @@ class VariableRefinerStructure(directSubclassMap: Map[ClassType, Set[ClassType]]
   
   override def checkRefinements(expr: Expr, condition: Expr)(evaluator: Evaluator = null) =
 	  // check for refinements
-	  getIdAndClassDef(expr) match {
+	  getIdAndClassType(expr) match {
 	    case Some(refinementPair @ (id, classType)) if variableRefinements(id).size > 1 =>
 	      fine("And now we have refinement type: " + refinementPair)
 	      fine("variableRefinements(id) before" + variableRefinements(id))
@@ -48,9 +48,9 @@ class VariableRefinerStructure(directSubclassMap: Map[ClassType, Set[ClassType]]
 	  }
 
   // inspect the expression if some refinements can be done
-  def getIdAndClassDef(expr: Expr) = expr match {
-    case CaseClassInstanceOf(classDef, Variable(id)) =>
-      Some((id, classDef))
+  def getIdAndClassType(expr: Expr) = expr match {
+    case CaseClassInstanceOf(cct, Variable(id)) =>
+      Some((id, cct))
     case _ =>
       None
   }

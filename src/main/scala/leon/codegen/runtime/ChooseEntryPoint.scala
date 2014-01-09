@@ -31,7 +31,7 @@ object ChooseEntryPoint {
     hash
   }
 
-  def invoke(i: Int, inputs: Array[AnyRef]): java.lang.Object = {
+  def invoke(i: Int, inputs: scala.Array[AnyRef]): java.lang.Object = {
     val (p, unit) = map(i)
 
     val program = unit.program
@@ -41,11 +41,11 @@ object ChooseEntryPoint {
 
     val tStart = System.currentTimeMillis;
 
-    val solver = new FairZ3Solver(ctx, program).setTimeout(10000L)
+    val solver = new FairZ3Solver(ctx, program, BooleanLiteral(true)).setTimeout(10000L)
 
     val inputsMap = (p.as zip inputs).map {
       case (id, v) =>
-        Equals(Variable(id), unit.jvmToExpr(v))
+        Equals(Variable(id), unit.jvmToExpr(v, id.getType))
     }
 
     solver.assertCnstr(And(Seq(p.pc, p.phi) ++ inputsMap))
