@@ -445,9 +445,9 @@ object ExpressionTransformer {
     //val nnfExpr = TransformNot(expr)    
     //reduce the language before applying flatten function
     val redex = reduceLangBlocks(expr)
-    println("Redex: "+ScalaPrinter(redex))
+    //println("Redex: "+ScalaPrinter(redex))
     val nnfExpr = TransformNot(redex)
-    println("NNFexpr: "+ScalaPrinter(nnfExpr))
+    //println("NNFexpr: "+ScalaPrinter(nnfExpr))
     //flatten all function calls
     val flatExpr = FlattenFunction(nnfExpr)
     
@@ -455,7 +455,7 @@ object ExpressionTransformer {
     val simpExpr = pullAndOrs(flatExpr)
     simpExpr
   }
-  
+
   /**
    * This is the inverse operation of flattening, this is mostly
    * used to produce a readable formula.
@@ -466,9 +466,14 @@ object ExpressionTransformer {
     var tempMap = Map[Expr, Expr]()
     val newinst = simplePostTransform((e: Expr) => e match {
       case Equals(v @ Variable(id), rhs @ _) if !freevars.contains(id) =>
-        tempMap += (v -> rhs); tru
+        if (tempMap.contains(v)) e
+        else {
+          tempMap += (v -> rhs)
+          tru
+        }
       case _ => e
     })(ine)
+    //println("Map: " + tempMap)
     val closure = (e: Expr) => replace(tempMap, e)
     InvariantUtil.fix(closure)(newinst)
   }
@@ -567,7 +572,7 @@ object ExpressionTransformer {
     }
     
     def printRec(e: Expr, indent : Int) : Unit  = {
-      if(uniOP(e,0)) wr.println(e)
+      if(uniOP(e,0)) wr.println(ScalaPrinter(e))
       else {
         wr.write("\n"+" " * indent + "(\n")
         e match {

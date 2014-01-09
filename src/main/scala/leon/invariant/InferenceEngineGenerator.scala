@@ -61,13 +61,11 @@ class InferenceEngineGenerator(program: Program,
     val plainBody = Equals(resvar, simpBody)    
     val bodyExpr = if (funDef.hasPrecondition) {
       And(matchToIfThenElse(funDef.precondition.get), plainBody)
-    } else plainBody
-    //println("BOdyExpr: "+bodyExpr)    
+    } else plainBody    
     //flatten the functions in the body           
-    val flatBody = ExpressionTransformer.normalizeExpr(bodyExpr)
-    //System.exit(0)
+    val flatBody = ExpressionTransformer.normalizeExpr(bodyExpr)    
     //for debugging
-    println("falttened Body: " + flatBody)
+    println("falttened Body: " + ScalaPrinter(flatBody))
     constTracker.addBodyConstraints(funDef, flatBody)
 
     //create a postcondition template if the function is recursive or if a template is provided for the function
@@ -94,7 +92,7 @@ class InferenceEngineGenerator(program: Program,
     }
 
     //for debugging
-    println("Flattened Post: " + fullPost)
+    println("Flattened Post: " + ScalaPrinter(fullPost))
     constTracker.addPostConstraints(funDef, fullPost)
 
     //create entities that uses the constraint tracker

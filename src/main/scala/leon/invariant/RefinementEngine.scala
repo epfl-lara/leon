@@ -22,6 +22,7 @@ import leon.verification.ExtendedVC
 import leon.verification.Tactic
 import leon.verification.VerificationReport
 import leon.invariant._
+import leon.purescala.ScalaPrinter
 
 class CallData(val ctrnode : CtrNode, val parents: List[FunDef]) {  
 }
@@ -217,7 +218,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     val post = callee.postcondition
     
     //Important: make sure we use a fresh body expression here
-    val freshBody = matchToIfThenElse(freshenLocals(callee.nondetBody.get))    
+    val freshBody = matchToIfThenElse((callee.nondetBody.get))    
     val calleeSummary = if (post.isDefined) {
       val (resvar, poste) = post.get
       val freshPost = matchToIfThenElse(freshenLocals(poste))
@@ -227,10 +228,15 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
       Equals(ResultVariable().setType(callee.returnType), freshBody)
     }
 
+    //println("Body: "+calleeSummary)
     val argmap1 = InvariantUtil.formalToAcutal(call)
+    //println("Argmap: "+argmap1)
     val inlinedSummary = ExpressionTransformer.normalizeExpr(replace(argmap1, calleeSummary))
           
-    //println("calleeSummary: "+inlinedSummary)        
+    //println("inlinedSummary: "+ScalaPrinter(inlinedSummary))  
+//    if(call.fi.funDef.id.name == "g") {
+//      System.exit(0)
+//    }
     //create a constraint tree for the summary
     val summaryTree = CtrNode()      
     ctrTracker.addConstraintRecur(inlinedSummary, summaryTree)          

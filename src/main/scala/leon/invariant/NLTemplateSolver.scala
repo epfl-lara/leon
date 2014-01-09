@@ -32,6 +32,7 @@ import leon.invariant._
 import leon.purescala.UndirectedGraph
 import scala.util.control.Breaks._
 import leon.solvers._
+import leon.purescala.ScalaPrinter
 
 class NLTemplateSolver(context : LeonContext, 
     program : Program,
@@ -267,7 +268,7 @@ class NLTemplateSolver(context : LeonContext,
           }
           case Some(false) => {
             //reporter.info("- Number of explored paths (of the DAG) in this unroll step: " + exploredPaths)
-            disjsSolvedInIter ++= confDisjuncts 
+            disjsSolvedInIter ++= confDisjuncts           
             (None, fls, Map())
           }
           case Some(true) => {
@@ -582,7 +583,7 @@ class NLTemplateSolver(context : LeonContext,
             traverseBodyTree(child, newCtrs, newUIFs, newTemps, cons, newAuxs))                             
         }
         case CtrLeaf() => {
-          //pipe this to the post tree           
+          //pipe this to the post tree                     
           traversePostTree(postRoot, currentCtrs, currentTemps, auxCtrs, currentUIFs, adtCons, Seq(), Seq(), Seq())
         }
       }
@@ -627,6 +628,7 @@ class NLTemplateSolver(context : LeonContext,
         }
         case CtrLeaf() => {          
           //pipe to the uif constraint generator           
+          //println("Path: "+ currUIFs+","+adtCons+","+(antAuxs ++ currAuxs)+","+(ants ++ conseqs)+","+(antTemps ++ currTemps))
           uifsConstraintsGen(ants, antTemps, antAuxs, currUIFs, adtCons, conseqs, currTemps, currAuxs)
         }
       }
@@ -677,8 +679,9 @@ class NLTemplateSolver(context : LeonContext,
         val pathcond = simplifyArithmetic(plainFormula)
         
         if(this.printPathToConsole){
-          val simpcond = ExpressionTransformer.unFlatten(pathcond, variablesOf(pathcond).filterNot(TVarFactory.isTemporary _)) 
-          println("Full-path: " + simpcond)
+          //val simpcond = ExpressionTransformer.unFlatten(pathcond, variablesOf(pathcond).filterNot(TVarFactory.isTemporary _))
+          val simpcond = pathcond
+          println("Full-path: " + ScalaPrinter(simpcond))
           val filename = "full-path-"+FileCountGUID.getID+".txt"
           val wr = new PrintWriter(new File(filename))
           ExpressionTransformer.PrintWithIndentation(wr, simpcond)
@@ -749,7 +752,7 @@ class NLTemplateSolver(context : LeonContext,
         
         val lnctrs = ants ++ conseqs
         val temps = antTemps ++ conseqTemps
-        
+                    
         if(this.debugElimination)
         	println("Path Constraints (before elim): "+(lnctrs ++ temps))
         
@@ -766,7 +769,7 @@ class NLTemplateSolver(context : LeonContext,
           reporter.info("Number of linear constraints: " + lnctrs.size)
           reporter.info("Number of template constraints: " + temps.size)
           reporter.info("Number of elimVars: " + elimVars.size)
-        }
+        }                
         
         val elimLnctrs = LinearConstraintUtil.apply1PRuleOnDisjunct(lnctrs, elimVars)
 

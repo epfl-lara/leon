@@ -33,6 +33,11 @@ import leon.purescala.UndirectedGraph
 import scala.util.control.Breaks._
 import leon.solvers._
 
+import scala.concurrent._
+import scala.concurrent.duration._
+import ExecutionContext.Implicits.global
+import leon.purescala.ScalaPrinter
+
 abstract class TemplateSolver (
     context : LeonContext, 
     program : Program,
@@ -97,6 +102,7 @@ abstract class TemplateSolver (
       
       //apply (instantiate) the axioms of functions in the verification condition
       val formulaWithAxioms = instantiateAxioms(formula)
+      //println("Func: "+fd.id+" VC: "+ScalaPrinter(formulaWithAxioms))
       
       //stats      
       if (InferInvariantsPhase.dumpStats) {
@@ -187,10 +193,6 @@ abstract class TemplateSolver (
     And(formula, axiomInst)
   }
 }
-
-import scala.concurrent._
-import scala.concurrent.duration._
-import ExecutionContext.Implicits.global
 
 class ParallelTemplateSolver(
     context : LeonContext, 
