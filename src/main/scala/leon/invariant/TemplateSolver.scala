@@ -122,8 +122,7 @@ abstract class TemplateSolver (
 
         val (cum1, max1) = Stats.cumMax(Stats.cumLemmaApps, Stats.maxLemmaApps, vcsize - plainVCsize)
         Stats.cumLemmaApps = cum1; Stats.maxLemmaApps = max1
-      }
-            
+      }            
       
       (fd -> formulaWithAxioms)
     }).toMap  
