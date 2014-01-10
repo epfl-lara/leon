@@ -2,7 +2,7 @@ Leon 2.1
 ==========
 
 Getting Started
-===============
+---------------
 
 This section gives a very quick overview of how to build and use Leon, refer to
 the following sections if you wish (or need) more detailed information.
@@ -35,26 +35,26 @@ Then you can try e.g.
 and get something like this:
 
 <pre>
-[ Info  ] . ┌─────────┐
-          ╔═╡ Summary ╞═══════════════════════════════════════════════════════════════════════╗
-          ║ └─────────┘                                                                       ║
-          ║ add                       postcond.           valid               Z3-f+t    0.314 ║
-          ║ add                       precond.    (82,14) valid               Z3-f+t    0.020 ║
-          ║ add                       precond.    (82,18) valid               Z3-f+t    0.005 ║
-          ║ balance                   postcond.           valid               Z3-f+t    0.409 ║
-          ║ balance                   match.      (91,19) valid               Z3-f+t    0.034 ║
-          ║ blackHeight               match.      (51,39) valid               Z3-f+t    0.004 ║
-          ║ buggyAdd                  postcond.           invalid             Z3-f+t    4.084 ║
-          ║ buggyAdd                  precond.     (87,8) invalid             Z3-f+t    0.111 ║
-          ║ buggyBalance              postcond.           invalid             Z3-f+t    0.055 ║
-          ║ buggyBalance              match.     (105,19) invalid             Z3-f+t    0.007 ║
-          ║ ins                       postcond.           valid               Z3-f+t    6.577 ║
-          ║ ins                       precond.    (63,40) valid               Z3-f+t    0.021 ║
-          ║ ins                       precond.    (65,43) valid               Z3-f+t    0.005 ║
-          ║ makeBlack                 postcond.           valid               Z3-f+t    0.007 ║
-          ║ redNodesHaveBlackChildren match.      (35,56) valid               Z3-f+t    0.003 ║
-          ║ size                      postcond.           valid               Z3-f+t    0.012 ║
-          ╚═══════════════════════════════════════════════════════════════════════════════════╝
+    ┌─────────┐
+  ╔═╡ Summary ╞═══════════════════════════════════════════════════════════════════════╗
+  ║ └─────────┘                                                                       ║
+  ║ add                       postcond.           valid               Z3-f+t    0.314 ║
+  ║ add                       precond.    (82,14) valid               Z3-f+t    0.020 ║
+  ║ add                       precond.    (82,18) valid               Z3-f+t    0.005 ║
+  ║ balance                   postcond.           valid               Z3-f+t    0.409 ║
+  ║ balance                   match.      (91,19) valid               Z3-f+t    0.034 ║
+  ║ blackHeight               match.      (51,39) valid               Z3-f+t    0.004 ║
+  ║ buggyAdd                  postcond.           invalid             Z3-f+t    4.084 ║
+  ║ buggyAdd                  precond.     (87,8) invalid             Z3-f+t    0.111 ║
+  ║ buggyBalance              postcond.           invalid             Z3-f+t    0.055 ║
+  ║ buggyBalance              match.     (105,19) invalid             Z3-f+t    0.007 ║
+  ║ ins                       postcond.           valid               Z3-f+t    6.577 ║
+  ║ ins                       precond.    (63,40) valid               Z3-f+t    0.021 ║
+  ║ ins                       precond.    (65,43) valid               Z3-f+t    0.005 ║
+  ║ makeBlack                 postcond.           valid               Z3-f+t    0.007 ║
+  ║ redNodesHaveBlackChildren match.      (35,56) valid               Z3-f+t    0.003 ║
+  ║ size                      postcond.           valid               Z3-f+t    0.012 ║
+  ╚═══════════════════════════════════════════════════════════════════════════════════╝
 </pre>
 
 Building Leon
@@ -98,17 +98,17 @@ together.
 Finally you can build Leon. Start ```sbt``` from a terminal to get an interactive
 sbt session. Then type:
 
-  	> clean
-  	
+    > clean
+    
 This will make sure the build is clean, then:
 
-  	> package
-  	
+    > package
+    
 This will compile everything and create jar files. This could take a long time.
 Finally you need to generate a running script with the command:
 
-  	> script
-  	
+    > script
+    
 This will generate the leon script that can be used to run leon from command line
 with correct arguments and classpath. This script you should not need to re-generate
 another time, if you modify some code you just need to run ```compile``` again. If anything
@@ -127,35 +127,21 @@ Scala compiler.
 Now we can make sure that the build went fine. Leon comes with a test suite.
 Use ```sbt test``` to run all the tests.
 
-Using Leon
-----------
+Changelog
+---------
 
-### Layout of this directory
+#### v2.1
+*Released 10.01.2014*
+  
+* Reworked TreeOps API
+* Tracing evaluators
+* Support for range positions
+* Support choose() in evaluators
+* Flatten functions in results of synthesis
+* Improved pretty printers with context information
+ 
 
-Here is a quick overview of the conventions used in the layout of this directory:
+#### v2.0
 
-- _src_ - Contains all Scala sources for the Leon project. The layout of the sources follows the standard SBT (and Maven) convention.
+* First release
 
-- _regression_ - Contains many small testcases. They are meant to be run automatically with a test script and Leon should behave correctly on
-all of them (correctly could mean either proving validity, finding counter-example or refusing the input).
-
-- _testcases_ - Contains somewhat realistic testcases, that correspond to existing algorithms. Leon might not successfully handle all of them.
-
-- _README(.md)_ - This README file.
-
-- _LICENSE_ - The license under which Leon is distributed.
-
-- _build.sbt_
-
-- _project/Build.sbt_ - Configuration of SBT.
-
-- _library_ - Sub-project containing the Leon library. Needed if one wishes to run Leon testcases with standard Scala.
-
-- _unmanaged_ - This is the directory used by the build system to find unmanated dependencies. You usually need to manually
-add files to this directory.
-
-- _lib-bin_  - Contains some binary dependencies for the system that have been build for different plattform/OS.
-
-### Troubleshooting
-
-Sorry, not done yet :(
