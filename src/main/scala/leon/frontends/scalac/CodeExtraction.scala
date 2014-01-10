@@ -379,7 +379,7 @@ trait CodeExtraction extends ASTExtractors {
       } else {
         val recGuard = extractTree(cd.guard)
 
-        if(!isPure(recGuard)) {
+        if(isXLang(recGuard)) {
           reporter.error(cd.guard.pos, "Guard expression must be pure")
           throw ImpureCodeEncounteredException(cd)
         }
@@ -1056,15 +1056,9 @@ trait CodeExtraction extends ASTExtractors {
   }
 
   def containsLetDef(expr: LeonExpr): Boolean = {
-    def convert(t : LeonExpr) : Boolean = t match {
-      case (l : LetDef) => true
+    exists { _ match {
+      case (l: LetDef) => true
       case _ => false
-    }
-    def combine(c1 : Boolean, c2 : Boolean) : Boolean = c1 || c2
-    def compute(t : LeonExpr, c : Boolean) = t match {
-      case (l : LetDef) => true
-      case _ => c
-    }
-    treeCatamorphism(convert, combine, compute, expr)
+    }}(expr)
   }
 }

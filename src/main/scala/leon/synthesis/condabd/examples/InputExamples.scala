@@ -44,7 +44,7 @@ object InputExamples {
       
     models.toList.map(m => (ins zip m).toMap).map( innerMap =>
       innerMap.map( innerEl => innerEl match {
-        case (id, expr) => (id, searchAndReplace(foundInteger)(expr))
+        case (id, expr) => (id, postMap(foundInteger)(expr))
       })
     )
   }

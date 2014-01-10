@@ -108,17 +108,15 @@ object Definitions {
     lazy val (callGraph, callers, callees) = {
       type CallGraph = Set[(FunDef,FunDef)]
 
-      val convert: Expr=>CallGraph = (_ => Set.empty)
-      val combine: (CallGraph,CallGraph)=>CallGraph = (s1,s2) => s1 ++ s2
-      def compute(fd: FunDef)(e: Expr, g: CallGraph) : CallGraph = e match {
-        case f @ FunctionInvocation(f2, _) => g + ((fd, f2))
-        case _ => g
+      def collectCalls(fd: FunDef)(e: Expr): CallGraph = e match {
+        case f @ FunctionInvocation(f2, _) => Set((fd, f2))
+        case _ => Set()
       }
 
       val resSet: CallGraph = (for(funDef <- definedFunctions) yield {
-        funDef.precondition.map(treeCatamorphism[CallGraph](convert, combine, compute(funDef)_, _)).getOrElse(Set.empty) ++
-        funDef.body.map(treeCatamorphism[CallGraph](convert, combine, compute(funDef)_, _)).getOrElse(Set.empty) ++
-        funDef.postcondition.map(pc => treeCatamorphism[CallGraph](convert, combine, compute(funDef)_, pc._2)).getOrElse(Set.empty)
+        funDef.precondition.map(collect(collectCalls(funDef))(_)).getOrElse(Set()) ++
+        funDef.body.map(collect(collectCalls(funDef))(_)).getOrElse(Set()) ++
+        funDef.postcondition.map(p => collect(collectCalls(funDef))(p._2)).getOrElse(Set())
       }).foldLeft(Set[(FunDef, FunDef)]())(_ ++ _)
 
       var callers: Map[FunDef,Set[FunDef]] =

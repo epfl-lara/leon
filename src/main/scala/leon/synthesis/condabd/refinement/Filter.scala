@@ -1,7 +1,7 @@
 package leon.synthesis
 package condabd.refinement
 
-import scala.collection.mutable._
+import scala.collection.mutable.{Seq => _, _}
 
 import leon.purescala.Trees._
 import leon.purescala.TypeTrees._
@@ -72,15 +72,7 @@ class Filter(program: Program, holeFunDef: FunDef, refiner: VariableRefiner) ext
   // true - YES, false - NO or don't know
   // basically a lexicographic (well-founded) ordering
   def isCallAvoidableBySize(expr: Expr, funDefArgs: List[Identifier]) = {
-	    		    
-  	import TreeOps.treeCatamorphism
-  	
-  	treeCatamorphism(
-	    isBadInvocation,
-	    (b1: Boolean, b2: Boolean) => b1 || b2,
-	    (t: Expr, b: Boolean) => b || isBadInvocation(t),
-	    expr
-    )  
+    TreeOps.exists(isBadInvocation)(expr)
   }
   
   def isLess(arg: Expr, variable: Identifier): Int = {
@@ -101,26 +93,13 @@ class Filter(program: Program, holeFunDef: FunDef, refiner: VariableRefiner) ext
 	  getSize(arg, 0)
   }
     
-  def hasDoubleRecursion(expr: Expr) = {      
-    var found = false
-    
-  	def findRecursion(expr: Expr) = expr match {
-	    case FunctionInvocation(`holeFunDef`, args) => true
-	    case _ => false
-	  }
-    
-  	def findRecursionInCall(expr: Expr, b: Boolean) = expr match {
-	    case FunctionInvocation(`holeFunDef`, args) =>
-	      if (b) found = true
-	      true
-	    case _ => b
-	  }
-  	
-  	import TreeOps.treeCatamorphism
-  	
-  	treeCatamorphism(findRecursion, (b1: Boolean, b2: Boolean) => b1 || b2, findRecursionInCall, expr)
-  	
-  	found
+  def hasDoubleRecursion(expr: Expr) = {
+    def recursionLevel(expr: Expr, rec: Seq[Int]) = expr match {
+      case FunctionInvocation(`holeFunDef`, args) => (0 +: rec).max + 1
+      case _ =>  (0 +: rec).max
+    }
+
+    TreeOps.foldRight(recursionLevel)(expr) >= 2
   }
   
   // removing checking instance of fields (e.g. x.field.isInstanceOf[..]) - this is deemed unecessary
@@ -134,7 +113,7 @@ class Filter(program: Program, holeFunDef: FunDef, refiner: VariableRefiner) ext
 	    case _ => None
     }
     
-    TreeOps.searchAndReplace(isCaseClassSelector)(expr)
+    TreeOps.postMap(isCaseClassSelector)(expr)
     
     found
   }

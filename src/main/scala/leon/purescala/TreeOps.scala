@@ -14,6 +14,311 @@ object TreeOps {
   import Trees._
   import Extractors._
 
+  /**
+   * Core API
+   * ========
+   *
+   * All these functions should be stable, tested, and used everywhere. Modify
+   * with care.
+   */
+
+
+  /**
+   * Do a right tree fold
+   *
+   * f takes the current node, as well as the seq of results form the subtrees.
+   *
+   * Usages of views makes the computation lazy. (which is useful for
+   * contains-like operations)
+   */
+  def foldRight[T](f: (Expr, Seq[T]) => T)(e: Expr): T = {
+    val rec = foldRight(f) _
+
+    e match {
+      case t: Terminal =>
+        f(t, Stream.empty)
+
+      case u @ UnaryOperator(e, builder) =>
+        f(u, List(e).view.map(rec))
+
+      case b @ BinaryOperator(e1, e2, builder) =>
+        f(b, List(e1, e2).view.map(rec))
+
+      case n @ NAryOperator(es, builder) =>
+        f(n, es.view.map(rec))
+    }
+  }
+
+  /**
+   * pre-traversal of the tree, calls f() on every node *before* visiting
+   * children.
+   *
+   * e.g.
+   *
+   *   Add(a, Minus(b, c))
+   *
+   * will yield, in order:
+   *
+   *   f(Add(a, Minus(b, c))), f(a), f(Minus(b, c)), f(b), f(c)
+   */
+  def preTraversal(f: Expr => Unit)(e: Expr): Unit = {
+    val rec = preTraversal(f) _
+    f(e)
+
+    e match {
+      case t: Terminal =>
+
+      case u @ UnaryOperator(e, builder) =>
+        List(e).foreach(rec)
+
+      case b @ BinaryOperator(e1, e2, builder) =>
+        List(e1, e2).foreach(rec)
+
+      case n @ NAryOperator(es, builder) =>
+        es.foreach(rec)
+    }
+  }
+
+  /**
+   * post-traversal of the tree, calls f() on every node *after* visiting
+   * children.
+   *
+   * e.g.
+   *
+   *   Add(a, Minus(b, c))
+   *
+   * will yield, in order:
+   *
+   *   f(a), f(b), f(c), f(Minus(b, c)), f(Add(a, Minus(b, c)))
+   */
+  def postTraversal(f: Expr => Unit)(e: Expr): Unit = {
+    val rec = preTraversal(f) _
+
+    e match {
+      case t: Terminal =>
+
+      case u @ UnaryOperator(e, builder) =>
+        List(e).foreach(rec)
+
+      case b @ BinaryOperator(e1, e2, builder) =>
+        List(e1, e2).foreach(rec)
+
+      case n @ NAryOperator(es, builder) =>
+        es.foreach(rec)
+    }
+
+    f(e)
+  }
+
+  /**
+   * pre-transformation of the tree, takes a partial function of replacements.
+   * Substitutes *before* recursing down the trees.
+   *
+   * e.g.
+   *
+   *   Add(a, Minus(b, c)) with replacements: Minus(b,c) -> d, b -> e, d -> f
+   *
+   * will yield:
+   *
+   *   Add(a, d)   // And not Add(a, f) because it only substitute once for each level.
+   */
+  def preMap(f: Expr => Option[Expr])(e: Expr): Expr = {
+    val rec = preMap(f) _
+
+    val newV = f(e).getOrElse(e)
+
+    newV match {
+      case u @ UnaryOperator(e, builder) =>
+        val newE = rec(e)
+
+        if (newE ne e) {
+          builder(newE).copiedFrom(u)
+        } else {
+          u
+        }
+
+      case b @ BinaryOperator(e1, e2, builder) =>
+        val newE1 = rec(e1)
+        val newE2 = rec(e2)
+
+        if ((newE1 ne e1) || (newE2 ne e2)) {
+          builder(newE1, newE2).copiedFrom(b)
+        } else {
+          b
+        }
+
+      case n @ NAryOperator(es, builder) =>
+        val newEs = es.map(rec)
+
+        if ((newEs zip es).exists { case (bef, aft) => aft ne bef }) {
+          builder(newEs).copiedFrom(n)
+        } else {
+          n
+        }
+
+      case t: Terminal =>
+        t
+    }
+  }
+
+  /**
+   * post-transformation of the tree, takes a partial function of replacements.
+   * Substitutes *after* recursing down the trees.
+   *
+   * e.g.
+   *
+   *   Add(a, Minus(b, c)) with replacements: Minus(b,c) -> d, b -> e, d -> f
+   *
+   * will yield:
+   *
+   *   Add(a, Minus(e, c))
+   */
+  def postMap(f: Expr => Option[Expr])(e: Expr): Expr = {
+    val rec = postMap(f) _
+
+    val newV = e match {
+      case u @ UnaryOperator(e, builder) =>
+        val newE = rec(e)
+
+        if (newE ne e) {
+          builder(newE).copiedFrom(u)
+        } else {
+          u
+        }
+
+      case b @ BinaryOperator(e1, e2, builder) =>
+        val newE1 = rec(e1)
+        val newE2 = rec(e2)
+
+        if ((newE1 ne e1) || (newE2 ne e2)) {
+          builder(newE1, newE2).copiedFrom(b)
+        } else {
+          b
+        }
+
+      case n @ NAryOperator(es, builder) =>
+        val newEs = es.map(rec)
+
+        if ((newEs zip es).exists { case (bef, aft) => aft ne bef }) {
+          builder(newEs).copiedFrom(n)
+        } else {
+          n
+        }
+
+      case t: Terminal =>
+        t
+    }
+
+    f(newV).getOrElse(newV)
+  }
+
+  /*
+   * Apply 'f' on 'e' as long as until it stays the same (value equality)
+   */
+  def fixpoint[T](f: T => T)(e: T): T = {
+    var v1 = e
+    var v2 = f(v1)
+    while(v2 != v1) {
+      v1 = v2
+      v2 = f(v2)
+    }
+    v2
+  }
+
+  ///*
+  // * Turn a total function returning Option[A] into a partial function
+  // * returning A.
+  // * Optimize for isDefinedAt -> apply access pattern
+  // */
+  //def unlift[A, B](f: A => Option[B]): PartialFunction[A,B] = new PartialFunction[A, B] {
+  //  var last: Option[(A, Option[B])] = None
+
+  //  def apply(a: A) = last match {
+  //    case Some((a2, res)) if a2 == a => res.get
+  //    case _ => f(a).get
+  //  }
+
+  //  def isDefinedAt(a: A) = {
+  //    val res = f(a)
+  //    last = Some((a, res))
+  //    res.isDefined
+  //  }
+  //}
+
+  /**
+   * Auxiliary API
+   * =============
+   *
+   * Convenient methods using the Core API.
+   */
+
+
+  /**
+   * Returns true if matcher(se) == true where se is any sub-expression of e
+   */
+
+  def exists(matcher: Expr => Boolean)(e: Expr): Boolean = {
+    foldRight[Boolean]({ (e, subs) =>  matcher(e) || subs.contains(true) } )(e)
+  }
+
+  def collect[T](matcher: Expr => Set[T])(e: Expr): Set[T] = {
+    foldRight[Set[T]]({ (e, subs) => matcher(e) ++ subs.foldLeft(Set[T]())(_ ++ _) } )(e)
+  }
+
+  def filter(matcher: Expr => Boolean)(e: Expr): Set[Expr] = {
+    collect[Expr] { e => if (matcher(e)) Set(e) else Set() }(e)
+  }
+
+  def count(matcher: Expr => Int)(e: Expr): Int = {
+    foldRight[Int]({ (e, subs) =>  matcher(e) + subs.foldLeft(0)(_ + _) } )(e)
+  }
+
+  def replace(substs: Map[Expr,Expr], expr: Expr) : Expr = {
+    postMap(substs.lift)(expr)
+  }
+
+  def replaceFromIDs(substs: Map[Identifier, Expr], expr: Expr) : Expr = {
+    postMap( {
+        case Variable(i) => substs.get(i)
+        case _ => None
+    })(expr)
+  }
+
+  def variablesOf(expr: Expr): Set[Identifier] = {
+    foldRight[Set[Identifier]]({
+      case (e, subs) =>
+        val subvs = subs.foldLeft(Set[Identifier]())(_ ++ _)
+
+        e match {
+          case Variable(i) => subvs + i
+          case Let(i,_,_) => subvs - i
+          case Choose(is,_) => subvs -- is
+          case MatchExpr(_, cses) => subvs -- (cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b))
+          case _ => subvs
+        }
+    })(expr)
+  }
+
+  def containsFunctionCalls(expr: Expr): Boolean = {
+    exists{
+        case _: FunctionInvocation => true
+        case _ => false
+    }(expr)
+  }
+
+  /**
+   * Returns all Function calls found in an expression
+   */
+  def functionCallsOf(expr: Expr): Set[FunctionInvocation] = {
+    foldRight[Set[FunctionInvocation]]({
+      case (e, subs) =>
+        val c: Set[FunctionInvocation] = e match {
+          case f: FunctionInvocation => Set(f)
+          case _ => Set()
+        }
+        subs.foldLeft(c)(_ ++ _)
+    })(expr)
+  }
   def negate(expr: Expr) : Expr = (expr match {
     case Let(i,b,e) => Let(i,b,negate(e))
     case Not(e) => e
@@ -30,245 +335,12 @@ object TreeOps {
     case _ => Not(expr)
   }).setType(expr.getType).setPos(expr)
 
-  // Warning ! This may loop forever if the substitutions are not
-  // well-formed!
-  def replace(substs: Map[Expr,Expr], expr: Expr) : Expr = {
-    searchAndReplaceDFS(substs.get)(expr)
-  }
-
-  // Can't just be overloading because of type erasure :'(
-  def replaceFromIDs(substs: Map[Identifier,Expr], expr: Expr) : Expr = {
-    replace(substs.map(p => (Variable(p._1) -> p._2)), expr)
-  }
-
-  def searchAndReplace(subst: Expr=>Option[Expr], recursive: Boolean=true)(expr: Expr) : Expr = {
-    def rec(ex: Expr, skip: Expr = null) : Expr = (if (ex == skip) None else subst(ex)) match {
-      case Some(newExpr) => {
-        if(newExpr.getType == Untyped) {
-          sys.error("REPLACING IN EXPRESSION WITH AN UNTYPED TREE ! " + ex + " --to--> " + newExpr)
-        }
-        if(ex == newExpr)
-          if(recursive) rec(ex, ex) else ex
-        else
-          if(recursive) rec(newExpr) else newExpr
-      }
-      case None => ex match {
-        case l @ Let(i,e,b) => {
-          val re = rec(e)
-          val rb = rec(b)
-          if(re != e || rb != b)
-            Let(i, re, rb).copiedFrom(l)
-          else
-            l
-        }
-
-        case lt @ LetTuple(ids, expr, body) => {
-          val re = rec(expr)
-          val rb = rec(body)
-          if (re != expr || rb != body) {
-            LetTuple(ids, re, rb).copiedFrom(lt)
-          } else {
-            lt
-          }
-        }
-        case n @ NAryOperator(args, recons) => {
-          var change = false
-          val rargs = args.map(a => {
-            val ra = rec(a)
-            if(ra != a) {
-              change = true  
-              ra
-            } else {
-              a
-            }            
-          })
-          if(change)
-            recons(rargs).copiedFrom(n)
-          else
-            n
-        }
-        case b @ BinaryOperator(t1,t2,recons) => {
-          val r1 = rec(t1)
-          val r2 = rec(t2)
-          if(r1 != t1 || r2 != t2)
-            recons(r1,r2).copiedFrom(b)
-          else
-            b
-        }
-        case u @ UnaryOperator(t,recons) => {
-          val r = rec(t)
-          if(r != t)
-            recons(r).copiedFrom(u)
-          else
-            u
-        }
-        case i @ IfExpr(t1,t2,t3) => {
-          val r1 = rec(t1)
-          val r2 = rec(t2)
-          val r3 = rec(t3)
-          if(r1 != t1 || r2 != t2 || r3 != t3)
-            IfExpr(rec(t1),rec(t2),rec(t3)).copiedFrom(i)
-          else
-            i
-        }
-        case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut), cses.map(inCase(_))).copiedFrom(m)
-
-        case c @ Choose(args, body) =>
-          val body2 = rec(body)
-
-          if (body != body2) {
-            Choose(args, body2).copiedFrom(c)
-          } else {
-            c
-          }
-
-        case t if t.isInstanceOf[Terminal] => t
-        case unhandled => scala.sys.error("Non-terminal case should be handled in searchAndReplace: " + unhandled)
-      }
-    }
-
-    def inCase(cse: MatchCase) : MatchCase = cse match {
-      case SimpleCase(pat, rhs) => SimpleCase(pat, rec(rhs)).copiedFrom(cse)
-      case GuardedCase(pat, guard, rhs) => GuardedCase(pat, rec(guard), rec(rhs)).copiedFrom(cse)
-    }
-
-    rec(expr)
-  }
-
-  def searchAndReplaceDFS(subst: Expr=>Option[Expr])(expr: Expr) : Expr = {
-    val (res,_) = searchAndReplaceDFSandTrackChanges(subst)(expr)
-    res
-  }
-
-  def searchAndReplaceDFSandTrackChanges(subst: Expr=>Option[Expr])(expr: Expr) : (Expr,Boolean) = {
-    var somethingChanged: Boolean = false
-    def applySubst(ex: Expr) : Expr = subst(ex) match {
-      case None => ex
-      case Some(newEx) => {
-        somethingChanged = true
-        if(newEx.getType == Untyped) {
-          sys.error("REPLACING [" + ex + "] WITH AN UNTYPED EXPRESSION !")
-          sys.error("Here's the new expression: " + newEx)
-        }
-        newEx
-      }
-    }
-
-    def rec(ex: Expr) : Expr = ex match {
-      case l @ Let(i,e,b) => {
-        val re = rec(e)
-        val rb = rec(b)
-        applySubst(if(re != e || rb != b) {
-          Let(i,re,rb).copiedFrom(l)
-        } else {
-          l
-        })
-      }
-      case l @ LetTuple(ids,e,b) => {
-        val re = rec(e)
-        val rb = rec(b)
-        applySubst(if(re != e || rb != b) {
-          LetTuple(ids,re,rb).copiedFrom(l)
-        } else {
-          l
-        })
-      }
-      case n @ NAryOperator(args, recons) => {
-        var change = false
-        val rargs = args.map(a => {
-          val ra = rec(a)
-          if(ra != a) {
-            change = true  
-            ra
-          } else {
-            a
-          }            
-        })
-        applySubst(if(change) {
-          recons(rargs).copiedFrom(n)
-        } else {
-          n
-        })
-      }
-      case b @ BinaryOperator(t1,t2,recons) => {
-        val r1 = rec(t1)
-        val r2 = rec(t2)
-        applySubst(if(r1 != t1 || r2 != t2) {
-          recons(r1,r2).copiedFrom(b)
-        } else {
-          b
-        })
-      }
-      case u @ UnaryOperator(t,recons) => {
-        val r = rec(t)
-        applySubst(if(r != t) {
-          recons(r).copiedFrom(u)
-        } else {
-          u
-        })
-      }
-      case i @ IfExpr(t1,t2,t3) => {
-        val r1 = rec(t1)
-        val r2 = rec(t2)
-        val r3 = rec(t3)
-        applySubst(if(r1 != t1 || r2 != t2 || r3 != t3) {
-          IfExpr(r1,r2,r3).copiedFrom(i)
-        } else {
-          i
-        })
-      }
-      case m @ MatchExpr(scrut,cses) => {
-        val rscrut = rec(scrut)
-        val (newCses,changes) = cses.map(inCase(_)).unzip
-        applySubst(if(rscrut != scrut || changes.exists(res=>res)) {
-          MatchExpr(rscrut, newCses).copiedFrom(m)
-        } else {
-          m
-        })
-      }
-
-      case c @ Choose(args, body) =>
-        val body2 = rec(body)
-
-        applySubst(if (body != body2) {
-          Choose(args, body2).copiedFrom(c)
-        } else {
-          c
-        })
-
-      case t if t.isInstanceOf[Terminal] => applySubst(t).setPos(t)
-      case unhandled => scala.sys.error("Non-terminal case should be handled in searchAndReplaceDFS: " + unhandled)
-    }
-
-    def inCase(cse: MatchCase) : (MatchCase,Boolean) = cse match {
-      case s @ SimpleCase(pat, rhs) => {
-        val rrhs = rec(rhs)
-        if(rrhs != rhs) {
-          (SimpleCase(pat, rrhs), true)
-        } else {
-          (s, false)
-        }
-      }
-      case g @ GuardedCase(pat, guard, rhs) => {
-        val rguard = rec(guard)
-        val rrhs = rec(rhs)
-        if(rguard != guard || rrhs != rhs) {
-          (GuardedCase(pat, rguard, rrhs), true)
-        } else {
-          (g, false)
-        }
-      }
-    }
-
-    val res = rec(expr)
-    (res, somethingChanged)
-  }
-
   // rewrites pattern-matching expressions to use fresh variables for the binders
   def freshenLocals(expr: Expr) : Expr = {
     def rewritePattern(p: Pattern, sm: Map[Identifier,Identifier]) : Pattern = p match {
       case InstanceOfPattern(Some(b), ctd) => InstanceOfPattern(Some(sm(b)), ctd)
       case WildcardPattern(Some(b)) => WildcardPattern(Some(sm(b)))
+      case TuplePattern(ob, sps) => TuplePattern(ob.map(sm(_)), sps.map(rewritePattern(_, sm)))
       case CaseClassPattern(ob, ccd, sps) => CaseClassPattern(ob.map(sm(_)), ccd, sps.map(rewritePattern(_, sm)))
       case other => other
     }
@@ -277,102 +349,24 @@ object TreeOps {
       val allBinders: Set[Identifier] = cse.pattern.binders
       val subMap: Map[Identifier,Identifier] = Map(allBinders.map(i => (i, FreshIdentifier(i.name, true).setType(i.getType))).toSeq : _*)
       val subVarMap: Map[Expr,Expr] = subMap.map(kv => (Variable(kv._1) -> Variable(kv._2)))
-      
+
       cse match {
         case SimpleCase(pattern, rhs) => SimpleCase(rewritePattern(pattern, subMap), replace(subVarMap, rhs))
         case GuardedCase(pattern, guard, rhs) => GuardedCase(rewritePattern(pattern, subMap), replace(subVarMap, guard), replace(subVarMap, rhs))
       }
     }
 
-    def applyToTree(e : Expr) : Option[Expr] = e match {
-      case m @ MatchExpr(s, cses) => Some(MatchExpr(s, cses.map(freshenCase(_))).copiedFrom(m))
-      case l @ Let(i,e,b) => {
+
+    postMap({
+      case m @ MatchExpr(s, cses) =>
+        Some(MatchExpr(s, cses.map(freshenCase(_))).copiedFrom(m))
+
+      case l @ Let(i,e,b) =>
         val newID = FreshIdentifier(i.name, true).copiedFrom(i)
         Some(Let(newID, e, replace(Map(Variable(i) -> Variable(newID)), b)))
-      }
+
       case _ => None
-    }
-
-    searchAndReplaceDFS(applyToTree)(expr)
-  }
-
-  // convert describes how to compute a value for the leaves (that includes
-  // functions with no args.)
-  // combine descriess how to combine two values
-  def treeCatamorphism[A](convert: Expr=>A, combine: (A,A)=>A, expression: Expr) : A = {
-    treeCatamorphism(convert, combine, (e:Expr,a:A)=>a, expression)
-  }
-
-  // compute allows the catamorphism to change the combined value depending on the tree
-  def treeCatamorphism[A](convert: Expr=>A, combine: (A,A)=>A, compute: (Expr,A)=>A, expression: Expr) : A = {
-    def rec(expr: Expr) : A = expr match {
-      case l @ Let(_, e, b) => compute(l, combine(rec(e), rec(b)))
-      case n @ NAryOperator(args, _) => {
-        if(args.size == 0)
-          compute(n, convert(n))
-        else
-          compute(n, args.map(rec(_)).reduceLeft(combine))
-      }
-      case b @ BinaryOperator(a1,a2,_) => compute(b, combine(rec(a1),rec(a2)))
-      case u @ UnaryOperator(a,_) => compute(u, rec(a))
-      case i @ IfExpr(a1,a2,a3) => compute(i, combine(combine(rec(a1), rec(a2)), rec(a3)))
-      case m @ MatchExpr(scrut, cses) => compute(m, (scrut +: cses.flatMap(_.expressions)).map(rec(_)).reduceLeft(combine))
-      case c @ Choose(args, body) => compute(c, rec(body))
-      case t: Terminal => compute(t, convert(t))
-      case unhandled => scala.sys.error("Non-terminal case should be handled in treeCatamorphism: " + unhandled)
-    }
-
-    rec(expression)
-  }
-
-  def variablesOf(expr: Expr) : Set[Identifier] = {
-    def convert(t: Expr) : Set[Identifier] = t match {
-      case Variable(i) => Set(i)
-      case _ => Set.empty
-    }
-    def combine(s1: Set[Identifier], s2: Set[Identifier]) = s1 ++ s2
-    def compute(t: Expr, s: Set[Identifier]) = t match {
-      case Let(i,_,_) => s -- Set(i)
-      case Choose(is,_) => s -- is
-      case MatchExpr(_, cses) => s -- (cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b))
-      case _ => s
-    }
-    treeCatamorphism(convert, combine, compute, expr)
-  }
-
-  def containsFunctionCalls(expr: Expr): Boolean = {
-    contains(expr, {
-        case _: FunctionInvocation => true
-        case _ => false
-    })
-  }
-
-  /**
-   * Returns all Function calls found in an expression
-   */
-  def functionCallsOf(expr: Expr) : Set[FunctionInvocation] = {
-    def convert(t: Expr) : Set[FunctionInvocation] = t match {
-      case f @ FunctionInvocation(_, _) => Set(f)
-      case _ => Set.empty
-    }
-    def combine(s1: Set[FunctionInvocation], s2: Set[FunctionInvocation]) = s1 ++ s2
-    def compute(t: Expr, s: Set[FunctionInvocation]) = t match {
-      case f @ FunctionInvocation(_, _) => Set(f) ++ s
-      case _ => s
-    }
-    treeCatamorphism(convert, combine, compute, expr)
-  }
-
-  /**
-   * Returns true if matcher(se) == true where se is any sub-expression of e
-   */
-
-  def contains(e: Expr, matcher: Expr => Boolean): Boolean = {
-    simplePreTransform{
-      case e if matcher(e) => return true
-      case e => e
-    }(e)
-    false
+    })(expr)
   }
 
   /**
@@ -383,17 +377,17 @@ object TreeOps {
    * Note that the code is simple but far from optimal (many traversals...)
    */
   def simplifyLets(expr: Expr) : Expr = {
-
     def simplerLet(t: Expr) : Option[Expr] = t match {
 
       case letExpr @ Let(i, t: Terminal, b) if !containsChoose(b) =>
         Some(replace(Map((Variable(i) -> t)), b))
 
       case letExpr @ Let(i,e,b) if !containsChoose(b) => {
-        val occurences = treeCatamorphism[Int]((e:Expr) => e match {
+        val occurences = count{ (e: Expr) => e match {
           case Variable(x) if x == i => 1
           case _ => 0
-        }, (x:Int,y:Int)=>x+y, b)
+        }}(b)
+
         if(occurences == 0) {
           Some(b)
         } else if(occurences == 1) {
@@ -412,10 +406,10 @@ object TreeOps {
             //we replace, so we drop old
             false
           case (id, value) =>
-            val occurences = treeCatamorphism[Int]((e:Expr) => e match {
+            val occurences = count{ (e: Expr) => e match {
               case Variable(x) if x == id => 1
               case _ => 0
-            }, (x:Int,y:Int)=>x+y, body)
+            }}(body)
 
             if(occurences == 0) {
               false
@@ -454,10 +448,14 @@ object TreeOps {
         // the occurences of all variables in one traversal of the
         // expression.
 
-        val occurences : Seq[Int] = treeCatamorphism[Seq[Int]]((e : Expr) => e match {
-          case Variable(x) => idMap.getOrElse(x, zeroVec)
-          case _ => zeroVec
-        }, (v1 : Seq[Int], v2 : Seq[Int]) => (v1 zip v2).map(p => p._1  + p._2), body)
+        val occurences : Seq[Int] = foldRight[Seq[Int]]({ case (e, subs) =>
+          e match {
+            case Variable(x) => idMap.getOrElse(x, zeroVec)
+            case _ => subs.foldLeft(zeroVec) { case (a1, a2) =>
+                (a1 zip a2).map(p => p._1 + p._2)
+              }
+          }
+        })(body)
 
         val total = occurences.sum
 
@@ -476,7 +474,7 @@ object TreeOps {
       case _ => None
     }
 
-    searchAndReplaceDFS(simplerLet)(expr)
+    postMap(simplerLet)(expr)
   }
 
   /* Fully expands all let expressions. */
@@ -641,7 +639,7 @@ object TreeOps {
       case _ => None
     }
 
-    searchAndReplaceDFS(rewritePM)(expr)
+    postMap(rewritePM)(expr)
   }
 
   /**
@@ -654,14 +652,16 @@ object TreeOps {
       case Some(res) =>
         res
       case None =>
-        def rewriteMapGet(e: Expr) : Option[Expr] = e match {
+
+        val r = postMap({
           case mg @ MapGet(m,k) =>
             val ida = MapIsDefinedAt(m, k)
             Some(IfExpr(ida, mg, Error("key not found for map access").copiedFrom(mg)).copiedFrom(mg))
-          case _ => None
-        }
 
-        val r = searchAndReplaceDFS(rewriteMapGet)(expr)
+          case _=>
+            None
+        })(expr)
+
         cacheMGWC += expr -> r
         r
     }
@@ -735,11 +735,7 @@ object TreeOps {
       case _ => None
     }
 
-    def fix[A](f: (A) => A, a: A): A = {
-      val na = f(a)
-      if(a == na) a else fix(f, na)
-    }
-    fix(searchAndReplaceDFS(transform), expr)
+    fixpoint(postMap(transform))(expr)
   }
 
   def genericTransform[C](pre:  (Expr, C) => (Expr, C),
@@ -782,7 +778,6 @@ object TreeOps {
 
     rec(expr, init)
   }
-
 
   private def noCombiner(subCs: Seq[Unit]) = ()
 
@@ -949,7 +944,7 @@ object TreeOps {
           // (topdown).
           // So replaceing using Map(a => b, CC(a) => d) will replace
           // "CC(a)" by "d" and not by "CC(b)"
-          val newThen = searchAndReplace(substMap.get)(thenn)
+          val newThen = preMap(substMap.lift)(thenn)
 
           // Remove unused binders
           val vars = variablesOf(newThen)
@@ -1051,7 +1046,7 @@ object TreeOps {
         solver.solveVALID(pre) match {
           case Some(true)  =>
             fd.precondition = None
-            
+
           case Some(false) => solver.solveSAT(pre) match {
             case (Some(false), _) =>
               fd.precondition = Some(BooleanLiteral(false).copiedFrom(e))
@@ -1317,7 +1312,7 @@ object TreeOps {
       val na = f(a)
       if(a == na) a else fix(f)(na)
     }
-      
+
     fix(simplePostTransform(simplify0))(expr)
   }
 
@@ -1715,4 +1710,15 @@ object TreeOps {
     }
     simplifyArithmetic(expr0)
   }
+
+
+  /**
+   * Deprecated API
+   * ========
+   */
+
+  @deprecated("Use postMap instead", "Leon 0.2.0")
+  def searchAndReplace(f: Expr => Option[Expr])(e: Expr) = postMap(f)(e)
+
+
 }
