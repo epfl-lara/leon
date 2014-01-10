@@ -164,7 +164,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
           /**
            * create a new verification condition for this recursive function
            */          
-          val freshBody = matchToIfThenElse(freshenLocals(recFun.nondetBody.get))
+          val freshBody = freshenLocals(matchToIfThenElse(recFun.nondetBody.get))
           val resvar = if (recFun.hasPostcondition) {
             //create a new result variable here for the same reason as freshening the locals,
             //which is to avoid variable capturing during unrolling            
@@ -217,26 +217,20 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     val callee = call.fi.funDef
     val post = callee.postcondition
     
-    //Important: make sure we use a fresh body expression here
-    val freshBody = matchToIfThenElse((callee.nondetBody.get))    
+    //Important: make sure we use a fresh body expression here    
+    val freshBody = freshenLocals(matchToIfThenElse(callee.nondetBody.get))     
     val calleeSummary = if (post.isDefined) {
       val (resvar, poste) = post.get
-      val freshPost = matchToIfThenElse(freshenLocals(poste))
+      val freshPost = freshenLocals(matchToIfThenElse(poste))
       val bodyRel = Equals(resvar.toVariable, freshBody)
       And(bodyRel, freshPost)
    } else {
       Equals(ResultVariable().setType(callee.returnType), freshBody)
     }
-
-    //println("Body: "+calleeSummary)
+    
     val argmap1 = InvariantUtil.formalToAcutal(call)
-    //println("Argmap: "+argmap1)
     val inlinedSummary = ExpressionTransformer.normalizeExpr(replace(argmap1, calleeSummary))
-          
-    //println("inlinedSummary: "+ScalaPrinter(inlinedSummary))  
-//    if(call.fi.funDef.id.name == "g") {
-//      System.exit(0)
-//    }
+
     //create a constraint tree for the summary
     val summaryTree = CtrNode()      
     ctrTracker.addConstraintRecur(inlinedSummary, summaryTree)          

@@ -344,6 +344,7 @@ object TreeOps {
       case WildcardPattern(Some(b)) => WildcardPattern(Some(sm(b)))
       case TuplePattern(ob, sps) => TuplePattern(ob.map(sm(_)), sps.map(rewritePattern(_, sm)))
       case CaseClassPattern(ob, ccd, sps) => CaseClassPattern(ob.map(sm(_)), ccd, sps.map(rewritePattern(_, sm)))
+      case TuplePattern(ob, sps) => TuplePattern(ob.map(sm(_)), sps.map(rewritePattern(_, sm)))
       case other => other
     }
 
@@ -667,9 +668,9 @@ object TreeOps {
 
     def rewritePM(e: Expr) : Option[Expr] = e match {
       case m @ MatchExpr(scrut, cases) => {
-        // println("Rewriting the following PM: " + e)
+        //println("Rewriting the following PM: " + e)
 
-        val condsAndRhs = for(cse <- cases) yield {
+        val condsAndRhs = for(cse <- cases) yield {          
           val map = mapForPattern(scrut, cse.pattern)
           val patCond = conditionForPattern(scrut, cse.pattern, includeBinders = false)
           val realCond = cse.theGuard match {

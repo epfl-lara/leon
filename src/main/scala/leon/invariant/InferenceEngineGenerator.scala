@@ -127,7 +127,7 @@ class InferenceEngineGenerator(program: Program,
           var output = "Invariants for Function: " + funDef.id + "\n"
           res.get.foreach((pair) => {
             val (fd, inv) = pair
-            reporter.info("- Found inductive invariant: " + fd.id + " --> " + inv)
+            reporter.info("- Found inductive invariant: " + fd.id + " --> " + ScalaPrinter(inv))
             output += fd.id + " --> " + inv + "\n"
           })
           //add invariants to stats

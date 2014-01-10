@@ -102,7 +102,13 @@ abstract class TemplateSolver (
       
       //apply (instantiate) the axioms of functions in the verification condition
       val formulaWithAxioms = instantiateAxioms(formula)
-      //println("Func: "+fd.id+" VC: "+ScalaPrinter(formulaWithAxioms))
+      //println("Func: "+fd.id+" VC: "+ScalaPrinter(formulaWithAxioms))      
+//      val filename = "vc-" + FileCountGUID.getID + ".txt"
+//      val wr = new PrintWriter(new File(filename))
+//      ExpressionTransformer.PrintWithIndentation(wr, simplifyArithmetic(formulaWithAxioms))
+//      println("Printed VC of "+fd.id+" to file: " + filename)
+//      wr.flush()
+//      wr.close()        
       
       //stats      
       if (InferInvariantsPhase.dumpStats) {
