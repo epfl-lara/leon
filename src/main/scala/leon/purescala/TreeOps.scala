@@ -1717,8 +1717,13 @@ object TreeOps {
    * ========
    */
 
-  @deprecated("Use postMap instead", "Leon 0.2.0")
+  @deprecated("Use postMap instead", "Leon 0.2.1")
   def searchAndReplace(f: Expr => Option[Expr])(e: Expr) = postMap(f)(e)
 
+  @deprecated("Use postMap instead", "Leon 0.2.1")
+  def searchAndReplaceDFS(f: Expr => Option[Expr])(e: Expr) = postMap(f)(e)
+
+  @deprecated("Use exists instead", "Leon 0.2.1")
+  def contains(e: Expr, matcher: Expr => Boolean): Boolean = exists(matcher)(e)
 
 }
