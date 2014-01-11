@@ -55,6 +55,9 @@ abstract class TemplateSolver (
   
   //this is populated lazily by instantiateAxioms
   protected var callsWithAxioms = Set[Expr]()
+  
+  //for debugging 
+  private val dumpVC = false
       
   /**
    * Completes a model by adding mapping to new template variables
@@ -102,13 +105,16 @@ abstract class TemplateSolver (
       
       //apply (instantiate) the axioms of functions in the verification condition
       val formulaWithAxioms = instantiateAxioms(formula)
-      //println("Func: "+fd.id+" VC: "+ScalaPrinter(formulaWithAxioms))      
-//      val filename = "vc-" + FileCountGUID.getID + ".txt"
-//      val wr = new PrintWriter(new File(filename))
-//      ExpressionTransformer.PrintWithIndentation(wr, simplifyArithmetic(formulaWithAxioms))
-//      println("Printed VC of "+fd.id+" to file: " + filename)
-//      wr.flush()
-//      wr.close()        
+
+      if (dumpVC) {
+        println("Func: " + fd.id + " VC: " + ScalaPrinter(formulaWithAxioms))
+        val filename = "vc-" + FileCountGUID.getID + ".txt"
+        val wr = new PrintWriter(new File(filename))
+        ExpressionTransformer.PrintWithIndentation(wr, simplifyArithmetic(formulaWithAxioms))
+        println("Printed VC of " + fd.id + " to file: " + filename)
+        wr.flush()
+        wr.close()
+      }
       
       //stats      
       if (InferInvariantsPhase.dumpStats) {

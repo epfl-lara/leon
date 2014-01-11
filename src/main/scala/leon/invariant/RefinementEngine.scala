@@ -120,15 +120,14 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
       }
       //TODO: are there other ways of unrolling ??      
     })
+    
+    //update the head functions
+    headCalls = newheads
 
     if (!unrolls.isEmpty) {
       //assume the post-conditions for the calls in the VCs 
-      newheads ++= assumeSpecifications()
+      headCalls ++= assumeSpecifications()
     }
-
-    //update the head functions
-    headCalls = newheads 
-
     //For debugging: print the post and body root of all the functions
     /*ctrTracker.getFuncs.foreach((fd) => {
         val (btree,ptree) = ctrTracker.getVC(fd)
@@ -139,7 +138,6 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
 
     unrolls
   }
-  
 
   /**
    * Returns a set of unrolled calls and a set of new head functions   
@@ -289,26 +287,26 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     untemplatedCalls = newUntemplatedCalls
     newheads
   }
-  
-  def specForCall(call: Call): Option[Expr] = {
-      val argmap = InvariantUtil.formalToAcutal(call)      
-      val callee = call.fi.funDef
-      if(callee.hasPostcondition) {
-        val (resvar, post) = callee.postcondition.get
-        val freshPost = freshenLocals(matchToIfThenElse(post))
 
-        val spec = if (callee.hasPrecondition) {
-          val freshPre = freshenLocals(matchToIfThenElse(callee.precondition.get))
-          Implies(freshPre, freshPost)
-        } else {
-          freshPost
-        }
-        val inlinedSpec = ExpressionTransformer.normalizeExpr(replace(argmap, spec))
-        Some(inlinedSpec)
+  def specForCall(call: Call): Option[Expr] = {
+    val argmap = InvariantUtil.formalToAcutal(call)
+    val callee = call.fi.funDef
+    if (callee.hasPostcondition) {
+      val (resvar, post) = callee.postcondition.get
+      val freshPost = freshenLocals(matchToIfThenElse(post))
+
+      val spec = if (callee.hasPrecondition) {
+        val freshPre = freshenLocals(matchToIfThenElse(callee.precondition.get))
+        Implies(freshPre, freshPost)
       } else {
-        None
-      }                       
+        freshPost
+      }
+      val inlinedSpec = ExpressionTransformer.normalizeExpr(replace(argmap, spec))
+      Some(inlinedSpec)
+    } else {
+      None
     }
+  }
 
   /**
    * A helper function that creates templates for a call
