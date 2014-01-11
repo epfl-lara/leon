@@ -38,12 +38,14 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
   //a mapping from a call to the node containing the call (plus some additional data like the list of transitive callers etc.)
   private var callDataMap = Map[Call, CallData]()
   
-  //a set of calls that have not been unrolled (there are potential unroll cadidates)
+  //a set of calls that have not been unrolled (these are potential unroll candidates)
+  //However, these calls except those given by the unspecdCalls have been specified
   private var headCalls = Set[Call]()
 
-  //a set of calls for which templates have not been assumed
-  //TODO: Ideally this info should stored in a distributed way inside the nodes of the constraint tree
+  //a set of calls for which templates or specifications have not been assumed
+  //TODO: Ideally these info should stored in a distributed way inside the nodes of the constraint tree
   private var untemplatedCalls = Set[Call]()  
+  private var unspecdCalls = Set[Call]()
 
   /**
   * This creates an initial abstraction 
@@ -58,7 +60,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     //System.exit(0)
     
     //This procedure has side-effects on many fields.   
-    headCalls ++= assumeSpecifications()
+    headCalls ++= assumeSpecifications(headCalls)
   }
 
   private def findAllHeads(ctrTracker: ConstraintTracker) : Set[Call] ={  
@@ -95,11 +97,14 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
    * This procedure refines the existing abstraction.
    * Currently, the refinement happens by unrolling the head functions.   
    */
-  def refineAbstraction(): Set[Call] = {
+  def refineAbstraction(toRefineCalls : Option[Set[Call]]): Set[Call] = {
     var newheads = Set[Call]()    
     
-    //unroll each call in the head pointers        
-    val unrolls = headCalls.foldLeft(Set[Call]())((acc, call) => {      
+    //unroll each call in the head pointers (and in toRefineCalls)
+    val callsToProcess = if(toRefineCalls.isDefined) headCalls.intersect(toRefineCalls.get)
+    					 else headCalls
+    
+    val unrolls = callsToProcess.foldLeft(Set[Call]())((acc, call) => {      
 
       val calldata = callDataMap(call)            
       val occurrences  = calldata.parents.count(_ == call.fi.funDef)
@@ -118,24 +123,16 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
           acc 
         }         
       }
-      //TODO: are there other ways of unrolling ??      
+      //TODO: are there better ways of unrolling ??      
     })
     
-    //update the head functions
-    headCalls = newheads
+    //update the head functions 
+    headCalls = headCalls.diff(callsToProcess) ++ newheads
 
     if (!unrolls.isEmpty) {
-      //assume the post-conditions for the calls in the VCs 
-      headCalls ++= assumeSpecifications()
-    }
-    //For debugging: print the post and body root of all the functions
-    /*ctrTracker.getFuncs.foreach((fd) => {
-        val (btree,ptree) = ctrTracker.getVC(fd)
-        println("Function: "+fd.id)
-        println("\t Body Tree: "+btree.toString)
-        println("\t Post Tree: "+ptree.toString)
-      })*/
-
+      //assume the post-conditions for the calls in the VCs (note this uses head calls)
+      headCalls ++= assumeSpecifications(newheads)
+    }    
     unrolls
   }
 
@@ -242,31 +239,31 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
    * the body and post tree.
    * Here, assume (pre => post ^ template)
    */
-  def assumeSpecifications(): Set[Call] = {
-    var newheads = Set[Call]()
-    //here assume specifications for head calls only
-    headCalls.foreach((call) => {
+  def assumeSpecifications(newheads : Set[Call]): Set[Call] = {    
+    //initialized unspecd calls
+    unspecdCalls ++= newheads   
+    
+    var foundheads = Set[Call]()    
+    //assume specifications    
+    unspecdCalls.foreach((call) => {
       //first get the spec for the call if it exists 
       val spec = specForCall(call)
       if (spec.isDefined && spec.get != tru) {
         //create the root of a new  tree          
-        val specTree = CtrNode()
-        //println("Spec+Temp: "+specPlusTemp.get)
+        val specTree = CtrNode()        
         ctrTracker.addConstraintRecur(spec.get, specTree)
 
         //find new heads            
         val cdata = callDataMap(call)
-        newheads ++= findHeads(specTree, cdata.parents)
+        foundheads ++= findHeads(specTree, cdata.parents)
         //insert the templateTree after this node
         TreeUtil.insertTree(cdata.ctrnode, specTree)
       }
     })
 
     //try to assume templates for all un-templated calls
-    untemplatedCalls ++= headCalls
-    var newUntemplatedCalls = Set[Call]()
-
-    //here assume templates for untemplated calls (if possible)
+    untemplatedCalls ++= unspecdCalls
+    var newUntemplatedCalls = Set[Call]()    
     untemplatedCalls.foreach((call) => {
       //first get the template for the call if one needs to be added
       if (ctrTracker.hasCtrTree(call.fi.funDef)) {
@@ -277,7 +274,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
 
         //find new heads            
         val cdata = callDataMap(call)
-        newheads ++= findHeads(tempTree, cdata.parents)
+        foundheads ++= findHeads(tempTree, cdata.parents)
         //insert the templateTree after this node
         TreeUtil.insertTree(cdata.ctrnode, tempTree)
       } else {
@@ -285,7 +282,10 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
       }
     })
     untemplatedCalls = newUntemplatedCalls
-    newheads
+    
+    //update unspecd calls
+    unspecdCalls = foundheads
+    foundheads
   }
 
   def specForCall(call: Call): Option[Expr] = {

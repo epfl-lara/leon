@@ -89,7 +89,7 @@ abstract class TemplateSolver (
    * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
    */  
-  def solveTemplates(): Option[Map[FunDef, Expr]] = {
+  def solveTemplates(): (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
         
     //for stats
     Stats.outerIterations += 1
@@ -152,7 +152,7 @@ abstract class TemplateSolver (
     //Some(getAllInvariants(simplestModel))
   }
   
-  def solve(tempIds : Set[Identifier], funcVCs : Map[FunDef,Expr]) : Option[Map[FunDef,Expr]]
+  def solve(tempIds : Set[Identifier], funcVCs : Map[FunDef,Expr]) : (Option[Map[FunDef,Expr]], Option[Set[Call]])
 
   def monotonizeCalls(call1: Expr, call2: Expr): (Seq[Expr], Expr) = {
     val BinaryOperator(r1 @ Variable(_), fi1 @ FunctionInvocation(fd1, args1), _) = call1
@@ -205,24 +205,24 @@ abstract class TemplateSolver (
   }
 }
 
-class ParallelTemplateSolver(
-    context : LeonContext, 
-    program : Program,
-    ctrTracker : ConstraintTracker, 
-    tempFactory: TemplateFactory,    
-    timeout: Int) extends TemplateSolver(context, program, ctrTracker, tempFactory, timeout) {
-  
-  override def solveTemplates() : Option[Map[FunDef, Expr]] = {     
-    val tsol1 = new NLTemplateSolver(context, program, ctrTracker, tempFactory, timeout)
-    //TODO: change this later
-    //fixing a timeout of 100 seconds
-    val tsol2 = new CegisSolverIncr(context, program, ctrTracker, tempFactory, 100)
-    
-    val parFuture = Future.firstCompletedOf(Seq(future {tsol1.solveTemplates()}, future {tsol2.solveTemplates()}))    
-    Await.result(parFuture, Duration.Inf)
-  }
-  
-  override def solve(tempIds : Set[Identifier], funcVCs : Map[FunDef,Expr]) : Option[Map[FunDef,Expr]] = {
-    throw IllegalStateException("This is not supposed to be called")
-  }
-}
+//class ParallelTemplateSolver(
+//    context : LeonContext, 
+//    program : Program,
+//    ctrTracker : ConstraintTracker, 
+//    tempFactory: TemplateFactory,    
+//    timeout: Int) extends TemplateSolver(context, program, ctrTracker, tempFactory, timeout) {
+//  
+//  override def solveTemplates() : Option[Map[FunDef, Expr]] = {     
+//    val tsol1 = new NLTemplateSolver(context, program, ctrTracker, tempFactory, timeout)
+//    //TODO: change this later
+//    //fixing a timeout of 100 seconds
+//    val tsol2 = new CegisSolverIncr(context, program, ctrTracker, tempFactory, 100)
+//    
+//    val parFuture = Future.firstCompletedOf(Seq(future {tsol1.solveTemplates()}, future {tsol2.solveTemplates()}))    
+//    Await.result(parFuture, Duration.Inf)
+//  }
+//  
+//  override def solve(tempIds : Set[Identifier], funcVCs : Map[FunDef,Expr]) : Option[Map[FunDef,Expr]] = {
+//    throw IllegalStateException("This is not supposed to be called")
+//  }
+//}

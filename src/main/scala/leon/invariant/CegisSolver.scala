@@ -40,7 +40,7 @@ class CegisSolver(context : LeonContext,
     timeout: Int,
     bound: Option[Int] = None) extends TemplateSolver(context, program, ctrTracker, tempFactory, timeout) {
         
-  override def solve(tempIds: Set[Identifier], funcVCs: Map[FunDef, Expr]): Option[Map[FunDef, Expr]] = {
+  override def solve(tempIds: Set[Identifier], funcVCs: Map[FunDef, Expr]): (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
 
     val initCtr = if (bound.isDefined) {
       //use a predefined bound on the template variables                 
@@ -58,8 +58,8 @@ class CegisSolver(context : LeonContext,
     //using reals with bounds does not converge and also results in overflow
     val (res, _, model) = (new CegisCore(context, program, timeout)).solve(tempIds, formula, initCtr, solveAsInt = true)
     res match {
-      case Some(true) => Some(getAllInvariants(model))
-      case Some(false) => None //no solution exists 
+      case Some(true) => (Some(getAllInvariants(model)), None)
+      case Some(false) => (None, None) //no solution exists 
       case _ => //timed out
         throw IllegalStateException("Timeout!!")
     }
@@ -310,7 +310,7 @@ class CegisSolverIncr(context : LeonContext,
     timeout: Int,
     bound: Option[Int] = None) extends TemplateSolver(context, program, ctrTracker, tempFactory, timeout) {
         
-  override def solve(tempIds: Set[Identifier], funcVCs: Map[FunDef, Expr]): Option[Map[FunDef, Expr]] = {
+  override def solve(tempIds: Set[Identifier], funcVCs: Map[FunDef, Expr]): (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
     
     val funcs = funcVCs.keys
     val formula = Or(funcs.map(funcVCs.apply _).toSeq)
@@ -318,8 +318,8 @@ class CegisSolverIncr(context : LeonContext,
     //using reals with bounds does not converge and also results in overflow
     val (res, _, model) = (new CegisCoreIncr(context, program, timeout)).solveInSteps(tempIds, formula)
     res match {
-      case Some(true) => Some(getAllInvariants(model))
-      case Some(false) => None //no solution exists 
+      case Some(true) => (Some(getAllInvariants(model)), None)
+      case Some(false) => (None, None) //no solution exists 
       case _ => //timed out
         throw IllegalStateException("Timeout!!")
     }

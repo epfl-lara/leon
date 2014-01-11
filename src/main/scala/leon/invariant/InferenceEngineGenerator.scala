@@ -100,7 +100,10 @@ class InferenceEngineGenerator(program: Program,
     val vcRefiner = new RefinementEngine(program, constTracker, tempFactory, reporter)
     vcRefiner.initialize()
 
+    //refinement engine state
     var refinementStep: Int = 0
+    var toRefineCalls : Option[Set[Call]] = None
+    
     val inferenceEngine = () => {
 
       val refined =
@@ -108,7 +111,8 @@ class InferenceEngineGenerator(program: Program,
 
           reporter.info("- More unrollings for invariant inference")
 
-          val unrolledCalls = vcRefiner.refineAbstraction()
+          //val unrolledCalls = vcRefiner.refineAbstraction(toRefineCalls)
+          val unrolledCalls = vcRefiner.refineAbstraction(None)
           if (unrolledCalls.isEmpty) {
             reporter.info("- Cannot do more unrollings, reached unroll bound")
             false
@@ -120,7 +124,8 @@ class InferenceEngineGenerator(program: Program,
       if (!refined) (Some(false), None)
       else {
         //solve for the templates in this unroll step          
-        val res = tempSolver.solveTemplates()
+        val (res, callsInPath) = tempSolver.solveTemplates()
+        toRefineCalls = callsInPath
 
         if (res.isDefined) {
 
