@@ -104,7 +104,7 @@ class NLTemplateSolver(context : LeonContext,
     //cegisIncrSolver,
     
     val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap       
-    val sol = recSolve(simplestModel, funcVCs, tru, Seq(), solverWithCtr)
+    val sol = recSolve(simplestModel, funcVCs, tru, Seq(), solverWithCtr, Set())
     
     solverWithCtr.free()
     sol
@@ -115,7 +115,8 @@ class NLTemplateSolver(context : LeonContext,
     inputCtr: Expr,
     solvedDisjs: Seq[Expr],
     //cegisIncrSolver : CegisIncrSolver,
-    solverWithCtr: UIFZ3Solver): (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
+    solverWithCtr: UIFZ3Solver,
+    seenCalls : Set[Call]): (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
 
     //Information: printing the candidate invariants found at this step
     println("candidate Invariants")
@@ -327,7 +328,7 @@ class NLTemplateSolver(context : LeonContext,
       case None => {
         //here, we cannot proceed and have to return unknown
         //However, we can return the calls that need to be unrolled
-        (None, Some(callsInPaths))
+        (None, Some(seenCalls ++ callsInPaths))
       }
       case Some(false) => {
         //here, the vcs are unsatisfiable when instantiated with the invariant
@@ -335,7 +336,7 @@ class NLTemplateSolver(context : LeonContext,
       }
       case Some(true) => {
         //here, we have found a new candidate invariant. Hence, the above process needs to be repeated
-        recSolve(newModel, funcVCs, newCtr, solvedDisjs ++ disjsSolvedInIter, solverWithCtr)
+        recSolve(newModel, funcVCs, newCtr, solvedDisjs ++ disjsSolvedInIter, solverWithCtr, seenCalls ++ callsInPaths)
       }
     }
   }   	  

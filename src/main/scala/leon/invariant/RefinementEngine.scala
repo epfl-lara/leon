@@ -104,6 +104,9 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     val callsToProcess = if(toRefineCalls.isDefined) headCalls.intersect(toRefineCalls.get)
     					 else headCalls
     
+    println("Unrolling: "+ callsToProcess.size+"/"+headCalls.size)
+    println("Unrolled calls: "+callsToProcess.map(_.expr))
+    
     val unrolls = callsToProcess.foldLeft(Set[Call]())((acc, call) => {      
 
       val calldata = callDataMap(call)            
@@ -130,7 +133,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     headCalls = headCalls.diff(callsToProcess) ++ newheads
 
     if (!unrolls.isEmpty) {
-      //assume the post-conditions for the calls in the VCs (note this uses head calls)
+      //assume the post-conditions for the calls in the VCs
       headCalls ++= assumeSpecifications(newheads)
     }    
     unrolls
