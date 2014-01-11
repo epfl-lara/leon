@@ -41,10 +41,9 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
   //a set of calls that have not been unrolled (there are potential unroll cadidates)
   private var headCalls = Set[Call]()
 
-  //a set of calls for which its templates have been assumed
+  //a set of calls for which templates have not been assumed
   //TODO: Ideally this info should stored in a distributed way inside the nodes of the constraint tree
-  private var templatedCalls = Set[Call]()
-  private var specdCalls = Set[Call]()
+  private var untemplatedCalls = Set[Call]()  
 
   /**
   * This creates an initial abstraction 
@@ -240,45 +239,58 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     newheads
   }
 
- /*
-  * This function refines the constraint tree by assuming the specifications/templates for calls in
-  * the body and post tree.
-  */
-  def assumeSpecifications() : Set[Call] = {
-    
-    ctrTracker.getFuncs.foldLeft(Set[Call]())((acc, fd) => {
-      
-      val (btree,ptree) = ctrTracker.getVC(fd)      
-      val hds = assumeSpecificationsForTree(btree, ptree, fd)            
-      (acc ++ hds)
+  /**
+   * This function refines the constraint tree by assuming the specifications/templates for calls in
+   * the body and post tree.
+   * Here, assume (pre => post ^ template)
+   */
+  def assumeSpecifications(): Set[Call] = {
+    var newheads = Set[Call]()
+    //here assume specifications for head calls only
+    headCalls.foreach((call) => {
+      //first get the spec for the call if it exists 
+      val spec = specForCall(call)
+      if (spec.isDefined && spec.get != tru) {
+        //create the root of a new  tree          
+        val specTree = CtrNode()
+        //println("Spec+Temp: "+specPlusTemp.get)
+        ctrTracker.addConstraintRecur(spec.get, specTree)
+
+        //find new heads            
+        val cdata = callDataMap(call)
+        newheads ++= findHeads(specTree, cdata.parents)
+        //insert the templateTree after this node
+        TreeUtil.insertTree(cdata.ctrnode, specTree)
+      }
     })
+
+    //try to assume templates for all un-templated calls
+    untemplatedCalls ++= headCalls
+    var newUntemplatedCalls = Set[Call]()
+
+    //here assume templates for untemplated calls (if possible)
+    untemplatedCalls.foreach((call) => {
+      //first get the template for the call if one needs to be added
+      if (ctrTracker.hasCtrTree(call.fi.funDef)) {
+        val temp = templateForCall(call)
+        //create the root of a new  tree          
+        val tempTree = CtrNode()        
+        ctrTracker.addConstraintRecur(temp, tempTree)
+
+        //find new heads            
+        val cdata = callDataMap(call)
+        newheads ++= findHeads(tempTree, cdata.parents)
+        //insert the templateTree after this node
+        TreeUtil.insertTree(cdata.ctrnode, tempTree)
+      } else {
+        newUntemplatedCalls += call
+      }
+    })
+    untemplatedCalls = newUntemplatedCalls
+    newheads
   }
   
-  /**
-   * Here, assume (pre => post ^ template) for each call
-   */
-  def assumeSpecificationsForTree(bodyRoot: CtrNode, postRoot : CtrNode, fd: FunDef) : Set[Call] = {
-
-    /**
-     * A helper function that creates templates for a call
-     */
-    //var templateMap = Map[Call, Expr]()
-
-    def templateForCall(call: Call): Expr = {
-      val argmap = InvariantUtil.formalToAcutal(call)
-      val tempExpr = tempFactory.constructTemplate(argmap, call.fi.funDef)
-      val template = if (call.fi.funDef.hasPrecondition) {
-        val freshPre = replace(argmap, freshenLocals(matchToIfThenElse(call.fi.funDef.precondition.get)))
-        Implies(freshPre, tempExpr)
-      } else {
-        tempExpr
-      }
-      //flatten functions
-      //TODO: should we freshen locals here ??
-      ExpressionTransformer.normalizeExpr(template)      
-    }
-    
-    def specForCall(call: Call): Option[Expr] = {
+  def specForCall(call: Call): Option[Expr] = {
       val argmap = InvariantUtil.formalToAcutal(call)      
       val callee = call.fi.funDef
       if(callee.hasPostcondition) {
@@ -298,76 +310,20 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
       }                       
     }
 
-    var visited = Set[CtrNode]()
-    var newheads = Set[Call]()
-    //this does a post order traversal
-    def assumeSpecifications(root: CtrTree) : Unit = root match {
-
-      case n @ CtrNode(_) => {
-
-        if(!visited.contains(n)){
-          visited += n
-
-          //first recurse into the children  
-          n.Children.foreach(assumeSpecifications(_))
-
-          //For debugging      
-          /*if (fd.id.name.equals("size")) {
-            println("Node UIFs: " + n.uifs)            
-          }*/
-
-          //now process this node
-          val newCalls = n.uifs.toSeq.filter((call) => {                       
-            val accept = !templatedCalls.contains(call)
-            /*if(call.fi.funDef.id.name == "size" && call.retexpr.asInstanceOf[Variable].id.name == "r14"){
-              println("******** Filter value for: "+call.expr+" is "+accept)
-            }*/
-            accept
-          })
-          //println("New calls: "+processedCalls)
-
-          newCalls.foreach((call) => {
-            //first get the spec for the call if it exists and if it has not been specd
-            val spec = if (!specdCalls.contains(call)) {
-              specdCalls += call
-              specForCall(call)
-            } else None
-
-            //get template calls
-            val temp = if (ctrTracker.hasCtrTree(call.fi.funDef)) {
-              //update templated calls
-              templatedCalls += call
-              Some(templateForCall(call))
-            } else None
-
-            val specPlusTemp = if (spec.isDefined) {
-              if (temp.isDefined) Some(And(spec.get, temp.get))
-              else spec
-            } else if (temp.isDefined) temp
-            else None
-
-            if (specPlusTemp.isDefined && specPlusTemp.get != tru) {
-              //create the root of a new  tree          
-              val templateTree = CtrNode()
-              //println("Spec+Temp: "+specPlusTemp.get)
-              ctrTracker.addConstraintRecur(specPlusTemp.get, templateTree)
-
-              //find new heads            
-              newheads ++= findHeads(templateTree, callDataMap(call).parents)
-              //insert the templateTree after this node
-              TreeUtil.insertTree(n, templateTree)
-            }
-          })
-        }                
-      }      
-      case CtrLeaf() => ;
+  /**
+   * A helper function that creates templates for a call
+   */
+  def templateForCall(call: Call): Expr = {
+    val argmap = InvariantUtil.formalToAcutal(call)
+    val tempExpr = tempFactory.constructTemplate(argmap, call.fi.funDef)
+    val template = if (call.fi.funDef.hasPrecondition) {
+      val freshPre = replace(argmap, freshenLocals(matchToIfThenElse(call.fi.funDef.precondition.get)))
+      Implies(freshPre, tempExpr)
+    } else {
+      tempExpr
     }
-
-    /*if (fd.id.name.equals("size")) {
-      println("Templated calls: "+templatedCalls)
-    }*/
-    assumeSpecifications(bodyRoot) 
-    assumeSpecifications(postRoot)
-    newheads
+    //flatten functions
+    //TODO: should we freshen locals here ??
+    ExpressionTransformer.normalizeExpr(template)
   }
 }
