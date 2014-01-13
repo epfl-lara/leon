@@ -23,7 +23,9 @@ class CodeGenEvaluator(ctx : LeonContext, val unit : CompilationUnit) extends Ev
 
   def eval(expression : Expr, mapping : Map[Identifier,Expr]) : EvaluationResult = {
     val toPairs = mapping.toSeq
-    compile(expression, toPairs.map(_._1)).map(e => e(toPairs.map(_._2))).getOrElse(EvaluationResults.EvaluatorError("Couldn't compile expression."))
+    val compiled = compile(expression, toPairs.map(_._1))
+    val applied = compiled.map(e => e(toPairs.map(_._2)))
+    applied.getOrElse(EvaluationResults.EvaluatorError("Couldn't compile expression."))
   }
 
   override def compile(expression : Expr, argorder : Seq[Identifier]) : Option[Seq[Expr]=>EvaluationResult] = {

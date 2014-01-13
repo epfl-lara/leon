@@ -6,6 +6,7 @@ package verification
 import purescala.Common._
 import purescala.Trees._
 import purescala.TreeOps._
+import purescala.HOTreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
 
@@ -13,30 +14,30 @@ class InductionTactic(reporter: Reporter) extends DefaultTactic(reporter) {
   override val description = "Induction tactic for suitable functions"
   override val shortDescription = "induction"
 
-  private def firstAbsClassDef(args: VarDecls) : Option[(AbstractClassDef, VarDecl)] = {
+  private def firstAbsClassType(args: VarDecls) : Option[(AbstractClassType, VarDecl)] = {
     val filtered = args.filter(arg =>
       arg.getType match {
-        case AbstractClassType(_) => true
+        case AbstractClassType(_, _) => true
         case _ => false
       })
     if (filtered.size == 0) None else (filtered.head.getType match {
-      case AbstractClassType(classDef) => Some((classDef, filtered.head))
+      case act @ AbstractClassType(_, _) => Some((act, filtered.head))
       case _ => scala.sys.error("This should not happen.")
     })
-  } 
+  }
 
-  private def selectorsOfParentType(parentType: ClassType, ccd: CaseClassDef, expr: Expr) : Seq[Expr] = {
-    val childrenOfSameType = ccd.fields.filter(field => field.getType == parentType)
+  private def selectorsOfParentType(parentType: ClassType, cct: CaseClassType, expr: Expr) : Seq[Expr] = {
+    val childrenOfSameType = cct.fields.filter(field => field.getType == parentType)
     for (field <- childrenOfSameType) yield {
-      CaseClassSelector(ccd, expr, field.id).setType(parentType)
+      CaseClassSelector(cct, expr, field.id).setType(parentType)
     }
   }
 
   override def generatePostconditions(funDef: FunDef) : Seq[VerificationCondition] = {
     assert(funDef.body.isDefined)
     val defaultPost = super.generatePostconditions(funDef)
-    firstAbsClassDef(funDef.args) match {
-      case Some((classDef, arg)) =>
+    firstAbsClassType(funDef.args) match {
+      case Some((classType, arg)) =>
         val prec = funDef.precondition
         val optPost = funDef.postcondition
         val body = matchToIfThenElse(funDef.body.get)
@@ -46,14 +47,15 @@ class InductionTactic(reporter: Reporter) extends DefaultTactic(reporter) {
           case None =>
             Seq.empty
           case Some((pid, post)) =>
-            val children = classDef.knownChildren
-            val conditionsForEachChild = (for (child <- classDef.knownChildren) yield (child match {
-              case ccd @ CaseClassDef(id, prnt, vds) =>
-                val selectors = selectorsOfParentType(classDefToClassType(classDef), ccd, argAsVar)
+            val conditionsForEachChild = (for (child <- classType.knownChildren) yield (child match {
+              case cct @ CaseClassType(ccd, _) =>
+                val selectors = selectorsOfParentType(classType, cct, argAsVar)
                 // if no subtrees of parent type, assert property for base case
                 val resFresh = FreshIdentifier("result", true).setType(body.getType)
                 val bodyAndPostForArg = Let(resFresh, body, replace(Map(Variable(pid) -> Variable(resFresh)), matchToIfThenElse(post)))
-                val withPrec = if (prec.isEmpty) bodyAndPostForArg else Implies(matchToIfThenElse(prec.get), bodyAndPostForArg)
+                val withPrec = if (prec.isEmpty) bodyAndPostForArg else {
+                  Implies(killForallExpressions(matchToIfThenElse(prec.get)), bodyAndPostForArg)
+                }
 
                 val conditionForChild = 
                   if (selectors.size == 0) 
@@ -62,12 +64,14 @@ class InductionTactic(reporter: Reporter) extends DefaultTactic(reporter) {
                     val inductiveHypothesis = (for (sel <- selectors) yield {
                       val resFresh = FreshIdentifier("result", true).setType(body.getType)
                       val bodyAndPost = Let(resFresh, replace(Map(argAsVar -> sel), body), replace(Map(Variable(pid) -> Variable(resFresh), argAsVar -> sel), matchToIfThenElse(post))) 
-                      val withPrec = if (prec.isEmpty) bodyAndPost else Implies(replace(Map(argAsVar -> sel), matchToIfThenElse(prec.get)), bodyAndPost)
+                      val withPrec = if (prec.isEmpty) bodyAndPost else {
+                        Implies(replace(Map(argAsVar -> sel), killForallExpressions(matchToIfThenElse(prec.get))), bodyAndPost)
+                      }
                       withPrec
                     })
                     Implies(And(inductiveHypothesis), withPrec)
                   }
-                new VerificationCondition(Implies(CaseClassInstanceOf(ccd, argAsVar), conditionForChild), funDef, VCKind.Postcondition, this)
+                new VerificationCondition(Implies(CaseClassInstanceOf(cct, argAsVar), conditionForChild), funDef, VCKind.Postcondition, this)
               case _ => scala.sys.error("Abstract class has non-case class subtype.")
             }))
             conditionsForEachChild
@@ -81,8 +85,8 @@ class InductionTactic(reporter: Reporter) extends DefaultTactic(reporter) {
 
   override def generatePreconditions(function: FunDef) : Seq[VerificationCondition] = {
     val defaultPrec = super.generatePreconditions(function)
-    firstAbsClassDef(function.args) match {
-      case Some((classDef, arg)) => {
+    firstAbsClassType(function.args) match {
+      case Some((classType, arg)) => {
         val toRet = if(function.hasBody) {
           val cleanBody = expandLets(matchToIfThenElse(function.body.get))
 
@@ -92,7 +96,7 @@ class InductionTactic(reporter: Reporter) extends DefaultTactic(reporter) {
           }), cleanBody)
 
           def withPrec(path: Seq[Expr], shouldHold: Expr) : Expr = if(function.hasPrecondition) {
-            Not(And(And(matchToIfThenElse(function.precondition.get) +: path), Not(shouldHold)))
+            Not(And(And(killForallExpressions(matchToIfThenElse(function.precondition.get)) +: path), Not(shouldHold)))
           } else {
             Not(And(And(path), Not(shouldHold)))
           }
@@ -102,10 +106,10 @@ class InductionTactic(reporter: Reporter) extends DefaultTactic(reporter) {
             val fi = pc._2.asInstanceOf[FunctionInvocation]
             val FunctionInvocation(fd, args) = fi
 
-            val conditionsForEachChild = (for (child <- classDef.knownChildren) yield (child match {
-              case ccd @ CaseClassDef(id, prnt, vds) => {
+            val conditionsForEachChild = (for (child <- classType.knownChildren) yield (child match {
+              case cct @ CaseClassType(ccd, _) => {
                 val argAsVar = arg.toVariable
-                val selectors = selectorsOfParentType(classDefToClassType(classDef), ccd, argAsVar)
+                val selectors = selectorsOfParentType(classType, cct, argAsVar)
                 
                 val prec : Expr = freshenLocals(matchToIfThenElse(fd.precondition.get))
                 val newLetIDs = fd.args.map(a => FreshIdentifier("arg_" + a.id.name, true).setType(a.tpe))
@@ -131,7 +135,7 @@ class InductionTactic(reporter: Reporter) extends DefaultTactic(reporter) {
                     })
                     Implies(And(inductiveHypothesis), toProve)
                   }
-                new VerificationCondition(Implies(CaseClassInstanceOf(ccd, argAsVar), conditionForChild), function, VCKind.Precondition, this).setPos(fi)
+                new VerificationCondition(Implies(CaseClassInstanceOf(cct, argAsVar), conditionForChild), function, VCKind.Precondition, this).setPos(fi)
               }
               case _ => scala.sys.error("Abstract class has non-case class subtype")
             }))

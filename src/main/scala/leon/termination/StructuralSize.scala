@@ -7,26 +7,31 @@ import purescala.TypeTrees._
 import purescala.Definitions._
 import purescala.Common._
 
-class StructuralSize {
-  import scala.collection.mutable.{Map => MutableMap}
+import scala.collection.mutable.{Map => MutableMap}
 
-  private val sizeFunctionCache : MutableMap[TypeTree, FunDef] = MutableMap()
+trait StructuralSize {
+
+  private val sizeCache : MutableMap[TypeTree, FunDef] = MutableMap.empty
+
   def size(expr: Expr) : Expr = {
-    def funDef(tpe: TypeTree, cases: => Seq[MatchCase]) = {
+    def funDef(ct: ClassType, cases: ClassType => Seq[MatchCase]): FunDef = {
       // we want to reuse generic size functions for sub-types
-      val argumentType = tpe match {
-        case CaseClassType(cd) if cd.parent.isDefined => classDefToClassType(cd.parent.get)
-        case _ => tpe
+      val argumentType = ct match {
+        case (cct : CaseClassType) if cct.parent.isDefined =>
+          val classDef = cct.parent.get.classDef
+          classDefToClassType(classDef, classDef.tparams.map(_.toType))
+        case (ct : ClassType) =>
+          classDefToClassType(ct.classDef, ct.classDef.tparams.map(_.toType))
       }
 
-      sizeFunctionCache.get(argumentType) match {
+      sizeCache.get(argumentType) match {
         case Some(fd) => fd
         case None =>
-          val argument = VarDecl(FreshIdentifier("x"), argumentType)
+          val argument = VarDecl(FreshIdentifier("x").setType(argumentType), argumentType)
           val fd = new FunDef(FreshIdentifier("size", true), Int32Type, Seq(argument))
-          sizeFunctionCache(argumentType) = fd
+          sizeCache(argumentType) = fd
 
-          val body = simplifyLets(matchToIfThenElse(MatchExpr(argument.toVariable, cases)))
+          val body = simplifyLets(matchToIfThenElse(MatchExpr(argument.toVariable, cases(argumentType))))
           val postId = FreshIdentifier("res", false).setType(Int32Type)
           val postSubcalls = functionCallsOf(body).map(GreaterThan(_, IntLiteral(0))).toSeq
           val postRecursive = GreaterThan(Variable(postId), IntLiteral(0))
@@ -38,8 +43,8 @@ class StructuralSize {
       }
     }
 
-    def caseClassType2MatchCase(_c: ClassTypeDef): MatchCase = {
-      val c = _c.asInstanceOf[CaseClassDef] // required by leon framework
+    def caseClassType2MatchCase(_c: ClassType): MatchCase = {
+      val c = _c.asInstanceOf[CaseClassType] // required by leon framework
       val arguments = c.fields.map(f => f -> f.id.freshen)
       val argumentPatterns = arguments.map(p => WildcardPattern(Some(p._2)))
       val sizes = arguments.map(p => size(Variable(p._2)))
@@ -48,12 +53,10 @@ class StructuralSize {
     }
 
     expr.getType match {
-      case a: AbstractClassType =>
-        val sizeFd = funDef(a, a.classDef.knownChildren map caseClassType2MatchCase)
-        FunctionInvocation(sizeFd, Seq(expr))
-      case c: CaseClassType =>
-        val sizeFd = funDef(c, Seq(caseClassType2MatchCase(c.classDef)))
-        FunctionInvocation(sizeFd, Seq(expr))
+      case (ct: ClassType) => FunctionInvocation(funDef(ct, _ match {
+        case (act: AbstractClassType) => act.knownChildren map caseClassType2MatchCase
+        case (cct: CaseClassType) => Seq(caseClassType2MatchCase(cct))
+      }), Seq(expr))
       case TupleType(argTypes) => argTypes.zipWithIndex.map({
         case (_, index) => size(TupleSelect(expr, index + 1))
       }).foldLeft[Expr](IntLiteral(0))(Plus(_,_))
@@ -61,7 +64,7 @@ class StructuralSize {
     }
   }
 
-  def defs : Set[FunDef] = Set(sizeFunctionCache.values.toSeq : _*)
+  def defs : Set[FunDef] = Set(sizeCache.values.toSeq : _*)
 }
 
 // vim: set ts=4 sw=4 et:

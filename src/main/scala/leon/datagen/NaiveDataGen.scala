@@ -90,24 +90,27 @@ class NaiveDataGen(ctx: LeonContext, p: Program, evaluator: Evaluator, _bounds :
         )
         val (leafs,conss) = ccChildren.partition(_.fields.size == 0)
 
+        val tpMap = (act.classDef.tparams zip act.tparams).toMap
+
         // The stream for leafs...
         val leafsStream = leafs.toStream.flatMap { ccd =>
-          generate(classDefToClassType(ccd), bounds)
+          val tparams = ccd.tparams.map(tp => tpMap.getOrElse(tp, TypeParameter(tp.id)))
+          generate(classDefToClassType(ccd, tparams), bounds)
         }
 
         // ...to which we append the streams for constructors.
         leafsStream.append(interleave(conss.map { ccd =>
-          generate(classDefToClassType(ccd), bounds)
+          val tparams = ccd.tparams.map(tp => tpMap.getOrElse(tp, TypeParameter(tp.id)))
+          generate(classDefToClassType(ccd, tparams), bounds)
         }))
 
       case cct : CaseClassType =>
-        val ccd = cct.classDef
-        if(ccd.fields.isEmpty) {
-          Stream.cons(CaseClass(ccd, Nil), Stream.empty)
+        if(cct.fields.isEmpty) {
+          Stream.cons(CaseClass(cct, Nil), Stream.empty)
         } else {
-          val fieldTypes = ccd.fields.map(_.tpe)
+          val fieldTypes = cct.fields.map(_.tpe)
           val subStream = naryProduct(fieldTypes.map(generate(_, bounds)))
-          subStream.map(prod => CaseClass(ccd, prod))
+          subStream.map(prod => CaseClass(cct, prod))
         }
 
       case _ => Stream.empty

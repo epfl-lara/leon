@@ -47,7 +47,7 @@ case class LeonLoader(program: Program, variables: List[Identifier], loadArithme
       val newDeclaration = makeDeclaration(
         NaryReconstructionExpression( funDef.id, { args: List[Expr] => FunctionInvocation(funDef, args) } ), 
         leonFunctionType
-      )        
+      )
       
       list += newDeclaration        
       fine("Leon loader added declaration: " + newDeclaration)        
@@ -67,17 +67,14 @@ case class LeonLoader(program: Program, variables: List[Identifier], loadArithme
     list ++= variableDeclarations
     
     for (variable <- variables; variableType = variable.getType) variableType match {
-      case variableClassType: CaseClassType => variableClassType.classDef match {
-	    case cas@CaseClassDef(id, parent, fields) =>
+      case cct: CaseClassType =>
 	      fine("adding fields of variable " + variable)
-            for (field <- fields)
+            for (field <- cct.fields)
 	          list += makeDeclaration(
-		        ImmediateExpression( field.id.name ,
-	            CaseClassSelector(cas, variable.toVariable, field.id) ),
+		        ImmediateExpression(field.id.name ,
+	            CaseClassSelector(cct, variable.toVariable, field.id) ),
 	            field.id.getType
     		  )
-	    case _ =>
-  		}
       case _ =>
     }
     
@@ -103,8 +100,8 @@ case class LeonLoader(program: Program, variables: List[Identifier], loadArithme
     (
       for (classDef <- program.definedClasses)
 	    	yield classDef match {
-	    		case caseClassDef: CaseClassDef => ( classDef.id, CaseClassType(caseClassDef) )
-	    		case absClassDef: AbstractClassDef => ( absClassDef.id, AbstractClassType(absClassDef) )
+	    		case caseClassDef: CaseClassDef => ( classDef.id, CaseClassType(caseClassDef, classDef.tparams.map(_.toType)) )
+	    		case absClassDef: AbstractClassDef => ( absClassDef.id, AbstractClassType(absClassDef, classDef.tparams.map(_.toType)) )
 	    	}
     ) toMap
   }
@@ -145,8 +142,9 @@ case class LeonLoader(program: Program, variables: List[Identifier], loadArithme
     case cas: CaseClassDef =>
       for (field <- cas.fields)
         yield makeDeclaration(
-        UnaryReconstructionExpression(field.id.name, { CaseClassSelector(cas, _: Expr, field.id) }),
-        FunctionType(List(classMap(cas.id)), field.id.getType))
+        UnaryReconstructionExpression(field.id.name, {
+          CaseClassSelector(CaseClassType(cas, cas.tparams.map(_.toType)), _: Expr, field.id)
+        }), FunctionType(List(classMap(cas.id)), field.id.getType))
   }
   
   def extractFields: Seq[Declaration] = {
@@ -156,14 +154,14 @@ case class LeonLoader(program: Program, variables: List[Identifier], loadArithme
   }
       
   def extractCaseClasses: Seq[Declaration] = {    
-    for (caseClassDef@CaseClassDef(id, parent, fields) <- program.definedClasses)
+    for (caseClassDef@CaseClassDef(id, tparams, parent, fields) <- program.definedClasses)
     	yield fields match {
       	case Nil => makeDeclaration(
-	        ImmediateExpression( id.name, { CaseClass(caseClassDef, Nil) } ), 
+	        ImmediateExpression( id.name, { CaseClass(CaseClassType(caseClassDef, tparams.map(_.toType)), Nil) } ), 
 	        classMap(id)
 	      )
       	case _ => makeDeclaration(
-	        NaryReconstructionExpression( id.name , { CaseClass(caseClassDef, _: List[Expr]) } ), 
+	        NaryReconstructionExpression( id.name , { CaseClass(CaseClassType(caseClassDef, tparams.map(_.toType)), _: List[Expr]) } ), 
 	        FunctionType(fields map { _.id.getType } toList, classMap(id))
 	      )
     	}
@@ -178,10 +176,11 @@ case class LeonLoader(program: Program, variables: List[Identifier], loadArithme
 //      }
 //    }
     
-    for ( classDef@CaseClassDef(_, _, _) <- program.definedClasses filter { _.isInstanceOf[CaseClassDef] }; 
+    for ( classDef@CaseClassDef(_, _, _, _) <- program.definedClasses filter { _.isInstanceOf[CaseClassDef] }; 
     			if classDef.hasParent)
       yield makeDeclaration(
-        UnaryReconstructionExpression( "isInstance[" + classDef.id + "]", { CaseClassInstanceOf(classDef, _: Expr) 
+        UnaryReconstructionExpression( "isInstance[" + classDef.id + "]", {
+            CaseClassInstanceOf(CaseClassType(classDef, classDef.tparams.map(_.toType)), _: Expr) 
         	} ), 
         FunctionType(List(classMap(classDef.parent.get.id)), BooleanType)
       )

@@ -292,6 +292,7 @@ object TreeOps {
         e match {
           case Variable(i) => subvs + i
           case Let(i,_,_) => subvs - i
+          case AnonymousFunction(args, _) => subvs -- args.map(_.id)
           case Choose(is,_) => subvs -- is
           case MatchExpr(_, cses) => subvs -- (cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b))
           case _ => subvs
@@ -302,6 +303,20 @@ object TreeOps {
   def containsFunctionCalls(expr: Expr): Boolean = {
     exists{
         case _: FunctionInvocation => true
+        case _ => false
+    }(expr)
+  }
+
+  def containsForallExpr(expr: Expr): Boolean = {
+    exists{
+        case _: ForallExpression => true
+        case _ => false
+    }(expr)
+  }
+
+  def containsIfExpr(expr: Expr): Boolean = {
+    exists{
+        case _: IfExpr=> true
         case _ => false
     }(expr)
   }
@@ -332,6 +347,7 @@ object TreeOps {
     case GreaterEquals(e1,e2) => LessThan(e1,e2)
     case i @ IfExpr(c,e1,e2) => IfExpr(c, negate(e1), negate(e2)).setType(i.getType)
     case BooleanLiteral(b) => BooleanLiteral(!b)
+    case AnonymousFunction(args, e) => AnonymousFunction(args, negate(e))
     case _ => Not(expr)
   }).setType(expr.getType).setPos(expr)
 
@@ -528,8 +544,7 @@ object TreeOps {
   }
 
   /** Rewrites all pattern-matching expressions into if-then-else expressions,
-   * with additional error conditions. Does not introduce additional variables.
-   */
+   * with additional error conditions. Does not introduce additional variables. */
   val cacheMtITE = new TrieMap[Expr, Expr]()
 
   def matchToIfThenElse(expr: Expr) : Expr = {
@@ -555,20 +570,16 @@ object TreeOps {
     def rec(in: Expr, pattern: Pattern): Expr = {
       pattern match {
         case WildcardPattern(ob) => bind(ob, in)
-        case InstanceOfPattern(ob, ct) =>
-          ct match {
-            case _: AbstractClassDef =>
-              bind(ob, in)
-
-            case cd: CaseClassDef =>
-              And(CaseClassInstanceOf(cd, in), bind(ob, in))
-          }
-        case CaseClassPattern(ob, ccd, subps) => {
-          assert(ccd.fields.size == subps.size)
-          val pairs = ccd.fields.map(_.id).toList zip subps.toList
-          val subTests = pairs.map(p => rec(CaseClassSelector(ccd, in, p._1), p._2))
+        case InstanceOfPattern(ob, ct) => ct match {
+          case (_ : AbstractClassType) => bind(ob, in)
+          case (cct : CaseClassType) => And(CaseClassInstanceOf(cct, in), bind(ob, in))
+        }
+        case CaseClassPattern(ob, cct, subps) => {
+          assert(cct.fields.size == subps.size)
+          val pairs = cct.fields.map(_.id).toList zip subps.toList
+          val subTests = pairs.map(p => rec(CaseClassSelector(cct, in, p._1), p._2))
           val together = And(bind(ob, in) +: subTests)
-          And(CaseClassInstanceOf(ccd, in), together)
+          And(CaseClassInstanceOf(cct, in), together)
         }
         case TuplePattern(ob, subps) => {
           val TupleType(tpes) = in.getType
@@ -671,33 +682,32 @@ object TreeOps {
    * Returns simplest value of a given type
    */
   def simplestValue(tpe: TypeTree) : Expr = tpe match {
-    case Int32Type                  => IntLiteral(0)
-    case BooleanType                => BooleanLiteral(false)
-    case SetType(baseType)          => FiniteSet(Seq()).setType(tpe)
-    case MapType(fromType, toType)  => FiniteMap(Seq()).setType(tpe)
-    case TupleType(tpes)            => Tuple(tpes.map(simplestValue))
-    case ArrayType(tpe)             => ArrayFill(IntLiteral(0), simplestValue(tpe))
+    case UnitType => UnitLiteral
+    case Int32Type => IntLiteral(0)
+    case BooleanType => BooleanLiteral(false)
+    case SetType(baseType) => FiniteSet(Seq()).setType(tpe)
+    case MapType(fromType, toType) => FiniteMap(Seq()).setType(tpe)
+    case FunctionType(fromTypes, toType) => FiniteFunction(Seq()).setType(tpe)
+    case TupleType(tpes) => Tuple(tpes.map(simplestValue))
+    case ArrayType(tpe) => ArrayFill(IntLiteral(0), simplestValue(tpe))
+    case cct @ CaseClassType(ccd, _) =>
+      CaseClass(cct, cct.fields.map(f => simplestValue(f.getType)))
+    case act @ AbstractClassType(acd, _) =>
+      val children = act.knownChildren
 
-    case AbstractClassType(acd) =>
-      val children = acd.knownChildren
-
-      def isRecursive(ccd: CaseClassDef): Boolean = {
-        ccd.fields.exists(fd => fd.getType match {
-          case AbstractClassType(fieldAcd) => acd == fieldAcd
-          case CaseClassType(fieldCcd) => ccd == fieldCcd
+      def isRecursive(cct: CaseClassType): Boolean = {
+        cct.fields.exists(fd => fd.getType match {
+          case fieldAct @ AbstractClassType(_, _) => act == fieldAct
+          case fieldCct @ CaseClassType(_, _) => cct == fieldCct
           case _ => false
         })
       }
 
-      val nonRecChildren = children.collect { case ccd: CaseClassDef if !isRecursive(ccd) => ccd }
+      val nonRecChildren = children.collect { case cct: CaseClassType if !isRecursive(cct) => cct }
 
       val orderedChildren = nonRecChildren.sortBy(_.fields.size)
 
-      simplestValue(classDefToClassType(orderedChildren.head))
-
-    case CaseClassType(ccd) =>
-      val fields = ccd.fields
-      CaseClass(ccd, fields.map(f => simplestValue(f.getType)))
+      simplestValue(orderedChildren.head)
 
     case _ => throw new Exception("I can't choose simplest value for type " + tpe)
   }
@@ -884,11 +894,11 @@ object TreeOps {
           }
 
           var scrutSet = Set[Expr]()
-          var conditions = Map[Expr, CaseClassDef]()
+          var conditions = Map[Expr, CaseClassType]()
 
           var matchingOn = cases.collect { case cc : CaseClassInstanceOf => cc } sortBy(cc => selectorDepth(cc.expr))
-          for (CaseClassInstanceOf(cd, expr) <- matchingOn) {
-            conditions += expr -> cd
+          for (CaseClassInstanceOf(cct, expr) <- matchingOn) {
+            conditions += expr -> cct
 
             expr match {
               case cd: CaseClassSelector =>
@@ -904,7 +914,7 @@ object TreeOps {
 
           var substMap = Map[Expr, Expr]()
 
-          def computePatternFor(cd: CaseClassDef, prefix: Expr): Pattern = {
+          def computePatternFor(cct: CaseClassType, prefix: Expr): Pattern = {
 
             val name = prefix match {
               case CaseClassSelector(_, _, id) => id.name
@@ -916,10 +926,10 @@ object TreeOps {
 
             // prefix becomes binder
             substMap += prefix -> Variable(binder)
-            substMap += CaseClassInstanceOf(cd, prefix) -> BooleanLiteral(true)
+            substMap += CaseClassInstanceOf(cct, prefix) -> BooleanLiteral(true)
 
-            val subconds = for (id <- cd.fieldsIds) yield {
-              val fieldSel = CaseClassSelector(cd, prefix, id)
+            val subconds = for (id <- cct.fieldsIds) yield {
+              val fieldSel = CaseClassSelector(cct, prefix, id)
               if (conditions contains fieldSel) {
                 computePatternFor(conditions(fieldSel), fieldSel)
               } else {
@@ -929,7 +939,7 @@ object TreeOps {
               }
             }
 
-            CaseClassPattern(Some(binder), cd, subconds)
+            CaseClassPattern(Some(binder), cct, subconds)
           }
 
           val (scrutinees, patterns) = scrutSet.toSeq.map(s => (s, computePatternFor(conditions(s), s))).unzip
@@ -1082,29 +1092,10 @@ object TreeOps {
     new SimplifierWithPaths(sf).transform _
   }
 
-  trait Traverser[T] {
-    def traverse(e: Expr): T
-  }
-
-  class ChooseCollectorWithPaths extends TransformerWithPC with Traverser[Seq[(Choose, Expr)]] {
-    type C = Seq[Expr]
-    val initC = Nil
-    def register(e: Expr, path: C) = path :+ e
-
-    var results: Seq[(Choose, Expr)] = Nil
-
-    override def rec(e: Expr, path: C) = e match {
-      case c : Choose =>
-        results = results :+ (c, And(path))
-        c
-      case _ =>
-        super.rec(e, path)
-    }
-
-    def traverse(e: Expr) = {
-      results = Nil
-      rec(e, initC)
-      results
+  class ChooseCollectorWithPaths extends CollectorWithPaths[(Choose, Expr)] {
+    def collect(e: Expr, path: Seq[Expr]): Option[(Choose, Expr)] = e match {
+      case (c : Choose) => Some((c, And(path)))
+      case _ => None
     }
   }
 
@@ -1204,6 +1195,11 @@ object TreeOps {
       case FunctionInvocation(fd, args) =>
         FunctionInvocation(fd2fd(fd), args)
 
+      case e @ Error(str) => mapType(e.getType) match {
+        case Some(tpe) => Error(str).setType(tpe)
+        case _ => e
+      }
+
       case _ => e
     }
 
@@ -1295,6 +1291,8 @@ object TreeOps {
 
       case Division(IntLiteral(i1), IntLiteral(i2)) if i2 != 0 => IntLiteral(i1 / i2)
       case Division(e, IntLiteral(1)) => e
+      case Equals(IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 == i2)
+      case Equals(BooleanLiteral(b1), BooleanLiteral(b2)) => BooleanLiteral(b1 == b2)
 
       //here we put more expensive rules
       //btw, I know those are not the most general rules, but they lead to good optimizations :)
@@ -1315,6 +1313,13 @@ object TreeOps {
 
     fix(simplePostTransform(simplify0))(expr)
   }
+  
+  def functionTypeToTupleType(f: FunctionType) = {
+    val FunctionType(argTypes, returnType) = f
+    TupleType(Seq(TupleType(argTypes), returnType))
+  }
+  
+  def functionTypeToInt32Type(f: FunctionType) = Int32Type
 
   /**
    * Checks whether a predicate is inductive on a certain identfier.
@@ -1324,16 +1329,12 @@ object TreeOps {
    *    foo(Cons(h,t), b) => foo(t, b)
    */
   def isInductiveOn(sf: SolverFactory[Solver])(expr: Expr, on: Identifier): Boolean = on match {
-    case IsTyped(origId, AbstractClassType(cd)) =>
-      def isAlternativeRecursive(cd: CaseClassDef): Boolean = {
-        cd.fieldsIds.exists(_.getType == origId.getType)
-      }
+    case IsTyped(origId, act @ AbstractClassType(_, _)) =>
+      val toCheck = act.knownDescendents.collect {
+        case cct @ CaseClassType(_, _) =>
+          val isType = CaseClassInstanceOf(cct, Variable(on))
 
-      val toCheck = cd.knownDescendents.collect {
-        case ccd: CaseClassDef =>
-          val isType = CaseClassInstanceOf(ccd, Variable(on))
-
-            val recSelectors = ccd.fieldsIds.filter(_.getType == on.getType)
+            val recSelectors = cct.fieldsIds.filter(_.getType == on.getType)
 
             if (recSelectors.isEmpty) {
               Seq()
@@ -1341,7 +1342,7 @@ object TreeOps {
               val v = Variable(on)
 
               recSelectors.map{ s =>
-                And(And(isType, expr), Not(replace(Map(v -> CaseClassSelector(ccd, v, s)), expr)))
+                And(And(isType, expr), Not(replace(Map(v -> CaseClassSelector(cct, v, s)), expr)))
               }
             }
       }.flatten
@@ -1361,6 +1362,25 @@ object TreeOps {
       }
     case _ =>
       false
+  }
+
+  def concontainsLetDef(expr: Expr): Boolean = {
+    exists{
+        case _: LetDef => true
+        case _ => false
+    }(expr)
+  }
+
+  def killForallExpressions(expr: Expr): Expr = expr match {
+    case And(es) => And(es.map(killForallExpressions(_)))
+    case ForallExpression(args, body) =>
+      val ids = args.map(_.id).toSet
+      body match {
+        case And(es) => And(es.collect { case e if (variablesOf(e) & ids).isEmpty => e })
+        case _ => BooleanLiteral(true)
+      }
+    case e if !containsForallExpr(e) => e
+    case _ => BooleanLiteral(true)
   }
 
   /**
@@ -1564,15 +1584,10 @@ object TreeOps {
 
         case _: ClassType =>
 
-          def typesOf(tpe: TypeTree): Set[CaseClassDef] = tpe match {
-            case AbstractClassType(ctp) =>
-              ctp.knownDescendents.collect { case c: CaseClassDef => c }.toSet
-
-            case CaseClassType(ctd) =>
-              Set(ctd)
-
-            case _ =>
-              Set()
+          def typesOf(tpe: TypeTree): Set[CaseClassType] = tpe match {
+            case (act : AbstractClassType) => act.knownDescendents.collect { case (cct : CaseClassType) => cct }.toSet
+            case (cct : CaseClassType) => Set(cct)
+            case _ => Set()
           }
 
           var subChecks = typesOf(tpe).map(_ -> Seq[Seq[Pattern]]()).toMap
@@ -1584,12 +1599,12 @@ object TreeOps {
 
             case InstanceOfPattern(_, cct) =>
               // (a: B) covers all Bs
-              subChecks --= typesOf(classDefToClassType(cct))
+              subChecks --= typesOf(cct)
 
-            case CaseClassPattern(_, ccd, subs) =>
+            case CaseClassPattern(_, cct, subs) =>
               // We record the patterns per types, if they still need to be checked
-              if (subChecks contains ccd) {
-                subChecks += (ccd -> (subChecks(ccd) :+ subs))
+              if (subChecks contains cct) {
+                subChecks += (cct -> (subChecks(cct) :+ subs))
               }
 
             case _ =>
@@ -1725,5 +1740,4 @@ object TreeOps {
 
   @deprecated("Use exists instead", "Leon 0.2.1")
   def contains(e: Expr, matcher: Expr => Boolean): Boolean = exists(matcher)(e)
-
 }

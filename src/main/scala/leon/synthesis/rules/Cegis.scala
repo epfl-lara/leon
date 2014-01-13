@@ -60,21 +60,21 @@ case object CEGIS extends Rule("CEGIS") {
               List((Tuple(ids.map(Variable(_))), ids.toSet))
             }
 
-          case CaseClassType(cd) =>
+          case cct @ CaseClassType(_, _) =>
             { () =>
-              val ids = cd.fieldsIds.map(i => FreshIdentifier("c", true).setType(i.getType))
-              List((CaseClass(cd, ids.map(Variable(_))), ids.toSet))
+              val ids = cct.fieldsIds.map(i => FreshIdentifier("c", true).setType(i.getType))
+              List((CaseClass(cct, ids.map(Variable(_))), ids.toSet))
             }
 
-          case AbstractClassType(cd) =>
+          case act @ AbstractClassType(_, _) =>
             { () =>
-              val alts: Seq[(Expr, Set[Identifier])] = cd.knownDescendents.flatMap(i => i match {
-                  case acd: AbstractClassDef =>
+              val alts: Seq[(Expr, Set[Identifier])] = act.knownDescendents.flatMap(i => i match {
+                  case act: AbstractClassType =>
                     sctx.reporter.error("Unnexpected abstract class in descendants!")
                     None
-                  case cd: CaseClassDef =>
-                    val ids = cd.fieldsIds.map(i => FreshIdentifier("c", true).setType(i.getType))
-                    Some((CaseClass(cd, ids.map(Variable(_))), ids.toSet))
+                  case cct: CaseClassType =>
+                    val ids = cct.fieldsIds.map(i => FreshIdentifier("c", true).setType(i.getType))
+                    Some((CaseClass(cct, ids.map(Variable(_))), ids.toSet))
               })
               alts.toList
             }
@@ -319,7 +319,6 @@ case object CEGIS extends Rule("CEGIS") {
         }
 
         Tuple(p.xs.map(c => getCValue(c))).setType(TupleType(p.xs.map(_.getType)))
-
       }
 
       def filterFor(remainingBss: Set[Identifier]): Seq[Expr] = {

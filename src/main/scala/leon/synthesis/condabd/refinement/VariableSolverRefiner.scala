@@ -31,30 +31,30 @@ class VariableSolverRefiner(directSubclassMap: Map[ClassType, Set[ClassType]], v
     if (variables.size == 1) {
       val variable = variables.head
       variable match {
-	      case oldId@IsTyped(id, AbstractClassType(cd)) if variableRefinements(id).size > 1 =>
+	      case oldId@IsTyped(id, act @ AbstractClassType(cd, _)) if variableRefinements(id).size > 1 =>
 	
-	        assert(variableRefinements(id).map(_.classDef) subsetOf cd.knownDescendents.toSet)
+	        assert(variableRefinements(id) subsetOf act.knownDescendents.toSet)
 	        //val optCases = for (dcd <- cd.knownDescendents.sortBy(_.id.name)) yield dcd match {
-	        val optCases = for (dcd <- variableRefinements(id).map(_.classDef)) yield dcd match {
-	          case ccd : CaseClassDef =>
+	        val optCases = for (dcd <- variableRefinements(id)) yield dcd match {
+	          case cct @ CaseClassType(ccd, _) =>
 	            fine("testing variable " + id + " with condition " + condition)
-	            val toSat = And(condition, CaseClassInstanceOf(ccd, Variable(id)))
+	            val toSat = And(condition, CaseClassInstanceOf(cct, Variable(id)))
 	            	        
 	            fine("checking satisfiability of: " + toSat)
 	            solver.solveSAT(toSat) match {
 	              case (Some(false), _) =>
-	                fine("variable cannot be of type " + ccd)
+	                fine("variable cannot be of type " + cct)
 	            		None
 	              case _ =>
-	                fine("variable can be of type " + ccd)
-	            		Some(ccd)
+	                fine("variable can be of type " + cct)
+	            		Some(cct)
 	            }
 	          case _ =>
 	            None
 	        }
 	
 	        val cases = optCases.flatten
-	        variableRefinements(id) = variableRefinements(id) & cases.map(CaseClassType(_)).toSet
+	        variableRefinements(id) = variableRefinements(id) & cases.toSet
 	        assert(variableRefinements(id).size == cases.size)
 	          
 		      List((id, variableRefinements(id).toSet))
@@ -72,12 +72,11 @@ class VariableSolverRefiner(directSubclassMap: Map[ClassType, Set[ClassType]], v
   def refineProblem(p: Problem) = {
 
     val newAs = p.as.map {
-      case oldId @ IsTyped(id, AbstractClassType(cd)) =>
-
-        val optCases = for (dcd <- cd.knownDescendents.sortBy(_.id.name)) yield dcd match {
-          case ccd: CaseClassDef =>
-            val toSat = And(p.pc, CaseClassInstanceOf(ccd, Variable(id)))
-
+      case oldId@IsTyped(id, act @ AbstractClassType(_, _)) =>
+        val optCases = for (dcd <- act.knownDescendents.sortBy(_.id.name)) yield dcd match {
+          case cct @ CaseClassType(_, _) =>
+            val toSat = And(p.pc, CaseClassInstanceOf(cct, Variable(id)))
+            	        
             val isImplied = solver.solveSAT(toSat) match {
               case (Some(false), _) => true
               case _ => false
@@ -86,7 +85,7 @@ class VariableSolverRefiner(directSubclassMap: Map[ClassType, Set[ClassType]], v
             println(isImplied)
 
             if (!isImplied) {
-              Some(ccd)
+              Some(cct)
             } else {
               None
             }
@@ -100,8 +99,8 @@ class VariableSolverRefiner(directSubclassMap: Map[ClassType, Set[ClassType]], v
         println(cases)
 
         if (cases.size == 1) {
-          //          id.setType(CaseClassType(cases.head))
-          FreshIdentifier(oldId.name).setType(CaseClassType(cases.head))
+//          id.setType(CaseClassType(cases.head))
+          FreshIdentifier(oldId.name).setType(cases.head)
         } else oldId
 
       case id => id

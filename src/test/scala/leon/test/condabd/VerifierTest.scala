@@ -45,7 +45,7 @@ class VerifierTest extends FunSpec {
       
     for ((sctx, funDef, problem) <- problems) {
       
-      val timeoutSolver = SolverFactory(() => sctx.newSolver.setTimeout(2000L))
+      val timeoutSolver = new TimeoutSolverFactory(sctx.solverFactory, 2000L)
       
       
           val getNewPostcondition = getPostconditionFunction(problem)
@@ -116,7 +116,7 @@ class VerifierTest extends FunSpec {
       
     for ((sctx, funDef, problem) <- problems) {
       
-      val timeoutSolver = SolverFactory(() => sctx.newSolver.setTimeout(1000L))
+      val timeoutSolver = new TimeoutSolverFactory(sctx.solverFactory, 1000L)
       
           val getNewPostcondition = getPostconditionFunction(problem)
           val getNewPrecondition = getPreconditionFunction(problem)

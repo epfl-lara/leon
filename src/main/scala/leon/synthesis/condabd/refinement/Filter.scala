@@ -129,30 +129,22 @@ class Filter(program: Program, holeFunDef: FunDef, refiner: VariableRefiner) ext
     case _ => false
   }
   
-  def isUnecessaryInstanceOf(expr: Expr) = {
-    def isOfClassType(exp: Expr, classDef: ClassTypeDef) =
-      expr.getType match {
-        case tpe: ClassType => tpe.classDef == classDef
-        case _ => false
-      }
-    expr match {
-      // if we check instance of an constructor we know that it is a constant
+  def isUnecessaryInstanceOf(expr: Expr) = expr match {
+    // if we check instance of an constructor we know that it is a constant
 //      case CaseClassInstanceOf(_, _: CaseClass) =>
 //        true
-	    case CaseClassInstanceOf(classDef, _: FunctionInvocation) =>
-	      true
-	    case CaseClassInstanceOf(classDef, innerExpr)
-	    	if isOfClassType(innerExpr, classDef) =>
-	      true
-	    case CaseClassInstanceOf(classDef, v@Variable(id)) => {
-	      val possibleTypes = refiner.getPossibleTypes(id)
-	      if (possibleTypes.size == 1)
-	        possibleTypes.head.classDef == classDef
-	      else
-	        false
-	    }
-	    case _ => false
+    case CaseClassInstanceOf(cct, _: FunctionInvocation) =>
+      true
+    case CaseClassInstanceOf(cct, innerExpr)
+      if innerExpr.getType == cct =>
+      true
+    case CaseClassInstanceOf(cct, v @ Variable(id)) => {
+      val possibleTypes = refiner.getPossibleTypes(id)
+      if (possibleTypes.size == 1)
+        possibleTypes.head.classDef == cct.classDef
+      else
+        false
     }
+    case _ => false
   }
-  
 }

@@ -21,7 +21,6 @@ object Utils {
   }
   implicit def while2Invariant(u: Unit) = InvariantFunction
 
-
   def waypoint[A](i: Int, expr: A): A = expr
 
   private def noChoose = throw new RuntimeException("Implementation not supported")
@@ -31,6 +30,19 @@ object Utils {
   def choose[A, B, C](predicate: (A, B, C) => Boolean): (A, B, C) = noChoose
   def choose[A, B, C, D](predicate: (A, B, C, D) => Boolean): (A, B, C, D) = noChoose
   def choose[A, B, C, D, E](predicate: (A, B, C, D, E) => Boolean): (A, B, C, D, E) = noChoose
+  
+  private def noForall = throw new RuntimeException("Implementation not supported")
+  
+  def forall[A](predicate: A => Boolean): Boolean = noForall
+  def forall[A, B](predicate: (A, B) => Boolean): Boolean = noForall
+  def forall[A, B, C](predicate: (A, B, C) => Boolean): Boolean = noForall
+  def forall[A, B, C, D](predicate: (A, B, C, D) => Boolean): Boolean = noForall
+  def forall[A, B, C, D, E](predicate: (A, B, C, D, E) => Boolean): Boolean = noForall
+  
+  sealed class ImpliesArrowAssoc(val value: Boolean) {
+    def ==>(that: Boolean): Boolean = throw new RuntimeException("Implementation not supported")
+  }
+  implicit def boolean2ImpliesArrowAssoc(b1: Boolean) = new ImpliesArrowAssoc(b1)
 
   def error[T](reason: String): T = sys.error(reason)
 }

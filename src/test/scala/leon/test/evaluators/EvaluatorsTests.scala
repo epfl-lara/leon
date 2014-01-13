@@ -49,7 +49,7 @@ class EvaluatorsTests extends LeonTestSuite {
 
   private def mkCaseClass(name : String, args : Expr*)(implicit p : Program) = {
     val ccDef = p.mainObject.caseClassDef(name)
-    CaseClass(ccDef, args.toSeq)
+    CaseClass(CaseClassType(ccDef, Seq()), args.toSeq)
   }
 
   private def checkCompSuccess(evaluator : Evaluator, in : Expr) : Expr = {

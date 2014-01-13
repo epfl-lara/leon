@@ -6,7 +6,9 @@ package codegen
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
+import purescala.TreeOps._
 import purescala.TypeTrees._
+import purescala.TypeTreeOps._
 
 import cafebabe._
 import cafebabe.AbstractByteCodes._
@@ -22,16 +24,29 @@ class CompilationUnit(val ctx: LeonContext,
                       val program: Program,
                       val params: CodeGenParams = CodeGenParams()) extends CodeGeneration {
 
+  private var _nextAnonId = 0
+  protected[codegen] def nextAnonId = {
+    _nextAnonId += 1
+    _nextAnonId
+  }
+
+  private var _nextExprId = 0
+  private def nextExprId = {
+    _nextExprId += 1
+    _nextExprId
+  }
+
   val loader = new CafebabeClassLoader(classOf[CompilationUnit].getClassLoader)
 
-  var classes = Map[Definition, ClassFile]()
+  private[codegen] var defToClass : Map[Definition, ClassFile] = Map.empty
+  private[codegen] var classToDef : Map[String, Definition]    = Map.empty
 
   def defineClass(df: Definition) {
     val cName = defToJVMName(df)
 
     val cf = df match {
       case ccd: CaseClassDef =>
-        val pName = ccd.parent.map(parent => defToJVMName(parent))
+        val pName = ccd.parent.map(parent => defToJVMName(parent.classDef))
         new ClassFile(cName, pName)
 
       case acd: AbstractClassDef =>
@@ -44,15 +59,24 @@ class CompilationUnit(val ctx: LeonContext,
         sys.error("Unhandled definition type")
     }
 
-    classes += df -> cf
+    defToClass += df -> cf
+    classToDef += cf.className -> df
   }
 
-  def jvmClassToLeonClass(name: String): Option[Definition] = {
-    classes.find(_._2.className == name).map(_._1)
-  }
+  def jvmClassToLeonClass(name: String): Option[Definition] = classToDef.get(name)
 
-  def leonClassToJVMClass(cd: Definition): Option[String] = {
-    classes.get(cd).map(_.className)
+  def leonClassToJVMClass(cd: Definition): Option[String] = defToClass.get(cd).map(_.className)
+
+  private var defToCons  : Map[Definition, String] = Map.empty
+
+  def leonClassToJVMInfo(cd: Definition): Option[String] = defToCons.get(cd).orElse {
+    cd match {
+      case ccd : CaseClassDef =>
+        val sig = "(" + ccd.fields.map(f => typeToJVM(f.tpe)).mkString("") + ")V"
+        defToCons += ccd -> sig
+        Some(sig)
+      case _ => None
+    }
   }
 
   // Returns className, methodName, methodSignature
@@ -80,7 +104,7 @@ class CompilationUnit(val ctx: LeonContext,
 
   private[this] def caseClassConstructor(ccd: CaseClassDef): Option[Constructor[_]] = {
     ccdConstructors.get(ccd).orElse {
-      classes.get(ccd) match {
+      defToClass.get(ccd) match {
         case Some(cf) =>
           val klass = loader.loadClass(cf.className)
           // This is a hack: we pick the constructor with the most arguments.
@@ -103,6 +127,13 @@ class CompilationUnit(val ctx: LeonContext,
     conss.last
   }
 
+  private[this] lazy val arrayConstructor: Constructor[_] = {
+    val ac = loader.loadClass("leon.codegen.runtime.Array")
+    val conss = ac.getConstructors().sortBy(_.getParameterTypes().length)
+    assert(!conss.isEmpty)
+    conss.last
+  }
+
   // Currently, this method is only used to prepare arguments to reflective calls.
   // This means it is safe to return AnyRef (as opposed to primitive types), because
   // reflection needs this anyway.
@@ -116,18 +147,23 @@ class CompilationUnit(val ctx: LeonContext,
     case Tuple(elems) =>
       tupleConstructor.newInstance(elems.map(exprToJVM).toArray).asInstanceOf[AnyRef]
 
-    case CaseClass(ccd, args) =>
-      caseClassConstructor(ccd) match {
+    case FiniteArray(elems) =>
+      arrayConstructor.newInstance(elems.map(exprToJVM).toArray).asInstanceOf[AnyRef]
+
+    case CaseClass(cct, args) =>
+      caseClassConstructor(cct.classDef) match {
         case Some(cons) =>
           cons.newInstance(args.map(exprToJVM).toArray : _*).asInstanceOf[AnyRef]
         case None =>
           ctx.reporter.fatalError("Case class constructor not found?!?")
       }
 
+    /*
     // For now, we only treat boolean arrays separately.
     // We have a use for these, mind you.
     case f @ FiniteArray(exprs) if f.getType == ArrayType(BooleanType) =>
-      exprs.map(e => exprToJVM(e).asInstanceOf[java.lang.Boolean].booleanValue).toArray
+      exprs.map(e => valueToJVM(e).asInstanceOf[java.lang.Boolean].booleanValue).toArray
+    */
 
     // Just slightly overkill...
     case _ =>
@@ -135,50 +171,71 @@ class CompilationUnit(val ctx: LeonContext,
   }
 
   // Note that this may produce untyped expressions! (typically: sets, maps)
-  private[codegen] def jvmToExpr(e: AnyRef): Expr = e match {
-    case i: Integer =>
+  private[codegen] def jvmToExpr(e: AnyRef, tpe: TypeTree): Expr = (e, tpe) match {
+    case (i: Integer, Int32Type) =>
       IntLiteral(i.toInt)
 
-    case b: java.lang.Boolean =>
+    case (b: java.lang.Boolean, BooleanType) =>
       BooleanLiteral(b.booleanValue)
 
-    case cc: runtime.CaseClass =>
+    case (cc: runtime.CaseClass, ct : ClassType) =>
       val fields = cc.productElements()
 
       jvmClassToLeonClass(e.getClass.getName) match {
-        case Some(cc: CaseClassDef) =>
-          CaseClass(cc, fields.map(jvmToExpr))
+        case Some(jccd: CaseClassDef) =>
+          val cct : CaseClassType = ct match {
+            case cct : CaseClassType =>
+              assert(cct.classDef == jccd, "Unsupported classDef : " + jccd)
+              cct
+            case act : AbstractClassType =>
+              act.knownDescendents.collect { case (cct : CaseClassType) => cct }.find(cct => cct.classDef == jccd).getOrElse {
+                throw CompilationException("Unsupported classDef : " + jccd)
+              }
+          }
+          CaseClass(cct, (fields.toList zip cct.fields).map(p => jvmToExpr(p._1, p._2.tpe)))
         case _ =>
           throw CompilationException("Unsupported return value : " + e)
       }
 
-    case tpl: runtime.Tuple =>
+    case (tpl: runtime.Tuple, TupleType(argTypes)) =>
       val elems = for (i <- 0 until tpl.getArity) yield {
-        jvmToExpr(tpl.get(i))
+        jvmToExpr(tpl.get(i), argTypes(i))
       }
       Tuple(elems)
 
-    case set : runtime.Set =>
-      FiniteSet(set.getElements().asScala.map(jvmToExpr).toSeq)
+    case (arr: runtime.Array, ArrayType(base)) =>
+      val elems = for (i <- 0 until arr.getLength) yield {
+        jvmToExpr(arr.get(i), base)
+      }
+      val leonArray = FiniteArray(elems)
+      leastUpperBound(elems.map(_.getType) :+ base).foreach { leonArray.setType _ }
+      leonArray
 
-    case map : runtime.Map =>
+    case (set : runtime.Set, SetType(base)) =>
+      val leonSet = FiniteSet(set.getElements().asScala.map(jvmToExpr(_, base)).toSeq)
+      leastUpperBound(leonSet.getType, SetType(base)).foreach { leonSet.setType _ }
+      leonSet
+
+    case (map : runtime.Map, MapType(from, to)) =>
       val pairs = map.getElements().asScala.map { entry =>
-        val k = jvmToExpr(entry.getKey())
-        val v = jvmToExpr(entry.getValue())
+        val k = jvmToExpr(entry.getKey(), from)
+        val v = jvmToExpr(entry.getValue(), to)
         (k, v)
       }
-      FiniteMap(pairs.toSeq)
+      val leonMap = FiniteMap(pairs.toSeq)
+      leastUpperBound(leonMap.getType, MapType(from, to)).foreach { leonMap.setType _ }
+      leonMap
 
     case _ =>
       throw CompilationException("Unsupported return value : " + e.getClass)
   }
-
+  
   def compileExpression(e: Expr, args: Seq[Identifier]): CompiledExpression = {
     if(e.getType == Untyped) {
       throw new IllegalArgumentException("Cannot compile untyped expression [%s].".format(e))
     }
 
-    val id = CompilationUnit.nextExprId
+    val id = nextExprId
 
     val cName = "Leon$CodeGen$Expr$"+id
 
@@ -220,9 +277,9 @@ class CompilationUnit(val ctx: LeonContext,
 
     val exprToCompile = purescala.TreeOps.matchToIfThenElse(e)
 
-    mkExpr(e, ch)(Locals(newMapping))
+    mkExpr(exprToCompile, ch)(Locals(newMapping, Map.empty, Map.empty))
 
-    e.getType match {
+    exprToCompile.getType match {
       case Int32Type | BooleanType =>
         ch << IRETURN
 
@@ -237,11 +294,11 @@ class CompilationUnit(val ctx: LeonContext,
 
     loader.register(cf)
 
-    new CompiledExpression(this, cf, e, args)
+    new CompiledExpression(this, cf, exprToCompile, args)
   }
 
   def compileMainObject() {
-    val cf = classes(program.mainObject)
+    val cf = defToClass(program.mainObject)
 
     cf.addDefaultConstructor
 
@@ -255,31 +312,9 @@ class CompilationUnit(val ctx: LeonContext,
     // as methods of a single class file.
     for(funDef <- program.definedFunctions;
         (_,mn,_) <- leonFunDefToJVMInfo(funDef)) {
-
-      val argsTypes = funDef.args.map(a => typeToJVM(a.tpe))
-
-      val realArgs = if (params.requireMonitor) {
-        ("L" + MonitorClass + ";") +: argsTypes
-      } else {
-        argsTypes
-      }
-
-      val m = cf.addMethod(
-        typeToJVM(funDef.returnType),
-        mn,
-        realArgs : _*
-      )
-      m.setFlags((
-        METHOD_ACC_PUBLIC |
-        METHOD_ACC_FINAL |
-        METHOD_ACC_STATIC
-      ).asInstanceOf[U2])
-
-      compileFunDef(funDef, m.codeHandler)
-
+      compileFunDef(funDef, mn, cf)
     }
   }
-
 
   def init() {
     // First define all classes
@@ -314,11 +349,11 @@ class CompilationUnit(val ctx: LeonContext,
 
     compileMainObject()
 
-    classes.values.foreach(loader.register _)
+    defToClass.values.foreach(loader.register _)
   }
 
   def writeClassFiles() {
-    for ((d, cl) <- classes) {
+    for ((d, cl) <- defToClass) {
       cl.writeToFile(cl.className + ".class")
     }
   }
@@ -326,12 +361,3 @@ class CompilationUnit(val ctx: LeonContext,
   init()
   compile()
 }
-
-object CompilationUnit {
-  private var _nextExprId = 0
-  private def nextExprId = {
-    _nextExprId += 1
-    _nextExprId
-  }
-}
-

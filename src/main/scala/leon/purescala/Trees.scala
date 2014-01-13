@@ -8,7 +8,9 @@ import utils._
 /** AST definitions for Pure Scala. */
 object Trees {
   import Common._
+  import TreeOps._
   import TypeTrees._
+  import TypeTreeOps._
   import Definitions._
   import Extractors._
 
@@ -26,6 +28,10 @@ object Trees {
    * empty set, division by zero, etc.). It should always be typed according to
    * the expected type. */
   case class Error(description: String) extends Expr with Terminal
+
+  case class GenericValue(t: TypeParameter, id: Int) extends Expr with Terminal with FixedType {
+    val fixedType = t
+  }
 
   case class Choose(vars: List[Identifier], pred: Expr) extends Expr with FixedType with UnaryExtractable {
 
@@ -57,18 +63,23 @@ object Trees {
     val et = body.getType
     if(et != Untyped)
       setType(et)
-
   }
-
 
   /* Control flow */
-  case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr with FixedType {
-    val fixedType = funDef.returnType
-
-    funDef.args.zip(args).foreach {
-      case (a, c) => typeCheck(c, a.tpe)
+  case class FunctionInvocation(funDef: FunDef, /*tparams: Seq[TypeTree],*/ args: Seq[Expr]) extends Expr with FixedType {
+    val tpSubst = {
+      val pairs = (funDef.args zip args).flatMap(p => collectParametricMapping(p._1.tpe, p._2.getType))
+      mergeParametricMapping(pairs).getOrElse(scala.sys.error("Scala typing failure, can't merge pairs=" + pairs))
     }
+
+    val tparams = funDef.tparams.map(tp => replaceTypesFromTPs(tpSubst.get _, tp.toType))
+    val typed = TypedFunDef(funDef, tparams)
+
+    val fixedType = replaceTypesFromTPs(tpSubst.get _, funDef.returnType)
+
+    typed.args.zip(args).foreach { case (a, c) => typeCheck(c, a.tpe) }
   }
+
   case class IfExpr(cond: Expr, thenn: Expr, elze: Expr) extends Expr with FixedType {
     val fixedType = leastUpperBound(thenn.getType, elze.getType).getOrElse(AnyType)
   }
@@ -118,7 +129,7 @@ object Trees {
       scrutinee.getType match {
         case a: AbstractClassType => new MatchExpr(scrutinee, cases)
         case c: CaseClassType => new MatchExpr(scrutinee, cases.filter(_.pattern match {
-          case CaseClassPattern(_, ccd, _) if ccd != c.classDef => false
+          case CaseClassPattern(_, cct, _) if cct != c => false
           case _ => true
         }))
         case t: TupleType => new MatchExpr(scrutinee, cases)
@@ -168,13 +179,13 @@ object Trees {
     def binders: Set[Identifier] = subBinders ++ (if(binder.isDefined) Set(binder.get) else Set.empty)
   }
 
-  case class InstanceOfPattern(binder: Option[Identifier], classTypeDef: ClassTypeDef) extends Pattern { // c: Class
+  case class InstanceOfPattern(binder: Option[Identifier], classType: ClassType) extends Pattern { // c: Class
     val subPatterns = Seq.empty
   }
   case class WildcardPattern(binder: Option[Identifier]) extends Pattern { // c @ _
     val subPatterns = Seq.empty
   } 
-  case class CaseClassPattern(binder: Option[Identifier], caseClassDef: CaseClassDef, subPatterns: Seq[Pattern]) extends Pattern
+  case class CaseClassPattern(binder: Option[Identifier], caseClassType: CaseClassType, subPatterns: Seq[Pattern]) extends Pattern
   // case class ExtractorPattern(binder: Option[Identifier], 
   //   		      extractor : ExtractorTypeDef, 
   //   		      subPatterns: Seq[Pattern]) extends Pattern // c @ Extractor(...,...)
@@ -312,7 +323,7 @@ object Trees {
     // }
 
     override def equals(that: Any): Boolean = (that != null) && (that match {
-      case t: Iff => t.left == left
+      case t: Implies => t.left == left && t.right == right
       case _ => false
     })
 
@@ -401,36 +412,36 @@ object Trees {
     val value = ()
   }
 
-  case class CaseClass(classDef: CaseClassDef, args: Seq[Expr]) extends Expr with FixedType {
-    val fixedType = CaseClassType(classDef)
+  case class CaseClass(cct: CaseClassType, args: Seq[Expr]) extends Expr with FixedType {
+    val fixedType = cct
   }
 
-  case class CaseClassInstanceOf(classDef: CaseClassDef, expr: Expr) extends Expr with FixedType {
+  case class CaseClassInstanceOf(cct: CaseClassType, expr: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }
 
   object CaseClassSelector {
-    def apply(classDef: CaseClassDef, caseClass: Expr, selector: Identifier): Expr = {
+    def apply(cct: CaseClassType, caseClass: Expr, selector: Identifier): Expr = {
       caseClass match {
-        case CaseClass(cd, fields)  if cd == classDef => fields(cd.selectorID2Index(selector))
-        case _ => new CaseClassSelector(classDef, caseClass, selector)
+        case CaseClass(ct, fields)  if ct == cct => fields(cct.classDef.selectorID2Index(selector))
+        case _ => new CaseClassSelector(cct, caseClass, selector)
       }
     }
 
-    def unapply(e: CaseClassSelector): Option[(CaseClassDef, Expr, Identifier)] = {
-      if (e eq null) None else Some((e.classDef, e.caseClass, e.selector))
+    def unapply(e: CaseClassSelector): Option[(CaseClassType, Expr, Identifier)] = {
+      if (e eq null) None else Some((e.cct, e.caseClass, e.selector))
     }
   }
 
-  class CaseClassSelector(val classDef: CaseClassDef, val caseClass: Expr, val selector: Identifier) extends Expr with FixedType {
-    val fixedType = classDef.fields.find(_.id == selector).get.getType
+  class CaseClassSelector(val cct: CaseClassType, val caseClass: Expr, val selector: Identifier) extends Expr with FixedType {
+    val fixedType = cct.fields(cct.classDef.selectorID2Index(selector)).getType
 
     override def equals(that: Any): Boolean = (that != null) && (that match {
-      case t: CaseClassSelector => (t.classDef, t.caseClass, t.selector) == (classDef, caseClass, selector)
+      case t: CaseClassSelector => (t.cct, t.caseClass, t.selector) == (cct, caseClass, selector)
       case _ => false
     })
 
-    override def hashCode: Int = (classDef, caseClass, selector).hashCode
+    override def hashCode: Int = (cct, caseClass, selector).hashCode
   }
 
   /* Arithmetic */
@@ -470,6 +481,7 @@ object Trees {
     val tpe = if (elements.isEmpty) None else leastUpperBound(elements.map(_.getType))
     tpe.foreach(t => setType(SetType(t)))
   }
+
   // TODO : Figure out what evaluation order is, for this.
   // Perhaps then rewrite as "contains".
   case class ElementOfSet(element: Expr, set: Expr) extends Expr with FixedType {
@@ -503,25 +515,57 @@ object Trees {
   }
 
   /* Multiset expressions */
-  case class EmptyMultiset(baseType: TypeTree) extends Expr with Terminal
-  case class FiniteMultiset(elements: Seq[Expr]) extends Expr 
-  case class Multiplicity(element: Expr, multiset: Expr) extends Expr 
+  case class EmptyMultiset(baseType: TypeTree) extends Expr with Terminal with FixedType {
+    val fixedType = MultisetType(baseType)
+  }
+  case class FiniteMultiset(elements: Seq[Expr]) extends Expr {
+    val tpe = if (elements.isEmpty) None else leastUpperBound(elements.map(_.getType))
+    tpe.foreach(t => setType(MultisetType(t)))
+  }
+  case class Multiplicity(element: Expr, multiset: Expr) extends Expr with FixedType {
+    val fixedType = Int32Type
+  }
   case class MultisetCardinality(multiset: Expr) extends Expr with FixedType {
     val fixedType = Int32Type
   }
-  case class SubmultisetOf(multiset1: Expr, multiset2: Expr) extends Expr 
-  case class MultisetIntersection(multiset1: Expr, multiset2: Expr) extends Expr 
-  case class MultisetUnion(multiset1: Expr, multiset2: Expr) extends Expr 
-  case class MultisetPlus(multiset1: Expr, multiset2: Expr) extends Expr // disjoint union
-  case class MultisetDifference(multiset1: Expr, multiset2: Expr) extends Expr 
-  case class MultisetToSet(multiset: Expr) extends Expr
+  case class SubmultisetOf(multiset1: Expr, multiset2: Expr) extends Expr with FixedType {
+    val fixedType = BooleanType
+  }
+  case class MultisetIntersection(multiset1: Expr, multiset2: Expr) extends Expr {
+    leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).foreach(setType _)
+  }
+  case class MultisetUnion(multiset1: Expr, multiset2: Expr) extends Expr {
+    leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).foreach(setType _)
+  }
+  case class MultisetPlus(multiset1: Expr, multiset2: Expr) extends Expr {// disjoint union 
+    leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).foreach(setType _)
+  }
+  case class MultisetDifference(multiset1: Expr, multiset2: Expr) extends Expr {
+    leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).foreach(setType _)
+  }
+  case class MultisetToSet(multiset: Expr) extends Expr with FixedType {
+    private val MultisetType(base) = multiset.getType
+    val fixedType = SetType(base)
+  }
 
   /* Map operations. */
-  case class FiniteMap(singletons: Seq[(Expr, Expr)]) extends Expr 
+  case class FiniteMap(singletons: Seq[(Expr, Expr)]) extends Expr {
+    val tpe = if (singletons.isEmpty) None else leastUpperBound(singletons.map(p => p._1.getType)).map { from =>
+      leastUpperBound(singletons.map(p => p._2.getType)).map(to => from -> to)
+    }.flatten
 
-  case class MapGet(map: Expr, key: Expr) extends Expr
-  case class MapUnion(map1: Expr, map2: Expr) extends Expr 
-  case class MapDifference(map: Expr, keys: Expr) extends Expr 
+    tpe.foreach(p => setType(MapType(p._1, p._2)))
+  }
+  case class MapGet(map: Expr, key: Expr) extends Expr with FixedType {
+    private val MapType(from, to) = map.getType
+    val fixedType = to
+  }
+  case class MapUnion(map1: Expr, map2: Expr) extends Expr {
+    leastUpperBound(Seq(map1, map2).map(_.getType)).foreach(setType _)
+  }
+  case class MapDifference(map: Expr, keys: Expr) extends Expr with FixedType {
+    val fixedType = map.getType
+  }
   case class MapIsDefinedAt(map: Expr, key: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }
@@ -582,4 +626,32 @@ object Trees {
     val fixedType = BooleanType
   }
 
+  /* Argument function operations */
+  case class FunctionApplication(function: Expr, args: Seq[Expr]) extends Expr with FixedType {
+    private val FunctionType(argTypes, returnType) = function.getType
+    val fixedType = returnType
+    val functionType = function.getType
+    
+    //argTypes.zip(args).foreach { case (tpe, c) => typeCheck(c, applyParametricMapping(tpe, tpeMapping)) }
+    argTypes.zip(args).foreach { case (tpe, c) => typeCheck(c, tpe) }
+  }
+  
+  case class AnonymousFunction(args: VarDecls, body: Expr) extends Expr with FixedType {
+    val fixedType = FunctionType(args.map(_.tpe), body.getType)
+  }
+
+  // dummy class to display solver results
+  case class FiniteFunction(singletons: Seq[(Expr, Expr)]) extends Expr {
+    val tpe = if (singletons.isEmpty) None else leastUpperBound(singletons.map(p => p._1.getType)).map { from =>
+      leastUpperBound(singletons.map(p => p._2.getType)).map(to => from -> to)
+    }.flatten
+
+    tpe.foreach { case (TupleType(argTypes), returnType) => setType(FunctionType(argTypes, returnType)) }
+  }
+
+  case class ForallExpression(args: VarDecls, body: Expr) extends Expr with FixedType {
+    assert(body.getType == BooleanType)
+
+    val fixedType = BooleanType
+  }
 }

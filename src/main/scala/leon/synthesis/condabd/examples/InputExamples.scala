@@ -73,13 +73,16 @@ object InputExamples {
     val nilClass = nilClassSet.head
     val consClass = consClassSet.head
 
+    val nilClassType = CaseClassType(nilClass, Seq())
+    val consClassType = CaseClassType(consClass, Seq())
+
     var counter = 10
     def getIntLiteral = { counter += 1; IntLiteral(counter) }
     val intLiteral = IntLiteral(5)
 
-    val list0 = CaseClass(nilClass, Nil)
-    val list1 = CaseClass(consClass, IntLiteral(10) :: list0 :: Nil)
-    val list32 = CaseClass(consClass, IntLiteral(5) :: CaseClass(consClass, IntLiteral(7) :: list1 :: Nil) :: Nil)
+    val list0 = CaseClass(nilClassType, Nil)
+    val list1 = CaseClass(consClassType, IntLiteral(10) :: list0 :: Nil)
+    val list32 = CaseClass(consClassType, IntLiteral(5) :: CaseClass(consClassType, IntLiteral(7) :: list1 :: Nil) :: Nil)
 
     Map(argumentIds(0) -> IntLiteral(3), argumentIds(1) -> list32) ::
       Map(argumentIds(0) -> IntLiteral(2), argumentIds(1) -> list32) ::
@@ -102,18 +105,21 @@ object InputExamples {
     val nilClass = nilClassSet.head
     val consClass = consClassSet.head
 
+    val nilClassType = CaseClassType(nilClass, Seq())
+    val consClassType = CaseClassType(consClass, Seq())
+
     var counter = 10
     def getIntLiteral = { counter += 1; IntLiteral(counter) }
     val intLiteral = IntLiteral(5)
 
-    val list0 = CaseClass(nilClass, Nil)
-    val list1 = CaseClass(consClass, IntLiteral(10) :: list0 :: Nil)
-    val list2s = CaseClass(consClass, IntLiteral(5) :: list1 :: Nil)
-    val list2u = CaseClass(consClass, IntLiteral(5) :: list1 :: Nil)
-    val list3s = CaseClass(consClass, IntLiteral(5) :: list2s :: Nil)
-    val list3u1 = CaseClass(consClass, IntLiteral(5) :: list2u :: Nil)
-    val list3u2 = CaseClass(consClass, IntLiteral(15) :: list2s :: Nil)
-    val list3u3 = CaseClass(consClass, IntLiteral(15) :: list2u :: Nil)
+    val list0 = CaseClass(nilClassType, Nil)
+    val list1 = CaseClass(consClassType, IntLiteral(10) :: list0 :: Nil)
+    val list2s = CaseClass(consClassType, IntLiteral(5) :: list1 :: Nil)
+    val list2u = CaseClass(consClassType, IntLiteral(5) :: list1 :: Nil)
+    val list3s = CaseClass(consClassType, IntLiteral(5) :: list2s :: Nil)
+    val list3u1 = CaseClass(consClassType, IntLiteral(5) :: list2u :: Nil)
+    val list3u2 = CaseClass(consClassType, IntLiteral(15) :: list2s :: Nil)
+    val list3u3 = CaseClass(consClassType, IntLiteral(15) :: list2u :: Nil)
 
     for (list <- List(list0, list1, list2s, list2u, list3s, list3u1, list3u2, list3u3))
       yield Map(argumentIds(0) -> list)
@@ -131,14 +137,17 @@ object InputExamples {
         val nilClass = nilClassSet.head
         val consClass = consClassSet.head
 
+        val nilClassType = CaseClassType(nilClass, Seq())
+        val consClassType = CaseClassType(consClass, Seq())
+
         var counter = 0
         def getIntLiteral = { counter += 1; IntLiteral(counter) }
 
-        val list0 = () => CaseClass(nilClass, Nil)
-        val list1 = () => CaseClass(consClass, getIntLiteral :: list0() :: Nil)
-        val list2 = () => CaseClass(consClass, getIntLiteral :: list1() :: Nil)
-        val list3 = () => CaseClass(consClass, getIntLiteral :: list2() :: Nil)
-        val list4 = () => CaseClass(consClass, getIntLiteral :: list3() :: Nil)
+        val list0 = () => CaseClass(nilClassType, Nil)
+        val list1 = () => CaseClass(consClassType, getIntLiteral :: list0() :: Nil)
+        val list2 = () => CaseClass(consClassType, getIntLiteral :: list1() :: Nil)
+        val list3 = () => CaseClass(consClassType, getIntLiteral :: list2() :: Nil)
+        val list4 = () => CaseClass(consClassType, getIntLiteral :: list3() :: Nil)
 
         val lists = List(list0, list1, list2, list3 /*, list4*/ )
 

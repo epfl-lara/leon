@@ -81,7 +81,12 @@ class TerminationRegression extends LeonTestSuite {
   forEachFileIn("looping") { output =>
     val Output(report, reporter) = output
     val looping = report.results.filter { case (fd, guarantee) => fd.id.name.startsWith("looping") }
-    assert(looping.forall(_._2.isInstanceOf[LoopsGivenInputs]), "Functions " + looping.filter(!_._2.isInstanceOf[LoopsGivenInputs]).map(_._1.id) + " should loop")
+    import leon.purescala.Definitions._
+    def looping_filter(p: (FunDef, TerminationGuarantee)): Boolean = p._2 match {
+      case (_: LoopsGivenInputs | _: CallsNonTerminating) => true
+      case _ => false
+    }
+    assert(looping.forall(looping_filter), "Functions " + looping.filter(!looping_filter(_)).map(_._1.id) + " should loop")
     val calling = report.results.filter { case (fd, guarantee) => fd.id.name.startsWith("calling") }
     assert(calling.forall(_._2.isInstanceOf[CallsNonTerminating]), "Functions " + calling.filter(!_._2.isInstanceOf[CallsNonTerminating]).map(_._1.id) + " should call non-terminating")
     val ok = report.results.filter { case (fd, guarantee) => fd.id.name.startsWith("ok") }

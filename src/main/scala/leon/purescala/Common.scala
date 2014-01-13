@@ -7,6 +7,7 @@ import utils._
 object Common {
   import Trees.Variable
   import TypeTrees.Typed
+  import TypeTrees.TypeTree
 
   abstract class Tree extends Positioned with Serializable {
     def copiedFrom(o: Tree): this.type = {
@@ -51,6 +52,8 @@ object Common {
     def isLetBinder : Boolean = _islb
 
     def freshen: Identifier = FreshIdentifier(name, alwaysShowUniqueID).setType(getType)
+    def freshenWithType(tpe: TypeTree): Identifier = FreshIdentifier(name, alwaysShowUniqueID).setType(tpe)
+    def reType(tpe: TypeTree): Identifier = new Identifier(name, globalId, id, alwaysShowUniqueID).setType(tpe)
   }
 
   private object UniqueCounter {

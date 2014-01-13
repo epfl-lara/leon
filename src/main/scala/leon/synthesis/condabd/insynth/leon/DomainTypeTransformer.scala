@@ -37,7 +37,7 @@ object DomainTypeTransformer extends ( LeonType => DomainType ) {
       case SetType(baseType) => Atom(InSynthTypeTransformer(leonType))
       case MultisetType(baseType) => Atom(InSynthTypeTransformer(leonType))
       case MapType(from, to) => Atom(InSynthTypeTransformer(leonType))
-      case FunctionType(froms, to) => transformFunction(to, froms)
+      case FunctionType(froms, to) => transformFunction(to, froms.toList)
       case c: ClassType => Atom(Const(c.id.name))
     }
   }

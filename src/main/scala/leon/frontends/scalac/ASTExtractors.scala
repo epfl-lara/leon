@@ -29,12 +29,15 @@ trait ASTExtractors {
   protected lazy val arraySym           = classFromName("scala.Array")
   protected lazy val someClassSym       = classFromName("scala.Some")
   protected lazy val function1TraitSym  = classFromName("scala.Function1")
+  protected lazy val function2TraitSym  = classFromName("scala.Function2")
+  protected lazy val function3TraitSym  = classFromName("scala.Function3")
+  protected lazy val function4TraitSym  = classFromName("scala.Function4")
+  protected lazy val function5TraitSym  = classFromName("scala.Function5")
 
   def isTuple2(sym : Symbol) : Boolean = sym == tuple2Sym
   def isTuple3(sym : Symbol) : Boolean = sym == tuple3Sym
   def isTuple4(sym : Symbol) : Boolean = sym == tuple4Sym
   def isTuple5(sym : Symbol) : Boolean = sym == tuple5Sym
-
 
   // Resolve type aliases
   def getResolvedTypeSym(sym: Symbol): Symbol = {
@@ -61,10 +64,11 @@ trait ASTExtractors {
     sym == optionClassSym || sym == someClassSym
   }
 
-  def isFunction1TraitSym(sym : Symbol) : Boolean = {
-    sym == function1TraitSym
-  }
-
+  def isFunction1TraitSym(sym : Symbol) : Boolean = sym == function1TraitSym
+  def isFunction2TraitSym(sym : Symbol) : Boolean = sym == function2TraitSym
+  def isFunction3TraitSym(sym : Symbol) : Boolean = sym == function3TraitSym
+  def isFunction4TraitSym(sym : Symbol) : Boolean = sym == function4TraitSym
+  def isFunction5TraitSym(sym : Symbol) : Boolean = sym == function5TraitSym
 
   protected lazy val multisetTraitSym  = try {
       classFromName("scala.collection.immutable.Multiset")
@@ -157,34 +161,35 @@ trait ASTExtractors {
       /** Matches an abstract class or a trait with no type parameters, no
        * constrctor args (in the case of a class), no implementation details,
        * no abstract members. */
-      def unapply(cd: ClassDef): Option[(String,Symbol)] = cd match {
+      def unapply(cd: ClassDef): Option[(String, Symbol, Seq[(String,Symbol)], Seq[Tree])] = cd match {
         // abstract class
-        case ClassDef(_, name, tparams, impl) if (cd.symbol.isAbstractClass && tparams.isEmpty && impl.body.size == 1) => Some((name.toString, cd.symbol))
-
+        case ClassDef(_, name, tparams, impl @ Template(parents, _, _)) if (cd.symbol.isAbstractClass && impl.body.size == 1) =>
+          Some((name.toString, cd.symbol, tparams.map(tp => tp.name.toString -> tp.symbol), parents))
         case _ => None
       }
     }
 
     object ExCaseClass {
-      def unapply(cd: ClassDef): Option[(String,Symbol,Seq[(String,Tree)])] = cd match {
-        case ClassDef(_, name, tparams, impl) if (cd.symbol.isCase && !cd.symbol.isAbstractClass && tparams.isEmpty && impl.body.size >= 8) => {
+      def unapply(cd: ClassDef): Option[(String,Symbol,Seq[(String,Tree)],Seq[(String,Symbol)],Seq[Tree])] = cd match {
+        case ClassDef(_, name, tparams, impl @ Template(parents, _, _)) if (cd.symbol.isCase && !cd.symbol.isAbstractClass && impl.body.size >= 8) => {
           val constructor: DefDef = impl.children.find(child => child match {
             case ExConstructorDef() => true
             case _ => false
           }).get.asInstanceOf[DefDef]
 
           val args = constructor.vparamss(0).map(vd => (vd.name.toString, vd.tpt))
+          val types = tparams.map(tp => tp.name.toString -> tp.symbol)
 
-          Some((name.toString, cd.symbol, args))
+          Some((name.toString, cd.symbol, args, types, parents))
         }
         case _ => None
       }
     }
 
     object ExCaseObject {
-      def unapply(s: Select): Option[Symbol] = {
+      def unapply(s: Select): Option[Type] = {
         if (s.tpe.typeSymbol.isModuleClass) {
-          Some(s.tpe.typeSymbol)
+          Some(s.tpe)
         } else {
           None
         }
@@ -217,8 +222,9 @@ trait ASTExtractors {
     object ExFunctionDef {
       /** Matches a function with a single list of arguments, no type
        * parameters and regardless of its visibility. */
-      def unapply(dd: DefDef): Option[(String,Seq[ValDef],Tree,Tree)] = dd match {
-        case DefDef(_, name, tparams, vparamss, tpt, rhs) if(tparams.isEmpty && vparamss.size == 1 && name != nme.CONSTRUCTOR) => Some((name.toString, vparamss(0), tpt, rhs))
+      def unapply(dd: DefDef): Option[(String,Seq[TypeDef],Seq[ValDef],Tree,Tree)] = dd match {
+        case DefDef(_, name, tparams, vparamss, tpt, rhs) if(vparamss.size == 1 && name != nme.CONSTRUCTOR) =>
+          Some((name.toString, tparams, vparamss(0), tpt, rhs))
         case _ => None
       }
     }
@@ -247,6 +253,35 @@ trait ASTExtractors {
       }
     }
 
+    object ExForallExpression {
+      def unapply(tree: Apply) : Option[(List[(Type, Symbol)], Tree)] = tree match {
+        case Apply(
+            TypeApply(Select(Select(funCheckIdent, utilsName), forallName), types),
+            Function(vds, predicateBody) :: Nil) => {
+          if (utilsName.toString == "Utils" && forallName.toString == "forall")
+            Some((types.map(_.tpe) zip vds.map(_.symbol)).toList, predicateBody)
+          else
+            None
+        }
+        case _ => None
+      }
+    }
+
+    object ExAnonymousFunction {
+      def unapply(tree: Function) : Option[(List[ValDef], Tree)] = tree match {
+        case Function(vds, predicateBody) => Some((vds, predicateBody))
+        case _ => None
+      }
+    }
+    
+    object ExImpliesExpression {
+      def unapply(tree: Apply) : Option[(Tree, Tree)] = tree match {
+        case Apply(Select(Apply(ExSelected("leon", "Utils", "boolean2ImpliesArrowAssoc"), body :: Nil),
+            ExNamed("$eq$eq$greater")), b2Tree :: Nil) => Some((body, b2Tree))
+        case _ => None
+      }
+    }
+
     object ExChooseExpression {
       def unapply(tree: Apply) : Option[(List[(Type, Symbol)], Type, Tree, Tree)] = tree match {
         case a @ Apply(
@@ -266,7 +301,6 @@ trait ASTExtractors {
         case _ => None
       }
     }
-
 
     object ExValDef {
       /** Extracts val's in the head of blocks. */
@@ -574,9 +608,11 @@ trait ASTExtractors {
     }
 
     object ExLocalCall {
-      def unapply(tree: Apply): Option[(Symbol,String,List[Tree])] = tree match {
-        case a @ Apply(Select(This(_), nme), args) => Some((a.symbol, nme.toString, args))
-        case a @ Apply(Ident(nme), args) => Some((a.symbol, nme.toString, args))
+      def unapply(tree: Apply): Option[(Symbol,String,List[Type],List[Tree])] = tree match {
+        case a @ Apply(Select(This(_), nme), args) => Some((a.symbol, nme.toString, Nil, args))
+        case a @ Apply(Ident(nme), args) => Some((a.symbol, nme.toString, Nil, args))
+        case a @ Apply(TypeApply(Select(This(_), nme), tparams), args) => Some((a.symbol, nme.toString, tparams.map(_.tpe), args))
+        case a @ Apply(TypeApply(Ident(nme), tparams), args) => Some((a.symbol, nme.toString, tparams.map(_.tpe), args))
         case _ => None
       }
     }
