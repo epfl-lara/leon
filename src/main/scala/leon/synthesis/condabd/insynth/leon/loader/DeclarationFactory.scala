@@ -44,7 +44,7 @@ object DeclarationFactory {
     Declaration(ImmediateExpression(varDecl.id, Variable(varDecl.id)), inSynthType, leonType)    
   }
   
-  def makeInheritance(from: ClassTypeDef, to: ClassTypeDef) = {
+  def makeInheritance(from: ClassDef, to: ClassDef) = {
     val expr = UnaryReconstructionExpression("[" +
       from.id.name + "=>" + to.id.name + "]", identity[Expr] _)
     val inSynthType = Arrow(TSet(TypeTransformer(from)), TypeTransformer(to))

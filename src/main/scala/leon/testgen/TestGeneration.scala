@@ -33,7 +33,7 @@ class TestGeneration(context : LeonContext) {
 
     val topFunDef = program.definedFunctions.find(fd => isMain(fd)).get
 
-    val testFun = new FunDef(FreshIdentifier("test"), UnitType, Seq())
+    val testFun = new FunDef(FreshIdentifier("test"), Nil, UnitType, Seq())
     val funInvocs = testcases.map(testcase => {
       val params = topFunDef.args
       val args = topFunDef.args.map{
@@ -42,12 +42,12 @@ class TestGeneration(context : LeonContext) {
           case None => simplestValue(tpe)
         }
       }
-      FunctionInvocation(topFunDef, args)
+      FunctionInvocation(topFunDef.typed, args)
     }).toSeq
     testFun.body = Some(Block(funInvocs, UnitLiteral))
 
-    val Program(id, ObjectDef(objId, defs, invariants)) = program
-    val testProgram = Program(id, ObjectDef(objId, testFun +: defs , invariants))
+    val Program(id, ModuleDef(objId, defs, invariants)) = program
+    val testProgram = Program(id, ModuleDef(objId, testFun +: defs , invariants))
     testProgram.writeScalaFile("TestGen.scalax")
 
     reporter.info("Running from waypoint with the following testcases:\n")

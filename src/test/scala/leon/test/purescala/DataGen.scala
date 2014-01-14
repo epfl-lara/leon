@@ -67,13 +67,13 @@ class DataGen extends LeonTestSuite {
     generator.generate(BooleanType).toSet.size === 2
     generator.generate(TupleType(Seq(BooleanType,BooleanType))).toSet.size === 4
 
-    val listType : TypeTree = classDefToClassType(prog.mainObject.classHierarchyRoots.head)
+    val listType : TypeTree = classDefToClassType(prog.mainModule.classHierarchyRoots.head)
     val sizeDef    : FunDef = prog.definedFunctions.find(_.id.name == "size").get
     val sortedDef  : FunDef = prog.definedFunctions.find(_.id.name == "isSorted").get
     val contentDef : FunDef = prog.definedFunctions.find(_.id.name == "content").get
     val insSpecDef : FunDef = prog.definedFunctions.find(_.id.name == "insertSpec").get
 
-    val consDef : CaseClassDef = prog.mainObject.caseClassDef("Cons")
+    val consDef : CaseClassDef = prog.mainModule.caseClassDef("Cons")
 
     generator.generate(listType).take(100).toSet.size === 100
 
@@ -84,11 +84,11 @@ class DataGen extends LeonTestSuite {
     val x = Variable(FreshIdentifier("x").setType(listType))
     val y = Variable(FreshIdentifier("y").setType(listType))
 
-    val sizeX    = FunctionInvocation(sizeDef, Seq(x))
-    val contentX = FunctionInvocation(contentDef, Seq(x))
-    val contentY = FunctionInvocation(contentDef, Seq(y))
-    val sortedX  = FunctionInvocation(sortedDef, Seq(x))
-    val sortedY  = FunctionInvocation(sortedDef, Seq(y))
+    val sizeX    = FunctionInvocation(sizeDef.typed, Seq(x))
+    val contentX = FunctionInvocation(contentDef.typed, Seq(x))
+    val contentY = FunctionInvocation(contentDef.typed, Seq(y))
+    val sortedX  = FunctionInvocation(sortedDef.typed, Seq(x))
+    val sortedY  = FunctionInvocation(sortedDef.typed, Seq(y))
 
     assert(generator.generateFor(
       Seq(x.id),
@@ -115,8 +115,8 @@ class DataGen extends LeonTestSuite {
       Seq(x.id, y.id, b.id, a.id),
       And(Seq(
         LessThan(a, b),
-        FunctionInvocation(sortedDef, Seq(CaseClass(consDef, Seq(a, x)))),
-        FunctionInvocation(insSpecDef, Seq(b, x, y))
+        FunctionInvocation(sortedDef.typed, Seq(CaseClass(CaseClassType(consDef, Nil), Seq(a, x)))),
+        FunctionInvocation(insSpecDef.typed, Seq(b, x, y))
       )),
       10,
       500

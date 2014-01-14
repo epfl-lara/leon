@@ -15,14 +15,14 @@ import evaluators._
 import scala.collection.mutable.{Set=>MutableSet,Map=>MutableMap}
 
 class FunctionTemplate private(
-  val funDef : FunDef,
+  val tfd : TypedFunDef,
   val activatingBool : Identifier,
   condVars : Set[Identifier],
   exprVars : Set[Identifier],
   guardedExprs : Map[Identifier,Seq[Expr]],
   isRealFunDef : Boolean) {
 
-  private val funDefArgsIDs : Seq[Identifier] = funDef.args.map(_.id)
+  private val funDefArgsIDs : Seq[Identifier] = tfd.args.map(_.id)
 
   private val asClauses : Seq[Expr] = {
     (for((b,es) <- guardedExprs; e <- es) yield {
@@ -31,7 +31,7 @@ class FunctionTemplate private(
   }
 
   val blockers : Map[Identifier,Set[FunctionInvocation]] = {
-    val idCall = FunctionInvocation(funDef, funDef.args.map(_.toVariable))
+    val idCall = FunctionInvocation(tfd, tfd.args.map(_.toVariable))
 
     Map((for((b, es) <- guardedExprs) yield {
       val calls = es.foldLeft(Set.empty[FunctionInvocation])((s,e) => s ++ functionCallsOf(e)) - idCall
@@ -51,7 +51,7 @@ class FunctionTemplate private(
   private val cache : MutableMap[Seq[Expr],Map[Identifier,Expr]] = MutableMap.empty 
 
   def instantiate(aVar : Identifier, args : Seq[Expr]) : (Seq[Expr], Map[Identifier,Set[FunctionInvocation]]) = {
-    assert(args.size == funDef.args.size)
+    assert(args.size == tfd.args.size)
 
     val (wasHit,baseIDSubstMap) = cache.get(args) match {
       case Some(m) => (true,m)
@@ -85,7 +85,7 @@ class FunctionTemplate private(
   }
 
   override def toString : String = {
-    "Template for def " + funDef.id + "(" + funDef.args.map(a => a.id + " : " + a.tpe).mkString(", ") + ") : " + funDef.returnType + " is :\n" +
+    "Template for def " + tfd.id + "(" + tfd.args.map(a => a.id + " : " + a.tpe).mkString(", ") + ") : " + tfd.returnType + " is :\n" +
     " * Activating boolean : " + activatingBool + "\n" + 
     " * Control booleans   : " + condVars.toSeq.map(_.toString).mkString(", ") + "\n" +
     " * Expression vars    : " + exprVars.toSeq.map(_.toString).mkString(", ") + "\n" +
@@ -97,7 +97,7 @@ class FunctionTemplate private(
 object FunctionTemplate {
   val splitAndOrImplies = false
 
-  def mkTemplate(funDef: FunDef, isRealFunDef : Boolean = true) : FunctionTemplate = {
+  def mkTemplate(tfd: TypedFunDef, isRealFunDef : Boolean = true) : FunctionTemplate = {
     val condVars : MutableSet[Identifier] = MutableSet.empty
     val exprVars : MutableSet[Identifier] = MutableSet.empty
 
@@ -257,11 +257,11 @@ object FunctionTemplate {
     }
 
     // The precondition if it exists.
-    val prec : Option[Expr] = funDef.precondition.map(p => matchToIfThenElse(p))
+    val prec : Option[Expr] = tfd.precondition.map(p => matchToIfThenElse(p))
 
-    val newBody : Option[Expr] = funDef.body.map(b => matchToIfThenElse(b))
+    val newBody : Option[Expr] = tfd.body.map(b => matchToIfThenElse(b))
 
-    val invocation : Expr = FunctionInvocation(funDef, funDef.args.map(_.toVariable))
+    val invocation : Expr = FunctionInvocation(tfd, tfd.args.map(_.toVariable))
 
     val invocationEqualsBody : Option[Expr] = newBody match {
       case Some(body) if isRealFunDef =>
@@ -288,12 +288,12 @@ object FunctionTemplate {
     }
 
     // Now the postcondition.
-    funDef.postcondition match {
+    tfd.postcondition match {
       case Some((id, post)) =>
         val newPost : Expr = replace(Map(Variable(id) -> invocation), matchToIfThenElse(post))
 
         val postHolds : Expr =
-          if(funDef.hasPrecondition) {
+          if(tfd.hasPrecondition) {
             Implies(prec.get, newPost)
           } else {
             newPost
@@ -305,7 +305,7 @@ object FunctionTemplate {
 
     }
 
-    new FunctionTemplate(funDef, activatingBool, Set(condVars.toSeq : _*), Set(exprVars.toSeq : _*), Map(guardedExprs.toSeq : _*),
+    new FunctionTemplate(tfd, activatingBool, Set(condVars.toSeq : _*), Set(exprVars.toSeq : _*), Map(guardedExprs.toSeq : _*),
 isRealFunDef)
   }
 }

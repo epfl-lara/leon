@@ -25,7 +25,7 @@ object UnitElimination extends TransformationPhase {
     //first introduce new signatures without Unit parameters
     allFuns.foreach(fd => {
       if(fd.returnType != UnitType && fd.args.exists(vd => vd.tpe == UnitType)) {
-        val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.returnType, fd.args.filterNot(vd => vd.tpe == UnitType)).setPos(fd)
+        val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.args.filterNot(vd => vd.tpe == UnitType)).setPos(fd)
         freshFunDef.precondition = fd.precondition //TODO: maybe removing unit from the conditions as well..
         freshFunDef.postcondition = fd.postcondition//TODO: maybe removing unit from the conditions as well..
         freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
@@ -43,9 +43,9 @@ object UnitElimination extends TransformationPhase {
       Seq(newFd)
     })
 
-    val Program(id, ObjectDef(objId, _, invariants)) = pgm
+    val Program(id, ModuleDef(objId, _, invariants)) = pgm
     val allClasses = pgm.definedClasses
-    Program(id, ObjectDef(objId, allClasses ++ newFuns, invariants))
+    Program(id, ModuleDef(objId, allClasses ++ newFuns, invariants))
   }
 
   private def simplifyType(tpe: TypeTree): TypeTree = tpe match {
@@ -61,9 +61,9 @@ object UnitElimination extends TransformationPhase {
   private def removeUnit(expr: Expr): Expr = {
     assert(expr.getType != UnitType)
     expr match {
-      case fi@FunctionInvocation(fd, args) => {
+      case fi@FunctionInvocation(tfd, args) => {
         val newArgs = args.filterNot(arg => arg.getType == UnitType)
-        FunctionInvocation(fun2FreshFun(fd), newArgs).setPos(fi)
+        FunctionInvocation(fun2FreshFun(tfd.fd).typed(tfd.tps), newArgs).setPos(fi)
       }
       case t@Tuple(args) => {
         val TupleType(tpes) = t.getType
@@ -101,7 +101,7 @@ object UnitElimination extends TransformationPhase {
           removeUnit(b)
         else {
           val (newFd, rest) = if(fd.args.exists(vd => vd.tpe == UnitType)) {
-            val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.returnType, fd.args.filterNot(vd => vd.tpe == UnitType)).setPos(fd)
+            val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.args.filterNot(vd => vd.tpe == UnitType)).setPos(fd)
             freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
             freshFunDef.precondition = fd.precondition //TODO: maybe removing unit from the conditions as well..
             freshFunDef.postcondition = fd.postcondition//TODO: maybe removing unit from the conditions as well..

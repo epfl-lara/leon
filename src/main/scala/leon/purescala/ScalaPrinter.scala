@@ -111,22 +111,6 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
         pp(t, p)
         sb.append("._" + i)
 
-      case CaseClass(cd, args)  =>
-        sb.append(idToString(cd.id))
-        if (cd.isCaseObject) {
-          ppNary(args, "", "", "")
-        } else {
-          ppNary(args, "(", ", ", ")")
-        }
-
-      case CaseClassInstanceOf(cd, e) =>
-        pp(e, p)
-        sb.append(".isInstanceOf[" + idToString(cd.id) + "]")
-
-      case CaseClassSelector(_, cc, id) =>
-        pp(cc, p)
-        sb.append("." + idToString(id))
-
       case FunctionInvocation(fd, args) =>
         sb.append(idToString(fd.id))
         ppNary(args, "(", ", ", ")")
@@ -287,7 +271,7 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
         assert(lvl == 0)
         pp(mainObj, p)
 
-      case ObjectDef(id, defs, invs) =>
+      case ModuleDef(id, defs, invs) =>
         sb.append("object ")
         sb.append(idToString(id))
         sb.append(" {\n")
@@ -308,50 +292,51 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
         ind(lvl)
         sb.append("}\n")
 
-      case AbstractClassDef(id, parent) =>
+      case AbstractClassDef(id, tparams, parent) =>
         sb.append("sealed abstract class ")
         sb.append(idToString(id))
+
+        if (tparams.nonEmpty) {
+          ppNary(tparams, "[", ",", "]")
+        }
+
         parent.foreach(p => sb.append(" extends " + idToString(p.id)))
 
-      case CaseClassDef(id, parent, varDecls) =>
-        sb.append("case class ")
+      case ccd @ CaseClassDef(id, tparams, parent, isObj) =>
+        if (isObj) {
+          sb.append("case object ")
+        } else {
+          sb.append("case class ")
+        }
+
         sb.append(idToString(id))
-        sb.append("(")
-        var c = 0
-        val sz = varDecls.size
 
-        varDecls.foreach(vd => {
-          sb.append(idToString(vd.id))
-          sb.append(": ")
-          pp(vd.tpe, p)
-          if(c < sz - 1) {
-            sb.append(", ")
-          }
-          c = c + 1
-        })
-        sb.append(")")
+        if (tparams.nonEmpty) {
+          ppNary(tparams, "[", ", ", "]")
+        }
+
+        if (!isObj) {
+          ppNary(ccd.fields, "(", ", ", ")")
+        }
+
         parent.foreach(p => sb.append(" extends " + idToString(p.id)))
+
+      case vd: VarDecl =>
+        pp(vd.id, p)
+        sb.append(": ")
+        pp(vd.tpe, p)
 
       case fd: FunDef =>
         sb.append("def ")
-        sb.append(idToString(fd.id))
-        sb.append("(")
+        pp(fd.id, p)
 
-        val sz = fd.args.size
-        var c = 0
+        if (fd.tparams.nonEmpty) {
+          ppNary(fd.tparams, "[", ", ", "]")
+        }
 
-        fd.args.foreach(arg => {
-          sb.append(idToString(arg.id))
-          sb.append(": ")
-          pp(arg.tpe, p)
+        ppNary(fd.args, "(", ", ", ")")
 
-          if(c < sz - 1) {
-            sb.append(", ")
-          }
-          c = c + 1
-        })
-
-        sb.append("): ")
+        sb.append(": ")
         pp(fd.returnType, p)
         sb.append(" = {\n")
         ind(lvl+1)

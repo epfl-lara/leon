@@ -10,6 +10,7 @@ import solvers._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
+import purescala.TypeTreeOps._
 import xlang.Trees._
 import purescala.TreeOps._
 import purescala.TypeTrees._
@@ -69,51 +70,97 @@ trait AbstractZ3Solver
     interrupted = false
   }
 
-  protected[leon] def prepareFunctions : Unit
-  protected[leon] def functionDefToDecl(funDef: FunDef) : Z3FuncDecl
-  protected[leon] def functionDeclToDef(decl: Z3FuncDecl) : FunDef
-  protected[leon] def isKnownDecl(decl: Z3FuncDecl) : Boolean
+  def functionDefToDecl(tfd: TypedFunDef): Z3FuncDecl = {
+    functions.toZ3OrCompute(tfd) {
+      val sortSeq    = tfd.args.map(vd => typeToSort(vd.tpe))
+      val returnSort = typeToSort(tfd.returnType)
 
-  // Lifting of common parts starts here
-  protected[leon] var exprToZ3Id : Map[Expr,Z3AST] = Map.empty
-  protected[leon] var z3IdToExpr : Map[Z3AST,Expr] = Map.empty
+      z3.mkFreshFuncDecl(tfd.id.uniqueName, sortSeq, returnSort)
+    }
+  }
 
-  protected[leon] var intSort: Z3Sort = null
-  protected[leon] var boolSort: Z3Sort = null
-  protected[leon] var setSorts: Map[TypeTree, Z3Sort] = Map.empty
-  protected[leon] var mapSorts: Map[TypeTree, Z3Sort] = Map.empty
-  protected[leon] var unitSort: Z3Sort = null
+  def genericValueToDecl(gv: GenericValue): Z3FuncDecl = {
+    generics.toZ3OrCompute(gv) {
+      z3.mkFreshFuncDecl(gv.tp.toString+"#"+gv.id+"!val", Seq(), typeToSort(gv.tp))
+    }
+  }
+
+  object LeonType {
+    def unapply(a: Z3Sort): Option[(TypeTree)] = {
+      sorts.getLeon(a).map(tt => (tt))
+    }
+  }
+
+  class Bijection[A, B] {
+    var leonToZ3 = Map[A, B]()
+    var z3ToLeon = Map[B, A]()
+
+    def +=(a: A, b: B): Unit = {
+      leonToZ3 += a -> b
+      z3ToLeon += b -> a
+    }
+
+    def +=(t: (A,B)): Unit = {
+      this += (t._1, t._2)
+    }
+
+
+    def clear(): Unit = {
+      z3ToLeon = Map()
+      leonToZ3 = Map()
+    }
+
+    def getZ3(a: A): Option[B] = leonToZ3.get(a)
+    def getLeon(b: B): Option[A] = z3ToLeon.get(b)
+
+    def toZ3(a: A): B = getZ3(a).get
+    def toLeon(b: B): A = getLeon(b).get
+
+    def toZ3OrCompute(a: A)(c: => B) = {
+      getZ3(a).getOrElse {
+        val res = c
+        this += a -> res
+        res
+      }
+    }
+
+    def toLeonOrCompute(b: B)(c: => A) = {
+      getLeon(b).getOrElse {
+        val res = c
+        this += res -> b
+        res
+      }
+    }
+
+    def containsLeon(a: A): Boolean = leonToZ3 contains a
+    def containsZ3(b: B): Boolean = z3ToLeon contains b
+  }
+
+  // Bijections between Leon Types/Functions/Ids to Z3 Sorts/Decls/ASTs
+  protected[leon] var functions = new Bijection[TypedFunDef, Z3FuncDecl]
+  protected[leon] var generics  = new Bijection[GenericValue, Z3FuncDecl]
+  protected[leon] var sorts     = new Bijection[TypeTree, Z3Sort]
+  protected[leon] var variables = new Bijection[Expr, Z3AST]
+
+  // Meta decls and information used by several sorts
+  case class ArrayDecls(cons: Z3FuncDecl, select: Z3FuncDecl, length: Z3FuncDecl)
+  case class TupleDecls(cons: Z3FuncDecl, selects: Seq[Z3FuncDecl])
+
   protected[leon] var unitValue: Z3AST = null
-
-  protected[leon] var funSorts: Map[TypeTree, Z3Sort] = Map.empty
-  protected[leon] var funDomainConstructors: Map[TypeTree, Z3FuncDecl] = Map.empty
-  protected[leon] var funDomainSelectors: Map[TypeTree, Seq[Z3FuncDecl]] = Map.empty
-
-  protected[leon] var tupleSorts: Map[TypeTree, Z3Sort] = Map.empty
-  protected[leon] var tupleConstructors: Map[TypeTree, Z3FuncDecl] = Map.empty
-  protected[leon] var tupleSelectors: Map[TypeTree, Seq[Z3FuncDecl]] = Map.empty
-
-  protected[leon] var arraySorts: Map[TypeTree, Z3Sort] = Map.empty
-  protected[leon] var arrayTupleCons: Map[TypeTree, Z3FuncDecl] = Map.empty
-  protected[leon] var arrayTupleSelectorArray: Map[TypeTree, Z3FuncDecl] = Map.empty
-  protected[leon] var arrayTupleSelectorLength: Map[TypeTree, Z3FuncDecl] = Map.empty
-
-  protected[leon] var reverseTupleConstructors: Map[Z3FuncDecl, TupleType] = Map.empty
-  protected[leon] var reverseTupleSelectors: Map[Z3FuncDecl, (TupleType, Int)] = Map.empty
-
   protected[leon] var intSetMinFun: Z3FuncDecl = null
   protected[leon] var intSetMaxFun: Z3FuncDecl = null
-  protected[leon] var setCardFuns: Map[TypeTree, Z3FuncDecl] = Map.empty
-  protected[leon] var adtSorts: Map[ClassTypeDef, Z3Sort] = Map.empty
-  protected[leon] var fallbackSorts: Map[TypeTree, Z3Sort] = Map.empty
 
-  protected[leon] var adtTesters: Map[CaseClassDef, Z3FuncDecl] = Map.empty
-  protected[leon] var adtConstructors: Map[CaseClassDef, Z3FuncDecl] = Map.empty
-  protected[leon] var adtFieldSelectors: Map[Identifier, Z3FuncDecl] = Map.empty
+  protected[leon] var arrayMetaDecls: Map[TypeTree, ArrayDecls] = Map.empty
+  protected[leon] var tupleMetaDecls: Map[TypeTree, TupleDecls] = Map.empty
+  protected[leon] var setCardDecls: Map[TypeTree, Z3FuncDecl] = Map.empty
 
-  protected[leon] var reverseADTTesters: Map[Z3FuncDecl, CaseClassDef] = Map.empty
-  protected[leon] var reverseADTConstructors: Map[Z3FuncDecl, CaseClassDef] = Map.empty
-  protected[leon] var reverseADTFieldSelectors: Map[Z3FuncDecl, (CaseClassDef,Identifier)] = Map.empty
+  protected[leon] var adtTesters: Map[CaseClassType, Z3FuncDecl] = Map.empty
+  protected[leon] var adtConstructors: Map[CaseClassType, Z3FuncDecl] = Map.empty
+  protected[leon] var adtFieldSelectors: Map[(CaseClassType, Identifier), Z3FuncDecl] = Map.empty
+
+  protected[leon] var reverseADTTesters: Map[Z3FuncDecl, CaseClassType] = Map.empty
+  protected[leon] var reverseADTConstructors: Map[Z3FuncDecl, CaseClassType] = Map.empty
+  protected[leon] var reverseADTFieldSelectors: Map[Z3FuncDecl, (CaseClassType,Identifier)] = Map.empty
 
   protected[leon] val mapRangeSorts: MutableMap[TypeTree, Z3Sort] = MutableMap.empty
   protected[leon] val mapRangeSomeConstructors: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
@@ -139,8 +186,16 @@ trait AbstractZ3Solver
 
       z3 = new Z3Context(z3cfg)
 
+      functions.clear()
+      generics.clear()
+      sorts.clear()
+      variables.clear()
+
+      arrayMetaDecls = Map()
+      tupleMetaDecls = Map()
+      setCardDecls   = Map()
+
       prepareSorts
-      prepareFunctions
 
       isInitialized = true
 
@@ -153,9 +208,6 @@ trait AbstractZ3Solver
     isInitialized = false
 
     initZ3()
-
-    exprToZ3Id = Map.empty
-    z3IdToExpr = Map.empty
   }
 
   protected[leon] def mapRangeSort(toType : TypeTree) : Z3Sort = mapRangeSorts.get(toType) match {
@@ -163,26 +215,13 @@ trait AbstractZ3Solver
     case None => {
       import Z3Context.{ADTSortReference, RecursiveType, RegularSort}
 
-      intSort = z3.mkIntSort
-      boolSort = z3.mkBoolSort
-
-      def typeToSortRef(tt: TypeTree): ADTSortReference = tt match {
-        case BooleanType => RegularSort(boolSort)
-        case Int32Type => RegularSort(intSort)
-        case AbstractClassType(d) => RegularSort(adtSorts(d))
-        case CaseClassType(d) => RegularSort(adtSorts(d))
-        case SetType(d) => RegularSort(setSorts(d))
-        case mt @ MapType(d,r) => RegularSort(mapSorts(mt))
-        case _ => throw UntranslatableTypeException("Can't handle type " + tt)
-      }
-
       val z3info = z3.mkADTSorts(
         Seq(
           (
             toType.toString + "Option",
             Seq(toType.toString + "Some", toType.toString + "None"),
             Seq(
-              Seq(("value", typeToSortRef(toType))),
+              Seq(("value", RegularSort(typeToSort(toType)))),
               Seq()
             )
           )
@@ -203,67 +242,72 @@ trait AbstractZ3Solver
   }
 
   case class UntranslatableTypeException(msg: String) extends Exception(msg)
-  // Prepares some of the Z3 sorts, but *not* the tuple sorts; these are created on-demand.
-  private def prepareSorts: Unit = {
+
+  def rootType(ct: ClassType): ClassType = ct.parent match {
+    case Some(p) => rootType(p)
+    case None => ct
+  }
+
+  def declareADTSort(ct: ClassType): Z3Sort = {
     import Z3Context.{ADTSortReference, RecursiveType, RegularSort}
-    // NOTE THAT abstract classes that extend abstract classes are not
-    // currently supported in the translation
-    
-    intSort = z3.mkIntSort
-    boolSort = z3.mkBoolSort
-    setSorts = Map.empty
-    setCardFuns = Map.empty
 
-    //unitSort = z3.mkUninterpretedSort("unit")
-    //unitValue = z3.mkFreshConst("Unit", unitSort)
-    //val bound = z3.mkBound(0, unitSort)
-    //val eq = z3.mkEq(bound, unitValue)
-    //val decls = Seq((z3.mkFreshStringSymbol("u"), unitSort))
-    //val unitAxiom = z3.mkForAll(0, Seq(), decls, eq)
-    //println(unitAxiom)
-    //println(unitValue)
-    //z3.assertCnstr(unitAxiom)
-    val Seq((us, Seq(unitCons), Seq(unitTester), _)) = z3.mkADTSorts(
-      Seq(
-        (
-          "Unit",
-          Seq("Unit"),
-          Seq(Seq())
-        )
-      )
-    )
-    unitSort = us
-    unitValue = unitCons()
-
-    val intSetSort = typeToSort(SetType(Int32Type))
-    intSetMinFun = z3.mkFreshFuncDecl("setMin", Seq(intSetSort), intSort)
-    intSetMaxFun = z3.mkFreshFuncDecl("setMax", Seq(intSetSort), intSort)
-
-    val hierarchies = program.classHierarchyRoots.flatMap { root => root match {
-      case c: CaseClassDef =>
-        Some((root, List(c)))
-
-      case a: AbstractClassDef =>
-        val childs = a.knownChildren.collect{ case a: CaseClassDef => a }.toList
-        if (childs.isEmpty) {
-          None
-        } else {
-          Some((root, childs))
+    def getHierarchy(ct: ClassType): (ClassType, Seq[CaseClassType]) = ct match {
+      case act: AbstractClassType =>
+        (act, act.knownCCDescendents)
+      case cct: CaseClassType =>
+        cct.parent match {
+          case Some(p) =>
+            getHierarchy(p)
+          case None =>
+            (cct, List(cct))
         }
-    }}
-
-    val indexMap: Map[ClassTypeDef, Int] = Map(hierarchies.map(_._1).zipWithIndex: _*)
-
-    def typeToSortRef(tt: TypeTree): ADTSortReference = tt match {
-      case AbstractClassType(d) => RecursiveType(indexMap(d))
-      case CaseClassType(d) => indexMap.get(d) match {
-        case Some(i) => RecursiveType(i)
-        case None => RecursiveType(indexMap(d.parent.get))
-      }
-      case _ => RegularSort(typeToSort(tt))
     }
 
-    val defs = for ((root, childrenList) <- hierarchies) yield {
+    var newHierarchiesMap = Map[ClassType, Seq[CaseClassType]]()
+
+    def findDependencies(ct: ClassType): Unit = {
+      val (root, sub) = getHierarchy(ct)
+
+      if (!(newHierarchiesMap contains root) && !(sorts containsLeon root)) {
+        newHierarchiesMap += root -> sub
+
+        // look for dependencies
+        for (ct <- root +: sub; f <- ct.fields) f.tpe match {
+          case fct: ClassType =>
+            findDependencies(fct)
+          case _ =>
+        }
+      }
+    }
+
+    // Populates the dependencies of the ADT to define.
+    findDependencies(ct)
+
+    val newHierarchies = newHierarchiesMap.toSeq
+
+    val indexMap: Map[ClassType, Int] = Map()++newHierarchies.map(_._1).zipWithIndex
+
+    def typeToSortRef(tt: TypeTree): ADTSortReference = tt match {
+      case ct: ClassType if sorts containsLeon rootType(ct) =>
+        RegularSort(sorts.toZ3(rootType(ct)))
+
+      case act : AbstractClassType =>
+        // It has to be here
+        RecursiveType(indexMap(act))
+
+      case cct: CaseClassType => cct.parent match {
+        case Some(p) =>
+          typeToSortRef(p)
+        case None =>
+          RecursiveType(indexMap(cct))
+      }
+
+      case _=>
+        RegularSort(typeToSort(tt))
+    }
+
+    // Define stuff
+    val defs = for ((root, childrenList) <- newHierarchies) yield {
       (
        root.id.uniqueName,
        childrenList.map(ccd => ccd.id.uniqueName),
@@ -279,110 +323,134 @@ trait AbstractZ3Solver
     //  }
     //}
 
-    // everything should be alright now...
     val resultingZ3Info = z3.mkADTSorts(defs)
 
-    adtSorts = Map.empty
+    for ((z3Inf, (root, childrenList)) <- (resultingZ3Info zip newHierarchies)) {
+      sorts += (root -> z3Inf._1)
+      assert(childrenList.size == z3Inf._2.size)
+      for ((child, (consFun, testFun)) <- childrenList zip (z3Inf._2 zip z3Inf._3)) {
+        adtTesters += (child -> testFun)
+        reverseADTTesters += (testFun -> child)
+        adtConstructors += (child -> consFun)
+        reverseADTConstructors += (consFun -> child)
+      }
+      for ((child, fieldFuns) <- childrenList zip z3Inf._4) {
+        assert(child.fields.size == fieldFuns.size)
+        for ((fid, selFun) <- (child.fields.map(_.id) zip fieldFuns)) {
+          adtFieldSelectors += ((child, fid) -> selFun)
+          reverseADTFieldSelectors += (selFun -> (child, fid))
+        }
+      }
+    }
+
+    sorts.toZ3(ct)
+  }
+
+  // Prepares some of the Z3 sorts, but *not* the tuple sorts; these are created on-demand.
+  private def prepareSorts: Unit = {
+    import Z3Context.{ADTSortReference, RecursiveType, RegularSort}
+
+    val Seq((us, Seq(unitCons), Seq(unitTester), _)) = z3.mkADTSorts(
+      Seq(
+        (
+          "Unit",
+          Seq("Unit"),
+          Seq(Seq())
+        )
+      )
+    )
+
+    sorts += Int32Type -> z3.mkIntSort
+    sorts += BooleanType -> z3.mkBoolSort
+    sorts += UnitType -> us
+
+    unitValue = unitCons()
+
+    val intSetSort = typeToSort(SetType(Int32Type))
+    val intSort    = typeToSort(Int32Type)
+
+    intSetMinFun = z3.mkFreshFuncDecl("setMin", Seq(intSetSort), intSort)
+    intSetMaxFun = z3.mkFreshFuncDecl("setMax", Seq(intSetSort), intSort)
+
+    // Empty everything
     adtTesters = Map.empty
     adtConstructors = Map.empty
     adtFieldSelectors = Map.empty
     reverseADTTesters = Map.empty
     reverseADTConstructors = Map.empty
     reverseADTFieldSelectors = Map.empty
-
-    for ((z3Inf, (root, childrenList)) <- (resultingZ3Info zip hierarchies)) {
-      adtSorts += (root -> z3Inf._1)
-      assert(childrenList.size == z3Inf._2.size)
-      for ((child, (consFun, testFun)) <- childrenList zip (z3Inf._2 zip z3Inf._3)) {
-        adtTesters += (child -> testFun)
-        adtConstructors += (child -> consFun)
-      }
-      for ((child, fieldFuns) <- childrenList zip z3Inf._4) {
-        assert(child.fields.size == fieldFuns.size)
-        for ((fid, selFun) <- (child.fields.map(_.id) zip fieldFuns)) {
-          adtFieldSelectors += (fid -> selFun)
-          reverseADTFieldSelectors += (selFun -> (child, fid))
-        }
-      }
-    }
-
-    reverseADTTesters = adtTesters.map(_.swap)
-    reverseADTConstructors = adtConstructors.map(_.swap)
-    // ...and now everything should be in there...
   }
 
   // assumes prepareSorts has been called....
   protected[leon] def typeToSort(tt: TypeTree): Z3Sort = tt match {
-    case Int32Type => intSort
-    case BooleanType => boolSort
-    case UnitType => unitSort
-    case AbstractClassType(cd) => adtSorts(cd)
-    case CaseClassType(cd) => {
-      if (cd.hasParent) {
-        adtSorts(cd.parent.get)
-      } else {
-        adtSorts(cd)
+    case Int32Type | BooleanType | UnitType =>
+      sorts.toZ3(tt)
+
+    case act: AbstractClassType =>
+      sorts.toZ3OrCompute(rootType(act)) {
+        declareADTSort(rootType(act))
       }
-    }
-    case SetType(base) => setSorts.get(base) match {
-      case Some(s) => s
-      case None => {
+
+    case cct: CaseClassType =>
+      sorts.toZ3OrCompute(rootType(cct)) {
+        declareADTSort(rootType(cct))
+      }
+
+    case SetType(base) =>
+      sorts.toZ3OrCompute(tt) {
         val newSetSort = z3.mkSetSort(typeToSort(base))
-        setSorts = setSorts + (base -> newSetSort)
-        val newCardFun = z3.mkFreshFuncDecl("card", Seq(newSetSort), intSort)
-        setCardFuns = setCardFuns + (base -> newCardFun)
+
+        val card = z3.mkFreshFuncDecl("card", Seq(newSetSort), typeToSort(Int32Type))
+        setCardDecls += tt -> card
+
         newSetSort
       }
-    }
-    case mt @ MapType(fromType, toType) => mapSorts.get(mt) match {
-      case Some(s) => s
-      case None => {
+
+    case MapType(fromType, toType) =>
+      sorts.toZ3OrCompute(tt) {
         val fromSort = typeToSort(fromType)
         val toSort = mapRangeSort(toType)
-        val ms = z3.mkArraySort(fromSort, toSort)
-        mapSorts += ((mt, ms))
-        ms
+
+        z3.mkArraySort(fromSort, toSort)
       }
-    }
-    case at @ ArrayType(base) => arraySorts.get(at) match {
-      case Some(s) => s
-      case None => {
+
+    case ArrayType(base) =>
+      sorts.toZ3OrCompute(tt) {
         val intSort = typeToSort(Int32Type)
         val toSort = typeToSort(base)
         val as = z3.mkArraySort(intSort, toSort)
         val tupleSortSymbol = z3.mkFreshStringSymbol("Array")
-        val (arrayTupleSort, arrayTupleCons_, Seq(arrayTupleSelectorArray_, arrayTupleSelectorLength_)) = z3.mkTupleSort(tupleSortSymbol, as, intSort)
-        arraySorts += (at -> arrayTupleSort)
-        arrayTupleCons += (at -> arrayTupleCons_)
-        arrayTupleSelectorArray += (at -> arrayTupleSelectorArray_)
-        arrayTupleSelectorLength += (at -> arrayTupleSelectorLength_)
-        arrayTupleSort
+        val (ats, atcons, Seq(atsel, atlength)) = z3.mkTupleSort(tupleSortSymbol, as, intSort)
+
+        arrayMetaDecls += tt -> ArrayDecls(atcons, atsel, atlength)
+
+        ats
       }
-    }
-    case tt @ TupleType(tpes) => tupleSorts.get(tt) match {
-      case Some(s) => s
-      case None => {
+    case TupleType(tpes) =>
+      sorts.toZ3OrCompute(tt) {
         val tpesSorts = tpes.map(typeToSort)
         val sortSymbol = z3.mkFreshStringSymbol("Tuple")
         val (tupleSort, consTuple, projsTuple) = z3.mkTupleSort(sortSymbol, tpesSorts: _*)
-        tupleSorts += (tt -> tupleSort)
-        tupleConstructors += (tt -> consTuple)
-        reverseTupleConstructors += (consTuple -> tt)
-        tupleSelectors += (tt -> projsTuple)
-        projsTuple.zipWithIndex.foreach{ case (proj, i) => reverseTupleSelectors += (proj -> (tt, i)) }
+
+        tupleMetaDecls += tt -> TupleDecls(consTuple, projsTuple)
+
         tupleSort
       }
-    }
-    case other => fallbackSorts.get(other) match {
-      case Some(s) => s
-      case None => {
+
+    case TypeParameter(id) =>
+      sorts.toZ3OrCompute(tt) {
+        val symbol = z3.mkFreshStringSymbol(id.name)
+        val newTPSort = z3.mkUninterpretedSort(symbol)
+
+        newTPSort
+      }
+
+    case other =>
+      sorts.toZ3OrCompute(other) {
         reporter.warning("Resorting to uninterpreted type for : " + other)
         val symbol = z3.mkIntSymbol(nextIntForSymbol())
-        val newFBSort = z3.mkUninterpretedSort(symbol)
-        fallbackSorts = fallbackSorts + (other -> newFBSort)
-        newFBSort
+        z3.mkUninterpretedSort(symbol)
       }
-    }
   }
 
   protected[leon] def toZ3Formula(expr: Expr, initialMap: Map[Identifier,Z3AST] = Map.empty) : Option[Z3AST] = {
@@ -395,193 +463,180 @@ trait AbstractZ3Solver
     } else {
       // FIXME TODO pleeeeeeeease make this cleaner. Ie. decide what set of
       // variable has to remain in a map etc.
-      exprToZ3Id.filter(p => p._1.isInstanceOf[Variable]).map(p => (p._1.asInstanceOf[Variable].id -> p._2))
+      variables.leonToZ3.filter(p => p._1.isInstanceOf[Variable]).map(p => (p._1.asInstanceOf[Variable].id -> p._2))
     }
 
-    def rec(ex: Expr): Z3AST = { 
-      //println("Stacking up call for:")
-      //println(ex)
-      val recResult = (ex match {
-        case tu @ Tuple(args) => {
-          // This call is required, because the Z3 sort may not have been generated yet.
-          // If it has, it's just a map lookup and instant return.
-          typeToSort(tu.getType)
-          val constructor = tupleConstructors(tu.getType)
-          constructor(args.map(rec(_)): _*)
-        }
-        case ts @ TupleSelect(tu, i) => {
-          // See comment above for similar code.
-          typeToSort(tu.getType)
-          val selector = tupleSelectors(tu.getType)(i-1)
-          selector(rec(tu))
-        }
-        case Let(i, e, b) => {
-          val re = rec(e)
-          z3Vars = z3Vars + (i -> re)
-          val rb = rec(b)
-          z3Vars = z3Vars - i
-          rb
-        }
-        case Waypoint(_, e) => rec(e)
-        case e @ Error(_) => {
-          val tpe = e.getType
-          val newAST = z3.mkFreshConst("errorValue", typeToSort(tpe))
-          exprToZ3Id += (e -> newAST)
-          z3IdToExpr += (newAST -> e)
+    def rec(ex: Expr): Z3AST = ex match {
+      case tu @ Tuple(args) =>
+        typeToSort(tu.getType) // Make sure we generate sort & meta info
+        val meta = tupleMetaDecls(tu.getType)
+
+        meta.cons(args.map(rec(_)): _*)
+
+      case ts @ TupleSelect(tu, i) =>
+        typeToSort(tu.getType) // Make sure we generate sort & meta info
+        val meta = tupleMetaDecls(tu.getType)
+
+        meta.selects(i-1)(rec(tu))
+
+      case Let(i, e, b) => {
+        val re = rec(e)
+        z3Vars = z3Vars + (i -> re)
+        val rb = rec(b)
+        z3Vars = z3Vars - i
+        rb
+      }
+      case Waypoint(_, e) => rec(e)
+      case e @ Error(_) => {
+        val tpe = e.getType
+        val newAST = z3.mkFreshConst("errorValue", typeToSort(tpe))
+        // Might introduce dupplicates (e), but no worries here
+        variables += (e -> newAST)
+        newAST
+      }
+      case v @ Variable(id) => z3Vars.get(id) match {
+        case Some(ast) => ast
+        case None => {
+          val newAST = z3.mkFreshConst(id.uniqueName, typeToSort(v.getType))
+          z3Vars = z3Vars + (id -> newAST)
+          variables += (v -> newAST)
           newAST
         }
-        case v @ Variable(id) => z3Vars.get(id) match {
-          case Some(ast) => ast
-          case None => {
-            // if (id.isLetBinder) {
-            //   scala.sys.error("Error in formula being translated to Z3: identifier " + id + " seems to have escaped its let-definition")
-            // }
+      }
 
-            // Remove this safety check, since choose() expresions are now
-            // translated to non-unrollable variables, that end up here.
-            // assert(!this.isInstanceOf[FairZ3Solver], "Trying to convert unknown variable '"+id+"' while using FairZ3")
+      case ite @ IfExpr(c, t, e) => z3.mkITE(rec(c), rec(t), rec(e))
+      case And(exs) => z3.mkAnd(exs.map(rec(_)): _*)
+      case Or(exs) => z3.mkOr(exs.map(rec(_)): _*)
+      case Implies(l, r) => z3.mkImplies(rec(l), rec(r))
+      case Iff(l, r) =>
+        val rl = rec(l)
+        val rr = rec(r)
+        z3.mkIff(rl, rr)
 
-            val newAST = z3.mkFreshConst(id.uniqueName/*name*/, typeToSort(v.getType))
-            z3Vars = z3Vars + (id -> newAST)
-            exprToZ3Id += (v -> newAST)
-            z3IdToExpr += (newAST -> v)
-            newAST
-          }
-        }
+      case Not(Iff(l, r)) => z3.mkXor(rec(l), rec(r))
+      case Not(Equals(l, r)) => z3.mkDistinct(rec(l), rec(r))
+      case Not(e) => z3.mkNot(rec(e))
+      case IntLiteral(v) => z3.mkInt(v, typeToSort(Int32Type))
+      case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()
+      case UnitLiteral => unitValue
+      case Equals(l, r) => z3.mkEq(rec( l ), rec( r ) )
+      case Plus(l, r) => z3.mkAdd(rec(l), rec(r))
+      case Minus(l, r) => z3.mkSub(rec(l), rec(r))
+      case Times(l, r) => z3.mkMul(rec(l), rec(r))
+      case Division(l, r) => z3.mkDiv(rec(l), rec(r))
+      case Modulo(l, r) => z3.mkMod(rec(l), rec(r))
+      case UMinus(e) => z3.mkUnaryMinus(rec(e))
+      case LessThan(l, r) => z3.mkLT(rec(l), rec(r))
+      case LessEquals(l, r) => z3.mkLE(rec(l), rec(r))
+      case GreaterThan(l, r) => z3.mkGT(rec(l), rec(r))
+      case GreaterEquals(l, r) => z3.mkGE(rec(l), rec(r))
+      case c @ CaseClass(ct, args) =>
+        typeToSort(ct) // Making sure the sort is defined
+        val constructor = adtConstructors(ct)
+        constructor(args.map(rec(_)): _*)
 
-        case ite @ IfExpr(c, t, e) => z3.mkITE(rec(c), rec(t), rec(e))
-        case And(exs) => z3.mkAnd(exs.map(rec(_)): _*)
-        case Or(exs) => z3.mkOr(exs.map(rec(_)): _*)
-        case Implies(l, r) => z3.mkImplies(rec(l), rec(r))
-        case Iff(l, r) => {
-          val rl = rec(l)
-          val rr = rec(r)
-          // z3.mkIff used to trigger a bug
-          // z3.mkAnd(z3.mkImplies(rl, rr), z3.mkImplies(rr, rl))
-          z3.mkIff(rl, rr)
-        }
-        case Not(Iff(l, r)) => z3.mkXor(rec(l), rec(r))
-        case Not(Equals(l, r)) => z3.mkDistinct(rec(l), rec(r))
-        case Not(e) => z3.mkNot(rec(e))
-        case IntLiteral(v) => z3.mkInt(v, intSort)
-        case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()
-        case UnitLiteral => unitValue
-        case Equals(l, r) => z3.mkEq(rec( l ), rec( r ) )
-        case Plus(l, r) => z3.mkAdd(rec(l), rec(r))
-        case Minus(l, r) => z3.mkSub(rec(l), rec(r))
-        case Times(l, r) => z3.mkMul(rec(l), rec(r))
-        case Division(l, r) => z3.mkDiv(rec(l), rec(r))
-        case Modulo(l, r) => z3.mkMod(rec(l), rec(r))
-        case UMinus(e) => z3.mkUnaryMinus(rec(e))
-        case LessThan(l, r) => z3.mkLT(rec(l), rec(r))
-        case LessEquals(l, r) => z3.mkLE(rec(l), rec(r))
-        case GreaterThan(l, r) => z3.mkGT(rec(l), rec(r))
-        case GreaterEquals(l, r) => z3.mkGE(rec(l), rec(r))
-        case c @ CaseClass(cd, args) => {
-          val constructor = adtConstructors(cd)
-          constructor(args.map(rec(_)): _*)
-        }
-        case c @ CaseClassSelector(_, cc, sel) => {
-          val selector = adtFieldSelectors(sel)
-          selector(rec(cc))
-        }
-        case c @ CaseClassInstanceOf(ccd, e) => {
-          val tester = adtTesters(ccd)
-          tester(rec(e))
-        }
-        case f @ FunctionInvocation(fd, args) => {
-          z3.mkApp(functionDefToDecl(fd), args.map(rec(_)): _*)
-        }
-        
-        case SetEquals(s1, s2) => z3.mkEq(rec(s1), rec(s2))
-        case ElementOfSet(e, s) => z3.mkSetSubset(z3.mkSetAdd(z3.mkEmptySet(typeToSort(e.getType)), rec(e)), rec(s))
-        case SubsetOf(s1, s2) => z3.mkSetSubset(rec(s1), rec(s2))
-        case SetIntersection(s1, s2) => z3.mkSetIntersect(rec(s1), rec(s2))
-        case SetUnion(s1, s2) => z3.mkSetUnion(rec(s1), rec(s2))
-        case SetDifference(s1, s2) => z3.mkSetDifference(rec(s1), rec(s2))
-        case f @ FiniteSet(elems) => elems.foldLeft(z3.mkEmptySet(typeToSort(f.getType.asInstanceOf[SetType].base)))((ast, el) => z3.mkSetAdd(ast, rec(el)))
-        case SetCardinality(s) => {
-          val rs = rec(s)
-          setCardFuns(s.getType.asInstanceOf[SetType].base)(rs)
-        }
-        case SetMin(s) => intSetMinFun(rec(s))
-        case SetMax(s) => intSetMaxFun(rec(s))
-        case f @ FiniteMap(elems) => f.getType match {
-          case tpe@MapType(fromType, toType) =>
-            typeToSort(tpe) //had to add this here because the mapRangeNoneConstructors was not yet constructed...
-            val fromSort = typeToSort(fromType)
-            val toSort = typeToSort(toType)
-            elems.foldLeft(z3.mkConstArray(fromSort, mapRangeNoneConstructors(toType)())){ case (ast, (k,v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(toType)(rec(v))) }
-          case errorType => scala.sys.error("Unexpected type for finite map: " + (ex, errorType))
-        }
-        case mg @ MapGet(m,k) => m.getType match {
-          case MapType(fromType, toType) =>
-            val selected = z3.mkSelect(rec(m), rec(k))
-            mapRangeValueSelectors(toType)(selected)
-          case errorType => scala.sys.error("Unexpected type for map: " + (ex, errorType))
-        }
-        case MapUnion(m1,m2) => m1.getType match {
-          case MapType(ft, tt) => m2 match {
-            case FiniteMap(ss) =>
-              ss.foldLeft(rec(m1)){
-                case (ast, (k, v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(tt)(rec(v)))
-              }
-            case _ => scala.sys.error("map updates can only be applied with concrete map instances")
-          }
-          case errorType => scala.sys.error("Unexpected type for map: " + (ex, errorType))
-        }
-        case MapIsDefinedAt(m,k) => m.getType match {
-          case MapType(ft, tt) => z3.mkDistinct(z3.mkSelect(rec(m), rec(k)), mapRangeNoneConstructors(tt)())
-          case errorType => scala.sys.error("Unexpected type for map: " + (ex, errorType))
-        }
-        case fill @ ArrayFill(length, default) => {
-          val at@ArrayType(base) = fill.getType
-          typeToSort(at)
-          val cons = arrayTupleCons(at)
-          val ar = z3.mkConstArray(typeToSort(base), rec(default))
-          val res = cons(ar, rec(length))
-          res
-        }
-        case ArraySelect(a, index) => {
-          typeToSort(a.getType)
-          val ar = rec(a)
-          val getArray = arrayTupleSelectorArray(a.getType)
-          val res = z3.mkSelect(getArray(ar), rec(index))
-          res
-        }
-        case ArrayUpdated(a, index, newVal) => {
-          typeToSort(a.getType)
-          val ar = rec(a)
-          val getArray = arrayTupleSelectorArray(a.getType)
-          val getLength = arrayTupleSelectorLength(a.getType)
-          val cons = arrayTupleCons(a.getType)
-          val store = z3.mkStore(getArray(ar), rec(index), rec(newVal))
-          val res = cons(store, getLength(ar))
-          res
-        }
-        case ArrayLength(a) => {
-          typeToSort(a.getType)
-          val ar = rec(a)
-          val getLength = arrayTupleSelectorLength(a.getType)
-          val res = getLength(ar)
-          res
-        }
+      case c @ CaseClassSelector(cct, cc, sel) =>
+        typeToSort(cct) // Making sure the sort is defined
+        val selector = adtFieldSelectors(cct, sel)
+        selector(rec(cc))
 
-        case arr @ FiniteArray(exprs) => {
-          val ArrayType(innerType) = arr.getType
-          val arrayType = arr.getType
-          val a: Expr = ArrayFill(IntLiteral(exprs.length), simplestValue(innerType)).setType(arrayType)
-          val u = exprs.zipWithIndex.foldLeft(a)((array, expI) => ArrayUpdated(array, IntLiteral(expI._2), expI._1).setType(arrayType))
-          rec(u)
+      case c @ CaseClassInstanceOf(cct, e) =>
+        typeToSort(cct) // Making sure the sort is defined
+        val tester = adtTesters(cct)
+        tester(rec(e))
+
+      case f @ FunctionInvocation(tfd, args) =>
+        z3.mkApp(functionDefToDecl(tfd), args.map(rec(_)): _*)
+
+      case SetEquals(s1, s2) => z3.mkEq(rec(s1), rec(s2))
+      case ElementOfSet(e, s) => z3.mkSetSubset(z3.mkSetAdd(z3.mkEmptySet(typeToSort(e.getType)), rec(e)), rec(s))
+      case SubsetOf(s1, s2) => z3.mkSetSubset(rec(s1), rec(s2))
+      case SetIntersection(s1, s2) => z3.mkSetIntersect(rec(s1), rec(s2))
+      case SetUnion(s1, s2) => z3.mkSetUnion(rec(s1), rec(s2))
+      case SetDifference(s1, s2) => z3.mkSetDifference(rec(s1), rec(s2))
+      case f @ FiniteSet(elems) => elems.foldLeft(z3.mkEmptySet(typeToSort(f.getType.asInstanceOf[SetType].base)))((ast, el) => z3.mkSetAdd(ast, rec(el)))
+      case SetCardinality(s) =>
+        val rs = rec(s)
+        setCardDecls(s.getType)(rs)
+
+      case SetMin(s) => intSetMinFun(rec(s))
+      case SetMax(s) => intSetMaxFun(rec(s))
+      case f @ FiniteMap(elems) => f.getType match {
+        case tpe@MapType(fromType, toType) =>
+          typeToSort(tpe) //had to add this here because the mapRangeNoneConstructors was not yet constructed...
+          val fromSort = typeToSort(fromType)
+          val toSort = typeToSort(toType)
+          elems.foldLeft(z3.mkConstArray(fromSort, mapRangeNoneConstructors(toType)())){ case (ast, (k,v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(toType)(rec(v))) }
+        case errorType => scala.sys.error("Unexpected type for finite map: " + (ex, errorType))
+      }
+      case mg @ MapGet(m,k) => m.getType match {
+        case MapType(fromType, toType) =>
+          val selected = z3.mkSelect(rec(m), rec(k))
+          mapRangeValueSelectors(toType)(selected)
+        case errorType => scala.sys.error("Unexpected type for map: " + (ex, errorType))
+      }
+      case MapUnion(m1,m2) => m1.getType match {
+        case MapType(ft, tt) => m2 match {
+          case FiniteMap(ss) =>
+            ss.foldLeft(rec(m1)){
+              case (ast, (k, v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(tt)(rec(v)))
+            }
+          case _ => scala.sys.error("map updates can only be applied with concrete map instances")
         }
-        case Distinct(exs) => z3.mkDistinct(exs.map(rec(_)): _*)
-  
-        case _ => {
-          reporter.warning("Can't handle this in translation to Z3: " + ex)
-          throw new CantTranslateException
-        }
-      })
-      recResult
+        case errorType => scala.sys.error("Unexpected type for map: " + (ex, errorType))
+      }
+      case MapIsDefinedAt(m,k) => m.getType match {
+        case MapType(ft, tt) => z3.mkDistinct(z3.mkSelect(rec(m), rec(k)), mapRangeNoneConstructors(tt)())
+        case errorType => scala.sys.error("Unexpected type for map: " + (ex, errorType))
+      }
+      case fill @ ArrayFill(length, default) =>
+        val at @ ArrayType(base) = fill.getType
+        typeToSort(at)
+        val meta = arrayMetaDecls(at)
+
+        val ar = z3.mkConstArray(typeToSort(base), rec(default))
+        val res = meta.cons(ar, rec(length))
+        res
+
+      case ArraySelect(a, index) =>
+        typeToSort(a.getType)
+        val ar = rec(a)
+        val getArray = arrayMetaDecls(a.getType).select
+        val res = z3.mkSelect(getArray(ar), rec(index))
+        res
+
+      case ArrayUpdated(a, index, newVal) =>
+        typeToSort(a.getType)
+        val ar = rec(a)
+        val meta = arrayMetaDecls(a.getType)
+
+        val store = z3.mkStore(meta.select(ar), rec(index), rec(newVal))
+        val res = meta.cons(store, meta.length(ar))
+        res
+
+      case ArrayLength(a) =>
+        typeToSort(a.getType)
+        val ar = rec(a)
+        val meta = arrayMetaDecls(a.getType)
+        val res = meta.length(ar)
+        res
+
+      case arr @ FiniteArray(exprs) => {
+        val ArrayType(innerType) = arr.getType
+        val arrayType = arr.getType
+        val a: Expr = ArrayFill(IntLiteral(exprs.length), simplestValue(innerType)).setType(arrayType)
+        val u = exprs.zipWithIndex.foldLeft(a)((array, expI) => ArrayUpdated(array, IntLiteral(expI._2), expI._1).setType(arrayType))
+        rec(u)
+      }
+      case Distinct(exs) => z3.mkDistinct(exs.map(rec(_)): _*)
+
+      case gv @ GenericValue(tp, id) =>
+        z3.mkApp(genericValueToDecl(gv))
+
+      case _ => {
+        reporter.warning("Can't handle this in translation to Z3: " + ex)
+        throw new CantTranslateException
+      }
     }
 
     try {
@@ -592,156 +647,121 @@ trait AbstractZ3Solver
     }
   }
 
-  protected[leon] def fromZ3Formula(model: Z3Model, tree : Z3AST, expectedType: Option[TypeTree] = None) : Expr = {
-    def rec(t: Z3AST, expType: Option[TypeTree] = None) : Expr = expType match {
-      case _ if z3IdToExpr contains t => z3IdToExpr(t)
+  protected[leon] def fromZ3Formula(model: Z3Model, tree : Z3AST) : Expr = {
+    def rec(t: Z3AST): Expr = {
+      val kind = z3.getASTKind(t)
+      val sort = z3.getSort(t)
 
-      case Some(MapType(kt,vt)) => 
-        model.getArrayValue(t) match {
-          case None => throw new CantTranslateException(t)
-          case Some((map, elseValue)) => 
-            val singletons: Seq[(Expr, Expr)] = map.map(e => (e, z3.getASTKind(e._2))).collect {
-              case ((index, value), Z3AppAST(someCons, arg :: Nil)) if someCons == mapRangeSomeConstructors(vt) => (rec(index, Some(kt)), rec(arg, Some(vt)))
-            }.toSeq
-            FiniteMap(singletons).setType(expType.get)
-        }
-      case Some(SetType(dt)) => 
-        model.getSetValue(t) match {
-          case None => throw new CantTranslateException(t)
-          case Some(set) => {
-            val elems = set.map(e => rec(e, Some(dt)))
-            FiniteSet(elems.toSeq).setType(expType.get)
-          }
-        }
-      case Some(ArrayType(dt)) => {
-        val Z3AppAST(decl, args) = z3.getASTKind(t)
-        assert(args.size == 2)
-        val IntLiteral(length) = rec(args(1), Some(Int32Type))
-        val array = model.getArrayValue(args(0)) match {
-          case None => throw new CantTranslateException(t)
-          case Some((map, elseValue)) => {
-            val exprs = map.foldLeft((1 to length).map(_ => rec(elseValue, Some(dt))).toSeq)((acc, p) => {
-              val IntLiteral(index) = rec(p._1, Some(Int32Type))
-              if(index >= 0 && index < length)
-                acc.updated(index, rec(p._2, Some(dt)))
-              else acc
-            })
-            FiniteArray(exprs)
-          }
-        }
-        array
-      }
-      case other => 
-        if(t == unitValue) 
-          UnitLiteral
-        else z3.getASTKind(t) match {
-          case Z3AppAST(decl, args) => {
-            val argsSize = args.size
-            if(argsSize == 0 && z3IdToExpr.isDefinedAt(t)) {
-              val toRet = z3IdToExpr(t)
-              // println("Map says I should replace " + t + " by " + toRet)
-              toRet
-            } else if(isKnownDecl(decl)) {
-              val fd = functionDeclToDef(decl)
-              assert(fd.args.size == argsSize)
-              FunctionInvocation(fd, (args zip fd.args).map(p => rec(p._1,Some(p._2.tpe))))
-            } else if(argsSize == 1 && reverseADTTesters.isDefinedAt(decl)) {
-              CaseClassInstanceOf(reverseADTTesters(decl), rec(args(0)))
-            } else if(argsSize == 1 && reverseADTFieldSelectors.isDefinedAt(decl)) {
-              val (ccd, fid) = reverseADTFieldSelectors(decl)
-              CaseClassSelector(ccd, rec(args(0)), fid)
-            } else if(reverseADTConstructors.isDefinedAt(decl)) {
-              val ccd = reverseADTConstructors(decl)
-              assert(argsSize == ccd.fields.size)
-              CaseClass(ccd, (args zip ccd.fields).map(p => rec(p._1, Some(p._2.tpe))))
-            } else if(reverseTupleConstructors.isDefinedAt(decl)) {
-              val TupleType(subTypes) = reverseTupleConstructors(decl)
-              val rargs = args.zip(subTypes).map(p => rec(p._1, Some(p._2)))
-              Tuple(rargs)
-            } else {
-              import Z3DeclKind._
-              val rargs = args.map(rec(_))
-              z3.getDeclKind(decl) match {
-                case OpTrue => BooleanLiteral(true)
-                case OpFalse => BooleanLiteral(false)
-                case OpEq => Equals(rargs(0), rargs(1))
-                case OpITE =>
-                  assert(argsSize == 3)
-                  val r0 = rargs(0)
-                  val r1 = rargs(1)
-                  val r2 = rargs(2)
-                  try {
-                    IfExpr(r0, r1, r2).setType(leastUpperBound(r1.getType, r2.getType).get)
-                  } catch {
-                    case e: Throwable =>
-                      println("I was asking for lub because of this.")
-                      println(t)
-                      println("which was translated as")
-                      println(IfExpr(r0,r1,r2))
-                      throw e
-                  }
+      kind match {
+        case Z3NumeralIntAST(Some(v)) => IntLiteral(v)
+        case Z3AppAST(decl, args) =>
+          val argsSize = args.size
+          if(argsSize == 0 && (variables containsZ3 t)) {
+            variables.toLeon(t)
+          } else if(functions containsZ3 decl) {
+            val tfd = functions.toLeon(decl)
+            assert(tfd.args.size == argsSize)
+            FunctionInvocation(tfd, args.map(rec))
+          } else if(argsSize == 1 && (reverseADTTesters contains decl)) {
+            val cct = reverseADTTesters(decl)
+            CaseClassInstanceOf(cct, rec(args(0)))
+          } else if(argsSize == 1 && (reverseADTFieldSelectors contains decl)) {
+            val (cct, fid) = reverseADTFieldSelectors(decl)
+            CaseClassSelector(cct, rec(args(0)), fid)
+          } else if(reverseADTConstructors contains decl) {
+            val cct = reverseADTConstructors(decl)
+            assert(argsSize == cct.fields.size)
+            CaseClass(cct, args.map(rec))
+          } else if (generics containsZ3 decl)  {
+            generics.toLeon(decl)
+          } else {
+            sort match {
+              case LeonType(tp: TypeParameter) =>
+                val id = t.toString.split("!").last.toInt
+                GenericValue(tp, id)
 
-                case OpAnd => And(rargs)
-                case OpOr => Or(rargs)
-                case OpIff => Iff(rargs(0), rargs(1))
-                case OpXor => Not(Iff(rargs(0), rargs(1)))
-                case OpNot => Not(rargs(0))
-                case OpImplies => Implies(rargs(0), rargs(1))
-                case OpLE => LessEquals(rargs(0), rargs(1))
-                case OpGE => GreaterEquals(rargs(0), rargs(1))
-                case OpLT => LessThan(rargs(0), rargs(1))
-                case OpGT => GreaterThan(rargs(0), rargs(1))
-                case OpAdd => {
-                  assert(argsSize == 2)
-                  Plus(rargs(0), rargs(1))
+              case LeonType(tp: TupleType) =>
+                val rargs = args.map(rec)
+                Tuple(rargs)
+
+              case LeonType(ArrayType(dt)) =>
+                assert(args.size == 2)
+                val IntLiteral(length) = rec(args(1))
+                model.getArrayValue(args(0)) match {
+                  case None => throw new CantTranslateException(t)
+                  case Some((map, elseZ3Value)) =>
+                    val elseValue = rec(elseZ3Value)
+                    var valuesMap = map.map { case (k,v) =>
+                      val IntLiteral(index) = rec(k)
+                      (index -> rec(v))
+                    }
+
+                    FiniteArray(for (i <- 1 to length) yield {
+                      valuesMap.getOrElse(i, elseValue)
+                    })
                 }
-                case OpSub => {
-                  assert(argsSize == 2)
-                  Minus(rargs(0), rargs(1))
+
+              case LeonType(tpe @ MapType(kt, vt)) =>
+                model.getArrayValue(t) match {
+                  case None => throw new CantTranslateException(t)
+                  case Some((map, elseZ3Value)) =>
+                    var values = map.toSeq.map { case (k, v) => (k, z3.getASTKind(v)) }.collect {
+                      case (k, Z3AppAST(cons, arg :: Nil)) if cons == mapRangeSomeConstructors(vt) =>
+                        (rec(k), rec(arg))
+                    }
+
+                    FiniteMap(values).setType(tpe)
                 }
-                case OpUMinus => UMinus(rargs(0))
-                case OpMul => {
-                  assert(argsSize == 2)
-                  Times(rargs(0), rargs(1))
+
+              case LeonType(tpe @ SetType(dt)) =>
+                model.getSetValue(t) match {
+                  case None => throw new CantTranslateException(t)
+                  case Some(set) =>
+                    val elems = set.map(e => rec(e))
+                    FiniteSet(elems.toSeq).setType(tpe)
                 }
-                case OpDiv => {
-                  assert(argsSize == 2)
-                  Division(rargs(0), rargs(1))
+
+              case LeonType(UnitType) =>
+                UnitLiteral
+
+              case _ =>
+                import Z3DeclKind._
+                val rargs = args.map(rec(_))
+                z3.getDeclKind(decl) match {
+                  case OpTrue =>    BooleanLiteral(true)
+                  case OpFalse =>   BooleanLiteral(false)
+                  case OpEq =>      Equals(rargs(0), rargs(1))
+                  case OpITE =>     IfExpr(rargs(0), rargs(1), rargs(2))
+                  case OpAnd =>     And(rargs)
+                  case OpOr =>      Or(rargs)
+                  case OpIff =>     Iff(rargs(0), rargs(1))
+                  case OpXor =>     Not(Iff(rargs(0), rargs(1)))
+                  case OpNot =>     Not(rargs(0))
+                  case OpImplies => Implies(rargs(0), rargs(1))
+                  case OpLE =>      LessEquals(rargs(0), rargs(1))
+                  case OpGE =>      GreaterEquals(rargs(0), rargs(1))
+                  case OpLT =>      LessThan(rargs(0), rargs(1))
+                  case OpGT =>      GreaterThan(rargs(0), rargs(1))
+                  case OpAdd =>     Plus(rargs(0), rargs(1))
+                  case OpSub =>     Minus(rargs(0), rargs(1))
+                  case OpUMinus =>  UMinus(rargs(0))
+                  case OpMul =>     Times(rargs(0), rargs(1))
+                  case OpDiv =>     Division(rargs(0), rargs(1))
+                  case OpIDiv =>    Division(rargs(0), rargs(1))
+                  case OpMod =>     Modulo(rargs(0), rargs(1))
+                  case other =>
+                    System.err.println("Don't know what to do with this declKind : " + other)
+                    System.err.println("The arguments are : " + args)
+                    throw new CantTranslateException(t)
                 }
-                case OpIDiv => {
-                  assert(argsSize == 2)
-                  Division(rargs(0), rargs(1))
-                }
-                case OpMod => {
-                  assert(argsSize == 2)
-                  Modulo(rargs(0), rargs(1))
-                }
-                case OpAsArray => {
-                  assert(argsSize == 0)
-                  throw new Exception("encountered OpAsArray")
-                }
-                case other => {
-                  System.err.println("Don't know what to do with this declKind : " + other)
-                  System.err.println("The arguments are : " + args)
-                  throw new CantTranslateException(t)
-                }
-              }
             }
           }
-
-          case Z3NumeralIntAST(Some(v)) => IntLiteral(v)
-          case Z3NumeralIntAST(None) => {
-            reporter.info("Cannot read exact model from Z3: Integer does not fit in machine word")
-            reporter.info("Exiting procedure now")
-            sys.exit(0)
-          }
-          case other @ _ => {
-            System.err.println("Don't know what this is " + other) 
-            throw new CantTranslateException(t)
-          }
-        }
+        case _ =>
+          System.err.println("Can't handle "+t)
+          throw new CantTranslateException(t)
+      }
     }
-    rec(tree, expectedType)
+    rec(tree)
   }
 
   // Tries to convert a Z3AST into a *ground* Expr. Doesn't try very hard, because
@@ -753,25 +773,30 @@ trait AbstractZ3Solver
     def rec(t : Z3AST) : Expr = z3.getASTKind(t) match {
       case Z3AppAST(decl, args) => {
         val argsSize = args.size
-        if(isKnownDecl(decl)) {
-          val fd = functionDeclToDef(decl)
-          FunctionInvocation(fd, args.map(rec))
+        if(functions containsZ3 decl) {
+          val tfd = functions.toLeon(decl)
+          FunctionInvocation(tfd, args.map(rec))
         } else if(argsSize == 1 && reverseADTTesters.isDefinedAt(decl)) {
-          CaseClassInstanceOf(reverseADTTesters(decl), rec(args(0)))
+          val cct = reverseADTTesters(decl)
+          CaseClassInstanceOf(cct, rec(args(0)))
         } else if(argsSize == 1 && reverseADTFieldSelectors.isDefinedAt(decl)) {
-          val (ccd, fid) = reverseADTFieldSelectors(decl)
-          CaseClassSelector(ccd, rec(args(0)), fid)
+          val (cct, fid) = reverseADTFieldSelectors(decl)
+          CaseClassSelector(cct, rec(args(0)), fid)
         } else if(reverseADTConstructors.isDefinedAt(decl)) {
-          val ccd = reverseADTConstructors(decl)
-          CaseClass(ccd, args.map(rec))
-        } else if(reverseTupleConstructors.isDefinedAt(decl)) {
-          Tuple(args.map(rec))
+          val cct = reverseADTConstructors(decl)
+          CaseClass(cct, args.map(rec))
         } else {
-          import Z3DeclKind._
-          z3.getDeclKind(decl) match {
-            case OpTrue => BooleanLiteral(true)
-            case OpFalse => BooleanLiteral(false)
-            case _ => throw e
+          z3.getSort(t) match {
+            case LeonType(t : TupleType) =>
+              Tuple(args.map(rec))
+
+            case _ =>
+              import Z3DeclKind._
+              z3.getDeclKind(decl) match {
+                case OpTrue => BooleanLiteral(true)
+                case OpFalse => BooleanLiteral(false)
+                case _ => throw e
+              }
           }
         }
       }
@@ -786,9 +811,9 @@ trait AbstractZ3Solver
     }
   }
 
-  protected[leon] def softFromZ3Formula(model: Z3Model, tree : Z3AST, expectedType: TypeTree) : Option[Expr] = {
+  protected[leon] def softFromZ3Formula(model: Z3Model, tree : Z3AST) : Option[Expr] = {
     try {
-      Some(fromZ3Formula(model, tree, Some(expectedType)))
+      Some(fromZ3Formula(model, tree))
     } catch {
       case e: CantTranslateException => None
     }

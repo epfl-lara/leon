@@ -7,6 +7,7 @@ object TypeTrees {
   import Common._
   import Trees._
   import Definitions._
+  import TypeTreeOps._
 
   trait Typed extends Serializable {
     self =>
@@ -39,14 +40,6 @@ object TypeTrees {
     }
   }
 
-  def typeCheck(obj: Expr, exps: TypeTree*) {
-    val res = exps.exists(e => isSubtypeOf(obj.getType, e))
-
-    if (!res) {
-      throw TypeErrorException(obj, exps.toList)
-    }
-  }
-
   trait FixedType extends Typed {
     self =>
 
@@ -58,72 +51,6 @@ object TypeTrees {
 
   sealed abstract class TypeTree extends Tree {
     override def toString: String = PrettyPrinter(this)
-  }
-
-  // Sort of a quick hack...
-  def bestRealType(t: TypeTree) : TypeTree = t match {
-    case c: ClassType if c.classDef.isInstanceOf[CaseClassDef] => {
-      c.classDef.parent match {
-        case None => CaseClassType(c.classDef.asInstanceOf[CaseClassDef])
-        case Some(p) => AbstractClassType(p)
-      }
-    }
-    case other => other
-  }
-
-  def leastUpperBound(t1: TypeTree, t2: TypeTree): Option[TypeTree] = (t1,t2) match {
-    case (c1: ClassType, c2: ClassType) => {
-      import scala.collection.immutable.Set
-      var c: ClassTypeDef = c1.classDef
-      var visited: Set[ClassTypeDef] = Set(c)
-
-      while(c.parent.isDefined) {
-        c = c.parent.get
-        visited = visited ++ Set(c)
-      }
-
-      c = c2.classDef
-      var found: Option[ClassTypeDef] = if(visited.contains(c)) {
-        Some(c)
-      } else {
-        None
-      }
-
-      while(found.isEmpty && c.parent.isDefined) {
-        c = c.parent.get
-        if(visited.contains(c))
-          found = Some(c)
-      }
-
-      if(found.isEmpty) {
-        None
-      } else {
-        Some(classDefToClassType(found.get))
-      }
-    }
-    case (TupleType(args1), TupleType(args2)) =>
-      val args = (args1 zip args2).map(p => leastUpperBound(p._1, p._2))
-      if (args.forall(_.isDefined)) Some(TupleType(args.map(_.get))) else None
-    case (o1, o2) if (o1 == o2) => Some(o1)
-    case (o1,BottomType) => Some(o1)
-    case (BottomType,o2) => Some(o2)
-    case (o1,AnyType) => Some(AnyType)
-    case (AnyType,o2) => Some(AnyType)
-
-    case _ => None
-  }
-
-  def leastUpperBound(ts: Seq[TypeTree]): Option[TypeTree] = {
-    def olub(ot1: Option[TypeTree], t2: Option[TypeTree]): Option[TypeTree] = ot1 match {
-      case Some(t1) => leastUpperBound(t1, t2.get)
-      case None => None
-    }
-
-    ts.map(Some(_)).reduceLeft(olub)
-  }
-
-  def isSubtypeOf(t1: TypeTree, t2: TypeTree): Boolean = {
-    leastUpperBound(t1, t2) == Some(t2)
   }
 
   // returns the number of distinct values that inhabit a type
@@ -177,6 +104,8 @@ object TypeTrees {
   case object Int32Type extends TypeTree
   case object UnitType extends TypeTree
 
+  case class TypeParameter(id: Identifier) extends TypeTree
+
   class TupleType private (val bases: Seq[TypeTree]) extends TypeTree {
     lazy val dimension: Int = bases.length
 
@@ -221,20 +150,68 @@ object TypeTrees {
   case class ArrayType(base: TypeTree) extends TypeTree
 
   sealed abstract class ClassType extends TypeTree {
-    val classDef: ClassTypeDef
+    val classDef: ClassDef
     val id: Identifier = classDef.id
 
-    override def hashCode : Int = id.hashCode
+    override def hashCode : Int = id.hashCode + tps.hashCode
     override def equals(that : Any) : Boolean = that match {
-      case t : ClassType => t.id == this.id
+      case t : ClassType => t.id == this.id && t.tps == this.tps
       case _ => false
     }
-  }
-  case class AbstractClassType(classDef: AbstractClassDef) extends ClassType
-  case class CaseClassType(classDef: CaseClassDef) extends ClassType
 
-  def classDefToClassType(cd: ClassTypeDef): ClassType = cd match {
-    case a: AbstractClassDef => AbstractClassType(a)
-    case c: CaseClassDef => CaseClassType(c)
+    val tps: Seq[TypeTree]
+
+    assert(classDef.tparams.size == tps.size)
+
+    lazy val fields = {
+      val tmap = (classDef.tparams zip tps).toMap
+      if (tmap.isEmpty) {
+        classDef.fields
+      } else {
+        classDef.fields.map(vd => VarDecl(vd.id, instantiateType(vd.tpe, tmap)))
+      }
+    }
+
+    def knownDescendents = classDef.knownDescendents.map(classDefToClassType(_, tps))
+
+    def knownCCDescendents = classDef.knownCCDescendents.map(CaseClassType(_, tps))
+
+    lazy val fieldsTypes = fields.map(_.tpe)
+
+    lazy val parent = classDef.parent.map {
+      pct => instantiateType(pct, (classDef.tparams zip tps).toMap) match {
+        case act: AbstractClassType  => act
+        case t  => throw new LeonFatalError("Unexpected translated parent type: "+t)
+      }
+    }
+
+  }
+  case class AbstractClassType(classDef: AbstractClassDef, tps: Seq[TypeTree]) extends ClassType
+  case class CaseClassType(override val classDef: CaseClassDef, tps: Seq[TypeTree]) extends ClassType
+
+  def classDefToClassType(cd: ClassDef, tps: Seq[TypeTree]): ClassType = cd match {
+    case a: AbstractClassDef => AbstractClassType(a, tps)
+    case c: CaseClassDef => CaseClassType(c, tps)
+  }
+
+  // Using definition types
+  def classDefToClassType(cd: ClassDef): ClassType = {
+    classDefToClassType(cd, cd.tparams.map(_.tp))
+  }
+
+  object NAryType {
+    def unapply(t: TypeTree): Option[(Seq[TypeTree], Seq[TypeTree] => TypeTree)] = t match {
+      case CaseClassType(ccd, ts) => Some((ts, ts => CaseClassType(ccd, ts)))
+      case AbstractClassType(acd, ts) => Some((ts, ts => AbstractClassType(acd, ts)))
+      case TupleType(ts) => Some((ts, TupleType(_)))
+      case ListType(t) => Some((Seq(t), ts => ListType(ts.head)))
+      case ArrayType(t) => Some((Seq(t), ts => ArrayType(ts.head)))
+      case TupleType(ts) => Some((ts, TupleType(_)))
+      case SetType(t) => Some((Seq(t), ts => SetType(ts.head)))
+      case MultisetType(t) => Some((Seq(t), ts => MultisetType(ts.head)))
+      case MapType(from,to) => Some((Seq(from, to), t => MapType(t(0), t(1))))
+      case FunctionType(fts, tt) => Some((tt +: fts, ts => FunctionType(ts.tail.toList, ts.head)))
+      case t => Some(Nil, fake => t)
+    }
   }
 }

@@ -9,6 +9,7 @@ import utils._
 object Trees {
   import Common._
   import TypeTrees._
+  import TypeTreeOps._
   import Definitions._
   import Extractors._
 
@@ -62,15 +63,13 @@ object Trees {
 
 
   /* Control flow */
-  case class FunctionInvocation(funDef: FunDef, args: Seq[Expr]) extends Expr with FixedType {
-    val fixedType = funDef.returnType
-
-    funDef.args.zip(args).foreach {
-      case (a, c) => typeCheck(c, a.tpe)
-    }
+  case class FunctionInvocation(tfd: TypedFunDef, args: Seq[Expr]) extends Expr with FixedType {
+    val fixedType = tfd.returnType
   }
   case class IfExpr(cond: Expr, thenn: Expr, elze: Expr) extends Expr with FixedType {
-    val fixedType = leastUpperBound(thenn.getType, elze.getType).getOrElse(AnyType)
+    val fixedType = leastUpperBound(thenn.getType, elze.getType).getOrElse{
+      AnyType
+    }
   }
 
   case class Tuple(exprs: Seq[Expr]) extends Expr with FixedType {
@@ -118,7 +117,7 @@ object Trees {
       scrutinee.getType match {
         case a: AbstractClassType => new MatchExpr(scrutinee, cases)
         case c: CaseClassType => new MatchExpr(scrutinee, cases.filter(_.pattern match {
-          case CaseClassPattern(_, ccd, _) if ccd != c.classDef => false
+          case CaseClassPattern(_, cct, _) if cct.classDef != c.classDef => false
           case _ => true
         }))
         case t: TupleType => new MatchExpr(scrutinee, cases)
@@ -130,8 +129,11 @@ object Trees {
   }
 
   class MatchExpr(val scrutinee: Expr, val cases: Seq[MatchCase]) extends Expr with FixedType {
+    assert(cases.nonEmpty)
 
-    val fixedType = leastUpperBound(cases.map(_.rhs.getType)).getOrElse(AnyType)
+    val fixedType = leastUpperBound(cases.map(_.rhs.getType)).getOrElse{
+      AnyType
+    }
 
     def scrutineeClassType: ClassType = scrutinee.getType.asInstanceOf[ClassType]
 
@@ -168,17 +170,13 @@ object Trees {
     def binders: Set[Identifier] = subBinders ++ (if(binder.isDefined) Set(binder.get) else Set.empty)
   }
 
-  case class InstanceOfPattern(binder: Option[Identifier], classTypeDef: ClassTypeDef) extends Pattern { // c: Class
+  case class InstanceOfPattern(binder: Option[Identifier], ct: ClassType) extends Pattern { // c: Class
     val subPatterns = Seq.empty
   }
   case class WildcardPattern(binder: Option[Identifier]) extends Pattern { // c @ _
     val subPatterns = Seq.empty
   } 
-  case class CaseClassPattern(binder: Option[Identifier], caseClassDef: CaseClassDef, subPatterns: Seq[Pattern]) extends Pattern
-  // case class ExtractorPattern(binder: Option[Identifier], 
-  //   		      extractor : ExtractorTypeDef, 
-  //   		      subPatterns: Seq[Pattern]) extends Pattern // c @ Extractor(...,...)
-  // We don't handle Seq stars for now.
+  case class CaseClassPattern(binder: Option[Identifier], ct: CaseClassType, subPatterns: Seq[Pattern]) extends Pattern
 
   case class TuplePattern(binder: Option[Identifier], subPatterns: Seq[Pattern]) extends Pattern
 
@@ -387,6 +385,10 @@ object Trees {
     val value: T
   }
 
+  case class GenericValue(tp: TypeParameter, id: Int) extends Expr with Terminal with FixedType {
+    val fixedType = tp
+  }
+
   case class IntLiteral(value: Int) extends Literal[Int] with FixedType {
     val fixedType = Int32Type
   }
@@ -401,36 +403,41 @@ object Trees {
     val value = ()
   }
 
-  case class CaseClass(classDef: CaseClassDef, args: Seq[Expr]) extends Expr with FixedType {
-    val fixedType = CaseClassType(classDef)
+  case class CaseClass(ct: CaseClassType, args: Seq[Expr]) extends Expr with FixedType {
+    val fixedType = ct
   }
 
-  case class CaseClassInstanceOf(classDef: CaseClassDef, expr: Expr) extends Expr with FixedType {
+  case class CaseClassInstanceOf(classType: CaseClassType, expr: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
   }
 
   object CaseClassSelector {
-    def apply(classDef: CaseClassDef, caseClass: Expr, selector: Identifier): Expr = {
+    def apply(classType: CaseClassType, caseClass: Expr, selector: Identifier): Expr = {
       caseClass match {
-        case CaseClass(cd, fields)  if cd == classDef => fields(cd.selectorID2Index(selector))
-        case _ => new CaseClassSelector(classDef, caseClass, selector)
+        case CaseClass(ct, fields) =>
+          if (ct.classDef == classType.classDef) {
+            fields(ct.classDef.selectorID2Index(selector))
+          } else {
+            new CaseClassSelector(classType, caseClass, selector)
+          }
+        case _ => new CaseClassSelector(classType, caseClass, selector)
       }
     }
 
-    def unapply(e: CaseClassSelector): Option[(CaseClassDef, Expr, Identifier)] = {
-      if (e eq null) None else Some((e.classDef, e.caseClass, e.selector))
+    def unapply(ccs: CaseClassSelector): Option[(CaseClassType, Expr, Identifier)] = {
+      Some((ccs.classType, ccs.caseClass, ccs.selector))
     }
   }
 
-  class CaseClassSelector(val classDef: CaseClassDef, val caseClass: Expr, val selector: Identifier) extends Expr with FixedType {
-    val fixedType = classDef.fields.find(_.id == selector).get.getType
+  class CaseClassSelector(val classType: CaseClassType, val caseClass: Expr, val selector: Identifier) extends Expr with FixedType {
+    val fixedType = classType.fieldsTypes(classType.classDef.selectorID2Index(selector))
 
     override def equals(that: Any): Boolean = (that != null) && (that match {
-      case t: CaseClassSelector => (t.classDef, t.caseClass, t.selector) == (classDef, caseClass, selector)
+      case t: CaseClassSelector => (t.classType, t.caseClass, t.selector) == (classType, caseClass, selector)
       case _ => false
     })
 
-    override def hashCode: Int = (classDef, caseClass, selector).hashCode
+    override def hashCode: Int = (classType, caseClass, selector).hashCode
   }
 
   /* Arithmetic */
@@ -492,13 +499,9 @@ object Trees {
     leastUpperBound(Seq(set1, set2).map(_.getType)).foreach(setType _)
   }
   case class SetMin(set: Expr) extends Expr with FixedType {
-    typeCheck(set, SetType(Int32Type))
-
     val fixedType = Int32Type
   }
   case class SetMax(set: Expr) extends Expr with FixedType {
-    typeCheck(set, SetType(Int32Type))
-
     val fixedType = Int32Type
   }
 

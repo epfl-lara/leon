@@ -43,7 +43,7 @@ class VariableRefinerExecutionTest extends FunSpec with GivenWhenThen {
           program.definedFunctions.find { 
             _.id.name == "isSorted"
           } match {
-            case Some(found) => (x: Expr) => FunctionInvocation(found, Seq(x))
+            case Some(found) => (x: Expr) => FunctionInvocation(found.typed, Seq(x))
             case _ => fail("could not extract isSorted"); null
           }
             
@@ -109,7 +109,7 @@ class VariableRefinerExecutionTest extends FunSpec with GivenWhenThen {
           program.definedFunctions.find { 
             _.id.name == "isEmpty"
           } match {
-            case Some(found) => (x: Expr) => FunctionInvocation(found, Seq(x))
+            case Some(found) => (x: Expr) => FunctionInvocation(found.typed, Seq(x))
             case _ => fail("could not extract isEmpty"); null
           }
             
@@ -117,7 +117,7 @@ class VariableRefinerExecutionTest extends FunSpec with GivenWhenThen {
           program.definedFunctions.find { 
             _.id.name == "isEmptyBad"
           } match {
-            case Some(found) => (x: Expr) => FunctionInvocation(found, Seq(x))
+            case Some(found) => (x: Expr) => FunctionInvocation(found.typed, Seq(x))
             case _ => fail("could not extract isEmpty"); null
           }
           
@@ -182,7 +182,7 @@ class VariableRefinerExecutionTest extends FunSpec with GivenWhenThen {
           program.definedFunctions.find { 
             _.id.name == "hasContent"
           } match {
-            case Some(found) => (x: Expr) => FunctionInvocation(found, Seq(x))
+            case Some(found) => (x: Expr) => FunctionInvocation(found.typed, Seq(x))
             case _ => fail("could not extract hasContent"); null
           }
           
@@ -249,7 +249,7 @@ class VariableRefinerExecutionTest extends FunSpec with GivenWhenThen {
           program.definedFunctions.find { 
             _.id.name == "isEmpty"
           } match {
-            case Some(found) => (x: Expr) => FunctionInvocation(found, Seq(x))
+            case Some(found) => (x: Expr) => FunctionInvocation(found.typed, Seq(x))
             case _ => fail("could not extract isEmpty"); null
           }
             
@@ -257,7 +257,7 @@ class VariableRefinerExecutionTest extends FunSpec with GivenWhenThen {
           program.definedFunctions.find { 
             _.id.name == "isEmptyBad"
           } match {
-            case Some(found) => (x: Expr) => FunctionInvocation(found, Seq(x))
+            case Some(found) => (x: Expr) => FunctionInvocation(found.typed, Seq(x))
             case _ => fail("could not extract isEmpty"); null
           }
           

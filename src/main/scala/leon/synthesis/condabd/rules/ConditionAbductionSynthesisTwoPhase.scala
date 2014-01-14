@@ -29,13 +29,14 @@ case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abductio
               val reporter = sctx.reporter
 
               val desiredType = givenVariable.getType
-              val holeFunDef = sctx.functionContext.get
+              val fd = sctx.functionContext.get
+              val tfd = fd.typed(fd.tparams.map(_.tp))
 
               // temporary hack, should not mutate FunDef
-              val oldPostcondition = holeFunDef.postcondition
+              val oldPostcondition = fd.postcondition
 
               try {
-                val freshResID = FreshIdentifier("result").setType(holeFunDef.returnType)
+                val freshResID = FreshIdentifier("result").setType(tfd.returnType)
                 val freshResVar = Variable(freshResID)
 
                 val codeGenEval = new CodeGenEvaluator(sctx.context, sctx.program)
@@ -49,11 +50,11 @@ case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abductio
                         ,10)
                 }
 
-                val evaluationStrategy = new CodeGenEvaluationStrategy(program, holeFunDef, sctx.context, 5000)
-                holeFunDef.postcondition = Some((givenVariable, p.phi))
+                val evaluationStrategy = new CodeGenEvaluationStrategy(program, tfd, sctx.context, 5000)
+                fd.postcondition = Some((givenVariable, p.phi))
 
                 val synthesizer = new SynthesizerForRuleExamples(
-                  solver, program, desiredType, holeFunDef, p, sctx, evaluationStrategy,
+                  solver, program, desiredType, tfd, p, sctx, evaluationStrategy,
                   20, 1, 
                   reporter = reporter,
                   introduceExamples = getInputExamples,  
@@ -77,7 +78,7 @@ case object ConditionAbductionSynthesisTwoPhase extends Rule("Condition abductio
                   e.printStackTrace
                   RuleApplicationImpossible
               } finally {
-                holeFunDef.postcondition = oldPostcondition
+                fd.postcondition = oldPostcondition
               }
             }
           }

@@ -34,8 +34,8 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     ConstructorPattern[Expr, TypeTree](c, args)
   }
 
-  private var ccConstructors = Map[CaseClassDef, Constructor[Expr, TypeTree]]()
-  private var acConstructors = Map[AbstractClassDef, List[Constructor[Expr, TypeTree]]]()
+  private var ccConstructors = Map[CaseClassType, Constructor[Expr, TypeTree]]()
+  private var acConstructors = Map[AbstractClassType, List[Constructor[Expr, TypeTree]]]()
   private var tConstructors  = Map[TupleType, Constructor[Expr, TypeTree]]()
 
   private def getConstructorFor(t: CaseClassType, act: AbstractClassType): Constructor[Expr, TypeTree] = {
@@ -52,22 +52,21 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
         c
       }))
 
-    case act @ AbstractClassType(acd) =>
-      acConstructors.getOrElse(acd, {
-        val cs = acd.knownDescendents.collect {
-          case ccd: CaseClassDef =>
-            getConstructorFor(CaseClassType(ccd), act)
+    case act: AbstractClassType =>
+      acConstructors.getOrElse(act, {
+        val cs = act.knownCCDescendents.map {
+          cct => getConstructorFor(cct, act)
         }.toList
 
-        acConstructors += acd -> cs
+        acConstructors += act -> cs
 
         cs
       })
 
-    case CaseClassType(ccd) =>
-      List(ccConstructors.getOrElse(ccd, {
-        val c = Constructor[Expr, TypeTree](ccd.fields.map(_.tpe), CaseClassType(ccd), s => CaseClass(ccd, s), ccd.id.name)
-        ccConstructors += ccd -> c
+    case cct: CaseClassType =>
+      List(ccConstructors.getOrElse(cct, {
+        val c = Constructor[Expr, TypeTree](cct.fieldsTypes, cct, s => CaseClass(cct, s), cct.id.name)
+        ccConstructors += cct -> c
         c
       }))
 
@@ -90,9 +89,9 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
         case Some(ccd: CaseClassDef) =>
           val c = ct match {
             case act : AbstractClassType =>
-              getConstructorFor(CaseClassType(ccd), act)
+              getConstructorFor(CaseClassType(ccd, ct.tps), act)
             case cct : CaseClassType =>
-              getConstructors(CaseClassType(ccd))(0)
+              getConstructors(CaseClassType(ccd, ct.tps))(0)
           }
 
           val fields = cc.productElements()
@@ -100,7 +99,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
           val elems = for (i <- 0 until fields.length) yield {
             if (((r >> i) & 1) == 1) {
               // has been read
-              valueToPattern(fields(i), ccd.fieldsIds(i).getType)
+              valueToPattern(fields(i), ct.fieldsTypes(i))
             } else {
               (AnyPattern[Expr, TypeTree](), false)
             }

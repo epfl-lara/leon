@@ -84,30 +84,27 @@ class NaiveDataGen(ctx: LeonContext, p: Program, evaluator: Evaluator, _bounds :
         // We prioritize base cases among the children.
         // Otherwise we run the risk of infinite recursion when
         // generating lists.
-        val ccChildren = act.classDef.knownChildren.collect(_ match {
-            case ccd : CaseClassDef => ccd
-          }
-        )
+        val ccChildren = act.knownCCDescendents
+
         val (leafs,conss) = ccChildren.partition(_.fields.size == 0)
 
         // The stream for leafs...
-        val leafsStream = leafs.toStream.flatMap { ccd =>
-          generate(classDefToClassType(ccd), bounds)
+        val leafsStream = leafs.toStream.flatMap { cct =>
+          generate(cct, bounds)
         }
 
         // ...to which we append the streams for constructors.
-        leafsStream.append(interleave(conss.map { ccd =>
-          generate(classDefToClassType(ccd), bounds)
+        leafsStream.append(interleave(conss.map { cct =>
+          generate(cct, bounds)
         }))
 
       case cct : CaseClassType =>
-        val ccd = cct.classDef
-        if(ccd.fields.isEmpty) {
-          Stream.cons(CaseClass(ccd, Nil), Stream.empty)
+        if(cct.fields.isEmpty) {
+          Stream.cons(CaseClass(cct, Nil), Stream.empty)
         } else {
-          val fieldTypes = ccd.fields.map(_.tpe)
+          val fieldTypes = cct.fieldsTypes
           val subStream = naryProduct(fieldTypes.map(generate(_, bounds)))
-          subStream.map(prod => CaseClass(ccd, prod))
+          subStream.map(prod => CaseClass(cct, prod))
         }
 
       case _ => Stream.empty

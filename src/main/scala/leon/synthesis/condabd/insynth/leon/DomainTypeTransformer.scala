@@ -12,7 +12,7 @@ object DomainTypeTransformer extends ( LeonType => DomainType ) {
   
   val InSynthTypeTransformer = TypeTransformer
   
-  def apply(typeDef: ClassTypeDef): DomainType = {    		
+  def apply(typeDef: ClassDef): DomainType = {    		
 		implicit def singletonList(x: DomainType) = List(x)
 
     typeDef match {

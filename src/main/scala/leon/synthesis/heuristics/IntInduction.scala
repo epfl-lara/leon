@@ -43,7 +43,7 @@ case object IntInduction extends Rule("Int Induction") with Heuristic {
                                  And(LessThan(Variable(inductOn), IntLiteral(0)),    lt.pre)))
               val preOut = subst(inductOn -> Variable(origId), preIn)
 
-              val newFun = new FunDef(FreshIdentifier("rec", true), tpe, Seq(VarDecl(inductOn, inductOn.getType)))
+              val newFun = new FunDef(FreshIdentifier("rec", true), Nil, tpe, Seq(VarDecl(inductOn, inductOn.getType)))
               val idPost = FreshIdentifier("res").setType(tpe)
 
               newFun.precondition = Some(preIn)
@@ -53,12 +53,12 @@ case object IntInduction extends Rule("Int Induction") with Heuristic {
                 IfExpr(Equals(Variable(inductOn), IntLiteral(0)),
                   base.toExpr,
                 IfExpr(GreaterThan(Variable(inductOn), IntLiteral(0)),
-                  LetTuple(postXs, FunctionInvocation(newFun, Seq(Minus(Variable(inductOn), IntLiteral(1)))), gt.toExpr)
-                , LetTuple(postXs, FunctionInvocation(newFun, Seq(Plus(Variable(inductOn), IntLiteral(1)))), lt.toExpr)))
+                  LetTuple(postXs, FunctionInvocation(newFun.typed, Seq(Minus(Variable(inductOn), IntLiteral(1)))), gt.toExpr)
+                , LetTuple(postXs, FunctionInvocation(newFun.typed, Seq(Plus(Variable(inductOn), IntLiteral(1)))), lt.toExpr)))
               )
 
 
-              Some(Solution(preOut, base.defs++gt.defs++lt.defs+newFun, FunctionInvocation(newFun, Seq(Variable(origId)))))
+              Some(Solution(preOut, base.defs++gt.defs++lt.defs+newFun, FunctionInvocation(newFun.typed, Seq(Variable(origId)))))
             }
           case _ =>
             None

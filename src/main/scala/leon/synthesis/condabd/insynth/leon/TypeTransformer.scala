@@ -12,7 +12,7 @@ import scala.language.implicitConversions
 
 object TypeTransformer extends ( LeonType => SuccinctType ) {
   
-  def apply(typeDef: ClassTypeDef): SuccinctType = {    		
+  def apply(typeDef: ClassDef): SuccinctType = {    		
 		implicit def singletonList(x: SuccinctType) = List(x)
 
     typeDef match {

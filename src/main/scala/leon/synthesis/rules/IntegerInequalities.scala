@@ -95,7 +95,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
 
       //define max function
       val maxVarDecls: Seq[VarDecl] = lowerBounds.map(_ => VarDecl(FreshIdentifier("b"), Int32Type))
-      val maxFun = new FunDef(FreshIdentifier("max"), Int32Type, maxVarDecls)
+      val maxFun = new FunDef(FreshIdentifier("max"), Nil, Int32Type, maxVarDecls)
       def maxRec(bounds: List[Expr]): Expr = bounds match {
         case (x1 :: x2 :: xs) => {
           val v = FreshIdentifier("m").setType(Int32Type)
@@ -106,10 +106,10 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
       }
       if(!lowerBounds.isEmpty)
         maxFun.body = Some(maxRec(maxVarDecls.map(vd => Variable(vd.id)).toList))
-      def max(xs: Seq[Expr]): Expr = FunctionInvocation(maxFun, xs)
+      def max(xs: Seq[Expr]): Expr = FunctionInvocation(maxFun.typed, xs)
       //define min function
       val minVarDecls: Seq[VarDecl] = upperBounds.map(_ => VarDecl(FreshIdentifier("b"), Int32Type))
-      val minFun = new FunDef(FreshIdentifier("min"), Int32Type, minVarDecls)
+      val minFun = new FunDef(FreshIdentifier("min"), Nil, Int32Type, minVarDecls)
       def minRec(bounds: List[Expr]): Expr = bounds match {
         case (x1 :: x2 :: xs) => {
           val v = FreshIdentifier("m").setType(Int32Type)
@@ -120,16 +120,16 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
       }
       if(!upperBounds.isEmpty)
         minFun.body = Some(minRec(minVarDecls.map(vd => Variable(vd.id)).toList))
-      def min(xs: Seq[Expr]): Expr = FunctionInvocation(minFun, xs)
-      val floorFun = new FunDef(FreshIdentifier("floorDiv"), Int32Type, Seq(
+      def min(xs: Seq[Expr]): Expr = FunctionInvocation(minFun.typed, xs)
+      val floorFun = new FunDef(FreshIdentifier("floorDiv"), Nil, Int32Type, Seq(
                                   VarDecl(FreshIdentifier("x"), Int32Type),
                                   VarDecl(FreshIdentifier("x"), Int32Type)))
-      val ceilingFun = new FunDef(FreshIdentifier("ceilingDiv"), Int32Type, Seq(
+      val ceilingFun = new FunDef(FreshIdentifier("ceilingDiv"), Nil, Int32Type, Seq(
                                   VarDecl(FreshIdentifier("x"), Int32Type),
                                   VarDecl(FreshIdentifier("x"), Int32Type)))
       ceilingFun.body = Some(IntLiteral(0))
-      def floorDiv(x: Expr, y: Expr): Expr = FunctionInvocation(floorFun, Seq(x, y))
-      def ceilingDiv(x: Expr, y: Expr): Expr = FunctionInvocation(ceilingFun, Seq(x, y))
+      def floorDiv(x: Expr, y: Expr): Expr = FunctionInvocation(floorFun.typed, Seq(x, y))
+      def ceilingDiv(x: Expr, y: Expr): Expr = FunctionInvocation(ceilingFun.typed, Seq(x, y))
 
       val witness: Expr = if(upperBounds.isEmpty) {
         if(lowerBounds.size > 1) max(lowerBounds.map{case (b, c) => ceilingDiv(b, IntLiteral(c))})
@@ -192,7 +192,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
               val concretePre = replace(Map(Variable(k) -> loopCounter), pre)
               val concreteTerm = replace(Map(Variable(k) -> loopCounter), term)
               val returnType = TupleType(problem.xs.map(_.getType))
-              val funDef = new FunDef(FreshIdentifier("rec", true), returnType, Seq(VarDecl(loopCounter.id, Int32Type)))
+              val funDef = new FunDef(FreshIdentifier("rec", true), Nil, returnType, Seq(VarDecl(loopCounter.id, Int32Type)))
               val funBody = expandAndSimplifyArithmetic(IfExpr(
                 LessThan(loopCounter, IntLiteral(0)),
                 Error("No solution exists"),
@@ -202,12 +202,12 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
                     Let(processedVar, witness,
                       Tuple(problem.xs.map(Variable(_))))
                   ),
-                  FunctionInvocation(funDef, Seq(Minus(loopCounter, IntLiteral(1))))
+                  FunctionInvocation(funDef.typed, Seq(Minus(loopCounter, IntLiteral(1))))
                 )
               ))
               funDef.body = Some(funBody)
 
-              Some(Solution(And(newPre, pre), defs + funDef, FunctionInvocation(funDef, Seq(IntLiteral(L-1)))))
+              Some(Solution(And(newPre, pre), defs + funDef, FunctionInvocation(funDef.typed, Seq(IntLiteral(L-1)))))
             }
           }
           case _ =>

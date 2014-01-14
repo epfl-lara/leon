@@ -11,6 +11,7 @@ import leon.purescala.Trees._
 import leon.purescala.Extractors._
 import leon.purescala.TypeTrees._
 import leon.purescala.TreeOps._
+import leon.purescala.TypeTreeOps._
 import leon.xlang.Trees._
 
 object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef])] {
@@ -155,12 +156,12 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
           val modifiedVars2WhileFunVars = modifiedVars.zip(whileFunVars).toMap
           val whileFunVarDecls = whileFunVars.map(id => VarDecl(id, id.getType))
           val whileFunReturnType = if(whileFunVars.size == 1) whileFunVars.head.getType else TupleType(whileFunVars.map(_.getType))
-          val whileFunDef = new FunDef(FreshIdentifier(parent.id.name), whileFunReturnType, whileFunVarDecls).setPos(wh)
+          val whileFunDef = new FunDef(FreshIdentifier(parent.id.name), Nil, whileFunReturnType, whileFunVarDecls).setPos(wh)
           wasLoop += whileFunDef
           
           val whileFunCond = condRes
           val whileFunRecursiveCall = replaceNames(condFun,
-            bodyScope(FunctionInvocation(whileFunDef, modifiedVars.map(id => condBodyFun(id).toVariable)).setPos(wh)))
+            bodyScope(FunctionInvocation(whileFunDef.typed, modifiedVars.map(id => condBodyFun(id).toVariable)).setPos(wh)))
           val whileFunBaseCase =
             (if(whileFunVars.size == 1) 
                 condFun.get(modifiedVars.head).getOrElse(whileFunVars.head).toVariable
@@ -199,7 +200,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
             LetDef(
               whileFunDef,
               Let(tupleId, 
-                  FunctionInvocation(whileFunDef, modifiedVars.map(_.toVariable)).setPos(wh), 
+                  FunctionInvocation(whileFunDef.typed, modifiedVars.map(_.toVariable)).setPos(wh), 
                   if(finalVars.size == 1)
                     Let(finalVars.head, tupleId.toVariable, body)
                   else

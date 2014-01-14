@@ -12,6 +12,7 @@ object TreeOps {
   import TypeTrees._
   import Definitions._
   import Trees._
+  import TypeTreeOps._
   import Extractors._
 
   /**
@@ -557,19 +558,19 @@ object TreeOps {
         case WildcardPattern(ob) => bind(ob, in)
         case InstanceOfPattern(ob, ct) =>
           ct match {
-            case _: AbstractClassDef =>
+            case _: AbstractClassType =>
               bind(ob, in)
 
-            case cd: CaseClassDef =>
-              And(CaseClassInstanceOf(cd, in), bind(ob, in))
+            case cct: CaseClassType =>
+              And(CaseClassInstanceOf(cct, in), bind(ob, in))
           }
-        case CaseClassPattern(ob, ccd, subps) => {
-          assert(ccd.fields.size == subps.size)
-          val pairs = ccd.fields.map(_.id).toList zip subps.toList
-          val subTests = pairs.map(p => rec(CaseClassSelector(ccd, in, p._1), p._2))
+        case CaseClassPattern(ob, cct, subps) =>
+          assert(cct.fields.size == subps.size)
+          val pairs = cct.fields.map(_.id).toList zip subps.toList
+          val subTests = pairs.map(p => rec(CaseClassSelector(cct, in, p._1), p._2))
           val together = And(bind(ob, in) +: subTests)
-          And(CaseClassInstanceOf(ccd, in), together)
-        }
+          And(CaseClassInstanceOf(cct, in), together)
+
         case TuplePattern(ob, subps) => {
           val TupleType(tpes) = in.getType
           assert(tpes.size == subps.size)
@@ -678,26 +679,28 @@ object TreeOps {
     case TupleType(tpes)            => Tuple(tpes.map(simplestValue))
     case ArrayType(tpe)             => ArrayFill(IntLiteral(0), simplestValue(tpe))
 
-    case AbstractClassType(acd) =>
+    case act @ AbstractClassType(acd, tpe) =>
       val children = acd.knownChildren
 
       def isRecursive(ccd: CaseClassDef): Boolean = {
-        ccd.fields.exists(fd => fd.getType match {
-          case AbstractClassType(fieldAcd) => acd == fieldAcd
-          case CaseClassType(fieldCcd) => ccd == fieldCcd
+        act.fieldsTypes.exists{
+          case AbstractClassType(fieldAcd, _) => acd == fieldAcd
+          case CaseClassType(fieldCcd, _) => ccd == fieldCcd
           case _ => false
-        })
+        }
       }
 
       val nonRecChildren = children.collect { case ccd: CaseClassDef if !isRecursive(ccd) => ccd }
 
       val orderedChildren = nonRecChildren.sortBy(_.fields.size)
 
-      simplestValue(classDefToClassType(orderedChildren.head))
+      simplestValue(classDefToClassType(orderedChildren.head, tpe))
 
-    case CaseClassType(ccd) =>
-      val fields = ccd.fields
-      CaseClass(ccd, fields.map(f => simplestValue(f.getType)))
+    case cct: CaseClassType =>
+      CaseClass(cct, cct.fieldsTypes.map(t => simplestValue(t)))
+
+    case tp: TypeParameter =>
+      GenericValue(tp, 0)
 
     case _ => throw new Exception("I can't choose simplest value for type " + tpe)
   }
@@ -884,11 +887,11 @@ object TreeOps {
           }
 
           var scrutSet = Set[Expr]()
-          var conditions = Map[Expr, CaseClassDef]()
+          var conditions = Map[Expr, CaseClassType]()
 
           var matchingOn = cases.collect { case cc : CaseClassInstanceOf => cc } sortBy(cc => selectorDepth(cc.expr))
-          for (CaseClassInstanceOf(cd, expr) <- matchingOn) {
-            conditions += expr -> cd
+          for (CaseClassInstanceOf(cct, expr) <- matchingOn) {
+            conditions += expr -> cct
 
             expr match {
               case cd: CaseClassSelector =>
@@ -904,7 +907,7 @@ object TreeOps {
 
           var substMap = Map[Expr, Expr]()
 
-          def computePatternFor(cd: CaseClassDef, prefix: Expr): Pattern = {
+          def computePatternFor(ct: CaseClassType, prefix: Expr): Pattern = {
 
             val name = prefix match {
               case CaseClassSelector(_, _, id) => id.name
@@ -912,14 +915,14 @@ object TreeOps {
               case _ => "tmp"
             }
 
-            val binder = FreshIdentifier(name, true).setType(prefix.getType) // Is it full of women though?
+            val binder = FreshIdentifier(name, true).setType(prefix.getType) 
 
             // prefix becomes binder
             substMap += prefix -> Variable(binder)
-            substMap += CaseClassInstanceOf(cd, prefix) -> BooleanLiteral(true)
+            substMap += CaseClassInstanceOf(ct, prefix) -> BooleanLiteral(true)
 
-            val subconds = for (id <- cd.fieldsIds) yield {
-              val fieldSel = CaseClassSelector(cd, prefix, id)
+            val subconds = for (id <- ct.classDef.fieldsIds) yield {
+              val fieldSel = CaseClassSelector(ct, prefix, id)
               if (conditions contains fieldSel) {
                 computePatternFor(conditions(fieldSel), fieldSel)
               } else {
@@ -929,7 +932,7 @@ object TreeOps {
               }
             }
 
-            CaseClassPattern(Some(binder), cd, subconds)
+            CaseClassPattern(Some(binder), ct, subconds)
           }
 
           val (scrutinees, patterns) = scrutSet.toSeq.map(s => (s, computePatternFor(conditions(s), s))).unzip
@@ -1177,7 +1180,7 @@ object TreeOps {
         val newFD = mapType(funDef.returnType) match {
           case None => funDef
           case Some(rt) =>
-            val fd = new FunDef(FreshIdentifier(funDef.id.name, true), rt, funDef.args)
+            val fd = new FunDef(FreshIdentifier(funDef.id.name, true), funDef.tparams, rt, funDef.args)
             // These will be taken care of in the recursive traversal.
             fd.body = funDef.body
             fd.precondition = funDef.precondition
@@ -1212,8 +1215,8 @@ object TreeOps {
       case l @ LetDef(fd, bdy) =>
         LetDef(fd2fd(fd), bdy)
 
-      case FunctionInvocation(fd, args) =>
-        FunctionInvocation(fd2fd(fd), args)
+      case FunctionInvocation(tfd, args) =>
+        FunctionInvocation(fd2fd(tfd.fd).typed(tfd.tps), args)
 
       case _ => e
     }
@@ -1335,26 +1338,27 @@ object TreeOps {
    *    foo(Cons(h,t), b) => foo(t, b)
    */
   def isInductiveOn(sf: SolverFactory[Solver])(expr: Expr, on: Identifier): Boolean = on match {
-    case IsTyped(origId, AbstractClassType(cd)) =>
-      def isAlternativeRecursive(cd: CaseClassDef): Boolean = {
-        cd.fieldsIds.exists(_.getType == origId.getType)
-      }
+    case IsTyped(origId, AbstractClassType(cd, tps)) =>
 
       val toCheck = cd.knownDescendents.collect {
         case ccd: CaseClassDef =>
-          val isType = CaseClassInstanceOf(ccd, Variable(on))
+          val cct = CaseClassType(ccd, tps)
 
-            val recSelectors = ccd.fieldsIds.filter(_.getType == on.getType)
+          val isType = CaseClassInstanceOf(cct, Variable(on))
 
-            if (recSelectors.isEmpty) {
-              Seq()
-            } else {
-              val v = Variable(on)
+          val recSelectors = cct.fields.collect { 
+            case vd if vd.tpe == on.getType => vd.id
+          }
 
-              recSelectors.map{ s =>
-                And(And(isType, expr), Not(replace(Map(v -> CaseClassSelector(ccd, v, s)), expr)))
-              }
+          if (recSelectors.isEmpty) {
+            Seq()
+          } else {
+            val v = Variable(on)
+
+            recSelectors.map{ s =>
+              And(And(isType, expr), Not(replace(Map(v -> CaseClassSelector(cct, v, s)), expr)))
             }
+          }
       }.flatten
 
       val solver = SimpleSolverAPI(sf)
@@ -1503,8 +1507,9 @@ object TreeOps {
             false
           }
 
-        case (FunctionInvocation(fd1, args1), FunctionInvocation(fd2, args2)) =>
-          fdHomo(fd1, fd2) &&
+        case (FunctionInvocation(tfd1, args1), FunctionInvocation(tfd2, args2)) =>
+          // TODO: Check type params
+          fdHomo(tfd1.fd, tfd2.fd) &&
           (args1 zip args2).forall{ case (a1, a2) => isHomo(a1, a2) }
 
         case Same(UnaryOperator(e1, _), UnaryOperator(e2, _)) =>
@@ -1561,6 +1566,9 @@ object TreeOps {
      *   Seq( (T1, Seq(P1, P4)), (T2, Seq(P2, P5)), (T3, Seq(p3, p6)))
      *
      * We then check that P1+P4 covers every T1, etc..
+     *
+     * @EK: We ignore type parameters here, we might want to make sure it's
+     * valid. What's Leon's semantics w.r.t. erasure?
      */ 
     def areExaustive(pss: Seq[(TypeTree, Seq[Pattern])]): Boolean = pss.forall { case (tpe, ps) =>
 
@@ -1576,10 +1584,10 @@ object TreeOps {
         case _: ClassType =>
 
           def typesOf(tpe: TypeTree): Set[CaseClassDef] = tpe match {
-            case AbstractClassType(ctp) =>
+            case AbstractClassType(ctp, _) =>
               ctp.knownDescendents.collect { case c: CaseClassDef => c }.toSet
 
-            case CaseClassType(ctd) =>
+            case CaseClassType(ctd, _) =>
               Set(ctd)
 
             case _ =>
@@ -1595,9 +1603,10 @@ object TreeOps {
 
             case InstanceOfPattern(_, cct) =>
               // (a: B) covers all Bs
-              subChecks --= typesOf(classDefToClassType(cct))
+              subChecks --= typesOf(cct)
 
-            case CaseClassPattern(_, ccd, subs) =>
+            case CaseClassPattern(_, cct, subs) =>
+              val ccd = cct.classDef
               // We record the patterns per types, if they still need to be checked
               if (subChecks contains ccd) {
                 subChecks += (ccd -> (subChecks(ccd) :+ subs))
@@ -1651,7 +1660,7 @@ object TreeOps {
    **/
   def flattenFunctions(fdOuter: FunDef): FunDef = {
     fdOuter.body match {
-      case Some(LetDef(fdInner, FunctionInvocation(fdInner2, args))) if fdInner == fdInner2 =>
+      case Some(LetDef(fdInner, FunctionInvocation(tfdInner2, args))) if fdInner == tfdInner2.fd =>
         val argsDef  = fdOuter.args.map(_.id)
         val argsCall = args.collect { case Variable(id) => id }
 
@@ -1662,9 +1671,9 @@ object TreeOps {
           val innerIdsToOuterIds = (fdInner.args.map(_.id) zip argsCall).toMap
 
           def pre(e: Expr) = e match {
-            case FunctionInvocation(fd, args) if fd == fdInner =>
+            case FunctionInvocation(tfd, args) if tfd.fd == fdInner =>
               val newArgs = (args zip rewriteMap).sortBy(_._2)
-              FunctionInvocation(fdOuter, newArgs.map(_._1))
+              FunctionInvocation(fdOuter.typed(tfd.tps), newArgs.map(_._1))
             case Variable(id) =>
               Variable(innerIdsToOuterIds.getOrElse(id, id))
             case _ =>

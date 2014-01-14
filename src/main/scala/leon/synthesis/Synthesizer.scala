@@ -105,7 +105,7 @@ class Synthesizer(val context : LeonContext,
     import purescala.TypeTrees.TupleType
     import purescala.Definitions.VarDecl
 
-    val mainObject = program.mainObject
+    val mainModule = program.mainModule
 
     // Create new fundef for the body
     val ret = TupleType(problem.xs.map(_.getType))
@@ -116,14 +116,14 @@ class Synthesizer(val context : LeonContext,
         Variable(id) -> TupleSelect(res, i+1)
       }.toMap
 
-    val fd = new FunDef(FreshIdentifier("finalTerm", true), ret, problem.as.map(id => VarDecl(id, id.getType)))
+    val fd = new FunDef(FreshIdentifier("finalTerm", true), Nil, ret, problem.as.map(id => VarDecl(id, id.getType)))
     fd.precondition  = Some(And(problem.pc, sol.pre))
     fd.postcondition = Some((res.id, replace(mapPost, problem.phi)))
     fd.body          = Some(sol.term)
 
     val newDefs = sol.defs + fd
 
-    val npr = program.copy(mainObject = mainObject.copy(defs = mainObject.defs ++ newDefs))
+    val npr = program.copy(mainModule = mainModule.copy(defs = mainModule.defs ++ newDefs))
 
     (npr, newDefs)
   }

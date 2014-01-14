@@ -59,8 +59,8 @@ class FileInterface(reporter: Reporter) {
 
         before + newCode + after
 
-      case _ =>
-        sys.error("Substitution requires RangePos on the input tree: "+fromTree)
+      case p =>
+        sys.error("Substitution requires RangePos on the input tree: "+fromTree +": "+fromTree.getClass+" GOT" +p)
     }
   }
 

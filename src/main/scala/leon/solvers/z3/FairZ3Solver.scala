@@ -71,57 +71,32 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
   )
   toggleWarningMessages(true)
 
-  def isKnownDef(funDef: FunDef) : Boolean = functionMap.isDefinedAt(funDef)
-  
-  def functionDefToDecl(funDef: FunDef) : Z3FuncDecl = 
-      functionMap.getOrElse(funDef, scala.sys.error("No Z3 definition found for function symbol " + funDef.id.name + "."))
-
-  def isKnownDecl(decl: Z3FuncDecl) : Boolean = reverseFunctionMap.isDefinedAt(decl)
-  
-  def functionDeclToDef(decl: Z3FuncDecl) : FunDef = 
-      reverseFunctionMap.getOrElse(decl, scala.sys.error("No FunDef corresponds to Z3 definition " + decl + "."))
-
-  private var functionMap: Map[FunDef, Z3FuncDecl] = Map.empty
-  private var reverseFunctionMap: Map[Z3FuncDecl, FunDef] = Map.empty
-  private var axiomatizedFunctions : Set[FunDef] = Set.empty
-
-  protected[leon] def prepareFunctions: Unit = {
-    functionMap = Map.empty
-    reverseFunctionMap = Map.empty
-    for (funDef <- program.definedFunctions) {
-      val sortSeq = funDef.args.map(vd => typeToSort(vd.tpe))
-      val returnSort = typeToSort(funDef.returnType)
-
-      val z3Decl = z3.mkFreshFuncDecl(funDef.id.name, sortSeq, returnSort)
-      functionMap = functionMap + (funDef -> z3Decl)
-      reverseFunctionMap = reverseFunctionMap + (z3Decl -> funDef)
-    }
-  }
 
   private def validateModel(model: Z3Model, formula: Expr, variables: Set[Identifier], silenceErrors: Boolean) : (Boolean, Map[Identifier,Expr]) = {
     if(!interrupted) {
 
       val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
       val functionsAsMap: Map[Identifier, Expr] = functionsModel.flatMap(p => {
-        if(isKnownDecl(p._1)) {
-          val fd = functionDeclToDef(p._1)
-          if(!fd.hasImplementation) {
+        if(functions containsZ3 p._1) {
+          val tfd = functions.toLeon(p._1)
+          if(!tfd.hasImplementation) {
             val (cses, default) = p._2 
-            val ite = cses.foldLeft(fromZ3Formula(model, default, Some(fd.returnType)))((expr, q) => IfExpr(
+            val ite = cses.foldLeft(fromZ3Formula(model, default))((expr, q) => IfExpr(
                             And(
-                              q._1.zip(fd.args).map(a12 => Equals(fromZ3Formula(model, a12._1, Some(a12._2.tpe)), Variable(a12._2.id)))
+                              q._1.zip(tfd.args).map(a12 => Equals(fromZ3Formula(model, a12._1), Variable(a12._2.id)))
                             ),
-                            fromZ3Formula(model, q._2, Some(fd.returnType)),
+                            fromZ3Formula(model, q._2),
                             expr))
-            Seq((fd.id, ite))
+            Seq((tfd.id, ite))
           } else Seq()
         } else Seq()
       }).toMap
+
       val constantFunctionsAsMap: Map[Identifier, Expr] = model.getModelConstantInterpretations.flatMap(p => {
-        if(isKnownDecl(p._1)) {
-          val fd = functionDeclToDef(p._1)
-          if(!fd.hasImplementation) {
-            Seq((fd.id, fromZ3Formula(model, p._2, Some(fd.returnType))))
+        if(functions containsZ3 p._1) {
+          val tfd = functions.toLeon(p._1)
+          if(!tfd.hasImplementation) {
+            Seq((tfd.id, fromZ3Formula(model, p._2)))
           } else Seq()
         } else Seq()
       }).toMap
@@ -157,23 +132,23 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
     }
   }
 
-  private val funDefTemplateCache : MutableMap[FunDef, FunctionTemplate] = MutableMap.empty
-  private val exprTemplateCache   : MutableMap[Expr  , FunctionTemplate] = MutableMap.empty
+  private val funDefTemplateCache : MutableMap[TypedFunDef, FunctionTemplate] = MutableMap.empty
+  private val exprTemplateCache   : MutableMap[Expr       , FunctionTemplate] = MutableMap.empty
 
-  private def getTemplate(funDef: FunDef): FunctionTemplate = {
-    funDefTemplateCache.getOrElse(funDef, {
-      val res = FunctionTemplate.mkTemplate(this, funDef, true)
-      funDefTemplateCache += funDef -> res
+  private def getTemplate(tfd: TypedFunDef): FunctionTemplate = {
+    funDefTemplateCache.getOrElse(tfd, {
+      val res = FunctionTemplate.mkTemplate(this, tfd, true)
+      funDefTemplateCache += tfd -> res
       res
     })
   }
 
   private def getTemplate(body: Expr): FunctionTemplate = {
     exprTemplateCache.getOrElse(body, {
-      val fakeFunDef = new FunDef(FreshIdentifier("fake", true), body.getType, variablesOf(body).toSeq.map(id => VarDecl(id, id.getType)))
+      val fakeFunDef = new FunDef(FreshIdentifier("fake", true), Nil, body.getType, variablesOf(body).toSeq.map(id => VarDecl(id, id.getType)))
       fakeFunDef.body = Some(body)
 
-      val res = FunctionTemplate.mkTemplate(this, fakeFunDef, false)
+      val res = FunctionTemplate.mkTemplate(this, fakeFunDef.typed, false)
       exprTemplateCache += body -> res
       res
     })
@@ -209,7 +184,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
         reporter.debug("--- "+gen)
 
         for (((bast), (gen, origGen, ast, fis)) <- entries) {
-          reporter.debug(".     "+bast +" ~> "+fis.map(_.funDef.id))
+          reporter.debug(".     "+bast +" ~> "+fis.map(_.tfd.signature))
         }
       }
     }
@@ -250,14 +225,13 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
       // define an activating boolean...
       val template = getTemplate(expr)
 
-      val z3args = for (vd <- template.funDef.args) yield {
-        exprToZ3Id.get(Variable(vd.id)) match {
+      val z3args = for (vd <- template.tfd.args) yield {
+        variables.getZ3(Variable(vd.id)) match {
           case Some(ast) =>
             ast
           case None =>
             val ast = idToFreshZ3Id(vd.id)
-            exprToZ3Id += Variable(vd.id) -> ast
-            z3IdToExpr += ast -> Variable(vd.id)
+            variables += Variable(vd.id) -> ast
             ast
         }
       }
@@ -305,7 +279,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
       var reintroducedSelf : Boolean = false
 
       for(fi <- fis) {
-        val template              = getTemplate(fi.funDef)
+        val template              = getTemplate(fi.tfd)
         val (newExprs, newBlocks) = template.instantiate(id, fi.args)
 
         for((i, fis2) <- newBlocks) {
@@ -329,12 +303,6 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
   initZ3
 
   val solver = z3.mkSolver
-
-  for(funDef <- program.definedFunctions) {
-    if (funDef.annotations.contains("axiomatize") && !axiomatizedFunctions(funDef)) {
-      reporter.warning("Function " + funDef.id + " was marked for axiomatization but could not be handled.")
-    }
-  }
 
   private var varsInVC = Set[Identifier]()
 
@@ -404,7 +372,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
     val assumptionsAsZ3Set: Set[Z3AST] = assumptionsAsZ3.toSet
 
     def z3CoreToCore(core: Seq[Z3AST]): Set[Expr] = {
-      core.filter(assumptionsAsZ3Set).map(ast => fromZ3Formula(null, ast, None) match {
+      core.filter(assumptionsAsZ3Set).map(ast => fromZ3Formula(null, ast) match {
           case n @ Not(Variable(_)) => n
           case v @ Variable(_) => v
           case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
