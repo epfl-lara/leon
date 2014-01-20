@@ -167,7 +167,7 @@ class NLTemplateSolver(context : LeonContext,
         val (data, ctrsForFun) = getNLConstraints(fd, instVCmodCE, tempVarMap)
         val (disjunct, callsInPath) = data
         if (ctrsForFun == tru) acc
-        else {
+        else {          
           confFunctions += fd
           confDisjuncts :+= disjunct
           callsInPaths ++= callsInPath          
@@ -779,7 +779,13 @@ class NLTemplateSolver(context : LeonContext,
           reporter.info("Number of template constraints: " + temps.size)
           reporter.info("Number of elimVars: " + elimVars.size)
         }                
-        
+        //check if the lnctrs are sat
+        /*val solver = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context, program)))         
+        if(!solver.solveSAT(And(lnctrs.map(_.expr)))._1.isDefined)
+          throw new IllegalStateException("Path not satisfiable")
+        else 
+          println("Path satisfiable")*/
+          
         val elimLnctrs = LinearConstraintUtil.apply1PRuleOnDisjunct(lnctrs, elimVars)
 
         //for stats
@@ -819,7 +825,7 @@ class NLTemplateSolver(context : LeonContext,
         }         
         
         //(b) drop all constraints with dummys from 'elimLnctrs' they aren't useful (this is because of the reason we introduce the identifiers)
-        val newLnctrs = elimLnctrs.filterNot((ln) => variablesOf(ln.expr).exists(TVarFactory.isDummy _))
+        val newLnctrs = elimLnctrs.filterNot((ln) => variablesOf(ln.expr).exists(TVarFactory.isDummy _))        
         
         //TODO: one idea: use the dependence chains in the formulas to identify what to assertionize 
         // and what can never be implied by solving for the templates

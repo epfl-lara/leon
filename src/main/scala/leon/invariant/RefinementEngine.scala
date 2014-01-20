@@ -101,8 +101,27 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     var newheads = Set[Call]()    
     
     //unroll each call in the head pointers (and in toRefineCalls)
-    val callsToProcess = if(toRefineCalls.isDefined) headCalls.intersect(toRefineCalls.get)
-    					 else headCalls
+    val callsToProcess = if(toRefineCalls.isDefined){
+      
+      //pick only those calls that have been least unrolled      
+      val relevCalls = headCalls.intersect(toRefineCalls.get)
+      var minUnrollings = MAX_UNROLLS
+      var minCalls = Set[Call]()
+      relevCalls.foreach((call) => {
+        val calldata = callDataMap(call)            
+        val occurrences  = calldata.parents.count(_ == call.fi.funDef)
+        if(occurrences < minUnrollings) {
+          minUnrollings = occurrences
+          minCalls = Set(call)
+        }
+        else if(occurrences == minUnrollings) {
+          minCalls += call
+        }        
+      })
+      //minCalls are calls that have been least unrolled
+      minCalls
+      
+    } else headCalls
     
     println("Unrolling: "+ callsToProcess.size+"/"+headCalls.size)
     println("Unrolled calls: "+callsToProcess.map(_.expr))
@@ -241,6 +260,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
    * This function refines the constraint tree by assuming the specifications/templates for calls in
    * the body and post tree.
    * Here, assume (pre => post ^ template)
+   * Important: adding templates for unspecdCalls of the previous iterations is empirically more effective
    */
   def assumeSpecifications(newheads : Set[Call]): Set[Call] = {    
     //initialized unspecd calls
@@ -264,8 +284,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
       }
     })
 
-    //try to assume templates for all un-templated calls
-    untemplatedCalls ++= unspecdCalls
+    //try to assume templates for all the current un-templated calls    
     var newUntemplatedCalls = Set[Call]()    
     untemplatedCalls.foreach((call) => {
       //first get the template for the call if one needs to be added
@@ -284,8 +303,10 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
         newUntemplatedCalls += call
       }
     })
-    untemplatedCalls = newUntemplatedCalls
+    untemplatedCalls = newUntemplatedCalls    
     
+    //add unspecd calls to untemplatedcalls
+    untemplatedCalls ++= unspecdCalls
     //update unspecd calls
     unspecdCalls = foundheads
     foundheads

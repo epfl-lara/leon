@@ -273,7 +273,7 @@ object LinearConstraintUtil {
    */
   def replaceInCtr(replaceMap : Map[Expr,Expr], lc : LinearConstraint) : Option[LinearConstraint] = {
     
-    //println("Replacing in "+lc)    
+    //println("Replacing in "+lc+" repMap: "+replaceMap)    
     val newexpr = ExpressionTransformer.simplify(simplifyArithmetic(replace(replaceMap, lc.expr)))
     //println("new expression: "+newexpr)
     
@@ -297,7 +297,8 @@ object LinearConstraintUtil {
     //eliminate one variable at a time
     //each iteration produces a new set of linear constraints
     elimVars.foldLeft(linearCtrs)((acc, elimVar) => {
-      apply1PRuleOnDisjunct(acc, elimVar)
+      val newdisj = apply1PRuleOnDisjunct(acc, elimVar)      
+      newdisj
     })
   }
     
@@ -332,29 +333,33 @@ object LinearConstraintUtil {
             //println("Found equality for "+elimVar+" : "+lc)
             //if the coeffcient of elimVar is +ve the the sign of the coeff of every other term should be changed
             val IntLiteral(elimCoeff) = lc.coeffMap(elimVar.toVariable)
-            val changeSign = if (elimCoeff > 0) true else false
+            //make sure the value of the coefficient is 1 or  -1
+            //TODO: handle cases wherein the coefficient is not 1 or -1
+            if(elimCoeff == 1 || elimCoeff == -1){
+              val changeSign = if (elimCoeff > 0) true else false
 
-            val startval = if (lc.const.isDefined) {
-              val IntLiteral(cval) = lc.const.get
-              val newconst = if (changeSign) -cval else cval
-              IntLiteral(newconst)
+              val startval = if (lc.const.isDefined) {
+                val IntLiteral(cval) = lc.const.get
+                val newconst = if (changeSign) -cval else cval
+                IntLiteral(newconst)
 
-            } else zero
+              } else zero
 
-            val substExpr = lc.coeffMap.foldLeft(startval: Expr)((acc, summand) => {
-              val (term, IntLiteral(coeff)) = summand
-              if (term != elimVar.toVariable) {
+              val substExpr = lc.coeffMap.foldLeft(startval: Expr)((acc, summand) => {
+                val (term, IntLiteral(coeff)) = summand
+                if (term != elimVar.toVariable) {
 
-                val newcoeff = if (changeSign) -coeff else coeff
-                val newsummand = Times(term, IntLiteral(newcoeff))
-                if (acc == zero) newsummand
-                else Plus(acc, newsummand)
+                  val newcoeff = if (changeSign) -coeff else coeff
+                  val newsummand = Times(term, IntLiteral(newcoeff))
+                  if (acc == zero) newsummand
+                  else Plus(acc, newsummand)
 
-              } else acc
-            })
+                } else acc
+              })
 
-            elimExpr = Some(substExpr)
-            elimCtr = Some(lc)
+              elimExpr = Some(substExpr)
+              elimCtr = Some(lc)
+            }            
           }
         } else if ((lc.expr.isInstanceOf[LessEquals] || lc.expr.isInstanceOf[LessThan]) 
             && lc.coeffMap.contains(elimVar.toVariable)) {
