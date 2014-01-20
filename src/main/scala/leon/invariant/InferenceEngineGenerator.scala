@@ -111,8 +111,8 @@ class InferenceEngineGenerator(program: Program,
 
           reporter.info("- More unrollings for invariant inference")
 
-          //val unrolledCalls = vcRefiner.refineAbstraction(toRefineCalls)
-          val unrolledCalls = vcRefiner.refineAbstraction(None)
+          val unrolledCalls = vcRefiner.refineAbstraction(toRefineCalls)
+          //val unrolledCalls = vcRefiner.refineAbstraction(None)
           if (unrolledCalls.isEmpty) {
             reporter.info("- Cannot do more unrollings, reached unroll bound")
             false

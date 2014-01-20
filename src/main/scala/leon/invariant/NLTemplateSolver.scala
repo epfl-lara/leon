@@ -247,7 +247,8 @@ class NLTemplateSolver(context : LeonContext,
                 
                 //here, both cegis and farkas timed out, hence, construct a new combined cegis and farkas constraints
                 val cegisSolver = new CegisCore(context, program, timeout)
-                val (cegisRes2, cegisCtr2, cegisModel2) = cegisSolver.solve(tempIds.toSet, Or(confDisjuncts), inputCtr, solveAsInt = false)
+                val (cegisRes2, cegisCtr2, cegisModel2) = cegisSolver.solve(tempIds.toSet, Or(confDisjuncts), inputCtr, 
+                    solveAsInt = false, initModel = Some(model))
                 cegisRes2 match {
                   //found a model ??
                   case Some(true) => {

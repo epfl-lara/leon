@@ -82,7 +82,8 @@ class CegisCore(context : LeonContext,
    * The parameter solveAsInt when set to true will convert the template constraints 
    * to integer constraints and solve. This should be enabled when bounds are used to constrain the variables   
    */
-  def solve(tempIds: Set[Identifier], formula: Expr, initCtr: Expr, solveAsInt : Boolean)
+  def solve(tempIds: Set[Identifier], formula: Expr, initCtr: Expr, solveAsInt : Boolean, 
+      initModel : Option[Map[Identifier, Expr]] = None)
   	: (Option[Boolean], Expr, Map[Identifier, Expr]) = {
     
     //start a timer
@@ -98,8 +99,11 @@ class CegisCore(context : LeonContext,
     }
 
     //add the initial model    
-    val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
+    val simplestModel = if (initModel.isDefined) initModel.get else {
+      tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
+    }
     addModel(simplestModel)
+     
     
     //convert initCtr to a real-constraint
     val initRealCtr = ExpressionTransformer.convertIntLiteralToReal(initCtr)
