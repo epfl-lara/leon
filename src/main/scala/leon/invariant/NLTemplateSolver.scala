@@ -466,7 +466,7 @@ class NLTemplateSolver(context : LeonContext,
             if (evaluator(ant1, conseq1)) {
               //for debugging
               //if(this.debugAxioms)
-            	println("Axiom pre implied ")
+            	println("Axiom pre1 implied ")
 
               Some(And(ant1, conseq1))
             } else {
@@ -475,7 +475,7 @@ class NLTemplateSolver(context : LeonContext,
               if (evaluator(ant2, conseq2)) {
                 //for debugging
                 //if(this.debugAxioms)
-            	  println("Axiom pre implied ")
+            	  println("Axiom pre2 implied ")
 
                 Some(And(ant2, conseq2))
               } else {

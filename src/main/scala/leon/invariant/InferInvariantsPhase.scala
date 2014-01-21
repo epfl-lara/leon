@@ -47,6 +47,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   var context : LeonContext = null
   var reporter : Reporter = null
   var timeout: Int = 20  //default timeout is 10s
+  var inferTemp = false
   var enumerationRelation : (Expr,Expr) => Expr = LessEquals
   var modularFunctions = Set[FunDef]()
   var useCegis = false
@@ -101,8 +102,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         })
       }
 
-      case v @ LeonValueOption("inferTemp", _) => {
+      case v @ LeonFlagOption("inferTemp", true) => {
 
+        inferTemp = true
         var foundStrongest = false
         //go over all post-conditions and pick the strongest relation
         program.definedFunctions.foreach((fd) => {
@@ -120,7 +122,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         })
       }
 
-      case v @ LeonValueOption("cegis", _) => {
+      case v @ LeonFlagOption("cegis", true) => {
         useCegis = true
       }
 
@@ -243,11 +245,13 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
               Some(true)
             }
             case Some(false) => {
-              reporter.info("- Template not solvable!!")              
-              //refine the templates here
-              val refined = tempFactory.refineTemplates()
-              if (refined) None
-              else Some(false)
+              reporter.info("- Template not solvable!!")
+              //refine the templates if necesary
+              if (inferTemp) {
+                val refined = tempFactory.refineTemplates()
+                if (refined) None
+                else Some(false)
+              } else Some(false)
             }
             case _ => throw new IllegalStateException("This case is not possible")
           }          

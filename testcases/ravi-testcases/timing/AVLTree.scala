@@ -40,7 +40,14 @@ object AVLTree  {
   )*/
 
   def min(i1:Int, i2:Int) : Int = if (i1<=i2) i1 else i2
-  def max(i1:Int, i2:Int) : Int = if (i1>=i2) i1 else i2
+  def max(i1:Int, i2:Int) : Int = if (i1>=i2) i1 else i2  
+  
+  /*def twopower(x: Int) : Int = {
+    //require(x >= 0)
+    if(x < 1) 1    
+    else      
+      3/2 * twopower(x - 1)
+  } ensuring(res => res >= 1 template((a) => a <= 0))*/
   
   def rank(t: Tree) : Int = {
     t match {
@@ -48,17 +55,6 @@ object AVLTree  {
       case Node(_,_,_,rk) => rk
     }
   }
-
-  def size(t: Tree): Int = {
-    require(isAVL(t))
-    
-    (t match {
-      case Leaf() => 0
-      case Node(l, _, r,_) => size(l) + 1 + size(r)
-    })
-    
-  } //ensuring (res => true template((a,b) => twopower(rank(t)) <= a*res + b && a >= 1))  
-  
   
   def height(t: Tree): Int = {
     t match {
@@ -69,86 +65,36 @@ object AVLTree  {
         max(hl,hr) + 1
       }
     }
-  } //ensuring(res => res >= 0 template((a) => a <= 0)) 
-  //ensuring(_ >= 0)
-
-  /*def treeMax(t:Tree) : OptionInt = {
-    t match {
-      case Leaf()      => None()
-      case Node(l,v,r,_) => maxOption(Some(v), maxOption (treeMax(l), treeMax(r)))
-    }
   }
 
-  def treeMin(t:Tree) : OptionInt = {
-    t match {
-      case Leaf()      => None()
-      case Node(l,v,r,_) => minOption(Some(v), minOption (treeMin(l), treeMin(r)))
-    }
-  }
-*/
+  def size(t: Tree): Int = {
+    //require(isAVL(t))
+    
+    (t match {
+      case Leaf() => 0
+      case Node(l, _, r,_) => size(l) + 1 + size(r)
+    })
+    
+  } ensuring (res => true template((a,b) => height(t) <= a*res + b))  
   
-  /*def isBST(t:Tree) : Boolean = {
-    t match {
-      case Leaf() => true
-      case Node(l,v,r,_) => 
-        if (isBST(l) && isBST(r)) {
-          smallerOption(Some(v),bstMin(r)) && 
-          smallerOption(bstMax(l),Some(v))
-        }
-        else false 
-    }
-  }*/
+  def rankHeight(t: Tree) : Boolean = t match {
+    case Leaf() => true 
+    case Node(l,_,r,rk) => rankHeight(l) && rankHeight(r) && rk == height(t)
+  }
   
   def balanceFactor(t : Tree) : Int = {
     t match{
       case Leaf() => 0
       case Node(l, _, r, _) => rank(l) - rank(r)
     }
-  } 
+  }
   
-  def twopower(x: Int) : Int = {
-    //require(x >= 0)
-    if(x < 1) 1    
-    else      
-      2* twopower(x - 1)
-  } //ensuring(res => res >= 1 template((a) => a <= 0))
-
-  def rankHeight(t: Tree) : Boolean = t match {
-    case Leaf() => true 
-    case Node(l,_,r,rk) => rankHeight(l) && rankHeight(r) && rk == height(t)
-  }   
-
   def isAVL(t:Tree) : Boolean = {    
     t match {
         case Leaf() => true        
-        case Node(l,_,r,rk) =>  isAVL(l) && isAVL(r) && balanceFactor(t) >= -1 && balanceFactor(t) <= 1 && rk >= 1 && rankHeight(t) //isBST(t) && 
+        case Node(l,_,r,rk) =>  isAVL(l) && isAVL(r) && balanceFactor(t) >= -1 && balanceFactor(t) <= 1 && rankHeight(t) //isBST(t) && 
       }    
-  } 
-  
-/* def bstMax(t:Tree) : OptionInt = {
-    require(isBST(t))
-    t match {
-      case Leaf() => None() 
-      case Node(_,v,Leaf(),_) => Some(v) 
-      case Node(_,_,r,_)      => bstMax(r)
-    }
-  } ensuring (res => res == treeMax(t))
-
-  def bstMin(t:Tree) : OptionInt = {
-    require(isBST(t))
-    t match {
-      case Leaf() => None()
-      case Node(Leaf(),v,_,_) => Some(v) 
-      case Node(l, _ ,_ ,_) => bstMin(l)
-    }
-  } ensuring (res => res == treeMin(t))*/
-  
-  /*def offByOne(t : Tree) : Boolean = {
-    t match {
-      case Leaf() => true
-      case Node(l,_,r,_) => isAVL(l) && isAVL(r) && balanceFactor(t) >= -2 && balanceFactor(t) <= 2 
-    }
-  }*/
+  }
  
   def unbalancedInsert(t: Tree, e : Int) : Tree = {
     //require(isAVL(t))
@@ -220,6 +166,6 @@ object AVLTree  {
         val hl = max(rank(l),rank(lr)) + 1        
         Node(Node(l,v,lr,hl), vr, rr, max(hl, rank(rr)) + 1)
       case _ => t // this should not happen
-  } } 
+  } }
 }
     
