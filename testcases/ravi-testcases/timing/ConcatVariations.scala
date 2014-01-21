@@ -43,7 +43,7 @@ object ConcatVariations {
     if (m == 0) Nil()
     else append(f_worst(m - 1, n), genL(n))
     
-  } ensuring(res => size(res) == mult(n, m) template((a,b,c,d) => time <= a*mult(mult(n,m),m+1) + b*n + c*m + d))
-  //ensuring(res => size(res) == mult(n, m) template((a,c,d,e,f) => time <= a*mult(mult(n,m),m)+c*mult(n,m)+d*n+e*m+f))    
+  } ensuring(res => size(res) == mult(n, m) template((a,c,d,e,f) => time <= a*mult(mult(n,m),m)+c*mult(n,m)+d*n+e*m+f)) 
+  //ensuring(res => size(res) == mult(n, m) template((a,b,c,d) => time <= a*mult(mult(n,m),m+1) + b*n + c*m + d)) 
   //((((((-8 * m) + (-5 * n)) + (1 * res5._2)) + (-16 * mult1(mult1(n, m), (m + 1)))) + -3) <= 0)
 }

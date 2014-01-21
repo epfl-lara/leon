@@ -1,6 +1,7 @@
 import scala.collection.immutable.Set
 import leon.Utils._
 
+//To be done
 object HeapSort {
   sealed abstract class List
   case class Cons(head:Int,tail:List) extends List
@@ -36,6 +37,13 @@ object HeapSort {
       case Leaf() => 0
       case Node(_,v, l, r) => heapSize(l) + 1 + heapSize(r)
     })
+  } 
+  
+  def mult(x : Int, y : Int) : Int = {
+    //require(x >= 0 && y >= 0)
+      if(x == 0 || y == 0) 0
+      else
+    	  mult(x-1,y-1) +  x + y - 1    	  
   } 
 
   private def merge(h1: Heap, h2: Heap) : Heap = {
@@ -88,15 +96,15 @@ object HeapSort {
   def listSize(l : List) : Int = (l match {
     case Nil() => 0
     case Cons(_, xs) => 1 + listSize(xs)
-  }) ensuring(_ >= 0)
+  })// ensuring(_ >= 0)
   
-  def removeElements(h : Heap, l : List) : List = {
+  /*def removeElements(h : Heap, l : List) : List = {
           require(hasLeftistProperty(h))
    h match {
     case Leaf() => l
     case _ => removeElements(removeMax(h),Cons(findMax(h),l)) 
     
-  }} ensuring(res => true template((a,b,c) => time <= a*mult(leftRightHeight(h), listSize(l)) + b*listSize(l) + c))
+  }} ensuring(res => true template((a,b,c) => time <= a*mult(leftRightHeight(h), listSize(l)) + b*listSize(l) + c))*/
   //ensuring(res => heapSize(h) + listSize(l) == listSize(res))
     
   def buildHeap(l : List, h: Heap) : Heap = {
@@ -109,11 +117,11 @@ object HeapSort {
       template((a,b,c) => time <= a*mult(rightHeight(h), listSize(l)) + b*listSize(l) + c))
   //ensuring(res => hasLeftistProperty(res) && heapSize(h) + listSize(l) == heapSize(res))
  
-  def sort(l: List): List = ({
+  /*def sort(l: List): List = ({
     
     val heap = buildHeap(l,Leaf())
     removeElements(heap, Nil())
     
-  }) //ensuring(res => true template((a,b,c) => time <= a*mult(leftRightHeight(h), listSize(l)) + b*listSize(l) + c))
+  })*/ //ensuring(res => true template((a,b,c) => time <= a*mult(leftRightHeight(h), listSize(l)) + b*listSize(l) + c))
   //ensuring(res => listSize(res) == listSize(l))
 }
