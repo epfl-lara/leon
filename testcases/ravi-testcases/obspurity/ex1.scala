@@ -21,7 +21,7 @@ object ObsPure {
     (global, (global, true))
   }
 
-  //this procedure produces no result
+  //this procedure no result
   def havoc(instate: (Int, Boolean)): (Int, Boolean) = {
     if (nondet[Boolean]) {
       val next_state = f(instate)

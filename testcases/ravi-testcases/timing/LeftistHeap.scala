@@ -34,14 +34,19 @@ object LeftistHeap {
       case Node(_,v, l, r) => size(l) + 1 + size(r)
     })
   } ensuring (res => true template((a,b) => twopower(rightHeight(t)) <= a*res + b))
+  
+  def leftRightHeight(h: Heap) : Int = {h match {
+    case Leaf() => 0
+    case Node(_,_,l,r) => rightHeight(l) 
+  }}
 
-//  def removeMax(h: Heap) : Heap = {
-//    require(hasLeftistProperty(h))
-//    h match {
-//      case Node(_,_,l,r) => merge(l, r)
-//      case l @ Leaf() => l
-//    }
-//  }  
+  def removeMax(h: Heap) : Heap = {
+    require(hasLeftistProperty(h))
+    h match {
+      case Node(_,_,l,r) => merge(l, r)
+      case l @ Leaf() => l
+    }
+  }  ensuring(res => true template((a,b) => time <= a*leftRightHeight(h) + b))
   
   private def merge(h1: Heap, h2: Heap) : Heap = {
     require(hasLeftistProperty(h1) && hasLeftistProperty(h2))
