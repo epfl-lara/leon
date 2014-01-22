@@ -49,7 +49,7 @@ object LeftistHeap {
             makeT(v2, l2, merge(h1, r2))
       }
     }
-  } ensuring(res => true template((a,b,c) => time <= a*rightHeight(h1) + b*rightHeight(h2) + c))
+  } //ensuring(res => true template((a,b,c) => time <= a*rightHeight(h1) + b*rightHeight(h2) + c))
 
   private def makeT(value: Int, left: Heap, right: Heap) : Heap = {
     if(rank(left) >= rank(right))
@@ -63,7 +63,7 @@ object LeftistHeap {
    
     merge(Node(1, element, Leaf(), Leaf()), heap)
     
-  } ensuring(res => true template((a,b,c) => time <= a*rightHeight(heap) + c))
+  } //ensuring(res => true template((a,b,c) => time <= a*rightHeight(heap) + c))
 
   /*def main(args: Array[String]) : Unit = {
     val h1 = emptyHeap()
