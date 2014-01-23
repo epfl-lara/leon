@@ -12,11 +12,7 @@ import leon.Annotations._
 
 object BinomialHeap {    
   sealed abstract class BinomialTree
-  case class Node(rank: Int, elem: Element, children: BinomialHeap) extends BinomialTree
-  
-  sealed abstract class Carry 
-  case class NilCarry() extends Carry
-  case class Some(tree: BinomialTree) extends Carry
+  case class Node(rank: Int, elem: Element, children: BinomialHeap) extends BinomialTree   
   
   sealed abstract class ElementAbs
   case class Element(n: Int) extends ElementAbs
@@ -28,6 +24,10 @@ object BinomialHeap {
   sealed abstract class List
   case class NodeL(head: BinomialHeap, tail: List) extends List
   case class NilL() extends List
+  
+  sealed abstract class OptionalTree
+  case class Some(t : BinomialTree) extends OptionalTree
+  case class None extends OptionalTree
   
   /* Lower or Equal than for Element structure */
   private def leq(a: Element, b: Element) : Boolean = {
@@ -102,7 +102,7 @@ object BinomialHeap {
           t2 match {
             case Node(_, x2, c2) => {
               if (leq(x1,x2)) {
-                  Node(r+1, x1, ConsHeap(t2, c1))
+                  Node(r+1, x1, ConsHeap(t2, c1))  
               } else {
                   Node(r+1, x2, ConsHeap(t1, c2))
               }
@@ -231,175 +231,88 @@ object BinomialHeap {
         }
       }
     }
-  } ensuring (res => true template ((d, e, f) => time <= d * treeNum(h1) + e * treeNum(h2) + f)) 
+  } ensuring (res => true template ((d, e, f) => time <= d * treeNum(h1) + e * treeNum(h2) + f))
 
   /* Helper function to define ensuring clause in removeMinTree */
   /*private def isRemovedMinTreeValid(x : (BinomialTree, BinomialHeap)) : Boolean = {
     val (t,h) = x
     isBinomialTreeValid(t) && isBinomialHeapValid(h)
-  }
+  }*/
 
-   Auxiliary helper function to simplefy findMin and deleteMin 
-  def removeMinTree(h: BinomialHeap) : (BinomialTree, BinomialHeap) = {
-    require(isBinomialHeapValid(h) && !isEmpty(h))
+  //Auxiliary helper function to simplefy findMin and deleteMin  
+  def removeMinTree(h: BinomialHeap): (OptionalTree, BinomialHeap) = {
+    require(!isEmpty(h)) //isBinomialHeapValid(h) && 
     h match {
-      case ConsHeap(head, NilHeap()) => (head, NilHeap())
+      case ConsHeap(head, NilHeap()) => (Some(head), NilHeap())
       case ConsHeap(head1, tail1) => {
-        val (head2, tail2) = removeMinTree(tail1)
-        if (leq(root(head1), root(head2))) {
-          (head1, tail1)
-        } else {
-          (head2, ConsHeap(head1, tail2))
+        val (opthead2, tail2) = removeMinTree(tail1)
+        opthead2 match {
+          case None() => (Some(head1), tail1)
+          case Some(head2) => if (leq(root(head1), root(head2))) {
+            (Some(head1), tail1)
+          } else {
+            (Some(head2), ConsHeap(head1, tail2))
+          }
         }
       }
+      case _ => (None(), NilHeap())
     }
-  } ensuring(res => isRemovedMinTreeValid(res))
+  } ensuring(res => true template((a, b) => time <= a * treeNum(h) + b)) 
+  //ensuring(res => isRemovedMinTreeValid(res))
   
-   Returns the root as the extracted min tree 
-  def findMin(h: BinomialHeap) : Element = {
-	  require(isBinomialHeapValid(h) && !isEmpty(h))
-	  val (t, _) = removeMinTree(h)
+  // Returns the root as the extracted min tree 
+  /*def findMin(h: BinomialHeap) : Element = {
+	  require(!isEmpty(h)) //isBinomialHeapValid(h) &&
+	  val (opt, _) = removeMinTree(h)
+	  opt match {
+	    case 
+	  }
 	  root(t)
-  }
+  } ensuring(res => true template((a,b) => time <= a*treeNum(h) + b))*/ 
   
-   Helper function to concat twos list 
-  private def concat(l1: BinomialHeap, l2: BinomialHeap) : BinomialHeap = l1 match {
+  // Helper function to concat twos list 
+  /*private def concat(l1: BinomialHeap, l2: BinomialHeap) : BinomialHeap = l1 match {
     case NilHeap() => l2
     case ConsHeap(x, xs) => ConsHeap(x, concat(xs, l2))
   }
   
-   Helper function to reverse a list 
+  //Helper function to reverse a list 
   private def rev(l: BinomialHeap) : BinomialHeap = l match {
 	  case NilHeap() => NilHeap()
 	  case ConsHeap(x, xs) => concat(rev(xs), ConsHeap(x, NilHeap()))
-  }
+  }*/
   
-   Discard the minimum element of the extracted min tree and put its children back into the heap 
-  def deleteMin(h: BinomialHeap) : BinomialHeap = {
-	  require(isBinomialHeapValid(h) && !isEmpty(h))
-	  val (min, ts2) = removeMinTree(h)
-	  min match {
-		  case Node(_,_,ts1) => merge(rev(ts1), ts2)
-	  }
-  } ensuring(res => isBinomialHeapValid(h))
-  
-   SORT AREA 
-  
-   Tells if a list of BinomialHeap is empty 
-  def isEmptyList(l: List) = l match {
-    case NodeL(_,_) => false
-    case NilL() => true
-  }
-   Gives the head of a list 
-  def head(l: List) = {
-    require(!isEmptyList(l))
-    l match {
-      case NodeL(h,_) => h
-    }
-  }
-   Gives the tail of a list 
-  def tail(l: List) = {
-    require(!isEmptyList(l))
-    l match {
-      case NodeL(_,t) => t
-    }
-  }
-   Lower than Equal between two heaps, comparing their min element 
-  def leqValueHeap(h1: BinomialHeap, h2: BinomialHeap) : Boolean = {
-    require(isBinomialHeapValid(h1) && isBinomialHeapValid(h2) && !isEmpty(h1) && !isEmpty(h2))
-    leq(findMin(h1), findMin(h2))
-  }
-  
-   Gives the last tree of a binomial heap 
-  private def getLastTree(h1: BinomialHeap) : BinomialTree = {
-    require(!isEmpty(h1))
-    h1 match {
-      case ConsHeap(h, NilHeap()) => h
-      case ConsHeap(_,t) => getLastTree(t)
-    }
-  }
-   Compare two heaps by their binary representations 
-  def leqBinaryHeap(h1: BinomialHeap, h2: BinomialHeap) : Boolean = {
-    require(isBinomialHeapValid(h1) && isBinomialHeapValid(h2) && !isEmpty(h1) && !isEmpty(h2))
-    if (rank(getLastTree(h1)) < rank(getLastTree(h2))) {
-      true
-    } else if (rank(getLastTree(h1)) == rank(getLastTree(h2))) {
-      leq(root(getLastTree(h1)), root(getLastTree(h2)))
-    } else {
-      false
-    }
-  }
-   Compare two heaps and swaps them if the first has an higher first element or if we consider the binary comparison
-  private def swap(h1: BinomialHeap, h2: BinomialHeap, binary: Boolean) : (BinomialHeap, BinomialHeap) = {
-    require(isBinomialHeapValid(h1) && isBinomialHeapValid(h2) && !isEmpty(h1) && !isEmpty(h2))
-    if (binary) {
-      if (leqBinaryHeap(h1,h2)) {
-        (h1,h2) 
-      } else {
-        (h2,h1)
-      }
-    }
-    else {
-      if (leqValueHeap(h1,h2)) {
-        (h1,h2) 
-      } else {
-        (h2,h1)
-      }
-    }
-  } ensuring (res => isBinomialHeapValid(res._1) && isBinomialHeapValid(res._2) && !isEmpty(res._1) && !isEmpty(res._2))
-  
-   Tells if a list contains only valid BinomialHeap 
-  private def isListValid(l: List) : Boolean = l match {
-    case NodeL(h,t) => isBinomialHeapValid(h) && !isEmpty(h) && isListValid(t)
-    case NilL() => true
-  }
-  
-   Delete the last element of the list and gives it back 
-  private def delLast(l: List) : (BinomialHeap, List) = {
-    require(!isEmptyList(l))
-    l match {
-      case NodeL(h, NilL()) => (h, NilL())
-      case NodeL(h,t) => {
-        val dl = delLast(t)
-        (dl._1, NodeL(h, dl._2))
-      }
-      case NilL() => (NilHeap(), NilL())
-    }
-  }
-  
-   Do one step of the bubble sort algorithm. Result list has its highest element at the end 
-  private def bubbleSortStep(l: List, binary: Boolean) : List = {
-    require(isListValid(l))
-    l match {
-      case NodeL(h, NilL()) => NodeL(h, NilL())
-      case NodeL(h,t) => {
-        val sw = swap(h, head(t), binary)
-        NodeL(sw._1, bubbleSortStep(NodeL(sw._2, tail(t)), binary))
-      }
-      case NilL() => NilL()
-    }
-  } ensuring(res => isListValid(res))
-  
-   Concatenate two lists 
-  private def concat(l1: List, l2: List) : List = l1 match {
-    case NilL() => l2
-    case NodeL(x, xs) => NodeL(x, concat(xs, l2))
-  }
-  
-   Do the buble sort algorithm 
-  def bubbleSort(l: List, binary: Boolean) : List = {
-    require(isListValid(l))
-    l match {
-      case NodeL(h, NilL()) => l
-      case NodeL(h, t) => {
-        val dl = delLast(bubbleSortStep(l, binary))
-        concat(bubbleSort(dl._2, binary), NodeL(dl._1, NilL()))
-      }
-      case NilL() => NilL()
-    }
+  def revRec(l1: BinomialHeap, l2: BinomialHeap): BinomialHeap = (l1 match {
+    case NilHeap() => l2
+    case ConsHeap(x, xs) => revRec(xs, ConsHeap(x, l2))
 
-  } ensuring(res => isListValid(res))
-*/  
+  }) ensuring (res =>  true template((a,b) => time <= a*treeNum(l1) + b))
+
+  def rev(l: BinomialHeap): BinomialHeap = {
+    revRec(l, NilHeap())
+    
+  } //ensuring (res => size(l) == size(res) template((a,b) => time <= a*size(l) + b))
+  
+  def minTreeChildren(h: BinomialHeap) : Int = {
+    require(!isEmpty(h))
+    val (min, _) = removeMinTree(h)
+    min match {
+      case None() => 0
+      case Some(Node(_,_,ch)) => treeNum(ch) 
+	}
+  }
+  
+  // Discard the minimum element of the extracted min tree and put its children back into the heap 
+  def deleteMin(h: BinomialHeap) : BinomialHeap = {
+	  require(!isEmpty(h)) //isBinomialHeapValid(h) && 
+	  val (min, ts2) = removeMinTree(h)
+	  min match {	    
+		case Some(Node(_,_,ts1)) => merge(rev(ts1), ts2)
+		case _ => h		  
+	  }
+  } ensuring(res => true template((a,b,c) => time <= a*minTreeChildren(h) + b*treeNum(h) + c))
+  //ensuring(res => isBinomialHeapValid(h))
+
   /* TEST AREA */
   
   /*def BTtest1() : Boolean = isBinomialTreeValid(Node(1, Element(2), ConsHeap(Node(0, Element(3), NilHeap()),NilHeap())))*/ 
