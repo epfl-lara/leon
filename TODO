@@ -1,5 +1,3 @@
-* Invalidate entire paths instead of blocking inputs.
-* Incorporate CEGIS into the tool
 * Incorporate CEGAR using template based interpolant into the tool
 * Perform modular analysis
 
@@ -10,7 +8,6 @@ Note that this has program variables which are integers. To solve this we can ac
 guaranteed to find stronger one. But will we eventually find one ? (unless the invariant polygon is bounded, finding a real is equivalent to finding an integer.)
 If its a bounded polygon all that we need to do is check if its diameter is atleast one (this enforces an integer to be present in the polygon).
 
-* Perform targeted unrolling. Find which functions to unroll, by using the  counter -example disjunct, any other hueristic ?.
 * Infer templates using quantifier elimination and abduction
 * Extend the approach to graph algorithms
 
