@@ -262,7 +262,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
             if (modularlyAnalyze) {
               infRes._2.get.foreach((pair) => {
                 val (fd, inv) = pair
-                tempFactory.setTemplate(fd, inv)
+                if(FunctionInfoFactory.hasTemplate(fd))
+                	tempFactory.setTemplate(fd, inv)
               })
             }
             acc ++ inferredFds

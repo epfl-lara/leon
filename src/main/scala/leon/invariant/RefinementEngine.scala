@@ -42,6 +42,9 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
   //However, these calls except those given by the unspecdCalls have been specified
   private var headCalls = Set[Call]()
 
+  //a set of functions for which we can assume templates
+  private var useTemplates = Set[FunDef]()
+  
   //a set of calls for which templates or specifications have not been assumed
   //TODO: Ideally these info should stored in a distributed way inside the nodes of the constraint tree
   private var untemplatedCalls = Set[Call]()  
@@ -51,6 +54,9 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
   * This creates an initial abstraction 
   **/
   def initialize() : Unit = {
+    
+    //we can use templates for all the functions in the ctrTracker
+    useTemplates ++= ctrTracker.getFuncs
     
     //This procedure has side-effects on many fields.
     headCalls = findAllHeads(ctrTracker)
@@ -157,6 +163,19 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     }    
     unrolls
   }
+  
+  def shouldCreateCtrTree(recFun: FunDef) : Boolean = {
+    if(ctrTracker.hasCtrTree(recFun)) false
+    else {
+      /*val temp = tempFactory.getTemplate(recFun)
+      if(!temp.isDefined) true
+      else {
+        if(InvariantUtil.getTemplateVars(temp.get).isEmpty) false
+        else true
+      }*/
+      true
+    }
+  }
 
   /**
    * Returns a set of unrolled calls and a set of new head functions   
@@ -175,13 +194,15 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
       if(isRecursive) {                        
         var newheads = Set[Call]()
         val recFun = fi.funDef
-        //check if a constraint tree does not exist for the call's target
-        if (!ctrTracker.hasCtrTree(recFun)) { 
-
-          println("Creating VC for "+fi.funDef.id)          
+        useTemplates += recFun
+        
+        //check if we need to create a constraint tree for the call's target
+        //if (!ctrTracker.hasCtrTree(recFun) ) {                     
+        if (shouldCreateCtrTree(recFun)) {
           /**
            * create a new verification condition for this recursive function
-           */          
+           */
+          println("Creating VC for "+fi.funDef.id)
           val freshBody = freshenLocals(matchToIfThenElse(recFun.nondetBody.get))
           val resvar = if (recFun.hasPostcondition) {
             //create a new result variable here for the same reason as freshening the locals,
@@ -288,7 +309,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     var newUntemplatedCalls = Set[Call]()    
     untemplatedCalls.foreach((call) => {
       //first get the template for the call if one needs to be added
-      if (ctrTracker.hasCtrTree(call.fi.funDef)) {
+      if (useTemplates.contains(call.fi.funDef)) {
         val temp = templateForCall(call)
         //create the root of a new  tree          
         val tempTree = CtrNode()        

@@ -95,7 +95,7 @@ object BinomialHeap {
   }*/
   
   /* Linking trees of equal ranks depending on the root element */ 
-  def link(t1: BinomialTree, t2: BinomialTree) : BinomialTree = {
+  /*def link(t1: BinomialTree, t2: BinomialTree) : BinomialTree = {
     //require(isBinomialTreeValid(t1) && isBinomialTreeValid(t2) && rank(t1) == rank(t2))
     t1 match {
         case Node(r, x1, c1) => {
@@ -110,7 +110,7 @@ object BinomialHeap {
           }
         }
     }
-  } //ensuring(res => isBinomialTreeValid(res))
+  }*/ //ensuring(res => isBinomialTreeValid(res))
   
   /* Helper function to validate the input tree of insTree */
   /*private def isTreeValidForInsert(t: BinomialTree, h: BinomialHeap) = h match {
@@ -126,7 +126,7 @@ object BinomialHeap {
   }
   
   /* Insert a tree into a binomial heap. The tree should be correct in relation to the heap */
-  def insTree(t: BinomialTree, h: BinomialHeap) : BinomialHeap = {
+  /*def insTree(t: BinomialTree, h: BinomialHeap) : BinomialHeap = {
     //require(isBinomialTreeValid(t) && isBinomialHeapValid(h) && isTreeValidForInsert(t,h))    
     h match {
       case ConsHeap(head, tail) =>  {
@@ -138,7 +138,7 @@ object BinomialHeap {
       }
       case NilHeap() => ConsHeap(t, NilHeap())
     }
-  } ensuring(res => true template((a,b) => time <= a*treeNum(h) + b))
+  } ensuring(res => true template((a,b) => time <= a*treeNum(h) + b))*/
   //ensuring(res => isBinomialHeapValid(res))
   
   /*def mult(x : Int, y : Int) : Int = {
@@ -175,7 +175,7 @@ object BinomialHeap {
   //ensuring(res => isBinomialHeapValid(res))
       
   /* Merge two heaps together */  
-  def merge(h1: BinomialHeap, h2: BinomialHeap): BinomialHeap = {
+  /*def merge(h1: BinomialHeap, h2: BinomialHeap): BinomialHeap = {
     //require(isBinomialHeapValid(h1) && isBinomialHeapValid(h2))    
     h1 match {
       case ConsHeap(head1, tail1) => {
@@ -194,9 +194,9 @@ object BinomialHeap {
       }
       case NilHeap() => h2
     }
-  } ensuring(res => true template((a,b,c) => time <= a*treeNum(h1) + b*treeNum(h2) + c))
+  } ensuring(res => true template((a,b,c) => time <= a*treeNum(h1) + b*treeNum(h2) + c))*/
 
-  def mergeWithCarry(t: BinomialTree, h1: BinomialHeap, h2: BinomialHeap): BinomialHeap = {
+/*  def mergeWithCarry(t: BinomialTree, h1: BinomialHeap, h2: BinomialHeap): BinomialHeap = {
     //require(isBinomialHeapValid(h1) && isBinomialHeapValid(h2))    
     t match {
       case Node(r, _, _) => {
@@ -231,7 +231,7 @@ object BinomialHeap {
         }
       }
     }
-  } ensuring (res => true template ((d, e, f) => time <= d * treeNum(h1) + e * treeNum(h2) + f))
+  } ensuring (res => true template ((d, e, f) => time <= d * treeNum(h1) + e * treeNum(h2) + f))*/
 
   /* Helper function to define ensuring clause in removeMinTree */
   /*private def isRemovedMinTreeValid(x : (BinomialTree, BinomialHeap)) : Boolean = {
@@ -241,24 +241,44 @@ object BinomialHeap {
 
   //Auxiliary helper function to simplefy findMin and deleteMin  
   def removeMinTree(h: BinomialHeap): (OptionalTree, BinomialHeap) = {
-    require(!isEmpty(h)) //isBinomialHeapValid(h) && 
+    //require(!isEmpty(h)) //isBinomialHeapValid(h) && 
     h match {
-      case ConsHeap(head, NilHeap()) => (Some(head), NilHeap())
+      //case ConsHeap(head, NilHeap()) => (Some(head), NilHeap())
       case ConsHeap(head1, tail1) => {
         val (opthead2, tail2) = removeMinTree(tail1)
-        opthead2 match {
+        (opthead2, tail2)
+        /*opthead2 match {
           case None() => (Some(head1), tail1)
-          case Some(head2) => if (leq(root(head1), root(head2))) {
+          case Some(head2) => (Some(head1), tail1) 
+          
+          if (leq(root(head1), root(head2))) {
             (Some(head1), tail1)
           } else {
             (Some(head2), ConsHeap(head1, tail2))
           }
-        }
+        }*/
       }
       case _ => (None(), NilHeap())
     }
-  } ensuring(res => true template((a, b) => time <= a * treeNum(h) + b)) 
+  } ensuring(res => true template((a, b) => time <= a * treeNum(h) + b))  
   //ensuring(res => isRemovedMinTreeValid(res))
+  
+  
+  /*def minTreeChildren(h: BinomialHeap) : Int = {    
+    val min = removeMinTree(h)
+    min match {
+      case None() => 0
+      case Some(Node(_,_,ch)) => treeNum(ch) 
+	}
+  }
+  
+  def deleteMin(h: BinomialHeap) : BinomialHeap = {	  
+	  val min = removeMinTree(h)
+	  min match {	    
+		case Some(Node(_,_,ts1)) => merge(rev(ts1), ts2)
+		case _ => h		  
+	  }
+  } ensuring(res => true template((a,b,c) => time <= a*minTreeChildren(h) + b*treeNum(h) + c))*/
   
   // Returns the root as the extracted min tree 
   /*def findMin(h: BinomialHeap) : Element = {
@@ -282,35 +302,35 @@ object BinomialHeap {
 	  case ConsHeap(x, xs) => concat(rev(xs), ConsHeap(x, NilHeap()))
   }*/
   
-  def revRec(l1: BinomialHeap, l2: BinomialHeap): BinomialHeap = (l1 match {
+/*  def revRec(l1: BinomialHeap, l2: BinomialHeap): BinomialHeap = (l1 match {
     case NilHeap() => l2
     case ConsHeap(x, xs) => revRec(xs, ConsHeap(x, l2))
 
-  }) ensuring (res =>  true template((a,b) => time <= a*treeNum(l1) + b))
+  }) //ensuring (res =>  true template((a,b) => time <= a*treeNum(l1) + b))
 
   def rev(l: BinomialHeap): BinomialHeap = {
     revRec(l, NilHeap())
     
-  } //ensuring (res => size(l) == size(res) template((a,b) => time <= a*size(l) + b))
+  }*/ //ensuring (res => size(l) == size(res) template((a,b) => time <= a*size(l) + b))
   
-  def minTreeChildren(h: BinomialHeap) : Int = {
+  /*def minTreeChildren(h: BinomialHeap) : Int = {
     require(!isEmpty(h))
     val (min, _) = removeMinTree(h)
     min match {
       case None() => 0
       case Some(Node(_,_,ch)) => treeNum(ch) 
 	}
-  }
+  }*/
   
   // Discard the minimum element of the extracted min tree and put its children back into the heap 
-  def deleteMin(h: BinomialHeap) : BinomialHeap = {
+  /*def deleteMin(h: BinomialHeap) : BinomialHeap = {
 	  require(!isEmpty(h)) //isBinomialHeapValid(h) && 
 	  val (min, ts2) = removeMinTree(h)
 	  min match {	    
 		case Some(Node(_,_,ts1)) => merge(rev(ts1), ts2)
 		case _ => h		  
 	  }
-  } ensuring(res => true template((a,b,c) => time <= a*minTreeChildren(h) + b*treeNum(h) + c))
+  } ensuring(res => true template((a,b,c) => time <= a*minTreeChildren(h) + b*treeNum(h) + c))*/
   //ensuring(res => isBinomialHeapValid(h))
 
   /* TEST AREA */
