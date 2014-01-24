@@ -35,8 +35,11 @@ class CallGraph {
     graph.containsEdge(src, proc)
   }
 
+  /**
+   * sorting functions in ascending topological order 
+   */
   def topologicalOrder: Seq[FunDef] = {
-    //sorting functions in topological order
+    
     def insert(index: Int, l: Seq[FunDef], fd: FunDef): Seq[FunDef] = {
       var i = 0
       var head = Seq[FunDef]()

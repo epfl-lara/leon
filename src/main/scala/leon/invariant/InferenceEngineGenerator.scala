@@ -46,7 +46,7 @@ class InferenceEngineGenerator(program: Program,
   val reporter = context.reporter
   val fls = BooleanLiteral(false)
 
-  def getInferenceEngine(funDef: FunDef, tempFactory: TemplateFactory): (() => (Option[Boolean], Option[Expr])) = {
+  def getInferenceEngine(funDef: FunDef, tempFactory: TemplateFactory): (() => (Option[Boolean], Option[Map[FunDef,Expr]])) = {
 
     //Create and initialize a constraint tracker
     val constTracker = new ConstraintTracker(funDef)
@@ -141,12 +141,13 @@ class InferenceEngineGenerator(program: Program,
           reporter.info("- Verifying Invariants... ")
 
           val verifierRes = verifyInvariant(res.get, funDef)
+          //if (res.get.contains(funDef)) res.get(funDef) else BooleanLiteral(true)
           //val verifierRes = (Some(false),Map())
           verifierRes._1 match {
             case Some(false) => {
               reporter.info("- Invariant verified")
               //return the invariant for the root function
-              (Some(true), Some(if (res.get.contains(funDef)) res.get(funDef) else BooleanLiteral(true)))
+              (Some(true), Some(res.get))
             }
             case Some(true) => {
               reporter.error("- Invalid invariant, model: " + verifierRes._2)
@@ -156,7 +157,7 @@ class InferenceEngineGenerator(program: Program,
               //the solver timed out here
               reporter.error("- Unable to prove or disprove invariant, the invariant is probably true")
               //return the invariant for the root function
-              (Some(true), Some(res.get(funDef)))
+              (Some(true), Some(res.get))
             }
           }
         } else {

@@ -49,7 +49,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   var timeout: Int = 20  //default timeout is 10s
   var inferTemp = false
   var enumerationRelation : (Expr,Expr) => Expr = LessEquals
-  var modularFunctions = Set[FunDef]()
+  var modularlyAnalyze = false
   var useCegis = false
   var maxCegisBound = 200 //maximum bound for the constants in cegis
   var currentCegisBound = 1 //maximum bound for the constants in cegis
@@ -60,9 +60,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   override val definedOptions: Set[LeonOptionDef] = Set(
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
     LeonValueOptionDef("monotones", "--monotones=f1:f2", "Monotonic functions f1,f2,..."),
-    LeonValueOptionDef("modularize", "--modularize=f1:f2", "Perform modular analysis on f1,f2,..."),
+    LeonFlagOptionDef("modularize", "--modularize", "Perform modular analysis i.e, solve callee independent of caller"),
     LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."),
-    LeonValueOptionDef("inferTemp", "--inferTemp=True/false", "Infer templates by enumeration"),
+    LeonFlagOptionDef("inferTemp", "--inferTemp=True/false", "Infer templates by enumeration"),
     LeonValueOptionDef("cegis", "--cegis=True/false", "use cegis instead of farkas"),
     LeonValueOptionDef("stats-suffix", "--stats-suffix=<suffix string>", "the suffix of the statistics file"))
 
@@ -91,15 +91,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         })
       }
 
-      case LeonValueOption("modularize", ListValue(fs)) => {
-        val names = fs.toSet
-        program.definedFunctions.foreach((fd) => {
-          //here, checking for name equality without identifiers
-          if (names.contains(fd.id.name)) {
-            modularFunctions += fd
-            println("Marking " + fd.id + " as modular")
-          }
-        })
+      case LeonFlagOption("modularize", true) => {
+        //do modular analysis
+        modularlyAnalyze =true
       }
 
       case v @ LeonFlagOption("inferTemp", true) => {
@@ -141,8 +135,12 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     //compute functions to analyze by sorting based on topological order
     val callgraph = CallGraphUtil.constructCallGraph(program, withTemplates = true)
 
-    //sort the functions in topological order
-    val functionsToAnalyze = callgraph.topologicalOrder
+    //sort the functions in topological order (this is an ascending topological order)
+    val functionsToAnalyze = if(modularlyAnalyze) {
+      callgraph.topologicalOrder      
+    } else {
+      callgraph.topologicalOrder.reverse
+    } 
 
     reporter.info("Analysis Order: " + functionsToAnalyze.map(_.id))
     
@@ -203,7 +201,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   }
 
  
-  //return a set of functions whose inferrence succeeded
+  //return a set of functions whose inference succeeded
   def analyseProgram(functionsToAnalyze : Seq[FunDef], 
       tempSolverFactory : (ConstraintTracker, TemplateFactory) => TemplateSolver) : Set[FunDef] = {
 
@@ -212,57 +210,69 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     //A template generator that generates templates for the functions (here we are generating templates by enumeration)          
     val tempFactory = new TemplateFactory(Some(new TemplateEnumerator(program, reporter, enumerationRelation)), reporter)
     
-    functionsToAnalyze.foldLeft(Set[FunDef]())((acc, funDef) => {      
+    var analyzedSet = Set[FunDef]()
+    functionsToAnalyze.foldLeft(Set[FunDef]())((acc, funDef) => {
 
-      if (funDef.hasBody && funDef.hasPostcondition) {
-        val body = funDef.nondetBody.get
-        val (resvar, post) = funDef.postcondition.get
+      //skip the function if it has been analyzed
+      if (!analyzedSet.contains(funDef)) {
+        if (funDef.hasBody && funDef.hasPostcondition) {
+          val body = funDef.nondetBody.get
+          val (resvar, post) = funDef.postcondition.get
 
-        reporter.info("- considering function " + funDef.id + "...")
-        reporter.info("Body: " + simplifyLets(body))
-        reporter.info("Post: " + simplifyLets(post))
+          reporter.info("- considering function " + funDef.id + "...")
+          reporter.info("Body: " + simplifyLets(body))
+          reporter.info("Post: " + simplifyLets(post))
 
-        /*if (post == BooleanLiteral(true)) {
+          /*if (post == BooleanLiteral(true)) {
           reporter.info("Post is true, nothing to be proven!!")
         } else {*/
 
-        var solved: Option[Boolean] = None
-        while (!solved.isDefined) {
+          var solved: Option[Boolean] = None
+          var infRes: (Option[Boolean], Option[Map[FunDef,Expr]]) = (None, None)
+          while (!solved.isDefined) {
 
-          val infEngine = infEngineGen.getInferenceEngine(funDef, tempFactory)
-          var infRes: (Option[Boolean], Option[Expr]) = (None, None)
-
-          //each call to infEngine performs unrolling of user-defined procedures in templates
-          while (!infRes._1.isDefined) {
-            infRes = infEngine()
-          }
-          solved = infRes._1 match {
-            case Some(true) => {
-              //here, if modularize flag is set for the function then update the templates with the inferred invariant
-              if (modularFunctions.contains(funDef)) {
-                tempFactory.setTemplate(funDef, infRes._2.get)
+            val infEngine = infEngineGen.getInferenceEngine(funDef, tempFactory)
+            //each call to infEngine performs unrolling of user-defined procedures in templates            
+            do {
+              infRes = infEngine()
+            } while (!infRes._1.isDefined)
+              
+            solved = infRes._1 match {
+              case Some(true) => {                                
+                
+                Some(true)
               }
-              Some(true)
+              case Some(false) => {
+                reporter.info("- Template not solvable!!")
+                //refine the templates if necesary
+                if (inferTemp) {
+                  val refined = tempFactory.refineTemplates()
+                  if (refined) None
+                  else Some(false)
+                } else Some(false)
+              }
+              case _ => throw new IllegalStateException("This case is not possible")
             }
-            case Some(false) => {
-              reporter.info("- Template not solvable!!")
-              //refine the templates if necesary
-              if (inferTemp) {
-                val refined = tempFactory.refineTemplates()
-                if (refined) None
-                else Some(false)
-              } else Some(false)
+          }                   
+
+          if (solved.get) {
+            val inferredFds = (infRes._2.get.keys.toSeq :+ funDef)
+            analyzedSet ++= inferredFds
+            //here, if modularize flag is set then update the templates with the inferred invariant for the analyzed functions
+            if (modularlyAnalyze) {
+              infRes._2.get.foreach((pair) => {
+                val (fd, inv) = pair
+                tempFactory.setTemplate(fd, inv)
+              })
             }
-            case _ => throw new IllegalStateException("This case is not possible")
-          }          
-        }
-        
-        if(solved.get) acc + funDef
-        else  {
-          reporter.info("- Exhausted all templates, cannot infer invariants")          
-          acc
-        }
-      } else acc + funDef
+            acc ++ inferredFds
+          }
+          else {
+            reporter.info("- Exhausted all templates, cannot infer invariants")
+            acc
+          }
+        } else acc + funDef
+      } else acc
     })    
   }
 }
