@@ -1086,6 +1086,27 @@ object TreeOps {
     def traverse(e: Expr): T
   }
 
+  class CollectorWithPaths[T](matcher: PartialFunction[Expr, T]) extends TransformerWithPC {
+    type C = Seq[Expr]
+    val initC = Nil
+    def register(e: Expr, path: C) = path :+ e
+
+    var results: Seq[(T, Expr)] = Nil
+
+    override def rec(e: Expr, path: C) = {
+      if(matcher.isDefinedAt(e)) {
+        val res = matcher(e)
+        results = results :+ (res, And(path))
+        e
+      } else super.rec(e, path)
+    }
+
+    def traverse(e: Expr) = {
+      results = Nil
+      rec(e, initC)
+      results
+    }
+  }
   class ChooseCollectorWithPaths extends TransformerWithPC with Traverser[Seq[(Choose, Expr)]] {
     type C = Seq[Expr]
     val initC = Nil

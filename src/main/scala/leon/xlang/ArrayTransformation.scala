@@ -33,41 +33,12 @@ object ArrayTransformation extends TransformationPhase {
 
 
   def transform(expr: Expr): Expr = (expr match {
-    case sel@ArraySelect(a, i) => {
-      val ra = transform(a)
-      val ri = transform(i)
-      val length = ArrayLength(ra)
-      val res = IfExpr(
-        And(LessEquals(IntLiteral(0), ri), LessThan(ri, length)),
-        ArraySelect(ra, ri).setType(sel.getType).setPos(sel),
-        Error("Index out of bound").setType(sel.getType).setPos(sel)
-      ).setType(sel.getType)
-      res
-    }
     case up@ArrayUpdate(a, i, v) => {
       val ra = transform(a)
       val ri = transform(i)
       val rv = transform(v)
       val Variable(id) = ra
-      val length = ArrayLength(ra)
-      val res = IfExpr(
-        And(LessEquals(IntLiteral(0), ri), LessThan(ri, length)),
-        Assignment(id, ArrayUpdated(ra, ri, rv).setType(ra.getType).setPos(up)),
-        Error("Index out of bound").setType(UnitType).setPos(up)
-      ).setType(UnitType)
-      res
-    }
-    case up@ArrayUpdated(a, i, v) => {
-      val ra = transform(a)
-      val ri = transform(i)
-      val rv = transform(v)
-      val length = ArrayLength(ra)
-      val res = IfExpr(
-        And(LessEquals(IntLiteral(0), ri), LessThan(ri, length)),
-        ArrayUpdated(ra, ri, rv).setType(ra.getType).setPos(up),
-        Error("Index out of bound").setType(ra.getType).setPos(up)
-      ).setType(ra.getType)
-      res
+      Assignment(id, ArrayUpdated(ra, ri, rv).setType(ra.getType).setPos(up))
     }
     case ArrayClone(a) => {
       val ra = transform(a)
