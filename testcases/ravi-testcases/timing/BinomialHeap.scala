@@ -258,7 +258,7 @@ object BinomialHeap {
       }
       case _ => (None(), NilHeap())
     }
-  } ensuring (res => true template ((a, b) => time <= a * treeNum(h) + b))  
+  } ensuring (res => treeNum(res._2) <= treeNum(h) template ((a, b) => time <= a * treeNum(h) + b))  
   //ensuring(res => isRemovedMinTreeValid(res))
   
   // Returns the root as the extracted min tree 
