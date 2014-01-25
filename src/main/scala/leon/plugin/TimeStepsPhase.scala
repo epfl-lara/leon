@@ -226,10 +226,9 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
       }      
     }
 
-    def transform(e: Expr): Expr = e match {
+    //TODO: need to handle Assume 
+    def transform(e: Expr): Expr = e match {    
       case Let(i, v, b) =>
-        // You need to handle this case specifically and differently
-
         val ir = FreshIdentifier("ir", true).setType(v.getType)
         val it = FreshIdentifier("it", true).setType(Int32Type)
         val r = FreshIdentifier("r", true).setType(e.getType)
@@ -238,6 +237,20 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         LetTuple(Seq(ir, it), transform(v),
           LetTuple(Seq(r,t), replace(Map(Variable(i) -> Variable(ir)), transform(b)),
             Tuple(Seq(Variable(r), Plus(Variable(t), Plus(Variable(it), cm.costOfExpr(e)))))
+          )
+        )
+      
+      case LetTuple(ids, v, b) =>
+        val ir = FreshIdentifier("ir", true).setType(v.getType)
+        val it = FreshIdentifier("it", true).setType(Int32Type)
+        val r = FreshIdentifier("r", true).setType(e.getType)
+        val t = FreshIdentifier("t", true).setType(Int32Type)
+        //TODO: reusing the same 'ids' is it safe ??
+        LetTuple(Seq(ir, it), transform(v),
+         LetTuple(ids, ir.toVariable,
+          LetTuple(Seq(r,t), transform(b),
+            Tuple(Seq(Variable(r), Plus(Variable(t), Plus(Variable(it), cm.costOfExpr(e)))))
+            )
           )
         )
 
@@ -280,8 +293,10 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
 
 
     def apply(e: Expr): Expr = {
-      // Removes pattern matching by translating to equivalent if-then-else
-      val input  = matchToIfThenElse(e)
+      //lift all expressions that are used in matches to before matches.
+      val newe =  liftExprInMatch(e)
+      // Removes pattern matching by translating to equivalent if-then-else      
+      val input  = matchToIfThenElse(newe)
       
       // For debugging purposes      
       /*println("#"*80)
@@ -297,6 +312,19 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
       println("AFTER:")      
       println(simple)*/
       simple
+    }
+    
+    def liftExprInMatch(ine: Expr) : Expr = {
+      simplePostTransform((e: Expr) => e match {
+        case MatchExpr(strut, cases) => strut match {
+          case t : Terminal => e
+          case _ => {
+            val freshid = FreshIdentifier("m",true).setType(strut.getType)
+            Let(freshid, strut, MatchExpr(freshid.toVariable, cases))
+          }
+        } 
+        case _ => e        
+      })(ine)
     }
   }
 }

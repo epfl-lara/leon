@@ -49,7 +49,7 @@ object LeftistHeap {
             makeT(v2, l2, merge(h1, r2))
       }
     }
-  } //ensuring(res => true template((a,b,c) => time <= a*rightHeight(h1) + b*rightHeight(h2) + c))
+  } ensuring(res => true template((a,b,c) => time <= a*rightHeight(h1) + b*rightHeight(h2) + c))
 
   private def makeT(value: Int, left: Heap, right: Heap) : Heap = {
     if(rank(left) >= rank(right))
