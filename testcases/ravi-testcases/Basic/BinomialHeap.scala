@@ -186,7 +186,7 @@ object BinomialHeap {
   }
   
   def mergeWithCarry(t: BinomialTree, h1: BinomialHeap, h2: BinomialHeap): BinomialHeap = {
-    require(isBinomialHeapValid(h1) && isBinomialHeapValid(h2) && isValidCarry(t,h1) && isValidCarry(t,h2))    
+    require(isBinomialTreeValid(t) && isBinomialHeapValid(h1) && isBinomialHeapValid(h2) && isValidCarry(t,h1) && isValidCarry(t,h2))    
     t match {
       case Node(r, _, _) => {
         h1 match {
