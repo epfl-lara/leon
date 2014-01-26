@@ -292,7 +292,7 @@ object BinomialHeap {
   def rev(l: BinomialHeap): BinomialHeap = {
     revRec(l, NilHeap())
     
-  } //ensuring (res => size(l) == size(res) template((a,b) => time <= a*size(l) + b))
+  } //ensuring (res => treeNum(l) == treeNum(res) template((a,b) => time <= a*treeNum(l) + b))
   
   def minTreeChildren(h: BinomialHeap) : Int = {
     //require(!isEmpty(h))
