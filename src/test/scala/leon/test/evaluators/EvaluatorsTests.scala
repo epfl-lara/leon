@@ -377,7 +377,12 @@ class EvaluatorsTests extends LeonTestSuite {
     val p = """|object Program {
                |  def boolArrayRead(bools : Array[Boolean], index : Int) : Boolean = bools(index)
                |
-               |  def intArrayRead(bools : Array[Int], index : Int) : Int = bools(index)
+               |  def intArrayRead(ints : Array[Int], index : Int) : Int = ints(index)
+               |
+               |  def intArrayUpdate(ints : Array[Int], index : Int, value: Int) : Int = {
+               |    val na = ints.updated(index, value)
+               |    na(index)
+               |  }
                |}
                |""".stripMargin
 
@@ -393,6 +398,9 @@ class EvaluatorsTests extends LeonTestSuite {
       checkComp(e, mkCall("intArrayRead", ia, IL(0)), IL(41))
       checkComp(e, mkCall("intArrayRead", ia, IL(1)), IL(42))
       checkComp(e, ArrayLength(ia), IL(3))
+
+      checkComp(e, mkCall("intArrayUpdate", ia, IL(0), IL(13)), IL(13))
+      checkComp(e, mkCall("intArrayUpdate", ia, IL(1), IL(17)), IL(17))
 
       checkError(e, mkCall("boolArrayRead", ba, IL(2)))
     }
