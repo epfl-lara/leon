@@ -58,22 +58,43 @@ object BinomialHeap {
   def root(t: BinomialTree) : Element = t match {
     case Node(_, e, _) => e
   }
-  
+
   /* Helper function which tell if a binomial tree is valid */
-  private def isBinomialChildrenValid(ch: BinomialHeap) : Boolean = ch match {
-    case ConsHeap(t, tail) => isBinomialTreeValid(t) && isBinomialChildrenValid(tail)
-    case NilHeap() => true
+  //  private def isBinomialChildrenValid(pare: Element, ch: BinomialHeap) : Boolean = ch match {
+  //    case ConsHeap(t1@Node(r, e, _), tail@ConsHeap(t2,_)) => rank(t2) == r - 1 && leq(pare,e) && isBinomialTreeValid(t1) && isBinomialChildrenValid(pare, tail)
+  //    case ConsHeap(t1@Node(r, e, _), NilHeap()) => leq(pare,e) && isBinomialTreeValid(t1)
+  //    case NilHeap() => true
+  //  }
+  //  private def isBinomialTreeValid(l: BinomialTree) : Boolean = l match {
+  //    case Node(r, e, ch@ConsHeap(t, _)) => rank(t) == r - 1 && isBinomialChildrenValid(e, ch)
+  //    case Node(_, _, NilHeap()) => true
+  //  }
+  //  
+  //  // Helper function which tell if a binomial heap is valid 
+  //  private def isBinomialHeapValid(h: BinomialHeap) : Boolean = h match {
+  //      case ConsHeap(e, tail@ConsHeap(e2, _)) => rank(e) < rank(e2) && isBinomialTreeValid(e) && isBinomialHeapValid(tail)
+  //      case ConsHeap(e, NilHeap()) => isBinomialTreeValid(e) 
+  //      case NilHeap() => true
+  //  }
+
+  def checkChildren(index: Int, origRank: Int, origElem: Element, children: BinomialHeap): Boolean = children match {
+    case ConsHeap(h, t) => h match {
+      case Node(r1, e1, _) => leq(origElem, e1) && r1 == origRank - index - 1 && isBinomialTreeValid(h) && checkChildren(index + 1, origRank, origElem, t)
+    }
+    case NilHeap() => index == origRank
   }
   private def isBinomialTreeValid(l: BinomialTree) : Boolean = l match {
-    case Node(r, e, ConsHeap(t@Node(r2, e2, c2), tail)) => leq(e, e2) && r2 == r - 1 && isBinomialTreeValid(t) && isBinomialChildrenValid(tail)
-    case Node(_, _, NilHeap()) => true
-  }
-  
-  // Helper function which tell if a binomial heap is valid 
-  private def isBinomialHeapValid(h: BinomialHeap) : Boolean = h match {
-      case ConsHeap(e, tail@ConsHeap(e2, _)) => rank(e) < rank(e2) && isBinomialTreeValid(e) && isBinomialHeapValid(tail)
-      case ConsHeap(e, NilHeap()) => isBinomialTreeValid(e) 
+    case Node(r, e, c) => {      
+      checkChildren(0, r, e, c)
+    }
+  }  
+  def isBinomialHeapValidStep(h1: BinomialHeap, oldR: Int) : Boolean = h1 match {
+      case ConsHeap(e, tail) => oldR < rank(e) && isBinomialHeapValidStep(tail, rank(e)) && isBinomialTreeValid(e)
       case NilHeap() => true
+  }
+  // Helper function which tell if a binomial heap is valid 
+  private def isBinomialHeapValid(h: BinomialHeap) : Boolean ={    
+    isBinomialHeapValidStep(h, -1)
   }
   
   /*private def rankIncrease(h: BinomialHeap) : Boolean = {
@@ -226,31 +247,34 @@ object BinomialHeap {
   } ensuring (res => isBinomialHeapValid(res))
 
   /* Helper function to define ensuring clause in removeMinTree */
-  private def isRemovedMinTreeValid(x : (BinomialTree, BinomialHeap)) : Boolean = {
-    val (t,h) = x
-    isBinomialTreeValid(t) && isBinomialHeapValid(h)
+  private def isRemovedMinTreeValid(x : (OptionalTree, BinomialHeap)) : Boolean = {
+    val (opt,h) = x
+    opt match {	    
+		case Some(t) => isBinomialTreeValid(t) && isBinomialHeapValid(h)
+		case _ => isBinomialHeapValid(h)		  
+	  }
   }
 
   //Auxiliary helper function to simplefy findMin and deleteMin  
-//  def removeMinTree(h: BinomialHeap): (OptionalTree, BinomialHeap) = {
-//    require(!isEmpty(h) && isBinomialHeapValid(h)) 
-//    h match {
-//      case ConsHeap(head, NilHeap()) => (Some(head), NilHeap())
-//      case ConsHeap(head1, tail1) => {
-//        val (opthead2, tail2) = removeMinTree(tail1)
-//        opthead2 match {
-//          case None() => (Some(head1), tail1)
-//          case Some(head2) =>
-//            if (leq(root(head1), root(head2))) {
-//              (Some(head1), tail1)
-//            } else {
-//              (Some(head2), ConsHeap(head1, tail2))
-//            }
-//        }
-//      }
-//      case _ => (None(), NilHeap())
-//    }
-//  } ensuring(res => isRemovedMinTreeValid(res))
+  def removeMinTree(h: BinomialHeap): (OptionalTree, BinomialHeap) = {
+    require(!isEmpty(h) && isBinomialHeapValid(h)) 
+    h match {
+      case ConsHeap(head, NilHeap()) => (Some(head), NilHeap())
+      case ConsHeap(head1, tail1) => {
+        val (opthead2, tail2) = removeMinTree(tail1)
+        opthead2 match {
+          case None() => (Some(head1), tail1)
+          case Some(head2) =>
+            if (leq(root(head1), root(head2))) {
+              (Some(head1), tail1)
+            } else {
+              (Some(head2), ConsHeap(head1, tail2))
+            }
+        }
+      }
+      case _ => (None(), NilHeap())
+    }
+  } ensuring(res => isRemovedMinTreeValid(res))
   
 //  def revRec(l1: BinomialHeap, l2: BinomialHeap): BinomialHeap = (l1 match {
 //    case NilHeap() => l2
@@ -261,16 +285,16 @@ object BinomialHeap {
 //  def rev(l: BinomialHeap): BinomialHeap = {
 //    revRec(l, NilHeap())    
 //  } 
-//  
-//  // Discard the minimum element of the extracted min tree and put its children back into the heap 
-//  def deleteMin(h: BinomialHeap) : BinomialHeap = {
-//	  require(!isEmpty(h) && isBinomialHeapValid(h)) 
-//	  val (min, ts2) = removeMinTree(h)
-//	  min match {	    
-//		case Some(Node(_,_,ts1)) => merge(rev(ts1), ts2)
-//		case _ => h		  
-//	  }
-//  } ensuring(res => isBinomialHeapValid(h))
+  
+  // Discard the minimum element of the extracted min tree and put its children back into the heap 
+  def deleteMin(h: BinomialHeap) : BinomialHeap = {
+	  require(!isEmpty(h) && isBinomialHeapValid(h)) 
+	  val (min, ts2) = removeMinTree(h)
+	  min match {	    
+		case Some(Node(_,_,ts1)) => merge(ts1, ts2)
+		case _ => h		  
+	  }
+  } ensuring(res => isBinomialHeapValid(h))
 
   /* TEST AREA */
   
