@@ -41,7 +41,8 @@ import leon.verification.VerificationReport
 //TODO: Do we need to also assert that time is >= 0
 class InferenceEngineGenerator(program: Program,
   context: LeonContext,  
-  tempSolverFactory : (ConstraintTracker, TemplateFactory, FunDef) => TemplateSolver) {
+  tempSolverFactory : (ConstraintTracker, TemplateFactory, FunDef) => TemplateSolver,
+  targettedUnroll: Boolean) {
 
   val reporter = context.reporter
   val fls = BooleanLiteral(false)
@@ -111,8 +112,8 @@ class InferenceEngineGenerator(program: Program,
 
           reporter.info("- More unrollings for invariant inference")
 
-          val unrolledCalls = vcRefiner.refineAbstraction(toRefineCalls)
-          //val unrolledCalls = vcRefiner.refineAbstraction(None)
+          val toUnrollCalls = if(targettedUnroll) toRefineCalls else None
+          val unrolledCalls = vcRefiner.refineAbstraction(toUnrollCalls)          
           if (unrolledCalls.isEmpty) {
             reporter.info("- Cannot do more unrollings, reached unroll bound")
             false

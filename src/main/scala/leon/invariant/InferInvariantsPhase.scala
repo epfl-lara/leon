@@ -50,9 +50,10 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   
   //defualt true flags
   var modularlyAnalyze = true
-  var tightBounds = false
+  var targettedUnroll = true
   
   //default false flags
+  var tightBounds = false
   var inferTemp = false
   var enumerationRelation : (Expr,Expr) => Expr = LessEquals  
   var useCegis = false
@@ -66,6 +67,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     //LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
     LeonValueOptionDef("monotones", "--monotones=f1:f2", "Monotonic functions f1,f2,..."),
     LeonFlagOptionDef("wholeprogram", "--wholeprogram", "Perform an non-modular whole program analysis"),
+    LeonFlagOptionDef("fullunroll", "--fullunroll", "Unroll all calls in every unroll step"),
     LeonFlagOptionDef("minbounds", "--minbounds", "tighten time bounds"),
     LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."),
     LeonFlagOptionDef("inferTemp", "--inferTemp=True/false", "Infer templates by enumeration"),
@@ -97,9 +99,14 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         })
       }
 
-      case LeonFlagOption("wholeprogam", true) => {
-        //do not do a modular analysis
+      case LeonFlagOption("wholeprogram", true) => {
+        //do not do a modular analysis        
         modularlyAnalyze =false
+      }
+      
+      case LeonFlagOption("fullunroll", true) => {
+        //do not do a modular analysis
+        targettedUnroll =false
       }
       
       case LeonFlagOption("minbounds", true) => {          
@@ -216,7 +223,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       tempSolverFactory : (ConstraintTracker, TemplateFactory, FunDef) => TemplateSolver) : Set[FunDef] = {
 
     //this is an inference engine that checks if there exists an invariant belonging to the current templates 
-    val infEngineGen = new InferenceEngineGenerator(program, context, tempSolverFactory)
+    val infEngineGen = new InferenceEngineGenerator(program, context, tempSolverFactory, targettedUnroll)
     //A template generator that generates templates for the functions (here we are generating templates by enumeration)          
     val tempFactory = new TemplateFactory(Some(new TemplateEnumerator(program, reporter, enumerationRelation)), reporter)
     
