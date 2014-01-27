@@ -35,10 +35,11 @@ import leon.solvers._
 
 class CegisSolver(context : LeonContext, 
     program : Program,
+    rootFun : FunDef,
     ctrTracker : ConstraintTracker, 
     tempFactory: TemplateFactory,    
     timeout: Int,
-    bound: Option[Int] = None) extends TemplateSolver(context, program, ctrTracker, tempFactory, timeout) {
+    bound: Option[Int] = None) extends TemplateSolver(context, program, rootFun, ctrTracker, tempFactory, timeout) {
         
   override def solve(tempIds: Set[Identifier], funcVCs: Map[FunDef, Expr]): (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
 
@@ -309,10 +310,11 @@ class CegisCoreIncr(context : LeonContext,
 
 class CegisSolverIncr(context : LeonContext, 
     program : Program,
+    rootFun : FunDef,
     ctrTracker : ConstraintTracker, 
     tempFactory: TemplateFactory,    
     timeout: Int,
-    bound: Option[Int] = None) extends TemplateSolver(context, program, ctrTracker, tempFactory, timeout) {
+    bound: Option[Int] = None) extends TemplateSolver(context, program, rootFun, ctrTracker, tempFactory, timeout) {
         
   override def solve(tempIds: Set[Identifier], funcVCs: Map[FunDef, Expr]): (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
     

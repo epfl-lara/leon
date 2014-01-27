@@ -224,8 +224,7 @@ object InvariantUtil {
     })
   } 
 
-  def gcd(x: Int, y : Int) : Int ={
-    require(x >=0 && y >= 0)    
+  def gcd(x: Int, y : Int) : Int ={            
     if(x == 0) y 
     else gcd(y % x, x)
   }  

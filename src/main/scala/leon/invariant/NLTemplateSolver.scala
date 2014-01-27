@@ -36,9 +36,11 @@ import leon.purescala.ScalaPrinter
 
 class NLTemplateSolver(context : LeonContext, 
     program : Program,
+    rootFun : FunDef,
     ctrTracker : ConstraintTracker, 
     tempFactory: TemplateFactory,    
-    timeout: Int) extends TemplateSolver(context, program, ctrTracker, tempFactory, timeout) {
+    timeout: Int, 
+    tightBounds : Boolean) extends TemplateSolver(context, program, rootFun, ctrTracker, tempFactory, timeout) {
   
   private val farkasSolver = new FarkasLemmaSolver()  
   
@@ -110,6 +112,7 @@ class NLTemplateSolver(context : LeonContext,
     sol
   }
 
+  //TODO: this code is very ugly, fix this asap
   def recSolve(model: Map[Identifier, Expr],
     funcVCs: Map[FunDef, Expr],
     inputCtr: Expr,
@@ -333,7 +336,30 @@ class NLTemplateSolver(context : LeonContext,
       }
       case Some(false) => {
         //here, the vcs are unsatisfiable when instantiated with the invariant
-        (Some(getAllInvariants(model)), None)
+        if (tightBounds) {
+          //try to find a minimum model: if the minimum is same as the current model then return, otherwise recurse with the minimum model
+          val minModel = tightenTimeBounds(inputCtr, model)
+          val minVarMap: Map[Expr, Expr] = minModel.map((elem) => (elem._1.toVariable, elem._2)).toMap
+          if (minModel == model)
+            (Some(getAllInvariants(model)), None)
+          else {
+            val isInv = funcVCs.keys.forall((fd) => {
+              val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), minVarMap))
+              val solver = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context, program)))
+              val (res, _) = solver.solveSAT(instVC)
+              res match {
+                case Some(false) => true
+                case _ => false
+              }
+            })
+            if (isInv)
+              (Some(getAllInvariants(minModel)), None)
+            else
+              recSolve(minModel, funcVCs, inputCtr, solvedDisjs, solverWithCtr, seenCalls)
+          }
+        } else {
+          (Some(getAllInvariants(model)), None)
+        }
       }
       case Some(true) => {
         //here, we have found a new candidate invariant. Hence, the above process needs to be repeated

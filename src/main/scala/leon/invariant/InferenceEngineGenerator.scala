@@ -41,7 +41,7 @@ import leon.verification.VerificationReport
 //TODO: Do we need to also assert that time is >= 0
 class InferenceEngineGenerator(program: Program,
   context: LeonContext,  
-  tempSolverFactory : (ConstraintTracker, TemplateFactory) => TemplateSolver) {
+  tempSolverFactory : (ConstraintTracker, TemplateFactory, FunDef) => TemplateSolver) {
 
   val reporter = context.reporter
   val fls = BooleanLiteral(false)
@@ -96,7 +96,7 @@ class InferenceEngineGenerator(program: Program,
     constTracker.addPostConstraints(funDef, fullPost)
 
     //create entities that uses the constraint tracker
-    val tempSolver = tempSolverFactory(constTracker, tempFactory)
+    val tempSolver = tempSolverFactory(constTracker, tempFactory, funDef)
     val vcRefiner = new RefinementEngine(program, constTracker, tempFactory, reporter)
     vcRefiner.initialize()
 

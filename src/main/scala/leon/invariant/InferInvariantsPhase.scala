@@ -47,9 +47,14 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   var context : LeonContext = null
   var reporter : Reporter = null
   var timeout: Int = 20  //default timeout is 10s
+  
+  //defualt true flags
+  var modularlyAnalyze = true
+  var tightBounds = false
+  
+  //default false flags
   var inferTemp = false
-  var enumerationRelation : (Expr,Expr) => Expr = LessEquals
-  var modularlyAnalyze = false
+  var enumerationRelation : (Expr,Expr) => Expr = LessEquals  
   var useCegis = false
   var maxCegisBound = 200 //maximum bound for the constants in cegis
   var currentCegisBound = 1 //maximum bound for the constants in cegis
@@ -58,15 +63,16 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   val dumpStats = true
   
   override val definedOptions: Set[LeonOptionDef] = Set(
-    LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
+    //LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
     LeonValueOptionDef("monotones", "--monotones=f1:f2", "Monotonic functions f1,f2,..."),
-    LeonFlagOptionDef("modularize", "--modularize", "Perform modular analysis i.e, solve callee independent of caller"),
+    LeonFlagOptionDef("wholeprogram", "--wholeprogram", "Perform an non-modular whole program analysis"),
+    LeonFlagOptionDef("minbounds", "--minbounds", "tighten time bounds"),
     LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."),
     LeonFlagOptionDef("inferTemp", "--inferTemp=True/false", "Infer templates by enumeration"),
     LeonValueOptionDef("cegis", "--cegis=True/false", "use cegis instead of farkas"),
     LeonValueOptionDef("stats-suffix", "--stats-suffix=<suffix string>", "the suffix of the statistics file"))
 
-  //TODO provide options  
+  //TODO provide options for analyzing only selected functions
   def run(ctx: LeonContext)(prog: Program): VerificationReport = {
 
     context = ctx
@@ -91,9 +97,13 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         })
       }
 
-      case LeonFlagOption("modularize", true) => {
-        //do modular analysis
-        modularlyAnalyze =true
+      case LeonFlagOption("wholeprogam", true) => {
+        //do not do a modular analysis
+        modularlyAnalyze =false
+      }
+      
+      case LeonFlagOption("minbounds", true) => {          
+        tightBounds = true
       }
 
       case v @ LeonFlagOption("inferTemp", true) => {
@@ -148,8 +158,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     if(!useCegis) {
       
       //create a solver factory
-      val templateSolverFactory = (constTracker: ConstraintTracker, tempFactory: TemplateFactory) => {
-        new NLTemplateSolver(context, program, constTracker, tempFactory, timeout)
+      val templateSolverFactory = (constTracker: ConstraintTracker, tempFactory: TemplateFactory, rootFun: FunDef) => {
+        new NLTemplateSolver(context, program, rootFun, constTracker, tempFactory, timeout, tightBounds)
       }
       /*val templateSolverFactory = (constTracker: ConstraintTracker, tempFactory: TemplateFactory) => {
         new ParallelTemplateSolver(context, program, constTracker, tempFactory, timeout)
@@ -167,8 +177,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           //for stats          
           Stats.boundsTried += 1                    
           //create a solver factory, ignoring timeouts here                   
-          val templateSolverFactory = (constTracker: ConstraintTracker, tempFactory: TemplateFactory) => {
-            new CegisSolver(context, program, constTracker, tempFactory, 10000, Some(b))
+          val templateSolverFactory = (constTracker: ConstraintTracker, tempFactory: TemplateFactory, rootFun: FunDef) => {
+            new CegisSolver(context, program, rootFun, constTracker, tempFactory, 10000, Some(b))
           }
           val succeededFuncs = analyseProgram(remFuncs, templateSolverFactory)
           remFuncs = remFuncs.filterNot(succeededFuncs.contains _)
@@ -203,7 +213,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
  
   //return a set of functions whose inference succeeded
   def analyseProgram(functionsToAnalyze : Seq[FunDef], 
-      tempSolverFactory : (ConstraintTracker, TemplateFactory) => TemplateSolver) : Set[FunDef] = {
+      tempSolverFactory : (ConstraintTracker, TemplateFactory, FunDef) => TemplateSolver) : Set[FunDef] = {
 
     //this is an inference engine that checks if there exists an invariant belonging to the current templates 
     val infEngineGen = new InferenceEngineGenerator(program, context, tempSolverFactory)
