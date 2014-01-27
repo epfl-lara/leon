@@ -29,3 +29,6 @@ runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testc
 
 #AVL tree
 runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/AVLTree.scala --stats-suffix=-nl-stats --modularize" > avl-nl-out.txt
+
+#Binomial Heap
+runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/BinomialHeap.scala --stats-suffix=-nl-stats --modularize" > binomialheap-nl-out.txt
