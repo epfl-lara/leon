@@ -24,7 +24,7 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
   val description = "Handles non-determinism in programs"  
     
   //a mapping from programs to nondeterministic procedures (this comprises all callers of nondet[T])
-  var nondetProcs : Set[FunDef] = null  
+  var nondetProcs = Set[FunDef]()   
   /**  
    * Returns true if the experssion uses nondet or if it calls a procedure that 
    * uses nondet
@@ -51,7 +51,7 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
     // Map from old fundefs to new fundefs
 	var funMap = Map[FunDef, FunDef]()
   
-	//find functions that use nondet in the body or are transitively called from such functions
+	//find functions that use nondet in the body or atransitively call such functions
 	var rootFuncs = Set[FunDef]()
 	program.definedFunctions.foreach((fd) => { 	  
 	  if(fd.hasBody && NondeterminismExtension.hasNondet(fd.body.get)) {	    

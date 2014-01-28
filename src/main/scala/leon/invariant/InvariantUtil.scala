@@ -24,6 +24,9 @@ import leon.verification.VerificationReport
 import leon.invariant._
 import scala.collection.mutable.{Set => MutableSet}
 import java.io._
+import leon.solvers.z3.UIFZ3Solver
+import leon.solvers.SimpleSolverAPI
+import leon.solvers.SolverFactory
 
 object FileCountGUID {
 	 var fileCount = 0
@@ -228,6 +231,41 @@ object InvariantUtil {
     if(x == 0) y 
     else gcd(y % x, x)
   }  
+  
+  def toZ3SMTLIB(expr: Expr, filename: String, theory: String, ctx: LeonContext, pgm: Program)  = {
+    //create new solver, assert constraints and print
+    val printSol = new UIFZ3Solver(ctx, pgm)
+    printSol.assertCnstr(expr)    
+    val writer = new PrintWriter(filename)
+    writer.println(printSol.ctrsToString(theory))
+    printSol.free()
+    writer.flush()
+    writer.close()
+  }
+
+  /**
+   * A helper function that can be used to hardcode an invariant and see if it unsatifies the paths
+   */
+  def checkInvariant(expr: Expr, ctx: LeonContext, prog: Program) : Option[Boolean] = {    
+    val thirty = IntLiteral(30)
+    val idmap: Map[Expr, Expr] = variablesOf(expr).collect { case id @ _ if (id.name.toString == "e?" || id.name.toString == "f?") => (id.toVariable -> thirty) }.toMap
+    //println("found ids: " + idmap.keys)
+    if (!idmap.keys.isEmpty) {
+      val newpathcond = replace(idmap, expr)
+      //check if this is solvable
+      val solver = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(ctx, prog)))
+      solver.solveSAT(newpathcond)._1 match {
+        case Some(true) => {
+          println("Path satisfiable for e?,f? -->30 ")
+          Some(true)
+        }
+        case _ => {
+          println("Path unsat for e?,f? --> 30")
+          Some(false)
+        }
+      }
+    } else None
+  }
 }
 
 /**

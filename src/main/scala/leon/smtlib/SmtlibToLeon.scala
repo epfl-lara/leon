@@ -198,7 +198,8 @@ object SmtlibToLeon {
           else throw new IllegalStateException("Cannot find mapping for symbol: " + idname)
         }
         case SInt(i) => IntLiteral(i.toInt)
-        case SDouble(i) => throw new IllegalStateException("Not handling doubles as of now")
+        case SDouble(i) => Variable(FreshIdentifier(i.toString).setType(RealType)) 
+          //throw new IllegalStateException("Not handling doubles as of now")
         case _ => throw new IllegalStateException("Cannot convert to tree: " + body)
       }
     }
@@ -218,8 +219,8 @@ object SmtlibToLeon {
   def getType(sym : SSymbol) : TypeTree = {
     sym.s match {
       case "INT" => Int32Type
-      case "BOOL" => BooleanType
-      case "DOUBLE" => RealType
+      case "BOOL" => BooleanType      
+      case "REAL" => RealType
       case _  if(typemap.contains(sym)) => typemap(sym)
       case _ => throw IllegalStateException("Type not supported: "+sym)
     }

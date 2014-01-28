@@ -292,18 +292,32 @@ object LinearConstraintUtil {
     /**
    * Eliminates the specified variables from a conjunction of linear constraints (a disjunct) (that is satisfiable)
    * We assume that the disjunct is in nnf form
+   * 
+   * debugger is a function used for debugging
    */
-  def apply1PRuleOnDisjunct(linearCtrs: Seq[LinearConstraint], elimVars: Set[Identifier]): Seq[LinearConstraint] = {    
+  val debugElimination = false
+  def apply1PRuleOnDisjunct(linearCtrs: Seq[LinearConstraint], elimVars: Set[Identifier], 
+      debugger: Option[(Seq[LinearConstraint] => Unit)]): Seq[LinearConstraint] = {    
     //eliminate one variable at a time
     //each iteration produces a new set of linear constraints
     elimVars.foldLeft(linearCtrs)((acc, elimVar) => {
       val newdisj = apply1PRuleOnDisjunct(acc, elimVar)      
+      
+      if(debugElimination) {
+        if(debugger.isDefined) {
+          debugger.get(newdisj)
+        }        
+      }
+      
       newdisj
     })
   }
-    
+      
   def apply1PRuleOnDisjunct(linearCtrs: Seq[LinearConstraint], elimVar: Identifier): Seq[LinearConstraint] = {
     
+    if(debugElimination)
+      println("Trying to eliminate: "+elimVar)
+
     //collect all relevant constraints
     val emptySeq = Seq[LinearConstraint]()
     val (relCtrs, rest) = linearCtrs.foldLeft((emptySeq,emptySeq))((acc,lc) => {
@@ -321,67 +335,69 @@ object LinearConstraintUtil {
     var elimCtr : Option[LinearConstraint] = None
     var allUpperBounds : Boolean = true
     var allLowerBounds : Boolean = true
+    var foundEquality : Boolean = false
 
     relCtrs.foreach((lc) => {
-      if (!elimExpr.isDefined || !elimExpr.get.isInstanceOf[IntLiteral]) {
-        
-        //check for an equality
-        if (lc.expr.isInstanceOf[Equals] && lc.coeffMap.contains(elimVar.toVariable)) {
+      //check for an equality      
+      if (lc.expr.isInstanceOf[Equals] && lc.coeffMap.contains(elimVar.toVariable)) {
+        foundEquality = true
 
-          //here, sometimes we replace an existing expression with a better one if available
-          if (!elimExpr.isDefined || (lc.coeffMap.size == 1) || (!elimExpr.get.isInstanceOf[Terminal] && lc.coeffMap.size==2)) {
-            //println("Found equality for "+elimVar+" : "+lc)
-            //if the coeffcient of elimVar is +ve the the sign of the coeff of every other term should be changed
-            val IntLiteral(elimCoeff) = lc.coeffMap(elimVar.toVariable)
-            //make sure the value of the coefficient is 1 or  -1
-            //TODO: handle cases wherein the coefficient is not 1 or -1
-            if(elimCoeff == 1 || elimCoeff == -1){
-              val changeSign = if (elimCoeff > 0) true else false
-
-              val startval = if (lc.const.isDefined) {
-                val IntLiteral(cval) = lc.const.get
-                val newconst = if (changeSign) -cval else cval
-                IntLiteral(newconst)
-
-              } else zero
-
-              val substExpr = lc.coeffMap.foldLeft(startval: Expr)((acc, summand) => {
-                val (term, IntLiteral(coeff)) = summand
-                if (term != elimVar.toVariable) {
-
-                  val newcoeff = if (changeSign) -coeff else coeff
-                  val newsummand = Times(term, IntLiteral(newcoeff))
-                  if (acc == zero) newsummand
-                  else Plus(acc, newsummand)
-
-                } else acc
-              })
-
-              elimExpr = Some(substExpr)
-              elimCtr = Some(lc)
-            }            
-          }
-        } else if ((lc.expr.isInstanceOf[LessEquals] || lc.expr.isInstanceOf[LessThan]) 
-            && lc.coeffMap.contains(elimVar.toVariable)) {
-
+        //if (!elimExpr.isDefined || (lc.coeffMap.size == 1) || (!elimExpr.get.isInstanceOf[Terminal] && lc.coeffMap.size==2)) {
+        //here, sometimes we replace an existing expression with a better one if available                    
+        if (!elimExpr.isDefined || shouldReplace(elimExpr.get, lc, elimVar)) {
+          //if the coeffcient of elimVar is +ve the the sign of the coeff of every other term should be changed
           val IntLiteral(elimCoeff) = lc.coeffMap(elimVar.toVariable)
-          if (elimCoeff > 0) {
-            //here, we have found an upper bound
-            allLowerBounds = false
-          } else {
-            //here, we have found a lower bound
-            allUpperBounds = false
+          //make sure the value of the coefficient is 1 or  -1
+          //TODO: handle cases wherein the coefficient is not 1 or -1
+          if (elimCoeff == 1 || elimCoeff == -1) {
+            val changeSign = if (elimCoeff > 0) true else false
+
+            val startval = if (lc.const.isDefined) {
+              val IntLiteral(cval) = lc.const.get
+              val newconst = if (changeSign) -cval else cval
+              IntLiteral(newconst)
+
+            } else zero
+
+            val substExpr = lc.coeffMap.foldLeft(startval: Expr)((acc, summand) => {
+              val (term, IntLiteral(coeff)) = summand
+              if (term != elimVar.toVariable) {
+
+                val newcoeff = if (changeSign) -coeff else coeff
+                val newsummand = if (newcoeff == 1) term else Times(term, IntLiteral(newcoeff))
+                if (acc == zero) newsummand
+                else Plus(acc, newsummand)
+
+              } else acc
+            })
+
+            elimExpr = Some(simplifyArithmetic(substExpr))
+            elimCtr = Some(lc)
+
+            if (debugElimination) {
+              println("Using ctr: " + lc + " found mapping: " + elimVar + " --> " + substExpr)
+            }
           }
-        } else {
-          //here, we assume that the operators are normalized to Equals, LessThan and LessEquals
-          throw new IllegalStateException("LinearConstraint not in expeceted form : " + lc.expr)
         }
-      }
+      } else if ((lc.expr.isInstanceOf[LessEquals] || lc.expr.isInstanceOf[LessThan])
+        && lc.coeffMap.contains(elimVar.toVariable)) {
+
+        val IntLiteral(elimCoeff) = lc.coeffMap(elimVar.toVariable)
+        if (elimCoeff > 0) {
+          //here, we have found an upper bound
+          allLowerBounds = false
+        } else {
+          //here, we have found a lower bound
+          allUpperBounds = false
+        }
+      } else {
+        //here, we assume that the operators are normalized to Equals, LessThan and LessEquals
+        throw new IllegalStateException("LinearConstraint not in expeceted form : " + lc.expr)
+      }      
     })
 
     val newctrs = if (elimExpr.isDefined) {
-
-      //println("Eliminating "+elimVar+" using "+elimExpr.get)
+      
       val elimMap = Map[Expr, Expr](elimVar.toVariable -> elimExpr.get)      
       var repCtrs = Seq[LinearConstraint]()
       relCtrs.foreach((ctr) => {
@@ -394,7 +410,7 @@ object LinearConstraintUtil {
       })
       repCtrs
 
-    } else if (allLowerBounds || allUpperBounds) {
+    } else if (!foundEquality && (allLowerBounds || allUpperBounds)) {
       //here, drop all relCtrs. None of them are important
       Seq()
     } else {
@@ -404,5 +420,37 @@ object LinearConstraintUtil {
     val resctrs = (newctrs ++ rest)
     //println("After eliminating: "+elimVar+" : "+resctrs)
     resctrs
-  }  
+  }
+
+  def sizeExpr(ine: Expr): Int = {
+    val simpe = simplifyArithmetic(ine)
+    var size = 0
+    simplePostTransform((e: Expr) => {
+      size += 1
+      e
+    })(simpe)
+    size
+  }
+  
+  def sizeCtr(ctr : LinearConstraint) : Int = {
+    val coeffSize = ctr.coeffMap.foldLeft(0)((acc, pair) => {
+      val (term, coeff) = pair
+      if(coeff == one) acc + 1
+      else acc + sizeExpr(coeff) + 2
+    })
+    if(ctr.const.isDefined) coeffSize + 1
+    else coeffSize      
+  }
+  
+  def shouldReplace(currExpr : Expr, candidateCtr : LinearConstraint, elimVar: Identifier) : Boolean = {
+    if(!currExpr.isInstanceOf[IntLiteral]) {
+      //is the candidate a constant 
+      if(candidateCtr.coeffMap.size == 1) true
+      else{
+        //computing the size of currExpr 
+        if(sizeExpr(currExpr) > (sizeCtr(candidateCtr) - 1)) true
+        else false        
+      }      
+    } else false      
+  }
 }

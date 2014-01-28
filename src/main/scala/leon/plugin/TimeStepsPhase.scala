@@ -120,6 +120,12 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
 
     val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
     println("New Prog: \n"+ScalaPrinter.apply(newprog))
+    
+    //print all the templates
+    /*newprog.definedFunctions.foreach((fd) => 
+      if(FunctionInfoFactory.hasTemplate(fd))
+        println("Function: "+fd.id+" template --> "+FunctionInfoFactory.getTemplate(fd))
+        )*/
     newprog
   }
   

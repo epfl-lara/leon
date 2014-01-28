@@ -107,6 +107,10 @@ class InferenceEngineGenerator(program: Program,
     
     val inferenceEngine = () => {
 
+      /* uncomment if we want to bound refinements
+       * if (refinementStep >= 5)
+          throw IllegalStateException("Done 4 refinements")*/
+           
       val refined =
         if (refinementStep >= 1) {
 

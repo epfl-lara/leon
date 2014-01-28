@@ -48,11 +48,13 @@ class NLTemplateSolver(context : LeonContext,
   //TODO: there is serious bug in using incremental solving. Report this to z3 community
   val debugIncremental = false  
   val debugElimination = false
+  val verifyInvariant = false
+  val debugReducedFormula = false
   val printPathToConsole = false
   val dumpPathAsSMTLIB = false
+  val dumpNLCtrsAsSMTLIB = false   
   val printCallConstriants = false
-  val printReducedFormula = false  
-  val dumpNLFormula = false
+  val printReducedFormula = false    
   val dumpInstantiatedVC = false 
   val debugAxioms = false      
 
@@ -144,7 +146,7 @@ class NLTemplateSolver(context : LeonContext,
     }
 
     //TODO: There is a serious bug in z3 in incremental solving. The following code is for reproducing the bug            
-    if (this.dumpNLFormula) {
+    if (this.debugIncremental) {
       solverWithCtr.assertCnstr(inputCtr)
     }
 
@@ -204,7 +206,7 @@ class NLTemplateSolver(context : LeonContext,
         val newPart = And(newctrs)
         val newSize = InvariantUtil.atomNum(newPart)
         
-        if (this.dumpNLFormula)
+        if (this.debugIncremental)
           solverWithCtr.assertCnstr(newPart)
 
         //here we need to solve for the newctrs + inputCtrs                       
@@ -219,6 +221,11 @@ class NLTemplateSolver(context : LeonContext,
           new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)),
             timeout * 1000))
 
+        if(this.dumpNLCtrsAsSMTLIB) {
+          val filename = "nlctr"+ FileCountGUID.getID+".smt2" 
+          InvariantUtil.toZ3SMTLIB(combCtr, filename, "QF_NRA", context, program)         
+          println("NLctrs dumped to: "+filename)
+        }
         println("solving...")
         val t1 = System.currentTimeMillis()
         val (res, newModel) = solver.solveSAT(combCtr)
@@ -708,11 +715,18 @@ class NLTemplateSolver(context : LeonContext,
 
       val pathctr = constraintsToExpr(ants ++ conseqs, calls, adtCons ++ antAuxs ++ conseqAuxs)
       val uifexprs = calls.map((call) => Equals(call.retexpr, call.fi)).toSeq
+            
       //for debugging
       if (this.printPathToConsole || this.dumpPathAsSMTLIB) {
         val pathexprsWithTemplate = (ants ++ antTemps ++ conseqs ++ conseqTemps).map(_.template)
         val plainFormula = And(antAuxs ++ conseqAuxs ++ adtCons ++ uifexprs ++ pathexprsWithTemplate)
         val pathcond = simplifyArithmetic(plainFormula)
+
+        //for debugging
+        if (this.verifyInvariant) {
+          println("checking invariant for path...")
+          InvariantUtil.checkInvariant(pathcond, context, program)
+        }
         
         if(this.printPathToConsole){
           //val simpcond = ExpressionTransformer.unFlatten(pathcond, variablesOf(pathcond).filterNot(TVarFactory.isTemporary _))
@@ -727,15 +741,9 @@ class NLTemplateSolver(context : LeonContext,
         }
         
         if(this.dumpPathAsSMTLIB) {
-         //create new solver, assert constraints and print
-          val printSol = new UIFZ3Solver(context, program)
-          printSol.assertCnstr(pathcond)
-          val filename = "pathcond"+ FileCountGUID.getID 
-          val writer = new PrintWriter(filename)
-          writer.println(printSol.ctrsToString("QF_NIA"))
-          printSol.free()
-          writer.flush()
-          writer.close()
+          val filename = "pathcond"+ FileCountGUID.getID+".smt2" 
+          InvariantUtil.toZ3SMTLIB(pathcond, filename, "QF_NIA", context, program)         
+          println("Path dumped to: "+filename)
         }
       }
       
@@ -788,9 +796,14 @@ class NLTemplateSolver(context : LeonContext,
         
         val lnctrs = ants ++ conseqs
         val temps = antTemps ++ conseqTemps
-                    
-        if(this.debugElimination)
-        	println("Path Constraints (before elim): "+(lnctrs ++ temps))
+                            
+        if(this.debugElimination){
+          //println("Path Constraints (before elim): "+(lnctrs ++ temps))
+          if (this.verifyInvariant) {
+            println("checking invariant for disjunct before elimination...")
+            InvariantUtil.checkInvariant(And((lnctrs ++ temps).map(_.template)), context, program)
+          }
+        }        	
         
         //TODO: try some optimizations here to reduce the number of constraints to be considered
         // Note: this uses the interpolation property of arithmetics        
@@ -801,19 +814,20 @@ class NLTemplateSolver(context : LeonContext,
         val elimVars = ctrVars.diff(tempVars)
 
         //For debugging
-        if (debugElimination) {
+        /*if (debugElimination) {
           reporter.info("Number of linear constraints: " + lnctrs.size)
           reporter.info("Number of template constraints: " + temps.size)
           reporter.info("Number of elimVars: " + elimVars.size)
-        }                
-        //check if the lnctrs are sat
-        /*val solver = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context, program)))         
-        if(!solver.solveSAT(And(lnctrs.map(_.expr)))._1.isDefined)
-          throw new IllegalStateException("Path not satisfiable")
-        else 
-          println("Path satisfiable")*/
-          
-        val elimLnctrs = LinearConstraintUtil.apply1PRuleOnDisjunct(lnctrs, elimVars)
+        } */                       
+        
+        val debugger = if(debugElimination && verifyInvariant) {
+          Some((ctrs: Seq[LinearConstraint]) => {
+        	  //println("checking disjunct before elimination...")
+              //println("ctrs: "+ctrs)
+        	  val debugRes = InvariantUtil.checkInvariant(And((ctrs ++ temps).map(_.template)), context, program)
+          })
+        } else None
+        val elimLnctrs = LinearConstraintUtil.apply1PRuleOnDisjunct(lnctrs, elimVars, debugger)
 
         //for stats
         var elimCtrCount = 0
@@ -828,12 +842,17 @@ class NLTemplateSolver(context : LeonContext,
             }
           })
         if (this.debugElimination) {
-          reporter.info("Number of linear constraints (after elim): " + elimLnctrs.size)          
+          /*reporter.info("Number of linear constraints (after elim): " + elimLnctrs.size)          
           reporter.info("Number of constraints with elimVars: " + elimCtrCount)
           reporter.info("constraints with elimVars: " + elimCtrs)
-          reporter.info("Number of remaining elimVars: " + elimRems.size)
+          reporter.info("Number of remaining elimVars: " + elimRems.size)*/
           //println("Elim vars: "+elimVars)
-          println("Path constriants (after elimination): " + elimLnctrs)                  
+          println("Path constriants (after elimination): " + elimLnctrs)
+          if (this.verifyInvariant) {
+            println("checking invariant for disjunct after elimination...")
+            InvariantUtil.checkInvariant(And((elimLnctrs ++ temps).map(_.template)), context, program)
+          }
+          
         }
 
         //for stats
@@ -849,20 +868,22 @@ class NLTemplateSolver(context : LeonContext,
 
           val (cum4, max4) = Stats.cumMax(Stats.cumDijsize, Stats.maxDijsize, lnctrs.size)
           Stats.cumDijsize = cum4; Stats.maxDijsize = max4;
-        }         
-        
-        //(b) drop all constraints with dummys from 'elimLnctrs' they aren't useful (this is because of the reason we introduce the identifiers)
-        val newLnctrs = elimLnctrs.filterNot((ln) => variablesOf(ln.expr).exists(TVarFactory.isDummy _))        
+        }                       
+        val newLnctrs = elimLnctrs.toSet.toSeq        
         
         //TODO: one idea: use the dependence chains in the formulas to identify what to assertionize 
-        // and what can never be implied by solving for the templates
-        
-        if(this.printReducedFormula){
-          println("Final Path Constraints: "+(newLnctrs ++ temps))          
-        }
-        
+        // and what can never be implied by solving for the templates                       
         val disjunct = And((newLnctrs ++ temps).map(_.template))        
         val implCtrs = farkasSolver.constraintsForUnsat(newLnctrs, temps)
+                
+        //for debugging
+        if(this.debugReducedFormula){                  
+          println("Final Path Constraints: "+disjunct)
+          if (this.verifyInvariant) {
+            println("checking invariant for final disjunct... ")
+            InvariantUtil.checkInvariant(disjunct, context, program)
+          }                 
+        }
         
         (disjunct, implCtrs)
       }

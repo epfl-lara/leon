@@ -254,7 +254,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
   def inilineCall(call : Call, ctrnode: CtrNode, parents : List[FunDef]) : Set[Call] = {    
     //here inline the body && Post and add it to the tree of the rec caller
     val callee = call.fi.funDef
-    val post = callee.postcondition
+    //val post = callee.postcondition
     
     //Important: make sure we use a fresh body expression here    
     val freshBody = freshenLocals(matchToIfThenElse(callee.nondetBody.get))
