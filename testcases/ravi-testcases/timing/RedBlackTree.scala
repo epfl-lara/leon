@@ -17,7 +17,6 @@ object RedBlackTree {
       2* twopower(x - 1)
   } 
   
-  //TODO: investigate why making size return 0 in the base case cannot be proven by Leon
   def size(t: Tree): Int = {
     require(blackBalanced(t))  
     (t match {

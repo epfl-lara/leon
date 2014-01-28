@@ -9,35 +9,6 @@ object AVLTree  {
   case class Leaf() extends Tree
   case class Node(left : Tree, value : Int, right: Tree, rank : Int) extends Tree
 
-/*  sealed abstract class OptionInt
-  case class None() extends OptionInt
-  case class Some(i:Int) extends OptionInt
-
-
-  def smallerOption(o1:OptionInt,o2:OptionInt) : Boolean  = {
-    (o1,o2) match {
-      case (Some(i1), Some(i2)) => i1 < i2
-      case (_,_) => true
-    }
-  }
-
-  def minOption(o1:OptionInt,o2:OptionInt) : OptionInt = (
-    (o1,o2) match {
-      case (Some(i1), Some(i2)) => Some(if (i1<=i2) i1 else i2)
-      case (Some(_), _) => o1
-      case (_, Some(_)) => o2
-      case _ => None()
-    }
-  )
-  
-  def maxOption(o1:OptionInt,o2:OptionInt) : OptionInt = (
-    (o1,o2) match {
-      case (Some(i1), Some(i2)) => Some(if (i1>=i2) i1 else i2)
-      case (Some(_), _) => o1
-      case (_, Some(_)) => o2
-      case _ => None()
-    }
-  )*/
 
   def min(i1:Int, i2:Int) : Int = if (i1<=i2) i1 else i2
   def max(i1:Int, i2:Int) : Int = if (i1>=i2) i1 else i2  
@@ -68,8 +39,7 @@ object AVLTree  {
   }
 
   def size(t: Tree): Int = {
-    //require(isAVL(t))
-    
+    //require(isAVL(t))    
     (t match {
       case Leaf() => 0
       case Node(l, _, r,_) => size(l) + 1 + size(r)
@@ -96,8 +66,7 @@ object AVLTree  {
       }    
   }
  
-  def unbalancedInsert(t: Tree, e : Int) : Tree = {
-    //require(isAVL(t))
+  def unbalancedInsert(t: Tree, e : Int) : Tree = {    
     t match {
       case Leaf() => Node(Leaf(), e, Leaf(), 1)
       case Node(l,v,r,h) => 
@@ -113,17 +82,14 @@ object AVLTree  {
     }
   } 
                     
-  def avlInsert(t: Tree, e : Int) : Tree = {    
-    //require(isAVL(t))
+  def avlInsert(t: Tree, e : Int) : Tree = {        
     
     balance(unbalancedInsert(t,e))
     
   } ensuring(res => true template((a,b) => time <= a*height(t) + b))
-  //ensuring(res => time <= 138*height(t) + 19)  
-  //ensuring(res => isAVL(res) && rank(res) >= rank(t) && rank(res) <= rank(t) + 1 && size(res) <= size(t) + 1)
+  //minbound: ensuring(res => time <= 138*height(t) + 19)   
      
-  def balance(t:Tree) : Tree = {
-    //require(rankHeight(t) && offByOne(t)) //isBST(t) && 
+  def balance(t:Tree) : Tree = {    
     t match {
       case Leaf() => Leaf() // impossible...
       case Node(l, v, r, h) => 
@@ -146,7 +112,7 @@ object AVLTree  {
           rotateLeft(Node(l,v,newR, max(rank(newR), rank(l)) + 1))
         } else t        
       } 
-  } //ensuring(isAVL(_))
+  } 
 
   def rotateRight(t:Tree) = {    
     t match {
