@@ -416,9 +416,16 @@ object Trees {
   }
   
   //The real constants allowed by the language are only rationals
-  case class RealLiteral(numerator: Int, denominator: Int) extends Literal[(Int,Int)] with FixedType {
+  case class RealLiteral(numerator: Int, denominator: Int) extends Literal[(Int,Int)] with FixedType {    
     val value = (numerator,denominator)
     val fixedType = RealType 
+    
+    private var overflow = false
+    def setOverflow =  {
+      overflow = true
+    }
+    
+    def hasOverflow = overflow
   }
   
   //a warpper for real and interger literals (that are wholenumbers and not fractions)
