@@ -4,14 +4,14 @@ Leon 2.1
 Getting Started
 ---------------
 
-This section gives a very quick overview of how to build and use Leon, refer to
+This section gives a very quick overview of how to build and use Leon; refer to
 the following sections if you wish (or need) more detailed information.
 
-To build it, you will need, for example, the following:
+To build it, you will need, the following:
 
-* Java Runtime Environment, from Oracle, e.g. Version 7 Update 5 (to run xsbt and scala)
+* Java Runtime Environment, from Oracle, e.g. Version 7 Update 5 (to run sbt and scala)
 * Scala, from Typesafe, e.g. version 2.10.3
-* sbt, e.g. version 0.13.x (to build Leon)
+* sbt, at least version 0.13.1 (to build Leon)
 * a recent GLIBC3 or later, works with e.g. _apt-get_ (for Z3)
 * GNU Multiprecision library, e.g. gmp3, works with e.g. _apt-get_ (for Z3)
 
