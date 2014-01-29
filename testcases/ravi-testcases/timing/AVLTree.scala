@@ -89,7 +89,7 @@ object AVLTree  {
     
     balance(unbalancedInsert(t,e))
     
-  } //ensuring(res => true template((a,b) => time <= a*height(t) + b))
+  } ensuring(res => true template((a,b) => time <= a*height(t) + b))
   //minbound: ensuring(res => time <= 138*height(t) + 19)   
   
   def deleteMax(t: Tree): (Tree, OptionInt) = {    
