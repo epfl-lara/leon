@@ -9,6 +9,9 @@ object AVLTree  {
   case class Leaf() extends Tree
   case class Node(left : Tree, value : Int, right: Tree, rank : Int) extends Tree
 
+  sealed abstract class OptionInt
+  case class None() extends OptionInt
+  case class Some(i: Int) extends OptionInt
 
   def min(i1:Int, i2:Int) : Int = if (i1<=i2) i1 else i2
   def max(i1:Int, i2:Int) : Int = if (i1>=i2) i1 else i2  
@@ -59,12 +62,12 @@ object AVLTree  {
     }
   }
   
-  def isAVL(t:Tree) : Boolean = {    
+  /*def isAVL(t:Tree) : Boolean = {    
     t match {
         case Leaf() => true        
         case Node(l,_,r,rk) =>  isAVL(l) && isAVL(r) && balanceFactor(t) >= -1 && balanceFactor(t) <= 1 && rankHeight(t) //isBST(t) && 
       }    
-  }
+  }*/
  
   def unbalancedInsert(t: Tree, e : Int) : Tree = {    
     t match {
@@ -86,8 +89,59 @@ object AVLTree  {
     
     balance(unbalancedInsert(t,e))
     
-  } ensuring(res => true template((a,b) => time <= a*height(t) + b))
+  } //ensuring(res => true template((a,b) => time <= a*height(t) + b))
   //minbound: ensuring(res => time <= 138*height(t) + 19)   
+  
+  def deleteMax(t: Tree): (Tree, OptionInt) = {    
+    
+    t match {
+      case Node(Leaf(), v, Leaf(), _) => (Leaf(), Some(v))
+      case Node(l, v, Leaf(), _) => {
+        val (newl, opt) =  deleteMax(l)
+        opt match {
+          case None() => (t, None())
+          case Some(lmax) => {
+            val newt = balance(Node(newl, lmax, Leaf(), rank(newl) + 1))
+            (newt, Some(v))
+          }
+        }        
+      }
+      case Node(_, _, r, _) => deleteMax(r)
+      case _ => (t, None())
+    }
+  } ensuring(res => true template((a,b) => time <= a*height(t) + b))  
+  
+  def unbalancedDelete(t: Tree, e: Int): Tree = {    
+    t match {
+      case Leaf() => Leaf() //not found case
+      case Node(l, v, r, h) =>
+        if (e == v) {
+          if (l == Leaf()) r
+          else if(r == Leaf()) l
+          else {
+            val (newl, opt) = deleteMax(l)
+            opt match {
+              case None() => t
+              case Some(newe) => {                
+                Node(newl, newe, r, max(rank(newl), rank(r)) + 1)
+              }
+            }
+          }
+        } else if (e < v) {
+          val newl = avlDelete(l, e)
+          Node(newl, v, r, max(rank(newl), rank(r)) + 1)
+        } else {
+          val newr = avlDelete(r, e)
+          Node(l, v, newr, max(rank(l), rank(newr)) + 1)
+        }
+    }
+  } 
+
+  def avlDelete(t: Tree, e: Int): Tree = {   
+
+    balance(unbalancedDelete(t, e))
+    
+  } ensuring(res => true template((a,b) => time <= a*height(t) + b))
      
   def balance(t:Tree) : Tree = {    
     t match {

@@ -90,7 +90,14 @@ object RedBlackTree {
     val t1 =  ins(x, t)
     makeBlack(t1)
     
-  } ensuring(res => true template((a,b) => time <= a*blackHeight(t) + b))                
+  } ensuring(res => true template((a,b) => time <= a*blackHeight(t) + b))
+
+  /*def delete(x: Int, t: Tree): Tree = {
+    require(redNodesHaveBlackChildren(t) && blackBalanced(t) )
+    val t1 =  ins(x, t)
+    makeBlack(t1)
+    
+  } ensuring(res => true template((a,b) => time <= a*blackHeight(t) + b))*/
   
   def balance(co: Color, l: Tree, x: Int, r: Tree): Tree = {        
     Node(co,l,x,r)

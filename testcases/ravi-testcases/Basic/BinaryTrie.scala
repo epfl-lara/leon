@@ -26,6 +26,10 @@ object BinaryTrie {
 	  }
   } ensuring(_ >= 0)
     
+  /**
+   * Inserts the binary string given by the input list into the tree.
+   * Note: this may require creating many nodes
+   */
   def insert(inp: IList, t: Tree): Tree = {       
     t match {
         case Leaf() => {
@@ -59,5 +63,49 @@ object BinaryTrie {
   
   def create(inp: IList) : Tree = {
     insert(inp, Leaf())
-  }ensuring(res => height(res) >= listSize(inp))    
+  }ensuring(res => height(res) >= listSize(inp))
+  
+  /**
+   * Deletes a string given by the input list from the tree.
+   * Note: this may require removing multiple nodes from the tree   
+   */
+  def delete(inp: IList, t: Tree): Tree = {       
+    t match {
+        case Leaf() => {
+          inp match {
+            case Nil() => Leaf()
+            case Cons(x ,xs) => {
+              //the input is not in the tree, so do nothing
+              Leaf()                          
+            }
+          }          
+        }
+        case Node(v, l, r) => {       
+          inp match {
+            case Nil() => {              
+              //the tree has extensions of the input list so do nothing
+              t
+            }
+            case Cons(x, Nil()) => {
+              //if "l" and "r" are nil, remove the node
+              if(l == Leaf() && r == Leaf()) Leaf()
+              else t
+            }
+            case Cons(x ,xs@Cons(y, _)) => {
+              val ch = if(y > 0) l else r
+              val otherIsLeaf = if(y > 0) r == Leaf() else l == Leaf()
+              val newch = delete(xs, ch)              
+              if(newch == Leaf() && otherIsLeaf) Leaf() 
+              else {
+                if(y > 0) 
+        		  Node(v, newch, r)
+        	    else 
+        	      Node(v, l, newch)
+              }        	  
+            }  
+            case _ => t
+        } 
+      }
+    }
+  } ensuring(res => height(res) <= height(t) && height(res) >= height(t) - listSize(inp)) 
 }

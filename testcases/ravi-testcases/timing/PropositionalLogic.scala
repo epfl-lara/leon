@@ -60,15 +60,4 @@ object PropositionalLogic {
     case _ => false
     
   }} ensuring((res) => true template((a,b) => time <= a*size(f) + b))
-
-//  def vars(f: Formula): Set[Int] = {
-//    require(isNNF(f))
-//    f match {
-//      case And(lhs, rhs) => vars(lhs) ++ vars(rhs)
-//      case Or(lhs, rhs) => vars(lhs) ++ vars(rhs)
-//      case Implies(lhs, rhs) => vars(lhs) ++ vars(rhs)
-//      case Not(Literal(i)) => Set[Int](i)
-//      case Literal(i) => Set[Int](i)
-//    }
-//  }
 }

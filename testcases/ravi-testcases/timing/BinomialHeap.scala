@@ -175,15 +175,13 @@ object BinomialHeap {
       case _ => (None(), NilHeap())
     }
   } ensuring (res => treeNum(res._2) <= treeNum(h) template ((a, b) => time <= a * treeNum(h) + b))    
-  
-  // Returns the root as the extracted min tree 
-  /*def findMin(h: BinomialHeap) : Element = {
-	  require(!isEmpty(h)) //isBinomialHeapValid(h) &&
+    
+  /*def findMin(h: BinomialHeap) : Element = {	  
 	  val (opt, _) = removeMinTree(h)
 	  opt match {
-	    case 
-	  }
-	  root(t)
+	    case Some(Node(_,e,ts1)) => e
+	    case _ => Element(-1)
+	  }	  
   } ensuring(res => true template((a,b) => time <= a*treeNum(h) + b))*/ 
   
   def minTreeChildren(h: BinomialHeap) : Int = {    

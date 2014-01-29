@@ -13,3 +13,17 @@ If its a bounded polygon all that we need to do is check if its diameter is atle
 * Infer templates using quantifier elimination and abduction
 * Extend the approach to graph algorithms
 
+############Short term goals###############
+* Try making mult an in-built operation
+* Enrich the existing examples with more functions 
+* Try the programs given in speed, costa papers
+* Try the parallel running time examples
+* Some programs still to try: HeapSort, MergeSort, QuickSort (needs more axioms of multiplication), Union-find, Binary-search
+* Try the space bound examples (last option...)
+
+#########Experimental comparisons###########
+* Try cegis over the entire program (not the intermediate one) 
+* Try HSF by coding up the numerical versions of the programs as horn-clauses
+* 
+
+
