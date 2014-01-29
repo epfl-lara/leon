@@ -209,9 +209,12 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         Stats.dumpCegisStats(pw)
       } else {
         Stats.dumpFarkasStats(pw)
-        Stats.dumpCegisStats(pw)
+        Stats.dumpCegisStats(pw)        
       }
       Stats.dumpOutputs(pw)
+      if(tightBounds) {
+        Stats.dumpMinimizationStats(pw)
+      }
     }
 
     VerificationReport.emptyReport

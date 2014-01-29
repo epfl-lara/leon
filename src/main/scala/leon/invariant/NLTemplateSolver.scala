@@ -110,7 +110,9 @@ class NLTemplateSolver(context : LeonContext,
     val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap       
     val sol = recSolve(simplestModel, funcVCs, tru, Seq(), solverWithCtr, Set())
     
-    solverWithCtr.free()
+    solverWithCtr.free()    
+    //For stats, add lowerbounds to the stats
+    Stats.addLowerBound(rootFun, this.lowerBoundMap)
     sol
   }
 

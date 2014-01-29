@@ -15,37 +15,37 @@ import leon.Reporter
 object RealValuedExprInterpreter {
 
   def evaluate(expr : Expr) : RealLiteral = {
-     val (num,denom) = plainEvaluate(expr)
-     normalize(RealLiteral(num,denom))          
+    plainEvaluate(expr)               
   }
 
-  def plainEvaluate(expr: Expr): (Int, Int) = expr match {
+  def plainEvaluate(expr: Expr): RealLiteral = expr match {
 
     case UMinus(e) => {
-      val (num, denom) = plainEvaluate(e)
-      (-num, denom)
+      val RealLiteral(num, denom) = plainEvaluate(e)
+      RealLiteral(-num, denom)
     }
     case Minus(lhs, rhs) => {
       plainEvaluate(Plus(lhs, UMinus(rhs)))
     }
     case Plus(lhs, rhs) => {
-      val (lnum, ldenom) = plainEvaluate(lhs)
-      val (rnum, rdenom) = plainEvaluate(rhs)
-      ((lnum * rdenom + rnum * ldenom), (ldenom * rdenom))
+      val RealLiteral(lnum, ldenom) = plainEvaluate(lhs)
+      val RealLiteral(rnum, rdenom) = plainEvaluate(rhs)
+      //TODO: consider using the lcm
+      normalize(RealLiteral((lnum * rdenom + rnum * ldenom), (ldenom * rdenom)))
     }
     case Times(lhs, rhs) => {
-      val (lnum, ldenom) = plainEvaluate(lhs)
-      val (rnum, rdenom) = plainEvaluate(rhs)
-      ((lnum * rnum), (ldenom * rdenom))
+      val RealLiteral(lnum, ldenom) = plainEvaluate(lhs)
+      val RealLiteral(rnum, rdenom) = plainEvaluate(rhs)
+      normalize(RealLiteral((lnum * rnum), (ldenom * rdenom)))
     }
     case Division(lhs, rhs) => {
-      val (lnum, ldenom) = plainEvaluate(lhs)
-      val (rnum, rdenom) = plainEvaluate(rhs)
+      val RealLiteral(lnum, ldenom) = plainEvaluate(lhs)
+      val RealLiteral(rnum, rdenom) = plainEvaluate(rhs)
       plainEvaluate(Times(RealLiteral(lnum, ldenom), RealLiteral(rdenom, rnum)))
     }
-    case il @ IntLiteral(v) => (v, 1)
-    case RealLiteral(num, denom) => (num, denom)
-    case _ => throw IllegalStateException("Not a real valued expression: " + expr)
+    case il @ IntLiteral(v) => RealLiteral(v, 1)
+    case rl@RealLiteral(_, _) => normalize(rl)
+    case _ => throw IllegalStateException("Not an evaluatable expression: " + expr)
   }
 
   def normalize(rl: RealLiteral): RealLiteral = {

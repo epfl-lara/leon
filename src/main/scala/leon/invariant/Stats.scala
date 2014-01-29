@@ -66,9 +66,16 @@ object Stats {
   var maxTemplateCtrSize : Long = 0
   var boundsTried = 0
   
+  //minimization stats
+  var lowerBounds = Map[FunDef, Map[Variable, RealLiteral]]()
+  
   var output : String = ""    
   def addOutput(out : String) = {
     output += out + "\n"
+  }
+  
+  def addLowerBound(fd: FunDef, lbMap : Map[Variable,RealLiteral]) = {
+    lowerBounds += (fd -> lbMap)
   }
   
   def cumMax(cum : Long, max: Long, newval : Long) : (Long,Long) = {    
@@ -90,7 +97,20 @@ object Stats {
   def dumpOutputs(pr : PrintWriter) {
     pr.println("########## Outputs ############")
     pr.println(output)
-    pr.flush()
+    pr.flush()       
+  }
+  
+  def dumpMinimizationStats(pr : PrintWriter) {
+    pr.println("########## Lower Bounds ############")
+    lowerBounds.foreach((pair) => {
+      val (fd,lbMap) = pair
+      pr.print(fd.id +": \t")
+      lbMap.foreach((entry) => {
+        pr.print("("+entry._1+"->"+entry._2+"), ")
+      })
+      pr.println()
+    })    
+    pr.flush()       
   }
   
   def dumpFarkasStats(pr : PrintWriter) ={

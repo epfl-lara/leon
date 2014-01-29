@@ -52,10 +52,7 @@ abstract class TemplateSolver (
   //some constants
   protected val fls = BooleanLiteral(false)
   protected val tru = BooleanLiteral(true)    
-  protected val zero = IntLiteral(0)
-  
-  //some state set during solveTemplates
-  protected var rootFuncs = Seq[FunDef]() 
+  protected val zero = IntLiteral(0)   
   
   //this is populated lazily by instantiateAxioms
   protected var callsWithAxioms = Set[Expr]()  
@@ -100,9 +97,7 @@ abstract class TemplateSolver (
     Stats.outerIterations += 1
     
     //traverse each of the functions and collect the VCs
-    val funcs = ctrTracker.getFuncs
-    rootFuncs = funcs
-    
+    val funcs = ctrTracker.getFuncs        
     val funcExprs = funcs.map((fd) => {
       val (btree, ptree) = ctrTracker.getVC(fd)
       val bexpr = TreeUtil.toExpr(btree)
@@ -215,106 +210,19 @@ abstract class TemplateSolver (
    * Here we are assuming that that initModel is a model for ctrs
    * TODO: make sure that the template for rootFun is the time template   
    * TODO: assuming that the value of coefficients in +ve in the solution
-   */     
-  val MaxIter = 16 //note we may not be able to represent anything beyond 2^16  
+   */         
+  val MaxIter = 16 //note we may not be able to represent anything beyond 2^16
+  val MaxInt = Int.MaxValue
+  val sqrtMaxInt = 45000 //this is a number that is close a sqrt of 2^31
   val half= RealLiteral(1,2)
   val two= RealLiteral(2,1)
   val rzero = RealLiteral(0,1)
-  val mone = RealLiteral(-1,1)  
-   
-  /*def tightenTimeBounds(inputCtr: Expr, initModel: Map[Identifier, Expr]): Map[Identifier, Expr] = {
-    val rootFd = rootFun
-    val template = tempFactory.getTemplate(rootFd)
-    if (template.isDefined) {
-
-      //the order in which the template variables are minimized is based on the level of nesting of the  terms
-      val tempvarNestMap: Map[Variable, Int] = computeCompositionLevel(template.get)      
-      val orderedTempVars = tempvarNestMap.toSeq.sortWith((a, b) => a._2 >= b._2).map(_._1)
-
-      //do a binary search on sequentially on each of these tempvars      
-      val solver = SimpleSolverAPI(
-        new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)),
-          timeout * 1000))
-
-      println("minimizing...")
-      var currentModel = initModel
-      orderedTempVars.foldLeft(inputCtr: Expr)((acc, tvar) => {
-                    
-        var upperBound = initModel(tvar.id).asInstanceOf[RealLiteral]        
-        //var lowerBound = RealLiteral(0, 1)
-        var lowerBound : Option[RealLiteral] = None
-        
-        if(this.debugMinimization) {
-          println("Minimizing variable: "+ tvar+" Initial upperbound: "+upperBound)          
-        }
-
-        //TODO: use incremental solving of z3 here
-        var continue = true
-        var iter = 0
-        while (continue && iter <= MaxIter) {
-          iter += 1          
-          //check if lower bound exists
-          val currval = if(lowerBound.isDefined) {
-             RealValuedExprInterpreter.evaluate(Times(half, Plus(upperBound, lowerBound.get)))            
-          } else {
-            //check if upperBound is greater than or less than zero
-            val rlit@RealLiteral(n,d) = upperBound
-            if(isGEZ(rlit)) {
-              if(n >= d)
-            	 RealValuedExprInterpreter.evaluate(Times(half, upperBound))
-              else if(n == 0) {
-                 //make the upper bound negative 
-                mone
-              } else{
-                //Here, the upper bound is less than 1 but greater than 0
-                //make the upper bound as 0 (halving the bound may not stop)
-                rzero
-              }
-            }
-            else RealValuedExprInterpreter.evaluate(Times(two, upperBound))
-          }
-          val boundCtr = if(lowerBound.isDefined) { 
-            And(LessEquals(tvar, currval), GreaterEquals(tvar, lowerBound.get))
-          } else LessEquals(tvar, currval) 
-
-          //val t1 = System.currentTimeMillis()
-          val (res, newModel) = solver.solveSAT(And(acc, boundCtr))
-          //val t2 = System.currentTimeMillis()
-          //println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
-          res match {
-            case Some(true) => {
-              //here we have a new upper bound and also a newmodel
-              upperBound = newModel(tvar.id).asInstanceOf[RealLiteral]
-              currentModel = newModel
-              
-              if(this.debugMinimization) 
-                println("Found new upper bound: "+upperBound)
-            }
-            case _ => {
-              //here we have a new lower bound: currval
-              lowerBound = Some(currval)
-              
-              if(this.debugMinimization) 
-                println("Found new lower bound: "+currval)
-            }
-          }
-          //if(iter > MaxIter) throw IllegalStateException("Haven't found a lower bound even after 32 iterations")                   
-          //here make sure that the difference between upper and lowerbound is > 1, otherwise, use the current model
-          if (lowerBound.isDefined) {
-            val RealLiteral(n, d) = RealValuedExprInterpreter.evaluate(Minus(upperBound, lowerBound.get))
-            if (n <= d)
-              continue = false
-          }          
-        }
-        //here, we found the best possible minimum within the time bounds
-        And(acc, Equals(tvar, currentModel(tvar.id)))
-      })
-      println("Minimization complete...")
-      currentModel
-    } else
-      initModel
-  }
-  */
+  val mone = RealLiteral(-1,1)
+  
+  //for statistics and output
+  //store the lowerbounds for each template variables in the template of the rootFun provided it is a time template
+  var lowerBoundMap = Map[Variable,RealLiteral]()
+  
   import RealValuedExprInterpreter._
   def tightenTimeBounds(inputCtr: Expr, initModel: Map[Identifier, Expr]): Map[Identifier, Expr] = {
     val rootFd = rootFun
@@ -333,8 +241,8 @@ abstract class TemplateSolver (
       println("minimizing...")
       var currentModel = initModel
       orderedTempVars.foldLeft(inputCtr: Expr)((acc, tvar) => {
-                    
-        var upperBound = initModel(tvar.id).asInstanceOf[RealLiteral]
+                            
+        var upperBound = currentModel(tvar.id).asInstanceOf[RealLiteral]
         //note: the lower bound is an integer by construction
         var lowerBound : Option[RealLiteral] = None
         
@@ -346,64 +254,96 @@ abstract class TemplateSolver (
         var continue = true
         var iter = 0
         do {
-          iter += 1          
-          //we make sure that curr val is an integer
-          val currval = if(lowerBound.isDefined) {                         
-            val midval = evaluate(Times(half, Plus(upperBound, lowerBound.get)))
-            floor(midval)
-            
+          iter += 1
+
+          //here we perform some sanity checks to prevent overflow
+          if (!boundSanityChecks(upperBound, lowerBound)) {
+            continue = false
           } else {
-            val rlit@RealLiteral(n,d) = upperBound
-            if(isGEZ(rlit)) {              
-              if(n == 0) {
-                //make the upper bound negative 
-                mone
-              } else {
-                floor(evaluate(Times(half, upperBound)))
+            //we make sure that curr val is an integer
+            val currval = if (lowerBound.isDefined) {
+              val midval = evaluate(Times(half, Plus(upperBound, lowerBound.get)))
+              floor(midval)
+
+            } else {
+              val rlit @ RealLiteral(n, d) = upperBound
+              if (isGEZ(rlit)) {
+                if (n == 0) {
+                  //make the upper bound negative 
+                  mone
+                } else {
+                  floor(evaluate(Times(half, upperBound)))
+                }
+              } else floor(evaluate(Times(two, upperBound)))
+            }
+
+            //check if the lowerbound, if it exists, is < currval
+            if (lowerBound.isDefined && evaluateRealPredicate(GreaterEquals(lowerBound.get, currval))) {
+              continue = false
+            } else {
+              val boundCtr = if (lowerBound.isDefined) {
+                And(LessEquals(tvar, currval), GreaterEquals(tvar, lowerBound.get))
+              } else LessEquals(tvar, currval)
+
+              //val t1 = System.currentTimeMillis()
+              val (res, newModel) = solver.solveSAT(And(acc, boundCtr))
+              //val t2 = System.currentTimeMillis()
+              //println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
+              res match {
+                case Some(true) => {
+                  //here we have a new upper bound and also a newmodel
+                  val newval = newModel(tvar.id).asInstanceOf[RealLiteral]
+
+                  if (newval.hasOverflow) {
+                    continue = false
+                  } else {
+                    upperBound = newval
+                    currentModel = newModel
+                    if (this.debugMinimization)
+                      println("Found new upper bound: " + upperBound)
+                  }
+                }
+                case _ => {
+                  //here we have a new lower bound: currval
+                  lowerBound = Some(currval)
+
+                  if (this.debugMinimization)
+                    println("Found new lower bound: " + currval)
+                }
               }
             }
-            else floor(evaluate(Times(two, upperBound)))
           }
-
-          //check if the lowerbound, if it exists, is < currval
-          if (lowerBound.isDefined && evaluateRealPredicate(GreaterEquals(lowerBound.get,currval))){
-            continue = false
-          } 
-          else {            
-            val boundCtr = if (lowerBound.isDefined) {
-              And(LessEquals(tvar, currval), GreaterEquals(tvar, lowerBound.get))
-            } else LessEquals(tvar, currval)
-
-            //val t1 = System.currentTimeMillis()
-            val (res, newModel) = solver.solveSAT(And(acc, boundCtr))
-            //val t2 = System.currentTimeMillis()
-            //println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
-            res match {
-              case Some(true) => {
-                //here we have a new upper bound and also a newmodel
-                upperBound = newModel(tvar.id).asInstanceOf[RealLiteral]
-                currentModel = newModel
-
-                if (this.debugMinimization)
-                  println("Found new upper bound: " + upperBound)
-              }
-              case _ => {
-                //here we have a new lower bound: currval
-                lowerBound = Some(currval)
-
-                if (this.debugMinimization)
-                  println("Found new lower bound: " + currval)
-              }
-            }            
-          } 
         } while (continue && iter < MaxIter)
-        //here, we found the best possible minimum within the time bounds
+        //here, we found a best-effort minimum
+        if(lowerBound.isDefined) {
+          //record the lower bound if it exist
+          if(lowerBoundMap.contains(tvar)) {
+            lowerBoundMap -= tvar            
+          } 
+          lowerBoundMap += (tvar -> lowerBound.get)          
+        }
+          
         And(acc, Equals(tvar, currentModel(tvar.id)))
       })
       println("Minimization complete...")
       currentModel
     } else
       initModel
+  }
+  
+  /**
+   * These checks are performed to avoid an overflow during the computation of currval
+   */
+  def boundSanityChecks(ub: RealLiteral, lb: Option[RealLiteral]) : Boolean = {
+    val RealLiteral(n,d) = ub
+    if(n <= (MaxInt / 2)) {
+      if(lb.isDefined) {
+        val RealLiteral(n2, _) = lb.get
+        (n2 <= sqrtMaxInt && d <= sqrtMaxInt)        
+      } else {
+        (d <= (MaxInt /2))
+      }
+    } else false
   }
 
   /**
