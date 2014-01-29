@@ -276,6 +276,8 @@ object Main {
         ctx.timers.outputTable(debug)
       }
 
+      println("time: " + smtlib.SMTLIBSolver.time)
+
     } catch {
       case LeonFatalError(None) =>
         sys.exit(1)

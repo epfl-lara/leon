@@ -74,9 +74,12 @@ object Leon extends Build {
     id = "leon",
     base = file("."),
     settings = Project.defaultSettings ++ LeonProject.settings
-  ).dependsOn(Github.bonsai)
+  ).dependsOn(Github.bonsai, Github.scalaSmtLib)
 
   object Github {
     lazy val bonsai = RootProject(uri("git://github.com/colder/bonsai.git#8f485605785bda98ac61885b0c8036133783290a"))
+
+    private val scalaSmtLibVersion = "160a635e3677a185e2d5bd84669be98fcda8c574"
+    lazy val scalaSmtLib = RootProject(uri("git://github.com/regb/scala-smtlib.git#%s".format(scalaSmtLibVersion)))
   }
 }

@@ -118,6 +118,7 @@ class UnrollingSolver(val context: LeonContext, underlyings: SolverFactory[Incre
           theModel = Some(model)
       }
     }
+    solver.free
     result
 
   } getOrElse {
