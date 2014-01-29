@@ -1086,19 +1086,19 @@ object TreeOps {
     def traverse(e: Expr): T
   }
 
-  class ChooseCollectorWithPaths extends TransformerWithPC with Traverser[Seq[(Choose, Expr)]] {
+  class CollectorWithPaths[T](matcher: PartialFunction[Expr, T]) extends TransformerWithPC with Traverser[Seq[(T, Expr)]]{
     type C = Seq[Expr]
     val initC = Nil
     def register(e: Expr, path: C) = path :+ e
 
-    var results: Seq[(Choose, Expr)] = Nil
+    var results: Seq[(T, Expr)] = Nil
 
-    override def rec(e: Expr, path: C) = e match {
-      case c : Choose =>
-        results = results :+ (c, And(path))
-        c
-      case _ =>
-        super.rec(e, path)
+    override def rec(e: Expr, path: C) = {
+      if(matcher.isDefinedAt(e)) {
+        val res = matcher(e)
+        results = results :+ (res, And(path))
+        e
+      } else super.rec(e, path)
     }
 
     def traverse(e: Expr) = {
@@ -1107,6 +1107,17 @@ object TreeOps {
       results
     }
   }
+
+  private object ChooseMatch extends PartialFunction[Expr, Choose] {
+    override def apply(e: Expr): Choose = e match {
+      case (c: Choose) => c
+    }
+    override def isDefinedAt(e: Expr): Boolean = e match {
+      case (c: Choose) => true
+      case _ => false
+    }
+  }
+  class ChooseCollectorWithPaths extends CollectorWithPaths[Choose](ChooseMatch)
 
   /**
    * Eliminates tuples of arity 0 and 1.
