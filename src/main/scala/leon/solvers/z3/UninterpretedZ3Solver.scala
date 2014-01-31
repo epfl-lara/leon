@@ -76,7 +76,7 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
     solver.assertCnstr(toZ3Formula(expression).get)
   }
 
-  def innerCheck: Option[Boolean] = {
+  override def check: Option[Boolean] = {
     solver.check match {
       case Some(true) =>
         if (containsFunCalls) {
@@ -90,7 +90,7 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
     }
   }
 
-  def innerCheckAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
+  override def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
     variables ++= assumptions.flatMap(variablesOf(_))
     solver.checkAssumptions(assumptions.toSeq.map(toZ3Formula(_).get) : _*)
   }

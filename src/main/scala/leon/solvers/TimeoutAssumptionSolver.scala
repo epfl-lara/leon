@@ -7,16 +7,14 @@ import purescala.Trees.Expr
 
 trait TimeoutAssumptionSolver extends TimeoutSolver with AssumptionSolver {
 
-  protected def innerCheckAssumptions(assumptions: Set[Expr]): Option[Boolean]
-
-  override def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
+  abstract override def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
     optTimeout match {
       case Some(to) =>
         interruptAfter(to) {
-          innerCheckAssumptions(assumptions)
+          super.checkAssumptions(assumptions)
         }
       case None =>
-        innerCheckAssumptions(assumptions)
+        super.checkAssumptions(assumptions)
     }
   }
 }

@@ -9,6 +9,8 @@ import purescala.TreeOps._
 import purescala.Trees._
 import purescala.TypeTrees._
 
+import solvers.TimeoutSolver
+
 import xlang.Trees._
 
 abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program) extends Evaluator(ctx, prog) {
@@ -370,7 +372,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program) extends Evalu
 
       val tStart = System.currentTimeMillis;
 
-      val solver = new FairZ3Solver(ctx, program).setTimeout(10000L)
+      val solver = (new FairZ3Solver(ctx, program) with TimeoutSolver).setTimeout(10000L)
 
       val inputsMap = p.as.map {
         case id =>
