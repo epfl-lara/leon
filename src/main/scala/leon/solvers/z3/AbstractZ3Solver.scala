@@ -21,9 +21,9 @@ import scala.collection.mutable.{Set => MutableSet}
 // with a Z3 instance"
 trait AbstractZ3Solver
   extends Solver
-     with TimeoutAssumptionSolver
      with AssumptionSolver
-     with IncrementalSolver {
+     with IncrementalSolver 
+     with Interruptible {
 
   val context : LeonContext
   val program : Program

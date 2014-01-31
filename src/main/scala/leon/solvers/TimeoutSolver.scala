@@ -55,16 +55,14 @@ trait TimeoutSolver extends Solver with Interruptible {
     this
   }
 
-  protected def innerCheck: Option[Boolean]
-
-  override def check: Option[Boolean] = {
+  abstract override def check: Option[Boolean] = {
     optTimeout match {
       case Some(to) =>
         interruptAfter(to) {
-          innerCheck
+          super.check
         }
       case None =>
-        innerCheck
+        super.check
     }
   }
 

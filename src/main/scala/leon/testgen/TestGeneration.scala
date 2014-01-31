@@ -59,7 +59,7 @@ class TestGeneration(context : LeonContext) {
   }
 
   def generatePathConditions(program: Program): Set[Expr] = {
-    val z3Solverf = SolverFactory( () => new FairZ3Solver(context, program))
+    val z3Solverf = SolverFactory( () => new FairZ3Solver(context, program) with TimeoutSolver)
 
     val callGraph = new CallGraph(program)
     callGraph.writeDotFile("testgen.dot")
@@ -74,7 +74,7 @@ class TestGeneration(context : LeonContext) {
 
   private def generateTestCases(program: Program): Set[Map[Identifier, Expr]] = {
     val allPaths = generatePathConditions(program)
-    val z3Solverf = SolverFactory( () => new FairZ3Solver(context, program))
+    val z3Solverf = SolverFactory( () => new FairZ3Solver(context, program) with TimeoutSolver)
 
     allPaths.flatMap(pathCond => {
       reporter.info("Now considering path condition: " + pathCond)

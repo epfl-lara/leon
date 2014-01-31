@@ -354,11 +354,11 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
     frameExpressions = frameExpressions.drop(lvl)
   }
 
-  def innerCheck: Option[Boolean] = {
+  override def check: Option[Boolean] = {
     fairCheck(Set())
   }
 
-  def innerCheckAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
+  override def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
     fairCheck(assumptions)
   }
 

@@ -21,11 +21,11 @@ case class SynthesisContext(
 ) {
 
   def newSolver: SynthesisContext.SynthesisSolver = {
-    new FairZ3Solver(context, program)
+    new FairZ3Solver(context, program) with TimeoutAssumptionSolver
   }
 
   def newFastSolver: SynthesisContext.SynthesisSolver = {
-    new UninterpretedZ3Solver(context, program)
+    new UninterpretedZ3Solver(context, program) with TimeoutAssumptionSolver
   }
 
   val solverFactory = SolverFactory(() => newSolver)
