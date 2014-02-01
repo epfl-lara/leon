@@ -179,7 +179,7 @@ class InferenceEngineGenerator(program: Program,
   //replaces occurrences of mult by Times
   def multToTimes(ine: Expr) : Expr ={
     simplePostTransform((e: Expr) => e match {
-      case FunctionInvocation(fd, args) if fd == NonlinearityEliminationPhase.piveMultFun => {
+      case FunctionInvocation(fd, args) if fd == NonlinearityEliminationPhase.multFun => {
         Times(args(0), args(1))
       }
       case _ => e
@@ -192,9 +192,10 @@ class InferenceEngineGenerator(program: Program,
    */
   def verifyInvariant(newposts: Map[FunDef, Expr], rootfd: FunDef): (Option[Boolean], Map[Identifier, Expr]) = {
 
+    import NonlinearityEliminationPhase._
     //create a fundef for each function in the program that is not "mult"
     val newFundefs = program.mainObject.definedFunctions.collect {
-      case fd @ _ if (fd != NonlinearityEliminationPhase.piveMultFun) => {
+      case fd @ _ if (fd != multFun && fd != pivMultFun) => {
         val newfd = new FunDef(FreshIdentifier(fd.id.name, false), fd.returnType, fd.args)
         (fd, newfd)
       }
@@ -202,7 +203,7 @@ class InferenceEngineGenerator(program: Program,
 
     //note important, we must also replace "mult" function by "Times"
     val replaceFun = (e: Expr) => e match {
-      case FunctionInvocation(fd, args) if fd == NonlinearityEliminationPhase.piveMultFun => {
+      case FunctionInvocation(fd, args) if fd == NonlinearityEliminationPhase.multFun => {
         Times(args(0), args(1))
       }
       case fi @ FunctionInvocation(fd1, args) if newFundefs.contains(fd1) =>
