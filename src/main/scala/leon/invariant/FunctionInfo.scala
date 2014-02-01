@@ -14,6 +14,7 @@ class FunctionInfo(val fundef : FunDef) {
   //TODO: handle monotonicity in the presence of time etc.
   //Provide ways for specifying other lemmas about a function
   //more information to be added here
+  var isTheoryOperation = false
 }
 
 object FunctionInfoFactory {
@@ -64,12 +65,28 @@ object FunctionInfoFactory {
     } else false
   }  
   
-  def setMonotonicity(fd: FunDef) = {
-    val funinfo = functionInfos.getOrElse(fd, { 
+  def getOrMakeInfo(fd: FunDef) : FunctionInfo = {
+    functionInfos.getOrElse(fd, { 
       val info = new FunctionInfo(fd)
       functionInfos += (fd -> info)
       info
     })
+  }
+  
+  def setMonotonicity(fd: FunDef) = {
+    val funinfo = getOrMakeInfo(fd) 
     funinfo.isMonotonic = true 
+  }
+  
+  def setTheoryOperation(fd: FunDef) = {
+    val funcinfo = getOrMakeInfo(fd)
+    funcinfo.isTheoryOperation = true
+  }
+  
+  def isTheoryOperation(fd: FunDef) = {
+    if(functionInfos.contains(fd)) {
+      val info = functionInfos(fd)
+      info.isTheoryOperation
+    } else false
   }
 }

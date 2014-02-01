@@ -31,6 +31,7 @@ import leon.solvers.SimpleSolverAPI
 import leon.solvers.SolverFactory
 import leon.solvers.z3.UIFZ3Solver
 import leon.verification.VerificationReport
+import leon.plugin.NonlinearityEliminationPhase
 
 /**
  * @author ravi
@@ -176,20 +177,26 @@ class InferenceEngineGenerator(program: Program,
 
   /**
    * This function creates a new program with each functions postcondition strengthened by
-   * the inferred postcondition
+   * the inferred postcondition   
    */
   def verifyInvariant(newposts: Map[FunDef, Expr], rootfd: FunDef): (Option[Boolean], Map[Identifier, Expr]) = {
 
-    //create a fundef for each function in the program
-    val newFundefs = program.mainObject.definedFunctions.map((fd) => {
-      val newfd = new FunDef(FreshIdentifier(fd.id.name, true), fd.returnType, fd.args)
-      (fd, newfd)
-    }).toMap
+    //create a fundef for each function in the program that is not "mult"
+    val newFundefs = program.mainObject.definedFunctions.collect {
+      case fd @ _ if (fd != NonlinearityEliminationPhase.piveMultFun) => {
+        val newfd = new FunDef(FreshIdentifier(fd.id.name, false), fd.returnType, fd.args)
+        (fd, newfd)
+      }
+    }.toMap
 
+    //note important, we must also replace "mult" function by "Times"
     val replaceFun = (e: Expr) => e match {
+      case FunctionInvocation(fd, args) if fd == NonlinearityEliminationPhase.piveMultFun => {
+        Times(args(0), args(1))
+      }
       case fi @ FunctionInvocation(fd1, args) if newFundefs.contains(fd1) =>
-        Some(FunctionInvocation(newFundefs(fd1), args))
-      case _ => None
+        FunctionInvocation(newFundefs(fd1), args)
+      case _ => e
     }
 
     //create a body, pre, post for each newfundef
@@ -199,12 +206,12 @@ class InferenceEngineGenerator(program: Program,
       //add a new precondition
       newfd.precondition =
         if (fd.precondition.isDefined)
-          Some(searchAndReplaceDFS(replaceFun)(fd.precondition.get))
+          Some(simplePostTransform(replaceFun)(fd.precondition.get))
         else None
 
       //add a new body
       newfd.body = if (fd.hasBody)
-        Some(searchAndReplaceDFS(replaceFun)(fd.body.get))
+        Some(simplePostTransform(replaceFun)(fd.body.get))
       else None
 
       //add a new postcondition                  
@@ -223,13 +230,13 @@ class InferenceEngineGenerator(program: Program,
 
       newfd.postcondition = if (newpost.isDefined) {
         val (resvar, pexpr) = newpost.get
-        Some(resvar, searchAndReplaceDFS(replaceFun)(pexpr))
+        Some(resvar, simplePostTransform(replaceFun)(pexpr))
       } else None
     })
 
-    val newDefs = program.mainObject.defs.map {
-      case fd: FunDef => newFundefs(fd)
-      case d => d
+    val newDefs = program.mainObject.defs.collect {
+      case fd: FunDef if(newFundefs.contains(fd)) => newFundefs(fd)
+      case d if(!d.isInstanceOf[FunDef]) => d
     }
 
     val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))

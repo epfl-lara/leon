@@ -46,13 +46,13 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
       
       if (callees.contains(fd)) {
         val newRetType = TupleType(Seq(fd.returnType, Int32Type))
-        val freshId = FreshIdentifier(fd.id.name, true).setType(newRetType)
+        val freshId = FreshIdentifier(fd.id.name, false).setType(newRetType)
         val newfd = new FunDef(freshId, newRetType, fd.args)
         funMap += (fd -> newfd)
       } else {
 
         //here we need not augment the return types
-        val freshId = FreshIdentifier(fd.id.name, true).setType(fd.returnType)
+        val freshId = FreshIdentifier(fd.id.name, false).setType(fd.returnType)
         val newfd = new FunDef(freshId, fd.returnType, fd.args)
         funMap += (fd -> newfd)
       }

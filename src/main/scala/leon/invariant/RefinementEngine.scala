@@ -167,13 +167,12 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
   def shouldCreateCtrTree(recFun: FunDef) : Boolean = {
     if(ctrTracker.hasCtrTree(recFun)) false
     else {
-      /*val temp = tempFactory.getTemplate(recFun)
-      if(!temp.isDefined) true
-      else {
-        if(InvariantUtil.getTemplateVars(temp.get).isEmpty) false
-        else true
-      }*/
-      true
+      //need not create trees for theory operations
+      if(FunctionInfoFactory.isTheoryOperation(recFun)) {
+        false
+      } else {
+        true 
+      }          
     }
   }
 
@@ -194,11 +193,11 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
       if(isRecursive) {                        
         var newheads = Set[Call]()
         val recFun = fi.funDef
-        useTemplates += recFun
-        
+                
         //check if we need to create a constraint tree for the call's target
         //if (!ctrTracker.hasCtrTree(recFun) ) {                     
         if (shouldCreateCtrTree(recFun)) {
+          useTemplates += recFun
           /**
            * create a new verification condition for this recursive function
            */

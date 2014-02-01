@@ -37,6 +37,7 @@ import scala.util.control.Breaks._
  * @author ravi
  * This phase performs automatic invariant inference. 
  * TODO: Fix the handling of getting a template for a function, the current code is very obscure
+ * TODO: should time be implicitly made positive
  */
 object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   val name = "InferInv"
@@ -233,8 +234,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     var analyzedSet = Set[FunDef]()
     functionsToAnalyze.foldLeft(Set[FunDef]())((acc, funDef) => {
 
-      //skip the function if it has been analyzed
-      if (!analyzedSet.contains(funDef)) {
+      //skip the function if it has been analyzed or those that are theory operations
+      if (!analyzedSet.contains(funDef) && !FunctionInfoFactory.isTheoryOperation(funDef)) {
         if (funDef.hasBody && funDef.hasPostcondition) {
           val body = funDef.nondetBody.get
           val (resvar, post) = funDef.postcondition.get
