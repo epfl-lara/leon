@@ -17,11 +17,13 @@ object NonlinearityEliminationPhase extends LeonPhase[Program,Program] {
   val description = "Reduces nonlinear functions to recursive functions with axioms"
   val one = IntLiteral(1)   
   val zero = IntLiteral(0)
+  
+  //a recursive function that represents multiplication 
+  val multFun = {
     
-  //a user defined function that represents multiplication (only for positive arguments)
-  //TODO: define a full multiplication using piveMult
-  val piveMultFun  = {    
-      //create new multFun
+  }
+  //a recursive function that represents multiplication of two positive arguments
+  val piveMultFun  = {         
       val xid = FreshIdentifier("x").setType(Int32Type)
       val yid = FreshIdentifier("y").setType(Int32Type)
       val varx = xid.toVariable

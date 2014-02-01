@@ -138,8 +138,9 @@ class InferenceEngineGenerator(program: Program,
           var output = "Invariants for Function: " + funDef.id + "\n"
           res.get.foreach((pair) => {
             val (fd, inv) = pair
-            reporter.info("- Found inductive invariant: " + fd.id + " --> " + ScalaPrinter(inv))
-            output += fd.id + " --> " + inv + "\n"
+            val simpInv = multToTimes(inv)
+            reporter.info("- Found inductive invariant: " + fd.id + " --> " + ScalaPrinter(simpInv))
+            output += fd.id + " --> " + simpInv + "\n"
           })
           //add invariants to stats
           Stats.addOutput(output)
@@ -173,6 +174,16 @@ class InferenceEngineGenerator(program: Program,
       }
     }
     inferenceEngine
+  }
+  
+  //replaces occurrences of mult by Times
+  def multToTimes(ine: Expr) : Expr ={
+    simplePostTransform((e: Expr) => e match {
+      case FunctionInvocation(fd, args) if fd == NonlinearityEliminationPhase.piveMultFun => {
+        Times(args(0), args(1))
+      }
+      case _ => e
+    })(ine)
   }
 
   /**

@@ -25,20 +25,14 @@ object ListOperations {
   def reverse(l: List): List = {
     reverseRec(l, Nil())
     
-  } ensuring (res => size(l) == size(res) template((a,b) => time <= a*size(l) + b))
-  
-  def mult(x : Int, y : Int) : Int = {
-      if(x == 0 || y == 0) 0
-      else
-    	  mult(x-1,y-1) +  x + y - 1
-  } 
+  } ensuring (res => size(l) == size(res) template((a,b) => time <= a*size(l) + b)) 
 
   def reverse2(l: List): List = {
     l match {
       case Nil() => l
       case Cons(hd, tl) => append(reverse2(tl), Cons(hd, Nil()))
     }
-  } ensuring (res => size(res) == size(l) template((a,b) => time <= a*mult(size(l),size(l)) + b))
+  } ensuring (res => size(res) == size(l) template((a,b) => time <= a*(size(l)*size(l)) + b))
 
   def remove(elem: Int, l: List): List = {
     l match {
@@ -61,5 +55,5 @@ object ListOperations {
         if (contains(newl, x)) newl
         else Cons(x, newl)
       }
-   }) ensuring (res => size(l) >= size(res) template((a,b) => time <= a*mult(size(l),size(l)) + b))
+   }) ensuring (res => size(l) >= size(res) template((a,b) => time <= a*(size(l)*size(l)) + b))
 }

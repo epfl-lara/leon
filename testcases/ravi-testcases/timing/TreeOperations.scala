@@ -43,11 +43,11 @@ object TreeOperations {
     }
   } ensuring (res => height(res) <= height(t) + 1 template((a,b) => time <= a*height(t) + b))
   
-  def mult(x : Int, y : Int) : Int = {
-      if(x == 0 || y == 0) 0
-      else
-    	  mult(x-1,y) + y
-  }
+//  def mult(x : Int, y : Int) : Int = {
+//      if(x == 0 || y == 0) 0
+//      else
+//    	  mult(x-1,y) + y
+//  }
     
   def addAll(l: List, t: Tree): Tree = {
     l match {
@@ -57,7 +57,7 @@ object TreeOperations {
         addAll(xs, newt)
       } 
     }
-  } ensuring(res => true template((a,b,c) => time <= a*mult(listSize(l),height(t) + listSize(l)) + b*listSize(l) + c)) 
+  } ensuring(res => true template((a,b,c) => time <= a*(listSize(l) * (height(t) + listSize(l))) + b*listSize(l) + c)) 
 
   def remove(elem: Int, t: Tree): Tree = {
     t match {
@@ -83,7 +83,7 @@ object TreeOperations {
       case Nil() => t
       case Cons(x, xs) => removeAll(xs, remove(x, t))
     }
-  } ensuring(res => true template((a,b,c) => time <= a*mult(listSize(l),height(t)) + b*listSize(l) + c))
+  } ensuring(res => true template((a,b,c) => time <= a*(listSize(l) * height(t)) + b*listSize(l) + c))
 
   def contains(elem : Int, t : Tree) : Boolean = {
     t match {

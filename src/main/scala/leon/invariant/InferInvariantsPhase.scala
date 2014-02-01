@@ -235,7 +235,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     //add all theory operations to analyzed set
     analyzedSet ++= functionsToAnalyze.filter(FunctionInfoFactory.isTheoryOperation _)
     
-    functionsToAnalyze.foldLeft(Set[FunDef]())((acc, funDef) => {
+    functionsToAnalyze.foreach((funDef) => {
 
       //skip the function if it has been analyzed or those that are theory operations
       if (!analyzedSet.contains(funDef)) {
@@ -290,14 +290,13 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
                 	tempFactory.setTemplate(fd, inv)
               })
             }
-            acc ++ inferredFds
           }
           else {
-            reporter.info("- Exhausted all templates, cannot infer invariants")
-            acc
+            reporter.info("- Exhausted all templates, cannot infer invariants")            
           }
-        } else acc + funDef
-      } else acc
-    })    
+        } else analyzedSet += funDef
+      }
+    })
+    analyzedSet
   }
 }
