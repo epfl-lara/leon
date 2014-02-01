@@ -140,6 +140,8 @@ object NonlinearityEliminationPhase extends LeonPhase[Program,Program] {
           val toTemplate =  simplePostTransform(replaceFun)(FunctionInfoFactory.getTemplate(fd))                 
           FunctionInfoFactory.setTemplate(newfd, toTemplate)
         }
+      
+      fd.annotations.foreach((str) => newfd.addAnnotation(str))
     })
 
     val newDefs = program.mainObject.defs.map {

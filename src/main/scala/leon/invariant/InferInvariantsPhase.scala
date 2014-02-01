@@ -66,7 +66,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   
   override val definedOptions: Set[LeonOptionDef] = Set(
     //LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
-    LeonValueOptionDef("monotones", "--monotones=f1:f2", "Monotonic functions f1,f2,..."),
+    //LeonValueOptionDef("monotones", "--monotones=f1:f2", "Monotonic functions f1,f2,..."),
     LeonFlagOptionDef("wholeprogram", "--wholeprogram", "Perform an non-modular whole program analysis"),
     LeonFlagOptionDef("fullunroll", "--fullunroll", "Unroll all calls in every unroll step"),
     LeonFlagOptionDef("minbounds", "--minbounds", "tighten time bounds"),
@@ -89,16 +89,16 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       //      case LeonValueOption("functions", ListValue(fs)) =>
       //        functionsToAnalyse ++= fs
 
-      case LeonValueOption("monotones", ListValue(fs)) => {
-        val names = fs.toSet
-        program.definedFunctions.foreach((fd) => {
-          //here, checking for name equality without identifiers
-          if (names.contains(fd.id.name)) {
-            FunctionInfoFactory.setMonotonicity(fd)
-            println("Marking " + fd.id + " as monotonic")
-          }
-        })
-      }
+//      case LeonValueOption("monotones", ListValue(fs)) => {
+//        val names = fs.toSet
+//        program.definedFunctions.foreach((fd) => {
+//          //here, checking for name equality without identifiers
+//          if (names.contains(fd.id.name)) {
+//            FunctionInfoFactory.setMonotonicity(fd)
+//            println("Marking " + fd.id + " as monotonic")
+//          }
+//        })
+//      }
 
       case LeonFlagOption("wholeprogram", true) => {
         //do not do a modular analysis        
@@ -161,6 +161,12 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     } 
 
     reporter.info("Analysis Order: " + functionsToAnalyze.map(_.id))
+    //initialize Function info factory
+    functionsToAnalyze.foreach((fd) => {
+      if(fd.annotations.contains("monotonic")){
+        FunctionInfoFactory.setMonotonicity(fd)        
+      }        
+    })
     
     //perform the invariant inference
     if(!useCegis) {

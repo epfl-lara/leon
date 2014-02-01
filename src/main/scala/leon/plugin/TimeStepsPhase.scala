@@ -109,8 +109,14 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         val newbody = from.body.map(mapCalls _)        
         newbody
       } 
+      
+      //copy annotations
+      from.annotations.foreach((str) => {
+        println("copying annotation: "+str)
+        to.addAnnotation(str)
+      })      
     }
-
+    
     val newDefs = program.mainObject.defs.map {
       case fd: FunDef =>
         funMap(fd)

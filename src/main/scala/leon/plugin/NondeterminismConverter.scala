@@ -184,6 +184,9 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
         val newbody = from.body.map(mapCalls _)        
         newbody
       } 
+      
+      //copy annotations here
+      from.annotations.foreach((str) => to.addAnnotation(str))
     }
 
     val newDefs = program.mainObject.defs.map {

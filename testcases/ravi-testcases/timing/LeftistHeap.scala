@@ -1,4 +1,5 @@
 import leon.Utils._
+import leon.Annotations._
 
 object LeftistHeap {
   sealed abstract class Heap
@@ -20,6 +21,7 @@ object LeftistHeap {
     case Node(_,_,l,r) => hasLeftistProperty(l) && hasLeftistProperty(r) && rightHeight(l) >= rightHeight(r) && (rank(h) == rightHeight(h)) 
   })
   
+  @monotonic
   def twopower(x: Int) : Int = {
     require(x >= 0)
     if(x < 1) 1    
@@ -46,7 +48,7 @@ object LeftistHeap {
       case Node(_,_,l,r) => merge(l, r)
       case l @ Leaf() => l
     }
-  }  ensuring(res => true template((a,b) => time <= a*leftRightHeight(h) + b))
+  } ensuring(res => true template((a,b) => time <= a*leftRightHeight(h) + b))
   
   private def merge(h1: Heap, h2: Heap) : Heap = {
     require(hasLeftistProperty(h1) && hasLeftistProperty(h2))
