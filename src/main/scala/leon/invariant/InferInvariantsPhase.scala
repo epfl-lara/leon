@@ -232,10 +232,13 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     val tempFactory = new TemplateFactory(Some(new TemplateEnumerator(program, reporter, enumerationRelation)), reporter)
     
     var analyzedSet = Set[FunDef]()
+    //add all theory operations to analyzed set
+    analyzedSet ++= functionsToAnalyze.filter(FunctionInfoFactory.isTheoryOperation _)
+    
     functionsToAnalyze.foldLeft(Set[FunDef]())((acc, funDef) => {
 
       //skip the function if it has been analyzed or those that are theory operations
-      if (!analyzedSet.contains(funDef) && !FunctionInfoFactory.isTheoryOperation(funDef)) {
+      if (!analyzedSet.contains(funDef)) {
         if (funDef.hasBody && funDef.hasPostcondition) {
           val body = funDef.nondetBody.get
           val (resvar, post) = funDef.postcondition.get
