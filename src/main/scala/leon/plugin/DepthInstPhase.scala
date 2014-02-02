@@ -19,13 +19,13 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
   val name = "Expose Depth Phase"
   val description = "Expose depth of a function"  
 
-  def maxFun = {
+  val maxFun = {
     val xid = FreshIdentifier("x").setType(Int32Type)
     val yid = FreshIdentifier("y").setType(Int32Type)
     val varx = xid.toVariable
     val vary = yid.toVariable
     val args = Seq(xid, yid)
-    val fd = new FunDef(FreshIdentifier("max", false), Int32Type, args.map((arg) => VarDecl(arg, arg.getType)))
+    val fd = new FunDef(FreshIdentifier("max", true), Int32Type, args.map((arg) => VarDecl(arg, arg.getType)))
     //add a body    
     fd.body = Some(IfExpr(GreaterEquals(varx, vary), varx, vary))
     fd
@@ -131,14 +131,14 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
         funMap(fd)
       case d =>
         d
-    }
-
+    } :+ maxFun
+    
     val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
-    println("New Prog: \n"+ScalaPrinter.apply(newprog))
+    println("After Depth Instrumentation: \n"+ScalaPrinter.apply(newprog))
     
     //print all the templates
-    /*newprog.definedFunctions.foreach((fd) => 
-      if(FunctionInfoFactory.hasTemplate(fd))
+    newprog.definedFunctions.foreach((fd) => println("Defined fun: "+fd.id)) 
+      /*if(FunctionInfoFactory.hasTemplate(fd))
         println("Function: "+fd.id+" template --> "+FunctionInfoFactory.getTemplate(fd))
         )*/
     newprog
@@ -186,8 +186,13 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
         tupleifyRecur(e,subs,recons,List[Identifier](),List[Identifier]())
     }
     
-    def combineDepthIds(depthIds : List[Identifier]) : Expr = {
-      depthIds.tail.foldLeft(depthIds.head.toVariable : Expr)((acc, id) => FunctionInvocation(maxFun,Seq(acc, id.toVariable)))      
+    def combineDepthIds(costofOp: Expr, depthIds : List[Identifier]) : Expr = {
+      if(depthIds.size == 0) costofOp
+      else if(depthIds.size == 1) Plus(costofOp, depthIds(0).toVariable)
+      else {
+        val summand = depthIds.tail.foldLeft(depthIds.head.toVariable : Expr)((acc, id) => FunctionInvocation(maxFun,Seq(acc, id.toVariable)))
+        Plus(costofOp, summand)
+      }           
     }
        
     def tupleifyRecur(e: Expr, args: Seq[Expr], recons: Seq[Expr] => Expr, resIds: List[Identifier], depthIds: List[Identifier]) : Expr = {      
@@ -206,7 +211,7 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
             val depthvar = FreshIdentifier("d", true).setType(Int32Type)            
             
             val costofOp = Plus(getCostModel.costOfExpr(e),Variable(depthvar))
-            val depthPart = Plus(costofOp, combineDepthIds(depthIds))
+            val depthPart = combineDepthIds(costofOp, depthIds)
               //timeIds.foldLeft(costofOp: Expr)((g: Expr, t: Identifier) => Plus(Variable(t), g))            
             val baseExpr = Tuple(Seq(Variable(resvar), depthPart))
                                     
@@ -216,7 +221,7 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
           case _ => {
             val exprPart = recons(resIds.map(Variable(_)): Seq[Expr])
             val costofOp = getCostModel.costOfExpr(e)
-            val depthPart = Plus(costofOp, combineDepthIds(depthIds))
+            val depthPart = combineDepthIds(costofOp, depthIds)
               //timeIds.foldLeft(costofOp: Expr)((g: Expr, t: Identifier) => Plus(Variable(t), g))
             Tuple(Seq(exprPart, depthPart))
           }
@@ -233,16 +238,7 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
         val recRes = tupleifyRecur(e,args.tail,recons,resIds :+ resvar, depthIds :+ depthvar)
         
         //transform the current element (handle function invocation separately)        
-        val newCurrExpr = transform(args.head)
-        /*subs.head match {
-          case FunctionInvocation(fd,args) => {
-            //use the new function definition in funmap
-            val newfun = FunctionInvocation(funMap(fd),args)
-            //transform the function
-            transform(newfun)
-          } 
-          case _ => transform(subs.head)
-        }*/
+        val newCurrExpr = transform(args.head)        
         
         //create the new expression for the current recursion step
         val newexpr = LetTuple(Seq(resvar, depthvar ),newCurrExpr,recRes)
@@ -329,13 +325,24 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
             
       // Apply transformations
       val res    = transform(input)      
-      val simple = simplifyArithmetic(simplifyLets(res))
+      val simple = simplifyMax(simplifyLets(res))
 
       // For debugging purposes            
       /*println("-"*80)
       println("AFTER:")      
       println(simple)*/
       simple
+    }
+    
+    def simplifyMax(ine: Expr) : Expr = {
+      simplePostTransform((e: Expr) => e match {
+        case FunctionInvocation(fd, args) if(fd == maxFun && args(0).isInstanceOf[IntLiteral] && args(1).isInstanceOf[IntLiteral]) => {
+          val a1@IntLiteral(v1) = args(0).asInstanceOf[IntLiteral]
+          val a2@IntLiteral(v2) = args(1).asInstanceOf[IntLiteral]          
+          if(v1 >= v2) a1 else a2
+        }
+        case _ => simplifyArithmetic(e)        
+      })(ine)
     }
     
     def liftExprInMatch(ine: Expr) : Expr = {

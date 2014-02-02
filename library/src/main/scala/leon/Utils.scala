@@ -52,4 +52,7 @@ object Utils {
   
   //a counter that counts the number of time steps
   def time: Int = throw new RuntimeException("Implementation not supported")
+  
+  //a counter that counts the depth
+  def depth: Int = throw new RuntimeException("Implementation not supported")
 }

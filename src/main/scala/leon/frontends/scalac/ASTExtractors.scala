@@ -146,6 +146,17 @@ trait ASTExtractors {
     }
     
     /**
+     * Extracts depth variable from the templates and postconditions
+     */
+    object ExDepthVariable {
+      def unapply(tree: Select) : Boolean = tree match {
+        case ExSelected("leon", "Utils", "depth") =>
+          true
+        case _ => false
+      }
+    }
+    
+    /**
      * Extracts nondet constructs
      */
     object ExNondetExpression {

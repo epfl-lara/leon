@@ -57,7 +57,7 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         funMap += (fd -> newfd)
       }
     }
-	//println("FunMap: "+funMap.map((elem) => (elem._1.id, elem._2.id)))
+	println("FunMap: "+funMap.map((elem) => (elem._1.id, elem._2.id)))
 
     def mapCalls(ine: Expr): Expr = {
       simplePostTransform((e: Expr) => e match {
@@ -124,7 +124,7 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
     }
 
     val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
-    println("New Prog: \n"+ScalaPrinter.apply(newprog))
+    println("After Time Instrumentation: \n"+ScalaPrinter.apply(newprog))
     
     //print all the templates
     /*newprog.definedFunctions.foreach((fd) => 
