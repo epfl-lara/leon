@@ -61,6 +61,12 @@ case class TimeVariable() extends Expr with Terminal with FixedType {
     override def toString : String = "#time"
 }
 
+//this used to refer to the depth of a procedure
+case class DepthVariable() extends Expr with Terminal with FixedType {
+    val fixedType = Int32Type
+    override def toString : String = "#depth"
+}
+
 object TVarFactory {
   
   val temporaries = MutableSet[Identifier]()

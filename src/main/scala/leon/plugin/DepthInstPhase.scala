@@ -13,26 +13,38 @@ import leon.LeonPhase
 import leon.invariant._
 
 /**
- * TODO: is it necessary to create new functions even if it does not use time 
+ * TODO: is it necessary to create new functions even if it does not use depth 
  */
-object TimeStepsPhase extends LeonPhase[Program,Program] {
-  val name = "Expose Time Phase"
-  val description = "Expose runtime steps for each function"  
+object DepthInstPhase extends LeonPhase[Program,Program] {
+  val name = "Expose Depth Phase"
+  val description = "Expose depth of a function"  
 
+  def maxFun = {
+    val xid = FreshIdentifier("x").setType(Int32Type)
+    val yid = FreshIdentifier("y").setType(Int32Type)
+    val varx = xid.toVariable
+    val vary = yid.toVariable
+    val args = Seq(xid, yid)
+    val fd = new FunDef(FreshIdentifier("max", false), Int32Type, args.map((arg) => VarDecl(arg, arg.getType)))
+    //add a body    
+    fd.body = Some(IfExpr(GreaterEquals(varx, vary), varx, vary))
+    fd
+  }
+  
   def run(ctx: LeonContext)(program: Program) : Program = {
                 
     // Map from old fundefs to new fundefs
 	var funMap = Map[FunDef, FunDef]()
   
-	//find functions that use time in the postcondition or are transitively called from such functions
+	//find functions that use depth in the postcondition or are transitively called from such functions
 	var rootFuncs = Set[FunDef]()
 	program.definedFunctions.foreach((fd) => { 
 	  if(fd.hasPostcondition 
-	      && ExpressionTransformer.isSubExpr(TimeVariable(), fd.postcondition.get._2)) {
+	      && ExpressionTransformer.isSubExpr(DepthVariable(), fd.postcondition.get._2)) {
 	    rootFuncs += fd
 	  } 
 	  else if(FunctionInfoFactory.hasTemplate(fd) 
-	      && ExpressionTransformer.isSubExpr(TimeVariable(), FunctionInfoFactory.getTemplate(fd))) {
+	      && ExpressionTransformer.isSubExpr(DepthVariable(), FunctionInfoFactory.getTemplate(fd))) {
 	    rootFuncs += fd
 	  }	    
 	})
@@ -40,7 +52,7 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
 	val cg = CallGraphUtil.constructCallGraph(program, onlyBody = true)
 	val callees = rootFuncs.foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd))
 
-    //create new functions.  Augment the return type of a function iff the postcondition uses 'time' 
+    //create new functions.  Augment the return type of a function iff the postcondition uses 'depth' 
     // or if the function is transitively called from such a function
     for (fd <- program.definedFunctions) {
       
@@ -50,7 +62,6 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         val newfd = new FunDef(freshId, newRetType, fd.args)
         funMap += (fd -> newfd)
       } else {
-
         //here we need not augment the return types
         val freshId = FreshIdentifier(fd.id.name, false).setType(fd.returnType)
         val newfd = new FunDef(freshId, fd.returnType, fd.args)
@@ -62,7 +73,6 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
     def mapCalls(ine: Expr): Expr = {
       simplePostTransform((e: Expr) => e match {
         case FunctionInvocation(fd, args) =>
-
           if (callees.contains(fd)) {
             TupleSelect(FunctionInvocation(funMap(fd), args), 1)
           } else {
@@ -81,11 +91,11 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
       to.postcondition = if (from.hasPostcondition) {
         
         val (fromRes, fromCond) = from.postcondition.get
-        val toResId = FreshIdentifier(fromRes.name, true).setType(to.returnType)
+        val toResId = FreshIdentifier(fromRes.name, false).setType(to.returnType)
 
         val substsMap = if (callees.contains(from)) {
           //replace fromRes by toRes._1 in fromCond and time by toRes._2 in  fromCond
-          Map[Expr, Expr](fromRes.toVariable -> TupleSelect(toResId.toVariable, 1), TimeVariable() -> TupleSelect(toResId.toVariable, 2))
+          Map[Expr, Expr](fromRes.toVariable -> TupleSelect(toResId.toVariable, 1), DepthVariable() -> TupleSelect(toResId.toVariable, 2))
         } else {
           //replace fromRes by toRes in fromCond
           Map[Expr, Expr](fromRes.toVariable -> toResId.toVariable)
@@ -102,16 +112,16 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         
       } else None
 
-      //instrument the bodies of all 'callees' only for tracking time
+      //instrument the bodies of all 'callees' only for tracking depth
       to.body = if (callees.contains(from)) {
-        from.body.map(new ExposeTimes(ctx, getCostModel, funMap).apply _)
+        from.body.map(new ExposeDepth(ctx, getCostModel, funMap).apply _)
       } else{        
         val newbody = from.body.map(mapCalls _)        
         newbody
       } 
       
       //copy annotations
-      from.annotations.foreach((str) => {       
+      from.annotations.foreach((str) => {        
         to.addAnnotation(str)
       })      
     }
@@ -152,7 +162,7 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
      }
   }
 
-  class ExposeTimes(ctx: LeonContext, cm: CostModel, funMap : Map[FunDef,FunDef]) {
+  class ExposeDepth(ctx: LeonContext, cm: CostModel, funMap : Map[FunDef,FunDef]) {
 
     // Returned Expr is always an expr of type tuple (Expr, Int)
     def tupleify(e: Expr, subs: Seq[Expr], recons: Seq[Expr] => Expr): Expr = {
@@ -176,11 +186,14 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         tupleifyRecur(e,subs,recons,List[Identifier](),List[Identifier]())
     }
     
+    def combineDepthIds(depthIds : List[Identifier]) : Expr = {
+      depthIds.tail.foldLeft(depthIds.head.toVariable : Expr)((acc, id) => FunctionInvocation(maxFun,Seq(acc, id.toVariable)))      
+    }
        
-    def tupleifyRecur(e: Expr, subs: Seq[Expr], recons: Seq[Expr] => Expr, resIds: List[Identifier], timeIds: List[Identifier]) : Expr = {      
+    def tupleifyRecur(e: Expr, args: Seq[Expr], recons: Seq[Expr] => Expr, resIds: List[Identifier], depthIds: List[Identifier]) : Expr = {      
     //note: subs.size should be zero if e is a terminal
-      if(subs.size == 0)
-      {
+      if(args.size == 0)
+      {        
         //base case (handle terminals and function invocation separately)
         e match {
           case t : Terminal => Tuple(Seq(recons(Seq()), getCostModel.costOfExpr(e)))
@@ -190,37 +203,37 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
             
             //create a variables to store the result of function invocation
             val resvar = FreshIdentifier("e", true).setType(e.getType)
-            val timevar = FreshIdentifier("t", true).setType(Int32Type)            
+            val depthvar = FreshIdentifier("d", true).setType(Int32Type)            
             
-            val costofOp = Plus(getCostModel.costOfExpr(e),Variable(timevar))
-            val timePart =
-              timeIds.foldLeft(costofOp: Expr)((g: Expr, t: Identifier) => Plus(Variable(t), g))            
-            val baseExpr = Tuple(Seq(Variable(resvar), timePart))
+            val costofOp = Plus(getCostModel.costOfExpr(e),Variable(depthvar))
+            val depthPart = Plus(costofOp, combineDepthIds(depthIds))
+              //timeIds.foldLeft(costofOp: Expr)((g: Expr, t: Identifier) => Plus(Variable(t), g))            
+            val baseExpr = Tuple(Seq(Variable(resvar), depthPart))
                                     
-            LetTuple(Seq(resvar,timevar),newFunInv,baseExpr)
+            LetTuple(Seq(resvar,depthvar),newFunInv,baseExpr)
           }
           
           case _ => {
             val exprPart = recons(resIds.map(Variable(_)): Seq[Expr])
             val costofOp = getCostModel.costOfExpr(e)
-            val timePart =
-              timeIds.foldLeft(costofOp: Expr)((g: Expr, t: Identifier) => Plus(Variable(t), g))
-            Tuple(Seq(exprPart, timePart))
+            val depthPart = Plus(costofOp, combineDepthIds(depthIds))
+              //timeIds.foldLeft(costofOp: Expr)((g: Expr, t: Identifier) => Plus(Variable(t), g))
+            Tuple(Seq(exprPart, depthPart))
           }
         }    	
       }
       else
       {
         //recursion step
-        val currentElem = subs.head
+        val currentElem = args.head
         val resvar = FreshIdentifier("e", true).setType(currentElem.getType)
-        val timevar = FreshIdentifier("t", true).setType(Int32Type)
+        val depthvar = FreshIdentifier("d", true).setType(Int32Type)       
                 
         ///recursively call the method on subs.tail
-        val recRes = tupleifyRecur(e,subs.tail,recons,resIds :+ resvar, timeIds :+ timevar)
+        val recRes = tupleifyRecur(e,args.tail,recons,resIds :+ resvar, depthIds :+ depthvar)
         
         //transform the current element (handle function invocation separately)        
-        val newCurrExpr = transform(subs.head)
+        val newCurrExpr = transform(args.head)
         /*subs.head match {
           case FunctionInvocation(fd,args) => {
             //use the new function definition in funmap
@@ -232,7 +245,7 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         }*/
         
         //create the new expression for the current recursion step
-        val newexpr = LetTuple(Seq(resvar, timevar ),newCurrExpr,recRes)
+        val newexpr = LetTuple(Seq(resvar, depthvar ),newCurrExpr,recRes)
         newexpr
       }      
     }
@@ -243,7 +256,7 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         val ir = FreshIdentifier("ir", true).setType(v.getType)
         val it = FreshIdentifier("it", true).setType(Int32Type)
         val r = FreshIdentifier("r", true).setType(e.getType)
-        val t = FreshIdentifier("t", true).setType(Int32Type)
+        val t = FreshIdentifier("d", true).setType(Int32Type)
 
         LetTuple(Seq(ir, it), transform(v),
           LetTuple(Seq(r,t), replace(Map(Variable(i) -> Variable(ir)), transform(b)),
@@ -270,22 +283,22 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         
         //create new variables that capture the result of the condition
         val rescond = FreshIdentifier("e", true).setType(cond.getType)
-        val timecond = FreshIdentifier("t", true).setType(Int32Type)
+        val depthcond = FreshIdentifier("t", true).setType(Int32Type)
         
         //transform the then branch        
         val resthen = FreshIdentifier("e", true).setType(then.getType)
-        val timethen = FreshIdentifier("t", true).setType(Int32Type)
-        val newthen = LetTuple(Seq(resthen,timethen), transform(then), 
-            Tuple(Seq(Variable(resthen),Plus(Variable(timecond),Variable(timethen)))))
+        val depththen = FreshIdentifier("t", true).setType(Int32Type)
+        val newthen = LetTuple(Seq(resthen,depththen), transform(then), 
+            Tuple(Seq(Variable(resthen),Plus(Variable(depthcond),Variable(depththen)))))
                 
         //similarly transform the else branch 
         val reselse = FreshIdentifier("e", true).setType(elze.getType)
-        val timelse = FreshIdentifier("t", true).setType(Int32Type)
-        val newelse = LetTuple(Seq(reselse,timelse), transform(elze), 
-            Tuple(Seq(Variable(reselse),Plus(Variable(timecond),Variable(timelse)))))
+        val depthelse = FreshIdentifier("t", true).setType(Int32Type)
+        val newelse = LetTuple(Seq(reselse,depthelse), transform(elze), 
+            Tuple(Seq(Variable(reselse),Plus(Variable(depthcond),Variable(depthelse)))))
                 
         //create a final expression
-        LetTuple(Seq(rescond,timecond),transform(cond), IfExpr(Variable(rescond),newthen,newelse))                
+        LetTuple(Seq(rescond,depthcond),transform(cond), IfExpr(Variable(rescond),newthen,newelse))                
       }
         
       // For all other operations, we go through a common tupleifier.
