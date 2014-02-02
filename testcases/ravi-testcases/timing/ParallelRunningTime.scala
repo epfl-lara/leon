@@ -39,7 +39,8 @@ object ParallelRunningTime {
    l match {    
     case Nil() => Nil()
     case Cons(x, t) =>  {
-      Cons(fact(x), factMap(t, x-1))      
+      val f = fact(x)
+      Cons(f, factMap(t, x-1))      
     }
     
   }} ensuring(res => true template((a,b) => depth <= a*k + b))

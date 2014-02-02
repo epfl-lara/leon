@@ -165,7 +165,7 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
   class ExposeDepth(ctx: LeonContext, cm: CostModel, funMap : Map[FunDef,FunDef]) {
 
     // Returned Expr is always an expr of type tuple (Expr, Int)
-    def tupleify(e: Expr, subs: Seq[Expr], recons: Seq[Expr] => Expr): Expr = {
+    def tupleify(e: Expr, args: Seq[Expr], recons: Seq[Expr] => Expr, letIdToDepth: Map[Identifier,Identifier]): Expr = {
         // When called for:
         // Op(n1,n2,n3)
         // e      = Op(n1,n2,n3)
@@ -180,28 +180,39 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
         //      Tuple(recons(e1, e2, ...), t1 + t2 + ... costOfExpr(Op)
         //    ...
         //   )
-        // )
-        //
-        // You will have to handle FunctionInvocation specially here!
-        tupleifyRecur(e,subs,recons,List[Identifier](),List[Identifier]())
+        // )        
+        tupleifyRecur(e, args, recons, List[Identifier](),List[Identifier](), letIdToDepth)
     }
     
     def combineDepthIds(costofOp: Expr, depthIds : List[Identifier]) : Expr = {
       if(depthIds.size == 0) costofOp
       else if(depthIds.size == 1) Plus(costofOp, depthIds(0).toVariable)
       else {
-        val summand = depthIds.tail.foldLeft(depthIds.head.toVariable : Expr)((acc, id) => FunctionInvocation(maxFun,Seq(acc, id.toVariable)))
+        //optimization: remove duplicates from 'depthIds' as 'max' is an idempotent operation
+        val head +: tail = depthIds.distinct
+        val summand = tail.foldLeft(head.toVariable : Expr)((acc, id) => {
+          FunctionInvocation(maxFun,Seq(acc, id.toVariable))
+        })
         Plus(costofOp, summand)
       }           
     }
        
-    def tupleifyRecur(e: Expr, args: Seq[Expr], recons: Seq[Expr] => Expr, resIds: List[Identifier], depthIds: List[Identifier]) : Expr = {      
-    //note: subs.size should be zero if e is a terminal
+    def tupleifyRecur(e: Expr, args: Seq[Expr], recons: Seq[Expr] => Expr, 
+        resIds: List[Identifier], 
+        depthIds: List[Identifier],
+        letIdToDepth : Map[Identifier, Identifier]) : Expr = {      
+      
       if(args.size == 0)
-      {        
-        //base case (handle terminals and function invocation separately)
+      {               
+        //This will be entered when all the arguments have been processed, the current root of the AST
         e match {
-          case t : Terminal => Tuple(Seq(recons(Seq()), getCostModel.costOfExpr(e)))
+          case Variable(id) if(letIdToDepth.contains(id)) => {
+            val depth = Plus(getCostModel.costOfExpr(e), letIdToDepth(id).toVariable)
+            Tuple(Seq(recons(Seq()), depth))
+          }
+          case t : Terminal => {            
+            Tuple(Seq(recons(Seq()), getCostModel.costOfExpr(t)))
+          }
           
           case f@FunctionInvocation(fd,args) => {            
             val newFunInv = FunctionInvocation(funMap(fd),resIds.map(Variable(_)))
@@ -211,8 +222,7 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
             val depthvar = FreshIdentifier("d", true).setType(Int32Type)            
             
             val costofOp = Plus(getCostModel.costOfExpr(e),Variable(depthvar))
-            val depthPart = combineDepthIds(costofOp, depthIds)
-              //timeIds.foldLeft(costofOp: Expr)((g: Expr, t: Identifier) => Plus(Variable(t), g))            
+            val depthPart = combineDepthIds(costofOp, depthIds)                       
             val baseExpr = Tuple(Seq(Variable(resvar), depthPart))
                                     
             LetTuple(Seq(resvar,depthvar),newFunInv,baseExpr)
@@ -221,94 +231,99 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
           case _ => {
             val exprPart = recons(resIds.map(Variable(_)): Seq[Expr])
             val costofOp = getCostModel.costOfExpr(e)
-            val depthPart = combineDepthIds(costofOp, depthIds)
-              //timeIds.foldLeft(costofOp: Expr)((g: Expr, t: Identifier) => Plus(Variable(t), g))
+            val depthPart = combineDepthIds(costofOp, depthIds)             
             Tuple(Seq(exprPart, depthPart))
           }
         }    	
       }
       else
       {
-        //recursion step
+        //the processing of args
         val currentElem = args.head
-        val resvar = FreshIdentifier("e", true).setType(currentElem.getType)
+        val resvar = FreshIdentifier("r", true).setType(currentElem.getType)
         val depthvar = FreshIdentifier("d", true).setType(Int32Type)       
                 
-        ///recursively call the method on subs.tail
-        val recRes = tupleifyRecur(e,args.tail,recons,resIds :+ resvar, depthIds :+ depthvar)
+        ///recursively call the method on args.tail
+        val recRes = tupleifyRecur(e, args.tail, recons, resIds :+ resvar, depthIds :+ depthvar, letIdToDepth)
         
         //transform the current element (handle function invocation separately)        
-        val newCurrExpr = transform(args.head)        
+        val newCurrExpr = transform(args.head, letIdToDepth)        
         
         //create the new expression for the current recursion step
-        val newexpr = LetTuple(Seq(resvar, depthvar ),newCurrExpr,recRes)
+        val newexpr = LetTuple(Seq(resvar, depthvar),newCurrExpr,recRes)
         newexpr
       }      
     }
 
     //TODO: need to handle Assume 
-    def transform(e: Expr): Expr = e match {    
+    def transform(e: Expr, letIdToDepth : Map[Identifier, Identifier]): Expr = e match {    
       case Let(i, v, b) =>
-        val ir = FreshIdentifier("ir", true).setType(v.getType)
-        val it = FreshIdentifier("it", true).setType(Int32Type)
-        val r = FreshIdentifier("r", true).setType(e.getType)
-        val t = FreshIdentifier("d", true).setType(Int32Type)
+        val vres = FreshIdentifier("vr", true).setType(v.getType)
+        val vdepth = FreshIdentifier("vd", true).setType(Int32Type)
+        val bres = FreshIdentifier("br", true).setType(e.getType)
+        val bdepth = FreshIdentifier("bd", true).setType(Int32Type)
+        
+        val newvalue = transform(v, letIdToDepth)
+        val newbody = transform(replace(Map(Variable(i) -> Variable(vres)), b),
+            letIdToDepth + (vres -> vdepth))
 
-        LetTuple(Seq(ir, it), transform(v),
-          LetTuple(Seq(r,t), replace(Map(Variable(i) -> Variable(ir)), transform(b)),
-            Tuple(Seq(Variable(r), Plus(Variable(t), Plus(Variable(it), cm.costOfExpr(e)))))
-          )
-        )
+        LetTuple(Seq(vres, vdepth), newvalue,
+          LetTuple(Seq(bres,bdepth),  newbody,
+            Tuple(Seq(Variable(bres), Plus(Variable(bdepth), cm.costOfExpr(e))))
+            )
+          )        
       
       case LetTuple(ids, v, b) =>
-        val ir = FreshIdentifier("ir", true).setType(v.getType)
-        val it = FreshIdentifier("it", true).setType(Int32Type)
-        val r = FreshIdentifier("r", true).setType(e.getType)
-        val t = FreshIdentifier("t", true).setType(Int32Type)
+        val vres = FreshIdentifier("vres", true).setType(v.getType)
+        val vdepth = FreshIdentifier("vdepth", true).setType(Int32Type)
+        val bres = FreshIdentifier("bres", true).setType(e.getType)
+        val bdepth = FreshIdentifier("bdepth", true).setType(Int32Type)
+        
+        val newvalue = transform(v, letIdToDepth)
+        val newbody = transform(b, letIdToDepth ++ ids.map((id) => (id -> vdepth)))
+        
         //TODO: reusing the same 'ids' is it safe ??
-        LetTuple(Seq(ir, it), transform(v),
-         LetTuple(ids, ir.toVariable,
-          LetTuple(Seq(r,t), transform(b),
-            Tuple(Seq(Variable(r), Plus(Variable(t), Plus(Variable(it), cm.costOfExpr(e)))))
-            )
+        LetTuple(Seq(vres, vdepth), newvalue,
+         LetTuple(ids, vres.toVariable,
+          LetTuple(Seq(bres,bdepth), newbody,
+            Tuple(Seq(Variable(bres), Plus(Variable(bdepth), cm.costOfExpr(e))))
+            )            
           )
         )
 
-      case IfExpr(cond, then, elze) =>{
-        // You need to handle this case specifically and differently
-        
+      case IfExpr(cond, then, elze) =>{        
         //create new variables that capture the result of the condition
-        val rescond = FreshIdentifier("e", true).setType(cond.getType)
-        val depthcond = FreshIdentifier("t", true).setType(Int32Type)
+        val rescond = FreshIdentifier("rcond", true).setType(cond.getType)
+        val depthcond = FreshIdentifier("dcond", true).setType(Int32Type)
         
         //transform the then branch        
-        val resthen = FreshIdentifier("e", true).setType(then.getType)
-        val depththen = FreshIdentifier("t", true).setType(Int32Type)
-        val newthen = LetTuple(Seq(resthen,depththen), transform(then), 
+        val resthen = FreshIdentifier("rthen", true).setType(then.getType)
+        val depththen = FreshIdentifier("dthen", true).setType(Int32Type)        
+        val newthen = LetTuple(Seq(resthen,depththen), transform(then, letIdToDepth), 
             Tuple(Seq(Variable(resthen),Plus(Variable(depthcond),Variable(depththen)))))
                 
         //similarly transform the else branch 
-        val reselse = FreshIdentifier("e", true).setType(elze.getType)
-        val depthelse = FreshIdentifier("t", true).setType(Int32Type)
-        val newelse = LetTuple(Seq(reselse,depthelse), transform(elze), 
+        val reselse = FreshIdentifier("relse", true).setType(elze.getType)
+        val depthelse = FreshIdentifier("delse", true).setType(Int32Type)
+        val newelse = LetTuple(Seq(reselse,depthelse), transform(elze, letIdToDepth), 
             Tuple(Seq(Variable(reselse),Plus(Variable(depthcond),Variable(depthelse)))))
                 
         //create a final expression
-        LetTuple(Seq(rescond,depthcond),transform(cond), IfExpr(Variable(rescond),newthen,newelse))                
+        LetTuple(Seq(rescond,depthcond),transform(cond, letIdToDepth), IfExpr(Variable(rescond),newthen,newelse))                
       }
         
       // For all other operations, we go through a common tupleifier.
-      case n @ NAryOperator(ss, recons) =>
-        tupleify(e, ss, recons)
+      case n @ NAryOperator(args, recons) =>
+        tupleify(e, args, recons, letIdToDepth)
 
       case b @ BinaryOperator(s1, s2, recons) =>
-        tupleify(e, Seq(s1, s2), { case Seq(s1, s2) => recons(s1, s2) })
+        tupleify(e, Seq(s1, s2), { case Seq(s1, s2) => recons(s1, s2) }, letIdToDepth)
 
       case u @ UnaryOperator(s, recons) =>
-        tupleify(e, Seq(s), { case Seq(s) => recons(s) })
+        tupleify(e, Seq(s), { case Seq(s) => recons(s) }, letIdToDepth)
 
       case t: Terminal =>
-        tupleify(e, Seq(), { case Seq() => t })
+        tupleify(e, Seq(), { case Seq() => t }, letIdToDepth)
     }
 
 
@@ -323,8 +338,9 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
       println("BEFORE:")
       println(input)*/
             
-      // Apply transformations
-      val res    = transform(input)      
+      // Apply transformations 
+      //Initially the mapping from letIdToDepth is empty (optionally we could add parameters with depth 0)
+      val res    = transform(input, Map())      
       val simple = simplifyMax(simplifyLets(res))
 
       // For debugging purposes            
