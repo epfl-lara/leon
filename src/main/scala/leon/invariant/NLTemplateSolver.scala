@@ -62,8 +62,6 @@ class NLTemplateSolver(context : LeonContext,
    * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
    */  
-  //save the previous model and restart from this model whenever possible (as it successfully invalidated many disjuncts)
-  var previousModel : Option[Map[Identifier,Expr]] = None
   override def solve(tempIds : Set[Identifier], funcVCs: Map[FunDef, Expr]) 
   	: (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
     
@@ -105,11 +103,7 @@ class NLTemplateSolver(context : LeonContext,
     val solverWithCtr = new UIFZ3Solver(this.context, program)
     solverWithCtr.assertCnstr(tru)
     
-    val initModel = if (previousModel.isDefined)  {
-      val pmodel = previousModel.get
-      tempIds.map((id) => if(pmodel.contains(id)) (id -> pmodel(id)) else (id -> simplestValue(id.toVariable))).toMap
-      
-    }  else {
+    val initModel =  {
       val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
       simplestModel
     }           
@@ -345,9 +339,7 @@ class NLTemplateSolver(context : LeonContext,
     res match {
       case None => {
         //here, we cannot proceed and have to return unknown
-        //However, we can return the calls that need to be unrolled        
-        //save the current model
-        previousModel = Some(model)
+        //However, we can return the calls that need to be unrolled                       
         (None, Some(seenCalls ++ callsInPaths))
       }
       case Some(false) => {

@@ -299,7 +299,7 @@ abstract class TemplateSolver (
                   val newval = newModel(tvar.id).asInstanceOf[RealLiteral]
                   if (newval.hasOverflow) {
                     if (this.debugMinimization)
-                      println("Aborting due to overflow. ")
+                      println("Aborting due to overflow.")
                     continue = false
                   } else {
                     upperBound = newval
