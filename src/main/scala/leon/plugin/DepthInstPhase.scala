@@ -291,7 +291,7 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
           )
         )
 
-      case IfExpr(cond, then, elze) =>{        
+      case IfExpr(cond, then, elze) =>{               
         //create new variables that capture the result of the condition
         val rescond = FreshIdentifier("rcond", true).setType(cond.getType)
         val depthcond = FreshIdentifier("dcond", true).setType(Int32Type)

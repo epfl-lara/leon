@@ -42,12 +42,6 @@ object TreeOperations {
       else Node(insert(elem, l), x, r)
     }
   } ensuring (res => height(res) <= height(t) + 1 template((a,b) => time <= a*height(t) + b))
-  
-//  def mult(x : Int, y : Int) : Int = {
-//      if(x == 0 || y == 0) 0
-//      else
-//    	  mult(x-1,y) + y
-//  }
     
   def addAll(l: List, t: Tree): Tree = {
     l match {
