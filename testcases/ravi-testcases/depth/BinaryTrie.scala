@@ -1,7 +1,7 @@
 import leon.Utils._
 import scala.collection.immutable.Set
 
-object BinaryTrie {
+object ParallelBinaryTrie {
   sealed abstract class Tree
   case class Leaf() extends Tree
   case class Node(nvalue: Int, left: Tree, right: Tree) extends Tree
@@ -40,7 +40,7 @@ object BinaryTrie {
       }
       case _ => t
     }
-  } ensuring (res => true template ((a, c) => time <= a * listSize(inp) + c))
+  } //ensuring (res => true template ((a, c) => depth <= a * listSize(inp) + c))
 
   def insert(inp: IList, t: Tree): Tree = {
     t match {
@@ -72,11 +72,11 @@ object BinaryTrie {
         }
       }
     }
-  } ensuring (res => true template ((a, c) => time <= a * listSize(inp) + c))   
+  } ensuring (res => true template ((a, c) => depth <= a * listSize(inp) + c))   
 
   def create(inp: IList): Tree = {
     insert(inp, Leaf())
-  } ensuring (res => true template ((a, c) => time <= a * listSize(inp) + c))
+  } //ensuring (res => true template ((a, c) => depth <= a * listSize(inp) + c))
   
   def delete(inp: IList, t: Tree): Tree = {       
     t match {
@@ -115,5 +115,5 @@ object BinaryTrie {
         } 
       }
     }
-  } ensuring (res => true template ((a, c) => time <= a * listSize(inp) + c))
+  } //ensuring (res => true template ((a, c) => depth <= a * listSize(inp) + c))
 }

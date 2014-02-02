@@ -89,7 +89,7 @@ object AVLTree  {
     
     balance(unbalancedInsert(t,e))
     
-  } ensuring(res => true template((a,b) => time <= a*height(t) + b))
+  } ensuring(res => true template((a,b) => depth <= a*height(t) + b))
   //minbound: ensuring(res => time <= 138*height(t) + 19)   
   
   def deleteMax(t: Tree): (Tree, OptionInt) = {    
@@ -109,7 +109,7 @@ object AVLTree  {
       case Node(_, _, r, _) => deleteMax(r)
       case _ => (t, None())
     }
-  } ensuring(res => true template((a,b) => time <= a*height(t) + b))  
+  } //ensuring(res => true template((a,b) => time <= a*height(t) + b))  
   
   def unbalancedDelete(t: Tree, e: Int): Tree = {    
     t match {
@@ -141,7 +141,7 @@ object AVLTree  {
 
     balance(unbalancedDelete(t, e))
     
-  } ensuring(res => true template((a,b) => time <= a*height(t) + b))
+  } //ensuring(res => true template((a,b) => time <= a*height(t) + b))
      
   def balance(t:Tree) : Tree = {    
     t match {

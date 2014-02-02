@@ -1,10 +1,5 @@
-/** 
- * Okasaki3_2
- * 
- * Based on the chapter 3.2 of Okasaki's paper Purely Functional Data Structure
- * Implements the "Binomial Heap" data structure described in the chapter.
- * 
- * @author Florian Briant
+/**
+ * @author Ravi
  **/
 
 import leon.Utils._
@@ -97,7 +92,7 @@ object BinomialHeap {
       }
       case NilHeap() => ConsHeap(t, NilHeap())
     }
-  } ensuring(res => true template((a,b) => time <= a*treeNum(h) + b))
+  } ensuring(res => true template((a,b) => depth <= a*treeNum(h) + b))
 
   /* Merge two heaps together */
   def merge(h1: BinomialHeap, h2: BinomialHeap): BinomialHeap = {        
@@ -118,7 +113,7 @@ object BinomialHeap {
       }
       case NilHeap() => h2
     }
-  } ensuring(res => true template((a,b,c) => time <= a*treeNum(h1) + b*treeNum(h2) + c))
+  } ensuring(res => true template((a,b,c) => depth <= a*treeNum(h1) + b*treeNum(h2) + c))
 
   def mergeWithCarry(t: BinomialTree, h1: BinomialHeap, h2: BinomialHeap): BinomialHeap = {    
     t match {
@@ -154,7 +149,7 @@ object BinomialHeap {
         }
       }
     }
-  } ensuring (res => true template ((d, e, f) => time <= d * treeNum(h1) + e * treeNum(h2) + f))
+  } ensuring (res => true template ((d, e, f) => depth <= d * treeNum(h1) + e * treeNum(h2) + f))
 
   //Auxiliary helper function to simplefy findMin and deleteMin  
   def removeMinTree(h: BinomialHeap): (OptionalTree, BinomialHeap) = {   
@@ -174,7 +169,7 @@ object BinomialHeap {
       }
       case _ => (None(), NilHeap())
     }
-  } ensuring (res => treeNum(res._2) <= treeNum(h) template ((a, b) => time <= a * treeNum(h) + b))    
+  } ensuring (res => treeNum(res._2) <= treeNum(h) template ((a, b) => depth <= a * treeNum(h) + b))    
     
   /*def findMin(h: BinomialHeap) : Element = {	  
 	  val (opt, _) = removeMinTree(h)
@@ -199,6 +194,6 @@ object BinomialHeap {
 		case Some(Node(_,_,ts1)) => merge(ts1, ts2)
 		case _ => h		  
 	  }
-  } ensuring(res => true template((a,b,c) => time <= a*minTreeChildren(h) + b*treeNum(h) + c)) 
+  } ensuring(res => true template((a,b,c) => depth <= a*minTreeChildren(h) + b*treeNum(h) + c)) 
    
 }

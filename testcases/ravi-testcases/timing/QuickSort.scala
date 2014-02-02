@@ -12,20 +12,6 @@ object QuickSort {
   
   case class Triple(fst:List,snd:List, trd: List)
 
-//  def rev_append(aList:List,bList:List): List = {aList match {
-//    case Nil() => bList
-//    case Cons(x,xs) => rev_append(xs,Cons(x,bList))
-//    
-//  }} ensuring(res => size(res) == size(aList) + size(bList) template((a,b) => time <= a*size(aList) +b))
-//  
-//  def reverse(list:List): List = rev_append(list,Nil())
-
-//  def append(aList:List,bList:List): List = aList match {
-//    case Nil() => bList
-//    case _ => rev_append(reverse(aList),bList)
-//    
-//  } 
-
   def append(aList:List,bList:List): List = {aList match {
     case Nil() => bList
     case Cons(x, xs) => Cons(x,append(xs,bList))    

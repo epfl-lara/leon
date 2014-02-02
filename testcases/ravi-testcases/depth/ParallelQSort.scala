@@ -27,7 +27,6 @@ object ParllelQSort {
     }    
  }) ensuring(res => (size(l) == size(res.fst) + size(res.snd) + size(res.trd)) template((a,b) => depth <= a*size(l) +b))     
 
- //Unable to prove n^2  upper bound :-(
   def quickSort(l:List): List = (l match {
     case Nil() => Nil()
     case Cons(x,Nil()) => l
