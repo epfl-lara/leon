@@ -26,7 +26,7 @@ object QuickSort {
     
   } 
   
-  def partition(n:Int,l:List) : Triple = (l match {
+  def partition(n:Int,l:List) : Triple = (l match {    
     case Nil() => Triple(Nil(), Nil(), Nil())
     case Cons(x,xs) => {
       val t = partition(n,xs)
@@ -45,5 +45,5 @@ object QuickSort {
       append(append(quickSort(t.fst), Cons(x, t.snd)), quickSort(t.trd))
     } 
     case _ => l
-  })  
+  }) ensuring(res => true template()) 
 }

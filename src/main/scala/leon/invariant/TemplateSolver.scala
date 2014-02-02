@@ -298,7 +298,13 @@ abstract class TemplateSolver (
                     continue = false
                   } else {
                     upperBound = newval
-                    currentModel = newModel
+                    //complete the new model if necessary
+                    currentModel = initModel.keys.map((id) => {
+                      if (newModel.contains(id))
+                        (id -> newModel(id))
+                      else
+                        (id -> currentModel(id))
+                    }).toMap            
                     if (this.debugMinimization)
                       println("Found new upper bound: " + upperBound)
                   }
@@ -325,7 +331,7 @@ abstract class TemplateSolver (
           
         And(acc, Equals(tvar, currentModel(tvar.id)))
       })
-      println("Minimization complete...")
+      println("Minimization complete...")      
       currentModel
     } else
       initModel

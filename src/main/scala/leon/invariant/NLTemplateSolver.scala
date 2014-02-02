@@ -62,6 +62,8 @@ class NLTemplateSolver(context : LeonContext,
    * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
    */  
+  //save the previous model and restart from this model whenever possible (as it successfully invalidated many disjuncts)
+  var previousModel : Option[Map[Identifier,Expr]] = None
   override def solve(tempIds : Set[Identifier], funcVCs: Map[FunDef, Expr]) 
   	: (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
     
@@ -103,12 +105,15 @@ class NLTemplateSolver(context : LeonContext,
     val solverWithCtr = new UIFZ3Solver(this.context, program)
     solverWithCtr.assertCnstr(tru)
     
-    //create a new incremental cegis solver for running cegis 
-    //val cegisIncrSolver = new CegisIncrSolver(context, program, timeout)
-    //cegisIncrSolver,
-    
-    val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap       
-    val sol = recSolve(simplestModel, funcVCs, tru, Seq(), solverWithCtr, Set())
+    val initModel = if (previousModel.isDefined)  {
+      val pmodel = previousModel.get
+      tempIds.map((id) => if(pmodel.contains(id)) (id -> pmodel(id)) else (id -> simplestValue(id.toVariable))).toMap
+      
+    }  else {
+      val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
+      simplestModel
+    }           
+    val sol = recSolve(initModel, funcVCs, tru, Seq(), solverWithCtr, Set())
     
     solverWithCtr.free()    
     //For stats, add lowerbounds to the stats
@@ -340,13 +345,15 @@ class NLTemplateSolver(context : LeonContext,
     res match {
       case None => {
         //here, we cannot proceed and have to return unknown
-        //However, we can return the calls that need to be unrolled
+        //However, we can return the calls that need to be unrolled        
+        //save the current model
+        previousModel = Some(model)
         (None, Some(seenCalls ++ callsInPaths))
       }
       case Some(false) => {
         //here, the vcs are unsatisfiable when instantiated with the invariant
         if (tightBounds) {
-          //try to find a minimum model: if the minimum is same as the current model then return, otherwise recurse with the minimum model
+          //try to find a minimum model: if the minimum is same as the current model then return, otherwise recurse with the minimum model          
           val minModel = tightenTimeBounds(inputCtr, model)
           val minVarMap: Map[Expr, Expr] = minModel.map((elem) => (elem._1.toVariable, elem._2)).toMap
           if (minModel == model)
