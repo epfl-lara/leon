@@ -242,7 +242,11 @@ abstract class TemplateSolver (
       var currentModel = initModel
       orderedTempVars.foldLeft(inputCtr: Expr)((acc, tvar) => {
                             
-        var upperBound = currentModel(tvar.id).asInstanceOf[RealLiteral]
+        var upperBound = if(currentModel.contains(tvar.id)) {
+          currentModel(tvar.id).asInstanceOf[RealLiteral]          
+        } else {
+          initModel(tvar.id).asInstanceOf[RealLiteral]
+        }
         //note: the lower bound is an integer by construction
         var lowerBound : Option[RealLiteral] = None
         
@@ -299,12 +303,7 @@ abstract class TemplateSolver (
                   } else {
                     upperBound = newval
                     //complete the new model if necessary
-                    currentModel = initModel.keys.map((id) => {
-                      if (newModel.contains(id))
-                        (id -> newModel(id))
-                      else
-                        (id -> currentModel(id))
-                    }).toMap            
+                    currentModel = newModel            
                     if (this.debugMinimization)
                       println("Found new upper bound: " + upperBound)
                   }
@@ -331,8 +330,13 @@ abstract class TemplateSolver (
           
         And(acc, Equals(tvar, currentModel(tvar.id)))
       })
-      println("Minimization complete...")      
-      currentModel
+      println("Minimization complete...")
+      initModel.keys.map((id) => {
+        if (currentModel.contains(id))
+          (id -> currentModel(id))
+        else
+          (id -> initModel(id))
+      }).toMap
     } else
       initModel
   }
