@@ -55,8 +55,11 @@ object MergeSort {
 	l match {
       case Nil() => (Nil(),l)
       case Cons(x,xs) => {
-        val (fst,snd) = split(xs, n-1)
-        (Cons(x,fst), snd)
+        if(n == 1) (Cons(x,Nil()), xs)
+        else {
+          val (fst,snd) = split(xs, n-1)
+          (Cons(x,fst), snd)
+        }        
       }
 	}
   } ensuring(res => size(res._2) == size(l) - n && size(res._1) == n template((a,b) => time <= a*n +b))
@@ -78,12 +81,13 @@ object MergeSort {
    	 }   
   }) ensuring(res => size(aList)+size(bList) == size(res) template((a,b,c) => time <= a*size(aList) + b*size(bList) + c))  
 
-  def mergeSort(list:List):List = (list match {
-    case Nil() => list
+  def mergeSort(list:List):List = (list match {    
     case Cons(x,Nil()) => list
-    case _ =>
+    case Cons(_,Cons(_,_)) =>
     	 val (fst,snd) = split(list,length(list)/2)
       	 merge(mergeSort(fst), mergeSort(snd))
+      	 
+    case _ => list
    	 
   }) ensuring(res => size(res) == size(list) template((a,b) => time <= a*(size(list)*size(list)) + b)) 
       //template((a,b) => time <= a*size(list) + b))
