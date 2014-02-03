@@ -84,7 +84,8 @@ object MergeSort {
   def mergeSort(list:List):List = (list match {    
     case Cons(x,Nil()) => list
     case Cons(_,Cons(_,_)) =>
-    	 val (fst,snd) = split(list,length(list)/2)
+    	 val (fst,snd) = split(list,1) 
+    	   //split(list,length(list)/2)
       	 merge(mergeSort(fst), mergeSort(snd))
       	 
     case _ => list
