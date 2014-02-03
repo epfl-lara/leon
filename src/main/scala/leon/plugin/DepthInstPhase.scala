@@ -292,24 +292,28 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
         )
 
       case IfExpr(cond, then, elze) =>{               
-        //create new variables that capture the result of the condition
+        //depth of if(cond) e1 else e2 is if(cond) max(d_cond, d_e1) else max(dcond, d_e2)  
         val rescond = FreshIdentifier("rcond", true).setType(cond.getType)
         val depthcond = FreshIdentifier("dcond", true).setType(Int32Type)
+        val newcond = transform(cond, letIdToDepth)
         
         //transform the then branch        
         val resthen = FreshIdentifier("rthen", true).setType(then.getType)
-        val depththen = FreshIdentifier("dthen", true).setType(Int32Type)        
+        val depththen = FreshIdentifier("dthen", true).setType(Int32Type)
+        val depthtres = FunctionInvocation(maxFun, Seq(Variable(depthcond),Variable(depththen)))
         val newthen = LetTuple(Seq(resthen,depththen), transform(then, letIdToDepth), 
-            Tuple(Seq(Variable(resthen),Plus(Variable(depthcond),Variable(depththen)))))
+            Tuple(Seq(Variable(resthen), depthtres)))
                 
         //similarly transform the else branch 
         val reselse = FreshIdentifier("relse", true).setType(elze.getType)
         val depthelse = FreshIdentifier("delse", true).setType(Int32Type)
+        val deptheres = FunctionInvocation(maxFun, Seq(Variable(depthcond),Variable(depthelse)))
+
         val newelse = LetTuple(Seq(reselse,depthelse), transform(elze, letIdToDepth), 
-            Tuple(Seq(Variable(reselse),Plus(Variable(depthcond),Variable(depthelse)))))
+            Tuple(Seq(Variable(reselse),deptheres)))
                 
         //create a final expression
-        LetTuple(Seq(rescond,depthcond),transform(cond, letIdToDepth), IfExpr(Variable(rescond),newthen,newelse))                
+        LetTuple(Seq(rescond,depthcond), newcond, IfExpr(Variable(rescond),newthen,newelse))                
       }
         
       // For all other operations, we go through a common tupleifier.

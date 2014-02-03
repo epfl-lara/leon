@@ -364,7 +364,7 @@ abstract class TemplateSolver (
     var nestMap = Map[Variable, Int]()
 
     def updateMax(v: Variable, level: Int) = {
-      println("Update: "+v+"-->"+level)
+      println("Nesting level: "+v+"-->"+level)
       if (nestMap.contains(v)) {
         if (nestMap(v) < level) {
           nestMap -= v

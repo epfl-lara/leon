@@ -16,11 +16,11 @@ object InsertionSort {
       case Nil() => Cons(e,Nil())
       case Cons(x,xs) => if (x <= e) Cons(x,sortedIns(e, xs)) else Cons(e, l)
     } 
-  } ensuring(res => size(res) == size(l) + 1 template((a,b) => time <= a*size(l) +b))
+  } ensuring(res => size(res) == size(l) + 1 template((a,b) => depth <= a*size(l) +b))
 
   def sort(l: List): List = (l match {
     case Nil() => Nil()
     case Cons(x,xs) => sortedIns(x, sort(xs))
     
-  }) ensuring(res => size(res) == size(l) template((a,b) => time <= a*(size(l)*size(l)) +b))  
+  }) ensuring(res => size(res) == size(l) template((a,b) => depth <= a*(size(l)*size(l)) +b))  
 }

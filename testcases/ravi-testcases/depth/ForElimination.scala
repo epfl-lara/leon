@@ -48,17 +48,17 @@ object ForElimination {
     case While(_, body) => isForFree(body)
     case For(_,_,_,_) => false
     case _ => true
-  })  ensuring(res => true template((a,b) => time <= a*sizeStat(stat) + b))
+  })  ensuring(res => true template((a,b) => depth <= a*sizeStat(stat) + b))
   
   def isForFreeList(l: List): Boolean = (l match {
     case Nil() => true
     case Cons(x, xs) => isForFree(x) && isForFreeList(xs)
-  })  ensuring(res => true template((a,b) => time <= a*sizeList(l) + b))
+  })  ensuring(res => true template((a,b) => depth <= a*sizeList(l) + b))
 
   def forLoopsWellFormedList(l: List): Boolean = (l match {
     case Nil() => true
     case Cons(x, xs) => forLoopsWellFormed(x) && forLoopsWellFormedList(xs)
-  }) ensuring(res => true template((a,b) => time <= a*sizeList(l) + b))
+  }) ensuring(res => true template((a,b) => depth <= a*sizeList(l) + b))
  
   def forLoopsWellFormed(stat: Statement): Boolean = (stat match {
     case Block(body) => forLoopsWellFormedList(body)
@@ -66,14 +66,14 @@ object ForElimination {
     case While(_, body) => forLoopsWellFormed(body)
     case For(init, _, step, body) => isForFree(init) && isForFree(step) && forLoopsWellFormed(body)
     case _ => true
-  }) ensuring(res => true template((a,b) => time <= a*sizeStat(stat) + b))
+  }) ensuring(res => true template((a,b) => depth <= a*sizeStat(stat) + b))
 
   def eliminateWhileLoopsList(l: List): List = {
     l match {
       case Nil() => Nil()
       case Cons(x, xs) => Cons(eliminateWhileLoops(x), eliminateWhileLoopsList(xs))
     }
-  } ensuring(res => true template((a,b) => time <= a*sizeList(l) + b))
+  } ensuring(res => true template((a,b) => depth <= a*sizeList(l) + b))
 
   def eliminateWhileLoops(stat: Statement): Statement = (stat match {
     case Block(body) => Block(eliminateWhileLoopsList(body))
@@ -81,14 +81,14 @@ object ForElimination {
     case While(expr, body) => For(Skip(), expr, Skip(), eliminateWhileLoops(body))
     case For(init, expr, step, body) => For(eliminateWhileLoops(init), expr, eliminateWhileLoops(step), eliminateWhileLoops(body))
     case other => other
-  }) ensuring(res => true template((a,b) => time <= a*sizeStat(stat) + b))
+  }) ensuring(res => true template((a,b) => depth <= a*sizeStat(stat) + b))
 
   def eliminateForLoopsList(l: List): List = {
     l match {
       case Nil() => Nil()
       case Cons(x, xs) => Cons(eliminateForLoops(x), eliminateForLoopsList(xs))
     }
-  } ensuring(res => true template((a,b) => time <= a*sizeList(l) + b))
+  } ensuring(res => true template((a,b) => depth <= a*sizeList(l) + b))
    
   def eliminateForLoops(stat: Statement): Statement = {
     stat match {
@@ -98,5 +98,5 @@ object ForElimination {
       case For(init, expr, step, body) => Block(Cons(eliminateForLoops(init), Cons(While(expr, Block(Cons(eliminateForLoops(body), Cons(eliminateForLoops(step), Nil())))), Nil())))
       case other => other
     }
-  } ensuring(res => true template((a,b) => time <= a*sizeStat(stat) + b))
+  } ensuring(res => true template((a,b) => depth <= a*sizeStat(stat) + b))
 }

@@ -40,7 +40,7 @@ object ParallelBinaryTrie {
       }
       case _ => t
     }
-  } //ensuring (res => true template ((a, c) => depth <= a * listSize(inp) + c))
+  } ensuring (res => true template ((a, c) => depth <= a * listSize(inp) + c))
 
   def insert(inp: IList, t: Tree): Tree = {
     t match {
@@ -76,7 +76,7 @@ object ParallelBinaryTrie {
 
   def create(inp: IList): Tree = {
     insert(inp, Leaf())
-  } //ensuring (res => true template ((a, c) => depth <= a * listSize(inp) + c))
+  } ensuring (res => true template ((a, c) => depth <= a * listSize(inp) + c))
   
   def delete(inp: IList, t: Tree): Tree = {       
     t match {
@@ -115,5 +115,5 @@ object ParallelBinaryTrie {
         } 
       }
     }
-  } //ensuring (res => true template ((a, c) => depth <= a * listSize(inp) + c))
+  } ensuring (res => true template ((a, c) => depth <= a * listSize(inp) + c))
 }

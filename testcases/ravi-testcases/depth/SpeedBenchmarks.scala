@@ -63,5 +63,5 @@ object SpeedBenchmarks {
         }
       }
     }    
-  } ensuring(res => true template((a,b,c,d,e) => time <= a*(k*(length(s1) + length(s2))) + b*size(str1) + c*length(s1) + d*length(s2) + e))   
+  } ensuring(res => true template((a,b,c,d,e) => depth <= a*(k*(length(s1) + length(s2))) + b*size(str1) + c*length(s1) + d*length(s2) + e))   
 }

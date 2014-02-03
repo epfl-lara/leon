@@ -151,12 +151,12 @@ object BinomialHeap {
     }
   } ensuring (res => true template ((d, e, f) => depth <= d * treeNum(h1) + e * treeNum(h2) + f))
 
-  //Auxiliary helper function to simplefy findMin and deleteMin  
+  //Auxiliary helper function to simplify findMin and deleteMin  
   def removeMinTree(h: BinomialHeap): (OptionalTree, BinomialHeap) = {   
     h match {
       case ConsHeap(head, NilHeap()) => (Some(head), NilHeap())
       case ConsHeap(head1, tail1) => {
-        val (opthead2, tail2) = removeMinTree(tail1)
+        val (opthead2, tail2) = removeMinTree(tail1)        
         opthead2 match {
           case None() => (Some(head1), tail1)
           case Some(head2) =>
@@ -164,12 +164,12 @@ object BinomialHeap {
               (Some(head1), tail1)
             } else {
               (Some(head2), ConsHeap(head1, tail2))
-            }
+            } 
         }
       }
       case _ => (None(), NilHeap())
     }
-  } ensuring (res => treeNum(res._2) <= treeNum(h) template ((a, b) => depth <= a * treeNum(h) + b))    
+  } ensuring (res => treeNum(res._2) <= treeNum(h) template ((a, b) => depth <= a*treeNum(h) + b))    
     
   /*def findMin(h: BinomialHeap) : Element = {	  
 	  val (opt, _) = removeMinTree(h)

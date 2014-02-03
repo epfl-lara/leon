@@ -23,7 +23,7 @@ object RedBlackTree {
       case Empty() => 0
       case Node(_, l, v, r) => size(l) + 1 + size(r)
     })
-  } ensuring (res => true template((a,b) => twopower(blackHeight(t)) <= a*res + b))
+  } //ensuring (res => true template((a,b) => twopower(blackHeight(t)) <= a*res + b))
     
   def blackHeight(t : Tree) : Int = {    
    t match {    
@@ -76,7 +76,7 @@ object RedBlackTree {
           balance(c,a,y,t1)
         } 
     }
-  } ensuring(res => true template((a,b) => time <= a*blackHeight(t) + b))
+  } ensuring(res => true template((a,b) => depth <= a*blackHeight(t) + b))
   
   def makeBlack(n: Tree): Tree = {
     n match {
@@ -90,7 +90,7 @@ object RedBlackTree {
     val t1 =  ins(x, t)
     makeBlack(t1)
     
-  } ensuring(res => true template((a,b) => time <= a*blackHeight(t) + b))
+  } ensuring(res => true template((a,b) => depth <= a*blackHeight(t) + b))
   
   def balance(co: Color, l: Tree, x: Int, r: Tree): Tree = {        
     Node(co,l,x,r)

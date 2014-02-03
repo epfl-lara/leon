@@ -27,8 +27,8 @@ object SpeedBenchmarks {
   }
   
   /**
-   * The functional version of the implementation given in Fig 1 of SPEED.
-   * Comparison of two string buffers 
+   * Fig. 1 of SPEED, POPL'09: The functional version of the implementation.
+   * Equality check of two string buffers 
    */  
   def Equals(str1: List, str2: List, s1: StringBuffer, s2: StringBuffer, k: Int) : Boolean = {
     require(sizeBound(s1, k) && sizeBound(s2, k) && size(str1) <= k && size(str2) <= k && k >= 0)
@@ -63,5 +63,45 @@ object SpeedBenchmarks {
         }
       }
     }    
-  } ensuring(res => true template((a,b,c,d,e) => time <= a*(k*(length(s1) + length(s2))) + b*size(str1) + c*length(s1) + d*length(s2) + e))   
+  } ensuring(res => true template((a,b,c,d,e) => time <= a*(k*(length(s1) + length(s2))) + b*size(str1) + c*length(s1) + d*length(s2) + e))
+  
+  def max(x: Int, y: Int) : Int = if(x >= y) x else y
+  
+  //Fig. 2 of Speed POPL'09
+  def Dis1(x : Int, y : Int, n: Int, m: Int) : Int = {
+    if(x >= n) 0
+    else {
+      if(y < m) Dis1(x, y+1, n, m)
+      else Dis1(x+1, y, n, m)
+    }
+  } ensuring(res => true template((a,b,c) => time <= a*max(0,n-x) + b*max(0,m-y) + c))
+  
+  //Fig. 2 of Speed POPL'09
+  def Dis2(x : Int, z : Int, n: Int) : Int = {
+    if(x >= n) 0
+    else {
+      if(z > x) Dis2(x+1, z, n)
+      else Dis2(x, z+1, n)
+    }
+  } ensuring(res => true template((a,b,c) => time <= a*max(0,n-x) + b*max(0,n-z) + c))
+  
+  //Pg. 138, Speed POPL'09
+  def Dis3(x : Int, b : Boolean, t: Int, n: Int) : Int = {
+    require((b && t == 1) || (!b && t == -1))
+    if(x > n || x < 0) 0
+    else {     
+      if(b) Dis3(x+t, b, t, n)
+      else Dis3(x-t, b, t, n)
+    }
+  } ensuring(res => true template((a,c) => time <= a*max(0,(n-x)) + c))
+  			
+  //Pg. 138, Speed POPL'09
+  def Dis4(x : Int, b : Boolean, t: Int, n: Int) : Int = {    
+    if(x > n || x < 0) 0
+    else {      
+      if(b) Dis4(x+t, b, t, n)
+      else Dis4(x-t, b, t, n)
+    }
+  } ensuring(res => true template((a,c,d,e) => (((b && t >= 0) || (!b && t < 0)) && time <= a*max(0,(n-x)) + c) 
+  					|| (((!b && t >= 0) || (b && t < 0)) && time <= d*max(0,x) + e)))
 }
