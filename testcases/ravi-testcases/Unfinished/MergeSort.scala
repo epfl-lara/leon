@@ -1,14 +1,20 @@
 //import scala.collection.immutable.Set
 import leon.Utils._
+import leon.Annotations._
 
 object MergeSort {
   sealed abstract class List
   case class Cons(head:Int,tail:List) extends List
   case class Nil() extends List
 
-  case class Pair(fst:List,snd:List)
+  //case class Pair(fst:List,snd:List)
   
-  def log()
+  @monotonic
+  def log(x: Int) : Int = {
+    //require(x >= 0)    
+    if(x <= 1) 0
+    else log(x/2) * log(x/2)    
+  } //ensuring(res=> true template((b) => res >= b))
 
   /*def contents(l: List): Set[Int] = l match {
     case Nil() => Set.empty
@@ -23,33 +29,41 @@ object MergeSort {
     }
   }*/    
   
-   def mult(x : Int, y : Int) : Int = {
+   /*def mult(x : Int, y : Int) : Int = {
     require(x >= 0 && y >= 0)
       if(x == 0 || y == 0) 0
       else 
         mult(x-1,y) + y
-    } ensuring(res => res >= mult(x/2,y) + mult(x/2,y))
+    } ensuring(res => res >= mult(x/2,y) + mult(x/2,y))*/
 
-  def length(list:List): Int = list match {
+  def size(list:List): Int = {list match {
     case Nil() => 0
-    case Cons(x,xs) => 1 + length(xs)
-  }
+    case Cons(x,xs) => 1 + size(xs)
+  }} ensuring(res => res >= 0)
+  
+  def length(l:List): Int = {
+    l match {
+      case Nil() => 0
+      case Cons(x,xs) => 1 + length(xs)
+    }
+  } ensuring(res => res >= 0 && res == size(l) template((a,b) => time <= a*size(l) + b))
 
-  def splithelper(aList:List,bList:List,n:Int): Pair = {
-    require(n >= 0)
-    
-    if (n <= 0) Pair(aList,bList)
+  def split(l:List,n:Int): (List,List) = {
+    require(n >= 0 && n <= size(l))    
+    if (n <= 0) (Nil(),l)
     else
-	bList match {
-    	      case Nil() => Pair(aList,bList)
-    	      case Cons(x,xs) => splithelper(Cons(x,aList),xs,n-1)
+	l match {
+      case Nil() => (Nil(),l)
+      case Cons(x,xs) => {
+        val (fst,snd) = split(xs, n-1)
+        (Cons(x,fst), snd)
+      }
 	}
-  } ensuring(res => length(res.fst) <= length(alist) + n  
-		  				&& length(res.snd) <= length(blist) - n))
+  } ensuring(res => size(res._2) == size(l) - n && size(res._1) == n template((a,b) => time <= a*n +b))
   //ensuring(res => true template((a,b,c) => a*length(res.fst) +b*length(alist) +c*n <= 0 
       //&& length(res.snd) <= length(blist) - n))
 
-  def split(list:List,n:Int): Pair = splithelper(Nil(),list,n)
+  //def split(list:List,n:Int): Pair = splithelper(Nil(),list,n)
 
   def merge(aList:List, bList:List):List = (bList match {       
     case Nil() => aList
@@ -62,25 +76,19 @@ object MergeSort {
      		else
 		   Cons(x,merge(aList, xs))               
    	 }   
-  }) ensuring(res => true template((a,b,x) => time <= a*length(alist) + b*length(blist) + c))
-  //ensuring(res => contents(res) == contents(aList) ++ contents(bList))
+  }) ensuring(res => size(aList)+size(bList) == size(res) template((a,b,c) => time <= a*size(aList) + b*size(bList) + c))  
 
   def mergeSort(list:List):List = (list match {
     case Nil() => list
     case Cons(x,Nil()) => list
     case _ =>
-    	 val p = split(list,length(list)/2)
-   	 merge(mergeSort(p.fst), mergeSort(p.snd))
+    	 val (fst,snd) = split(list,length(list)/2)
+    	 //merge(fst, snd)     
+   	 merge(mergeSort(fst), mergeSort(snd))
    	 
-  }) ensuring(res => length(res) == length(list) 
-      && template((a,b,c) => time <= a*mult(length(list),log(length(list)) + b*length(list) +c))
-  //ensuring(res => contents(res) == contents(list) && is_sorted(res))
- 
-
-  /*def main(args: Array[String]): Unit = {
-    val ls: List = Cons(5, Cons(2, Cons(4, Cons(5, Cons(1, Cons(8,Nil()))))))
-  
-    println(ls)
-    println(mergeSort(ls))
-  }*/
+  }) ensuring(res => size(res) == size(list) template((a,b) => time <= a*size(list) + b))
+    
+  //ensuring(res => true template((a,b) => time <= a*(size(list)*log(size(list))) + b))
+//  
+      //template((a,b) => time <= a*(size(list)*log(size(list))) + b))   
 }

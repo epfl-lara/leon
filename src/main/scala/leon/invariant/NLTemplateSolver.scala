@@ -33,6 +33,7 @@ import leon.purescala.UndirectedGraph
 import scala.util.control.Breaks._
 import leon.solvers._
 import leon.purescala.ScalaPrinter
+import leon.plugin.DepthInstPhase
 
 class NLTemplateSolver(context : LeonContext, 
     program : Program,
@@ -546,7 +547,7 @@ class NLTemplateSolver(context : LeonContext,
    * Returns a disjunct and a set of non linear constraints whose solution will invalidate the disjunct.
    * This is parametrized by two closure 
    * (a) a child selector function that decides which children to consider.
-   * (b) a mayAlias function that decides which function / ADT constructor calls to consider.   
+   * (b) a doesAlias function that decides which function / ADT constructor calls to consider.   
    */
   private def generateCtrsForTree(bodyRoot: CtrNode, postRoot : CtrNode, 
       selector : (CtrNode, Iterable[CtrTree]) => Iterable[CtrTree],
@@ -922,12 +923,18 @@ class NLTemplateSolver(context : LeonContext,
     var j = 0
     val product = vec.foldLeft(Set[(Expr, Expr)]())((acc, call) => {
 
+      //an optimization: here we can exclude calls to maxFun from axiomatization, they will be inlined anyway
+      /*val shouldConsider = if(InvariantUtil.isCallExpr(call)) {
+        val BinaryOperator(_,FunctionInvocation(calledFun,_), _) = call
+        if(calledFun == DepthInstPhase.maxFun) false
+        else true               
+      } else true*/
       var pairs = Set[(Expr, Expr)]()
       for (i <- j + 1 until size) {
         val call2 = vec(i)
-        if(mayAlias(call,call2)) {
-        	pairs ++= Set((call, call2))        
-        }        
+        if (mayAlias(call, call2)) {
+          pairs ++= Set((call, call2))
+        }
       }
       j += 1
       acc ++ pairs

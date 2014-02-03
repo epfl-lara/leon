@@ -26,6 +26,7 @@ import scala.collection.mutable.{Set => MutableSet}
 import scala.collection.mutable.{Map => MutableMap}
 import java.io._
 import leon.purescala.ScalaPrinter
+import leon.plugin.NonlinearityEliminationPhase
 
 /**
  * A collection of transformation on expressions and some utility methods.
@@ -100,7 +101,21 @@ object ExpressionTransformer {
   def reduceLangBlocks(inexpr: Expr) : Expr = {
     
     def transform(e: Expr) : (Expr,Set[Expr]) = {     
-      e match {
+      e match {        
+        case Division(lhs, rhs) => {
+          //reduce division to multiplication by introduction fresh variables and creating bounds
+          //TODO: this is sound only for positive integers
+          val dv = TVarFactory.createTemp("dv").setType(Int32Type).toVariable          
+          val (nlhs, ncjs1) = transform(lhs)
+          val (nrhs, ncjs2) = transform(rhs)          
+          var conjuncts = Seq[Expr]()
+          
+          import NonlinearityEliminationPhase._
+          val mand = FunctionInvocation(multFun, Seq(dv, nrhs))
+          conjuncts :+= LessEquals(mand, nlhs)
+          conjuncts :+= LessEquals(nlhs, Plus(mand ,this.one))                    
+          (dv, (ncjs1 ++ ncjs2) ++ conjuncts)
+        }
         case Equals(_, _) | Iff(_, _) => {
           val BinaryOperator(lhs, rhs, _) = e
           val (nexp1, ncjs1) = transform(lhs)

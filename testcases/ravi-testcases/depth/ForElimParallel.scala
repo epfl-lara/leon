@@ -3,9 +3,9 @@ import leon.Annotations._
 
 object ForElimination { 
 
-  sealed abstract class List
-  case class Nil() extends List
-  case class Cons(head: Statement, tail: List) extends List
+  sealed abstract class Tree
+  case class Node(left: Tree, value: Statement, right: Tree) extends Tree
+  case class Leaf() extends Tree
 
   sealed abstract class Statement 
   case class Print(msg: Int, varID: Int) extends Statement
@@ -29,7 +29,7 @@ object ForElimination {
   case class Or(lhs: Expression, rhs: Expression) extends Expression  
   case class Not(expr: Expression) extends Expression
   
-  def sizeStat(st: Statement) : Int =  st match { 
+  /*def sizeStat(st: Statement) : Int =  st match { 
     case Block(l) => sizeList(l) + 1
     case IfThenElse(c,th,el) => sizeStat(th) + sizeStat(el) + 1
     case While(c,b) => sizeStat(b) + 1
@@ -37,66 +37,82 @@ object ForElimination {
     case other => 1
   }
   
-  def sizeList(l: List) : Int = l match {
-    case Cons(h,t) => sizeStat(h) + sizeList(t)
+  def sizeTree(l: List) : Int = l match {
+    case Node(l,x,r) => sizeTree(l) + sizeTree(r) + sizeStat(x)
     case Nil() => 0
+  }*/
+  
+  def max(x: Int, y: Int) = if(x >= y) x else y
+  
+  def depthStat(st: Statement) : Int =  st match { 
+    case Block(t) => depthTree(t) + 1
+    case IfThenElse(c,th,el) => max(depthStat(th),depthStat(el)) + 1
+    case While(c,b) => depthStat(b) + 1
+    case For(init,cond,step,body) => max(max(depthStat(init),depthStat(step)),depthStat(body))
+    case other => 1
   }
   
-  def isForFree(stat: Statement): Boolean = (stat match {
-    case Block(body) => isForFreeList(body)
+  def depthTree(t: Tree) : Int = t match {
+    case Node(l,x,r) => max(max(depthTree(l),depthTree(r)),depthStat(x)) + 1
+    case Leaf() => 0
+  }
+  
+  /*def isForFree(stat: Statement): Boolean = (stat match {
+    case Block(body) => isForFreeTree(body)
     case IfThenElse(_, then, elze) => isForFree(then) && isForFree(elze)
     case While(_, body) => isForFree(body)
     case For(_,_,_,_) => false
     case _ => true
-  })  ensuring(res => true template((a,b) => depth <= a*sizeStat(stat) + b))
+  })  ensuring(res => true template((a,b) => depth <= a*depthStat(stat) + b))
   
-  def isForFreeList(l: List): Boolean = (l match {
-    case Nil() => true
-    case Cons(x, xs) => isForFree(x) && isForFreeList(xs)
-  })  ensuring(res => true template((a,b) => depth <= a*sizeList(l) + b))
+  def isForFreeTree(t: Tree): Boolean = (t match {
+    case Leaf() => true
+    case Node(l, x, r) => isForFree(x) && isForFreeTree(l) && isForFreeTree(r)
+  })  ensuring(res => true template((a,b) => depth <= a*depthTree(t) + b))*/
 
-  def forLoopsWellFormedList(l: List): Boolean = (l match {
-    case Nil() => true
-    case Cons(x, xs) => forLoopsWellFormed(x) && forLoopsWellFormedList(xs)
-  }) ensuring(res => true template((a,b) => depth <= a*sizeList(l) + b))
+  /*def forLoopsWellFormedTree(t: Tree): Boolean = (t match {
+    case Leaf() => true
+    case Node(l, x, r) => forLoopsWellFormed(x) && forLoopsWellFormedTree(l) && forLoopsWellFormedTree(r)
+  }) ensuring(res => true template((a,b) => depth <= a*depthTree(t) + b))
  
   def forLoopsWellFormed(stat: Statement): Boolean = (stat match {
-    case Block(body) => forLoopsWellFormedList(body)
+    case Block(body) => forLoopsWellFormedTree(body)
     case IfThenElse(_, then, elze) => forLoopsWellFormed(then) && forLoopsWellFormed(elze)
     case While(_, body) => forLoopsWellFormed(body)
     case For(init, _, step, body) => isForFree(init) && isForFree(step) && forLoopsWellFormed(body)
     case _ => true
-  }) ensuring(res => true template((a,b) => depth <= a*sizeStat(stat) + b))
+  }) ensuring(res => true template((a,b) => depth <= a*depthStat(stat) + b))*/
 
-  def eliminateWhileLoopsList(l: List): List = {
-    l match {
-      case Nil() => Nil()
-      case Cons(x, xs) => Cons(eliminateWhileLoops(x), eliminateWhileLoopsList(xs))
+  def eliminateWhileLoopsTree(t: Tree): Tree = {
+    t match {
+      case Leaf() => Leaf()
+      case Node(l,x,r) => Node(eliminateWhileLoopsTree(l), eliminateWhileLoops(x), eliminateWhileLoopsTree(r))
     }
-  } ensuring(res => true template((a,b) => depth <= a*sizeList(l) + b))
+  } ensuring(res => true template((a,b) => depth <= a*depthTree(t) + b))
 
   def eliminateWhileLoops(stat: Statement): Statement = (stat match {
-    case Block(body) => Block(eliminateWhileLoopsList(body))
+    case Block(body) => Block(eliminateWhileLoopsTree(body))
     case IfThenElse(expr, then, elze) => IfThenElse(expr, eliminateWhileLoops(then), eliminateWhileLoops(elze))
     case While(expr, body) => For(Skip(), expr, Skip(), eliminateWhileLoops(body))
     case For(init, expr, step, body) => For(eliminateWhileLoops(init), expr, eliminateWhileLoops(step), eliminateWhileLoops(body))
     case other => other
-  }) ensuring(res => true template((a,b) => depth <= a*sizeStat(stat) + b))
+  }) ensuring(res => true template((a,b) => depth <= a*depthStat(stat) + b))
 
-  def eliminateForLoopsList(l: List): List = {
-    l match {
-      case Nil() => Nil()
-      case Cons(x, xs) => Cons(eliminateForLoops(x), eliminateForLoopsList(xs))
+  /*def eliminateForLoopsTree(t: Tree): Tree = {
+    t match {
+      case Leaf() => Leaf()
+      case Node(l,x,r) => Node(eliminateForLoopsTree(l), eliminateForLoops(x), eliminateForLoopsTree(r))
     }
-  } ensuring(res => true template((a,b) => depth <= a*sizeList(l) + b))
+  } ensuring(res => true template((a,b) => depth <= a*depthTree(t) + b))
    
   def eliminateForLoops(stat: Statement): Statement = {
     stat match {
-      case Block(body) => Block(eliminateForLoopsList(body))
+      case Block(body) => Block(eliminateForLoopsTree(body))
       case IfThenElse(expr, then, elze) => IfThenElse(expr, eliminateForLoops(then), eliminateForLoops(elze))
       case While(expr, body) => While(expr, eliminateForLoops(body))
-      case For(init, expr, step, body) => Block(Cons(eliminateForLoops(init), Cons(While(expr, Block(Cons(eliminateForLoops(body), Cons(eliminateForLoops(step), Nil())))), Nil())))
+      case For(init, expr, step, body) => Block(Node(Leaf(),eliminateForLoops(init),Node(Leaf(), 
+          While(expr, Block(Node(Leaf(),eliminateForLoops(body), Node(Leaf(),eliminateForLoops(step), Leaf())))),Leaf())))
       case other => other
     }
-  } ensuring(res => true template((a,b) => depth <= a*sizeStat(stat) + b))
+  } ensuring(res => true template((a,b) => depth <= a*depthStat(stat) + b))*/
 }
