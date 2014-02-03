@@ -7,15 +7,6 @@ object MergeSort {
   case class Cons(head:Int,tail:List) extends List
   case class Nil() extends List
 
-  //case class Pair(fst:List,snd:List)
-  
-  @monotonic
-  def log(x: Int) : Int = {
-    //require(x >= 0)    
-    if(x <= 1) 0
-    else log(x/2) * log(x/2)    
-  } //ensuring(res=> true template((b) => res >= b))
-
   def size(list:List): Int = {list match {
     case Nil() => 0
     case Cons(x,xs) => 1 + size(xs)

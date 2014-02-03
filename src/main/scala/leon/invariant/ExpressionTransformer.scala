@@ -113,7 +113,7 @@ object ExpressionTransformer {
           import NonlinearityEliminationPhase._
           val mand = FunctionInvocation(multFun, Seq(dv, nrhs))
           conjuncts :+= LessEquals(mand, nlhs)
-          conjuncts :+= LessEquals(nlhs, Plus(mand ,this.one))                    
+          conjuncts :+= LessThan(nlhs, Plus(mand ,this.one))                    
           (dv, (ncjs1 ++ ncjs2) ++ conjuncts)
         }
         case Equals(_, _) | Iff(_, _) => {

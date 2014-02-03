@@ -13,7 +13,7 @@ object MergeSort {
   def log(x: Int) : Int = {
     //require(x >= 0)    
     if(x <= 1) 0
-    else log(x/2) * log(x/2)    
+    else 1 + log(x/2)    
   } //ensuring(res=> true template((b) => res >= b))
 
   /*def contents(l: List): Set[Int] = l match {
@@ -83,12 +83,12 @@ object MergeSort {
     case Cons(x,Nil()) => list
     case _ =>
     	 val (fst,snd) = split(list,length(list)/2)
-    	 //merge(fst, snd)     
-   	 merge(mergeSort(fst), mergeSort(snd))
+      	 merge(mergeSort(fst), mergeSort(snd))
    	 
-  }) ensuring(res => size(res) == size(list) template((a,b) => time <= a*size(list) + b))
+  }) ensuring(res => size(res) == size(list) template((a,b) => time <= a*(size(list)*size(list)) + b)) 
+      //template((a,b) => time <= a*size(list) + b))
     
   //ensuring(res => true template((a,b) => time <= a*(size(list)*log(size(list))) + b))
 //  
-      //template((a,b) => time <= a*(size(list)*log(size(list))) + b))   
+      //   
 }

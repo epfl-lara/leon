@@ -97,8 +97,7 @@ object NonlinearityEliminationPhase extends LeonPhase[Program,Program] {
     val replaceFun = (e: Expr) => e match {      
       case fi @ FunctionInvocation(fd1, args) if newFundefs.contains(fd1) =>
         FunctionInvocation(newFundefs(fd1), args)
-        
-      //handle templates
+              
       case Times(Variable(id), e2) if(TemplateIdFactory.IsTemplateIdentifier(id)) => e
       case Times(e1, Variable(id)) if(TemplateIdFactory.IsTemplateIdentifier(id)) => e
       
@@ -107,6 +106,12 @@ object NonlinearityEliminationPhase extends LeonPhase[Program,Program] {
         addMult = true        
         FunctionInvocation(multFun, Seq(e1, e2))
       }      
+      //note: include mult function if division operation is encountered
+      //division is handled during verification condition generation.
+      case Division(_, _) => {
+        addMult = true
+        e
+      }
       case _ => e
     }
 
