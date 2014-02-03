@@ -101,7 +101,16 @@ object ExpressionTransformer {
   def reduceLangBlocks(inexpr: Expr) : Expr = {
     
     def transform(e: Expr) : (Expr,Set[Expr]) = {     
-      e match {        
+      e match {
+        case Division(lhs, rhs@IntLiteral(v)) => {
+          val dv = TVarFactory.createTemp("dv").setType(Int32Type).toVariable          
+          val (nlhs, ncjs1) = transform(lhs)              
+          var conjuncts = Seq[Expr]()          
+          val mand = Times(rhs,dv)
+          conjuncts :+= LessEquals(mand, nlhs)
+          conjuncts :+= LessThan(nlhs, Plus(mand ,this.one))                    
+          (dv, ncjs1 ++ conjuncts)
+        }
         case Division(lhs, rhs) => {
           //reduce division to multiplication by introduction fresh variables and creating bounds
           //TODO: this is sound only for positive integers
@@ -111,6 +120,7 @@ object ExpressionTransformer {
           var conjuncts = Seq[Expr]()
           
           import NonlinearityEliminationPhase._
+          
           val mand = FunctionInvocation(multFun, Seq(dv, nrhs))
           conjuncts :+= LessEquals(mand, nlhs)
           conjuncts :+= LessThan(nlhs, Plus(mand ,this.one))                    
