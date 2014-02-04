@@ -1,4 +1,4 @@
-Leon 2.1
+Leon 2.2
 ==========
 
 Getting Started
@@ -129,6 +129,13 @@ Use ```sbt test``` to run all the tests.
 
 Changelog
 ---------
+
+#### v2.2
+*Released 04.02.2014*
+
+* Generics for functions and ADTs
+* Use instantiation-time mixing for timeout sovlers
+* Improve unrolling solvers to use incremental solvers
 
 #### v2.1
 *Released 10.01.2014*

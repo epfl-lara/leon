@@ -1,6 +1,6 @@
 name := "Leon"
 
-version := "2.1"
+version := "2.2"
 
 organization := "ch.epfl.lara"
 
