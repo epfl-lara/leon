@@ -133,6 +133,10 @@ object TypeTreeOps {
           case cc @ CaseClassInstanceOf(ct, e) =>
             CaseClassInstanceOf(tpeSub(ct).asInstanceOf[CaseClassType], srec(e)).copiedFrom(cc)
 
+          case l @ Let(id, value, body) =>
+            val newId = freshId(id, tpeSub(id.getType))
+            Let(newId, srec(value), rec(idsMap + (id -> newId))(body)).copiedFrom(l)
+
           case m @ MatchExpr(e, cases) =>
             val newTpe = tpeSub(e.getType)
 
