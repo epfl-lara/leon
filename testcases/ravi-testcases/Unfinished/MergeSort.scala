@@ -81,16 +81,20 @@ object MergeSort {
    	 }   
   }) ensuring(res => size(aList)+size(bList) == size(res) template((a,b,c) => time <= a*size(aList) + b*size(bList) + c))  
 
-  def mergeSort(list:List):List = (list match {    
-    case Cons(x,Nil()) => list
-    case Cons(_,Cons(_,_)) =>
-    	 val (fst,snd) = split(list,length(list)/2) 
+  def mergeSort(list:List, len: Int):List = {
+    require(len == size(list))  
+  
+    list match {      
+      case Cons(x,Nil()) => list
+      case Cons(_,Cons(_,_)) =>
+         val l = len/2
+    	 val (fst,snd) = split(list,l) 
     	   //split(list,length(list)/2)
-      	 merge(mergeSort(fst), mergeSort(snd))
+      	 merge(mergeSort(fst,l), mergeSort(snd,len - l))
       	 
-    case _ => list
+      case _ => list
    	 
-  }) ensuring(res => size(res) == size(list) template((a,b,c) => time <= a*(size(list)*size(list)) + b*size(list) + c)) 
+  }} ensuring(res => size(res) == size(list) template((a,b,c) => time <= a*(size(list)*size(list)) + c)) 
       //template((a,b) => time <= a*size(list) + b))
     
   //ensuring(res => true template((a,b) => time <= a*(size(list)*log(size(list))) + b))
