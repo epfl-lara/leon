@@ -61,7 +61,7 @@ class VerifierTest extends FunSpec {
               
               val verifier = new Verifier(timeoutSolver, problem)
               
-              assert( verifier.analyzeFunction(funDef)._1 )
+              assert( verifier.analyzeFunction(funDef.typed)._1 )
               verifier.solver.free()
         }       
         
@@ -75,7 +75,7 @@ class VerifierTest extends FunSpec {
               
               val verifier = new Verifier(timeoutSolver, problem)
               
-              assert( verifier.analyzeFunction(funDef)._1 )
+              assert( verifier.analyzeFunction(funDef.typed)._1 )
               verifier.solver.free()
         }       
         
@@ -89,7 +89,7 @@ class VerifierTest extends FunSpec {
               
               val verifier = new Verifier(timeoutSolver, problem)
               
-              assert( ! verifier.analyzeFunction(funDef)._1 )
+              assert( ! verifier.analyzeFunction(funDef.typed)._1 )
               verifier.solver.free()
         }
       }
@@ -132,7 +132,7 @@ class VerifierTest extends FunSpec {
               
               val verifier = new RelaxedVerifier(timeoutSolver, problem)
               
-              assert( verifier.analyzeFunction(funDef)._1 )
+              assert( verifier.analyzeFunction(funDef.typed)._1 )
               verifier.solver.free()
         }       
                 
@@ -146,7 +146,7 @@ class VerifierTest extends FunSpec {
               
               val verifier = new Verifier(timeoutSolver, problem)
               
-              assert( verifier.analyzeFunction(funDef)._1 )
+              assert( verifier.analyzeFunction(funDef.typed)._1 )
               verifier.solver.free()
         }
       }

@@ -35,8 +35,8 @@ object FunctionClosure extends TransformationPhase {
       pathConstraints = fd.precondition.toList
       fd.body = fd.body.map(b => functionClosure(b, fd.args.map(_.id).toSet, Map(), Map()))
     })
-    val Program(id, ObjectDef(objId, defs, invariants)) = program
-    val res = Program(id, ObjectDef(objId, defs ++ topLevelFuns, invariants))
+    val Program(id, ModuleDef(objId, defs, invariants)) = program
+    val res = Program(id, ModuleDef(objId, defs ++ topLevelFuns, invariants))
     res
   }
 
@@ -55,7 +55,7 @@ object FunctionClosure extends TransformationPhase {
       val newBindedVars: Set[Identifier] = bindedVars ++ fd.args.map(_.id)
       val newFunId = FreshIdentifier(fd.id.uniqueName) //since we hoist this at the top level, we need to make it a unique name
 
-      val newFunDef = new FunDef(newFunId, fd.returnType, newVarDecls).copiedFrom(fd)
+      val newFunDef = new FunDef(newFunId, fd.tparams, fd.returnType, newVarDecls).copiedFrom(fd)
       topLevelFuns += newFunDef
       newFunDef.addAnnotation(fd.annotations.toSeq:_*) //TODO: this is still some dangerous side effects
       newFunDef.parent = Some(parent)
@@ -114,12 +114,12 @@ object FunctionClosure extends TransformationPhase {
       pathConstraints = pathConstraints.tail
       IfExpr(rCond, rThen, rElze).copiedFrom(i)
     }
-    case fi @ FunctionInvocation(fd, args) => fd2FreshFd.get(fd) match {
+    case fi @ FunctionInvocation(tfd, args) => fd2FreshFd.get(tfd.fd) match {
       case None =>
-        FunctionInvocation(fd,
+        FunctionInvocation(tfd,
                            args.map(arg => functionClosure(arg, bindedVars, id2freshId, fd2FreshFd))).copiedFrom(fi)
       case Some((nfd, extraArgs)) => 
-        FunctionInvocation(nfd,
+        FunctionInvocation(nfd.typed(tfd.tps),
                            args.map(arg => functionClosure(arg, bindedVars, id2freshId, fd2FreshFd)) ++ 
                            extraArgs.map(v => replace(id2freshId.map(p => (p._1.toVariable, p._2.toVariable)), v))).copiedFrom(fi)
     }

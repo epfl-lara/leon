@@ -29,8 +29,8 @@ class VariableRefinerExecution(variableDeclarations: Seq[Declaration],
   // TODO use cd.knownDescendents?
   for (varDec <- variableDeclarations) {
     varDec match {
-      case Declaration(_, _, typeOfVar: ClassType, ImmediateExpression(_, IsTyped(Variable(id), AbstractClassType(cd)))) =>
-        variableRefinements += (id -> MutableSet(cd.knownDescendents.map(classDefToClassType _): _*))
+      case Declaration(_, _, typeOfVar: ClassType, ImmediateExpression(_, IsTyped(Variable(id), AbstractClassType(cd, tps)))) =>
+        variableRefinements += (id -> MutableSet(cd.knownDescendents.map(classDefToClassType(_, tps)): _*))
       case _ =>
     }
   }
@@ -44,16 +44,16 @@ class VariableRefinerExecution(variableDeclarations: Seq[Declaration],
     if (variables.size == 1) {
       val variable = variables.head
       variable match {
-        case oldId @ IsTyped(id, AbstractClassType(cd)) // do not try to refine if we already know a single type is possible
+        case oldId @ IsTyped(id, AbstractClassType(cd, tps)) // do not try to refine if we already know a single type is possible
         if variableRefinements(id).size > 1 =>
 
           assert(variableRefinements(id).map(_.classDef) subsetOf cd.knownDescendents.toSet)
 
           val optCases =
-            for (dcd <- variableRefinements(id).map(_.classDef)) yield dcd match {
-              case ccd: CaseClassDef if ccd.fields.isEmpty =>
+            for (cct <- variableRefinements(id)) yield cct match {
+              case cct: CaseClassType if cct.fields.isEmpty =>
 
-                val testValue = CaseClass(ccd, Nil)
+                val testValue = CaseClass(cct, Nil)
                 val conditionToEvaluate = And(Not(expr), condition)
                 fine("Execute condition " + conditionToEvaluate + " on variable " + id + " as " + testValue)
 
@@ -61,9 +61,9 @@ class VariableRefinerExecution(variableDeclarations: Seq[Declaration],
                   case Successful(BooleanLiteral(false)) =>
                     fine("EvaluationSuccessful(false)")
                     fine("Refining variableRefinements(id): " + variableRefinements(id))
-                    variableRefinements(id) -= classDefToClassType(ccd)
+                    variableRefinements(id) -= cct
                     fine("Refined variableRefinements(id): " + variableRefinements(id))
-                    Some(ccd)
+                    Some(cct)
                   case Successful(BooleanLiteral(true)) =>
                     fine("EvaluationSuccessful(true)")
                     None

@@ -8,7 +8,7 @@ import org.scalatest.junit.JUnitSuite
 import leon.synthesis.condabd.insynth.reconstruction.codegen.CodeGenerator
 import leon.synthesis.condabd.insynth.reconstruction._
 
-import leon.purescala.Definitions.{ FunDef, VarDecl, Program, ObjectDef }
+import leon.purescala.Definitions.{ FunDef, VarDecl, Program, ModuleDef }
 import leon.purescala.Common.{ FreshIdentifier }
 import leon.purescala.TypeTrees._
 import leon.purescala.Trees.{ Variable => LeonVariable, _ }
@@ -34,7 +34,7 @@ class ReconstructorTest extends JUnitSuite {
     
     val codeGenResult = expStream.head
     
-    assertEquals(FunctionInvocation(functionBoolToIntFunDef, List(BooleanLiteral(false))), codeGenResult.snippet)
+    assertEquals(FunctionInvocation(functionBoolToIntFunDef.typed, List(BooleanLiteral(false))), codeGenResult.snippet)
     assertEquals(0f, codeGenResult.weight, 0f)    
   }
   

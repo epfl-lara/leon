@@ -20,12 +20,12 @@ abstract class AbstractVerifier(solverf: SolverFactory[Solver with IncrementalSo
 
   import SynthesisInfo.Action._
   
-  def analyzeFunction(funDef: FunDef) = {
+  def analyzeFunction(tfd: TypedFunDef) = {
     synthInfo.start(Verification)
-    fine("Analyzing function: " + funDef)
+    fine("Analyzing function: " + tfd)
 
     // create an expression to verify
-    val theExpr = generateInductiveVerificationCondition(funDef, funDef.body.get)
+    val theExpr = generateInductiveVerificationCondition(tfd, tfd.body.get)
      
     solver.push
     val valid = checkValidity(theExpr)
@@ -38,11 +38,11 @@ abstract class AbstractVerifier(solverf: SolverFactory[Solver with IncrementalSo
     (valid, map)
   }
   
-  def analyzeFunction(funDef: FunDef, body: Expr) = {
+  def analyzeFunction(tfd: TypedFunDef, body: Expr) = {
     synthInfo.start(Verification)
 
     // create an expression to verify
-    val theExpr = generateInductiveVerificationCondition(funDef, body)
+    val theExpr = generateInductiveVerificationCondition(tfd, body)
      
     solver.push
     val valid = checkValidity(theExpr)
@@ -55,14 +55,14 @@ abstract class AbstractVerifier(solverf: SolverFactory[Solver with IncrementalSo
     (valid, map)
   }
 
-  protected def generateInductiveVerificationCondition(funDef: FunDef, body: Expr) = {
+  protected def generateInductiveVerificationCondition(tfd: TypedFunDef, body: Expr) = {
         
     // replace recursive calls with fresh variables
     case class Replacement(id: Identifier, exprReplaced: FunctionInvocation) {
       def getMapping: Map[Expr, Expr] = {
-        val funDef = exprReplaced.funDef
-        val pairList = (Variable(funDef.postcondition.get._1), id.toVariable) ::
-        	(funDef.args.map(_.toVariable).toList zip exprReplaced.args)
+        val tfd = exprReplaced.tfd
+        val pairList = (Variable(tfd.postcondition.get._1), id.toVariable) ::
+        	(tfd.args.map(_.toVariable).toList zip exprReplaced.args)
       	pairList.toMap
       }
     }
@@ -72,9 +72,9 @@ abstract class AbstractVerifier(solverf: SolverFactory[Solver with IncrementalSo
     var replacements = List[Replacement]() 
     
     def replaceRecursiveCalls(expr: Expr) = expr match {
-      case funInv@FunctionInvocation(`funDef`, args) => {
+      case funInv@FunctionInvocation(`tfd`, args) => {
         isThereARecursiveCall = true
-        val inductId = FreshIdentifier("induct", true).setType(funDef.returnType)
+        val inductId = FreshIdentifier("induct", true).setType(tfd.returnType)
         replacements :+= Replacement(inductId, funInv)
         Some(inductId.toVariable)
       }
@@ -85,7 +85,7 @@ abstract class AbstractVerifier(solverf: SolverFactory[Solver with IncrementalSo
        
     // build the verification condition
     val resFresh = FreshIdentifier("result", true).setType(newBody.getType)
-    val (id, post) = funDef.postcondition.get
+    val (id, post) = tfd.postcondition.get
     val bodyAndPost =
 	    Let(
     		resFresh, newBody,
@@ -93,9 +93,9 @@ abstract class AbstractVerifier(solverf: SolverFactory[Solver with IncrementalSo
   		)	
 
 		val precondition = if( isThereARecursiveCall ) {
-		  And( funDef.precondition.get :: replacements.map( r => replace(r.getMapping, post)) )
+		  And( tfd.precondition.get :: replacements.map( r => replace(r.getMapping, post)) )
 		} else
-		  funDef.precondition.get
+		  tfd.precondition.get
 //    val bodyAndPost = 		    
 //	    Let(
 //    		resFresh, newBody,

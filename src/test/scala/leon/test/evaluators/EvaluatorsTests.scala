@@ -44,12 +44,12 @@ class EvaluatorsTests extends LeonTestSuite {
       throw new AssertionError("No function named '%s' defined in program.".format(name))
     }
 
-    FunctionInvocation(fDef, args.toSeq)
+    FunctionInvocation(fDef.typed, args.toSeq)
   }
 
   private def mkCaseClass(name : String, args : Expr*)(implicit p : Program) = {
-    val ccDef = p.mainObject.caseClassDef(name)
-    CaseClass(ccDef, args.toSeq)
+    val ccDef = p.mainModule.caseClassDef(name)
+    CaseClass(CaseClassType(ccDef, Nil), args.toSeq)
   }
 
   private def checkCompSuccess(evaluator : Evaluator, in : Expr) : Expr = {

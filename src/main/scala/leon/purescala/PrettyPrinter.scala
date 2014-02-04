@@ -69,7 +69,16 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
     implicit val p = Some(tree)
 
     tree match {
-      case Variable(id) => sb.append(idToString(id))
+      case id: Identifier =>
+        sb.append(idToString(id))
+
+      case Variable(id) =>
+        //sb.append("(")
+        pp(id, p)
+        //sb.append(": ")
+        //pp(id.getType, p)
+        //sb.append(")")
+
       case LetTuple(bs,d,e) =>
         sb.append("(let (" + bs.map(idToString _).mkString(",") + " := ");
         pp(d, p)
@@ -105,6 +114,10 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
       case BooleanLiteral(v) => sb.append(v)
       case StringLiteral(s) => sb.append("\"" + s + "\"")
       case UnitLiteral => sb.append("()")
+      case GenericValue(tp, id) =>
+        pp(tp, p)
+        sb.append("#"+id)
+
       case t@Tuple(exprs) => ppNary(exprs, "(", ", ", ")")
       case s@TupleSelect(t, i) =>
         pp(t, p)
@@ -115,24 +128,31 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
         pp(pred, p)
         sb.append(")")
 
-      case CaseClass(cd, args) =>
-        sb.append(idToString(cd.id))
-        if (cd.isCaseObject) {
+      case CaseClass(cct, args) =>
+        pp(cct, p)
+        if (cct.classDef.isCaseObject) {
           ppNary(args, "", "", "")
         } else {
           ppNary(args, "(", ", ", ")")
         }
 
-      case CaseClassInstanceOf(cd, e) =>
+      case CaseClassInstanceOf(cct, e) =>
         pp(e, p)
-        sb.append(".isInstanceOf[" + idToString(cd.id) + "]")
+        sb.append(".isInstanceOf[")
+        pp(cct, p)
+        sb.append("]")
 
       case CaseClassSelector(_, cc, id) =>
         pp(cc, p)
         sb.append("." + idToString(id))
 
-      case FunctionInvocation(fd, args) =>
-        sb.append(idToString(fd.id))
+      case FunctionInvocation(tfd, args) =>
+        sb.append(idToString(tfd.id))
+
+        if (tfd.tps.nonEmpty) {
+          ppNary(tfd.tps, "[", ",", "]")
+        }
+
         ppNary(args, "(", ", ", ")")
 
       case Plus(l,r) => ppBinary(l, r, " + ")
@@ -272,9 +292,10 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
           pp(rhs, p)(lvl+1)
 
       // Patterns
-      case CaseClassPattern(bndr, ccd, subps) =>
+      case CaseClassPattern(bndr, cct, subps) =>
         bndr.foreach(b => sb.append(b + " @ "))
-        sb.append(idToString(ccd.id)).append("(")
+        pp(cct, p)
+        sb.append("(")
         var c = 0
         val sz = subps.size
         subps.foreach(sp => {
@@ -287,9 +308,9 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
 
       case WildcardPattern(None)     => sb.append("_")
       case WildcardPattern(Some(id)) => sb.append(idToString(id))
-      case InstanceOfPattern(bndr, ccd) =>
+      case InstanceOfPattern(bndr, cct) =>
         bndr.foreach(b => sb.append(b + " : "))
-        sb.append(idToString(ccd.id))
+        pp(cct, p)
 
       case TuplePattern(bndr, subPatterns) =>
         bndr.foreach(b => sb.append(b + " @ "))
@@ -334,7 +355,12 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
         }
         sb.append(" => ")
         pp(tt, p)
-      case c: ClassType => sb.append(idToString(c.classDef.id))
+
+      case c: ClassType =>
+        sb.append(idToString(c.classDef.id))
+        if (c.tps.nonEmpty) {
+          ppNary(c.tps, "[", ",", "]")
+        }
 
 
       // Definitions
@@ -346,7 +372,7 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
         pp(mainObj, p)(lvl+1)
         sb.append("}\n")
 
-      case ObjectDef(id, defs, invs) =>
+      case ModuleDef(id, defs, invs) =>
         nl
         sb.append("object ")
         sb.append(idToString(id))
@@ -366,30 +392,30 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
         nl
         sb.append("}\n")
 
-      case AbstractClassDef(id, parent) =>
+      case AbstractClassDef(id, tparams, parent) =>
         nl
         sb.append("sealed abstract class ")
         sb.append(idToString(id))
         parent.foreach(p => sb.append(" extends " + idToString(p.id)))
 
-      case CaseClassDef(id, parent, varDecls) =>
+      case ccd @ CaseClassDef(id, tparams, parent, isObj) =>
         nl
-        sb.append("case class ")
-        sb.append(idToString(id))
-        sb.append("(")
-        var c = 0
-        val sz = varDecls.size
+        if (isObj) {
+          sb.append("case object ")
+        } else {
+          sb.append("case class ")
+        }
 
-        varDecls.foreach(vd => {
-          sb.append(idToString(vd.id))
-          sb.append(": ")
-          pp(vd.tpe, p)
-          if(c < sz - 1) {
-            sb.append(", ")
-          }
-          c = c + 1
-        })
-        sb.append(")")
+        sb.append(idToString(id))
+
+        if (tparams.nonEmpty) {
+          ppNary(tparams, "[", ", ", "]")
+        }
+
+        if (!isObj) {
+          ppNary(ccd.fields, "(", ", ", ")")
+        }
+
         parent.foreach(p => sb.append(" extends " + idToString(p.id)))
 
       case fd: FunDef =>
@@ -442,6 +468,12 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
           case None =>
             sb.append("[unknown function implementation]")
         }
+
+      case TypeParameterDef(tp) =>
+        pp(tp, p)
+
+      case TypeParameter(id) =>
+        pp(id, p)
 
       case _ => sb.append("Tree? (" + tree.getClass + ")")
     }

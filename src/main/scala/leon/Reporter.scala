@@ -85,7 +85,7 @@ class DefaultReporter(settings: Settings) extends Reporter(settings) {
   def debugFunction(msg: Any)   = output(reline(debugPfx, msg.toString))
   def fatalErrorFunction(msg: Any) = {
     output(reline(fatalPfx, msg.toString));
-    throw LeonFatalError()
+    throw LeonFatalError(msg.toString)
   }
 }
 

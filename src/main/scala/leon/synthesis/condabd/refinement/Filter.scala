@@ -15,7 +15,7 @@ import insynth.util.logging.HasLogger
 /**
  * Class used for filtering out unnecessary candidates during the search
  */
-class Filter(program: Program, holeFunDef: FunDef, refiner: VariableRefiner) extends HasLogger {      
+class Filter(program: Program, holeFunDef: TypedFunDef, refiner: VariableRefiner) extends HasLogger {      
     
   // caching of previously filtered expressions
   type FilterSet = HashSet[Expr]
@@ -130,7 +130,7 @@ class Filter(program: Program, holeFunDef: FunDef, refiner: VariableRefiner) ext
   }
   
   def isUnecessaryInstanceOf(expr: Expr) = {
-    def isOfClassType(exp: Expr, classDef: ClassTypeDef) =
+    def isOfClassType(exp: Expr, classDef: ClassDef) =
       expr.getType match {
         case tpe: ClassType => tpe.classDef == classDef
         case _ => false
@@ -141,13 +141,13 @@ class Filter(program: Program, holeFunDef: FunDef, refiner: VariableRefiner) ext
 //        true
 	    case CaseClassInstanceOf(classDef, _: FunctionInvocation) =>
 	      true
-	    case CaseClassInstanceOf(classDef, innerExpr)
-	    	if isOfClassType(innerExpr, classDef) =>
+	    case CaseClassInstanceOf(cct, innerExpr)
+	    	if isOfClassType(innerExpr, cct.classDef) =>
 	      true
-	    case CaseClassInstanceOf(classDef, v@Variable(id)) => {
+	    case CaseClassInstanceOf(cct, v@Variable(id)) => {
 	      val possibleTypes = refiner.getPossibleTypes(id)
 	      if (possibleTypes.size == 1)
-	        possibleTypes.head.classDef == classDef
+	        possibleTypes.head.classDef == cct.classDef
 	      else
 	        false
 	    }

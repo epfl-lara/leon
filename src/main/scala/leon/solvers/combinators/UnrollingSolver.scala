@@ -52,8 +52,8 @@ class UnrollingSolver(val context: LeonContext, underlyings: SolverFactory[Incre
       var newClauses : List[Seq[Expr]] = Nil
       var newBlockers : Map[Identifier,Set[FunctionInvocation]] = Map.empty
 
-      for(blocker <- allBlockers.keySet; FunctionInvocation(funDef, args) <- allBlockers(blocker)) {
-        val (nc, nb) = getTemplate(funDef).instantiate(blocker, args)
+      for(blocker <- allBlockers.keySet; FunctionInvocation(tfd, args) <- allBlockers(blocker)) {
+        val (nc, nb) = getTemplate(tfd).instantiate(blocker, args)
         newClauses = nc :: newClauses
         newBlockers = newBlockers ++ nb
       }
@@ -63,7 +63,7 @@ class UnrollingSolver(val context: LeonContext, underlyings: SolverFactory[Incre
       newClauses.flatten
     }
 
-    val (nc, nb) = template.instantiate(aVar, template.funDef.args.map(a => Variable(a.id)))
+    val (nc, nb) = template.instantiate(aVar, template.tfd.args.map(a => Variable(a.id)))
 
     allClauses = nc.reverse
     allBlockers = nb
@@ -137,23 +137,23 @@ class UnrollingSolver(val context: LeonContext, underlyings: SolverFactory[Incre
     stop = false
   }
 
-  private val funDefTemplateCache : MutableMap[FunDef, FunctionTemplate] = MutableMap.empty
+  private val tfdTemplateCache : MutableMap[TypedFunDef, FunctionTemplate] = MutableMap.empty
   private val exprTemplateCache : MutableMap[Expr, FunctionTemplate] = MutableMap.empty
 
-  private def getTemplate(funDef: FunDef): FunctionTemplate = {
-    funDefTemplateCache.getOrElse(funDef, {
-      val res = FunctionTemplate.mkTemplate(funDef, true)
-      funDefTemplateCache += funDef -> res
+  private def getTemplate(tfd: TypedFunDef): FunctionTemplate = {
+    tfdTemplateCache.getOrElse(tfd, {
+      val res = FunctionTemplate.mkTemplate(tfd, true)
+      tfdTemplateCache += tfd -> res
       res
     })
   }
 
   private def getTemplate(body: Expr): FunctionTemplate = {
     exprTemplateCache.getOrElse(body, {
-      val fakeFunDef = new FunDef(FreshIdentifier("fake", true), body.getType, variablesOf(body).toSeq.map(id => VarDecl(id, id.getType)))
+      val fakeFunDef = new FunDef(FreshIdentifier("fake", true), Nil, body.getType, variablesOf(body).toSeq.map(id => VarDecl(id, id.getType)))
       fakeFunDef.body = Some(body)
 
-      val res = FunctionTemplate.mkTemplate(fakeFunDef, false)
+      val res = FunctionTemplate.mkTemplate(fakeFunDef.typed, false)
       exprTemplateCache += body -> res
       res
     })

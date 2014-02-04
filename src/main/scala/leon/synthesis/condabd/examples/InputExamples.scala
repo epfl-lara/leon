@@ -66,9 +66,9 @@ object InputExamples {
     // list type
     val ct = argumentIds(1).getType.asInstanceOf[ClassType]
 
-    val setSubclasses = loader.directSubclassesMap(ct).map(_.asInstanceOf[CaseClassType].classDef)
+    val setSubclasses = loader.directSubclassesMap(ct).map(_.asInstanceOf[CaseClassType])
 
-    val (nilClassSet, consClassSet) = setSubclasses.partition(_.fieldsIds.size == 0)
+    val (nilClassSet, consClassSet) = setSubclasses.partition(_.fields.size == 0)
 
     val nilClass = nilClassSet.head
     val consClass = consClassSet.head
@@ -95,9 +95,9 @@ object InputExamples {
     // list type
     val ct = argumentIds(0).getType.asInstanceOf[ClassType]
 
-    val setSubclasses = loader.directSubclassesMap(ct).map(_.asInstanceOf[CaseClassType].classDef)
+    val setSubclasses = loader.directSubclassesMap(ct).map(_.asInstanceOf[CaseClassType])
 
-    val (nilClassSet, consClassSet) = setSubclasses.partition(_.fieldsIds.size == 0)
+    val (nilClassSet, consClassSet) = setSubclasses.partition(_.fields.size == 0)
 
     val nilClass = nilClassSet.head
     val consClass = consClassSet.head
@@ -124,9 +124,9 @@ object InputExamples {
 
     goalType match {
       case ct: ClassType =>
-        val setSubclasses = loader.directSubclassesMap(ct).map(_.asInstanceOf[CaseClassType].classDef)
+        val setSubclasses = loader.directSubclassesMap(ct).map(_.asInstanceOf[CaseClassType])
 
-        val (nilClassSet, consClassSet) = setSubclasses.partition(_.fieldsIds.size == 0)
+        val (nilClassSet, consClassSet) = setSubclasses.partition(_.fields.size == 0)
 
         val nilClass = nilClassSet.head
         val consClass = consClassSet.head

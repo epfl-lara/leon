@@ -44,7 +44,7 @@ class VariableRefinerStructure(directSubclassMap: Map[ClassType, Set[ClassType]]
 	
 	      List((id, variableRefinements(id).toSet))
 	    case _ =>
-        Nil
+          Nil
 	  }
 
   // inspect the expression if some refinements can be done

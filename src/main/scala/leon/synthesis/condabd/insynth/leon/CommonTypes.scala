@@ -8,7 +8,7 @@ import leon.purescala.Definitions.AbstractClassDef
 
 object CommonTypes {
   	
-  val LeonBottomType = AbstractClassType(new AbstractClassDef(FreshIdentifier("$IDontCare$")))
+  val LeonBottomType = AbstractClassType(new AbstractClassDef(FreshIdentifier("$IDontCare$"), Nil, None), Nil)
   val InSynthBottomType = Const("$IDontCare$")
   
 }

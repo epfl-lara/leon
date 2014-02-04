@@ -36,24 +36,6 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
   )
   toggleWarningMessages(true)
 
-  private var functionMap: Map[FunDef, Z3FuncDecl] = Map.empty
-  private var reverseFunctionMap: Map[Z3FuncDecl, FunDef] = Map.empty
-  protected[leon] def prepareFunctions : Unit = {
-    functionMap        = Map.empty
-    reverseFunctionMap = Map.empty
-    for(funDef <- program.definedFunctions) {
-      val sortSeq = funDef.args.map(vd => typeToSort(vd.tpe))
-      val returnSort = typeToSort(funDef.returnType)
-
-      val z3Decl = z3.mkFreshFuncDecl(funDef.id.name, sortSeq, returnSort)
-      functionMap = functionMap + (funDef -> z3Decl)
-      reverseFunctionMap = reverseFunctionMap + (z3Decl -> funDef)
-    }
-  }
-  protected[leon] def functionDefToDecl(funDef: FunDef) : Z3FuncDecl = functionMap(funDef)
-  protected[leon] def functionDeclToDef(decl: Z3FuncDecl) : FunDef = reverseFunctionMap(decl)
-  protected[leon] def isKnownDecl(decl: Z3FuncDecl) : Boolean = reverseFunctionMap.isDefinedAt(decl)
-
   initZ3
 
   val solver = z3.mkSolver
@@ -67,13 +49,13 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
     solver.pop(lvl)
   }
 
-  private var variables = Set[Identifier]()
+  private var freeVariables = Set[Identifier]()
   private var containsFunCalls = false
 
   def assertCnstr(expression: Expr) {
-    variables ++= variablesOf(expression)
+    freeVariables ++= variablesOf(expression)
     containsFunCalls ||= containsFunctionCalls(expression)
-    solver.assertCnstr(toZ3Formula(expression).get)
+    solver.assertCnstr(toZ3Formula(expression).getOrElse(scala.sys.error("Failed to compile to Z3: "+expression)))
   }
 
   override def check: Option[Boolean] = {
@@ -91,16 +73,16 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
   }
 
   override def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
-    variables ++= assumptions.flatMap(variablesOf(_))
+    freeVariables ++= assumptions.flatMap(variablesOf(_))
     solver.checkAssumptions(assumptions.toSeq.map(toZ3Formula(_).get) : _*)
   }
 
   def getModel = {
-    modelToMap(solver.getModel, variables)
+    modelToMap(solver.getModel, freeVariables)
   }
 
   def getUnsatCore = {
-    solver.getUnsatCore.map(ast => fromZ3Formula(null, ast, None) match {
+    solver.getUnsatCore.map(ast => fromZ3Formula(null, ast) match {
       case n @ Not(Variable(_)) => n
       case v @ Variable(_) => v
       case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")

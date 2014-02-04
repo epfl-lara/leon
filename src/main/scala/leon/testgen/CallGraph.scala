@@ -80,9 +80,9 @@ class CallGraph(val program: Program) {
     var augmentedGraph = graph
 
     graph.foreach{ 
-      case (point@ExpressionPoint(FunctionInvocation(fd, args), _), edges) => {
-        val newPoint = FunctionStart(fd)
-        val newTransition = TransitionLabel(BooleanLiteral(true), fd.args.zip(args).map{ case (VarDecl(id, _), arg) => (id.toVariable, arg) }.toMap)
+      case (point@ExpressionPoint(FunctionInvocation(tfd, args), _), edges) => {
+        val newPoint = FunctionStart(tfd.fd)
+        val newTransition = TransitionLabel(BooleanLiteral(true), tfd.args.zip(args).map{ case (VarDecl(id, _), arg) => (id.toVariable, arg) }.toMap)
         augmentedGraph += (point -> (edges + ((newPoint, newTransition))))
       }
       case _ => ;

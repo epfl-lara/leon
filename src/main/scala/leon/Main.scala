@@ -207,12 +207,12 @@ object Main {
   }
 
   def main(args : Array[String]) {
+    val timer     = new Timer().start
+
+    // Process options
+    val ctx = processOptions(args.toList)
+
     try {
-      // Process options
-      val timer     = new Timer().start
-
-      val ctx = processOptions(args.toList)
-
       ctx.interruptManager.registerSignalHandler()
 
       ctx.timers.get("Leon Opts") += timer
@@ -246,7 +246,9 @@ object Main {
       }
 
     } catch {
-      case LeonFatalError() => sys.exit(1)
+      case LeonFatalError(msg) =>
+        ctx.reporter.error(msg)
+        sys.exit(1)
     }
   }
 }

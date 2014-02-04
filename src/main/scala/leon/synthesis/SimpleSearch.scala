@@ -92,7 +92,7 @@ class SimpleSearch(synth: Synthesizer,
     }
 
     def fundefToSol(p: Problem, fd: FunDef): Solution = {
-      Solution(BooleanLiteral(true), Set(), FunctionInvocation(fd, p.as.map(Variable(_))))
+      Solution(BooleanLiteral(true), Set(), FunctionInvocation(fd.typed, p.as.map(Variable(_))))
     }
 
     def solToSubProgram(p: Problem, s: Solution): SubProgram = {
@@ -138,7 +138,7 @@ class SimpleSearch(synth: Synthesizer,
         Map(Variable(p.xs.head) -> res)
       }
 
-      val fd = new FunDef(FreshIdentifier("chimp", true), ret, freshAs.map(id => VarDecl(id, id.getType)))
+      val fd = new FunDef(FreshIdentifier("chimp", true), Nil, ret, freshAs.map(id => VarDecl(id, id.getType)))
       fd.precondition = Some(replace(map, p.pc))
       fd.postcondition = Some((res.id, replace(map++mapPost, p.phi)))
 

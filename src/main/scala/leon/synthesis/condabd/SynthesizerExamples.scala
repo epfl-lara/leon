@@ -12,7 +12,7 @@ import leon.solvers.z3._
 
 import leon.purescala.TypeTrees.{ TypeTree => LeonType, _ }
 import leon.purescala.Trees.{ Variable => LeonVariable, _ }
-import leon.purescala.Definitions.{ FunDef, Program }
+import leon.purescala.Definitions.{ TypedFunDef, FunDef, Program }
 import leon.purescala.Common.{ Identifier, FreshIdentifier }
 import leon.purescala.TreeOps
 
@@ -47,10 +47,10 @@ class SynthesizerForRuleExamples(
   val mainSolver: SolverFactory[SynthesisSolver],
   val program: Program,
   val desiredType: LeonType,
-  val holeFunDef: FunDef,
+  val tfd: TypedFunDef,
   val problem: Problem,
   val synthesisContext: SynthesisContext,
-  val evaluationStrategy: EvaluationStrategy, // = DefaultEvaluationStrategy(program, holeFunDef, synthesisContext.context),
+  val evaluationStrategy: EvaluationStrategy, // = DefaultEvaluationStrategy(program, tfd, synthesisContext.context),
   // number of condition expressions to try before giving up on that branch expression
   numberOfBooleanSnippets: Int = 5,
   numberOfCounterExamplesToGenerate: Int = 5,
@@ -78,7 +78,7 @@ class SynthesizerForRuleExamples(
   info("numberOfCounterExamplesToGenerate: %d".format(numberOfCounterExamplesToGenerate))
 //  info("leonTimeout: %d".format(leonTimeout))
 
-  info("holeFunDef: %s".format(holeFunDef))
+  info("holeFunDef: %s".format(tfd))
   info("problem: %s".format(problem.toString))
   
   // flag denoting if a correct body has been synthesized
@@ -165,7 +165,7 @@ class SynthesizerForRuleExamples(
         info("####################################")
         info("######Iteration #" + iteration + " ###############")
         info("####################################")
-        info("# precondition is: " + holeFunDef.precondition.getOrElse(BooleanLiteral(true)))
+        info("# precondition is: " + tfd.precondition.getOrElse(BooleanLiteral(true)))
         info("# accumulatingCondition is: " + accumulatingCondition)
         info("# accumulatingExpression(Unit) is: " + accumulatingExpression(UnitLiteral))
         info("####################################")
@@ -206,10 +206,10 @@ class SynthesizerForRuleExamples(
 
             if (candidates.size > 0) {
               // save current precondition and the old body since it will can be mutated during evaluation
-              val oldPreconditionSaved = holeFunDef.precondition
-              val oldBodySaved = holeFunDef.body
+              val oldPreconditionSaved = tfd.precondition
+              val oldBodySaved = tfd.body
               // set initial precondition
-              holeFunDef.precondition = Some(initialPrecondition)
+              tfd.fd.precondition = Some(initialPrecondition)
 
               val ranker = evaluationStrategy.getRanker(candidates, accumulatingExpression, gatheredExamples)
               exampleRunner = evaluationStrategy.getExampleRunner
@@ -238,8 +238,8 @@ class SynthesizerForRuleExamples(
               fine("Failed examples for the maximum candidate: " + examplesPartition)
 
               // restore original precondition and body
-              holeFunDef.precondition = oldPreconditionSaved
-              holeFunDef.body = oldBodySaved
+              tfd.fd.precondition = oldPreconditionSaved
+              tfd.fd.body = oldBodySaved
               
               // check for timeouts
               if (!keepGoing) break
@@ -280,7 +280,7 @@ class SynthesizerForRuleExamples(
           synthInfo.iterations = iteration
           synthInfo.numberOfEnumeratedExpressions = numberOfTested
           info("We are done, in time: " + synthInfo.last)
-          return new FullReport(holeFunDef, synthInfo)
+          return new FullReport(tfd, synthInfo)
         }
 
         if (variableRefinedBranch) {
@@ -322,7 +322,7 @@ class SynthesizerForRuleExamples(
     var ind = 0
     while (ind < number && changed) {
       // analyze the program
-      val (solved, map) = analyzeFunction(holeFunDef)
+      val (solved, map) = analyzeFunction(tfd)
 
       // check if solver could solved this instance
       if (solved == false && !map.isEmpty) {
@@ -396,15 +396,15 @@ class SynthesizerForRuleExamples(
     inSynthBoolean = new InSynth(allDeclarations, BooleanType, true)
 
     // funDef of the hole
-    fine("postcondition is: " + holeFunDef.postcondition.get)
+    fine("postcondition is: " + tfd.postcondition.get)
     fine("declarations we see: " + allDeclarations.map(_.toString).mkString("\n"))
     //    interactivePause
 
     // accumulate precondition for the remaining branch to synthesize 
     accumulatingCondition = BooleanLiteral(true)
     // save initial precondition
-    initialPrecondition = holeFunDef.precondition.getOrElse(BooleanLiteral(true))
-    val holeFunDefBody = holeFunDef.body.get
+    initialPrecondition = tfd.precondition.getOrElse(BooleanLiteral(true))
+    val holeFunDefBody = tfd.body.get
     // accumulate the final expression of the hole
     accumulatingExpression = (finalExp: Expr) => {      
 	    def replaceChoose(expr: Expr) = expr match {
@@ -430,7 +430,7 @@ class SynthesizerForRuleExamples(
 //				loader.variableDeclarations, loader.classMap, mainSolver, reporter)
 
     // calculate cases that should not happen
-    refiner = new Filter(program, holeFunDef, variableRefiner)
+    refiner = new Filter(program, tfd, variableRefiner)
 
     gatheredExamples = ArrayBuffer(introduceExamples().map(Example(_)): _*)
     fine("Introduced examples: " + gatheredExamples.mkString("\t"))
@@ -439,22 +439,22 @@ class SynthesizerForRuleExamples(
   def tryToSynthesizeBranch(snippetTree: Expr, examplesPartition: (Seq[Example], Seq[Example])): Boolean = {
     val (succeededExamples, failedExamples) = examplesPartition
     // replace hole in the body with the whole if-then-else structure, with current snippet tree
-    val oldBody = holeFunDef.body.get
+    val oldBody = tfd.body.get
     val newBody = accumulatingExpression(snippetTree)
-    holeFunDef.body = Some(newBody)
+    tfd.fd.body = Some(newBody)
 
     // precondition
-    val oldPrecondition = holeFunDef.precondition.getOrElse(BooleanLiteral(true))
-    holeFunDef.precondition = Some(initialPrecondition)
+    val oldPrecondition = tfd.precondition.getOrElse(BooleanLiteral(true))
+    tfd.fd.precondition = Some(initialPrecondition)
 
     snippetTree.setType(desiredType)
     //holeFunDef.getBody.setType(hole.desiredType)
-    info("Current candidate solution is:\n" + holeFunDef)
+    info("Current candidate solution is:\n" + tfd)
 
     if (failedExamples.isEmpty) {
     	// check if solver could solved this instance
-    	fine("Analyzing program for funDef:" + holeFunDef)
-    	val (result, map) = analyzeFunction(holeFunDef)
+    	fine("Analyzing program for funDef:" + tfd)
+    	val (result, map) = analyzeFunction(tfd)
 			info("Solver returned: " + result + " with CE " + map)
     	
 	    if (result) {
@@ -478,7 +478,7 @@ class SynthesizerForRuleExamples(
     var preconditionToRestore = Some(oldPrecondition)
 
     // because first initial test
-    holeFunDef.precondition = preconditionToRestore
+    tfd.fd.precondition = preconditionToRestore
 
     // get counterexamples
 //    info("Going to generating counterexamples: " + holeFunDef)
@@ -567,9 +567,9 @@ class SynthesizerForRuleExamples(
     } // try
     finally {
       // set these to the FunDef
-      holeFunDef.precondition = preconditionToRestore
+      tfd.fd.precondition = preconditionToRestore
       // restore old body (we accumulate expression)                                
-      holeFunDef.body = Some(oldBody)
+      tfd.fd.body = Some(oldBody)
     }
   }
 
@@ -607,14 +607,14 @@ class SynthesizerForRuleExamples(
               
              // TODO take care of this mess 
 				    val newFunId = FreshIdentifier("tempIntroducedFunction22")
-				    val newFun = new FunDef(newFunId, holeFunDef.returnType, holeFunDef.args)
+				    val newFun = new FunDef(newFunId, tfd.fd.tparams, tfd.fd.returnType, tfd.fd.args)
 //				    newFun.precondition = Some(newCondition)
 				    newFun.precondition = Some(initialPrecondition)
-				    newFun.postcondition = holeFunDef.postcondition
+				    newFun.postcondition = tfd.fd.postcondition
 				    
 				    def replaceFunDef(expr: Expr) = expr match {
-				      case FunctionInvocation(`holeFunDef`, args) =>
-				        Some(FunctionInvocation(newFun, args))
+				      case FunctionInvocation(`tfd`, args) =>
+				        Some(FunctionInvocation(newFun.typed(tfd.tps), args))
 				      case _ => None
 				    }
 				    
@@ -644,8 +644,8 @@ class SynthesizerForRuleExamples(
 				    finest("New fun for Error evaluation: " + newFun)
 //				    println("new candidate: " + newBody)
 	
-			        val newProgram = program.copy(mainObject =
-			          program.mainObject.copy(defs = newFun +: program.mainObject.defs ))
+			        val newProgram = program.copy(mainModule =
+			          program.mainModule.copy(defs = newFun +: program.mainModule.defs ))
 //				    println("new program: " + newProgram)
 			          
 		          val _evaluator = new CodeGenEvaluator(synthesisContext.context, newProgram		              
@@ -681,14 +681,14 @@ class SynthesizerForRuleExamples(
 //          throw new RuntimeException("should not go here")
              // TODO take care of this mess 
 				    val newFunId = FreshIdentifier("tempIntroducedFunction22")
-				    val newFun = new FunDef(newFunId, holeFunDef.returnType, holeFunDef.args)
+				    val newFun = new FunDef(newFunId, tfd.fd.tparams, tfd.fd.returnType, tfd.fd.args)
 //				    newFun.precondition = Some(newCondition)
 				    newFun.precondition = Some(initialPrecondition)
-				    newFun.postcondition = holeFunDef.postcondition
+				    newFun.postcondition = tfd.fd.postcondition
 				    
 				    def replaceFunDef(expr: Expr) = expr match {
-				      case FunctionInvocation(`holeFunDef`, args) =>
-				        Some(FunctionInvocation(newFun, args))
+				      case FunctionInvocation(`tfd`, args) =>
+				        Some(FunctionInvocation(newFun.typed(tfd.tps), args))
 				      case _ => None
 				    }
 				    
@@ -716,8 +716,8 @@ class SynthesizerForRuleExamples(
 				    finest("New fun for Error evaluation: " + newFun)
 //				    println("new candidate: " + newBody)
 	
-			        val newProgram = program.copy(mainObject =
-			          program.mainObject.copy(defs = newFun +: program.mainObject.defs ))
+			        val newProgram = program.copy(mainModule =
+			          program.mainModule.copy(defs = newFun +: program.mainModule.defs ))
 //				    println("new program: " + newProgram)
 			          
 		          val _evaluator = new CodeGenEvaluator(synthesisContext.context, newProgram,		              
@@ -747,10 +747,10 @@ class SynthesizerForRuleExamples(
       
       if (!implyCounterExamples) {
         // if expression implies counterexamples add it to the precondition and try to validate program
-        holeFunDef.precondition = Some(newPathCondition)
+        tfd.fd.precondition = Some(newPathCondition)
         
         // do analysis
-        val (valid, map) = analyzeFunction(holeFunDef)
+        val (valid, map) = analyzeFunction(tfd)
         // program is valid, we have a branch
         if (valid) {
           // we found a branch

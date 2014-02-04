@@ -46,7 +46,7 @@ class ScopeSimplifier extends Transformer {
         VarDecl(newArg, tpe)
       }
 
-      val newFd = new FunDef(newId, fd.returnType, newArgs)
+      val newFd = new FunDef(newId, fd.tparams, fd.returnType, newArgs)
 
       newScope = newScope.registerFunDef(fd -> newFd)
 
@@ -123,11 +123,11 @@ class ScopeSimplifier extends Transformer {
     case Variable(id) =>
       Variable(scope.oldToNew.getOrElse(id, id))
 
-    case FunctionInvocation(fd, args) =>
-      val newFd = scope.funDefs.getOrElse(fd, fd)
+    case FunctionInvocation(tfd, args) =>
+      val newFd = scope.funDefs.getOrElse(tfd.fd, tfd.fd)
       val newArgs = args.map(rec(_, scope))
 
-      FunctionInvocation(newFd, newArgs)
+      FunctionInvocation(newFd.typed(tfd.tps), newArgs)
 
     case UnaryOperator(e, builder) =>
       builder(rec(e, scope))

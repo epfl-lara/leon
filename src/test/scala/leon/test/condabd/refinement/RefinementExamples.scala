@@ -16,18 +16,18 @@ import leon.synthesis.condabd.refinement._
 object RefinementExamples {   
   
   val listClassId = FreshIdentifier("List")
-  val listAbstractClassDef = new AbstractClassDef(listClassId)
-  val listAbstractClass = new AbstractClassType(listAbstractClassDef)
+  val listAbstractClassDef = new AbstractClassDef(listClassId, Nil, None)
+  val listAbstractClass = new AbstractClassType(listAbstractClassDef, Nil)
   
   val nilClassId = FreshIdentifier("Nil")
-  val nilAbstractClassDef = new CaseClassDef(nilClassId).setParent(listAbstractClassDef)
-  val nilAbstractClass = new CaseClassType(nilAbstractClassDef)
+  val nilAbstractClassDef = new CaseClassDef(nilClassId, Nil, None, false)
+  val nilAbstractClass = new CaseClassType(nilAbstractClassDef, Nil)
   
   val consClassId = FreshIdentifier("Cons")
-  val consAbstractClassDef = new CaseClassDef(consClassId).setParent(listAbstractClassDef)
+  val consAbstractClassDef = new CaseClassDef(consClassId, Nil, None, false)
   val headId = FreshIdentifier("head").setType(Int32Type)
-  consAbstractClassDef.fields = Seq(VarDecl(headId, Int32Type))
-  val consAbstractClass = new CaseClassType(consAbstractClassDef)
+  consAbstractClassDef.setFields(Seq(VarDecl(headId, Int32Type)))
+  val consAbstractClass = new CaseClassType(consAbstractClassDef, Nil)
   
   val directSubclassMap: Map[ClassType, Set[ClassType]] = Map(
     listAbstractClass -> Set(nilAbstractClass, consAbstractClass)
@@ -48,25 +48,28 @@ object RefinementExamples {
   def buildClassMap(program: Program) = {
     val listAbstractClassDef = program.definedClasses.find(_.id.name == "List").
       get.asInstanceOf[AbstractClassDef]
+    val listAbstractClass = AbstractClassType(listAbstractClassDef, Nil)
     
     val nilAbstractClassDef = program.definedClasses.find(_.id.name == "Nil").
       get.asInstanceOf[CaseClassDef]
+    val nilAbstractClass = CaseClassType(nilAbstractClassDef, Nil)
     
     val consAbstractClassDef = program.definedClasses.find(_.id.name == "Cons").
       get.asInstanceOf[CaseClassDef]
+    val consAbstractClass = CaseClassType(consAbstractClassDef, Nil)
         
     val directSubclassMap: Map[ClassType, Set[ClassType]] = Map(
-      AbstractClassType(listAbstractClassDef) ->
-        Set(CaseClassType(nilAbstractClassDef), CaseClassType(consAbstractClassDef))
+      listAbstractClass ->
+        Set(nilAbstractClass, consAbstractClass)
     )
   
     val classMap: Map[Identifier, ClassType] = Map(
-      listAbstractClassDef.id -> AbstractClassType(listAbstractClassDef),
-      nilAbstractClassDef.id -> CaseClassType(nilAbstractClassDef),
-      consAbstractClassDef.id -> CaseClassType(consAbstractClassDef)
+      listAbstractClassDef.id -> listAbstractClass,
+      nilAbstractClassDef.id -> nilAbstractClass,
+      consAbstractClassDef.id -> consAbstractClass
     )
     
-    (directSubclassMap, AbstractClassType(listAbstractClassDef), classMap)
+    (directSubclassMap, listAbstractClass, classMap)
   }
 
 }

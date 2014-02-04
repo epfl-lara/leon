@@ -90,14 +90,14 @@ class EnumeratorTest extends JUnitSuite {
 	  val nilAbstractClassDef = program.definedClasses.find(_.id.name == "Nil").
 	  	get.asInstanceOf[CaseClassDef]
     val listVal = funDef.args.head.toVariable
-    
+
     val variableRefiner = 
 			new VariableRefinerStructure(loader.directSubclassesMap,
 					loader.variableDeclarations, loader.classMap, reporter)
     
     val (refined, newDeclarations) = 
       variableRefiner.refine(
-        CaseClassInstanceOf(nilAbstractClassDef, listVal), BooleanLiteral(true), allDeclarations)
+        CaseClassInstanceOf(CaseClassType(nilAbstractClassDef, Nil), listVal), BooleanLiteral(true), allDeclarations)
     assertTrue(refined)
     assert(allDeclarations.size + 2 == newDeclarations.size)
     

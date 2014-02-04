@@ -7,7 +7,7 @@ import leon._
 import leon.evaluators._
 import leon.evaluators.EvaluationResults._
 import leon.purescala.Trees._
-import leon.purescala.Definitions.{ FunDef, VarDecl, Program, ObjectDef }
+import leon.purescala.Definitions.{ TypedFunDef, VarDecl, Program, ModuleDef }
 import leon.purescala.Common.{ Identifier, FreshIdentifier }
 import leon.purescala.TreeOps
 
@@ -16,7 +16,7 @@ import ranking._
 
 import _root_.insynth.util.logging.HasLogger
 
-case class DefaultExampleRunner(program: Program, funDef: FunDef, ctx: LeonContext,
+case class DefaultExampleRunner(program: Program, tfd: TypedFunDef, ctx: LeonContext,
   candidates: Seq[Candidate], inputExamples: Seq[Example],
   maxSteps: Int = 2000) extends ExampleRunner(inputExamples) with HasLogger {
 
@@ -45,7 +45,7 @@ case class DefaultExampleRunner(program: Program, funDef: FunDef, ctx: LeonConte
   }
   
   def evaluate(expr: Expr, args: Seq[Expr]): Boolean = {
-    evaluate(expr, funDef.args.map(_.id).zip(args).toMap)
+    evaluate(expr, tfd.args.map(_.id).zip(args).toMap)
   }
 
   override def evaluateToResult(expr: Expr, mapping: Map[Identifier, Expr]) = {

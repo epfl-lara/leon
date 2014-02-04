@@ -2,4 +2,4 @@
 
 package leon
 
-case class LeonFatalError() extends Exception
+case class LeonFatalError(msg: String) extends Exception(msg)

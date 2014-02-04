@@ -39,24 +39,24 @@ class UninterpretedZ3SolverTests extends LeonTestSuite {
 
   // def f(fx : Int) : Int = fx + 1
   private val fx   : Identifier = FreshIdentifier("x").setType(Int32Type)
-  private val fDef : FunDef = new FunDef(FreshIdentifier("f"), Int32Type, VarDecl(fx, Int32Type) :: Nil)
+  private val fDef : FunDef = new FunDef(FreshIdentifier("f"), Nil, Int32Type, VarDecl(fx, Int32Type) :: Nil)
   fDef.body = Some(Plus(Variable(fx), IntLiteral(1)))
 
   // g is a function that is not in the program (on purpose)
-  private val gDef : FunDef = new FunDef(FreshIdentifier("g"), Int32Type, VarDecl(fx, Int32Type) :: Nil)
+  private val gDef : FunDef = new FunDef(FreshIdentifier("g"), Nil, Int32Type, VarDecl(fx, Int32Type) :: Nil)
   gDef.body = Some(Plus(Variable(fx), IntLiteral(1)))
 
   private val minimalProgram = Program(
     FreshIdentifier("Minimal"), 
-    ObjectDef(FreshIdentifier("Minimal"), Seq(
+    ModuleDef(FreshIdentifier("Minimal"), Seq(
       fDef
     ), Seq.empty)
   )
 
   private val x : Expr = Variable(FreshIdentifier("x").setType(Int32Type))
   private val y : Expr = Variable(FreshIdentifier("y").setType(Int32Type))
-  private def f(e : Expr) : Expr = FunctionInvocation(fDef, e :: Nil)
-  private def g(e : Expr) : Expr = FunctionInvocation(gDef, e :: Nil)
+  private def f(e : Expr) : Expr = FunctionInvocation(fDef.typed, e :: Nil)
+  private def g(e : Expr) : Expr = FunctionInvocation(gDef.typed, e :: Nil)
 
   private val solver = SimpleSolverAPI(SolverFactory(() => new UninterpretedZ3Solver(testContext, minimalProgram)))
 
@@ -84,9 +84,5 @@ class UninterpretedZ3SolverTests extends LeonTestSuite {
   private val unknown1 : Expr = Equals(f(x), Plus(x, IntLiteral(1)))
   assertUnknown(solver, unknown1)
 
-  test("Expected crash on undefined functions.") {
-    intercept[Exception] {
-      solver.solveVALID(Equals(g(x), g(x)))
-    }
-  }
+  assertValid(solver, Equals(g(x), g(x)))
 }
