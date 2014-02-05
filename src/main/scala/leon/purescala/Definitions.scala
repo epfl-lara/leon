@@ -22,11 +22,10 @@ object Definitions {
   }
 
   /** A VarDecl declares a new identifier to be of a certain type. */
-  case class VarDecl(id: Identifier, tpe: TypeTree) extends Definition with Typed {
+  case class VarDecl(id: Identifier, tpe: TypeTree) extends Definition with FixedType {
     self: Serializable =>
 
-    override def getType = tpe
-    override def setType(tt: TypeTree) = scala.sys.error("Can't set type of VarDecl.")
+    val fixedType = tpe
 
     override def hashCode : Int = id.hashCode
     override def equals(that : Any) : Boolean = that match {
@@ -316,7 +315,7 @@ object Definitions {
     }
 
     private lazy val typesMap = {
-      (fd.tparams zip tps).toMap
+      (fd.tparams zip tps).toMap.filter(tt => tt._1 != tt._2)
     }
 
     def translated(t: TypeTree): TypeTree = instantiateType(t, typesMap)
@@ -324,7 +323,7 @@ object Definitions {
     def translated(e: Expr): Expr = instantiateType(e, typesMap, argsMap)
 
     lazy val (args: Seq[VarDecl], argsMap: Map[Identifier, Identifier]) = {
-      if (tps.isEmpty) {
+      if (typesMap.isEmpty) {
         (fd.args, Map())
       } else {
         val newArgs = fd.args.map {
@@ -365,7 +364,7 @@ object Definitions {
     }
 
     def postcondition = fd.postcondition.map {
-      case (id, post) if tps.nonEmpty =>
+      case (id, post) if typesMap.nonEmpty =>
         postCache.getOrElse((id, post), {
           val nId = FreshIdentifier(id.name).setType(translated(id.getType)).copiedFrom(id)
           val res = nId -> instantiateType(post, typesMap, argsMap + (id -> nId))

@@ -292,6 +292,7 @@ object TreeOps {
 
         e match {
           case Variable(i) => subvs + i
+          case LetDef(fd,_) => subvs -- fd.args.map(_.id) -- fd.postcondition.map(_._1)
           case Let(i,_,_) => subvs - i
           case Choose(is,_) => subvs -- is
           case MatchExpr(_, cses) => subvs -- (cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b))

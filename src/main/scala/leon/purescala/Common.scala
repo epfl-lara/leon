@@ -50,7 +50,7 @@ object Common {
     def markAsLetBinder : Identifier = { _islb = true; this }
     def isLetBinder : Boolean = _islb
 
-    def freshen: Identifier = FreshIdentifier(name, alwaysShowUniqueID).setType(getType)
+    def freshen: Identifier = FreshIdentifier(name, alwaysShowUniqueID).copiedFrom(this)
   }
 
   private object UniqueCounter {

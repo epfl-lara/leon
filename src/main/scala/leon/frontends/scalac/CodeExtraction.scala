@@ -296,10 +296,10 @@ trait CodeExtraction extends ASTExtractors {
 
       val tparams = extractTypeParams(tps.map(_.tpe))
 
-      val dctx = DefContext(tparams.toMap)
+      val newDctx = DefContext(dctx.tparams ++ tparams.toMap)
 
       val newParams = params.map{ vd =>
-        val ptpe = toPureScalaType(vd.tpt.tpe)(dctx)
+        val ptpe = toPureScalaType(vd.tpt.tpe)(newDctx)
         val newID = FreshIdentifier(vd.symbol.name.toString).setType(ptpe).setPos(vd.pos)
         owners += (newID -> None)
         varSubsts += vd.symbol -> (() => Variable(newID))
@@ -308,7 +308,7 @@ trait CodeExtraction extends ASTExtractors {
 
       val tparamsDef = tparams.map(t => TypeParameterDef(t._2))
 
-      new FunDef(FreshIdentifier(sym.name.toString), tparamsDef, toPureScalaType(ret)(dctx), newParams)
+      new FunDef(FreshIdentifier(sym.name.toString), tparamsDef, toPureScalaType(ret)(newDctx), newParams)
     }
 
     private def extractFunDef(funDef: FunDef, body: Tree)(implicit dctx: DefContext): FunDef = {
@@ -556,9 +556,6 @@ trait CodeExtraction extends ASTExtractors {
           rest = None
           Let(newID, valTree, restTree)
 
-        /**
-         * XLang Extractors
-         */
 
         case ExFunctionDef(symbol, tparams, params, ret, b) =>
           val funDef = extractFunSig(symbol, tparams, params, ret)
@@ -566,7 +563,11 @@ trait CodeExtraction extends ASTExtractors {
           val oldMutableVarSubst = mutableVarSubsts.toMap //take an immutable snapshot of the map
           val oldCurrentFunDef = currentFunDef
           mutableVarSubsts.clear //reseting the visible mutable vars, we do not handle mutable variable closure in nested functions
-          val funDefWithBody = extractFunDef(funDef, b)
+
+          val tparamsMap = (tparams zip funDef.tparams.map(_.tp)).toMap
+          val newDctx = DefContext(dctx.tparams ++ tparamsMap)
+
+          val funDefWithBody = extractFunDef(funDef, b)(newDctx)
           mutableVarSubsts ++= oldMutableVarSubst
           currentFunDef = oldCurrentFunDef
           val restTree = rest match {
@@ -576,6 +577,10 @@ trait CodeExtraction extends ASTExtractors {
           defsToDefs -= symbol
           rest = None
           LetDef(funDefWithBody, restTree)
+
+        /**
+         * XLang Extractors
+         */
 
         case ExVarDef(vs, tpt, bdy) => {
           val binderTpe = extractType(tpt.tpe)

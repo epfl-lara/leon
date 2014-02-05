@@ -14,7 +14,7 @@ import java.lang.StringBuffer
 
 /** This pretty-printer uses Unicode for some operators, to make sure we
  * distinguish PureScala from "real" Scala (and also because it's cute). */
-class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
+class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffer) {
   override def toString = sb.toString
 
   def append(str: String) {
@@ -57,20 +57,16 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
     sb.append(post)
   }
 
-  def idToString(id: Identifier): String = {
-    if (opts.printUniqueIds) {
-      id.uniqueName
-    } else {
-      id.toString
-    }
-  }
-
   def pp(tree: Tree, parent: Option[Tree])(implicit lvl: Int): Unit = {
     implicit val p = Some(tree)
 
     tree match {
       case id: Identifier =>
-        sb.append(idToString(id))
+        if (opts.printUniqueIds) {
+          sb.append(id.uniqueName)
+        } else {
+          sb.append(id.toString)
+        }
 
       case Variable(id) =>
         //sb.append("(")
@@ -80,7 +76,8 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
         //sb.append(")")
 
       case LetTuple(bs,d,e) =>
-        sb.append("(let (" + bs.map(idToString _).mkString(",") + " := ");
+        sb.append("(let ")
+        ppNary(bs, "(", ",", " :=");
         pp(d, p)
         sb.append(") in")
         nl(lvl+1)
@@ -88,7 +85,9 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
         sb.append(")")
 
       case Let(b,d,e) =>
-        sb.append("(let (" + idToString(b) + " := ");
+        sb.append("(let (")
+        pp(b, p)
+        sb.append(" := ");
         pp(d, p)
         sb.append(") in")
         nl(lvl+1)
@@ -124,7 +123,9 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
         sb.append("._" + i)
 
       case c@Choose(vars, pred) =>
-        sb.append("choose("+vars.map(idToString _).mkString(", ")+" => ")
+        sb.append("choose(")
+        ppNary(vars, "", ", ", "")
+        sb.append(" => ")
         pp(pred, p)
         sb.append(")")
 
@@ -144,10 +145,11 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
 
       case CaseClassSelector(_, cc, id) =>
         pp(cc, p)
-        sb.append("." + idToString(id))
+        sb.append(".")
+        pp(id, p)
 
       case FunctionInvocation(tfd, args) =>
-        sb.append(idToString(tfd.id))
+        pp(tfd.id, p)
 
         if (tfd.tps.nonEmpty) {
           ppNary(tfd.tps, "[", ",", "]")
@@ -307,7 +309,7 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
         sb.append(")")
 
       case WildcardPattern(None)     => sb.append("_")
-      case WildcardPattern(Some(id)) => sb.append(idToString(id))
+      case WildcardPattern(Some(id)) => pp(id, p)
       case InstanceOfPattern(bndr, cct) =>
         bndr.foreach(b => sb.append(b + " : "))
         pp(cct, p)
@@ -325,6 +327,7 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
 
       // Types
       case Untyped => sb.append("???")
+      case BottomType => sb.append("Nothing")
       case UnitType => sb.append("Unit")
       case Int32Type => sb.append("Int")
       case BooleanType => sb.append("Boolean")
@@ -357,7 +360,7 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
         pp(tt, p)
 
       case c: ClassType =>
-        sb.append(idToString(c.classDef.id))
+        pp(c.classDef.id, p)
         if (c.tps.nonEmpty) {
           ppNary(c.tps, "[", ",", "]")
         }
@@ -367,7 +370,7 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
       case Program(id, mainObj) =>
         assert(lvl == 0)
         sb.append("package ")
-        sb.append(idToString(id))
+        pp(id, p)
         sb.append(" {\n")
         pp(mainObj, p)(lvl+1)
         sb.append("}\n")
@@ -375,7 +378,7 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
       case ModuleDef(id, defs, invs) =>
         nl
         sb.append("object ")
-        sb.append(idToString(id))
+        pp(id, p)
         sb.append(" {")
 
         var c = 0
@@ -395,8 +398,11 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
       case AbstractClassDef(id, tparams, parent) =>
         nl
         sb.append("sealed abstract class ")
-        sb.append(idToString(id))
-        parent.foreach(p => sb.append(" extends " + idToString(p.id)))
+        pp(id, p)
+        parent.foreach{ par => 
+          sb.append(" extends ")
+          pp(par.id, p)
+        }
 
       case ccd @ CaseClassDef(id, tparams, parent, isObj) =>
         nl
@@ -406,7 +412,7 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
           sb.append("case class ")
         }
 
-        sb.append(idToString(id))
+        pp(id, p)
 
         if (tparams.nonEmpty) {
           ppNary(tparams, "[", ", ", "]")
@@ -416,7 +422,10 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
           ppNary(ccd.fields, "(", ", ", ")")
         }
 
-        parent.foreach(p => sb.append(" extends " + idToString(p.id)))
+        parent.foreach{ par => 
+          sb.append(" extends ")
+          pp(par.id, p)
+        }
 
       case fd: FunDef =>
         for(a <- fd.annotations) {
@@ -434,14 +443,15 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
         fd.postcondition.foreach{ case (id, postc) => {
           ind
           sb.append("@post: ")
-          sb.append(idToString(id)+" => ")
+          pp(id, p)
+          sb.append(" => ")
           pp(postc, p)(lvl)
           sb.append("\n")
         }}
 
         ind
         sb.append("def ")
-        sb.append(idToString(fd.id))
+        pp(fd.id, p)
         sb.append("(")
 
         val sz = fd.args.size
@@ -473,7 +483,7 @@ class PrettyPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) {
         pp(tp, p)
 
       case TypeParameter(id) =>
-        pp(id, p)
+        sb.append(id.uniqueName)
 
       case _ => sb.append("Tree? (" + tree.getClass + ")")
     }
@@ -498,7 +508,15 @@ trait PrettyPrintable {
 }
 
 class EquivalencePrettyPrinter(opts: PrinterOptions) extends PrettyPrinter(opts) {
-  override def idToString(id: Identifier) = id.name
+  override def pp(tree: Tree, parent: Option[Tree])(implicit lvl: Int): Unit = {
+    tree match {
+      case id: Identifier =>
+        sb.append(id.name)
+
+      case _ =>
+        super.pp(tree, parent)
+    }
+  }
 }
 
 abstract class PrettyPrinterFactory {

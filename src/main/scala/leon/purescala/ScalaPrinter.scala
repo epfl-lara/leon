@@ -53,12 +53,15 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
     var printPos = opts.printPositions
 
     tree match {
-      case Variable(id) => sb.append(idToString(id))
+      case Variable(id) => 
+        pp(id, p)
+
       case LetTuple(ids,d,e) =>
         optBraces { implicit lvl =>
           sb.append("val (" )
           for (((id, tpe), i) <- ids.map(id => (id, id.getType)).zipWithIndex) {
-              sb.append(idToString(id)+": ")
+              pp(id, p)
+              sb.append(": ")
               pp(tpe, p)
               if (i != ids.size-1) {
                   sb.append(", ")
@@ -111,8 +114,13 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
         pp(t, p)
         sb.append("._" + i)
 
-      case FunctionInvocation(fd, args) =>
-        sb.append(idToString(fd.id))
+      case FunctionInvocation(tfd, args) =>
+        pp(tfd.id, p)
+
+        if (tfd.tps.nonEmpty) {
+          ppNary(tfd.tps, "[", ", ", "]")
+        }
+
         ppNary(args, "(", ", ", ")")
 
       case Plus(l,r)            => optParentheses { ppBinary(l, r, " + ") }
@@ -226,7 +234,8 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
         optParentheses {
           sb.append("choose { (")
           for (((id, tpe), i) <- ids.map(id => (id, id.getType)).zipWithIndex) {
-              sb.append(idToString(id)+": ")
+              pp(id, p)
+              sb.append(": ")
               pp(tpe, p)
               if (i != ids.size-1) {
                   sb.append(", ")
@@ -273,7 +282,7 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
 
       case ModuleDef(id, defs, invs) =>
         sb.append("object ")
-        sb.append(idToString(id))
+        pp(id, p)
         sb.append(" {\n")
 
         var c = 0
@@ -294,13 +303,16 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
 
       case AbstractClassDef(id, tparams, parent) =>
         sb.append("sealed abstract class ")
-        sb.append(idToString(id))
+        pp(id, p)
 
         if (tparams.nonEmpty) {
           ppNary(tparams, "[", ",", "]")
         }
 
-        parent.foreach(p => sb.append(" extends " + idToString(p.id)))
+        parent.foreach{ par =>
+          sb.append(" extends ")
+          pp(par.id, p)
+        }
 
       case ccd @ CaseClassDef(id, tparams, parent, isObj) =>
         if (isObj) {
@@ -309,7 +321,7 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
           sb.append("case class ")
         }
 
-        sb.append(idToString(id))
+        pp(id, p)
 
         if (tparams.nonEmpty) {
           ppNary(tparams, "[", ", ", "]")
@@ -319,7 +331,10 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
           ppNary(ccd.fields, "(", ", ", ")")
         }
 
-        parent.foreach(p => sb.append(" extends " + idToString(p.id)))
+        parent.foreach{ par =>
+          sb.append(" extends ")
+          pp(par.id, p)
+        }
 
       case vd: VarDecl =>
         pp(vd.id, p)
