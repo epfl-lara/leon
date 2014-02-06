@@ -39,3 +39,6 @@ runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testc
 #Redblack  tree
 runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/RedBlackTree.scala --stats-suffix=-nl-stats --minbounds" > rbt-nl-out.txt
 
+#Folds
+runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/Folds.scala --stats-suffix=-nl-stats --minbounds" > folds-nl-out.txt
+

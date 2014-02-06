@@ -1,16 +1,16 @@
 LEON_HOME="/home/kandhada/leon/leon"
 
-#FactMap
-#runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/FactMap.scala  --stats-suffix=-nl-stats --minbounds" > factmap-nl-out.txt
+#Tree maps
+runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/Folds.scala --stats-suffix=-nl-stats --minbounds" > folds-nl-out.txt
 
 #Propositional logic
-#runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/PropLogicDepth.scala --stats-suffix=-nl-stats --minbounds" > proplogic-nl-out.txt
+runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/PropLogicDepth.scala --stats-suffix=-nl-stats --minbounds" > proplogic-nl-out.txt
 
 #Quick sort
-#runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/QSortDepth.scala --stats-suffix=-nl-stats --minbounds" > qsort-nl-out.txt
+runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/QSortDepth.scala --stats-suffix=-nl-stats --minbounds" > qsort-nl-out.txt
 
-#Tree maps
-runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/TreeMaps.scala --stats-suffix=-nl-stats --minbounds" > treemaps-nl-out.txt
+#Merge sort
+runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/MergeSort.scala --stats-suffix=-nl-stats --minbounds" > mergesort-nl-out.txt
 
 #Insertion Sort
 runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/InsertionSort.scala  --stats-suffix=-nl-stats --minbounds" > inssort-nl-out.txt
@@ -37,13 +37,13 @@ runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testc
 runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/BinomialHeap.scala --stats-suffix=-nl-stats --minbounds" > binomialheap-nl-out.txt
 
 #ForElimination
-runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/ForElimination.scala --stats-suffix=-nl-stats --minbounds" > forelim-nl-out.txt
+#runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/ForElimination.scala --stats-suffix=-nl-stats --minbounds" > forelim-nl-out.txt
 
 #Speed benchmarks
 runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/SpeedBenchmarks.scala --stats-suffix=-nl-stats --minbounds" > speed-nl-out.txt
 
 #AVL tree
-runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/AVLTree.scala --stats-suffix=-nl-stats --minbounds" > avl-nl-out.txt
+#runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/AVLTree.scala --stats-suffix=-nl-stats --minbounds" > avl-nl-out.txt
 
 #Redblack  tree
-runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/RedBlackTree.scala --stats-suffix=-nl-stats --minbounds" > rbt-nl-out.txt
+#runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/RedBlackTree.scala --stats-suffix=-nl-stats --minbounds" > rbt-nl-out.txt

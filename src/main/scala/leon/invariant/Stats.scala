@@ -28,6 +28,7 @@ import java.io._
 object Stats {
   //stats  
   var totalTime : Long = 0
+  var minimizationTime : Long = 0
   var outerIterations = 0
   var innerIterations = 0
   var retries = 0
@@ -85,6 +86,7 @@ object Stats {
   def dumpStats(pr : PrintWriter) ={
     //outer iteration statistics
     pr.println("Total Time: "+(totalTime/1000.0)+"s")
+    pr.println("Min Time: "+(minimizationTime/1000.0)+"s")
     pr.println("VC refinements : "+outerIterations)    
     pr.println("Avg VC size : "+ (cumVCsize.toDouble / outerIterations))
     pr.println("Max VC size : "+maxVCsize)
