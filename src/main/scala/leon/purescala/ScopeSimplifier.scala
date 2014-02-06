@@ -40,10 +40,10 @@ class ScopeSimplifier extends Transformer {
       val newId    = genId(fd.id, scope)
       var newScope = scope.register(fd.id -> newId)
 
-      val newArgs = for(VarDecl(id, tpe) <- fd.args) yield {
+      val newArgs = for(ValDef(id, tpe) <- fd.params) yield {
         val newArg = genId(id, newScope)
         newScope = newScope.register(id -> newArg)
-        VarDecl(newArg, tpe)
+        ValDef(newArg, tpe)
       }
 
       val newFd = new FunDef(newId, fd.tparams, fd.returnType, newArgs)

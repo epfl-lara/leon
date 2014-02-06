@@ -4,7 +4,7 @@ package leon
 package synthesis
 
 import purescala.Common._
-import purescala.Definitions.{Program, FunDef}
+import purescala.Definitions.{Program, FunDef, ModuleDef}
 import purescala.TreeOps._
 import purescala.Trees._
 import purescala.ScalaPrinter
@@ -83,8 +83,8 @@ class Synthesizer(val context : LeonContext,
 
     val solverf = SolverFactory(() => (new FairZ3Solver(context, npr) with TimeoutSolver).setTimeout(timeoutMs))
 
-    val vcs = generateVerificationConditions(reporter, npr, fds.map(_.id.name))
-    val vctx = VerificationContext(context, Seq(solverf), context.reporter)
+    val vctx = VerificationContext(context, npr, Seq(solverf), context.reporter)
+    val vcs = generateVerificationConditions(vctx, fds.map(_.id.name))
     val vcreport = checkVerificationConditions(vctx, vcs)
 
     if (vcreport.totalValid == vcreport.totalConditions) {
@@ -103,9 +103,7 @@ class Synthesizer(val context : LeonContext,
   // Returns the new program and the new functions generated for this
   def solutionToProgram(sol: Solution): (Program, Set[FunDef]) = {
     import purescala.TypeTrees.TupleType
-    import purescala.Definitions.VarDecl
-
-    val mainModule = program.mainModule
+    import purescala.Definitions.ValDef
 
     // Create new fundef for the body
     val ret = TupleType(problem.xs.map(_.getType))
@@ -116,14 +114,14 @@ class Synthesizer(val context : LeonContext,
         Variable(id) -> TupleSelect(res, i+1)
       }.toMap
 
-    val fd = new FunDef(FreshIdentifier("finalTerm", true), Nil, ret, problem.as.map(id => VarDecl(id, id.getType)))
+    val fd = new FunDef(FreshIdentifier("finalTerm", true), Nil, ret, problem.as.map(id => ValDef(id, id.getType)))
     fd.precondition  = Some(And(problem.pc, sol.pre))
     fd.postcondition = Some((res.id, replace(mapPost, problem.phi)))
     fd.body          = Some(sol.term)
 
     val newDefs = sol.defs + fd
 
-    val npr = program.copy(mainModule = mainModule.copy(defs = mainModule.defs ++ newDefs))
+    val npr = program.copy(modules = ModuleDef(FreshIdentifier("synthesis"), newDefs.toSeq) :: program.modules)
 
     (npr, newDefs)
   }

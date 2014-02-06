@@ -62,7 +62,7 @@ abstract class AbstractVerifier(solverf: SolverFactory[Solver with IncrementalSo
       def getMapping: Map[Expr, Expr] = {
         val tfd = exprReplaced.tfd
         val pairList = (Variable(tfd.postcondition.get._1), id.toVariable) ::
-        	(tfd.args.map(_.toVariable).toList zip exprReplaced.args)
+        	(tfd.params.map(_.toVariable).toList zip exprReplaced.args)
       	pairList.toMap
       }
     }

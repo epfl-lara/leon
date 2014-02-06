@@ -111,15 +111,6 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
         pp(t, p)
         sb.append("._" + i)
 
-      case FunctionInvocation(tfd, args) =>
-        pp(tfd.id, p)
-
-        if (tfd.tps.nonEmpty) {
-          ppNary(tfd.tps, "[", ", ", "]")
-        }
-
-        ppNary(args, "(", ", ", ")")
-
       case Plus(l,r)            => optParentheses { ppBinary(l, r, " + ") }
       case Minus(l,r)           => optParentheses { ppBinary(l, r, " - ") }
       case Times(l,r)           => optParentheses { ppBinary(l, r, " * ") }
@@ -273,11 +264,10 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
       case (expr: PrettyPrintable) => expr.printWith(this)
 
       // Definitions
-      case Program(id, mainObj) =>
-        assert(lvl == 0)
-        pp(mainObj, p)
+      case Program(id, modules) =>
+        ppNary(modules, "", "\n", "")
 
-      case ModuleDef(id, defs, invs) =>
+      case ModuleDef(id, defs) =>
         sb.append("object ")
         pp(id, p)
         sb.append(" {\n")
@@ -298,42 +288,7 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
         ind(lvl)
         sb.append("}\n")
 
-      case AbstractClassDef(id, tparams, parent) =>
-        sb.append("sealed abstract class ")
-        pp(id, p)
-
-        if (tparams.nonEmpty) {
-          ppNary(tparams, "[", ",", "]")
-        }
-
-        parent.foreach{ par =>
-          sb.append(" extends ")
-          pp(par.id, p)
-        }
-
-      case ccd @ CaseClassDef(id, tparams, parent, isObj) =>
-        if (isObj) {
-          sb.append("case object ")
-        } else {
-          sb.append("case class ")
-        }
-
-        pp(id, p)
-
-        if (tparams.nonEmpty) {
-          ppNary(tparams, "[", ", ", "]")
-        }
-
-        if (!isObj) {
-          ppNary(ccd.fields, "(", ", ", ")")
-        }
-
-        parent.foreach{ par =>
-          sb.append(" extends ")
-          pp(par.id, p)
-        }
-
-      case vd: VarDecl =>
+      case vd: ValDef =>
         pp(vd.id, p)
         sb.append(": ")
         pp(vd.tpe, p)
@@ -346,7 +301,7 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
           ppNary(fd.tparams, "[", ", ", "]")
         }
 
-        ppNary(fd.args, "(", ", ", ")")
+        ppNary(fd.params, "(", ", ", ")")
 
         sb.append(": ")
         pp(fd.returnType, p)

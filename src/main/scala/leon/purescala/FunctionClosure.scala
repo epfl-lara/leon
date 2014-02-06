@@ -23,20 +23,24 @@ object FunctionClosure extends TransformationPhase {
   private var parent: FunDef = null //refers to the current toplevel parent
 
   def apply(ctx: LeonContext, program: Program): Program = {
-    pathConstraints = Nil
-    enclosingLets  = Nil
-    newFunDefs  = Map()
-    topLevelFuns = Set()
-    parent = null
 
-    val funDefs = program.definedFunctions
-    funDefs.foreach(fd => {
-      parent = fd
-      pathConstraints = fd.precondition.toList
-      fd.body = fd.body.map(b => functionClosure(b, fd.args.map(_.id).toSet, Map(), Map()))
-    })
-    val Program(id, ModuleDef(objId, defs, invariants)) = program
-    val res = Program(id, ModuleDef(objId, defs ++ topLevelFuns, invariants))
+    val newModules = program.modules.map { m =>
+      pathConstraints = Nil
+      enclosingLets  = Nil
+      newFunDefs  = Map()
+      topLevelFuns = Set()
+      parent = null
+
+      val funDefs = m.definedFunctions
+      funDefs.foreach(fd => {
+        parent = fd
+        pathConstraints = fd.precondition.toList
+        fd.body = fd.body.map(b => functionClosure(b, fd.params.map(_.id).toSet, Map(), Map()))
+      })
+
+      ModuleDef(m.id, m.defs ++ topLevelFuns)
+    }
+    val res = Program(program.id, newModules)
     res
   }
 
@@ -48,14 +52,14 @@ object FunctionClosure extends TransformationPhase {
       val freshIds: Map[Identifier, Identifier] = capturedVars.map(id => (id, FreshIdentifier(id.name).copiedFrom(id))).toMap
       val freshVars: Map[Expr, Expr] = freshIds.map(p => (p._1.toVariable, p._2.toVariable))
       
-      val extraVarDeclOldIds: Seq[Identifier] = capturedVars.toSeq
-      val extraVarDeclFreshIds: Seq[Identifier] = extraVarDeclOldIds.map(freshIds(_))
-      val extraVarDecls: Seq[VarDecl] = extraVarDeclFreshIds.map(id =>  VarDecl(id, id.getType))
-      val newVarDecls: Seq[VarDecl] = fd.args ++ extraVarDecls
-      val newBindedVars: Set[Identifier] = bindedVars ++ fd.args.map(_.id)
+      val extraValDefOldIds: Seq[Identifier] = capturedVars.toSeq
+      val extraValDefFreshIds: Seq[Identifier] = extraValDefOldIds.map(freshIds(_))
+      val extraValDefs: Seq[ValDef] = extraValDefFreshIds.map(id =>  ValDef(id, id.getType))
+      val newValDefs: Seq[ValDef] = fd.params ++ extraValDefs
+      val newBindedVars: Set[Identifier] = bindedVars ++ fd.params.map(_.id)
       val newFunId = FreshIdentifier(fd.id.uniqueName) //since we hoist this at the top level, we need to make it a unique name
 
-      val newFunDef = new FunDef(newFunId, fd.tparams, fd.returnType, newVarDecls).copiedFrom(fd)
+      val newFunDef = new FunDef(newFunId, fd.tparams, fd.returnType, newValDefs).copiedFrom(fd)
       topLevelFuns += newFunDef
       newFunDef.addAnnotation(fd.annotations.toSeq:_*) //TODO: this is still some dangerous side effects
       newFunDef.parent = Some(parent)
@@ -80,14 +84,14 @@ object FunctionClosure extends TransformationPhase {
       newFunDef.postcondition = freshPostcondition
       
       pathConstraints = fd.precondition.getOrElse(BooleanLiteral(true)) :: pathConstraints
-      //val freshBody = fd.body.map(body => introduceLets(body, fd2FreshFd + (fd -> ((newFunDef, extraVarDeclFreshIds.map(_.toVariable))))))
-      val freshBody = fd.body.map(body => introduceLets(body, fd2FreshFd + (fd -> ((newFunDef, extraVarDeclOldIds.map(_.toVariable))))))
+      //val freshBody = fd.body.map(body => introduceLets(body, fd2FreshFd + (fd -> ((newFunDef, extraValDefFreshIds.map(_.toVariable))))))
+      val freshBody = fd.body.map(body => introduceLets(body, fd2FreshFd + (fd -> ((newFunDef, extraValDefOldIds.map(_.toVariable))))))
       newFunDef.body = freshBody
       pathConstraints = pathConstraints.tail
 
       //val freshRest = functionClosure(rest, bindedVars, id2freshId, fd2FreshFd + (fd -> 
-      //                  ((newFunDef, extraVarDeclOldIds.map(id => id2freshId.get(id).getOrElse(id).toVariable)))))
-      val freshRest = functionClosure(rest, bindedVars, id2freshId, fd2FreshFd + (fd -> ((newFunDef, extraVarDeclOldIds.map(_.toVariable)))))
+      //                  ((newFunDef, extraValDefOldIds.map(id => id2freshId.get(id).getOrElse(id).toVariable)))))
+      val freshRest = functionClosure(rest, bindedVars, id2freshId, fd2FreshFd + (fd -> ((newFunDef, extraValDefOldIds.map(_.toVariable)))))
       freshRest.copiedFrom(l)
     }
     case l @ Let(i,e,b) => {

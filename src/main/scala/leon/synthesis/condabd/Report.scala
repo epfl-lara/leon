@@ -1,6 +1,6 @@
 package leon.synthesis.condabd
 
-import leon.purescala.Definitions.{ TypedFunDef, VarDecl, Program, ModuleDef }
+import leon.purescala.Definitions.{ TypedFunDef, ValDef, Program, ModuleDef }
 
 trait Report {
   def summaryString: String

@@ -187,7 +187,11 @@ object Main {
   def computePipeline(settings: Settings): Pipeline[List[String], Any] = {
     import purescala.Definitions.Program
 
-    val pipeBegin : Pipeline[List[String],Program] = frontends.scalac.ExtractionPhase andThen SubtypingPhase
+    val pipeBegin : Pipeline[List[String],Program] =
+      frontends.scalac.ExtractionPhase andThen
+      purescala.MethodLifting andThen
+      utils.SubtypingPhase andThen
+      purescala.CompleteAbstractDefinitions
 
     val pipeProcess: Pipeline[Program, Any] =
       if (settings.synthesis) {
@@ -246,8 +250,18 @@ object Main {
       }
 
     } catch {
-      case LeonFatalError(msg) =>
-        ctx.reporter.error(msg)
+      case LeonFatalError(None) =>
+        sys.exit(1)
+
+      case LeonFatalError(Some(msg)) =>
+        // For the special case of fatal errors not sent though Reporter, we
+        // send them through reporter one time
+        try {
+          ctx.reporter.fatalError(msg)
+        } catch {
+          case _: LeonFatalError =>
+        }
+
         sys.exit(1)
     }
   }

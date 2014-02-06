@@ -4,6 +4,9 @@ package leon
 package frontends.scalac
 
 import purescala.Definitions.Program
+import purescala.Common.FreshIdentifier
+
+import utils._
 
 import scala.tools.nsc.{Settings=>NSCSettings,CompilerCommand}
 
@@ -11,6 +14,8 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
 
   val name = "Scalc Extraction"
   val description = "Extraction of trees from the Scala Compiler"
+
+  implicit val debug = DebugSectionTrees
 
   def run(ctx: LeonContext)(args: List[String]): Program = {
 
@@ -37,15 +42,21 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
       val run = new compiler.Run
       run.compile(command.files)
 
-      compiler.leonExtraction.program match {
-        case Some(p) =>
+      (compiler.leonExtraction.units, compiler.leonExtraction.modules) match {
+        case (Nil, Nil) =>
+          ctx.reporter.fatalError("Error while compiling. Empty input?")
+
+        case (_, Nil) =>
+          ctx.reporter.fatalError("Error while compiling.")
+
+        case (_, modules) =>
           if (ctx.reporter.errorCount > 0 && ctx.settings.strictCompilation) {
             ctx.reporter.fatalError("Error while compiling.")
           } else {
-            p
+            val pgm = Program(FreshIdentifier("<program>"), modules)
+            ctx.reporter.debug(pgm.asString(ctx))
+            pgm
           }
-        case None =>
-          ctx.reporter.fatalError("Error while compiling.")
       }
     } else {
       ctx.reporter.fatalError("No input program.")

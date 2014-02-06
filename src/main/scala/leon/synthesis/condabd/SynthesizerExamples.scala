@@ -12,7 +12,7 @@ import leon.solvers.z3._
 
 import leon.purescala.TypeTrees.{ TypeTree => LeonType, _ }
 import leon.purescala.Trees.{ Variable => LeonVariable, _ }
-import leon.purescala.Definitions.{ TypedFunDef, FunDef, Program }
+import leon.purescala.Definitions.{ TypedFunDef, FunDef, Program, ModuleDef}
 import leon.purescala.Common.{ Identifier, FreshIdentifier }
 import leon.purescala.TreeOps
 
@@ -607,7 +607,7 @@ class SynthesizerForRuleExamples(
               
              // TODO take care of this mess 
 				    val newFunId = FreshIdentifier("tempIntroducedFunction22")
-				    val newFun = new FunDef(newFunId, tfd.fd.tparams, tfd.fd.returnType, tfd.fd.args)
+				    val newFun = new FunDef(newFunId, tfd.fd.tparams, tfd.fd.returnType, tfd.fd.params)
 //				    newFun.precondition = Some(newCondition)
 				    newFun.precondition = Some(initialPrecondition)
 				    newFun.postcondition = tfd.fd.postcondition
@@ -644,8 +644,7 @@ class SynthesizerForRuleExamples(
 				    finest("New fun for Error evaluation: " + newFun)
 //				    println("new candidate: " + newBody)
 	
-			        val newProgram = program.copy(mainModule =
-			          program.mainModule.copy(defs = newFun +: program.mainModule.defs ))
+			        val newProgram = program.copy(modules = ModuleDef(FreshIdentifier("result"), List(newFun)) :: program.modules)
 //				    println("new program: " + newProgram)
 			          
 		          val _evaluator = new CodeGenEvaluator(synthesisContext.context, newProgram		              
@@ -681,7 +680,7 @@ class SynthesizerForRuleExamples(
 //          throw new RuntimeException("should not go here")
              // TODO take care of this mess 
 				    val newFunId = FreshIdentifier("tempIntroducedFunction22")
-				    val newFun = new FunDef(newFunId, tfd.fd.tparams, tfd.fd.returnType, tfd.fd.args)
+				    val newFun = new FunDef(newFunId, tfd.fd.tparams, tfd.fd.returnType, tfd.fd.params)
 //				    newFun.precondition = Some(newCondition)
 				    newFun.precondition = Some(initialPrecondition)
 				    newFun.postcondition = tfd.fd.postcondition
@@ -716,8 +715,7 @@ class SynthesizerForRuleExamples(
 				    finest("New fun for Error evaluation: " + newFun)
 //				    println("new candidate: " + newBody)
 	
-			        val newProgram = program.copy(mainModule =
-			          program.mainModule.copy(defs = newFun +: program.mainModule.defs ))
+			        val newProgram = program.copy(modules = ModuleDef(FreshIdentifier("result"), List(newFun)) :: program.modules)
 //				    println("new program: " + newProgram)
 			          
 		          val _evaluator = new CodeGenEvaluator(synthesisContext.context, newProgram,		              

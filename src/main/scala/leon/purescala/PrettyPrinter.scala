@@ -152,6 +152,17 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         sb.append(".")
         pp(id, p)
 
+      case MethodInvocation(rec, tfd, args) =>
+        pp(rec, p)
+        sb.append(".")
+        pp(tfd.id, p)
+
+        if (tfd.tps.nonEmpty) {
+          ppNary(tfd.tps, "[", ",", "]")
+        }
+
+        ppNary(args, "(", ", ", ")")
+
       case FunctionInvocation(tfd, args) =>
         pp(tfd.id, p)
 
@@ -371,15 +382,17 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
 
 
       // Definitions
-      case Program(id, mainObj) =>
+      case Program(id, modules) =>
         assert(lvl == 0)
         sb.append("package ")
         pp(id, p)
         sb.append(" {\n")
-        pp(mainObj, p)(lvl+1)
+        modules.foreach {
+          m => pp(m, p)(lvl+1)
+        }
         sb.append("}\n")
 
-      case ModuleDef(id, defs, invs) =>
+      case ModuleDef(id, defs) =>
         nl
         sb.append("object ")
         pp(id, p)
@@ -399,17 +412,31 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         nl
         sb.append("}\n")
 
-      case AbstractClassDef(id, tparams, parent) =>
-        nl
+      case acd @ AbstractClassDef(id, tparams, parent) =>
         sb.append("sealed abstract class ")
         pp(id, p)
-        parent.foreach{ par => 
+
+        if (tparams.nonEmpty) {
+          ppNary(tparams, "[", ",", "]")
+        }
+
+        parent.foreach{ par =>
           sb.append(" extends ")
           pp(par.id, p)
         }
 
+        if (acd.methods.nonEmpty) {
+          sb.append(" {\n")
+          for (md <- acd.methods) {
+            ind(lvl+1)
+            pp(md, p)(lvl+1)
+            sb.append("\n\n")
+          }
+          ind
+          sb.append("}")
+        }
+
       case ccd @ CaseClassDef(id, tparams, parent, isObj) =>
-        nl
         if (isObj) {
           sb.append("case object ")
         } else {
@@ -426,10 +453,24 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
           ppNary(ccd.fields, "(", ", ", ")")
         }
 
-        parent.foreach{ par => 
+        parent.foreach{ par =>
           sb.append(" extends ")
           pp(par.id, p)
         }
+
+        if (ccd.methods.nonEmpty) {
+          sb.append(" {\n")
+          for (md <- ccd.methods) {
+            ind(lvl+1)
+            pp(md, p)(lvl+1)
+            sb.append("\n\n")
+          }
+          ind
+          sb.append("}")
+        }
+
+      case th: This =>
+        sb.append("this")
 
       case fd: FunDef =>
         for(a <- fd.annotations) {
@@ -458,10 +499,10 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         pp(fd.id, p)
         sb.append("(")
 
-        val sz = fd.args.size
+        val sz = fd.params.size
         var c = 0
         
-        fd.args.foreach(arg => {
+        fd.params.foreach(arg => {
           sb.append(arg.id)
           sb.append(" : ")
           pp(arg.tpe, p)

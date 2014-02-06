@@ -83,7 +83,7 @@ case class CodeGenCandidate(expr: Expr, bodyExpr: Expr, weight: Weight, tfd: Typ
     val fd = tfd.fd
     
     val newFunId = FreshIdentifier("tempIntroducedFunction")
-    val newFun = new FunDef(newFunId, fd.tparams, fd.returnType, fd.args)
+    val newFun = new FunDef(newFunId, fd.tparams, fd.returnType, fd.params)
     newFun.precondition = fd.precondition
     newFun.postcondition = fd.postcondition
     

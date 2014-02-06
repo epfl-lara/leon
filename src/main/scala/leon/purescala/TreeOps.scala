@@ -292,7 +292,7 @@ object TreeOps {
 
         e match {
           case Variable(i) => subvs + i
-          case LetDef(fd,_) => subvs -- fd.args.map(_.id) -- fd.postcondition.map(_._1)
+          case LetDef(fd,_) => subvs -- fd.params.map(_.id) -- fd.postcondition.map(_._1)
           case Let(i,_,_) => subvs - i
           case Choose(is,_) => subvs -- is
           case MatchExpr(_, cses) => subvs -- (cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b))
@@ -1175,13 +1175,13 @@ object TreeOps {
     def fd2fd(funDef : FunDef) : FunDef = funDefMap.get(funDef) match {
       case Some(fd) => fd
       case None =>
-        if(funDef.args.map(vd => mapType(vd.tpe)).exists(_.isDefined)) {
+        if(funDef.params.map(vd => mapType(vd.tpe)).exists(_.isDefined)) {
           scala.sys.error("Cannot rewrite function def that takes degenerate tuple arguments,")
         }
         val newFD = mapType(funDef.returnType) match {
           case None => funDef
           case Some(rt) =>
-            val fd = new FunDef(FreshIdentifier(funDef.id.name, true), funDef.tparams, rt, funDef.args)
+            val fd = new FunDef(FreshIdentifier(funDef.id.name, true), funDef.tparams, rt, funDef.params)
             // These will be taken care of in the recursive traversal.
             fd.body = funDef.body
             fd.precondition = funDef.precondition
@@ -1400,14 +1400,14 @@ object TreeOps {
     }
 
     def fdHomo(fd1: FunDef, fd2: FunDef)(implicit map: Map[Identifier, Identifier]) = {
-      if (fd1.args.size == fd2.args.size &&
+      if (fd1.params.size == fd2.params.size &&
           fd1.precondition.size == fd2.precondition.size &&
           fd1.body.size == fd2.body.size &&
           fd1.postcondition.size == fd2.postcondition.size) {
 
         val newMap = map +
                      (fd1.id -> fd2.id) ++
-                     (fd1.args zip fd2.args).map{ case (vd1, vd2) => (vd1.id, vd2.id) }
+                     (fd1.params zip fd2.params).map{ case (vd1, vd2) => (vd1.id, vd2.id) }
 
         val preMatch = (fd1.precondition zip fd2.precondition).forall {
           case (e1, e2) => isHomo(e1, e2)(newMap)
@@ -1662,14 +1662,14 @@ object TreeOps {
   def flattenFunctions(fdOuter: FunDef): FunDef = {
     fdOuter.body match {
       case Some(LetDef(fdInner, FunctionInvocation(tfdInner2, args))) if fdInner == tfdInner2.fd =>
-        val argsDef  = fdOuter.args.map(_.id)
+        val argsDef  = fdOuter.params.map(_.id)
         val argsCall = args.collect { case Variable(id) => id }
 
         if (argsDef.toSet == argsCall.toSet) {
           val defMap = argsDef.zipWithIndex.toMap
           val rewriteMap = argsCall.map(defMap)
 
-          val innerIdsToOuterIds = (fdInner.args.map(_.id) zip argsCall).toMap
+          val innerIdsToOuterIds = (fdInner.params.map(_.id) zip argsCall).toMap
 
           def pre(e: Expr) = e match {
             case FunctionInvocation(tfd, args) if tfd.fd == fdInner =>

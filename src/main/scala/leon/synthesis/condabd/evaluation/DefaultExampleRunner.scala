@@ -7,7 +7,7 @@ import leon._
 import leon.evaluators._
 import leon.evaluators.EvaluationResults._
 import leon.purescala.Trees._
-import leon.purescala.Definitions.{ TypedFunDef, VarDecl, Program, ModuleDef }
+import leon.purescala.Definitions.{ TypedFunDef, ValDef, Program, ModuleDef }
 import leon.purescala.Common.{ Identifier, FreshIdentifier }
 import leon.purescala.TreeOps
 
@@ -45,7 +45,7 @@ case class DefaultExampleRunner(program: Program, tfd: TypedFunDef, ctx: LeonCon
   }
   
   def evaluate(expr: Expr, args: Seq[Expr]): Boolean = {
-    evaluate(expr, tfd.args.map(_.id).zip(args).toMap)
+    evaluate(expr, tfd.params.map(_.id).zip(args).toMap)
   }
 
   override def evaluateToResult(expr: Expr, mapping: Map[Identifier, Expr]) = {

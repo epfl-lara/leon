@@ -67,13 +67,13 @@ class DataGen extends LeonTestSuite {
     generator.generate(BooleanType).toSet.size === 2
     generator.generate(TupleType(Seq(BooleanType,BooleanType))).toSet.size === 4
 
-    val listType : TypeTree = classDefToClassType(prog.mainModule.classHierarchyRoots.head)
+    val listType : TypeTree = classDefToClassType(prog.classHierarchyRoots.head)
     val sizeDef    : FunDef = prog.definedFunctions.find(_.id.name == "size").get
     val sortedDef  : FunDef = prog.definedFunctions.find(_.id.name == "isSorted").get
     val contentDef : FunDef = prog.definedFunctions.find(_.id.name == "content").get
     val insSpecDef : FunDef = prog.definedFunctions.find(_.id.name == "insertSpec").get
 
-    val consDef : CaseClassDef = prog.mainModule.caseClassDef("Cons")
+    val consDef : CaseClassDef = prog.caseClassDef("Cons")
 
     generator.generate(listType).take(100).toSet.size === 100
 

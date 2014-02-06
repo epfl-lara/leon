@@ -234,7 +234,7 @@ for ( classDef <- program.definedClasses collect { case ccd: CaseClassDef => ccd
 //      if funDef.hasBody;
 //      val (foundHole, declarations) = scanMethod(funDef.getBody, hole);      
 //      if foundHole;
-//      val argDeclarations = funDef.args map { makeArgumentDeclaration(_) }
+//      val argDeclarations = funDef.params map { makeArgumentDeclaration(_) }
 //    ) {
 //      // hack
 //      Globals.holeFunDef = funDef      

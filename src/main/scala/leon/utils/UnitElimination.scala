@@ -19,33 +19,36 @@ object UnitElimination extends TransformationPhase {
   private var id2FreshId: Map[Identifier, Identifier] = Map()
 
   def apply(ctx: LeonContext, pgm: Program): Program = {
-    fun2FreshFun = Map()
-    val allFuns = pgm.definedFunctions
+    val newModules = pgm.modules.map { m =>
+      fun2FreshFun = Map()
+      val allFuns = m.definedFunctions
 
-    //first introduce new signatures without Unit parameters
-    allFuns.foreach(fd => {
-      if(fd.returnType != UnitType && fd.args.exists(vd => vd.tpe == UnitType)) {
-        val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.args.filterNot(vd => vd.tpe == UnitType)).setPos(fd)
-        freshFunDef.precondition = fd.precondition //TODO: maybe removing unit from the conditions as well..
-        freshFunDef.postcondition = fd.postcondition//TODO: maybe removing unit from the conditions as well..
-        freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
-        fun2FreshFun += (fd -> freshFunDef)
-      } else {
-        fun2FreshFun += (fd -> fd) //this will make the next step simpler
-      }
-    })
+      //first introduce new signatures without Unit parameters
+      allFuns.foreach(fd => {
+        if(fd.returnType != UnitType && fd.params.exists(vd => vd.tpe == UnitType)) {
+          val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.params.filterNot(vd => vd.tpe == UnitType)).setPos(fd)
+          freshFunDef.precondition = fd.precondition //TODO: maybe removing unit from the conditions as well..
+          freshFunDef.postcondition = fd.postcondition//TODO: maybe removing unit from the conditions as well..
+          freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
+          fun2FreshFun += (fd -> freshFunDef)
+        } else {
+          fun2FreshFun += (fd -> fd) //this will make the next step simpler
+        }
+      })
 
-    //then apply recursively to the bodies
-    val newFuns = allFuns.flatMap(fd => if(fd.returnType == UnitType) Seq() else {
-      val newBody = fd.body.map(body => removeUnit(body))
-      val newFd = fun2FreshFun(fd)
-      newFd.body = newBody
-      Seq(newFd)
-    })
+      //then apply recursively to the bodies
+      val newFuns = allFuns.flatMap(fd => if(fd.returnType == UnitType) Seq() else {
+        val newBody = fd.body.map(body => removeUnit(body))
+        val newFd = fun2FreshFun(fd)
+        newFd.body = newBody
+        Seq(newFd)
+      })
 
-    val Program(id, ModuleDef(objId, _, invariants)) = pgm
-    val allClasses = pgm.definedClasses
-    Program(id, ModuleDef(objId, allClasses ++ newFuns, invariants))
+      ModuleDef(m.id, m.definedClasses ++ newFuns)
+    }
+
+
+    Program(pgm.id, newModules)
   }
 
   private def simplifyType(tpe: TypeTree): TypeTree = tpe match {
@@ -100,8 +103,8 @@ object UnitElimination extends TransformationPhase {
         if(fd.returnType == UnitType) 
           removeUnit(b)
         else {
-          val (newFd, rest) = if(fd.args.exists(vd => vd.tpe == UnitType)) {
-            val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.args.filterNot(vd => vd.tpe == UnitType)).setPos(fd)
+          val (newFd, rest) = if(fd.params.exists(vd => vd.tpe == UnitType)) {
+            val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.params.filterNot(vd => vd.tpe == UnitType)).setPos(fd)
             freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
             freshFunDef.precondition = fd.precondition //TODO: maybe removing unit from the conditions as well..
             freshFunDef.postcondition = fd.postcondition//TODO: maybe removing unit from the conditions as well..

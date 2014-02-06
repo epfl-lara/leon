@@ -22,7 +22,7 @@ class FunctionTemplate private(
   guardedExprs : Map[Identifier,Seq[Expr]],
   isRealFunDef : Boolean) {
 
-  private val funDefArgsIDs : Seq[Identifier] = tfd.args.map(_.id)
+  private val funDefArgsIDs : Seq[Identifier] = tfd.params.map(_.id)
 
   private val asClauses : Seq[Expr] = {
     (for((b,es) <- guardedExprs; e <- es) yield {
@@ -31,7 +31,7 @@ class FunctionTemplate private(
   }
 
   val blockers : Map[Identifier,Set[FunctionInvocation]] = {
-    val idCall = FunctionInvocation(tfd, tfd.args.map(_.toVariable))
+    val idCall = FunctionInvocation(tfd, tfd.params.map(_.toVariable))
 
     Map((for((b, es) <- guardedExprs) yield {
       val calls = es.foldLeft(Set.empty[FunctionInvocation])((s,e) => s ++ functionCallsOf(e)) - idCall
@@ -51,7 +51,7 @@ class FunctionTemplate private(
   private val cache : MutableMap[Seq[Expr],Map[Identifier,Expr]] = MutableMap.empty 
 
   def instantiate(aVar : Identifier, args : Seq[Expr]) : (Seq[Expr], Map[Identifier,Set[FunctionInvocation]]) = {
-    assert(args.size == tfd.args.size)
+    assert(args.size == tfd.params.size)
 
     val (wasHit,baseIDSubstMap) = cache.get(args) match {
       case Some(m) => (true,m)
@@ -85,7 +85,7 @@ class FunctionTemplate private(
   }
 
   override def toString : String = {
-    "Template for def " + tfd.id + "(" + tfd.args.map(a => a.id + " : " + a.tpe).mkString(", ") + ") : " + tfd.returnType + " is :\n" +
+    "Template for def " + tfd.id + "(" + tfd.params.map(a => a.id + " : " + a.tpe).mkString(", ") + ") : " + tfd.returnType + " is :\n" +
     " * Activating boolean : " + activatingBool + "\n" + 
     " * Control booleans   : " + condVars.toSeq.map(_.toString).mkString(", ") + "\n" +
     " * Expression vars    : " + exprVars.toSeq.map(_.toString).mkString(", ") + "\n" +
@@ -261,7 +261,7 @@ object FunctionTemplate {
 
     val newBody : Option[Expr] = tfd.body.map(b => matchToIfThenElse(b))
 
-    val invocation : Expr = FunctionInvocation(tfd, tfd.args.map(_.toVariable))
+    val invocation : Expr = FunctionInvocation(tfd, tfd.params.map(_.toVariable))
 
     val invocationEqualsBody : Option[Expr] = newBody match {
       case Some(body) if isRealFunDef =>

@@ -3,7 +3,7 @@
 object Nested1 {
 
   def foo(i: Int): Int = {
-    val n = 2
+    val n = i
     def rec1(j: Int) = i + j + n
     def rec2(j: Int) = {
       def rec3(k: Int) = k + j + i

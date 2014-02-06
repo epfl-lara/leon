@@ -62,7 +62,7 @@ class TransformationTests extends LeonTestSuite {
             val out = transformer(in)
             val exp = fdexp.body.get
 
-            val map = (fdin.args.map(_.id) zip fdexp.args.map(_.id)).toMap
+            val map = (fdin.params.map(_.id) zip fdexp.params.map(_.id)).toMap
 
             if (!isHomomorphic(out, exp)(map)) {
               fail("Produced tree does not match\nGot:\n"+out+"\nExpected:\n"+exp+"\n")

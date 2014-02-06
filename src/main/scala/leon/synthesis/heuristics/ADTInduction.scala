@@ -27,7 +27,7 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
       val inductOn     = FreshIdentifier(origId.name, true).setType(origId.getType)
       val residualArgs = oas.map(id => FreshIdentifier(id.name, true).setType(id.getType))
       val residualMap  = (oas zip residualArgs).map{ case (id, id2) => id -> Variable(id2) }.toMap
-      val residualArgDefs = residualArgs.map(a => VarDecl(a, a.getType))
+      val residualArgDefs = residualArgs.map(a => ValDef(a, a.getType))
 
       def isAlternativeRecursive(ct: CaseClassType): Boolean = {
         ct.fields.exists(_.tpe == origId.getType)
@@ -77,7 +77,7 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
           case sols =>
             var globalPre = List[Expr]()
 
-            val newFun = new FunDef(FreshIdentifier("rec", true), Nil, resType, VarDecl(inductOn, inductOn.getType) +: residualArgDefs)
+            val newFun = new FunDef(FreshIdentifier("rec", true), Nil, resType, ValDef(inductOn, inductOn.getType) +: residualArgDefs)
 
             val cases = for ((sol, (problem, pre, cct, ids, calls)) <- (sols zip subProblemsInfo)) yield {
               globalPre ::= And(pre, sol.pre)

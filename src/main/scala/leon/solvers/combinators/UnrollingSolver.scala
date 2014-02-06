@@ -63,7 +63,7 @@ class UnrollingSolver(val context: LeonContext, underlyings: SolverFactory[Incre
       newClauses.flatten
     }
 
-    val (nc, nb) = template.instantiate(aVar, template.tfd.args.map(a => Variable(a.id)))
+    val (nc, nb) = template.instantiate(aVar, template.tfd.params.map(a => Variable(a.id)))
 
     allClauses = nc.reverse
     allBlockers = nb
@@ -150,7 +150,7 @@ class UnrollingSolver(val context: LeonContext, underlyings: SolverFactory[Incre
 
   private def getTemplate(body: Expr): FunctionTemplate = {
     exprTemplateCache.getOrElse(body, {
-      val fakeFunDef = new FunDef(FreshIdentifier("fake", true), Nil, body.getType, variablesOf(body).toSeq.map(id => VarDecl(id, id.getType)))
+      val fakeFunDef = new FunDef(FreshIdentifier("fake", true), Nil, body.getType, variablesOf(body).toSeq.map(id => ValDef(id, id.getType)))
       fakeFunDef.body = Some(body)
 
       val res = FunctionTemplate.mkTemplate(fakeFunDef.typed, false)

@@ -64,6 +64,15 @@ object Trees {
   case class FunctionInvocation(tfd: TypedFunDef, args: Seq[Expr]) extends Expr with FixedType {
     val fixedType = tfd.returnType
   }
+
+  case class MethodInvocation(rec: Expr, tfd: TypedFunDef, args: Seq[Expr]) extends Expr with FixedType {
+    val fixedType = tfd.returnType
+  }
+
+  case class This(ct: ClassType) extends Expr with FixedType with Terminal {
+    val fixedType = ct
+  }
+
   case class IfExpr(cond: Expr, thenn: Expr, elze: Expr) extends Expr with FixedType {
     val fixedType = leastUpperBound(thenn.getType, elze.getType).getOrElse{
       AnyType

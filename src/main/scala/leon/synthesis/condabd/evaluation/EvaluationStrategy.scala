@@ -5,7 +5,7 @@ import leon._
 import leon.evaluators._
 import leon.evaluators.EvaluationResults._
 import leon.purescala.Trees._
-import leon.purescala.Definitions.{ TypedFunDef, VarDecl, Program, ModuleDef }
+import leon.purescala.Definitions.{ TypedFunDef, ValDef, Program, ModuleDef }
 import leon.purescala.Common.{ Identifier, FreshIdentifier }
 import leon.purescala.TreeOps
 import leon.codegen.CodeGenParams
@@ -89,7 +89,7 @@ case class CodeGenEvaluationStrategy(program: Program, tfd: TypedFunDef, ctx: Le
     
     val candidates = Candidate.makeCodeGenCandidates(candidatePairs, bodyBuilder, tfd) 
     
-	val newProgram = program.copy(mainModule = program.mainModule.copy(defs = program.mainModule.defs ++ candidates.map(_.newFunDef)))
+	val newProgram = program.copy(modules = ModuleDef(FreshIdentifier("result"), candidates.map(_.newFunDef)) :: program.modules)
 	
 	finest("New program looks like: " + newProgram)
 	finest("Candidates look like: " + candidates.map(_.prepareExpression).mkString("\n"))

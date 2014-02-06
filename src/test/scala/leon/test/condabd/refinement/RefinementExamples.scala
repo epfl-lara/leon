@@ -26,7 +26,7 @@ object RefinementExamples {
   val consClassId = FreshIdentifier("Cons")
   val consAbstractClassDef = new CaseClassDef(consClassId, Nil, None, false)
   val headId = FreshIdentifier("head").setType(Int32Type)
-  consAbstractClassDef.setFields(Seq(VarDecl(headId, Int32Type)))
+  consAbstractClassDef.setFields(Seq(ValDef(headId, Int32Type)))
   val consAbstractClass = new CaseClassType(consAbstractClassDef, Nil)
   
   val directSubclassMap: Map[ClassType, Set[ClassType]] = Map(
