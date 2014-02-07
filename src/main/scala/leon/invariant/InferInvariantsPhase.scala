@@ -59,7 +59,6 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   var enumerationRelation : (Expr,Expr) => Expr = LessEquals  
   var useCegis = false
   var maxCegisBound = 200 //maximum bound for the constants in cegis
-  var currentCegisBound = 1 //maximum bound for the constants in cegis
     
   //control printing of statistics
   val dumpStats = true
@@ -72,7 +71,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     LeonFlagOptionDef("minbounds", "--minbounds", "tighten time bounds"),
     LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."),
     LeonFlagOptionDef("inferTemp", "--inferTemp=True/false", "Infer templates by enumeration"),
-    LeonValueOptionDef("cegis", "--cegis=True/false", "use cegis instead of farkas"),
+    LeonFlagOptionDef("cegis", "--cegis=True/false", "use cegis instead of farkas"),
     LeonValueOptionDef("stats-suffix", "--stats-suffix=<suffix string>", "the suffix of the statistics file"))
 
   //TODO provide options for analyzing only selected functions
@@ -134,7 +133,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         })
       }
 
-      case v @ LeonFlagOption("cegis", true) => {
+      case v @ LeonFlagOption("cegis", true) => {        
         useCegis = true
       }
 
@@ -185,7 +184,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       //here iterate on a bound
       var remFuncs = functionsToAnalyze
       //increment cegis bound iteratively
-      var b = 1
+      //var b = 1
+      var b = 200
       breakable {
         while (b <= maxCegisBound) {
           //for stats          

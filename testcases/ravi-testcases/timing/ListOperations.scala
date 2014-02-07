@@ -20,7 +20,8 @@ object ListOperations {
     case Nil() => l2
     case Cons(x, xs) => reverseRec(xs, Cons(x, l2))
 
-  }) ensuring (res =>  size(l1) + size(l2) == size(res) template((a,b) => time <= a*size(l1) + b))
+  }) ensuring (res =>  size(l1) + size(l2) == size(res) && time <= 4*size(l1) + 1)
+  //ensuring (res =>  size(l1) + size(l2) == size(res) template((a,b) => time <= a*size(l1) + b))
 
   def reverse(l: List): List = {
     reverseRec(l, Nil())
