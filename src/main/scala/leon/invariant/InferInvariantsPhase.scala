@@ -58,7 +58,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   var inferTemp = false
   var enumerationRelation : (Expr,Expr) => Expr = LessEquals  
   var useCegis = false
-  var maxCegisBound = 200 //maximum bound for the constants in cegis
+  //var maxCegisBound = 200 //maximum bound for the constants in cegis
+  var maxCegisBound = 1000000000
     
   //control printing of statistics
   val dumpStats = true
@@ -185,7 +186,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       var remFuncs = functionsToAnalyze
       //increment cegis bound iteratively
       //var b = 1
-      var b = 200
+      //var b = 200
+      var b=1000000000
       breakable {
         while (b <= maxCegisBound) {
           //for stats          

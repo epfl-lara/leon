@@ -57,7 +57,7 @@ class CegisSolver(context : LeonContext,
     val formula = Or(funcs.map(funcVCs.apply _).toSeq)
     
     //using reals with bounds does not converge and also results in overflow
-    val (res, _, model) = (new CegisCore(context, program, timeout)).solve(tempIds, formula, initCtr, solveAsInt = true)
+    val (res, _, model) = (new CegisCore(context, program, timeout, this)).solve(tempIds, formula, initCtr, solveAsInt = true)
     res match {
       case Some(true) => (Some(getAllInvariants(model)), None)
       case Some(false) => (None, None) //no solution exists 
@@ -65,16 +65,18 @@ class CegisSolver(context : LeonContext,
         throw IllegalStateException("Timeout!!")
     }
   }  
- }
+}
+
 
 class CegisCore(context : LeonContext, 
     program : Program,
-    timeout: Int) {
+    timeout: Int, cegisSolver: TemplateSolver) {
   
   val fls = BooleanLiteral(false)
   val tru = BooleanLiteral(true)
   val zero = IntLiteral(0)
   val timeoutMillis = timeout.toLong * 1000
+  val dumpCandidateInvs = false
   
   /**
    * Finds a model for the template variables in the 'formula' so that 'formula' is falsified
@@ -123,10 +125,11 @@ class CegisCore(context : LeonContext,
         if (InferInvariantsPhase.dumpStats)
           Stats.cegisIterations += 1
 
-        /*println("candidate Invariants")
-      val candInvs = getAllInvariants(model)
-      candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))*/
-
+        if (dumpCandidateInvs) {
+          println("candidate Invariants")
+          val candInvs = cegisSolver.getAllInvariants(model)
+          candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))
+        }
         val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap
         val instFormula = simplifyArithmetic(TemplateInstantiator.instantiate(formula, tempVarMap))
 
@@ -240,7 +243,7 @@ class CegisCore(context : LeonContext,
  * TODO: Can we optimize timeout cases ?
  * That is, if we know we are going to timeout, we can return None immediately
  */
-class CegisCoreIncr(context : LeonContext, 
+/*class CegisCoreIncr(context : LeonContext, 
     program : Program,
     timeout: Int,
     incrStep : Int = 5, 
@@ -254,10 +257,10 @@ class CegisCoreIncr(context : LeonContext,
   var currentCtr : Expr = tru
   var bound = initBound
   
-  /**
+  *//**
    * The following procedure can never prove unsat.
    * It can only be used to prove sat quickly.
-   */
+   *//*
   def solveInSteps(tempIds: Set[Identifier], formula: Expr)
     : (Option[Boolean], Expr, Map[Identifier, Expr]) = {    
     
@@ -330,4 +333,4 @@ class CegisSolverIncr(context : LeonContext,
         throw IllegalStateException("Timeout!!")
     }
   }  
- }
+ }*/

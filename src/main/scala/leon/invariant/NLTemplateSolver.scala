@@ -263,7 +263,7 @@ class NLTemplateSolver(context : LeonContext,
                 reporter.info("Plain cegis timed-out on the disjunct... starting combined phase...")*/
 
             if (!this.disableCegis) {
-              val cegisSolver = new CegisCore(context, program, timeout)
+              val cegisSolver = new CegisCore(context, program, timeout, this)
               val (cegisRes2, cegisCtr2, cegisModel2) = cegisSolver.solve(tempIds.toSet, Or(confDisjuncts), inputCtr,
                 solveAsInt = false, initModel = Some(model))
               cegisRes2 match {
