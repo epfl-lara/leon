@@ -264,7 +264,7 @@ class CegisCore(context: LeonContext,
   val two = RealLiteral(2, 1)
   val rzero = RealLiteral(0, 1)
   val mone = RealLiteral(-1, 1)
-  val debugMinimization = true
+  val debugMinimization = false
 
   def minimizeReals(inputCtr: Expr, objective: Expr): (Option[Boolean], Map[Identifier, Expr]) = {
     //val t1 = System.currentTimeMillis()             
